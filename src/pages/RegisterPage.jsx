@@ -120,6 +120,17 @@ const STYLES = `
   }
 `;
 
+function StepDot({ n, numericStep }) {
+  const s = numericStep > n ? 'done' : numericStep === n ? 'active' : '';
+  return (
+    <div className={`reg-step-dot ${s}`}>
+      {numericStep > n
+        ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+        : n}
+    </div>
+  );
+}
+
 export default function RegisterPage() {
   const navigate = useNavigate();
   const [step, setStep]     = useState(1);
@@ -345,17 +356,6 @@ export default function RegisterPage() {
   const stepLabels  = ['Account','Business','Storefront','Done'];
   const progressPct = Math.min(100, ((numericStep - 1) / 3) * 100);
 
-  const StepDot = ({ n }) => {
-    const s = numericStep > n ? 'done' : numericStep === n ? 'active' : '';
-    return (
-      <div className={`reg-step-dot ${s}`}>
-        {numericStep > n
-          ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-          : n}
-      </div>
-    );
-  };
-
   /* ── Render ─────────────────────────────────────────────────────────────── */
   return (
     <>
@@ -381,7 +381,7 @@ export default function RegisterPage() {
                 <React.Fragment key={n}>
                   {i > 0 && <div className={`reg-step-line ${numericStep > n ? 'done' : ''}`} />}
                   <div className="reg-step">
-                    <StepDot n={n} />
+                    <StepDot n={n} numericStep={numericStep} />
                     <span className={`reg-step-label ${isActive ? 'active' : isDone ? 'done' : ''}`}>{lbl}</span>
                   </div>
                 </React.Fragment>

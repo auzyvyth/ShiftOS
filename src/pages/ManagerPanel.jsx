@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import CarForm from "../components/CarForm";
@@ -152,6 +152,7 @@ export default function ManagerPanel() {
   const [notifications, setNotifications] = useState([]);
   const [ownerMessages, setOwnerMessages] = useState([]);
   const [notifOpen, setNotifOpen] = useState(false);
+  const notifChRef = useRef(null);
 
   // ── Auth + fetch ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -248,13 +249,14 @@ export default function ManagerPanel() {
           .then(({ data: d }) => setOwnerMessages(d || []));
       loadOwnerMsgs();
 
-      const notifCh = supabase
+      notifChRef.current = supabase
         .channel("manager_notifs_" + p.id)
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "salesman_notifications", filter: `salesman_id=eq.${p.id}` }, loadOwnerMsgs)
         .subscribe();
-
-      return () => supabase.removeChannel(notifCh);
     });
+    return () => {
+      if (notifChRef.current) supabase.removeChannel(notifChRef.current);
+    };
   }, [navigate]);
 
   // ── Computed ──────────────────────────────────────────────────────────────

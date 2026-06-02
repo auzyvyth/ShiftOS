@@ -130,6 +130,7 @@ export default function AccountantPanel() {
   const [activeNav, setActiveNav] = useState("overview");
   const [notifications, setNotifications] = useState([]);
   const [notifOpen, setNotifOpen] = useState(false);
+  const notifChRef = useRef(null);
 
   // ── Overview ──────────────────────────────────────────────────
   const [overviewStats, setOverviewStats] = useState(null);
@@ -249,7 +250,7 @@ export default function AccountantPanel() {
           .limit(20)
           .then(({ data: d }) => setNotifications(d || []));
       loadNotifs();
-      const ch = supabase
+      notifChRef.current = supabase
         .channel("acct_notifs_" + p.id)
         .on(
           "postgres_changes",
@@ -262,8 +263,10 @@ export default function AccountantPanel() {
           loadNotifs,
         )
         .subscribe();
-      return () => supabase.removeChannel(ch);
     });
+    return () => {
+      if (notifChRef.current) supabase.removeChannel(notifChRef.current);
+    };
   }, [navigate]);
 
   // ── Overview fetch ────────────────────────────────────────────

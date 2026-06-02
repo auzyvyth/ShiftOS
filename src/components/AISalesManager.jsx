@@ -41,7 +41,8 @@ export default function AISalesManager({ snapshot, dealerName }) {
   useEffect(() => {
     if (!triggered.current && snapshot) {
       triggered.current = true;
-      setTimeout(() => sendMessage('Give me my morning briefing.'), 600);
+      const id = setTimeout(() => sendMessage('Give me my morning briefing.'), 600);
+      return () => clearTimeout(id);
     }
   }, [snapshot]);
 

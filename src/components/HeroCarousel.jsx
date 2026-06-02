@@ -562,6 +562,75 @@ const HC_CSS = `
 const INTERVAL_MS = 7000;
 const TOUCH_PAUSE = 25000;
 
+// Reusable meta+price+ctas block (defined at module scope to avoid recreation on every render)
+function MetaBlock({ extraClass = "", metaItems, priceVal, waHref, s, tenant }) {
+  return (
+    <div className={extraClass}>
+      {metaItems.length > 0 && (
+        <div className="hc-meta">
+          {metaItems.map((item, i) => (
+            <div key={i} className="hc-meta-item">
+              {item.icon}
+              <span>{item.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {priceVal && (
+        <div className="hc-price-section">
+          <div className="hc-price-label">Starting from</div>
+          <div className="hc-price-value hc-syne">{priceVal}</div>
+        </div>
+      )}
+      <div className="hc-ctas">
+        {waHref && (
+          <button
+            className="hc-enquire"
+            onClick={() => {
+              // Fire-and-forget IIFEs — never block the WhatsApp redirect
+              (async () => {
+                try {
+                  await supabase.from('whatsapp_enquiries').insert({
+                    dealer_id: s.dealer_id || tenant?.id || null,
+                    listing_id: s.car_listing_id || null,
+                    buyer_name: null,
+                    buyer_phone: null,
+                    buyer_message: `Enquiry from hero carousel — ${s.car_name || 'Featured Car'}`,
+                    source: 'hero_carousel',
+                    status: 'new',
+                    ref_slug: getSlugFromURL(),
+                  });
+                } catch (e) { console.warn(e); }
+              })();
+              (async () => {
+                try {
+                  await trackEvent(supabase, 'whatsapp_click', {
+                    car_id: s.car_listing_id || null,
+                    car_name: s.car_name || null,
+                    dealer_id: s.dealer_id || tenant?.id || null,
+                    metadata: { source: 'hero_carousel' },
+                  });
+                } catch (e) { console.warn(e); }
+              })();
+              window.open(waHref, '_blank', 'noopener,noreferrer');
+            }}
+          >
+            Enquire Now <ArrowRight size={12} />
+          </button>
+        )}
+        {s.car_listing_id && (
+          <Link
+            to={`/cars/${s.car_listings?.slug || s.car_listing_id}`}
+            className="hc-view"
+          >
+            View Details
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Format price as RM 265,000
 function formatPrice(val) {
   if (!val) return null;
@@ -849,73 +918,6 @@ export default function HeroCarousel({ siteName, waNumber }) {
     })),
   ].filter(Boolean);
 
-  // Reusable meta+price+ctas block
-  const MetaBlock = ({ extraClass = "" }) => (
-    <div className={extraClass}>
-      {metaItems.length > 0 && (
-        <div className="hc-meta">
-          {metaItems.map((item, i) => (
-            <div key={i} className="hc-meta-item">
-              {item.icon}
-              <span>{item.label}</span>
-            </div>
-          ))}
-        </div>
-      )}
-      {priceVal && (
-        <div className="hc-price-section">
-          <div className="hc-price-label">Starting from</div>
-          <div className="hc-price-value hc-syne">{priceVal}</div>
-        </div>
-      )}
-      <div className="hc-ctas">
-        {waHref && (
-          <button
-            className="hc-enquire"
-            onClick={() => {
-              // Fire-and-forget IIFEs — never block the WhatsApp redirect
-              (async () => {
-                try {
-                  await supabase.from('whatsapp_enquiries').insert({
-                    dealer_id: s.dealer_id || tenant?.id || null,
-                    listing_id: s.car_listing_id || null,
-                    buyer_name: null,
-                    buyer_phone: null,
-                    buyer_message: `Enquiry from hero carousel — ${s.car_name || 'Featured Car'}`,
-                    source: 'hero_carousel',
-                    status: 'new',
-                    ref_slug: getSlugFromURL(),
-                  });
-                } catch (e) { console.warn(e); }
-              })();
-              (async () => {
-                try {
-                  await trackEvent(supabase, 'whatsapp_click', {
-                    car_id: s.car_listing_id || null,
-                    car_name: s.car_name || null,
-                    dealer_id: s.dealer_id || tenant?.id || null,
-                    metadata: { source: 'hero_carousel' },
-                  });
-                } catch (e) { console.warn(e); }
-              })();
-              window.open(waHref, '_blank', 'noopener,noreferrer');
-            }}
-          >
-            Enquire Now <ArrowRight size={12} />
-          </button>
-        )}
-        {s.car_listing_id && (
-          <Link
-            to={`/cars/${s.car_listings?.slug || s.car_listing_id}`}
-            className="hc-view"
-          >
-            View Details
-          </Link>
-        )}
-      </div>
-    </div>
-  );
-
   return (
     <>
       <section
@@ -1009,7 +1011,7 @@ export default function HeroCarousel({ siteName, waNumber }) {
                     {s.car_name}
                   </h2>
                   {/* Desktop: meta/price/ctas inline */}
-                  <MetaBlock />
+                  <MetaBlock metaItems={metaItems} priceVal={priceVal} waHref={waHref} s={s} tenant={tenant} />
                 </div>
               </div>
 
@@ -1050,7 +1052,7 @@ export default function HeroCarousel({ siteName, waNumber }) {
               </div>
 
               {/* 3. Mobile only: meta + price + CTAs below image */}
-              <MetaBlock extraClass="hc-below-image" />
+              <MetaBlock extraClass="hc-below-image" metaItems={metaItems} priceVal={priceVal} waHref={waHref} s={s} tenant={tenant} />
             </div>
           </div>
         </div>

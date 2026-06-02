@@ -74,6 +74,133 @@ const sanitize = {
 };
 
 
+function FG({ title, children }) {
+  return (
+    <div style={{ marginBottom:'14px', paddingBottom:'14px', borderBottom:'1px solid rgba(0,0,0,0.07)' }}>
+      <p style={{ fontSize:'10px', fontWeight:'700', color:'#374151', letterSpacing:'0.12em', textTransform:'uppercase', margin:'0 0 10px', fontFamily:"'Outfit',sans-serif" }}>{title}</p>
+      {children}
+    </div>
+  );
+}
+
+function Filters({
+  hotDeals, setParam, searchParams, setSearchParams,
+  brand, model, variantInput, setVariantInput,
+  minPrice, maxPrice, state, yearFrom, yearTo,
+  bodyType, transmission, condition, mileageMax,
+  financing, fuelType, colour, sellerType,
+  pill, sel,
+}) {
+  return (
+    <div>
+      <FG title="Hot Deals">
+        <button style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', background: hotDeals?'rgba(251,146,60,0.08)':'#ffffff', border: hotDeals?'1px solid rgba(251,146,60,0.3)':'1px solid rgba(0,0,0,0.1)', borderRadius:'10px', padding:'10px 14px', cursor:'pointer', color: hotDeals?'#d97706':'#374151', fontSize:'13px', fontWeight:'700', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s' }} onClick={() => setParam('hot_deals', hotDeals?'':'true')}>
+          <span style={{ display:'flex', alignItems:'center', gap:'6px' }}><Flame size={13}/> Hot Deals Only</span>
+          {hotDeals && <span>✓</span>}
+        </button>
+      </FG>
+      <FG title="Brand">
+        <select aria-label="Filter by brand" style={sel} value={brand||''} onChange={e=>{
+          const n=new URLSearchParams(searchParams);
+          e.target.value?n.set('brand',e.target.value):n.delete('brand');
+          n.delete('model'); n.delete('page');
+          setSearchParams(n,{replace:true});
+        }}>
+          <option value="">All Brands</option>
+          {BRANDS.map(b=><option key={b} value={b}>{b}</option>)}
+        </select>
+      </FG>
+      <FG title="Model">
+        <select aria-label="Filter by model" style={{ ...sel, opacity: brand?1:0.45 }} value={model||''} onChange={e=>setParam('model',e.target.value)} disabled={!brand}>
+          <option value="">{brand ? 'All Models' : 'Select brand first'}</option>
+          {(CAR_DATA[brand]||[]).map(m=><option key={m} value={m}>{m}</option>)}
+        </select>
+      </FG>
+      {model && (
+        <FG title="Variant">
+          <form onSubmit={e=>{e.preventDefault();setParam('variant',variantInput.trim());}}>
+            <input
+              type="text"
+              placeholder="e.g. 1.5 G"
+              value={variantInput}
+              onChange={e=>setVariantInput(e.target.value)}
+              onBlur={()=>setParam('variant',variantInput.trim())}
+              style={{ ...sel, padding:'10px 14px', width:'100%', boxSizing:'border-box' }}
+            />
+          </form>
+        </FG>
+      )}
+      <FG title="Price Range">
+        <PriceDrumPicker
+          dark={false}
+          minValue={String(minPrice || '')}
+          maxValue={String(maxPrice || '')}
+          onApply={(min, max) => { const n=new URLSearchParams(searchParams); min?n.set('min_price',min):n.delete('min_price'); max?n.set('max_price',max):n.delete('max_price'); n.delete('page'); setSearchParams(n,{replace:true}); }}
+        />
+      </FG>
+      <FG title="Location">
+        <select aria-label="Filter by state" style={sel} value={state||''} onChange={e=>setParam('state',e.target.value)}>
+          <option value="">All States</option>
+          {MY_STATES.map(s=><option key={s} value={s}>{s}</option>)}
+        </select>
+      </FG>
+      <FG title="Year">
+        <div style={{ display:'flex', gap:'8px' }}>
+          <select aria-label="Year from" style={{ ...sel, flex:1 }} value={yearFrom||''} onChange={e=>setParam('year_from',e.target.value)}>
+            <option value="">From</option>
+            {YEARS.map(y=><option key={y} value={y} >{y}</option>)}
+          </select>
+          <select aria-label="Year to" style={{ ...sel, flex:1 }} value={yearTo||''} onChange={e=>setParam('year_to',e.target.value)}>
+            <option value="">To</option>
+            {YEARS.map(y=><option key={y} value={y} >{y}</option>)}
+          </select>
+        </div>
+      </FG>
+      <FG title="Body Type">
+        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
+          {BODY_TYPES.map(bt=><button key={bt} style={pill(bodyType===bt)} onClick={()=>setParam('body_type',bodyType===bt?'':bt)}>{bt}</button>)}
+        </div>
+      </FG>
+      <FG title="Transmission">
+        <div style={{ display:'flex', gap:'6px' }}>
+          {TRANSMISSIONS.map(tx=><button key={tx} style={pill(transmission===tx)} onClick={()=>setParam('transmission',transmission===tx?'':tx)}>{tx}</button>)}
+        </div>
+      </FG>
+      <FG title="Condition">
+        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
+          {CONDITION_OPTIONS.map(co=><button key={co.value} style={pill(condition===co.value)} onClick={()=>setParam('condition',condition===co.value?'':co.value)}>{co.label}</button>)}
+        </div>
+      </FG>
+      <FG title="Max Mileage">
+        <select aria-label="Filter by max mileage" style={sel} value={mileageMax||''} onChange={e=>setParam('mileage_max',e.target.value)}>
+          <option value="">Any Mileage</option>
+          {MILEAGE_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </FG>
+      <FG title="Payment">
+        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
+          {FINANCING_TYPES.map(ft=><button key={ft.value} style={pill(financing===ft.value)} onClick={()=>setParam('financing',financing===ft.value?'':ft.value)}>{ft.label}</button>)}
+        </div>
+      </FG>
+      <FG title="Fuel Type">
+        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
+          {FUEL_TYPES.map(ft=><button key={ft} style={pill(fuelType===ft)} onClick={()=>setParam('fuel_type',fuelType===ft?'':ft)}>{ft}</button>)}
+        </div>
+      </FG>
+      <FG title="Colour">
+        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
+          {COLOURS.map(c=><button key={c} style={pill(colour===c)} onClick={()=>setParam('colour',colour===c?'':c)}>{c}</button>)}
+        </div>
+      </FG>
+      <FG title="Seller">
+        <div style={{ display:'flex', gap:'6px' }}>
+          {SELLER_TYPES.map(st=><button key={st.value} style={pill(sellerType===st.value)} onClick={()=>setParam('seller_type',sellerType===st.value?'':st.value)}>{st.label}</button>)}
+        </div>
+      </FG>
+    </div>
+  );
+}
+
 /* ── Main ────────────────────────────────────────────────────────────────── */
 export default function ShowroomPage() {
   useMarketplaceTracking();
@@ -222,120 +349,14 @@ export default function ShowroomPage() {
     appearance:'none', cursor:'pointer', outline:'none',
     fontFamily:"'Outfit',sans-serif",
   };
-  const FG = ({ title, children }) => (
-    <div style={{ marginBottom:'14px', paddingBottom:'14px', borderBottom:'1px solid rgba(0,0,0,0.07)' }}>
-      <p style={{ fontSize:'10px', fontWeight:'700', color:'#374151', letterSpacing:'0.12em', textTransform:'uppercase', margin:'0 0 10px', fontFamily:"'Outfit',sans-serif" }}>{title}</p>
-      {children}
-    </div>
-  );
-  const Filters = () => (
-    <div>
-      <FG title="Hot Deals">
-        <button style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', background: hotDeals?'rgba(251,146,60,0.08)':'#ffffff', border: hotDeals?'1px solid rgba(251,146,60,0.3)':'1px solid rgba(0,0,0,0.1)', borderRadius:'10px', padding:'10px 14px', cursor:'pointer', color: hotDeals?'#d97706':'#374151', fontSize:'13px', fontWeight:'700', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s' }} onClick={() => setParam('hot_deals', hotDeals?'':'true')}>
-          <span style={{ display:'flex', alignItems:'center', gap:'6px' }}><Flame size={13}/> Hot Deals Only</span>
-          {hotDeals && <span>✓</span>}
-        </button>
-      </FG>
-      <FG title="Brand">
-        <select aria-label="Filter by brand" style={sel} value={brand||''} onChange={e=>{
-          const n=new URLSearchParams(searchParams);
-          e.target.value?n.set('brand',e.target.value):n.delete('brand');
-          n.delete('model'); n.delete('page');
-          setSearchParams(n,{replace:true});
-        }}>
-          <option value="">All Brands</option>
-          {BRANDS.map(b=><option key={b} value={b}>{b}</option>)}
-        </select>
-      </FG>
-      <FG title="Model">
-        <select aria-label="Filter by model" style={{ ...sel, opacity: brand?1:0.45 }} value={model||''} onChange={e=>setParam('model',e.target.value)} disabled={!brand}>
-          <option value="">{brand ? 'All Models' : 'Select brand first'}</option>
-          {(CAR_DATA[brand]||[]).map(m=><option key={m} value={m}>{m}</option>)}
-        </select>
-      </FG>
-      {model && (
-        <FG title="Variant">
-          <form onSubmit={e=>{e.preventDefault();setParam('variant',variantInput.trim());}}>
-            <input
-              type="text"
-              placeholder="e.g. 1.5 G"
-              value={variantInput}
-              onChange={e=>setVariantInput(e.target.value)}
-              onBlur={()=>setParam('variant',variantInput.trim())}
-              style={{ ...sel, padding:'10px 14px', width:'100%', boxSizing:'border-box' }}
-            />
-          </form>
-        </FG>
-      )}
-      <FG title="Price Range">
-        <PriceDrumPicker
-          dark={false}
-          minValue={String(minPrice || '')}
-          maxValue={String(maxPrice || '')}
-          onApply={(min, max) => { const n=new URLSearchParams(searchParams); min?n.set('min_price',min):n.delete('min_price'); max?n.set('max_price',max):n.delete('max_price'); n.delete('page'); setSearchParams(n,{replace:true}); }}
-        />
-      </FG>
-      <FG title="Location">
-        <select aria-label="Filter by state" style={sel} value={state||''} onChange={e=>setParam('state',e.target.value)}>
-          <option value="">All States</option>
-          {MY_STATES.map(s=><option key={s} value={s}>{s}</option>)}
-        </select>
-      </FG>
-      <FG title="Year">
-        <div style={{ display:'flex', gap:'8px' }}>
-          <select aria-label="Year from" style={{ ...sel, flex:1 }} value={yearFrom||''} onChange={e=>setParam('year_from',e.target.value)}>
-            <option value="">From</option>
-            {YEARS.map(y=><option key={y} value={y} >{y}</option>)}
-          </select>
-          <select aria-label="Year to" style={{ ...sel, flex:1 }} value={yearTo||''} onChange={e=>setParam('year_to',e.target.value)}>
-            <option value="">To</option>
-            {YEARS.map(y=><option key={y} value={y} >{y}</option>)}
-          </select>
-        </div>
-      </FG>
-      <FG title="Body Type">
-        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {BODY_TYPES.map(bt=><button key={bt} style={pill(bodyType===bt)} onClick={()=>setParam('body_type',bodyType===bt?'':bt)}>{bt}</button>)}
-        </div>
-      </FG>
-      <FG title="Transmission">
-        <div style={{ display:'flex', gap:'6px' }}>
-          {TRANSMISSIONS.map(tx=><button key={tx} style={pill(transmission===tx)} onClick={()=>setParam('transmission',transmission===tx?'':tx)}>{tx}</button>)}
-        </div>
-      </FG>
-      <FG title="Condition">
-        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {CONDITION_OPTIONS.map(co=><button key={co.value} style={pill(condition===co.value)} onClick={()=>setParam('condition',condition===co.value?'':co.value)}>{co.label}</button>)}
-        </div>
-      </FG>
-      <FG title="Max Mileage">
-        <select aria-label="Filter by max mileage" style={sel} value={mileageMax||''} onChange={e=>setParam('mileage_max',e.target.value)}>
-          <option value="">Any Mileage</option>
-          {MILEAGE_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-      </FG>
-      <FG title="Payment">
-        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {FINANCING_TYPES.map(ft=><button key={ft.value} style={pill(financing===ft.value)} onClick={()=>setParam('financing',financing===ft.value?'':ft.value)}>{ft.label}</button>)}
-        </div>
-      </FG>
-      <FG title="Fuel Type">
-        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {FUEL_TYPES.map(ft=><button key={ft} style={pill(fuelType===ft)} onClick={()=>setParam('fuel_type',fuelType===ft?'':ft)}>{ft}</button>)}
-        </div>
-      </FG>
-      <FG title="Colour">
-        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {COLOURS.map(c=><button key={c} style={pill(colour===c)} onClick={()=>setParam('colour',colour===c?'':c)}>{c}</button>)}
-        </div>
-      </FG>
-      <FG title="Seller">
-        <div style={{ display:'flex', gap:'6px' }}>
-          {SELLER_TYPES.map(st=><button key={st.value} style={pill(sellerType===st.value)} onClick={()=>setParam('seller_type',sellerType===st.value?'':st.value)}>{st.label}</button>)}
-        </div>
-      </FG>
-    </div>
-  );
+  const filtersProps = {
+    hotDeals, setParam, searchParams, setSearchParams,
+    brand, model, variantInput, setVariantInput,
+    minPrice, maxPrice, state, yearFrom, yearTo,
+    bodyType, transmission, condition, mileageMax,
+    financing, fuelType, colour, sellerType,
+    pill, sel,
+  };
 
   const BRAND_LOGOS = [
     { label:'All',         to:'/showroom',                          initials:'ALL', color:'#DC2626' },
@@ -430,7 +451,7 @@ export default function ShowroomPage() {
           </h2>
           <button onClick={()=>setDrawerOpen(false)} aria-label="Close filters" style={{ background:'rgba(0,0,0,0.05)', border:'none', cursor:'pointer', color:'#6b7280', borderRadius:'8px', padding:'6px', display:'flex' }}><X size={16}/></button>
         </div>
-        <div className="sr-sidebar" style={{ flex:1, overflowY:'auto', padding:'8px 20px' }}><Filters/></div>
+        <div className="sr-sidebar" style={{ flex:1, overflowY:'auto', padding:'8px 20px' }}><Filters {...filtersProps}/></div>
         <div style={{ padding:'16px 20px', borderTop:'1px solid rgba(0,0,0,0.08)', display:'flex', gap:'10px' }}>
           <button onClick={resetAll} style={{ flex:1, background:'rgba(0,0,0,0.04)', border:'1px solid rgba(0,0,0,0.1)', color:'#6b7280', fontSize:'13px', fontWeight:'600', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>Reset</button>
           <button onClick={()=>setDrawerOpen(false)} style={{ flex:2, background:'linear-gradient(135deg,#dc2626,#b91c1c)', border:'none', color:'white', fontSize:'13px', fontWeight:'700', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>Show {totalCount} cars</button>
@@ -534,7 +555,7 @@ export default function ShowroomPage() {
                 </h2>
                 {hasFilters && <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', fontSize:'11px', fontWeight:'600', display:'flex', alignItems:'center', gap:'3px', fontFamily:"'Outfit',sans-serif" }}><RotateCcw size={10}/> Reset</button>}
               </div>
-              <Filters/>
+              <Filters {...filtersProps}/>
             </aside>
 
             {/* Car grid */}
