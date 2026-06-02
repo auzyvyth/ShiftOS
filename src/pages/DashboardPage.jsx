@@ -4903,6 +4903,9 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
   const [historyUnit, setHistoryUnit] = useState(null);
   const [historyLogs, setHistoryLogs] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [pnlUnit, setPnlUnit] = useState(null);
+  const [pnlData, setPnlData] = useState(null);
+  const [pnlLoading, setPnlLoading] = useState(false);
 
   // Reset pagination when switching between available/sold
   useEffect(() => { setVisibleCount(30); }, [stockView]);
@@ -5067,6 +5070,33 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
     if (error) { toast.error('Update failed'); return; }
     logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: unit.id, action: 'encumbrance_updated', summary: `Encumbrance status ${unit.encumbrance_status || 'unknown'} → ${next}`, fieldChanges: { encumbrance_status: { from: unit.encumbrance_status, to: next } } });
     setUnits(p => p.map(u => u.id === unit.id ? { ...u, encumbrance_status: next } : u));
+  };
+
+  const fetchPnl = async (unit) => {
+    setPnlUnit(unit);
+    setPnlData(null);
+    setPnlLoading(true);
+    const listingId = unit.listing_id || unit.car_listings?.id;
+    let addons = [];
+    if (listingId) {
+      const { data } = await supabase
+        .from('deal_products')
+        .select('sold_price, dealer_products(name, cost_price)')
+        .eq('listing_id', listingId)
+        .eq('dealer_id', userId);
+      addons = data || [];
+    }
+    const purchasePrice  = Number(unit.purchase_price) || 0;
+    const reconCost      = Number(unit.recon_cost) || 0;
+    const servicesCost   = Number(unit.car_listings?.included_services_cost) || 0;
+    const commission     = Number(unit.car_listings?.commission_amount) || 0;
+    const addonRevenue   = addons.reduce((s, a) => s + (Number(a.sold_price) || 0), 0);
+    const addonCost      = addons.reduce((s, a) => s + (Number(a.dealer_products?.cost_price) || 0), 0);
+    const revenue        = Number(unit.sold_price) || Number(unit.asking_price) || Number(unit.car_listings?.selling_price) || 0;
+    const totalCosts     = purchasePrice + reconCost + servicesCost + commission + addonCost;
+    const netPnl         = revenue + addonRevenue - totalCosts;
+    setPnlData({ purchasePrice, reconCost, servicesCost, commission, addonRevenue, addonCost, revenue, totalCosts, netPnl, addons, isSold: unit.status === 'sold' });
+    setPnlLoading(false);
   };
 
   const fetchHistory = async (unit) => {
@@ -5264,6 +5294,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                             <div style={{ display: 'flex', gap: 6, flexDirection: 'column' }}>
                               <button onClick={() => { setSoldTarget(u); setSoldForm({ sold_price: u.asking_price ? String(u.asking_price) : '', sold_date: new Date().toISOString().slice(0, 10) }); }} style={{ fontSize: 11, color: '#93c5fd', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Mark Sold</button>
                               <button onClick={() => fetchHistory(u)} style={{ fontSize: 11, color: '#9ca3af', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>History</button>
+                              <button onClick={() => fetchPnl(u)} style={{ fontSize: 11, color: '#34d399', background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>P&L</button>
                             </div>
                           </td>
                         ) : (
@@ -5415,6 +5446,76 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* P&L Modal */}
+      {pnlUnit && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-md flex flex-col" style={{ maxHeight: '80vh', background: '#fff' }}>
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div>
+                <h3 className="font-semibold text-gray-900" style={{ fontSize: 15 }}>Unit P&L</h3>
+                <p style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                  {pnlUnit.car_listings?.brand} {pnlUnit.car_listings?.model} {pnlUnit.car_listings?.year}
+                  {pnlUnit.car_listings?.plate_number || pnlUnit.registration_number ? ` · ${pnlUnit.car_listings?.plate_number || pnlUnit.registration_number}` : ''}
+                </p>
+              </div>
+              <button onClick={() => { setPnlUnit(null); setPnlData(null); }} className="text-gray-400 hover:text-gray-700 p-1"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-5">
+              {pnlLoading ? (
+                <p className="text-gray-500 text-sm text-center py-8">Loading…</p>
+              ) : pnlData && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {/* Revenue */}
+                  <div style={{ padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Revenue</p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                      <span style={{ color: '#374151' }}>{pnlData.isSold ? 'Sold price' : 'Asking price'}</span>
+                      <span style={{ color: '#111827', fontWeight: 600 }}>RM {pnlData.revenue.toLocaleString()}</span>
+                    </div>
+                    {pnlData.addonRevenue > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginTop: 4 }}>
+                        <span style={{ color: '#374151' }}>Add-ons sold ({pnlData.addons.length})</span>
+                        <span style={{ color: '#111827', fontWeight: 600 }}>RM {pnlData.addonRevenue.toLocaleString()}</span>
+                      </div>
+                    )}
+                  </div>
+                  {/* Costs */}
+                  <div style={{ padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Costs</p>
+                    {[
+                      ['Purchase price', pnlData.purchasePrice],
+                      ['Recon cost', pnlData.reconCost],
+                      ['Included services', pnlData.servicesCost],
+                      ['Commission paid', pnlData.commission],
+                      ['Add-on cost', pnlData.addonCost],
+                    ].filter(([, v]) => v > 0).map(([label, val]) => (
+                      <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
+                        <span style={{ color: '#374151' }}>{label}</span>
+                        <span style={{ color: '#f87171' }}>− RM {val.toLocaleString()}</span>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#9ca3af', marginTop: 4 }}>
+                      <span>Total costs</span>
+                      <span>RM {pnlData.totalCosts.toLocaleString()}</span>
+                    </div>
+                  </div>
+                  {/* Net */}
+                  <div style={{ padding: '14px 0 4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>Net P&L</span>
+                      <span style={{ fontSize: 20, fontFamily: "'Bebas Neue',cursive", color: pnlData.netPnl >= 0 ? '#34d399' : '#f87171', letterSpacing: 1 }}>
+                        {pnlData.netPnl < 0 ? '− ' : ''}RM {Math.abs(pnlData.netPnl).toLocaleString()}
+                      </span>
+                    </div>
+                    {!pnlData.isSold && <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>Based on current asking price — updates when sold.</p>}
+                  </div>
                 </div>
               )}
             </div>
