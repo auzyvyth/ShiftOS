@@ -1760,7 +1760,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
                 Scan this QR code with Google Authenticator, Authy, or 1Password, then enter the 6-digit code to confirm.
               </p>
               <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
-                <img src={mfaEnroll.qr} alt="2FA QR code" style={{ width: 150, height: 150, borderRadius: 8, background: "#fff", padding: 6 }} />
+                <img src={`data:image/svg+xml;base64,${btoa(mfaEnroll.qr)}`} alt="2FA QR code" style={{ width: 150, height: 150, borderRadius: 8, background: "#fff", padding: 6 }} />
                 <div style={{ flex: 1, minWidth: 180 }}>
                   <p style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Manual entry key</p>
                   <code style={{ fontSize: 11, color: "#fbbf24", wordBreak: "break-all", display: "block", marginBottom: 12 }}>{mfaEnroll.secret}</code>
