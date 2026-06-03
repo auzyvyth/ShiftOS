@@ -1293,33 +1293,54 @@ function SettingsTab({ profile, onProfileUpdate }) {
   ];
 
   return (
-    <div style={{ display: 'flex', gap: 0, minHeight: 500 }}>
-      <nav style={{ width: 192, flexShrink: 0, borderRight: '1px solid rgba(255,255,255,0.06)', paddingRight: 8, paddingTop: 4 }}>
-        {settingsNavGroups.map(({ group, items }) => (
-          <div key={group} style={{ marginBottom: 22 }}>
-            <p style={{ fontSize: 10, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.25)', fontWeight: 600, textTransform: 'uppercase', padding: '0 12px', marginBottom: 4 }}>{group}</p>
-            {items.map(({ key, icon: Icon, label }) => (
-              <button
-                key={key}
-                onClick={() => setSettingsNav(key)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 12px',
-                  borderRadius: 8, border: 'none', cursor: 'pointer', textAlign: 'left', marginBottom: 1,
-                  background: settingsNav === key ? 'rgba(220,38,38,0.1)' : 'transparent',
-                  color: settingsNav === key ? '#dc2626' : 'rgba(255,255,255,0.5)',
-                  fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: settingsNav === key ? 600 : 400,
-                  transition: 'background 0.15s, color 0.15s',
-                }}
-              >
-                <Icon size={14} />
-                {label}
-              </button>
-            ))}
-          </div>
+    <div style={{ background: '#080C14', borderRadius: 12 }}>
+      {/* Mobile: horizontal scrolling pill nav */}
+      <div className="md:hidden" style={{ overflowX: 'auto', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '10px 16px', display: 'flex', gap: 6, WebkitOverflowScrolling: 'touch' }}>
+        {settingsNavGroups.flatMap(g => g.items).map(({ key, icon: Icon, label }) => (
+          <button
+            key={key}
+            onClick={() => setSettingsNav(key)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px',
+              borderRadius: 20, border: 'none', cursor: 'pointer', flexShrink: 0,
+              background: settingsNav === key ? 'rgba(220,38,38,0.15)' : 'rgba(255,255,255,0.06)',
+              color: settingsNav === key ? '#dc2626' : 'rgba(255,255,255,0.6)',
+              fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: settingsNav === key ? 600 : 400,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Icon size={13} />
+            {label}
+          </button>
         ))}
-      </nav>
-      <div style={{ flex: 1, paddingLeft: 24, minWidth: 0 }}>
-      <div className="space-y-4 max-w-2xl">
+      </div>
+      <div style={{ display: 'flex' }}>
+        <nav className="hidden md:block" style={{ width: 192, flexShrink: 0, borderRight: '1px solid rgba(255,255,255,0.06)', paddingRight: 8, paddingTop: 12 }}>
+          {settingsNavGroups.map(({ group, items }) => (
+            <div key={group} style={{ marginBottom: 22 }}>
+              <p style={{ fontSize: 10, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.25)', fontWeight: 600, textTransform: 'uppercase', padding: '0 12px', marginBottom: 4 }}>{group}</p>
+              {items.map(({ key, icon: Icon, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setSettingsNav(key)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 12px',
+                    borderRadius: 8, border: 'none', cursor: 'pointer', textAlign: 'left', marginBottom: 1,
+                    background: settingsNav === key ? 'rgba(220,38,38,0.1)' : 'transparent',
+                    color: settingsNav === key ? '#dc2626' : 'rgba(255,255,255,0.65)',
+                    fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: settingsNav === key ? 600 : 400,
+                    transition: 'background 0.15s, color 0.15s',
+                  }}
+                >
+                  <Icon size={14} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+        <div style={{ flex: 1, padding: '16px 20px', minWidth: 0 }}>
+        <div className="space-y-4 max-w-2xl">
       {settingsNav === 'plan' && planUsage && (
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '20px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -2086,7 +2107,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
       </SettingsSection>}
       {settingsNav === 'services' && <ProductsCatalogue dealerId={getDealerIdFromProfile(profile)} profile={profile} />}
 
-      </div>
+        </div>
+        </div>
       </div>
     </div>
   );

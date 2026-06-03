@@ -106,6 +106,13 @@ This session's git proxy blocks direct push to origin/main. Use this workflow ev
 - Always update public_car_listings VIEW after adding columns to car_listings
 - Supabase branch (isolated staging DB) available at ~$9.70/month — ask user before enabling
 
+## Mobile-first requirement
+- Every UI change must be mobile-friendly — test at 375px width before considering done
+- Dashboard background is #080C14 — never use white/light text colors without a dark background wrapper
+- Sidebar/panel layouts: use `hidden md:block` for desktop sidebar, horizontal scrolling pill nav for mobile
+- Fixed pixel widths on layout containers are banned — use flex/grid with minWidth: 0 on flex children
+- Inline style colors for text must account for the dark background: use rgba(255,255,255,x) not rgba(0,0,0,x)
+
 ## Prompt discipline
 - Never write more than 80 lines of instructions per prompt
 - Always read the target file first before editing
