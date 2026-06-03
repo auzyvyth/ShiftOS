@@ -2065,34 +2065,35 @@ function SettingsTab({ profile, onProfileUpdate }) {
   );
 
   return (
-    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #EAECF0' }}>
+    <div style={{ background: '#f5f6f8', borderRadius: 12, border: '1px solid #e5e7eb' }}>
       {/* ── MOBILE ── */}
       <div className="md:hidden">
         {!settingsNav ? (
-          /* Menu list */
-          <div>
+          /* Grouped menu list */
+          <div style={{ padding: '8px 12px 16px' }}>
             {settingsNavGroups.map(({ group, items }) => (
-              <div key={group}>
-                <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9ca3af', padding: '14px 16px 6px' }}>{group}</p>
-                <div style={{ borderTop: '1px solid #f3f4f6' }}>
-                  {items.map(({ key, icon: Icon, label, desc }) => (
+              <div key={group} style={{ marginTop: 20 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: '#9ca3af', marginBottom: 6, paddingLeft: 4 }}>{group}</p>
+                <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden' }}>
+                  {items.map(({ key, icon: Icon, label, desc }, idx) => (
                     <button
                       key={key}
                       onClick={() => setSettingsNav(key)}
                       style={{
-                        display: 'flex', alignItems: 'center', gap: 14, width: '100%',
-                        padding: '13px 16px', background: 'none', border: 'none',
-                        borderBottom: '1px solid #f3f4f6', cursor: 'pointer', textAlign: 'left',
+                        display: 'flex', alignItems: 'center', gap: 13, width: '100%',
+                        padding: '11px 14px', background: 'none', border: 'none',
+                        borderTop: idx > 0 ? '1px solid #f3f4f6' : 'none',
+                        cursor: 'pointer', textAlign: 'left',
                       }}
                     >
-                      <div style={{ width: 36, height: 36, borderRadius: 9, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Icon size={16} style={{ color: '#374151' }} />
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Icon size={15} style={{ color: '#4b5563' }} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 1 }}>{label}</p>
-                        <p style={{ fontSize: 12, color: '#6b7280' }}>{desc}</p>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', marginBottom: 1 }}>{label}</p>
+                        <p style={{ fontSize: 11, color: '#9ca3af' }}>{desc}</p>
                       </div>
-                      <ChevronRight size={16} style={{ color: '#d1d5db', flexShrink: 0 }} />
+                      <ChevronRight size={14} style={{ color: '#d1d5db', flexShrink: 0 }} />
                     </button>
                   ))}
                 </div>
@@ -2102,20 +2103,20 @@ function SettingsTab({ profile, onProfileUpdate }) {
         ) : (
           /* Section panel with back button */
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid #EAECF0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 14px', borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
               <button
                 onClick={() => setSettingsNav(null)}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 500, padding: '4px 0' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: 13, fontWeight: 500, padding: '4px 0' }}
               >
-                <ChevronLeft size={16} />
+                <ChevronLeft size={15} />
                 Settings
               </button>
-              <span style={{ fontSize: 13, color: '#9ca3af' }}>/</span>
+              <ChevronRight size={13} style={{ color: '#d1d5db' }} />
               <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>
                 {settingsNavGroups.flatMap(g => g.items).find(i => i.key === settingsNav)?.label}
               </span>
             </div>
-            <div style={{ padding: '16px' }}>
+            <div style={{ padding: '16px 12px' }}>
               {sectionContent}
             </div>
           </div>
@@ -2123,11 +2124,11 @@ function SettingsTab({ profile, onProfileUpdate }) {
       </div>
 
       {/* ── DESKTOP ── */}
-      <div className="hidden md:flex" style={{ minHeight: 520 }}>
-        <nav style={{ width: 200, flexShrink: 0, borderRight: '1px solid #EAECF0', padding: '16px 8px' }}>
-          {settingsNavGroups.map(({ group, items }) => (
-            <div key={group} style={{ marginBottom: 20 }}>
-              <p style={{ fontSize: 10, letterSpacing: '0.1em', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', padding: '0 10px', marginBottom: 4 }}>{group}</p>
+      <div className="hidden md:flex" style={{ minHeight: 560 }}>
+        <nav style={{ width: 196, flexShrink: 0, borderRight: '1px solid #e5e7eb', padding: '20px 10px', background: '#fff', borderRadius: '12px 0 0 12px' }}>
+          {settingsNavGroups.map(({ group, items }, gi) => (
+            <div key={group} style={{ marginBottom: 24, paddingTop: gi > 0 ? 0 : 0 }}>
+              <p style={{ fontSize: 10, letterSpacing: '0.1em', color: '#b0b7c3', fontWeight: 700, textTransform: 'uppercase', padding: '0 10px', marginBottom: 3 }}>{group}</p>
               {items.map(({ key, icon: Icon, label }) => {
                 const active = effectiveNav === key;
                 return (
@@ -2135,23 +2136,27 @@ function SettingsTab({ profile, onProfileUpdate }) {
                     key={key}
                     onClick={() => setSettingsNav(key)}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 10px',
-                      borderRadius: 8, border: 'none', cursor: 'pointer', textAlign: 'left', marginBottom: 1,
-                      background: active ? '#FEF2F2' : 'transparent',
-                      color: active ? '#dc2626' : '#374151',
+                      display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '7px 10px',
+                      borderRadius: 7, border: 'none', cursor: 'pointer', textAlign: 'left', marginBottom: 1,
+                      background: active ? '#f9fafb' : 'transparent',
+                      color: active ? '#dc2626' : '#4b5563',
+                      borderLeft: active ? '2px solid #dc2626' : '2px solid transparent',
                       fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: active ? 600 : 400,
-                      transition: 'background 0.15s, color 0.15s',
+                      transition: 'all 0.12s',
                     }}
                   >
-                    <Icon size={14} />
+                    <Icon size={14} style={{ flexShrink: 0 }} />
                     {label}
                   </button>
                 );
               })}
+              {gi < settingsNavGroups.length - 1 && (
+                <div style={{ height: 1, background: '#f0f1f3', margin: '14px 10px 0' }} />
+              )}
             </div>
           ))}
         </nav>
-        <div style={{ flex: 1, padding: '20px 24px', minWidth: 0 }}>
+        <div style={{ flex: 1, padding: '24px 28px', minWidth: 0, overflowY: 'auto' }}>
           {sectionContent}
         </div>
       </div>
@@ -8790,14 +8795,14 @@ export default function DashboardPage() {
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-20 lg:hidden"
-          style={{ background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(4px)' }}
+          style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
           onClick={() => startTransition(() => setSidebarOpen(false))}
         />
       )}
 
       {/* ── Sidebar ── */}
       <aside
-        className={`fixed top-0 left-0 h-dvh overflow-hidden z-30 flex flex-col w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+        className={`fixed top-0 left-0 h-dvh overflow-hidden z-30 flex flex-col w-full lg:w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
         style={{ background: '#FFFFFF', borderRight: '1px solid #EAECF0' }}
       >
         <div className="flex-shrink-0 px-4 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid #EAECF0' }}>
