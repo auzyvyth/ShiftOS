@@ -131,8 +131,8 @@ export const EMPLOYMENT_OPTIONS = [
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
 /** Format a Malaysian phone number into a WhatsApp URL */
-export function formatWhatsAppURL(phone = '') {
-  let clean = phone.replace(/[\s\-\(\)\+]/g, '');
+export function formatWhatsAppURL(phone) {
+  let clean = (phone || '').replace(/[\s\-\(\)\+]/g, '');
   if (clean.startsWith('0')) clean = '60' + clean.slice(1);
   return `https://wa.me/${clean}`;
 }
