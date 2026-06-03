@@ -764,7 +764,7 @@ Rules:
  car_listing_id: car.id,
  buyer_name: "New prospect",
  stage: "new",
- lead_source: "inventory",
+ lead_source: "manual",
  is_deleted: false,
  notes: `Enquiry about ${carTitle}${comm ? ` — commission RM ${comm.toLocaleString()}` : ""}`,
  })
