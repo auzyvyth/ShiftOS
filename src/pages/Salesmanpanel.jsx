@@ -7,6 +7,7 @@ import { supabase } from "../supabaseClient";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { usePermissions } from "../hooks/usePermissions";
+import { usePresence } from "../hooks/usePresence";
 import TikTokStudioV3 from "../components/TikTokStudioV3";
 import { toast } from "sonner";
 import { generateDealSheet } from "../utils/dealSheet";
@@ -122,6 +123,9 @@ export default function SalesmanPanel() {
 
  const [profile, setProfile] = useState(null);
  const { can: canPerm } = usePermissions(profile);
+ // Broadcast presence on the dealer's shared channel so the dealer dashboard
+ // sees this salesman as live (keyed on the dealer's profile id).
+ usePresence(profile?.dealer_id || profile?.id || null);
  const [userId, setUserId] = useState(null);
  const [loading, setLoading] = useState(true);
  const [activeTab, setActiveTab] = useState("dashboard");
