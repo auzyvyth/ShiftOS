@@ -78,6 +78,7 @@ const AISalesManager   = React.lazy(() => import("../components/AISalesManager")
 const HPBoard          = React.lazy(() => import("../components/HPBoard"));
 const OversightTab     = React.lazy(() => import("../components/OversightTab"));
 const OverviewTab      = React.lazy(() => import("../components/OverviewTab"));
+const PostSaleBoard    = React.lazy(() => import("../components/postsale/PostSaleBoard"));
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
@@ -158,6 +159,7 @@ import {
   UserCheck,
   SlidersHorizontal,
   Download,
+  ClipboardCheck,
 } from "lucide-react";
 
 const SERVER_URL = "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1";
@@ -8663,6 +8665,7 @@ export default function DashboardPage() {
     ai_manager: { title: "AI Sales Manager", sub: "Your always-on senior sales advisor" },
     outreach:   { title: "Outreach Hub",     sub: "Lead campaigns & WhatsApp automation" },
     customers:  { title: "Customers",        sub: "Buyer history, expiry tracking & remarketing" },
+    handover:   { title: "Handover",         sub: "Post-sale processing: JPJ transfer, Puspakom, road tax & insurance" },
   };
 
   const NAV = [
@@ -8672,6 +8675,7 @@ export default function DashboardPage() {
     { id: "add",        Icon: PlusCircle,      label: "Add Listing" },
     { id: "stock",      Icon: Package,         label: "Stock" },
     { id: "hp",         Icon: CreditCard,      label: "HP Board" },
+    { id: "handover",   Icon: ClipboardCheck,  label: "Handover" },
     { id: "analytics",  Icon: BarChart2,       label: "Analytics" },
     { id: "team",       Icon: Users,           label: "Team" },
     { id: "customers",  Icon: UserCheck,       label: "Customers" },
@@ -9621,6 +9625,9 @@ export default function DashboardPage() {
           )}
           {activeTab === "customers" && userId && (
             <CustomersTab dealerId={userId} />
+          )}
+          {activeTab === "handover" && userId && (
+            <PostSaleBoard dealerId={getDealerIdFromProfile(profile)} />
           )}
           </React.Suspense>
           </TabErrorBoundary>

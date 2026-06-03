@@ -9,6 +9,7 @@ import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { usePermissions } from "../hooks/usePermissions";
 import { usePresence } from "../hooks/usePresence";
 import TikTokStudioV3 from "../components/TikTokStudioV3";
+import PostSaleBoard from "../components/postsale/PostSaleBoard";
 import { toast } from "sonner";
 import { generateDealSheet } from "../utils/dealSheet";
 import {
@@ -47,6 +48,7 @@ import {
  MapPin,
  Banknote,
  CreditCard,
+ ClipboardCheck,
  Pencil,
  Trash2,
  Search,
@@ -5574,6 +5576,18 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
 ? ((parseFloat(loanCalc.downPayment) || 0) / parseFloat(loanCalc.carPrice) * 100).toFixed(1)
  : null;
 
+ const renderHandover = () => (
+ <div style={{ maxWidth: 760 }}>
+ <div style={{ marginBottom: 20 }}>
+ <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#fff" }}>
+ <ClipboardCheck size={18} style={{ marginRight: 8, verticalAlign: "middle", color: "#dc2626" }} />Handover
+ </h2>
+ <p style={{ margin: "4px 0 0", fontSize: 12, color: "#4b5563" }}>Your sold deals and their post-sale steps: Puspakom, JPJ transfer, road tax, insurance, handover.</p>
+ </div>
+ <PostSaleBoard dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} />
+ </div>
+ );
+
  const renderLoans = () => (
  <div style={{ maxWidth: 900 }}>
  <div style={{ marginBottom: 20 }}>
@@ -6206,6 +6220,12 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  badge: null,
  },
  {
+ tab: "handover",
+ label: "Handover",
+ icon: <ClipboardCheck size={18} />,
+ badge: null,
+ },
+ {
  tab: "team",
  label: "Team",
  icon: <Users size={18} />,
@@ -6462,6 +6482,12 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  tab: "loans",
  label: "Loans",
  icon: <Banknote style={{ width: 14, height: 14, flexShrink: 0 }} />,
+ badge: null,
+ },
+ {
+ tab: "handover",
+ label: "Handover",
+ icon: <ClipboardCheck style={{ width: 14, height: 14, flexShrink: 0 }} />,
  badge: null,
  },
  ].map(({ tab, label, icon, badge }) => (
@@ -6958,6 +6984,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  {activeTab === "analytics" && renderAnalytics()}
  {activeTab === "enquiries" && renderEnquiries()}
  {activeTab === "loans" && renderLoans()}
+ {activeTab === "handover" && renderHandover()}
  {activeTab === "team" && renderTeam()}
  {activeTab === "settings" && renderSettings()}
  </div>
