@@ -156,6 +156,7 @@ export default function SalesmanPanel() {
  const [availableLoading, setAvailableLoading] = useState(false);
  const [availableLoaded, setAvailableLoaded] = useState(false);
  const [invSearch, setInvSearch] = useState("");
+ const [featuredIds, setFeaturedIds] = useState([]); // listing_ids this salesman has featured
 
  // appointments
  const [appointments, setAppointments] = useState([]);
@@ -462,10 +463,12 @@ export default function SalesmanPanel() {
  )
  .subscribe();
 
- // Active listings: assigned to me OR linked via my active leads
+ // Active listings: assigned to me OR self-featured via salesman_listings.
+ // Featuring a car (Add to my listings) does NOT create a pipeline lead —
+ // only real buyers belong in the pipeline.
  const CAR_FIELDS = "id, slug, year, brand, model, variant, selling_price, status, images, colour, mileage, transmission, fuel_type, body_type, specs, features, options, city, condition, commission_amount";
  const fetchMyListings = async () => {
- const [{ data: assigned }, { data: leadRows }] = await Promise.all([
+ const [{ data: assigned }, { data: featuredRows }] = await Promise.all([
    supabase
      .from("car_listings")
      .select(CAR_FIELDS)
@@ -473,17 +476,15 @@ export default function SalesmanPanel() {
      .neq("status", "sold")
      .order("created_at", { ascending: false }),
    supabase
-     .from("leads")
-     .select(`car_listings(${CAR_FIELDS})`)
+     .from("salesman_listings")
+     .select(`listing_id, car_listings(${CAR_FIELDS})`)
      .eq("salesman_id", userId)
-     .eq("is_deleted", false)
-     .neq("stage", "closed")
-     .not("car_listing_id", "is", null),
+     .order("created_at", { ascending: false }),
  ]);
  const assignedList = assigned || [];
  const seen = new Set(assignedList.map((c) => c.id));
  const merged = [...assignedList];
- for (const row of leadRows || []) {
+ for (const row of featuredRows || []) {
    const c = row.car_listings;
    if (c && c.status !== "sold" && !seen.has(c.id)) {
      seen.add(c.id);
@@ -491,6 +492,7 @@ export default function SalesmanPanel() {
    }
  }
  setMyListings(merged);
+ setFeaturedIds((featuredRows || []).map((r) => r.listing_id));
  };
  fetchMyListings();
  const listingsCh = supabase
@@ -772,27 +774,22 @@ Rules:
  return null; // percent_gross needs cost data not exposed to salesmen
  };
 
+ // Feature a dealer car on this salesman's own listings/mini-page.
+ // Does NOT create a pipeline lead — pipeline is for real buyers only.
  const addCarToMyDeals = async (car) => {
- const comm = carCommission(car);
  const carTitle = [car.year, car.brand, car.model].filter(Boolean).join(" ");
- const { data, error } = await supabase
- .from("leads")
- .insert({
- dealer_id: profile?.dealer_id,
- salesman_id: userId,
- car_listing_id: car.id,
- buyer_name: "New prospect",
- stage: "new",
- lead_source: "manual",
- is_deleted: false,
- notes: `Enquiry about ${carTitle}${comm ? ` — commission RM ${comm.toLocaleString()}` : ""}`,
- })
- .select("*, car_listings(brand, model, year, selling_price)")
- .single();
- if (error) { toast.error("Could not add to deals"); return; }
- setLeads((p) => [data, ...p]);
- // Immediately surface car in My Listings without waiting for next fetchMyListings
+ // Optimistic: surface immediately, mark featured so the inventory button flips.
  setMyListings((p) => p.some((c) => c.id === car.id) ? p : [car, ...p]);
+ setFeaturedIds((p) => (p.includes(car.id) ? p : [...p, car.id]));
+ const { error } = await supabase
+ .from("salesman_listings")
+ .insert({ dealer_id: profile?.dealer_id, salesman_id: userId, listing_id: car.id });
+ if (error && error.code !== "23505") { // 23505 = already featured, treat as success
+ toast.error("Could not add to your listings");
+ setMyListings((p) => p.filter((c) => c.id !== car.id));
+ setFeaturedIds((p) => p.filter((id) => id !== car.id));
+ return;
+ }
  toast.success(`${carTitle} added to your listings`);
  setActiveTab("listings");
  setListingsView("mine");
@@ -3425,7 +3422,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  };
 
  const renderInventory = () => {
- const myLeadCarIds = new Set(leads.map((l) => l.car_listing_id).filter(Boolean));
+ const myLeadCarIds = new Set([...featuredIds, ...myListings.map((c) => c.id)]);
  const q = invSearch.trim().toLowerCase();
  const cars = q
  ? availableCars.filter((c) =>
@@ -3496,14 +3493,14 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <div style={{ marginTop: "auto", paddingTop: 6 }}>
  {inMyDeals ? (
  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "#4ade80", background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.18)", borderRadius: 8, padding: "8px 0" }}>
- <Check size={14} /> In your deals
+ <Check size={14} /> In your listings
  </div>
  ) : (
  <button
  onClick={() => addCarToMyDeals(car)}
  style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "#93c5fd", background: "rgba(29,78,216,0.15)", border: "1px solid rgba(29,78,216,0.3)", borderRadius: 8, padding: "8px 0", cursor: "pointer" }}
  >
- <Plus size={14} /> Add to my deals
+ <Plus size={14} /> Add to my listings
  </button>
  )}
  </div>

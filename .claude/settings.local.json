@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Edit",
+      "Write",
+      "Read",
+      "Bash(git:*)",
+      "Bash(npm:*)",
+      "Bash(node:*)",
+      "Bash(npx:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(mkdir:*)",
+      "mcp__63b52f82-8e35-449e-b2a0-ac7ad7494629__apply_migration",
+      "mcp__63b52f82-8e35-449e-b2a0-ac7ad7494629__execute_sql",
+      "mcp__63b52f82-8e35-449e-b2a0-ac7ad7494629__list_tables",
+      "mcp__63b52f82-8e35-449e-b2a0-ac7ad7494629__list_migrations"
+    ]
+  }
+}
