@@ -180,6 +180,7 @@ export default function SalesmanPanel() {
  // Leads
  const [leads, setLeads] = useState([]);
  const [staleLeads, setStaleLeads] = useState([]);
+ const [leaderboard, setLeaderboard] = useState([]);
  const [leadsLoading, setLeadsLoading] = useState(true);
  const [leadScores, setLeadScores] = useState({});
  const [scoreLoading, setScoreLoading] = useState(false);
@@ -659,7 +660,34 @@ Rules:
  };
  }, [userId]);
 
- // loan data 
+ // team leaderboard — units sold this month per salesman (names visible, deals private)
+ useEffect(() => {
+ const dealerKey = profile?.dealer_id || profile?.id;
+ if (!dealerKey) return;
+ const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+ (async () => {
+  const [{ data: team }, { data: sold }] = await Promise.all([
+   supabase.from("profiles").select("id, full_name, slug")
+    .or(`dealer_id.eq.${dealerKey},id.eq.${dealerKey}`).eq("role", "salesman"),
+   supabase.from("car_listings").select("assigned_to, sold_at, commission_amount")
+    .eq("dealer_id", dealerKey).eq("status", "sold").gte("sold_at", monthStart),
+  ]);
+  const counts = {};
+  for (const c of (sold || [])) {
+   if (!c.assigned_to) continue;
+   counts[c.assigned_to] = (counts[c.assigned_to] || 0) + 1;
+  }
+  const rows = (team || []).map((t) => ({
+   id: t.id,
+   name: t.full_name || t.slug || "Salesman",
+   units: counts[t.id] || 0,
+   isMe: t.id === profile.id,
+  })).sort((a, b) => b.units - a.units);
+  setLeaderboard(rows);
+ })();
+ }, [profile?.id, profile?.dealer_id]);
+
+ // loan data
  useEffect(() => {
  if (!profile?.id) return;
  const dealerId = getDealerIdFromProfile(profile);
@@ -2322,6 +2350,27 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  ))}
  </div>
  </div>
+
+ {/* Team leaderboard — units sold this month (ranking only, deals private) */}
+ {leaderboard.length > 1 && (
+ <div style={{ ...CARD, marginTop: 12 }}>
+ <p style={{ margin: "0 0 12px", fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>
+ Team leaderboard <span style={{ color: "#4b5563" }}>· units sold this month</span>
+ </p>
+ {leaderboard.map((row, i) => {
+ const medal = i === 0 ? "#fbbf24" : i === 1 ? "#cbd5e1" : i === 2 ? "#d97706" : "#4b5563";
+ return (
+ <div key={row.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 10px", borderRadius: 9, marginBottom: 4, background: row.isMe ? "rgba(96,165,250,0.08)" : "transparent", border: row.isMe ? "1px solid rgba(96,165,250,0.25)" : "1px solid transparent" }}>
+ <span style={{ width: 22, textAlign: "center", fontSize: 13, fontWeight: 700, color: medal, flexShrink: 0 }}>{i + 1}</span>
+ <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: row.isMe ? 700 : 500, color: row.isMe ? "#93c5fd" : "#e5e7eb", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+ {row.name}{row.isMe ? " (you)" : ""}
+ </span>
+ <span style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9", flexShrink: 0 }}>{row.units}</span>
+ </div>
+ );
+ })}
+ </div>
+ )}
  </>
  );
 
