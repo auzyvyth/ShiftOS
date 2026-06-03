@@ -6,6 +6,8 @@
 // Roles whose capabilities the owner can configure.
 export const CONFIGURABLE_ROLES = [
   { value: 'salesman', label: 'Salesman' },
+  { value: 'manager',  label: 'Manager'  },
+  { value: 'admin',    label: 'Admin'    },
 ];
 
 // Capability registry. Each capability declares which roles it applies to and
@@ -27,6 +29,30 @@ export const CAPABILITIES = [
     description: 'See every lead in the dealership, not only leads assigned to them.',
     roles: ['salesman'],
     default: false,
+    enforced: true,
+  },
+  {
+    key: 'view_cost',
+    label: 'View stock cost & purchase price',
+    description: 'Show purchase price, recon cost, and cost basis columns in the Stock tab.',
+    roles: ['manager', 'admin'],
+    default: true,
+    enforced: true,
+  },
+  {
+    key: 'view_gross',
+    label: 'View gross profit figures',
+    description: 'Show gross profit column in Stock tab and P&L breakdown.',
+    roles: ['manager', 'admin'],
+    default: true,
+    enforced: true,
+  },
+  {
+    key: 'export_data',
+    label: 'Export CSV / download reports',
+    description: 'Access the Export CSV button on the Analytics tab.',
+    roles: ['manager', 'admin'],
+    default: true,
     enforced: true,
   },
 ];

@@ -10,6 +10,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
+import { usePermissions } from "../hooks/usePermissions";
 import { CONFIGURABLE_ROLES, capabilitiesForRole, resolvePermissions } from "../lib/permissions";
 import { DEFAULT_WA_TEMPLATES, WA_PLACEHOLDERS } from "../lib/leadsHelpers";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
@@ -2320,6 +2321,7 @@ function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
 
 // ─── AnalyticsTab ─────────────────────────────────────────────────────────────
 function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStaleAdjusted, adjustedStaleIds }) {
+  const { can } = usePermissions(profile);
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -2907,7 +2909,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
             <p style={{ fontSize:11, color:'#6b7280', margin:'2px 0 0', letterSpacing:'0.01em' }}>Sorted by views · traffic activates once listings go live</p>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <button
+            {can('export_data') && <button
               onClick={exportAnalyticsCSV}
               disabled={eventsLoading || carStatsRows.length === 0}
               style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, fontWeight:600, color:'#374151', background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:7, padding:'5px 10px', cursor: eventsLoading || carStatsRows.length === 0 ? 'not-allowed' : 'pointer', opacity: eventsLoading || carStatsRows.length === 0 ? 0.5 : 1, fontFamily:"'DM Sans',sans-serif" }}
@@ -2915,7 +2917,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
             >
               <Download style={{ width:12, height:12 }} />
               Export CSV
-            </button>
+            </button>}
             <span style={{ fontSize:11, fontWeight:600, color:'#6b7280', background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:6, padding:'4px 10px' }}>
               {listings.length} listing{listings.length !== 1 ? 's' : ''}
             </span>
@@ -5295,6 +5297,7 @@ function ListingDetailDrawer({
 // ─── StockTab ─────────────────────────────────────────────────────────────────
 const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
   const navigate = useNavigate();
+  const { can } = usePermissions(profile);
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -5798,8 +5801,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                 <thead>
                   <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                     {stockView === 'available'
-                      ? ['Car', 'Age', 'Purchase Price', 'Recon', 'Asking', 'Days', 'Gross Profit', 'Status', ''].map(h => <th key={h} style={thStyle}>{h}</th>)
-                      : ['Car', 'Age', 'Purchase Price', 'Recon', 'Days in Stock', 'Gross Profit', 'Status', 'Sold Price', 'Sold Date'].map(h => <th key={h} style={thStyle}>{h}</th>)
+                      ? ['Car', 'Age', can('view_cost') ? 'Purchase Price' : null, can('view_cost') ? 'Recon' : null, 'Asking', 'Days', can('view_gross') ? 'Gross Profit' : null, 'Status', ''].filter(Boolean).map(h => <th key={h} style={thStyle}>{h}</th>)
+                      : ['Car', 'Age', can('view_cost') ? 'Purchase Price' : null, can('view_cost') ? 'Recon' : null, 'Days in Stock', can('view_gross') ? 'Gross Profit' : null, 'Status', 'Sold Price', 'Sold Date'].filter(Boolean).map(h => <th key={h} style={thStyle}>{h}</th>)
                     }
                   </tr>
                 </thead>
@@ -5861,8 +5864,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                             ? <span style={{ color: carAge >= 10 ? '#f87171' : carAge >= 5 ? '#fbbf24' : '#34d399', fontWeight: 600 }}>{carAge}yr</span>
                             : <span style={{ color: '#4b5563' }}>—</span>}
                         </td>
-                        <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>{(() => { const cb = costBasis(u); return cb > 0 ? <span style={{ color: '#111827' }}>RM {cb.toLocaleString()}</span> : <span style={{ color: '#9ca3af' }}>—</span>; })()}</td>
-                        <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>{Number(u.recon_cost) > 0 ? <span style={{ color: '#374151' }}>RM {Number(u.recon_cost).toLocaleString()}</span> : <span style={{ color: '#9ca3af' }}>—</span>}</td>
+                        {can('view_cost') && <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>{(() => { const cb = costBasis(u); return cb > 0 ? <span style={{ color: '#111827' }}>RM {cb.toLocaleString()}</span> : <span style={{ color: '#9ca3af' }}>—</span>; })()}</td>}
+                        {can('view_cost') && <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>{Number(u.recon_cost) > 0 ? <span style={{ color: '#374151' }}>RM {Number(u.recon_cost).toLocaleString()}</span> : <span style={{ color: '#9ca3af' }}>—</span>}</td>}
                         {stockView === 'available' && (
                           <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(Number(u.asking_price)||0).toLocaleString()}</td>
                         )}
@@ -5871,9 +5874,9 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                             ? <span style={{ color: '#93c5fd', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}><AlertTriangle style={{ width: 11, height: 11 }} />{daysNum}d</span>
                             : <span style={{ color: '#9ca3af' }}>{days !== '—' ? `${days}d` : '—'}</span>}
                         </td>
-                        <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>
+                        {can('view_gross') && <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>
                           {gp != null ? <span style={{ color: gp >= 0 ? '#34d399' : '#93c5fd', fontWeight: 600 }}>RM {gp.toLocaleString()}</span> : '—'}
-                        </td>
+                        </td>}
                         <td style={{ padding: '12px 14px' }}>{statusBadge(u.status)}</td>
                         {stockView === 'available' ? (
                           <td style={{ padding: '12px 14px' }}>
