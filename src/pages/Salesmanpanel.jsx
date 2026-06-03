@@ -9,9 +9,11 @@ import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { usePermissions } from "../hooks/usePermissions";
 import TikTokStudioV3 from "../components/TikTokStudioV3";
 import { toast } from "sonner";
+import { generateDealSheet } from "../utils/dealSheet";
 import {
  LogOut,
  Link,
+ FileText,
  Copy,
  Check,
  Eye,
@@ -212,6 +214,8 @@ export default function SalesmanPanel() {
 
  // CRM pipeline state
  const [drawerLeadId, setDrawerLeadId] = useState(null);
+ const [dealSheetBusyId, setDealSheetBusyId] = useState(null);
+ const [dealSheetLink, setDealSheetLink] = useState(null);
  const [deletingLeadId, setDeletingLeadId] = useState(null);
  const [lostSavingId, setLostSavingId] = useState(null);
  const [stageSavingId, setStageSavingId] = useState(null);
@@ -248,6 +252,7 @@ export default function SalesmanPanel() {
  const [carStatsMap, setCarStatsMap] = useState({});
  // rawEvents removed — aggregated server-side via get_car_analytics RPC
  const [dealerSubdomain, setDealerSubdomain] = useState(null);
+ const [dealerProfile, setDealerProfile] = useState(null);
 
  // Manager notes
  const [managerNotes, setManagerNotes] = useState([]);
@@ -380,10 +385,13 @@ export default function SalesmanPanel() {
  if (profileData.dealer_id) {
   supabase
    .from("profiles")
-   .select("subdomain")
+   .select("subdomain, site_name, dealership, brand_color, site_logo_url, deal_disclaimer, whatsapp_number")
    .eq("id", profileData.dealer_id)
    .maybeSingle()
-   .then(({ data }) => setDealerSubdomain(data?.subdomain || null));
+   .then(({ data }) => {
+     setDealerSubdomain(data?.subdomain || null);
+     setDealerProfile(data || null);
+   });
  }
 
  // Fetch assigned car IDs first, then scope analytics to those cars
@@ -1300,6 +1308,32 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  if (error) { console.error("saveLeadNote:", error); toast.error("Failed to save note"); return; }
  setLeads((p) => p.map((l) => l.id === leadId? { ...l, notes: editNoteVal } : l));
  setEditingNoteId(null);
+ };
+
+ const handleGenerateDealSheet = async (lead) => {
+ const car = lead.car_listings;
+ if (!car) { toast.error("Link a car to this lead first"); return; }
+ setDealSheetBusyId(lead.id);
+ setDealSheetLink(null);
+ try {
+  // Pull any add-on products already attached to this deal
+  const { data: dp } = await supabase
+   .from("deal_products")
+   .select("sold_price, dealer_products(name, category)")
+   .eq("lead_id", lead.id);
+  const { url } = await generateDealSheet({
+   lead, car, dealer: dealerProfile, salesman: profile,
+   addons: (dp || []).map(d => ({ name: d.dealer_products?.name, category: d.dealer_products?.category, price: d.sold_price })),
+  });
+  setDealSheetLink(url);
+  try { await navigator.clipboard.writeText(url); toast.success("Deal sheet ready — link copied"); }
+  catch { toast.success("Deal sheet ready"); }
+ } catch (e) {
+  console.error("generateDealSheet:", e);
+  toast.error("Could not generate deal sheet");
+ } finally {
+  setDealSheetBusyId(null);
+ }
  };
 
  const fetchLeadActivities = async (leadId) => {
@@ -4358,7 +4392,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  timing: { label: "Not ready yet", color: "#fbbf24", lines: [`"Totally understand — what would need to change for you to feel ready? Is it financing, or something else?"`, `"I can hold this for you with a small refundable deposit while you sort things out. No pressure."`, `"Just so you know — cars at this price point move fast. I'd hate for you to miss it."`] },
  trust: { label: "Not sure / need to think", color: "#f87171", lines: [`"What specific questions can I answer right now? Let's remove all the uncertainty together."`, `"I'm not here to rush you — but I want to make sure you have everything you need to decide confidently."`, `"Can I send you a full brief on this car — specs, loan estimate, everything — so you have it all in one place?"`] },
  };
- const close = () => { setDrawerLeadId(null); setEditingNoteId(null); setPlaybookLeadId(null); setExpandedActivityLeadId(null); setLostPromptId(null); setDeleteConfirmId(null); };
+ const close = () => { setDrawerLeadId(null); setEditingNoteId(null); setPlaybookLeadId(null); setExpandedActivityLeadId(null); setLostPromptId(null); setDeleteConfirmId(null); setDealSheetLink(null); };
  return (
  <>
  {/* backdrop */}
@@ -4493,6 +4527,30 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  ))}
  </div>
  )}
+
+ {/* Deal Sheet generator */}
+ <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 12 }}>
+ <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>Deal Sheet</p>
+ {!dealSheetLink || dealSheetBusyId === pl.id ? (
+ <button onClick={() => handleGenerateDealSheet(pl)} disabled={dealSheetBusyId === pl.id || !plCar} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 600, padding: "9px 14px", borderRadius: 8, background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd", cursor: plCar ? "pointer" : "not-allowed", opacity: (dealSheetBusyId === pl.id || !plCar) ? 0.55 : 1, fontFamily: "inherit" }}>
+ <FileText size={13} />
+ {dealSheetBusyId === pl.id ? "Generating…" : plCar ? "Generate Deal Sheet" : "Link a car first"}
+ </button>
+ ) : (
+ <div>
+ <p style={{ margin: "0 0 6px", fontSize: 11, color: "#6b7280" }}>Shareable buyer summary (valid 24h). Includes car, pricing, instalment estimate and your contact.</p>
+ <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+ <input readOnly value={dealSheetLink} onFocus={e => e.target.select()} style={{ flex: 1, minWidth: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#9ca3af", fontSize: 11, padding: "7px 10px", outline: "none", fontFamily: "inherit" }} />
+ <button onClick={() => { navigator.clipboard.writeText(dealSheetLink); toast.success("Copied"); }} style={{ flexShrink: 0, fontSize: 11, padding: "7px 10px", borderRadius: 7, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}>Copy</button>
+ </div>
+ <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+ <button onClick={() => window.open(dealSheetLink, "_blank")} style={{ fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.22)", color: "#93c5fd", cursor: "pointer" }}>Preview</button>
+ {pl.phone && <button onClick={() => { const ph = pl.phone.replace(/\D/g, ""); window.open(`https://wa.me/${ph.startsWith("6") ? ph : "6" + ph}?text=${encodeURIComponent(`Hi ${pl.buyer_name || ""}, here's your deal summary: ${dealSheetLink}`)}`, "_blank"); }} style={{ fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>Send via WA</button>}
+ <button onClick={() => setDealSheetLink(null)} style={{ fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#6b7280", cursor: "pointer" }}>New</button>
+ </div>
+ </div>
+ )}
+ </div>
 
  {/* AI WA Reply in drawer */}
  {isPremium && pl.buyer_name && pl.phone && (
