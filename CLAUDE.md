@@ -106,6 +106,13 @@ This session's git proxy blocks direct push to origin/main. Use this workflow ev
 - Always update public_car_listings VIEW after adding columns to car_listings
 - Supabase branch (isolated staging DB) available at ~$9.70/month — ask user before enabling
 
+## RLS policy safety
+- NEVER write an RLS policy on a table whose USING/CHECK expression does a subquery on that SAME table — it causes infinite recursion and breaks every read (symptom: profile fetch fails → app redirects to login in a loop)
+- For any policy that needs to reference `profiles` (especially policies ON profiles), use a SECURITY DEFINER helper that bypasses RLS: `get_my_dealer_id()`, `is_superadmin()`, `is_linked_salesman()`, `is_active_salesman()`
+- Dealer profile rows have `dealer_id = NULL` (they own themselves) — to grant a salesman read access to their dealer, match `id = get_my_dealer_id()`, NOT `dealer_id = get_my_dealer_id()`
+- leads.lead_source CHECK only allows: walk_in, whatsapp, referral, drevo_enquiry, enquiry, manual — any other value rejects the whole insert
+- After adding any policy, test it with a real row read before shipping
+
 ## Mobile-first requirement
 - Every UI change must be mobile-friendly — test at 375px width before considering done
 - Dashboard background is #080C14 — never use white/light text colors without a dark background wrapper
