@@ -97,12 +97,9 @@ export default function AdvancedSearchModal({ open, onClose, heroQ, heroBudget, 
             <div>
               <p style={{ margin:'0 0 5px', fontSize:'9px', fontWeight:'700', color:'rgba(255,255,255,0.28)', textTransform:'uppercase', letterSpacing:'0.08em', fontFamily:"'Outfit',sans-serif" }}>Model</p>
               <div style={{ position:'relative' }}>
-                <select value={advModel} onChange={e=>setAdvModel(e.target.value)} disabled={!advBrand}
-                  style={{ width:'100%', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'9px', padding:'9px 26px 9px 11px', color: advModel?'#fff':'rgba(255,255,255,0.38)', fontSize:'12px', appearance:'none', cursor: advBrand?'pointer':'not-allowed', outline:'none', fontFamily:"'Outfit',sans-serif", opacity: advBrand?1:0.4 }}>
-                  <option value="" style={{ background:'#0d1117' }}>{advBrand ? 'All Models' : 'Select brand first'}</option>
-                  {(CAR_DATA[advBrand]||[]).map(m => <option key={m} value={m} style={{ background:'#0d1117' }}>{m}</option>)}
-                </select>
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
+                <input value={advModel} onChange={e=>setAdvModel(e.target.value)} disabled={!advBrand}
+                  placeholder={advBrand ? 'e.g. Myvi, Civic, X70' : 'Select brand first'}
+                  style={{ width:'100%', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'9px', padding:'9px 11px', color: advModel?'#fff':'rgba(255,255,255,0.38)', fontSize:'12px', outline:'none', fontFamily:"'Outfit',sans-serif", cursor: advBrand?'text':'not-allowed', opacity: advBrand?1:0.4 }} />
               </div>
             </div>
             {[

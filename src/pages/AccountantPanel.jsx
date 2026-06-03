@@ -1825,8 +1825,8 @@ export default function AccountantPanel() {
               />
               <button
                 onClick={async () => {
-                  const { utils, writeFile } =
-                    await import("https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs");
+                  const xlsxCdn = "https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs";
+                  const { utils, writeFile } = await import(/* @vite-ignore */ xlsxCdn);
                   const rows = overviewRows.map((r) => ({
                     Car: r.car_listings
                       ? `${r.car_listings.year} ${r.car_listings.brand} ${r.car_listings.model}`

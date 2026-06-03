@@ -574,6 +574,28 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     }
   };
 
+  // ── WhatsApp templates load (SET-1) ──────────────────────────────────────────
+  useEffect(() => {
+    if (!lead?.dealer_id) return;
+    supabase.from('profiles').select('whatsapp_templates').eq('id', lead.dealer_id).maybeSingle()
+      .then(({ data }) => {
+        const t = data?.whatsapp_templates;
+        if (Array.isArray(t) && t.length > 0) setWaTemplates(t);
+      });
+  }, [lead?.dealer_id]);
+
+  // ── Trade-in load ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!lead?.id) return;
+    supabase.from('trade_ins').select('*').eq('lead_id', lead.id).maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setTradeIn(data);
+          setTiForm({ plate_number: data.plate_number || '', brand: data.brand || '', model: data.model || '', year: data.year ? String(data.year) : '', mileage: data.mileage ? String(data.mileage) : '', colour: data.colour || '', condition: data.condition || 'good', valuation: data.valuation ? String(data.valuation) : '', agreed_price: data.agreed_price ? String(data.agreed_price) : '', notes: data.notes || '' });
+        }
+      });
+  }, [lead?.id]);
+
   if (!lead) return null;
 
   const days     = getLeadAgeDays(lead.created_at);
@@ -739,28 +761,6 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
       } catch { /* silent */ }
     }, 800);
   }
-
-  // ── WhatsApp templates load (SET-1) ──────────────────────────────────────────
-  useEffect(() => {
-    if (!lead?.dealer_id) return;
-    supabase.from('profiles').select('whatsapp_templates').eq('id', lead.dealer_id).maybeSingle()
-      .then(({ data }) => {
-        const t = data?.whatsapp_templates;
-        if (Array.isArray(t) && t.length > 0) setWaTemplates(t);
-      });
-  }, [lead?.dealer_id]);
-
-  // ── Trade-in load ────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!lead?.id) return;
-    supabase.from('trade_ins').select('*').eq('lead_id', lead.id).maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          setTradeIn(data);
-          setTiForm({ plate_number: data.plate_number || '', brand: data.brand || '', model: data.model || '', year: data.year ? String(data.year) : '', mileage: data.mileage ? String(data.mileage) : '', colour: data.colour || '', condition: data.condition || 'good', valuation: data.valuation ? String(data.valuation) : '', agreed_price: data.agreed_price ? String(data.agreed_price) : '', notes: data.notes || '' });
-        }
-      });
-  }, [lead?.id]);
 
   async function saveTradeIn() {
     setTiSaving(true);
