@@ -219,6 +219,13 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const [tiForm, setTiForm]         = useState({ plate_number: '', brand: '', model: '', year: '', mileage: '', colour: '', condition: 'good', valuation: '', agreed_price: '', notes: '' });
   const [tiSaving, setTiSaving]     = useState(false);
 
+  // Appointments state
+  const [apptRows, setApptRows]       = useState([]);
+  const [apptLoading, setApptLoading] = useState(false);
+  const [showAddAppt, setShowAddAppt] = useState(false);
+  const [apptForm, setApptForm]       = useState({ appointment_date: '', booking_type: 'viewing', notes: '' });
+  const [apptSaving, setApptSaving]   = useState(false);
+
   // Deposit state
   const [depositAmount, setDepositAmount]       = useState(initialLead?.deposit_amount ?? '');
   const [depositDate, setDepositDate]           = useState(initialLead?.deposit_date || '');
@@ -274,6 +281,53 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     };
     fetch();
   }, [lead?.id, lead?.dealer_id]);
+
+  // Fetch appointments for this lead
+  useEffect(() => {
+    if (!lead?.id || !lead?.dealer_id) return;
+    const fetchAppts = async () => {
+      setApptLoading(true);
+      const { data } = await supabase
+        .from('appointments')
+        .select('id, appointment_date, booking_type, notes, status, buyer_name, buyer_phone')
+        .eq('lead_id', lead.id)
+        .eq('dealer_id', lead.dealer_id)
+        .order('appointment_date', { ascending: true });
+      setApptRows(data || []);
+      setApptLoading(false);
+    };
+    fetchAppts();
+  }, [lead?.id, lead?.dealer_id]);
+
+  const handleAddAppt = async () => {
+    if (!apptForm.appointment_date) return;
+    setApptSaving(true);
+    const { data, error } = await supabase.from('appointments').insert({
+      dealer_id: lead.dealer_id,
+      lead_id: lead.id,
+      car_listing_id: lead.car_listing?.id || null,
+      buyer_name: lead.name || null,
+      buyer_phone: lead.phone || null,
+      appointment_date: apptForm.appointment_date,
+      booking_type: apptForm.booking_type || 'viewing',
+      notes: apptForm.notes || null,
+      status: 'scheduled',
+    }).select().single();
+    if (!error && data) {
+      setApptRows(r => [...r, data].sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date)));
+      setApptForm({ appointment_date: '', booking_type: 'viewing', notes: '' });
+      setShowAddAppt(false);
+      toast.success('Appointment scheduled');
+    } else {
+      toast.error('Failed to schedule appointment');
+    }
+    setApptSaving(false);
+  };
+
+  const handleCancelAppt = async (id) => {
+    const { error } = await supabase.from('appointments').update({ status: 'cancelled' }).eq('id', id);
+    if (!error) setApptRows(r => r.map(a => a.id === id ? { ...a, status: 'cancelled' } : a));
+  };
 
   const handleAttachAddon = async () => {
     if (!addonForm.product_id || !addonForm.sold_price) { return; }
@@ -1702,6 +1756,81 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                   <FileText style={{ width: 12, height: 12 }} />{logging ? 'Logging…' : 'Log Activity'}
                 </button>
               </div>
+            </div>
+
+            <div style={w.divider} />
+
+            {/* ── Appointments ── */}
+            <div style={w.section}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <p style={{ ...w.label, margin: 0 }}>Appointments</p>
+                <button onClick={() => setShowAddAppt(s => !s)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#dc2626', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>
+                  <Plus style={{ width: 11, height: 11 }} />{showAddAppt ? 'Cancel' : 'Schedule'}
+                </button>
+              </div>
+
+              {showAddAppt && (
+                <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                    <div>
+                      <p style={w.label}>Date & Time</p>
+                      <input type="datetime-local" value={apptForm.appointment_date}
+                        onChange={e => setApptForm(p => ({ ...p, appointment_date: e.target.value }))}
+                        style={{ ...w.inp, colorScheme: 'light' }} className="ld-inp" />
+                    </div>
+                    <div>
+                      <p style={w.label}>Type</p>
+                      <select value={apptForm.booking_type} onChange={e => setApptForm(p => ({ ...p, booking_type: e.target.value }))}
+                        style={{ ...w.inp, appearance: 'none' }} className="ld-inp">
+                        <option value="viewing">Viewing</option>
+                        <option value="test_drive">Test Drive</option>
+                        <option value="handover">Handover</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+                  <input value={apptForm.notes} onChange={e => setApptForm(p => ({ ...p, notes: e.target.value }))}
+                    placeholder="Notes (optional)" style={{ ...w.inp, marginBottom: 8 }} className="ld-inp" />
+                  <button onClick={handleAddAppt} disabled={apptSaving || !apptForm.appointment_date}
+                    style={{ fontSize: 12, fontWeight: 600, color: 'white', background: '#111827', border: 'none', borderRadius: 6, padding: '7px 16px', cursor: 'pointer', opacity: (!apptForm.appointment_date || apptSaving) ? 0.5 : 1 }}>
+                    {apptSaving ? 'Saving…' : 'Confirm Appointment'}
+                  </button>
+                </div>
+              )}
+
+              {apptLoading ? (
+                <p style={{ fontSize: 12, color: '#9ca3af' }}>Loading…</p>
+              ) : apptRows.length === 0 ? (
+                <p style={{ fontSize: 12, color: '#9ca3af' }}>No appointments scheduled.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {apptRows.map(a => {
+                    const dt = new Date(a.appointment_date);
+                    const isPast = dt < new Date();
+                    const isCancelled = a.status === 'cancelled';
+                    const typeLabel = { viewing: 'Viewing', test_drive: 'Test Drive', handover: 'Handover', other: 'Other' }[a.booking_type] || a.booking_type;
+                    return (
+                      <div key={a.id} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, padding: '8px 10px', background: isCancelled ? '#fafafa' : isPast ? '#f9fafb' : 'rgba(220,38,38,0.03)', border: `1px solid ${isCancelled ? '#f3f4f6' : isPast ? '#e5e7eb' : 'rgba(220,38,38,0.15)'}`, borderRadius: 7, opacity: isCancelled ? 0.5 : 1 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: '#111827' }}>
+                              {dt.toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' })}{' '}
+                              <span style={{ color: '#6b7280' }}>{dt.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' })}</span>
+                            </span>
+                            <span style={{ fontSize: 10, fontWeight: 600, color: '#dc2626', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: 4, padding: '1px 6px' }}>{typeLabel}</span>
+                            {isCancelled && <span style={{ fontSize: 10, color: '#9ca3af' }}>Cancelled</span>}
+                          </div>
+                          {a.notes && <p style={{ fontSize: 11, color: '#6b7280', margin: '4px 0 0' }}>{a.notes}</p>}
+                        </div>
+                        {!isCancelled && (
+                          <button onClick={() => handleCancelAppt(a.id)} style={{ fontSize: 10, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', flexShrink: 0 }}>✕</button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div style={w.divider} />

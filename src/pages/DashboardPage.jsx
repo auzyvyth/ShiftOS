@@ -1106,34 +1106,37 @@ function SettingsTab({ profile, onProfileUpdate }) {
       setErrors((p) => ({ ...p, telegram: "Fill in bot token and channel ID first." }));
       return;
     }
+    // Save token first if a new one was typed, so the edge function can read it
+    if (tgToken.trim()) {
+      await saveSection("telegram", {
+        ...(tgToken.trim() ? { telegram_bot_token: tgToken.trim() } : {}),
+        telegram_channel_id: tgChannel.trim(),
+        telegram_auto_post: tgAutoPost,
+      });
+    }
     setTgTesting(true);
     setTgTestResult(null);
     setErrors((p) => ({ ...p, telegram: "" }));
     try {
-      // Use the freshly-typed token, or fetch the stored one just-in-time for the test
-      let token = tgToken.trim();
-      if (!token) {
-        const { data: row } = await supabase.from("profiles").select("telegram_bot_token").eq("id", profile?.id).maybeSingle();
-        token = (row?.telegram_bot_token || "").trim();
-      }
-      if (!token) { setErrors((p) => ({ ...p, telegram: "No token saved." })); setTgTesting(false); return; }
-      const res = await fetch(
-        `https://api.telegram.org/bot${token}/sendMessage`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: tgChannel.trim(),
-            text: "ShiftOS Telegram connected! Auto-posting is active.",
-          }),
-        }
-      );
-      const data = await res.json();
-      if (data.ok) {
+      const dealerId = profile?.role === 'manager' || profile?.role === 'admin' ? profile?.dealer_id : profile?.id;
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke('send-telegram', {
+        body: {
+          dealer_id: dealerId,
+          channel_id: tgChannel.trim(),
+          message: "ShiftOS Telegram connected! Auto-posting is active.",
+        },
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+      });
+      const data = res.data;
+      if (data?.ok) {
         setTgTestResult("ok");
+      } else if (data?.error === 'no_token') {
+        setTgTestResult("fail");
+        setErrors((p) => ({ ...p, telegram: "No token saved. Save settings first." }));
       } else {
         setTgTestResult("fail");
-        setErrors((p) => ({ ...p, telegram: data.description || "Test failed. Check token and channel ID." }));
+        setErrors((p) => ({ ...p, telegram: data?.description || "Test failed. Check token and channel ID." }));
       }
     } catch {
       setTgTestResult("fail");
@@ -5332,6 +5335,11 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
   const [csvSaving, setCsvSaving] = useState(false);
   const csvInputRef = useRef(null);
 
+  // ENT-8: inline price editing
+  const [editPriceUnit, setEditPriceUnit] = useState(null);
+  const [editPriceForm, setEditPriceForm] = useState({ purchase_price: '', recon_cost: '', asking_price: '' });
+  const [editPriceSaving, setEditPriceSaving] = useState(false);
+
   // Reset pagination when switching between available/sold
   useEffect(() => { setVisibleCount(30); }, [stockView]);
 
@@ -5701,6 +5709,33 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
     setHistoryLoading(false);
   };
 
+  const handleSavePrices = async () => {
+    if (!editPriceUnit) return;
+    setEditPriceSaving(true);
+    const patch = {
+      purchase_price: Number(editPriceForm.purchase_price) || 0,
+      recon_cost:     Number(editPriceForm.recon_cost)     || 0,
+      asking_price:   Number(editPriceForm.asking_price)   || 0,
+    };
+    const { error } = await supabase.from('stock_units').update(patch).eq('id', editPriceUnit.id).eq('dealer_id', userId);
+    if (!error) {
+      const changes = [];
+      const fc = {};
+      if (patch.purchase_price !== (Number(editPriceUnit.purchase_price)||0)) { changes.push(`purchase RM ${(Number(editPriceUnit.purchase_price)||0).toLocaleString()} → RM ${patch.purchase_price.toLocaleString()}`); fc.purchase_price = { from: Number(editPriceUnit.purchase_price)||0, to: patch.purchase_price }; }
+      if (patch.recon_cost     !== (Number(editPriceUnit.recon_cost)||0))     { changes.push(`recon RM ${(Number(editPriceUnit.recon_cost)||0).toLocaleString()} → RM ${patch.recon_cost.toLocaleString()}`); fc.recon_cost = { from: Number(editPriceUnit.recon_cost)||0, to: patch.recon_cost }; }
+      if (patch.asking_price   !== (Number(editPriceUnit.asking_price)||0))   { changes.push(`asking RM ${(Number(editPriceUnit.asking_price)||0).toLocaleString()} → RM ${patch.asking_price.toLocaleString()}`); fc.asking_price = { from: Number(editPriceUnit.asking_price)||0, to: patch.asking_price }; }
+      if (changes.length) {
+        logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: editPriceUnit.id, action: 'prices_updated', summary: `Prices updated — ${changes.join('; ')}`, fieldChanges: fc });
+      }
+      setUnits(u => u.map(x => x.id === editPriceUnit.id ? { ...x, ...patch } : x));
+      toast.success('Prices updated');
+      setEditPriceUnit(null);
+    } else {
+      toast.error('Failed to save prices');
+    }
+    setEditPriceSaving(false);
+  };
+
   const statusBadge = (s) => {
     const map = { in_stock: ['#34d399','rgba(52,211,153,0.12)'], sold: ['#9ca3af','rgba(156,163,175,0.1)'], reserved: ['#fbbf24','rgba(251,191,36,0.12)'] };
     const [color, bg] = map[s] || ['#9ca3af','#f3f4f6'];
@@ -5885,6 +5920,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                               <button onClick={() => fetchHistory(u)} style={{ fontSize: 11, color: '#9ca3af', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>History</button>
                               <button onClick={() => fetchPnl(u)} style={{ fontSize: 11, color: '#34d399', background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>P&L</button>
                               <button onClick={() => fetchReconJobs(u)} style={{ fontSize: 11, color: '#f59e0b', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Recon</button>
+                              {can('view_cost') && <button onClick={() => { setEditPriceUnit(u); setEditPriceForm({ purchase_price: String(u.purchase_price||''), recon_cost: String(u.recon_cost||''), asking_price: String(u.asking_price||'') }); }} style={{ fontSize: 11, color: '#a78bfa', background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Edit Prices</button>}
                             </div>
                           </td>
                         ) : (
@@ -6038,6 +6074,40 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Prices Modal */}
+      {editPriceUnit && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+          <div className="modal-top rounded-2xl w-full max-w-sm" style={{ background: '#fff' }}>
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div>
+                <h3 className="font-semibold text-gray-900" style={{ fontSize: 15 }}>Edit Prices</h3>
+                <p style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{editPriceUnit.car_listings?.brand} {editPriceUnit.car_listings?.model} {editPriceUnit.car_listings?.year}</p>
+              </div>
+              <button onClick={() => setEditPriceUnit(null)} className="text-gray-400 hover:text-gray-700 p-1"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              {[['Purchase Price', 'purchase_price'], ['Recon Cost', 'recon_cost'], ['Asking Price', 'asking_price']].map(([label, key]) => (
+                <div key={key}>
+                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">{label}</label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-500">RM</span>
+                    <input type="number" value={editPriceForm[key]} onChange={e => setEditPriceForm(p => ({ ...p, [key]: e.target.value }))}
+                      className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-red-400" />
+                  </div>
+                </div>
+              ))}
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setEditPriceUnit(null)} className="flex-1 py-2 rounded-lg border border-gray-200 text-sm text-gray-600">Cancel</button>
+                <button onClick={handleSavePrices} disabled={editPriceSaving}
+                  className="flex-1 py-2 rounded-lg text-white text-sm font-semibold" style={{ background: '#111827', opacity: editPriceSaving ? 0.6 : 1 }}>
+                  {editPriceSaving ? 'Saving…' : 'Save Changes'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
