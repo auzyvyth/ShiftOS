@@ -150,6 +150,13 @@ export default function SalesmanPanel() {
  const [listingCopied, setListingCopied] = useState({}); // { [carId]: 'link' | 'wa' | null }
  const [tiktokListing, setTiktokListing] = useState(null);
 
+ // shared dealer inventory (browse + add to deals)
+ const [listingsView, setListingsView] = useState("mine"); // "mine" | "inventory"
+ const [availableCars, setAvailableCars] = useState([]);
+ const [availableLoading, setAvailableLoading] = useState(false);
+ const [availableLoaded, setAvailableLoaded] = useState(false);
+ const [invSearch, setInvSearch] = useState("");
+
  // appointments
  const [appointments, setAppointments] = useState([]);
 
@@ -390,7 +397,7 @@ export default function SalesmanPanel() {
  if (profileData.dealer_id) {
   supabase
    .from("profiles")
-   .select("subdomain, site_name, dealership, brand_color, site_logo_url, deal_disclaimer, whatsapp_number")
+   .select("subdomain, site_name, dealership, brand_color, site_logo_url, deal_disclaimer, whatsapp_number, commission_config")
    .eq("id", profileData.dealer_id)
    .maybeSingle()
    .then(({ data }) => {
@@ -711,7 +718,43 @@ Rules:
  .order("created_at", { ascending: false })
  .then(({ data }) => setLoanApplications(data || []));
  }, [profile?.id]);
- // 
+ //
+
+ // Shared dealer inventory — lazy-loaded the first time the salesman opens the Inventory view.
+ useEffect(() => {
+ if (listingsView !== "inventory" || availableLoaded || !profile?.dealer_id) return;
+ setAvailableLoading(true);
+ supabase
+ .from("car_listings")
+ .select("id, slug, year, brand, model, variant, selling_price, images, mileage, transmission, fuel_type, body_type, colour, commission_amount, assigned_to, status")
+ .eq("dealer_id", profile.dealer_id)
+ .eq("status", "available")
+ .order("created_at", { ascending: false })
+ .then(({ data }) => {
+ setAvailableCars(data || []);
+ setAvailableLoading(false);
+ setAvailableLoaded(true);
+ });
+ }, [listingsView, availableLoaded, profile?.dealer_id]);
+
+ // Commission a salesman would earn on a car: explicit per-listing amount wins,
+ // else derive from the dealer's default commission rule. Gross-margin rules need
+ // cost data the salesman shouldn't see, so those return null (shown as "set by dealer").
+ const carCommission = (car) => {
+ const explicit = Number(car?.commission_amount) || 0;
+ if (explicit > 0) return explicit;
+ const cfg = dealerProfile?.commission_config;
+ if (!cfg) return null;
+ const price = Number(car?.selling_price) || 0;
+ if (cfg.type === "flat") return Number(cfg.value) || 0;
+ if (cfg.type === "percent_sale") return Math.round(price * (Number(cfg.value) || 0) / 100);
+ return null; // percent_gross — needs cost, not exposed to salesmen
+ };
+
+ const addCarToMyDeals = (car) => {
+ setAddLeadForm((f) => ({ ...f, car_listing_id: car.id }));
+ setShowAddLead(true);
+ };
 
  const chartRefs = useRef({});
 
@@ -3338,6 +3381,99 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  );
  };
 
+ const renderInventory = () => {
+ const myLeadCarIds = new Set(leads.map((l) => l.car_listing_id).filter(Boolean));
+ const q = invSearch.trim().toLowerCase();
+ const cars = q
+ ? availableCars.filter((c) =>
+ [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ").toLowerCase().includes(q),
+ )
+ : availableCars;
+
+ return (
+ <div>
+ <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
+ Available Inventory
+ </p>
+ <p style={{ margin: "0 0 14px", fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+ The dealer's full stock. Anyone can sell any car — add one to your deals to start working a buyer.
+ </p>
+
+ <input
+ value={invSearch}
+ onChange={(e) => setInvSearch(e.target.value)}
+ placeholder="Search make, model, year..."
+ style={{
+ width: "100%", maxWidth: 360, marginBottom: 16,
+ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
+ borderRadius: 9, color: "#e5e7eb", fontSize: 13, padding: "9px 12px",
+ outline: "none", fontFamily: "inherit",
+ }}
+ />
+
+ {availableLoading ? (
+ <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>Loading inventory...</p>
+ ) : cars.length === 0 ? (
+ <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>
+ {availableCars.length === 0 ? "No available cars right now." : "No cars match your search."}
+ </p>
+ ) : (
+ <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 240px), 1fr))", gap: 12 }}>
+ {cars.map((car) => {
+ const comm = carCommission(car);
+ const inMyDeals = myLeadCarIds.has(car.id);
+ const img = Array.isArray(car.images) ? car.images[0] : null;
+ const title = [car.year, car.brand, car.model].filter(Boolean).join(" ");
+ return (
+ <div key={car.id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column", minWidth: 0 }}>
+ <div style={{ position: "relative", aspectRatio: "16 / 10", background: "rgba(255,255,255,0.04)" }}>
+ {img ? (
+ <img src={img} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+ ) : (
+ <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.2)" }}>
+ <Car size={28} />
+ </div>
+ )}
+ {comm != null && (
+ <span style={{ position: "absolute", top: 8, right: 8, background: "rgba(16,24,12,0.85)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ade80", fontSize: 11, fontWeight: 700, borderRadius: 20, padding: "3px 9px" }}>
+ +RM {comm.toLocaleString()}
+ </span>
+ )}
+ </div>
+ <div style={{ padding: "11px 13px", display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
+ <p style={{ fontSize: 13, fontWeight: 600, color: "#f1f5f9", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+ {title}{car.variant ? ` ${car.variant}` : ""}
+ </p>
+ <p style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: 0 }}>
+ RM {(Number(car.selling_price) || 0).toLocaleString()}
+ </p>
+ <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0 }}>
+ {comm != null ? `Your commission: RM ${comm.toLocaleString()}` : "Commission set by dealer"}
+ </p>
+ <div style={{ marginTop: "auto", paddingTop: 6 }}>
+ {inMyDeals ? (
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "#4ade80", background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.18)", borderRadius: 8, padding: "8px 0" }}>
+ <Check size={14} /> In your deals
+ </div>
+ ) : (
+ <button
+ onClick={() => addCarToMyDeals(car)}
+ style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "#93c5fd", background: "rgba(29,78,216,0.15)", border: "1px solid rgba(29,78,216,0.3)", borderRadius: 8, padding: "8px 0", cursor: "pointer" }}
+ >
+ <Plus size={14} /> Add to my deals
+ </button>
+ )}
+ </div>
+ </div>
+ </div>
+ );
+ })}
+ </div>
+ )}
+ </div>
+ );
+ };
+
  const renderListings = () => {
  // compute per-listing stats once
  const enriched = myListings.map((car) => {
@@ -3385,8 +3521,35 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  fontWeight: active? 600 : 400,
  });
 
+ const viewToggle = (
+ <div style={{ display: "flex", gap: 4, marginBottom: 16, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 4, width: "fit-content" }}>
+ {[["mine", `My Listings (${myListings.length})`], ["inventory", "Available Inventory"]].map(([key, label]) => (
+ <button
+ key={key}
+ onClick={() => setListingsView(key)}
+ style={{
+ background: listingsView === key ? "rgba(29,78,216,0.2)" : "transparent",
+ border: listingsView === key ? "0.5px solid rgba(29,78,216,0.35)" : "0.5px solid transparent",
+ borderRadius: 7,
+ color: listingsView === key ? "#93c5fd" : "#64748b",
+ fontSize: 13,
+ fontWeight: listingsView === key ? 600 : 400,
+ padding: "6px 14px",
+ cursor: "pointer",
+ whiteSpace: "nowrap",
+ }}
+ >
+ {label}
+ </button>
+ ))}
+ </div>
+ );
+
+ if (listingsView === "inventory") return (<div>{viewToggle}{renderInventory()}</div>);
+
  return (
  <div>
+ {viewToggle}
  <p
  style={{
  margin: "0 0 12px",
@@ -6938,11 +7101,16 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  }}
  >
  <option value="">— no car selected —</option>
- {myListings.map((c) => (
+ {(() => {
+ const seen = new Set();
+ return [...myListings, ...availableCars]
+ .filter((c) => c && !seen.has(c.id) && seen.add(c.id))
+ .map((c) => (
  <option key={c.id} value={c.id}>
  {c.year} {c.brand} {c.model}
  </option>
- ))}
+ ));
+ })()}
  </select>
  </div>
  <div>
