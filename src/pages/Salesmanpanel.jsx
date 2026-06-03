@@ -714,7 +714,6 @@ Rules:
  // 
 
  const chartRefs = useRef({});
- const pendingStageRef = useRef({});
 
  // sparkline charts 
  useEffect(() => {
@@ -1302,22 +1301,15 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const oldStage = lead.stage;
  const leadId = lead.id;
  const buyerName = lead.buyer_name || "Lead";
- if (pendingStageRef.current[leadId]) {
- clearTimeout(pendingStageRef.current[leadId].timer);
- }
+ // Persist immediately so a refresh never loses the move. Undo writes the old stage back.
  setLeads((p) => p.map((l) => (l.id === leadId? { ...l, stage: newStage } : l)));
- const timer = setTimeout(() => {
- delete pendingStageRef.current[leadId];
  updateLeadStage(leadId, newStage);
- }, 4500);
- pendingStageRef.current[leadId] = { timer, oldStage };
  toast(`${buyerName} → ${newStage.replace(/_/g, " ")}`, {
  action: {
  label: "Undo",
  onClick: () => {
- clearTimeout(pendingStageRef.current[leadId]?.timer);
- delete pendingStageRef.current[leadId];
  setLeads((p) => p.map((l) => (l.id === leadId? { ...l, stage: oldStage } : l)));
+ updateLeadStage(leadId, oldStage);
  },
  },
  duration: 4500,
@@ -1784,6 +1776,59 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  if (subTab === "overview")
  return (
  <>
+
+ {/* Dealer connection banner — makes it clear this panel is linked to the dealer dashboard */}
+ {profile?.dealer_id && (
+ <div
+ style={{
+ display: "flex",
+ alignItems: "center",
+ gap: 12,
+ background: "rgba(255,255,255,0.04)",
+ border: "1px solid rgba(255,255,255,0.08)",
+ borderLeft: `3px solid ${dealerProfile?.brand_color || "#dc2626"}`,
+ borderRadius: 12,
+ padding: "12px 16px",
+ marginBottom: 16,
+ }}
+ >
+ {dealerProfile?.site_logo_url ? (
+ <img
+ src={dealerProfile.site_logo_url}
+ alt=""
+ style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover", flexShrink: 0 }}
+ />
+ ) : (
+ <div
+ style={{
+ width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+ background: dealerProfile?.brand_color || "#dc2626",
+ display: "flex", alignItems: "center", justifyContent: "center",
+ fontWeight: 800, fontSize: 16, color: "#fff",
+ }}
+ >
+ {(dealerProfile?.site_name || dealerProfile?.dealership || profile?.dealership || "D").charAt(0).toUpperCase()}
+ </div>
+ )}
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+ <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)" }}>
+ Sales team
+ </span>
+ <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 600, color: "#4ade80", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 20, padding: "1px 8px" }}>
+ <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#4ade80" }} />
+ Synced
+ </span>
+ </div>
+ <p style={{ fontSize: 14, fontWeight: 700, color: "#fff", margin: "2px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+ {dealerProfile?.site_name || dealerProfile?.dealership || profile?.dealership || "Your dealership"}
+ </p>
+ <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", margin: "1px 0 0" }}>
+ Your leads, bookings & sales feed live into the dealer dashboard
+ </p>
+ </div>
+ </div>
+ )}
 
  {/* AI: What to do today */}
  <div
