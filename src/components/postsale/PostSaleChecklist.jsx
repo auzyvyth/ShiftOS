@@ -109,6 +109,18 @@ export default function PostSaleChecklist({ lead, compact = false }) {
           );
         })}
       </div>
+
+      {/* Total processing cost (Puspakom, JPJ, road tax, etc.) */}
+      {(() => {
+        const total = tasks.filter((t) => t.status !== 'na').reduce((s, t) => s + (Number(t.cost) || 0), 0);
+        if (total <= 0) return null;
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.5)' }}>Processing cost</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>RM {total.toLocaleString()}</span>
+          </div>
+        );
+      })()}
     </div>
   );
 }

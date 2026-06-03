@@ -13,6 +13,12 @@
 
 - **INFRA-1: Supabase storage cleanup** — Storage is full. Audit bucket usage, delete orphaned images (listings that were deleted but images remain), consider image compression pipeline or CDN offload. (Requires manual review of what to delete — user decision needed.)
 
+### POST-SALE / REVENUE (decisions needed)
+
+- **PS-1: Connect post-sale costs to unit P&L** — StockTab P&L modal (AUD-8) sums purchase + recon + services + commission + addon cost, but NOT the new post_sale_tasks costs (Puspakom RM30/60, JPJ RM100, road tax). Decide whether handover processing cost should be deducted from per-unit gross (needs listing_id <-> lead match).
+- **PS-2: Auto-create customer + seed handover on "won"** — Today post_sale_tasks seed on first board open, and the customers table (expiry reminders) is populated separately. Decide whether marking a lead "won" should auto-create a customers row and pre-seed the handover checklist. Closes the loop sale -> handover -> after-sales.
+- **PS-3: Handover step reminders** — due_date exists on post_sale_tasks but no reminder fires. Decide whether overdue steps should push a notification (reuse dealer_notifications / Telegram).
+
 ### FOLLOW-UP / MINOR
 
 - **ENT-14: Document email delivery** — "Send to buyer" button on issued documents; sends HTML doc to buyer email via Supabase Edge Function / Resend.
@@ -21,6 +27,11 @@
 ---
 
 ## Done (reference)
+
+- **PS-A: Post-sale handover board (Module A)** — post_sale_tasks table; Handover tab on dealer dashboard + salesman panel; Malaysian transfer checklist (loan settlement, insurance, Puspakom B5/B7, JPJ pindah milik, road tax, geran, handover) with per-step status/owner/cost/due date and processing-cost total.
+- **FIX: Salesman pipeline pollution** — Add-to-deals now uses salesman_listings (many-to-many feature), no longer dumps fake "New prospect" leads into the dealer pipeline.
+- **FIX: Lead attribution** — Dealer pipeline cards show "by {salesman}" via salesman_id join.
+- **FIX: Null-phone crash** — formatWhatsAppURL guards null; all-tabs crash resolved.
 
 - **SEC-1: 2FA / TOTP** — Supabase native MFA; enroll (QR+verify) in Settings, AAL2 challenge on password login, disable. (needs ACT-1 to function)
 - **SEC-2: Permission matrix** — role_permissions table + RLS, usePermissions hook, Settings matrix; enforces view_commission + view_all_leads in Salesmanpanel.
