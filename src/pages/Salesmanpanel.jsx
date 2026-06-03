@@ -265,6 +265,7 @@ export default function SalesmanPanel() {
  // rawEvents removed — aggregated server-side via get_car_analytics RPC
  const [dealerSubdomain, setDealerSubdomain] = useState(null);
  const [dealerProfile, setDealerProfile] = useState(null);
+ const [dealerCommConfig, setDealerCommConfig] = useState(null);
 
  // Manager notes
  const [managerNotes, setManagerNotes] = useState([]);
@@ -403,6 +404,7 @@ export default function SalesmanPanel() {
    .then(({ data }) => {
      setDealerSubdomain(data?.subdomain || null);
      setDealerProfile(data || null);
+     if (data?.commission_config) setDealerCommConfig(data.commission_config);
    });
  }
 
@@ -743,17 +745,35 @@ Rules:
  const carCommission = (car) => {
  const explicit = Number(car?.commission_amount) || 0;
  if (explicit > 0) return explicit;
- const cfg = dealerProfile?.commission_config;
+ const cfg = dealerCommConfig;
  if (!cfg) return null;
  const price = Number(car?.selling_price) || 0;
  if (cfg.type === "flat") return Number(cfg.value) || 0;
  if (cfg.type === "percent_sale") return Math.round(price * (Number(cfg.value) || 0) / 100);
- return null; // percent_gross — needs cost, not exposed to salesmen
+ return null; // percent_gross needs cost data not exposed to salesmen
  };
 
- const addCarToMyDeals = (car) => {
- setAddLeadForm((f) => ({ ...f, car_listing_id: car.id }));
- setShowAddLead(true);
+ const addCarToMyDeals = async (car) => {
+ const comm = carCommission(car);
+ const carTitle = [car.year, car.brand, car.model].filter(Boolean).join(" ");
+ const { data, error } = await supabase
+ .from("leads")
+ .insert({
+ dealer_id: profile?.dealer_id,
+ salesman_id: userId,
+ car_listing_id: car.id,
+ buyer_name: "New prospect",
+ stage: "new",
+ lead_source: "inventory",
+ is_deleted: false,
+ notes: `Enquiry about ${carTitle}${comm ? ` — commission RM ${comm.toLocaleString()}` : ""}`,
+ })
+ .select("*, car_listings(brand, model, year, selling_price)")
+ .single();
+ if (error) { toast.error("Could not add to deals"); return; }
+ setLeads((p) => [data, ...p]);
+ toast.success(`${carTitle} added — update buyer details in Leads`);
+ setActiveTab("leads");
  };
 
  const chartRefs = useRef({});
@@ -1519,6 +1539,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  buyer_state: addLeadForm.buyer_state || null,
  stage: "new",
  lead_source: "manual",
+ is_deleted: false,
  })
  .select()
  .single();
