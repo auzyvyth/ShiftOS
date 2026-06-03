@@ -462,17 +462,36 @@ export default function SalesmanPanel() {
  )
  .subscribe();
 
- // Active listings assigned to me — full detail for rich cards
- const fetchMyListings = () =>
- supabase
- .from("car_listings")
- .select(
- "id, slug, year, brand, model, variant, selling_price, status, images, colour, mileage, transmission, fuel_type, body_type, specs, features, options, city, condition",
- )
- .eq("assigned_to", userId)
- .neq("status", "sold")
- .order("created_at", { ascending: false })
- .then(({ data }) => setMyListings(data || []));
+ // Active listings: assigned to me OR linked via my active leads
+ const CAR_FIELDS = "id, slug, year, brand, model, variant, selling_price, status, images, colour, mileage, transmission, fuel_type, body_type, specs, features, options, city, condition, commission_amount";
+ const fetchMyListings = async () => {
+ const [{ data: assigned }, { data: leadRows }] = await Promise.all([
+   supabase
+     .from("car_listings")
+     .select(CAR_FIELDS)
+     .eq("assigned_to", userId)
+     .neq("status", "sold")
+     .order("created_at", { ascending: false }),
+   supabase
+     .from("leads")
+     .select(`car_listings(${CAR_FIELDS})`)
+     .eq("salesman_id", userId)
+     .eq("is_deleted", false)
+     .neq("stage", "closed")
+     .not("car_listing_id", "is", null),
+ ]);
+ const assignedList = assigned || [];
+ const seen = new Set(assignedList.map((c) => c.id));
+ const merged = [...assignedList];
+ for (const row of leadRows || []) {
+   const c = row.car_listings;
+   if (c && c.status !== "sold" && !seen.has(c.id)) {
+     seen.add(c.id);
+     merged.push(c);
+   }
+ }
+ setMyListings(merged);
+ };
  fetchMyListings();
  const listingsCh = supabase
  .channel("my_listings_" + userId)
@@ -772,8 +791,11 @@ Rules:
  .single();
  if (error) { toast.error("Could not add to deals"); return; }
  setLeads((p) => [data, ...p]);
- toast.success(`${carTitle} added — update buyer details in Leads`);
- setActiveTab("leads");
+ // Immediately surface car in My Listings without waiting for next fetchMyListings
+ setMyListings((p) => p.some((c) => c.id === car.id) ? p : [car, ...p]);
+ toast.success(`${carTitle} added to your listings`);
+ setActiveTab("listings");
+ setListingsView("mine");
  };
 
  const chartRefs = useRef({});
