@@ -861,7 +861,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const [saving, setSaving] = useState({});
   const [saved, setSaved] = useState({});
   const [errors, setErrors] = useState({});
-  const [settingsNav, setSettingsNav] = useState('identity');
+  const [settingsNav, setSettingsNav] = useState(null);
 
   // Section states
   const [dealership, setDealership] = useState(profile?.dealership || "");
@@ -1269,79 +1269,34 @@ function SettingsTab({ profile, onProfileUpdate }) {
 
   const settingsNavGroups = [
     { group: 'Profile', items: [
-      { key: 'identity', icon: Building2, label: 'Dealership' },
-      { key: 'contact', icon: Phone, label: 'Contact & Socials' },
+      { key: 'identity', icon: Building2, label: 'Dealership', desc: 'Name, logo & brand color' },
+      { key: 'contact', icon: Phone, label: 'Contact & Socials', desc: 'WhatsApp, email & social links' },
     ]},
     { group: 'Storefront', items: [
-      { key: 'frontpage', icon: Globe, label: 'Homepage' },
-      { key: 'storefront', icon: Settings, label: 'Page Content' },
+      { key: 'frontpage', icon: Globe, label: 'Homepage', desc: 'Hero banner, CTA & announcement' },
+      { key: 'storefront', icon: Settings, label: 'Page Content', desc: 'About, photos & layout' },
     ]},
     { group: 'Operations', items: [
-      { key: 'commission', icon: DollarSign, label: 'Commission' },
-      { key: 'dealsheet', icon: FileText, label: 'Deal Sheet' },
-      { key: 'services', icon: Package, label: 'Services' },
+      { key: 'commission', icon: DollarSign, label: 'Commission', desc: 'Sales commission structure' },
+      { key: 'dealsheet', icon: FileText, label: 'Deal Sheet', desc: 'Customer proposal settings' },
+      { key: 'services', icon: Package, label: 'Services', desc: 'Products & add-on catalogue' },
     ]},
     { group: 'Notifications', items: [
-      { key: 'telegram', icon: Send, label: 'Telegram' },
-      { key: 'whatsapp', icon: MessageCircle, label: 'WhatsApp' },
+      { key: 'telegram', icon: Send, label: 'Telegram', desc: 'Bot alert notifications' },
+      { key: 'whatsapp', icon: MessageCircle, label: 'WhatsApp', desc: 'Message templates' },
     ]},
     { group: 'Account', items: [
-      { key: 'security', icon: KeyRound, label: 'Security' },
-      { key: 'team', icon: Lock, label: 'Team' },
-      { key: 'plan', icon: CreditCard, label: 'Plan & Billing' },
+      { key: 'security', icon: KeyRound, label: 'Security', desc: 'Password & 2-factor auth' },
+      { key: 'team', icon: Lock, label: 'Team', desc: 'Staff access & roles' },
+      { key: 'plan', icon: CreditCard, label: 'Plan & Billing', desc: 'Current plan & usage' },
     ]},
   ];
 
-  return (
-    <div style={{ background: '#080C14', borderRadius: 12 }}>
-      {/* Mobile: horizontal scrolling pill nav */}
-      <div className="md:hidden" style={{ overflowX: 'auto', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '10px 16px', display: 'flex', gap: 6, WebkitOverflowScrolling: 'touch' }}>
-        {settingsNavGroups.flatMap(g => g.items).map(({ key, icon: Icon, label }) => (
-          <button
-            key={key}
-            onClick={() => setSettingsNav(key)}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px',
-              borderRadius: 20, border: 'none', cursor: 'pointer', flexShrink: 0,
-              background: settingsNav === key ? 'rgba(220,38,38,0.15)' : 'rgba(255,255,255,0.06)',
-              color: settingsNav === key ? '#dc2626' : 'rgba(255,255,255,0.6)',
-              fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: settingsNav === key ? 600 : 400,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <Icon size={13} />
-            {label}
-          </button>
-        ))}
-      </div>
-      <div style={{ display: 'flex' }}>
-        <nav className="hidden md:block" style={{ width: 192, flexShrink: 0, borderRight: '1px solid rgba(255,255,255,0.06)', paddingRight: 8, paddingTop: 12 }}>
-          {settingsNavGroups.map(({ group, items }) => (
-            <div key={group} style={{ marginBottom: 22 }}>
-              <p style={{ fontSize: 10, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.25)', fontWeight: 600, textTransform: 'uppercase', padding: '0 12px', marginBottom: 4 }}>{group}</p>
-              {items.map(({ key, icon: Icon, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setSettingsNav(key)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 12px',
-                    borderRadius: 8, border: 'none', cursor: 'pointer', textAlign: 'left', marginBottom: 1,
-                    background: settingsNav === key ? 'rgba(220,38,38,0.1)' : 'transparent',
-                    color: settingsNav === key ? '#dc2626' : 'rgba(255,255,255,0.65)',
-                    fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: settingsNav === key ? 600 : 400,
-                    transition: 'background 0.15s, color 0.15s',
-                  }}
-                >
-                  <Icon size={14} />
-                  {label}
-                </button>
-              ))}
-            </div>
-          ))}
-        </nav>
-        <div style={{ flex: 1, padding: '16px 20px', minWidth: 0 }}>
-        <div className="space-y-4 max-w-2xl">
-      {settingsNav === 'plan' && planUsage && (
+  const effectiveNav = settingsNav || 'identity';
+
+  const sectionContent = (
+    <div className="space-y-4 max-w-2xl">
+      {(effectiveNav === 'plan') && planUsage && (
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '20px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div>
@@ -1397,7 +1352,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
           )}
         </div>
       )}
-      {settingsNav === 'identity' && <SettingsSection
+      {effectiveNav === 'identity' && <SettingsSection
         title="Dealership Identity"
         subtitle="Your brand name, site title & accent colour"
         icon={Building2}
@@ -1530,7 +1485,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
           />
         </div>
       </SettingsSection>}
-      {settingsNav === 'contact' && <SettingsSection
+      {effectiveNav === 'contact' && <SettingsSection
         title="Contact & Socials"
         subtitle="What customers see when they click enquire or visit your profile"
         icon={Phone}
@@ -1611,7 +1566,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
           <SaveBtn sectionKey="contact" onClick={saveContact} saving={saving} saved={saved} />
         </div>
       </SettingsSection>}
-      {settingsNav === 'frontpage' && <SettingsSection
+      {effectiveNav === 'frontpage' && <SettingsSection
         title="Front Page Control"
         subtitle="Full control over what customers see on your public site"
         icon={Globe}
@@ -1757,7 +1712,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
           <SaveBtn sectionKey="frontpage" onClick={saveFrontPage} saving={saving} saved={saved} />
         </div>
       </SettingsSection>}
-      {settingsNav === 'security' && <SettingsSection
+      {effectiveNav === 'security' && <SettingsSection
         title="Account Security"
         subtitle="Change your login password"
         icon={KeyRound}
@@ -1875,7 +1830,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
           </button>
         </div>
       </SettingsSection>}
-      {settingsNav === 'team' && <SettingsSection
+      {effectiveNav === 'team' && <SettingsSection
         title="Team Permissions"
         subtitle="Control what each staff role can see and do"
         icon={Lock}
@@ -1885,7 +1840,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
       >
         <PermissionsMatrix dealerId={getDealerIdFromProfile(profile)} actor={profile} />
       </SettingsSection>}
-      {settingsNav === 'whatsapp' && <SettingsSection
+      {effectiveNav === 'whatsapp' && <SettingsSection
         title="WhatsApp Templates"
         subtitle="Customise the quick-message templates your team sends to leads"
         icon={MessageCircle}
@@ -1895,7 +1850,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
       >
         <WaTemplatesEditor dealerId={getDealerIdFromProfile(profile)} actor={profile} />
       </SettingsSection>}
-      {settingsNav === 'dealsheet' && <SettingsSection
+      {effectiveNav === 'dealsheet' && <SettingsSection
         title="Deal Sheet"
         subtitle="Your logo (from Dealership Identity) and a custom disclaimer appear on every deal sheet"
         icon={FileText}
@@ -1916,7 +1871,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
           <SaveBtn sectionKey="dealsheet" onClick={saveDealSheet} saving={saving} saved={saved} />
         </div>
       </SettingsSection>}
-      {settingsNav === 'commission' && <SettingsSection
+      {effectiveNav === 'commission' && <SettingsSection
         title="Commission Structure"
         subtitle="Default rule used to suggest salesman commission on new listings"
         icon={DollarSign}
@@ -1950,7 +1905,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
           <SaveBtn sectionKey="commission" onClick={saveCommission} saving={saving} saved={saved} />
         </div>
       </SettingsSection>}
-      {settingsNav === 'telegram' && <SettingsSection
+      {effectiveNav === 'telegram' && <SettingsSection
         title="Telegram Auto-Post"
         subtitle="Automatically post new listings to your Telegram channel"
         icon={Send}
@@ -2046,7 +2001,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
           <SaveBtn sectionKey="telegram" onClick={saveTelegram} saving={saving} saved={saved} />
         </div>
       </SettingsSection>}
-      {settingsNav === 'storefront' && <SettingsSection
+      {effectiveNav === 'storefront' && <SettingsSection
         title="Storefront Content"
         subtitle="Customise the Why, How It Works, Testimonials, and CTA sections on your public page"
         icon={Globe}
@@ -2105,9 +2060,99 @@ function SettingsTab({ profile, onProfileUpdate }) {
           <ErrMsg k="storefront" errors={errors} />
         </div>
       </SettingsSection>}
-      {settingsNav === 'services' && <ProductsCatalogue dealerId={getDealerIdFromProfile(profile)} profile={profile} />}
+      {effectiveNav === 'services' && <ProductsCatalogue dealerId={getDealerIdFromProfile(profile)} profile={profile} />}
+    </div>
+  );
 
-        </div>
+  return (
+    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #EAECF0' }}>
+      {/* ── MOBILE ── */}
+      <div className="md:hidden">
+        {!settingsNav ? (
+          /* Menu list */
+          <div>
+            {settingsNavGroups.map(({ group, items }) => (
+              <div key={group}>
+                <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9ca3af', padding: '14px 16px 6px' }}>{group}</p>
+                <div style={{ borderTop: '1px solid #f3f4f6' }}>
+                  {items.map(({ key, icon: Icon, label, desc }) => (
+                    <button
+                      key={key}
+                      onClick={() => setSettingsNav(key)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+                        padding: '13px 16px', background: 'none', border: 'none',
+                        borderBottom: '1px solid #f3f4f6', cursor: 'pointer', textAlign: 'left',
+                      }}
+                    >
+                      <div style={{ width: 36, height: 36, borderRadius: 9, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Icon size={16} style={{ color: '#374151' }} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 1 }}>{label}</p>
+                        <p style={{ fontSize: 12, color: '#6b7280' }}>{desc}</p>
+                      </div>
+                      <ChevronRight size={16} style={{ color: '#d1d5db', flexShrink: 0 }} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* Section panel with back button */
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid #EAECF0' }}>
+              <button
+                onClick={() => setSettingsNav(null)}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 500, padding: '4px 0' }}
+              >
+                <ChevronLeft size={16} />
+                Settings
+              </button>
+              <span style={{ fontSize: 13, color: '#9ca3af' }}>/</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>
+                {settingsNavGroups.flatMap(g => g.items).find(i => i.key === settingsNav)?.label}
+              </span>
+            </div>
+            <div style={{ padding: '16px' }}>
+              {sectionContent}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── DESKTOP ── */}
+      <div className="hidden md:flex" style={{ minHeight: 520 }}>
+        <nav style={{ width: 200, flexShrink: 0, borderRight: '1px solid #EAECF0', padding: '16px 8px' }}>
+          {settingsNavGroups.map(({ group, items }) => (
+            <div key={group} style={{ marginBottom: 20 }}>
+              <p style={{ fontSize: 10, letterSpacing: '0.1em', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', padding: '0 10px', marginBottom: 4 }}>{group}</p>
+              {items.map(({ key, icon: Icon, label }) => {
+                const active = effectiveNav === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setSettingsNav(key)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 10px',
+                      borderRadius: 8, border: 'none', cursor: 'pointer', textAlign: 'left', marginBottom: 1,
+                      background: active ? '#FEF2F2' : 'transparent',
+                      color: active ? '#dc2626' : '#374151',
+                      fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: active ? 600 : 400,
+                      transition: 'background 0.15s, color 0.15s',
+                    }}
+                  >
+                    <Icon size={14} />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
+        <div style={{ flex: 1, padding: '20px 24px', minWidth: 0 }}>
+          {sectionContent}
         </div>
       </div>
     </div>
@@ -8787,6 +8832,7 @@ export default function DashboardPage() {
         </div>
 
         <nav className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-2 sm:p-3 space-y-px mt-1">
+          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#9ca3af', padding: '4px 12px 6px' }}>Menu</p>
           {NAV.map(({ id, Icon, label, badge }) => (
             <button
               key={id}
