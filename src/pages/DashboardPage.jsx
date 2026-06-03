@@ -861,6 +861,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const [saving, setSaving] = useState({});
   const [saved, setSaved] = useState({});
   const [errors, setErrors] = useState({});
+  const [settingsNav, setSettingsNav] = useState('identity');
 
   // Section states
   const [dealership, setDealership] = useState(profile?.dealership || "");
@@ -1266,10 +1267,60 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const nextPlan = nextDealerPlan(profile?.plan);
   const nextPlanCfg = nextPlan ? getPlanConfig(nextPlan) : null;
 
+  const settingsNavGroups = [
+    { group: 'Profile', items: [
+      { key: 'identity', icon: Building2, label: 'Dealership' },
+      { key: 'contact', icon: Phone, label: 'Contact & Socials' },
+    ]},
+    { group: 'Storefront', items: [
+      { key: 'frontpage', icon: Globe, label: 'Homepage' },
+      { key: 'storefront', icon: Settings, label: 'Page Content' },
+    ]},
+    { group: 'Operations', items: [
+      { key: 'commission', icon: DollarSign, label: 'Commission' },
+      { key: 'dealsheet', icon: FileText, label: 'Deal Sheet' },
+      { key: 'services', icon: Package, label: 'Services' },
+    ]},
+    { group: 'Notifications', items: [
+      { key: 'telegram', icon: Send, label: 'Telegram' },
+      { key: 'whatsapp', icon: MessageCircle, label: 'WhatsApp' },
+    ]},
+    { group: 'Account', items: [
+      { key: 'security', icon: KeyRound, label: 'Security' },
+      { key: 'team', icon: Lock, label: 'Team' },
+      { key: 'plan', icon: CreditCard, label: 'Plan & Billing' },
+    ]},
+  ];
+
   return (
-    <div className="space-y-4 max-w-2xl">
-      {/* ── Plan Usage ── */}
-      {planUsage && (
+    <div style={{ display: 'flex', gap: 0, minHeight: 500 }}>
+      <nav style={{ width: 192, flexShrink: 0, borderRight: '1px solid rgba(255,255,255,0.06)', paddingRight: 8, paddingTop: 4 }}>
+        {settingsNavGroups.map(({ group, items }) => (
+          <div key={group} style={{ marginBottom: 22 }}>
+            <p style={{ fontSize: 10, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.25)', fontWeight: 600, textTransform: 'uppercase', padding: '0 12px', marginBottom: 4 }}>{group}</p>
+            {items.map(({ key, icon: Icon, label }) => (
+              <button
+                key={key}
+                onClick={() => setSettingsNav(key)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 12px',
+                  borderRadius: 8, border: 'none', cursor: 'pointer', textAlign: 'left', marginBottom: 1,
+                  background: settingsNav === key ? 'rgba(220,38,38,0.1)' : 'transparent',
+                  color: settingsNav === key ? '#dc2626' : 'rgba(255,255,255,0.5)',
+                  fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: settingsNav === key ? 600 : 400,
+                  transition: 'background 0.15s, color 0.15s',
+                }}
+              >
+                <Icon size={14} />
+                {label}
+              </button>
+            ))}
+          </div>
+        ))}
+      </nav>
+      <div style={{ flex: 1, paddingLeft: 24, minWidth: 0 }}>
+      <div className="space-y-4 max-w-2xl">
+      {settingsNav === 'plan' && planUsage && (
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '20px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div>
@@ -1325,8 +1376,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
           )}
         </div>
       )}
-      {/* ── 1. Dealership Identity ── */}
-      <SettingsSection
+      {settingsNav === 'identity' && <SettingsSection
         title="Dealership Identity"
         subtitle="Your brand name, site title & accent colour"
         icon={Building2}
@@ -1458,10 +1508,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
             saved={saved}
           />
         </div>
-      </SettingsSection>
-
-      {/* ── 2. Contact & Socials ── */}
-      <SettingsSection
+      </SettingsSection>}
+      {settingsNav === 'contact' && <SettingsSection
         title="Contact & Socials"
         subtitle="What customers see when they click enquire or visit your profile"
         icon={Phone}
@@ -1541,10 +1589,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
         <div className="flex justify-end pt-1">
           <SaveBtn sectionKey="contact" onClick={saveContact} saving={saving} saved={saved} />
         </div>
-      </SettingsSection>
-
-      {/* ── 3. Front Page Control ── */}
-      <SettingsSection
+      </SettingsSection>}
+      {settingsNav === 'frontpage' && <SettingsSection
         title="Front Page Control"
         subtitle="Full control over what customers see on your public site"
         icon={Globe}
@@ -1689,10 +1735,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
         <div className="flex justify-end pt-1">
           <SaveBtn sectionKey="frontpage" onClick={saveFrontPage} saving={saving} saved={saved} />
         </div>
-      </SettingsSection>
-
-      {/* ── 4. Account / Password ── */}
-      <SettingsSection
+      </SettingsSection>}
+      {settingsNav === 'security' && <SettingsSection
         title="Account Security"
         subtitle="Change your login password"
         icon={KeyRound}
@@ -1809,10 +1853,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
             {logoutBusy ? "Signing out…" : "Log out all devices"}
           </button>
         </div>
-      </SettingsSection>
-
-      {/* ── Team Permissions (SEC-2) ── */}
-      <SettingsSection
+      </SettingsSection>}
+      {settingsNav === 'team' && <SettingsSection
         title="Team Permissions"
         subtitle="Control what each staff role can see and do"
         icon={Lock}
@@ -1821,10 +1863,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
         iconBorder="rgba(129,140,248,0.18)"
       >
         <PermissionsMatrix dealerId={getDealerIdFromProfile(profile)} actor={profile} />
-      </SettingsSection>
-
-      {/* ── WhatsApp Templates (SET-1) ── */}
-      <SettingsSection
+      </SettingsSection>}
+      {settingsNav === 'whatsapp' && <SettingsSection
         title="WhatsApp Templates"
         subtitle="Customise the quick-message templates your team sends to leads"
         icon={MessageCircle}
@@ -1833,10 +1873,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
         iconBorder="rgba(34,197,94,0.18)"
       >
         <WaTemplatesEditor dealerId={getDealerIdFromProfile(profile)} actor={profile} />
-      </SettingsSection>
-
-      {/* ── Deal Sheet (SET-3) ── */}
-      <SettingsSection
+      </SettingsSection>}
+      {settingsNav === 'dealsheet' && <SettingsSection
         title="Deal Sheet"
         subtitle="Your logo (from Dealership Identity) and a custom disclaimer appear on every deal sheet"
         icon={FileText}
@@ -1856,10 +1894,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
         <div className="flex justify-end pt-1">
           <SaveBtn sectionKey="dealsheet" onClick={saveDealSheet} saving={saving} saved={saved} />
         </div>
-      </SettingsSection>
-
-      {/* ── Commission (SET-4) ── */}
-      <SettingsSection
+      </SettingsSection>}
+      {settingsNav === 'commission' && <SettingsSection
         title="Commission Structure"
         subtitle="Default rule used to suggest salesman commission on new listings"
         icon={DollarSign}
@@ -1892,10 +1928,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
         <div className="flex justify-end pt-1">
           <SaveBtn sectionKey="commission" onClick={saveCommission} saving={saving} saved={saved} />
         </div>
-      </SettingsSection>
-
-      {/* ── 4. Telegram Auto-Post ── */}
-      <SettingsSection
+      </SettingsSection>}
+      {settingsNav === 'telegram' && <SettingsSection
         title="Telegram Auto-Post"
         subtitle="Automatically post new listings to your Telegram channel"
         icon={Send}
@@ -1990,10 +2024,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
           </button>
           <SaveBtn sectionKey="telegram" onClick={saveTelegram} saving={saving} saved={saved} />
         </div>
-      </SettingsSection>
-
-      {/* ── 5. Storefront Content ── */}
-      <SettingsSection
+      </SettingsSection>}
+      {settingsNav === 'storefront' && <SettingsSection
         title="Storefront Content"
         subtitle="Customise the Why, How It Works, Testimonials, and CTA sections on your public page"
         icon={Globe}
@@ -2051,11 +2083,11 @@ function SettingsTab({ profile, onProfileUpdate }) {
           <SaveBtn sectionKey="storefront" onClick={saveStorefront} saving={saving} saved={saved} />
           <ErrMsg k="storefront" errors={errors} />
         </div>
-      </SettingsSection>
+      </SettingsSection>}
+      {settingsNav === 'services' && <ProductsCatalogue dealerId={getDealerIdFromProfile(profile)} profile={profile} />}
 
-      {/* ── 6. Services & Add-ons ── */}
-      <ProductsCatalogue dealerId={getDealerIdFromProfile(profile)} profile={profile} />
-
+      </div>
+      </div>
     </div>
   );
 }
