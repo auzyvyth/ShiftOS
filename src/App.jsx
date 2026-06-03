@@ -37,6 +37,7 @@ const AccountsPanel      = lazy(() => import("./pages/AccountsPanel"));
 const ShiftOSPage        = lazy(() => import("./pages/ShiftOSPage"));
 const MindMapPage        = lazy(() => import("./pages/MindMapPage"));
 const DealerSlugRedirect = lazy(() => import("./pages/DealerSlugRedirect"));
+const NotFoundPage       = lazy(() => import("./pages/NotFoundPage"));
 const SalesmanProfilePage= lazy(() => import("./pages/SalesmanProfilePage"));
 const AuthConfirmPage    = lazy(() => import("./pages/AuthConfirmPage"));
 const AuthCallbackPage   = lazy(() => import("./pages/AuthCallbackPage"));
@@ -129,6 +130,7 @@ function App() {
           {/* Dealer slug catch-all */}
           <Route path="/s/:slug" element={<SalesmanProfilePage />} />
           <Route path="/:dealerSlug" element={<DealerSlugRedirect />} />
+          <Route path="*" element={<NotFoundPage />} />
         </SentryRoutes>
       </Suspense>
       <Analytics />

@@ -2187,6 +2187,21 @@ const CRM_CSS = `
 `;
 
 // ─── CRMPanel (exported) ──────────────────────────────────────────────────────
-export default function CRMPanel() {
-  return <LeadsPage />;
+export default function CRMPanel({ userId, listings = [], salesmen = [] }) {
+  const [crmTab, setCrmTab] = useState('leads');
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <style>{CRM_CSS}</style>
+      <div className="crm-tabs" style={{ padding: '0 4px' }}>
+        <button className={`crm-tab${crmTab === 'leads' ? ' active' : ''}`} onClick={() => setCrmTab('leads')}>
+          Leads / Pipeline
+        </button>
+        <button className={`crm-tab${crmTab === 'bookings' ? ' active' : ''}`} onClick={() => setCrmTab('bookings')}>
+          Appointments
+        </button>
+      </div>
+      {crmTab === 'leads'    && <LeadsPage />}
+      {crmTab === 'bookings' && <BookingsTab userId={userId} listings={listings} salesmen={salesmen} />}
+    </div>
+  );
 }

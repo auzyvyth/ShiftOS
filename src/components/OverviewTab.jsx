@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
+import { usePresence } from '../hooks/usePresence';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid,
@@ -120,6 +121,7 @@ export default function OverviewTab({ dealerId }) {
   const [loading, setLoading]   = useState(true);
   const [tick, setTick]         = useState(0);
   const subRef = useRef(null);
+  const onlineIds = usePresence(dealerId);
 
   // ── PnL RPC — independent, non-blocking ──────────────────────────────────
   useEffect(() => {
@@ -287,6 +289,14 @@ export default function OverviewTab({ dealerId }) {
     );
   }
 
+  // Live presence overrides the activity-timestamp heuristic. Fall back to the
+  // 8h heuristic only if realtime presence hasn't synced yet (empty set).
+  const havePresence = onlineIds.size > 0;
+  const teamRows = snapshot.teamRows
+    .map(r => ({ ...r, isActive: havePresence ? onlineIds.has(r.id) : r.isActive }))
+    .sort((a, b) => (a.isActive !== b.isActive ? (a.isActive ? -1 : 1) : b.active - a.active));
+  const onlineCount = teamRows.filter(r => r.isActive).length;
+
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: '#111827', display: 'flex', flexDirection: 'column', gap: 14 }}>
       <style>{`
@@ -409,12 +419,12 @@ export default function OverviewTab({ dealerId }) {
 
         {/* Team panel */}
         <Panel style={{ padding: '18px 16px' }}>
-          <SectionHeader title="Team on Duty" sub={`${snapshot.teamRows.filter(r => r.isActive).length} online now`} live />
-          {snapshot.teamRows.length === 0 ? (
+          <SectionHeader title="Team on Duty" sub={`${onlineCount} online now`} live />
+          {teamRows.length === 0 ? (
             <p style={{ fontSize: 12, color: '#9CA3AF' }}>No team members found.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {snapshot.teamRows.map((r) => (
+              {teamRows.map((r) => (
                 <div key={r.id}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 6px', borderRadius: 8, transition: 'background 0.15s', cursor: 'default' }}
                   onMouseEnter={e => e.currentTarget.style.background = '#F7F8FA'}

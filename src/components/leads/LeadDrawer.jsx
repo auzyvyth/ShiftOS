@@ -10,7 +10,7 @@ import LeadSourceBadge from './LeadSourceBadge';
 import { useLeadActivities } from '../../hooks/useLeadActivities';
 import {
   formatWhatsAppURL, calcInstalment, getLeadAgeDays, ageTextColor,
-  STAGE_ORDER, STAGE_CONFIG, LOST_REASONS, WHATSAPP_TEMPLATES,
+  STAGE_ORDER, STAGE_CONFIG, LOST_REASONS, DEFAULT_WA_TEMPLATES, renderWaTemplate,
   getInitials, avatarGradient,
 } from '../../lib/leadsHelpers';
 
@@ -210,6 +210,30 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const [hpEmpType, setHpEmpType] = useState('employed');
   const [hpDocCheck, setHpDocCheck] = useState({});
 
+  // Editable WhatsApp templates (SET-1): dealer's own, else defaults
+  const [waTemplates, setWaTemplates] = useState(DEFAULT_WA_TEMPLATES);
+
+  // Trade-in state
+  const [tradeIn, setTradeIn]       = useState(null);
+  const [tradeInOpen, setTradeInOpen] = useState(false);
+  const [tiForm, setTiForm]         = useState({ plate_number: '', brand: '', model: '', year: '', mileage: '', colour: '', condition: 'good', valuation: '', agreed_price: '', notes: '' });
+  const [tiSaving, setTiSaving]     = useState(false);
+
+  // Appointments state
+  const [apptRows, setApptRows]       = useState([]);
+  const [apptLoading, setApptLoading] = useState(false);
+  const [showAddAppt, setShowAddAppt] = useState(false);
+  const [apptForm, setApptForm]       = useState({ appointment_date: '', booking_type: 'viewing', notes: '' });
+  const [apptSaving, setApptSaving]   = useState(false);
+
+  // Deposit state
+  const [depositAmount, setDepositAmount]       = useState(initialLead?.deposit_amount ?? '');
+  const [depositDate, setDepositDate]           = useState(initialLead?.deposit_date || '');
+  const [depositMethod, setDepositMethod]       = useState(initialLead?.deposit_method || '');
+  const [depositReceiptNo, setDepositReceiptNo] = useState(initialLead?.deposit_receipt_no || '');
+  const [depositBalanceDue, setDepositBalanceDue] = useState(initialLead?.deposit_balance_due ?? '');
+  const [depositSaving, setDepositSaving]       = useState(false);
+
   const notesDebounce = useRef(null);
   const { activities, loading: actLoading, addActivity } = useLeadActivities(lead?.id, lead?.dealer_id);
 
@@ -257,6 +281,53 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     };
     fetch();
   }, [lead?.id, lead?.dealer_id]);
+
+  // Fetch appointments for this lead
+  useEffect(() => {
+    if (!lead?.id || !lead?.dealer_id) return;
+    const fetchAppts = async () => {
+      setApptLoading(true);
+      const { data } = await supabase
+        .from('appointments')
+        .select('id, appointment_date, booking_type, notes, status, buyer_name, buyer_phone')
+        .eq('lead_id', lead.id)
+        .eq('dealer_id', lead.dealer_id)
+        .order('appointment_date', { ascending: true });
+      setApptRows(data || []);
+      setApptLoading(false);
+    };
+    fetchAppts();
+  }, [lead?.id, lead?.dealer_id]);
+
+  const handleAddAppt = async () => {
+    if (!apptForm.appointment_date) return;
+    setApptSaving(true);
+    const { data, error } = await supabase.from('appointments').insert({
+      dealer_id: lead.dealer_id,
+      lead_id: lead.id,
+      car_listing_id: lead.car_listing?.id || null,
+      buyer_name: lead.name || null,
+      buyer_phone: lead.phone || null,
+      appointment_date: apptForm.appointment_date,
+      booking_type: apptForm.booking_type || 'viewing',
+      notes: apptForm.notes || null,
+      status: 'scheduled',
+    }).select().single();
+    if (!error && data) {
+      setApptRows(r => [...r, data].sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date)));
+      setApptForm({ appointment_date: '', booking_type: 'viewing', notes: '' });
+      setShowAddAppt(false);
+      toast.success('Appointment scheduled');
+    } else {
+      toast.error('Failed to schedule appointment');
+    }
+    setApptSaving(false);
+  };
+
+  const handleCancelAppt = async (id) => {
+    const { error } = await supabase.from('appointments').update({ status: 'cancelled' }).eq('id', id);
+    if (!error) setApptRows(r => r.map(a => a.id === id ? { ...a, status: 'cancelled' } : a));
+  };
 
   const handleAttachAddon = async () => {
     if (!addonForm.product_id || !addonForm.sold_price) { return; }
@@ -342,7 +413,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     if (!nextBank) return;
     setNextBankSaving(true);
     const car = lead?.car_listing;
-    const prevRow = hpRows.find(r => r.status === 'rejected');
+    const prevRow = hpRows.find(r => r.status === 'rejected') || hpRows[0];
     const { data, error } = await supabase.from('deal_financing').insert({
       dealer_id: lead.dealer_id, lead_id: lead.id, listing_id: lead.car_listing_id || null,
       bank_name: nextBank,
@@ -403,7 +474,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       const [dealerRes, salesmanRes] = await Promise.all([
-        supabase.from('profiles').select('site_name, brand_color, whatsapp_number').eq('id', lead.dealer_id).maybeSingle(),
+        supabase.from('profiles').select('site_name, brand_color, whatsapp_number, site_logo_url, deal_disclaimer').eq('id', lead.dealer_id).maybeSingle(),
         currentUser ? supabase.from('profiles').select('full_name, whatsapp_number').eq('id', currentUser.id).maybeSingle() : Promise.resolve({ data: null }),
       ]);
       const dealerProfile  = dealerRes.data;
@@ -452,6 +523,8 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
           name:        dealerProfile?.site_name    || 'Dealership',
           brand_color: dealerProfile?.brand_color  || '#dc2626',
           whatsapp:    dealerProfile?.whatsapp_number || null,
+          logo_url:    dealerProfile?.site_logo_url || null,
+          disclaimer:  dealerProfile?.deal_disclaimer || null,
         },
         addons: dealAddons.map(a => ({
           name:     a.dealer_products?.name || '',
@@ -500,6 +573,28 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
       setGeneratingLink(false);
     }
   };
+
+  // ── WhatsApp templates load (SET-1) ──────────────────────────────────────────
+  useEffect(() => {
+    if (!lead?.dealer_id) return;
+    supabase.from('profiles').select('whatsapp_templates').eq('id', lead.dealer_id).maybeSingle()
+      .then(({ data }) => {
+        const t = data?.whatsapp_templates;
+        if (Array.isArray(t) && t.length > 0) setWaTemplates(t);
+      });
+  }, [lead?.dealer_id]);
+
+  // ── Trade-in load ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!lead?.id) return;
+    supabase.from('trade_ins').select('*').eq('lead_id', lead.id).maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setTradeIn(data);
+          setTiForm({ plate_number: data.plate_number || '', brand: data.brand || '', model: data.model || '', year: data.year ? String(data.year) : '', mileage: data.mileage ? String(data.mileage) : '', colour: data.colour || '', condition: data.condition || 'good', valuation: data.valuation ? String(data.valuation) : '', agreed_price: data.agreed_price ? String(data.agreed_price) : '', notes: data.notes || '' });
+        }
+      });
+  }, [lead?.id]);
 
   if (!lead) return null;
 
@@ -667,6 +762,51 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     }, 800);
   }
 
+  async function saveTradeIn() {
+    setTiSaving(true);
+    const payload = {
+      dealer_id: lead.dealer_id, lead_id: lead.id,
+      plate_number: tiForm.plate_number || null, brand: tiForm.brand || null, model: tiForm.model || null,
+      year: tiForm.year ? Number(tiForm.year) : null, mileage: tiForm.mileage ? Number(tiForm.mileage) : null,
+      colour: tiForm.colour || null, condition: tiForm.condition || null,
+      valuation: tiForm.valuation ? Number(tiForm.valuation) : null,
+      agreed_price: tiForm.agreed_price ? Number(tiForm.agreed_price) : null,
+      notes: tiForm.notes || null,
+    };
+    try {
+      if (tradeIn?.id) {
+        const { error } = await supabase.from('trade_ins').update(payload).eq('id', tradeIn.id);
+        if (error) throw error;
+        setTradeIn(t => ({ ...t, ...payload }));
+      } else {
+        const { data, error } = await supabase.from('trade_ins').insert(payload).select().single();
+        if (error) throw error;
+        setTradeIn(data);
+      }
+      toast.success('Trade-in saved');
+      setTradeInOpen(false);
+    } catch { toast.error('Error saving trade-in'); }
+    finally { setTiSaving(false); }
+  }
+
+  // ── Deposit save ─────────────────────────────────────────────────────────────
+  async function saveDeposit() {
+    setDepositSaving(true);
+    try {
+      const payload = {
+        deposit_amount:     depositAmount !== '' ? Number(depositAmount) : null,
+        deposit_date:       depositDate || null,
+        deposit_method:     depositMethod || null,
+        deposit_receipt_no: depositReceiptNo || null,
+        deposit_balance_due: depositBalanceDue !== '' ? Number(depositBalanceDue) : null,
+      };
+      const updated = await onUpdate(lead.id, payload);
+      if (updated) setLead(updated);
+      toast.success('Deposit saved');
+    } catch { toast.error('Error saving deposit'); }
+    finally { setDepositSaving(false); }
+  }
+
   // ── Car search & link ────────────────────────────────────────────────────────
   async function searchCars(q) {
     if (!lead?.dealer_id) return;
@@ -724,7 +864,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
 
   // ── WhatsApp template open ────────────────────────────────────────────────────
   function openTemplate(tpl) {
-    const msg = tpl.message(lead, car);
+    const msg = renderWaTemplate(tpl.message, lead, car);
     window.open(`https://wa.me/${formatWhatsAppURL(lead.phone).replace('https://wa.me/', '')}?text=${encodeURIComponent(msg)}`, '_blank');
     addActivity({ activity_type: 'whatsapp_sent', note: `Sent: ${tpl.label}` }).catch(() => {});
   }
@@ -999,6 +1139,53 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                 style={{ ...w.inp, resize: 'vertical', minHeight: 72 }} className="ld-inp" />
             </div>
 
+            {/* ── Deposit / Booking Fee ── */}
+            {(['deposit_taken','won'].includes(lead.stage) || depositAmount !== '') && (
+              <div style={{ ...w.section, borderColor: '#99f6e4', background: '#f0fdfa' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <p style={{ ...w.label, margin: 0, color: '#0d9488' }}>Deposit / Booking Fee</p>
+                  <button onClick={saveDeposit} disabled={depositSaving}
+                    style={{ fontSize: 11, fontWeight: 600, color: '#0d9488', background: '#ccfbf1', border: '1px solid #99f6e4', borderRadius: 6, padding: '3px 12px', cursor: 'pointer', opacity: depositSaving ? 0.6 : 1 }}>
+                    {depositSaving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <p style={w.label}>Amount (RM)</p>
+                    <input type="number" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} placeholder="e.g. 2000"
+                      style={{ ...w.inp, background: '#fff' }} className="ld-inp" />
+                  </div>
+                  <div>
+                    <p style={w.label}>Date</p>
+                    <input type="date" value={depositDate} onChange={e => setDepositDate(e.target.value)}
+                      style={{ ...w.inp, background: '#fff', colorScheme: 'light' }} className="ld-inp" />
+                  </div>
+                  <div>
+                    <p style={w.label}>Method</p>
+                    <select value={depositMethod} onChange={e => setDepositMethod(e.target.value)}
+                      style={{ ...w.inp, background: '#fff', appearance: 'none', cursor: 'pointer' }} className="ld-inp">
+                      <option value="">— Select —</option>
+                      <option value="cash">Cash</option>
+                      <option value="transfer">Bank Transfer</option>
+                      <option value="online">Online Payment</option>
+                      <option value="cheque">Cheque</option>
+                    </select>
+                  </div>
+                  <div>
+                    <p style={w.label}>Receipt No.</p>
+                    <input value={depositReceiptNo} onChange={e => setDepositReceiptNo(e.target.value)} placeholder="e.g. REC-0042"
+                      style={{ ...w.inp, background: '#fff' }} className="ld-inp" />
+                  </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <p style={w.label}>Balance Due (RM)</p>
+                    <input type="number" value={depositBalanceDue} onChange={e => setDepositBalanceDue(e.target.value)}
+                      placeholder="Remaining amount after deposit"
+                      style={{ ...w.inp, background: '#fff' }} className="ld-inp" />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* ── HP / Financing ── */}
             <div style={w.section}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
@@ -1127,6 +1314,14 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                       </div>
                     );
                   })}
+                  {/* Parallel bank submission — available whenever submissions exist */}
+                  {hpRows.length > 0 && !nextBankPrompt && !showAddHP && (
+                    <button onClick={() => setNextBankPrompt(true)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, width: '100%', justifyContent: 'center', fontSize: 11, fontWeight: 600, color: '#2563eb', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 7, padding: '7px 12px', cursor: 'pointer', marginBottom: 6 }}>
+                      <Plus style={{ width: 11, height: 11 }} />Submit to another bank
+                    </button>
+                  )}
+
                   {/* HP-2: Try next bank prompt */}
                   {nextBankPrompt && !showAddHP && (() => {
                     const triedBanks = new Set(hpRows.map(r => r.bank_name));
@@ -1456,11 +1651,53 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
               )}
             </div>
 
+            {/* ── Trade-In ── */}
+            <div style={w.section}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: tradeIn ? 10 : 0 }}>
+                <p style={{ ...w.label, margin: 0 }}>Trade-In Vehicle</p>
+                <button onClick={() => setTradeInOpen(o => !o)} style={{ fontSize: 11, color: '#6b7280', background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
+                  {tradeInOpen ? 'Collapse' : tradeIn ? 'Edit' : '+ Add'}
+                </button>
+              </div>
+              {tradeIn && !tradeInOpen && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#111827' }}>{[tradeIn.year, tradeIn.brand, tradeIn.model].filter(Boolean).join(' ') || 'Vehicle'}</span>
+                  {tradeIn.plate_number && <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 4, padding: '1px 6px' }}>{tradeIn.plate_number.toUpperCase()}</span>}
+                  {tradeIn.agreed_price && <span style={{ fontSize: 12, fontWeight: 700, color: '#dc2626' }}>RM {Number(tradeIn.agreed_price).toLocaleString()} agreed</span>}
+                </div>
+              )}
+              {tradeInOpen && (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <input value={tiForm.plate_number} onChange={e => setTiForm(f => ({ ...f, plate_number: e.target.value }))} placeholder="Plate no." style={w.inp} className="ld-inp" />
+                    <select value={tiForm.condition} onChange={e => setTiForm(f => ({ ...f, condition: e.target.value }))} style={{ ...w.inp, appearance: 'none' }} className="ld-inp">
+                      <option value="excellent">Excellent</option>
+                      <option value="good">Good</option>
+                      <option value="fair">Fair</option>
+                      <option value="poor">Poor</option>
+                    </select>
+                    <input value={tiForm.brand} onChange={e => setTiForm(f => ({ ...f, brand: e.target.value }))} placeholder="Brand" style={w.inp} className="ld-inp" />
+                    <input value={tiForm.model} onChange={e => setTiForm(f => ({ ...f, model: e.target.value }))} placeholder="Model" style={w.inp} className="ld-inp" />
+                    <input type="number" value={tiForm.year} onChange={e => setTiForm(f => ({ ...f, year: e.target.value }))} placeholder="Year" style={w.inp} className="ld-inp" />
+                    <input type="number" value={tiForm.mileage} onChange={e => setTiForm(f => ({ ...f, mileage: e.target.value }))} placeholder="Mileage (km)" style={w.inp} className="ld-inp" />
+                    <input type="number" value={tiForm.valuation} onChange={e => setTiForm(f => ({ ...f, valuation: e.target.value }))} placeholder="Valuation (RM)" style={w.inp} className="ld-inp" />
+                    <input type="number" value={tiForm.agreed_price} onChange={e => setTiForm(f => ({ ...f, agreed_price: e.target.value }))} placeholder="Agreed price (RM)" style={w.inp} className="ld-inp" />
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <button onClick={() => setTradeInOpen(false)} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                    <button onClick={saveTradeIn} disabled={tiSaving} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#dc2626', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: tiSaving ? 0.6 : 1 }}>
+                      {tiSaving ? 'Saving…' : 'Save Trade-In'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* ── Quick Messages ── */}
             <div style={w.section}>
               <p style={w.label}>Quick Messages</p>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {WHATSAPP_TEMPLATES.map((tpl, i) => (
+                {waTemplates.map((tpl, i) => (
                   <button key={i} onClick={() => openTemplate(tpl)}
                     style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
                     <MessageCircle style={{ width: 11, height: 11 }} />{tpl.label}
@@ -1519,6 +1756,81 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                   <FileText style={{ width: 12, height: 12 }} />{logging ? 'Logging…' : 'Log Activity'}
                 </button>
               </div>
+            </div>
+
+            <div style={w.divider} />
+
+            {/* ── Appointments ── */}
+            <div style={w.section}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <p style={{ ...w.label, margin: 0 }}>Appointments</p>
+                <button onClick={() => setShowAddAppt(s => !s)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#dc2626', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>
+                  <Plus style={{ width: 11, height: 11 }} />{showAddAppt ? 'Cancel' : 'Schedule'}
+                </button>
+              </div>
+
+              {showAddAppt && (
+                <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                    <div>
+                      <p style={w.label}>Date & Time</p>
+                      <input type="datetime-local" value={apptForm.appointment_date}
+                        onChange={e => setApptForm(p => ({ ...p, appointment_date: e.target.value }))}
+                        style={{ ...w.inp, colorScheme: 'light' }} className="ld-inp" />
+                    </div>
+                    <div>
+                      <p style={w.label}>Type</p>
+                      <select value={apptForm.booking_type} onChange={e => setApptForm(p => ({ ...p, booking_type: e.target.value }))}
+                        style={{ ...w.inp, appearance: 'none' }} className="ld-inp">
+                        <option value="viewing">Viewing</option>
+                        <option value="test_drive">Test Drive</option>
+                        <option value="handover">Handover</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+                  <input value={apptForm.notes} onChange={e => setApptForm(p => ({ ...p, notes: e.target.value }))}
+                    placeholder="Notes (optional)" style={{ ...w.inp, marginBottom: 8 }} className="ld-inp" />
+                  <button onClick={handleAddAppt} disabled={apptSaving || !apptForm.appointment_date}
+                    style={{ fontSize: 12, fontWeight: 600, color: 'white', background: '#111827', border: 'none', borderRadius: 6, padding: '7px 16px', cursor: 'pointer', opacity: (!apptForm.appointment_date || apptSaving) ? 0.5 : 1 }}>
+                    {apptSaving ? 'Saving…' : 'Confirm Appointment'}
+                  </button>
+                </div>
+              )}
+
+              {apptLoading ? (
+                <p style={{ fontSize: 12, color: '#9ca3af' }}>Loading…</p>
+              ) : apptRows.length === 0 ? (
+                <p style={{ fontSize: 12, color: '#9ca3af' }}>No appointments scheduled.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {apptRows.map(a => {
+                    const dt = new Date(a.appointment_date);
+                    const isPast = dt < new Date();
+                    const isCancelled = a.status === 'cancelled';
+                    const typeLabel = { viewing: 'Viewing', test_drive: 'Test Drive', handover: 'Handover', other: 'Other' }[a.booking_type] || a.booking_type;
+                    return (
+                      <div key={a.id} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, padding: '8px 10px', background: isCancelled ? '#fafafa' : isPast ? '#f9fafb' : 'rgba(220,38,38,0.03)', border: `1px solid ${isCancelled ? '#f3f4f6' : isPast ? '#e5e7eb' : 'rgba(220,38,38,0.15)'}`, borderRadius: 7, opacity: isCancelled ? 0.5 : 1 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: '#111827' }}>
+                              {dt.toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' })}{' '}
+                              <span style={{ color: '#6b7280' }}>{dt.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' })}</span>
+                            </span>
+                            <span style={{ fontSize: 10, fontWeight: 600, color: '#dc2626', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: 4, padding: '1px 6px' }}>{typeLabel}</span>
+                            {isCancelled && <span style={{ fontSize: 10, color: '#9ca3af' }}>Cancelled</span>}
+                          </div>
+                          {a.notes && <p style={{ fontSize: 11, color: '#6b7280', margin: '4px 0 0' }}>{a.notes}</p>}
+                        </div>
+                        {!isCancelled && (
+                          <button onClick={() => handleCancelAppt(a.id)} style={{ fontSize: 10, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', flexShrink: 0 }}>✕</button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div style={w.divider} />

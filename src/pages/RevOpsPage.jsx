@@ -233,6 +233,7 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
   // ── Lead performance data ────────────────────────────────────────────────
   const [leadData, setLeadData] = useState(null);
   const [leadLoading, setLeadLoading] = useState(true);
+  const [salesmanScores, setSalesmanScores] = useState([]);
 
   // ── Stock health data ────────────────────────────────────────────────────
   const [stockData, setStockData] = useState(null);
@@ -355,6 +356,14 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
       }
 
       setLeadData({ total, topSources, viewingRate, avgResponseMin });
+
+      const { data: scores } = await supabase.rpc('gm_salesman_scores', { p_dealer_id: userId });
+      setSalesmanScores(
+        (scores || [])
+          .filter(s => s.avg_response_min != null)
+          .sort((a, b) => a.avg_response_min - b.avg_response_min)
+      );
+
       setLeadLoading(false);
     };
     fetch();
@@ -826,6 +835,38 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
             )}
           </div>
         </div>
+
+        {salesmanScores.length > 0 && (
+          <div style={{ marginTop: 20 }}>
+            <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em' }}>
+              Response Time by Salesman
+            </span>
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {salesmanScores.map(s => {
+                const mins = s.avg_response_min;
+                const label = mins >= 60 ? `${Math.round(mins / 60)}h` : `${mins}m`;
+                const color = mins > 120 ? '#dc2626' : mins > 30 ? '#d97706' : '#16a34a';
+                const pct = Math.min(100, Math.round((mins / 6217) * 100));
+                return (
+                  <div key={s.salesman_id || s.name} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 12, color: '#374151', width: 90, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {s.name || '—'}
+                    </span>
+                    <div style={{ flex: 1, height: 6, background: '#f3f4f6', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', borderRadius: 3, background: color }} />
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 600, color, minWidth: 36, textAlign: 'right' }}>
+                      {label}
+                    </span>
+                    <span style={{ fontSize: 11, color: '#9ca3af', minWidth: 60, textAlign: 'right' }}>
+                      {s.leads_30d} leads
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </SectionCard>
 
       {/* ── Section 4: Page Traffic (30d) ───────────────────────────────── */}

@@ -6,11 +6,15 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
+import { usePermissions } from "../hooks/usePermissions";
+import { usePresence } from "../hooks/usePresence";
 import TikTokStudioV3 from "../components/TikTokStudioV3";
 import { toast } from "sonner";
+import { generateDealSheet } from "../utils/dealSheet";
 import {
  LogOut,
  Link,
+ FileText,
  Copy,
  Check,
  Eye,
@@ -118,6 +122,10 @@ export default function SalesmanPanel() {
  const redirectByRole = useRoleRedirect("salesman");
 
  const [profile, setProfile] = useState(null);
+ const { can: canPerm } = usePermissions(profile);
+ // Broadcast presence on the dealer's shared channel so the dealer dashboard
+ // sees this salesman as live (keyed on the dealer's profile id).
+ usePresence(profile?.dealer_id || profile?.id || null);
  const [userId, setUserId] = useState(null);
  const [loading, setLoading] = useState(true);
  const [activeTab, setActiveTab] = useState("dashboard");
@@ -141,6 +149,13 @@ export default function SalesmanPanel() {
  const [myListings, setMyListings] = useState([]);
  const [listingCopied, setListingCopied] = useState({}); // { [carId]: 'link' | 'wa' | null }
  const [tiktokListing, setTiktokListing] = useState(null);
+
+ // shared dealer inventory (browse + add to deals)
+ const [listingsView, setListingsView] = useState("mine"); // "mine" | "inventory"
+ const [availableCars, setAvailableCars] = useState([]);
+ const [availableLoading, setAvailableLoading] = useState(false);
+ const [availableLoaded, setAvailableLoaded] = useState(false);
+ const [invSearch, setInvSearch] = useState("");
 
  // appointments
  const [appointments, setAppointments] = useState([]);
@@ -172,6 +187,7 @@ export default function SalesmanPanel() {
  // Leads
  const [leads, setLeads] = useState([]);
  const [staleLeads, setStaleLeads] = useState([]);
+ const [leaderboard, setLeaderboard] = useState([]);
  const [leadsLoading, setLeadsLoading] = useState(true);
  const [leadScores, setLeadScores] = useState({});
  const [scoreLoading, setScoreLoading] = useState(false);
@@ -210,6 +226,8 @@ export default function SalesmanPanel() {
 
  // CRM pipeline state
  const [drawerLeadId, setDrawerLeadId] = useState(null);
+ const [dealSheetBusyId, setDealSheetBusyId] = useState(null);
+ const [dealSheetLink, setDealSheetLink] = useState(null);
  const [deletingLeadId, setDeletingLeadId] = useState(null);
  const [lostSavingId, setLostSavingId] = useState(null);
  const [stageSavingId, setStageSavingId] = useState(null);
@@ -246,6 +264,8 @@ export default function SalesmanPanel() {
  const [carStatsMap, setCarStatsMap] = useState({});
  // rawEvents removed — aggregated server-side via get_car_analytics RPC
  const [dealerSubdomain, setDealerSubdomain] = useState(null);
+ const [dealerProfile, setDealerProfile] = useState(null);
+ const [dealerCommConfig, setDealerCommConfig] = useState(null);
 
  // Manager notes
  const [managerNotes, setManagerNotes] = useState([]);
@@ -378,10 +398,14 @@ export default function SalesmanPanel() {
  if (profileData.dealer_id) {
   supabase
    .from("profiles")
-   .select("subdomain")
+   .select("subdomain, site_name, dealership, brand_color, site_logo_url, deal_disclaimer, whatsapp_number, commission_config")
    .eq("id", profileData.dealer_id)
    .maybeSingle()
-   .then(({ data }) => setDealerSubdomain(data?.subdomain || null));
+   .then(({ data }) => {
+     setDealerSubdomain(data?.subdomain || null);
+     setDealerProfile(data || null);
+     if (data?.commission_config) setDealerCommConfig(data.commission_config);
+   });
  }
 
  // Fetch assigned car IDs first, then scope analytics to those cars
@@ -438,17 +462,36 @@ export default function SalesmanPanel() {
  )
  .subscribe();
 
- // Active listings assigned to me — full detail for rich cards
- const fetchMyListings = () =>
- supabase
- .from("car_listings")
- .select(
- "id, slug, year, brand, model, variant, selling_price, status, images, colour, mileage, transmission, fuel_type, body_type, specs, features, options, city, condition",
- )
- .eq("assigned_to", userId)
- .neq("status", "sold")
- .order("created_at", { ascending: false })
- .then(({ data }) => setMyListings(data || []));
+ // Active listings: assigned to me OR linked via my active leads
+ const CAR_FIELDS = "id, slug, year, brand, model, variant, selling_price, status, images, colour, mileage, transmission, fuel_type, body_type, specs, features, options, city, condition, commission_amount";
+ const fetchMyListings = async () => {
+ const [{ data: assigned }, { data: leadRows }] = await Promise.all([
+   supabase
+     .from("car_listings")
+     .select(CAR_FIELDS)
+     .eq("assigned_to", userId)
+     .neq("status", "sold")
+     .order("created_at", { ascending: false }),
+   supabase
+     .from("leads")
+     .select(`car_listings(${CAR_FIELDS})`)
+     .eq("salesman_id", userId)
+     .eq("is_deleted", false)
+     .neq("stage", "closed")
+     .not("car_listing_id", "is", null),
+ ]);
+ const assignedList = assigned || [];
+ const seen = new Set(assignedList.map((c) => c.id));
+ const merged = [...assignedList];
+ for (const row of leadRows || []) {
+   const c = row.car_listings;
+   if (c && c.status !== "sold" && !seen.has(c.id)) {
+     seen.add(c.id);
+     merged.push(c);
+   }
+ }
+ setMyListings(merged);
+ };
  fetchMyListings();
  const listingsCh = supabase
  .channel("my_listings_" + userId)
@@ -533,14 +576,16 @@ export default function SalesmanPanel() {
  setEnquiriesLoading(false);
  }
 
- // Leads assigned to this salesman
- supabase
+ // Leads: own-assigned by default; all-dealer if granted view_all_leads
+ (() => {
+ let q = supabase
  .from("leads")
  .select("*, car_listings(brand, model, year, selling_price)")
- .eq("salesman_id", userId)
  .eq("dealer_id", profile?.dealer_id)
- .eq("is_deleted", false)
- .order("updated_at", { ascending: false })
+ .eq("is_deleted", false);
+ if (!canPerm("view_all_leads")) q = q.eq("salesman_id", userId);
+ return q.order("updated_at", { ascending: false });
+ })()
  .then(async ({ data }) => {
  const rows = data || [];
  setLeads(rows);
@@ -643,7 +688,34 @@ Rules:
  };
  }, [userId]);
 
- // loan data 
+ // team leaderboard — units sold this month per salesman (names visible, deals private)
+ useEffect(() => {
+ const dealerKey = profile?.dealer_id || profile?.id;
+ if (!dealerKey) return;
+ const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+ (async () => {
+  const [{ data: team }, { data: sold }] = await Promise.all([
+   supabase.from("profiles").select("id, full_name, slug")
+    .or(`dealer_id.eq.${dealerKey},id.eq.${dealerKey}`).eq("role", "salesman"),
+   supabase.from("car_listings").select("assigned_to, sold_at, commission_amount")
+    .eq("dealer_id", dealerKey).eq("status", "sold").gte("sold_at", monthStart),
+  ]);
+  const counts = {};
+  for (const c of (sold || [])) {
+   if (!c.assigned_to) continue;
+   counts[c.assigned_to] = (counts[c.assigned_to] || 0) + 1;
+  }
+  const rows = (team || []).map((t) => ({
+   id: t.id,
+   name: t.full_name || t.slug || "Salesman",
+   units: counts[t.id] || 0,
+   isMe: t.id === profile.id,
+  })).sort((a, b) => b.units - a.units);
+  setLeaderboard(rows);
+ })();
+ }, [profile?.id, profile?.dealer_id]);
+
+ // loan data
  useEffect(() => {
  if (!profile?.id) return;
  const dealerId = getDealerIdFromProfile(profile);
@@ -667,10 +739,66 @@ Rules:
  .order("created_at", { ascending: false })
  .then(({ data }) => setLoanApplications(data || []));
  }, [profile?.id]);
- // 
+ //
+
+ // Shared dealer inventory — lazy-loaded the first time the salesman opens the Inventory view.
+ useEffect(() => {
+ if (listingsView !== "inventory" || availableLoaded || !profile?.dealer_id) return;
+ setAvailableLoading(true);
+ supabase
+ .from("car_listings")
+ .select("id, slug, year, brand, model, variant, selling_price, images, mileage, transmission, fuel_type, body_type, colour, commission_amount, assigned_to, status")
+ .eq("dealer_id", profile.dealer_id)
+ .eq("status", "available")
+ .order("created_at", { ascending: false })
+ .then(({ data }) => {
+ setAvailableCars(data || []);
+ setAvailableLoading(false);
+ setAvailableLoaded(true);
+ });
+ }, [listingsView, availableLoaded, profile?.dealer_id]);
+
+ // Commission a salesman would earn on a car: explicit per-listing amount wins,
+ // else derive from the dealer's default commission rule. Gross-margin rules need
+ // cost data the salesman shouldn't see, so those return null (shown as "set by dealer").
+ const carCommission = (car) => {
+ const explicit = Number(car?.commission_amount) || 0;
+ if (explicit > 0) return explicit;
+ const cfg = dealerCommConfig;
+ if (!cfg) return null;
+ const price = Number(car?.selling_price) || 0;
+ if (cfg.type === "flat") return Number(cfg.value) || 0;
+ if (cfg.type === "percent_sale") return Math.round(price * (Number(cfg.value) || 0) / 100);
+ return null; // percent_gross needs cost data not exposed to salesmen
+ };
+
+ const addCarToMyDeals = async (car) => {
+ const comm = carCommission(car);
+ const carTitle = [car.year, car.brand, car.model].filter(Boolean).join(" ");
+ const { data, error } = await supabase
+ .from("leads")
+ .insert({
+ dealer_id: profile?.dealer_id,
+ salesman_id: userId,
+ car_listing_id: car.id,
+ buyer_name: "New prospect",
+ stage: "new",
+ lead_source: "manual",
+ is_deleted: false,
+ notes: `Enquiry about ${carTitle}${comm ? ` — commission RM ${comm.toLocaleString()}` : ""}`,
+ })
+ .select("*, car_listings(brand, model, year, selling_price)")
+ .single();
+ if (error) { toast.error("Could not add to deals"); return; }
+ setLeads((p) => [data, ...p]);
+ // Immediately surface car in My Listings without waiting for next fetchMyListings
+ setMyListings((p) => p.some((c) => c.id === car.id) ? p : [car, ...p]);
+ toast.success(`${carTitle} added to your listings`);
+ setActiveTab("listings");
+ setListingsView("mine");
+ };
 
  const chartRefs = useRef({});
- const pendingStageRef = useRef({});
 
  // sparkline charts 
  useEffect(() => {
@@ -1258,22 +1386,15 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const oldStage = lead.stage;
  const leadId = lead.id;
  const buyerName = lead.buyer_name || "Lead";
- if (pendingStageRef.current[leadId]) {
- clearTimeout(pendingStageRef.current[leadId].timer);
- }
+ // Persist immediately so a refresh never loses the move. Undo writes the old stage back.
  setLeads((p) => p.map((l) => (l.id === leadId? { ...l, stage: newStage } : l)));
- const timer = setTimeout(() => {
- delete pendingStageRef.current[leadId];
  updateLeadStage(leadId, newStage);
- }, 4500);
- pendingStageRef.current[leadId] = { timer, oldStage };
  toast(`${buyerName} → ${newStage.replace(/_/g, " ")}`, {
  action: {
  label: "Undo",
  onClick: () => {
- clearTimeout(pendingStageRef.current[leadId]?.timer);
- delete pendingStageRef.current[leadId];
  setLeads((p) => p.map((l) => (l.id === leadId? { ...l, stage: oldStage } : l)));
+ updateLeadStage(leadId, oldStage);
  },
  },
  duration: 4500,
@@ -1296,6 +1417,32 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  if (error) { console.error("saveLeadNote:", error); toast.error("Failed to save note"); return; }
  setLeads((p) => p.map((l) => l.id === leadId? { ...l, notes: editNoteVal } : l));
  setEditingNoteId(null);
+ };
+
+ const handleGenerateDealSheet = async (lead) => {
+ const car = lead.car_listings;
+ if (!car) { toast.error("Link a car to this lead first"); return; }
+ setDealSheetBusyId(lead.id);
+ setDealSheetLink(null);
+ try {
+  // Pull any add-on products already attached to this deal
+  const { data: dp } = await supabase
+   .from("deal_products")
+   .select("sold_price, dealer_products(name, category)")
+   .eq("lead_id", lead.id);
+  const { url } = await generateDealSheet({
+   lead, car, dealer: dealerProfile, salesman: profile,
+   addons: (dp || []).map(d => ({ name: d.dealer_products?.name, category: d.dealer_products?.category, price: d.sold_price })),
+  });
+  setDealSheetLink(url);
+  try { await navigator.clipboard.writeText(url); toast.success("Deal sheet ready — link copied"); }
+  catch { toast.success("Deal sheet ready"); }
+ } catch (e) {
+  console.error("generateDealSheet:", e);
+  toast.error("Could not generate deal sheet");
+ } finally {
+  setDealSheetBusyId(null);
+ }
  };
 
  const fetchLeadActivities = async (leadId) => {
@@ -1414,6 +1561,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  buyer_state: addLeadForm.buyer_state || null,
  stage: "new",
  lead_source: "manual",
+ is_deleted: false,
  })
  .select()
  .single();
@@ -1715,6 +1863,59 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  return (
  <>
 
+ {/* Dealer connection banner — makes it clear this panel is linked to the dealer dashboard */}
+ {profile?.dealer_id && (
+ <div
+ style={{
+ display: "flex",
+ alignItems: "center",
+ gap: 12,
+ background: "rgba(255,255,255,0.04)",
+ border: "1px solid rgba(255,255,255,0.08)",
+ borderLeft: `3px solid ${dealerProfile?.brand_color || "#dc2626"}`,
+ borderRadius: 12,
+ padding: "12px 16px",
+ marginBottom: 16,
+ }}
+ >
+ {dealerProfile?.site_logo_url ? (
+ <img
+ src={dealerProfile.site_logo_url}
+ alt=""
+ style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover", flexShrink: 0 }}
+ />
+ ) : (
+ <div
+ style={{
+ width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+ background: dealerProfile?.brand_color || "#dc2626",
+ display: "flex", alignItems: "center", justifyContent: "center",
+ fontWeight: 800, fontSize: 16, color: "#fff",
+ }}
+ >
+ {(dealerProfile?.site_name || dealerProfile?.dealership || profile?.dealership || "D").charAt(0).toUpperCase()}
+ </div>
+ )}
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+ <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)" }}>
+ Sales team
+ </span>
+ <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 600, color: "#4ade80", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 20, padding: "1px 8px" }}>
+ <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#4ade80" }} />
+ Synced
+ </span>
+ </div>
+ <p style={{ fontSize: 14, fontWeight: 700, color: "#fff", margin: "2px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+ {dealerProfile?.site_name || dealerProfile?.dealership || profile?.dealership || "Your dealership"}
+ </p>
+ <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", margin: "1px 0 0" }}>
+ Your leads, bookings & sales feed live into the dealer dashboard
+ </p>
+ </div>
+ </div>
+ )}
+
  {/* AI: What to do today */}
  <div
  style={{
@@ -1853,6 +2054,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  available
  </p>
  </div>
+ {canPerm("view_commission") && (
  <div
  style={{
  background: "#0d1117",
@@ -1894,6 +2096,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  style={{ width: "100%", marginTop: 10, display: "block" }}
  />
  </div>
+ )}
  <div
  style={{
  background: "#0d1117",
@@ -2278,6 +2481,27 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  ))}
  </div>
  </div>
+
+ {/* Team leaderboard — units sold this month (ranking only, deals private) */}
+ {leaderboard.length > 1 && (
+ <div style={{ ...CARD, marginTop: 12 }}>
+ <p style={{ margin: "0 0 12px", fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>
+ Team leaderboard <span style={{ color: "#4b5563" }}>· units sold this month</span>
+ </p>
+ {leaderboard.map((row, i) => {
+ const medal = i === 0 ? "#fbbf24" : i === 1 ? "#cbd5e1" : i === 2 ? "#d97706" : "#4b5563";
+ return (
+ <div key={row.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 10px", borderRadius: 9, marginBottom: 4, background: row.isMe ? "rgba(96,165,250,0.08)" : "transparent", border: row.isMe ? "1px solid rgba(96,165,250,0.25)" : "1px solid transparent" }}>
+ <span style={{ width: 22, textAlign: "center", fontSize: 13, fontWeight: 700, color: medal, flexShrink: 0 }}>{i + 1}</span>
+ <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: row.isMe ? 700 : 500, color: row.isMe ? "#93c5fd" : "#e5e7eb", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+ {row.name}{row.isMe ? " (you)" : ""}
+ </span>
+ <span style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9", flexShrink: 0 }}>{row.units}</span>
+ </div>
+ );
+ })}
+ </div>
+ )}
  </>
  );
 
@@ -3200,6 +3424,99 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  );
  };
 
+ const renderInventory = () => {
+ const myLeadCarIds = new Set(leads.map((l) => l.car_listing_id).filter(Boolean));
+ const q = invSearch.trim().toLowerCase();
+ const cars = q
+ ? availableCars.filter((c) =>
+ [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ").toLowerCase().includes(q),
+ )
+ : availableCars;
+
+ return (
+ <div>
+ <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
+ Available Inventory
+ </p>
+ <p style={{ margin: "0 0 14px", fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+ The dealer's full stock. Anyone can sell any car — add one to your deals to start working a buyer.
+ </p>
+
+ <input
+ value={invSearch}
+ onChange={(e) => setInvSearch(e.target.value)}
+ placeholder="Search make, model, year..."
+ style={{
+ width: "100%", maxWidth: 360, marginBottom: 16,
+ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
+ borderRadius: 9, color: "#e5e7eb", fontSize: 13, padding: "9px 12px",
+ outline: "none", fontFamily: "inherit",
+ }}
+ />
+
+ {availableLoading ? (
+ <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>Loading inventory...</p>
+ ) : cars.length === 0 ? (
+ <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>
+ {availableCars.length === 0 ? "No available cars right now." : "No cars match your search."}
+ </p>
+ ) : (
+ <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 240px), 1fr))", gap: 12 }}>
+ {cars.map((car) => {
+ const comm = carCommission(car);
+ const inMyDeals = myLeadCarIds.has(car.id);
+ const img = Array.isArray(car.images) ? car.images[0] : null;
+ const title = [car.year, car.brand, car.model].filter(Boolean).join(" ");
+ return (
+ <div key={car.id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column", minWidth: 0 }}>
+ <div style={{ position: "relative", aspectRatio: "16 / 10", background: "rgba(255,255,255,0.04)" }}>
+ {img ? (
+ <img src={img} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+ ) : (
+ <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.2)" }}>
+ <Car size={28} />
+ </div>
+ )}
+ {comm != null && (
+ <span style={{ position: "absolute", top: 8, right: 8, background: "rgba(16,24,12,0.85)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ade80", fontSize: 11, fontWeight: 700, borderRadius: 20, padding: "3px 9px" }}>
+ +RM {comm.toLocaleString()}
+ </span>
+ )}
+ </div>
+ <div style={{ padding: "11px 13px", display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
+ <p style={{ fontSize: 13, fontWeight: 600, color: "#f1f5f9", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+ {title}{car.variant ? ` ${car.variant}` : ""}
+ </p>
+ <p style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: 0 }}>
+ RM {(Number(car.selling_price) || 0).toLocaleString()}
+ </p>
+ <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0 }}>
+ {comm != null ? `Your commission: RM ${comm.toLocaleString()}` : "Commission set by dealer"}
+ </p>
+ <div style={{ marginTop: "auto", paddingTop: 6 }}>
+ {inMyDeals ? (
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "#4ade80", background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.18)", borderRadius: 8, padding: "8px 0" }}>
+ <Check size={14} /> In your deals
+ </div>
+ ) : (
+ <button
+ onClick={() => addCarToMyDeals(car)}
+ style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "#93c5fd", background: "rgba(29,78,216,0.15)", border: "1px solid rgba(29,78,216,0.3)", borderRadius: 8, padding: "8px 0", cursor: "pointer" }}
+ >
+ <Plus size={14} /> Add to my deals
+ </button>
+ )}
+ </div>
+ </div>
+ </div>
+ );
+ })}
+ </div>
+ )}
+ </div>
+ );
+ };
+
  const renderListings = () => {
  // compute per-listing stats once
  const enriched = myListings.map((car) => {
@@ -3247,8 +3564,35 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  fontWeight: active? 600 : 400,
  });
 
+ const viewToggle = (
+ <div style={{ display: "flex", gap: 4, marginBottom: 16, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 4, width: "fit-content" }}>
+ {[["mine", `My Listings (${myListings.length})`], ["inventory", "Available Inventory"]].map(([key, label]) => (
+ <button
+ key={key}
+ onClick={() => setListingsView(key)}
+ style={{
+ background: listingsView === key ? "rgba(29,78,216,0.2)" : "transparent",
+ border: listingsView === key ? "0.5px solid rgba(29,78,216,0.35)" : "0.5px solid transparent",
+ borderRadius: 7,
+ color: listingsView === key ? "#93c5fd" : "#64748b",
+ fontSize: 13,
+ fontWeight: listingsView === key ? 600 : 400,
+ padding: "6px 14px",
+ cursor: "pointer",
+ whiteSpace: "nowrap",
+ }}
+ >
+ {label}
+ </button>
+ ))}
+ </div>
+ );
+
+ if (listingsView === "inventory") return (<div>{viewToggle}{renderInventory()}</div>);
+
  return (
  <div>
+ {viewToggle}
  <p
  style={{
  margin: "0 0 12px",
@@ -4352,7 +4696,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  timing: { label: "Not ready yet", color: "#fbbf24", lines: [`"Totally understand — what would need to change for you to feel ready? Is it financing, or something else?"`, `"I can hold this for you with a small refundable deposit while you sort things out. No pressure."`, `"Just so you know — cars at this price point move fast. I'd hate for you to miss it."`] },
  trust: { label: "Not sure / need to think", color: "#f87171", lines: [`"What specific questions can I answer right now? Let's remove all the uncertainty together."`, `"I'm not here to rush you — but I want to make sure you have everything you need to decide confidently."`, `"Can I send you a full brief on this car — specs, loan estimate, everything — so you have it all in one place?"`] },
  };
- const close = () => { setDrawerLeadId(null); setEditingNoteId(null); setPlaybookLeadId(null); setExpandedActivityLeadId(null); setLostPromptId(null); setDeleteConfirmId(null); };
+ const close = () => { setDrawerLeadId(null); setEditingNoteId(null); setPlaybookLeadId(null); setExpandedActivityLeadId(null); setLostPromptId(null); setDeleteConfirmId(null); setDealSheetLink(null); };
  return (
  <>
  {/* backdrop */}
@@ -4487,6 +4831,30 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  ))}
  </div>
  )}
+
+ {/* Deal Sheet generator */}
+ <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 12 }}>
+ <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>Deal Sheet</p>
+ {!dealSheetLink || dealSheetBusyId === pl.id ? (
+ <button onClick={() => handleGenerateDealSheet(pl)} disabled={dealSheetBusyId === pl.id || !plCar} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 600, padding: "9px 14px", borderRadius: 8, background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd", cursor: plCar ? "pointer" : "not-allowed", opacity: (dealSheetBusyId === pl.id || !plCar) ? 0.55 : 1, fontFamily: "inherit" }}>
+ <FileText size={13} />
+ {dealSheetBusyId === pl.id ? "Generating…" : plCar ? "Generate Deal Sheet" : "Link a car first"}
+ </button>
+ ) : (
+ <div>
+ <p style={{ margin: "0 0 6px", fontSize: 11, color: "#6b7280" }}>Shareable buyer summary (valid 24h). Includes car, pricing, instalment estimate and your contact.</p>
+ <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+ <input readOnly value={dealSheetLink} onFocus={e => e.target.select()} style={{ flex: 1, minWidth: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#9ca3af", fontSize: 11, padding: "7px 10px", outline: "none", fontFamily: "inherit" }} />
+ <button onClick={() => { navigator.clipboard.writeText(dealSheetLink); toast.success("Copied"); }} style={{ flexShrink: 0, fontSize: 11, padding: "7px 10px", borderRadius: 7, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}>Copy</button>
+ </div>
+ <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+ <button onClick={() => window.open(dealSheetLink, "_blank")} style={{ fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.22)", color: "#93c5fd", cursor: "pointer" }}>Preview</button>
+ {pl.phone && <button onClick={() => { const ph = pl.phone.replace(/\D/g, ""); window.open(`https://wa.me/${ph.startsWith("6") ? ph : "6" + ph}?text=${encodeURIComponent(`Hi ${pl.buyer_name || ""}, here's your deal summary: ${dealSheetLink}`)}`, "_blank"); }} style={{ fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>Send via WA</button>}
+ <button onClick={() => setDealSheetLink(null)} style={{ fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#6b7280", cursor: "pointer" }}>New</button>
+ </div>
+ </div>
+ )}
+ </div>
 
  {/* AI WA Reply in drawer */}
  {isPremium && pl.buyer_name && pl.phone && (
@@ -4955,7 +5323,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
      <KPI label="CVR" value={`${cvr}%`} data={cvrD} color={cvrColor} sub="WA / Views" />
      <KPI label="Enquiries" value={enquiries.length} data={enqD} color="#c084fc" sub="All messages" />
      <KPI label="This Month" value={thisMonthSales} data={Array(7).fill(0)} color="#fbbf24" sub="Cars sold" />
+     {canPerm("view_commission") && (
      <KPI label="Commission" value={commission !== null ? `RM ${Number(commission).toLocaleString()}` : "—"} data={Array(7).fill(0)} color="#4ade80" sub="All time" />
+     )}
     </div>
 
     {/* This Month KPI strip */}
@@ -5044,7 +5414,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
     )}
 
     {/* Commission breakdown (with dates) */}
-    {commissionDetails.length > 0 && (
+    {canPerm("view_commission") && commissionDetails.length > 0 && (
      <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
       <div style={{ padding: "11px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
        <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#6b7280" }}>Commission Breakdown</p>
@@ -6774,11 +7144,16 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  }}
  >
  <option value="">— no car selected —</option>
- {myListings.map((c) => (
+ {(() => {
+ const seen = new Set();
+ return [...myListings, ...availableCars]
+ .filter((c) => c && !seen.has(c.id) && seen.add(c.id))
+ .map((c) => (
  <option key={c.id} value={c.id}>
  {c.year} {c.brand} {c.model}
  </option>
- ))}
+ ));
+ })()}
  </select>
  </div>
  <div>

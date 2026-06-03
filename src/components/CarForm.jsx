@@ -925,7 +925,15 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
   const [serviceCatalogue, setServiceCatalogue] = useState([]);
   const [catalogueLoaded, setCatalogueLoaded] = useState(false);
   const [serviceSearch, setServiceSearch] = useState("");
+  const [commissionConfig, setCommissionConfig] = useState(null); // SET-4
   const navigate = useNavigate();
+
+  // SET-4: load dealer commission rule for the suggested-commission helper
+  useEffect(() => {
+    if (!dealerId) return;
+    supabase.from("profiles").select("commission_config").eq("id", dealerId).maybeSingle()
+      .then(({ data }) => setCommissionConfig(data?.commission_config || null));
+  }, [dealerId]);
 
   useEffect(() => {
     previewUrlsRef.current = previews;
@@ -2515,7 +2523,20 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               const base = parseFloat(form.basePrice);
               const sell = parseFloat(form.sellingPrice);
               const margin = !isNaN(base) && !isNaN(sell) && sell > base ? sell - base : null;
-              const suggested = margin ? Math.round(margin * 0.10 / 50) * 50 : null;
+              // SET-4: derive from the dealer's commission rule (default 10% of margin)
+              const cfg = commissionConfig || { type: 'percent_gross', value: 10 };
+              let suggested = null;
+              let suggestNote = '';
+              if (cfg.type === 'flat' && cfg.value > 0) {
+                suggested = Math.round(cfg.value);
+                suggestNote = `flat rate`;
+              } else if (cfg.type === 'percent_sale' && !isNaN(sell) && cfg.value > 0) {
+                suggested = Math.round(sell * cfg.value / 100 / 50) * 50;
+                suggestNote = `${cfg.value}% of sale price`;
+              } else if (margin && cfg.value > 0) {
+                suggested = Math.round(margin * cfg.value / 100 / 50) * 50;
+                suggestNote = `${cfg.value}% of margin`;
+              }
               return (
                 <>
                   <div className="relative">
@@ -2536,7 +2557,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                   </div>
                   {suggested && (
                     <p className="text-xs text-gray-500 mt-1.5">
-                      Suggested: RM {suggested.toLocaleString()} (10% of margin)
+                      Suggested: RM {suggested.toLocaleString()} ({suggestNote})
                       {!form.commissionAmount && (
                         <button
                           type="button"

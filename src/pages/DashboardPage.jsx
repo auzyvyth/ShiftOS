@@ -10,6 +10,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
+import { usePermissions } from "../hooks/usePermissions";
+import { CONFIGURABLE_ROLES, capabilitiesForRole, resolvePermissions } from "../lib/permissions";
+import { DEFAULT_WA_TEMPLATES, WA_PLACEHOLDERS } from "../lib/leadsHelpers";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import SciFiLoader from "../components/SciFiLoader";
@@ -433,7 +436,7 @@ function marginColor(sell, cost) {
   return '#f87171';
 }
 
-function ProductsCatalogue({ dealerId }) {
+function ProductsCatalogue({ dealerId, profile }) {
   const [products, setProducts]   = useState([]);
   const [loading, setLoading]     = useState(true);
   const [open, setOpen]           = useState(false);
@@ -483,8 +486,13 @@ function ProductsCatalogue({ dealerId }) {
     try {
       if (editTarget) {
         await supabase.from('dealer_products').update(payload).eq('id', editTarget.id);
+        const changes = {};
+        if (Number(editTarget.cost_price) !== payload.cost_price) changes.cost_price = { from: editTarget.cost_price, to: payload.cost_price };
+        if (Number(editTarget.selling_price) !== payload.selling_price) changes.selling_price = { from: editTarget.selling_price, to: payload.selling_price };
+        logActivity({ dealerId, actor: profile, tableName: 'dealer_products', recordId: editTarget.id, action: 'updated', summary: `Product updated — ${payload.name}`, fieldChanges: Object.keys(changes).length ? changes : null });
       } else {
-        await supabase.from('dealer_products').insert(payload);
+        const { data: ins } = await supabase.from('dealer_products').insert(payload).select().single();
+        logActivity({ dealerId, actor: profile, tableName: 'dealer_products', recordId: ins?.id, action: 'created', summary: `Product added — ${payload.name} · sell RM ${payload.selling_price.toLocaleString()}` });
       }
       await fetchProducts();
       setShowModal(false);
@@ -495,13 +503,16 @@ function ProductsCatalogue({ dealerId }) {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this product?')) return;
+    const target = products.find(x => x.id === id);
     await supabase.from('dealer_products').delete().eq('id', id);
+    logActivity({ dealerId, actor: profile, tableName: 'dealer_products', recordId: id, action: 'deleted', summary: `Product deleted${target ? ` — ${target.name}` : ''}` });
     setProducts(p => p.filter(x => x.id !== id));
     toast.success('Deleted');
   };
 
   const handleToggleActive = async (p) => {
     await supabase.from('dealer_products').update({ is_active: !p.is_active }).eq('id', p.id);
+    logActivity({ dealerId, actor: profile, tableName: 'dealer_products', recordId: p.id, action: 'updated', summary: `Product ${!p.is_active ? 'activated' : 'deactivated'} — ${p.name}` });
     setProducts(prev => prev.map(x => x.id === p.id ? { ...x, is_active: !x.is_active } : x));
   };
 
@@ -719,11 +730,138 @@ function ErrMsg({ k, errors }) {
   ) : null;
 }
 
+// ─── PermissionsMatrix (SEC-2) ────────────────────────────────────────────────
+function PermissionsMatrix({ dealerId, actor }) {
+  const [rows, setRows] = useState({});   // { role: permissionsMap }
+  const [loading, setLoading] = useState(true);
+  const [savingRole, setSavingRole] = useState(null);
+
+  useEffect(() => {
+    if (!dealerId) return;
+    setLoading(true);
+    supabase.from('role_permissions').select('role, permissions').eq('dealer_id', dealerId)
+      .then(({ data }) => {
+        const byRole = {};
+        for (const { value } of CONFIGURABLE_ROLES) {
+          const stored = (data || []).find(r => r.role === value)?.permissions;
+          byRole[value] = resolvePermissions(value, stored);
+        }
+        setRows(byRole);
+        setLoading(false);
+      });
+  }, [dealerId]);
+
+  const toggle = (role, key) => setRows(p => ({ ...p, [role]: { ...p[role], [key]: !p[role]?.[key] } }));
+
+  const saveRole = async (role) => {
+    setSavingRole(role);
+    const { error } = await supabase.from('role_permissions')
+      .upsert({ dealer_id: dealerId, role, permissions: rows[role], updated_at: new Date().toISOString() }, { onConflict: 'dealer_id,role' });
+    if (error) { toast.error('Save failed'); }
+    else {
+      logActivity({ dealerId, actor, tableName: 'role_permissions', recordId: null, action: 'updated', summary: `Permissions updated — ${role}` });
+      toast.success('Permissions saved');
+    }
+    setSavingRole(null);
+  };
+
+  if (loading) return <p className="text-gray-500 text-sm">Loading…</p>;
+
+  return (
+    <div className="space-y-5">
+      {CONFIGURABLE_ROLES.map(({ value, label }) => {
+        const caps = capabilitiesForRole(value);
+        return (
+          <div key={value} style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 16px' }}>
+            <div className="flex items-center justify-between mb-3">
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{label}</span>
+              <SaveBtn sectionKey={`perm_${value}`} onClick={() => saveRole(value)} saving={{ [`perm_${value}`]: savingRole === value }} saved={{}} />
+            </div>
+            <div className="space-y-2">
+              {caps.map(cap => (
+                <label key={cap.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={!!rows[value]?.[cap.key]} onChange={() => toggle(value, cap.key)} style={{ accentColor: '#dc2626', marginTop: 2 }} />
+                  <span>
+                    <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>{cap.label}</span>
+                    <span style={{ display: 'block', fontSize: 11, color: '#9ca3af' }}>{cap.description}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+      <p style={{ fontSize: 11, color: '#9ca3af' }}>Owner, dealer and superadmin accounts always have full access and are not listed here.</p>
+    </div>
+  );
+}
+
+// ─── WhatsApp Template Editor (SET-1) ─────────────────────────────────────────
+function WaTemplatesEditor({ dealerId, actor }) {
+  const [tpls, setTpls] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!dealerId) return;
+    supabase.from('profiles').select('whatsapp_templates').eq('id', dealerId).maybeSingle()
+      .then(({ data }) => {
+        const t = data?.whatsapp_templates;
+        setTpls(Array.isArray(t) && t.length ? t.map(x => ({ ...x })) : DEFAULT_WA_TEMPLATES.map(x => ({ ...x })));
+      });
+  }, [dealerId]);
+
+  const update = (i, k, v) => setTpls(p => p.map((t, idx) => idx === i ? { ...t, [k]: v } : t));
+  const remove = (i) => setTpls(p => p.filter((_, idx) => idx !== i));
+  const add = () => setTpls(p => [...p, { label: 'New template', message: 'Hi {{name}}, ' }]);
+  const reset = () => setTpls(DEFAULT_WA_TEMPLATES.map(x => ({ ...x })));
+
+  const save = async () => {
+    setBusy(true);
+    const clean = (tpls || []).filter(t => t.label.trim() && t.message.trim());
+    const { error } = await supabase.from('profiles').update({ whatsapp_templates: clean }).eq('id', dealerId);
+    if (error) { toast.error('Save failed'); }
+    else {
+      logActivity({ dealerId, actor, tableName: 'profiles', recordId: dealerId, action: 'updated', summary: 'WhatsApp templates updated' });
+      toast.success('Templates saved');
+    }
+    setBusy(false);
+  };
+
+  if (tpls === null) return <p className="text-gray-500 text-sm">Loading…</p>;
+
+  return (
+    <div className="space-y-3">
+      <p style={{ fontSize: 11, color: '#9ca3af' }}>
+        Placeholders: {WA_PLACEHOLDERS.map(p => p.token).join('  ·  ')}
+      </p>
+      {tpls.map((t, i) => (
+        <div key={i} style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: 12 }}>
+          <div className="flex items-center gap-2 mb-2">
+            <input value={t.label} onChange={e => update(i, 'label', e.target.value)} className={iCls} placeholder="Template name" style={{ fontWeight: 600 }} />
+            <button onClick={() => remove(i)} className="text-gray-400 hover:text-red-500 p-1 flex-shrink-0"><X className="w-4 h-4" /></button>
+          </div>
+          <textarea value={t.message} onChange={e => update(i, 'message', e.target.value)} rows={2} className={taCls} placeholder="Message with {{placeholders}}" />
+        </div>
+      ))}
+      <div className="flex items-center justify-between pt-1">
+        <div className="flex gap-2">
+          <button onClick={add} className="text-sm font-medium px-3 py-2 rounded-lg" style={{ color: '#6b7280', border: '1px solid #e5e7eb', background: '#fff' }}>+ Add template</button>
+          <button onClick={reset} className="text-sm font-medium px-3 py-2 rounded-lg" style={{ color: '#9ca3af', border: '1px solid #e5e7eb', background: '#fff' }}>Reset to defaults</button>
+        </div>
+        <button onClick={save} disabled={busy} className="btn-shimmer inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-40" style={T.btnRed}>
+          {busy ? 'Saving…' : 'Save templates'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── SettingsTab ──────────────────────────────────────────────────────────────
 function SettingsTab({ profile, onProfileUpdate }) {
   const [saving, setSaving] = useState({});
   const [saved, setSaved] = useState({});
   const [errors, setErrors] = useState({});
+  const [settingsNav, setSettingsNav] = useState(null);
 
   // Section states
   const [dealership, setDealership] = useState(profile?.dealership || "");
@@ -749,9 +887,22 @@ function SettingsTab({ profile, onProfileUpdate }) {
     profile?.announcement_bar_enabled || false,
   );
   const [aboutText, setAboutText] = useState(profile?.about_text || "");
+  const [dealDisclaimer, setDealDisclaimer] = useState(profile?.deal_disclaimer || "");
+  const [commType, setCommType] = useState(profile?.commission_config?.type || "percent_gross");
+  const [commValue, setCommValue] = useState(profile?.commission_config?.value != null ? String(profile.commission_config.value) : "10");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [tgToken, setTgToken] = useState(profile?.telegram_bot_token || "");
+
+  // ── 2FA / TOTP (SEC-1) ──
+  const [mfaFactors, setMfaFactors] = useState([]);
+  const [mfaLoading, setMfaLoading] = useState(true);
+  const [mfaEnroll, setMfaEnroll] = useState(null); // { factorId, qr, secret }
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaBusy, setMfaBusy] = useState(false);
+  const [mfaError, setMfaError] = useState("");
+
+  const [tgToken, setTgToken] = useState(""); // SEC-5: write-only field, never prefilled
+  const tokenConfigured = !!profile?.telegram_bot_token;
   const [tgChannel, setTgChannel] = useState(profile?.telegram_channel_id || "");
   const [tgAutoPost, setTgAutoPost] = useState(profile?.telegram_auto_post || false);
   const [tgTesting, setTgTesting] = useState(false);
@@ -834,7 +985,10 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setAnnouncementText(profile.announcement_bar || "");
     setAnnouncementOn(profile.announcement_bar_enabled || false);
     setAboutText(profile.about_text || "");
-    setTgToken(profile.telegram_bot_token || "");
+    setDealDisclaimer(profile.deal_disclaimer || "");
+    setCommType(profile.commission_config?.type || "percent_gross");
+    setCommValue(profile.commission_config?.value != null ? String(profile.commission_config.value) : "10");
+    setTgToken(""); // SEC-5: write-only — never load the stored token back into the form
     setTgChannel(profile.telegram_channel_id || "");
     setTgAutoPost(profile.telegram_auto_post || false);
     setSubdomain(profile.subdomain || "");
@@ -942,37 +1096,48 @@ function SettingsTab({ profile, onProfileUpdate }) {
 
   const saveTelegram = () =>
     saveSection("telegram", {
-      telegram_bot_token: tgToken.trim(),
+      // SEC-5: only overwrite the stored token when a new one is typed
+      ...(tgToken.trim() ? { telegram_bot_token: tgToken.trim() } : {}),
       telegram_channel_id: tgChannel.trim(),
       telegram_auto_post: tgAutoPost,
     });
 
   const testTelegram = async () => {
-    if (!tgToken.trim() || !tgChannel.trim()) {
+    if (!tgChannel.trim() || (!tgToken.trim() && !tokenConfigured)) {
       setErrors((p) => ({ ...p, telegram: "Fill in bot token and channel ID first." }));
       return;
+    }
+    // Save token first if a new one was typed, so the edge function can read it
+    if (tgToken.trim()) {
+      await saveSection("telegram", {
+        ...(tgToken.trim() ? { telegram_bot_token: tgToken.trim() } : {}),
+        telegram_channel_id: tgChannel.trim(),
+        telegram_auto_post: tgAutoPost,
+      });
     }
     setTgTesting(true);
     setTgTestResult(null);
     setErrors((p) => ({ ...p, telegram: "" }));
     try {
-      const res = await fetch(
-        `https://api.telegram.org/bot${tgToken.trim()}/sendMessage`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: tgChannel.trim(),
-            text: "ShiftOS Telegram connected! Auto-posting is active.",
-          }),
-        }
-      );
-      const data = await res.json();
-      if (data.ok) {
+      const dealerId = profile?.role === 'manager' || profile?.role === 'admin' ? profile?.dealer_id : profile?.id;
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke('send-telegram', {
+        body: {
+          dealer_id: dealerId,
+          channel_id: tgChannel.trim(),
+          message: "ShiftOS Telegram connected! Auto-posting is active.",
+        },
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+      });
+      const data = res.data;
+      if (data?.ok) {
         setTgTestResult("ok");
+      } else if (data?.error === 'no_token') {
+        setTgTestResult("fail");
+        setErrors((p) => ({ ...p, telegram: "No token saved. Save settings first." }));
       } else {
         setTgTestResult("fail");
-        setErrors((p) => ({ ...p, telegram: data.description || "Test failed. Check token and channel ID." }));
+        setErrors((p) => ({ ...p, telegram: data?.description || "Test failed. Check token and channel ID." }));
       }
     } catch {
       setTgTestResult("fail");
@@ -1018,6 +1183,78 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setSaving((p) => ({ ...p, password: false }));
   };
 
+  // ── 2FA / TOTP handlers (SEC-1) ──
+  const loadMfaFactors = async () => {
+    setMfaLoading(true);
+    const { data } = await supabase.auth.mfa.listFactors();
+    setMfaFactors(data?.totp || []);
+    setMfaLoading(false);
+  };
+  useEffect(() => { loadMfaFactors(); }, []);
+
+  const startMfaEnroll = async () => {
+    setMfaError("");
+    setMfaBusy(true);
+    const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp" });
+    setMfaBusy(false);
+    if (error) { setMfaError(error.message); return; }
+    setMfaEnroll({ factorId: data.id, qr: data.totp.qr_code, secret: data.totp.secret });
+    setMfaCode("");
+  };
+
+  const verifyMfaEnroll = async () => {
+    if (!mfaEnroll || mfaCode.trim().length < 6) { setMfaError("Enter the 6-digit code."); return; }
+    setMfaError("");
+    setMfaBusy(true);
+    const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: mfaEnroll.factorId });
+    if (chErr) { setMfaError(chErr.message); setMfaBusy(false); return; }
+    const { error: vErr } = await supabase.auth.mfa.verify({
+      factorId: mfaEnroll.factorId, challengeId: ch.id, code: mfaCode.trim(),
+    });
+    setMfaBusy(false);
+    if (vErr) { setMfaError("Invalid code. Try again."); return; }
+    logActivity({ dealerId: profile?.id, actor: profile, tableName: "profiles", recordId: profile?.id, action: "mfa_enabled", summary: "Two-factor authentication enabled" });
+    setMfaEnroll(null);
+    setMfaCode("");
+    toast.success("Two-factor authentication enabled");
+    loadMfaFactors();
+  };
+
+  const cancelMfaEnroll = async () => {
+    if (mfaEnroll?.factorId) await supabase.auth.mfa.unenroll({ factorId: mfaEnroll.factorId }).catch(() => {});
+    setMfaEnroll(null);
+    setMfaCode("");
+    setMfaError("");
+  };
+
+  // ── SEC-4: log out everywhere ──
+  const [logoutBusy, setLogoutBusy] = useState(false);
+  const logoutAllDevices = async () => {
+    if (!window.confirm("Sign out of ShiftOS on all devices? You'll need to log in again.")) return;
+    setLogoutBusy(true);
+    const { error } = await supabase.auth.signOut({ scope: "global" });
+    if (error) { toast.error(error.message); setLogoutBusy(false); return; }
+    logActivity({ dealerId: profile?.id, actor: profile, tableName: "profiles", recordId: profile?.id, action: "updated", summary: "Signed out of all devices" });
+    window.location.href = "/login";
+  };
+
+  const removeMfaFactor = async (factorId) => {
+    if (!window.confirm("Disable two-factor authentication for this account?")) return;
+    setMfaBusy(true);
+    const { error } = await supabase.auth.mfa.unenroll({ factorId });
+    setMfaBusy(false);
+    if (error) { toast.error(error.message); return; }
+    logActivity({ dealerId: profile?.id, actor: profile, tableName: "profiles", recordId: profile?.id, action: "mfa_disabled", summary: "Two-factor authentication disabled" });
+    toast.success("Two-factor authentication disabled");
+    loadMfaFactors();
+  };
+
+  const saveDealSheet = () => saveSection("dealsheet", { deal_disclaimer: dealDisclaimer.trim() || null });
+
+  const saveCommission = () => saveSection("commission", {
+    commission_config: { type: commType, value: Number(commValue) || 0 },
+  });
+
   const saveStorefront = () =>
     saveSection("storefront", {
       storefront_why: sfWhy,
@@ -1030,10 +1267,36 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const nextPlan = nextDealerPlan(profile?.plan);
   const nextPlanCfg = nextPlan ? getPlanConfig(nextPlan) : null;
 
-  return (
+  const settingsNavGroups = [
+    { group: 'Profile', items: [
+      { key: 'identity', icon: Building2, label: 'Dealership', desc: 'Name, logo & brand color' },
+      { key: 'contact', icon: Phone, label: 'Contact & Socials', desc: 'WhatsApp, email & social links' },
+    ]},
+    { group: 'Storefront', items: [
+      { key: 'frontpage', icon: Globe, label: 'Homepage', desc: 'Hero banner, CTA & announcement' },
+      { key: 'storefront', icon: Settings, label: 'Page Content', desc: 'About, photos & layout' },
+    ]},
+    { group: 'Operations', items: [
+      { key: 'commission', icon: DollarSign, label: 'Commission', desc: 'Sales commission structure' },
+      { key: 'dealsheet', icon: FileText, label: 'Deal Sheet', desc: 'Customer proposal settings' },
+      { key: 'services', icon: Package, label: 'Services', desc: 'Products & add-on catalogue' },
+    ]},
+    { group: 'Notifications', items: [
+      { key: 'telegram', icon: Send, label: 'Telegram', desc: 'Bot alert notifications' },
+      { key: 'whatsapp', icon: MessageCircle, label: 'WhatsApp', desc: 'Message templates' },
+    ]},
+    { group: 'Account', items: [
+      { key: 'security', icon: KeyRound, label: 'Security', desc: 'Password & 2-factor auth' },
+      { key: 'team', icon: Lock, label: 'Team', desc: 'Staff access & roles' },
+      { key: 'plan', icon: CreditCard, label: 'Plan & Billing', desc: 'Current plan & usage' },
+    ]},
+  ];
+
+  const effectiveNav = settingsNav || 'identity';
+
+  const sectionContent = (
     <div className="space-y-4 max-w-2xl">
-      {/* ── Plan Usage ── */}
-      {planUsage && (
+      {(effectiveNav === 'plan') && planUsage && (
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '20px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div>
@@ -1089,8 +1352,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
           )}
         </div>
       )}
-      {/* ── 1. Dealership Identity ── */}
-      <SettingsSection
+      {effectiveNav === 'identity' && <SettingsSection
         title="Dealership Identity"
         subtitle="Your brand name, site title & accent colour"
         icon={Building2}
@@ -1222,10 +1484,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
             saved={saved}
           />
         </div>
-      </SettingsSection>
-
-      {/* ── 2. Contact & Socials ── */}
-      <SettingsSection
+      </SettingsSection>}
+      {effectiveNav === 'contact' && <SettingsSection
         title="Contact & Socials"
         subtitle="What customers see when they click enquire or visit your profile"
         icon={Phone}
@@ -1305,10 +1565,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
         <div className="flex justify-end pt-1">
           <SaveBtn sectionKey="contact" onClick={saveContact} saving={saving} saved={saved} />
         </div>
-      </SettingsSection>
-
-      {/* ── 3. Front Page Control ── */}
-      <SettingsSection
+      </SettingsSection>}
+      {effectiveNav === 'frontpage' && <SettingsSection
         title="Front Page Control"
         subtitle="Full control over what customers see on your public site"
         icon={Globe}
@@ -1453,10 +1711,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
         <div className="flex justify-end pt-1">
           <SaveBtn sectionKey="frontpage" onClick={saveFrontPage} saving={saving} saved={saved} />
         </div>
-      </SettingsSection>
-
-      {/* ── 4. Account / Password ── */}
-      <SettingsSection
+      </SettingsSection>}
+      {effectiveNav === 'security' && <SettingsSection
         title="Account Security"
         subtitle="Change your login password"
         icon={KeyRound}
@@ -1487,10 +1743,169 @@ function SettingsTab({ profile, onProfileUpdate }) {
         <div className="flex justify-end pt-1">
           <SaveBtn sectionKey="password" onClick={savePassword} saving={saving} saved={saved} />
         </div>
-      </SettingsSection>
 
-      {/* ── 4. Telegram Auto-Post ── */}
-      <SettingsSection
+        {/* ── Two-Factor Authentication (SEC-1) ── */}
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: 20, paddingTop: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 600, color: "#e5e7eb", margin: 0 }}>Two-Factor Authentication</p>
+              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", margin: "2px 0 0" }}>
+                Require an authenticator-app code at login. Protects against stolen passwords.
+              </p>
+            </div>
+            {!mfaLoading && mfaFactors.some(f => f.status === "verified") && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#4ade80", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.25)", borderRadius: 6, padding: "3px 10px", whiteSpace: "nowrap" }}>
+                ENABLED
+              </span>
+            )}
+          </div>
+
+          {mfaLoading ? (
+            <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginTop: 10 }}>Loading…</p>
+          ) : mfaFactors.some(f => f.status === "verified") ? (
+            <div style={{ marginTop: 12 }}>
+              {mfaFactors.filter(f => f.status === "verified").map(f => (
+                <div key={f.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "10px 14px", marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, color: "#e5e7eb" }}>{f.friendly_name || "Authenticator app"}</span>
+                  <button onClick={() => removeMfaFactor(f.id)} disabled={mfaBusy}
+                    style={{ fontSize: 12, color: "#f87171", background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 6, padding: "5px 12px", cursor: "pointer", opacity: mfaBusy ? 0.6 : 1 }}>
+                    Disable
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : mfaEnroll ? (
+            <div style={{ marginTop: 12, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: 16 }}>
+              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 12, lineHeight: 1.5 }}>
+                Scan this QR code with Google Authenticator, Authy, or 1Password, then enter the 6-digit code to confirm.
+              </p>
+              <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
+                <img src={`data:image/svg+xml;base64,${btoa(mfaEnroll.qr)}`} alt="2FA QR code" style={{ width: 150, height: 150, borderRadius: 8, background: "#fff", padding: 6 }} />
+                <div style={{ flex: 1, minWidth: 180 }}>
+                  <p style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Manual entry key</p>
+                  <code style={{ fontSize: 11, color: "#fbbf24", wordBreak: "break-all", display: "block", marginBottom: 12 }}>{mfaEnroll.secret}</code>
+                  <input
+                    type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6}
+                    value={mfaCode} onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                    placeholder="000000"
+                    className={iCls}
+                    style={{ letterSpacing: "0.3em", textAlign: "center", fontSize: 18 }}
+                  />
+                </div>
+              </div>
+              {mfaError && <p style={{ fontSize: 12, color: "#f87171", marginTop: 10 }}>⚠ {mfaError}</p>}
+              <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "flex-end" }}>
+                <button onClick={cancelMfaEnroll} disabled={mfaBusy}
+                  style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "8px 16px", cursor: "pointer" }}>
+                  Cancel
+                </button>
+                <button onClick={verifyMfaEnroll} disabled={mfaBusy || mfaCode.length < 6}
+                  style={{ fontSize: 13, fontWeight: 600, color: "#fff", background: "#dc2626", border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", opacity: (mfaBusy || mfaCode.length < 6) ? 0.5 : 1 }}>
+                  {mfaBusy ? "Verifying…" : "Verify & Enable"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ marginTop: 12 }}>
+              {mfaError && <p style={{ fontSize: 12, color: "#f87171", marginBottom: 8 }}>⚠ {mfaError}</p>}
+              <button onClick={startMfaEnroll} disabled={mfaBusy}
+                style={{ fontSize: 13, fontWeight: 600, color: "#fbbf24", background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: 8, padding: "9px 18px", cursor: "pointer", opacity: mfaBusy ? 0.6 : 1 }}>
+                {mfaBusy ? "Setting up…" : "Enable 2FA"}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* ── Sessions (SEC-4) ── */}
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: 20, paddingTop: 18, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "#e5e7eb", margin: 0 }}>Active Sessions</p>
+            <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", margin: "2px 0 0" }}>
+              Sign out everywhere if a device is lost or a session may be compromised.
+            </p>
+          </div>
+          <button onClick={logoutAllDevices} disabled={logoutBusy}
+            style={{ fontSize: 13, fontWeight: 600, color: "#f87171", background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 8, padding: "9px 16px", cursor: "pointer", whiteSpace: "nowrap", opacity: logoutBusy ? 0.6 : 1 }}>
+            {logoutBusy ? "Signing out…" : "Log out all devices"}
+          </button>
+        </div>
+      </SettingsSection>}
+      {effectiveNav === 'team' && <SettingsSection
+        title="Team Permissions"
+        subtitle="Control what each staff role can see and do"
+        icon={Lock}
+        iconColor="text-indigo-400"
+        iconBg="rgba(129,140,248,0.08)"
+        iconBorder="rgba(129,140,248,0.18)"
+      >
+        <PermissionsMatrix dealerId={getDealerIdFromProfile(profile)} actor={profile} />
+      </SettingsSection>}
+      {effectiveNav === 'whatsapp' && <SettingsSection
+        title="WhatsApp Templates"
+        subtitle="Customise the quick-message templates your team sends to leads"
+        icon={MessageCircle}
+        iconColor="text-green-500"
+        iconBg="rgba(34,197,94,0.08)"
+        iconBorder="rgba(34,197,94,0.18)"
+      >
+        <WaTemplatesEditor dealerId={getDealerIdFromProfile(profile)} actor={profile} />
+      </SettingsSection>}
+      {effectiveNav === 'dealsheet' && <SettingsSection
+        title="Deal Sheet"
+        subtitle="Your logo (from Dealership Identity) and a custom disclaimer appear on every deal sheet"
+        icon={FileText}
+        iconColor="text-amber-400"
+        iconBg="rgba(251,191,36,0.08)"
+        iconBorder="rgba(251,191,36,0.18)"
+      >
+        <SettingsField label="Deal Sheet Disclaimer" hint="Shown at the bottom of every deal sheet">
+          <textarea
+            value={dealDisclaimer}
+            onChange={(e) => setDealDisclaimer(e.target.value)}
+            rows={4}
+            placeholder="Leave blank to use the standard estimate/not-a-contract disclaimer."
+            className={taCls}
+          />
+        </SettingsField>
+        <div className="flex justify-end pt-1">
+          <SaveBtn sectionKey="dealsheet" onClick={saveDealSheet} saving={saving} saved={saved} />
+        </div>
+      </SettingsSection>}
+      {effectiveNav === 'commission' && <SettingsSection
+        title="Commission Structure"
+        subtitle="Default rule used to suggest salesman commission on new listings"
+        icon={DollarSign}
+        iconColor="text-green-500"
+        iconBg="rgba(34,197,94,0.08)"
+        iconBorder="rgba(34,197,94,0.18)"
+      >
+        <div className="grid grid-cols-2 gap-3">
+          <SettingsField label="Type">
+            <select value={commType} onChange={(e) => setCommType(e.target.value)} className={iCls} style={{ appearance: "none" }}>
+              <option value="percent_gross">% of gross margin</option>
+              <option value="percent_sale">% of sale price</option>
+              <option value="flat">Flat amount (RM)</option>
+            </select>
+          </SettingsField>
+          <SettingsField label={commType === "flat" ? "Amount (RM)" : "Percentage (%)"}>
+            <input
+              type="number"
+              value={commValue}
+              onChange={(e) => setCommValue(e.target.value)}
+              className={iCls}
+              min="0"
+              placeholder={commType === "flat" ? "e.g. 500" : "e.g. 10"}
+            />
+          </SettingsField>
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          Applied as the suggested commission when adding or editing a listing. Salesmen can still be set a custom amount per deal.
+        </p>
+        <div className="flex justify-end pt-1">
+          <SaveBtn sectionKey="commission" onClick={saveCommission} saving={saving} saved={saved} />
+        </div>
+      </SettingsSection>}
+      {effectiveNav === 'telegram' && <SettingsSection
         title="Telegram Auto-Post"
         subtitle="Automatically post new listings to your Telegram channel"
         icon={Send}
@@ -1520,13 +1935,17 @@ function SettingsTab({ profile, onProfileUpdate }) {
           <input
             value={tgToken}
             onChange={(e) => setTgToken(e.target.value)}
-            placeholder="1234567890:ABCdefGhIJKlmNoPQRsTUVwxyZ"
+            placeholder={tokenConfigured ? "•••••••• saved — type to replace" : "1234567890:ABCdefGhIJKlmNoPQRsTUVwxyZ"}
             className={iCls}
             type="password"
             autoComplete="off"
           />
           <p className="text-xs text-gray-700 mt-1">
-            Create a bot via <span className="text-sky-500">@BotFather</span> → /newbot → copy the token here.
+            {tokenConfigured ? (
+              <span className="text-green-600">Token saved (hidden for security). Leave blank to keep it, or enter a new token to replace.</span>
+            ) : (
+              <>Create a bot via <span className="text-sky-500">@BotFather</span> → /newbot → copy the token here.</>
+            )}
           </p>
         </SettingsField>
 
@@ -1581,10 +2000,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
           </button>
           <SaveBtn sectionKey="telegram" onClick={saveTelegram} saving={saving} saved={saved} />
         </div>
-      </SettingsSection>
-
-      {/* ── 5. Storefront Content ── */}
-      <SettingsSection
+      </SettingsSection>}
+      {effectiveNav === 'storefront' && <SettingsSection
         title="Storefront Content"
         subtitle="Customise the Why, How It Works, Testimonials, and CTA sections on your public page"
         icon={Globe}
@@ -1642,11 +2059,107 @@ function SettingsTab({ profile, onProfileUpdate }) {
           <SaveBtn sectionKey="storefront" onClick={saveStorefront} saving={saving} saved={saved} />
           <ErrMsg k="storefront" errors={errors} />
         </div>
-      </SettingsSection>
+      </SettingsSection>}
+      {effectiveNav === 'services' && <ProductsCatalogue dealerId={getDealerIdFromProfile(profile)} profile={profile} />}
+    </div>
+  );
 
-      {/* ── 6. Services & Add-ons ── */}
-      <ProductsCatalogue dealerId={getDealerIdFromProfile(profile)} />
+  return (
+    <div style={{ background: '#f5f6f8', borderRadius: 12, border: '1px solid #e5e7eb' }}>
+      {/* ── MOBILE ── */}
+      <div className="md:hidden">
+        {!settingsNav ? (
+          /* Grouped menu list */
+          <div style={{ padding: '8px 12px 16px' }}>
+            {settingsNavGroups.map(({ group, items }) => (
+              <div key={group} style={{ marginTop: 20 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: '#9ca3af', marginBottom: 6, paddingLeft: 4 }}>{group}</p>
+                <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden' }}>
+                  {items.map(({ key, icon: Icon, label, desc }, idx) => (
+                    <button
+                      key={key}
+                      onClick={() => setSettingsNav(key)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 13, width: '100%',
+                        padding: '11px 14px', background: 'none', border: 'none',
+                        borderTop: idx > 0 ? '1px solid #f3f4f6' : 'none',
+                        cursor: 'pointer', textAlign: 'left',
+                      }}
+                    >
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Icon size={15} style={{ color: '#4b5563' }} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', marginBottom: 1 }}>{label}</p>
+                        <p style={{ fontSize: 11, color: '#9ca3af' }}>{desc}</p>
+                      </div>
+                      <ChevronRight size={14} style={{ color: '#d1d5db', flexShrink: 0 }} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* Section panel with back button */
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 14px', borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
+              <button
+                onClick={() => setSettingsNav(null)}
+                style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: 13, fontWeight: 500, padding: '4px 0' }}
+              >
+                <ChevronLeft size={15} />
+                Settings
+              </button>
+              <ChevronRight size={13} style={{ color: '#d1d5db' }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>
+                {settingsNavGroups.flatMap(g => g.items).find(i => i.key === settingsNav)?.label}
+              </span>
+            </div>
+            <div style={{ padding: '16px 12px' }}>
+              {sectionContent}
+            </div>
+          </div>
+        )}
+      </div>
 
+      {/* ── DESKTOP ── */}
+      <div className="hidden md:flex" style={{ minHeight: 560 }}>
+        <nav style={{ width: 196, flexShrink: 0, borderRight: '1px solid #e5e7eb', padding: '20px 10px', background: '#fff', borderRadius: '12px 0 0 12px' }}>
+          {settingsNavGroups.map(({ group, items }, gi) => (
+            <div key={group} style={{ marginBottom: 24, paddingTop: gi > 0 ? 0 : 0 }}>
+              <p style={{ fontSize: 10, letterSpacing: '0.1em', color: '#b0b7c3', fontWeight: 700, textTransform: 'uppercase', padding: '0 10px', marginBottom: 3 }}>{group}</p>
+              {items.map(({ key, icon: Icon, label }) => {
+                const active = effectiveNav === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setSettingsNav(key)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '7px 10px',
+                      borderRadius: 7, border: 'none', cursor: 'pointer', textAlign: 'left', marginBottom: 1,
+                      background: active ? '#f9fafb' : 'transparent',
+                      color: active ? '#dc2626' : '#4b5563',
+                      borderLeft: active ? '2px solid #dc2626' : '2px solid transparent',
+                      fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: active ? 600 : 400,
+                      transition: 'all 0.12s',
+                    }}
+                  >
+                    <Icon size={14} style={{ flexShrink: 0 }} />
+                    {label}
+                  </button>
+                );
+              })}
+              {gi < settingsNavGroups.length - 1 && (
+                <div style={{ height: 1, background: '#f0f1f3', margin: '14px 10px 0' }} />
+              )}
+            </div>
+          ))}
+        </nav>
+        <div style={{ flex: 1, padding: '24px 28px', minWidth: 0, overflowY: 'auto' }}>
+          {sectionContent}
+        </div>
+      </div>
     </div>
   );
 }
@@ -1915,6 +2428,7 @@ function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
 
 // ─── AnalyticsTab ─────────────────────────────────────────────────────────────
 function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStaleAdjusted, adjustedStaleIds }) {
+  const { can } = usePermissions(profile);
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -2502,7 +3016,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
             <p style={{ fontSize:11, color:'#6b7280', margin:'2px 0 0', letterSpacing:'0.01em' }}>Sorted by views · traffic activates once listings go live</p>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <button
+            {can('export_data') && <button
               onClick={exportAnalyticsCSV}
               disabled={eventsLoading || carStatsRows.length === 0}
               style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, fontWeight:600, color:'#374151', background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:7, padding:'5px 10px', cursor: eventsLoading || carStatsRows.length === 0 ? 'not-allowed' : 'pointer', opacity: eventsLoading || carStatsRows.length === 0 ? 0.5 : 1, fontFamily:"'DM Sans',sans-serif" }}
@@ -2510,7 +3024,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
             >
               <Download style={{ width:12, height:12 }} />
               Export CSV
-            </button>
+            </button>}
             <span style={{ fontSize:11, fontWeight:600, color:'#6b7280', background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:6, padding:'4px 10px' }}>
               {listings.length} listing{listings.length !== 1 ? 's' : ''}
             </span>
@@ -4890,6 +5404,7 @@ function ListingDetailDrawer({
 // ─── StockTab ─────────────────────────────────────────────────────────────────
 const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
   const navigate = useNavigate();
+  const { can } = usePermissions(profile);
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -4903,6 +5418,31 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
   const [historyUnit, setHistoryUnit] = useState(null);
   const [historyLogs, setHistoryLogs] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [pnlUnit, setPnlUnit] = useState(null);
+  const [pnlData, setPnlData] = useState(null);
+  const [pnlLoading, setPnlLoading] = useState(false);
+  const [reconUnit, setReconUnit] = useState(null);
+  const [reconJobs, setReconJobs] = useState([]);
+  const [reconLoading, setReconLoading] = useState(false);
+  const [reconForm, setReconForm] = useState({ title: '', category: 'other', vendor: '', cost: '', eta_date: '', notes: '' });
+  const [reconSaving, setReconSaving] = useState(false);
+  const [showReconAdd, setShowReconAdd] = useState(false);
+  const [showCsvImport, setShowCsvImport] = useState(false);
+  const [showVendors, setShowVendors] = useState(false);
+  const [vendors, setVendors] = useState([]);
+  const [vendorsLoading, setVendorsLoading] = useState(false);
+  const [vendorForm, setVendorForm] = useState({ name: '', category: 'workshop', contact: '', phone: '', address: '', notes: '' });
+  const [vendorSaving, setVendorSaving] = useState(false);
+  const [showVendorAdd, setShowVendorAdd] = useState(false);
+  const [csvRows, setCsvRows] = useState([]);
+  const [csvError, setCsvError] = useState('');
+  const [csvSaving, setCsvSaving] = useState(false);
+  const csvInputRef = useRef(null);
+
+  // ENT-8: inline price editing
+  const [editPriceUnit, setEditPriceUnit] = useState(null);
+  const [editPriceForm, setEditPriceForm] = useState({ purchase_price: '', recon_cost: '', asking_price: '' });
+  const [editPriceSaving, setEditPriceSaving] = useState(false);
 
   // Reset pagination when switching between available/sold
   useEffect(() => { setVisibleCount(30); }, [stockView]);
@@ -4922,7 +5462,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
   useEffect(() => { if (userId) fetchUnits(); }, [userId]);
 
   const daysInStock = (u) => {
-    if (u.days_in_stock != null) return u.days_in_stock;
+    if (u.days_in_stock != null && u.days_in_stock > 0) return u.days_in_stock;
     const date = u.purchase_date || u.created_at;
     if (!date) return '—';
     return Math.floor((Date.now() - new Date(date)) / 86400000);
@@ -4957,11 +5497,9 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
 
   const totalGP = thisMonth.reduce((s, u) => s + (grossProfit(u) || 0), 0);
   const totalValue = activeUnits.reduce((s, u) => s + (Number(u.asking_price) || 0), 0);
-  const avgDays = activeUnits.length
-    ? Math.round(activeUnits.reduce((s, u) => {
-        const days = daysInStock(u);
-        return typeof days === 'number' ? s + days : s;
-      }, 0) / activeUnits.length)
+  const unitsWithDays = activeUnits.filter(u => typeof daysInStock(u) === 'number');
+  const avgDays = unitsWithDays.length
+    ? Math.round(unitsWithDays.reduce((s, u) => s + daysInStock(u), 0) / unitsWithDays.length)
     : 0;
   const agingUnits = activeUnits.filter(u => {
     const days = daysInStock(u);
@@ -5071,6 +5609,195 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
     setUnits(p => p.map(u => u.id === unit.id ? { ...u, encumbrance_status: next } : u));
   };
 
+  const fetchPnl = async (unit) => {
+    setPnlUnit(unit);
+    setPnlData(null);
+    setPnlLoading(true);
+    const listingId = unit.listing_id || unit.car_listings?.id;
+    let addons = [];
+    if (listingId) {
+      const { data } = await supabase
+        .from('deal_products')
+        .select('sold_price, dealer_products(name, cost_price)')
+        .eq('listing_id', listingId)
+        .eq('dealer_id', userId);
+      addons = data || [];
+    }
+    const purchasePrice  = Number(unit.purchase_price) || 0;
+    const reconCost      = Number(unit.recon_cost) || 0;
+    const servicesCost   = Number(unit.car_listings?.included_services_cost) || 0;
+    const commission     = Number(unit.car_listings?.commission_amount) || 0;
+    const addonRevenue   = addons.reduce((s, a) => s + (Number(a.sold_price) || 0), 0);
+    const addonCost      = addons.reduce((s, a) => s + (Number(a.dealer_products?.cost_price) || 0), 0);
+    const revenue        = Number(unit.sold_price) || Number(unit.asking_price) || Number(unit.car_listings?.selling_price) || 0;
+    const totalCosts     = purchasePrice + reconCost + servicesCost + commission + addonCost;
+    const netPnl         = revenue + addonRevenue - totalCosts;
+    setPnlData({ purchasePrice, reconCost, servicesCost, commission, addonRevenue, addonCost, revenue, totalCosts, netPnl, addons, isSold: unit.status === 'sold' });
+    setPnlLoading(false);
+  };
+
+  const RECON_CATS = [
+    { value: 'wash',        label: 'Wash & Detail' },
+    { value: 'polish',      label: 'Polish / Paint' },
+    { value: 'engine',      label: 'Engine / Mechanical' },
+    { value: 'tyres',       label: 'Tyres' },
+    { value: 'upholstery',  label: 'Upholstery / Interior' },
+    { value: 'bodywork',    label: 'Bodywork / Dents' },
+    { value: 'inspection',  label: 'Inspection' },
+    { value: 'electrical',  label: 'Electrical' },
+    { value: 'accessories', label: 'Accessories' },
+    { value: 'other',       label: 'Other' },
+  ];
+
+  const handleCsvFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const text = ev.target.result;
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        if (lines.length < 2) { setCsvError('File must have a header row and at least one data row.'); setCsvRows([]); return; }
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z_]/g, '_'));
+        const col = (alts) => headers.findIndex(h => alts.some(a => h.includes(a)));
+        const iB  = col(['brand','make']);
+        const iM  = col(['model']);
+        const iY  = col(['year']);
+        const iP  = col(['plate','reg']);
+        const iCost = col(['purchase','cost','buying']);
+        const iRecon = col(['recon']);
+        const iAsk  = col(['asking','sell','price']);
+        const rows = lines.slice(1).map((line, i) => {
+          const cells = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+          return {
+            _row: i + 2,
+            brand:          iB  >= 0 ? cells[iB]  || '' : '',
+            model:          iM  >= 0 ? cells[iM]  || '' : '',
+            year:           iY  >= 0 ? cells[iY]  || '' : '',
+            plate_number:   iP  >= 0 ? cells[iP]  || '' : '',
+            purchase_price: iCost  >= 0 ? Number(cells[iCost])  || 0 : 0,
+            recon_cost:     iRecon >= 0 ? Number(cells[iRecon]) || 0 : 0,
+            asking_price:   iAsk   >= 0 ? Number(cells[iAsk])  || 0 : 0,
+          };
+        }).filter(r => r.brand || r.model);
+        if (rows.length === 0) { setCsvError('No valid rows found. Ensure columns: brand/make, model, year.'); setCsvRows([]); return; }
+        setCsvError('');
+        setCsvRows(rows);
+      } catch { setCsvError('Failed to parse CSV. Please check the file format.'); setCsvRows([]); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleCsvImport = async () => {
+    if (!csvRows.length) return;
+    setCsvSaving(true);
+    const payload = csvRows.map(r => ({
+      dealer_id: userId, status: 'in_stock',
+      brand: r.brand || null, model: r.model || null, year: r.year ? Number(r.year) : null,
+      registration_number: r.plate_number || null,
+      purchase_price: r.purchase_price || 0,
+      recon_cost: r.recon_cost || 0,
+      asking_price: r.asking_price || 0,
+      encumbrance_status: 'unknown',
+    }));
+    const { error } = await supabase.from('stock_units').insert(payload);
+    if (error) { toast.error('Import failed: ' + error.message); }
+    else {
+      toast.success(`${payload.length} units imported`);
+      setShowCsvImport(false);
+      setCsvRows([]);
+      fetchUnits();
+    }
+    setCsvSaving(false);
+  };
+
+  const VENDOR_CATS = [
+    { value: 'workshop',    label: 'Workshop / Mechanic' },
+    { value: 'tint',        label: 'Window Tint' },
+    { value: 'bodywork',    label: 'Bodywork / Panel' },
+    { value: 'upholstery',  label: 'Upholstery' },
+    { value: 'electrical',  label: 'Electrical' },
+    { value: 'inspection',  label: 'Inspection (PUSPAKOM)' },
+    { value: 'accessories', label: 'Accessories' },
+    { value: 'insurance',   label: 'Insurance' },
+    { value: 'other',       label: 'Other' },
+  ];
+
+  const fetchVendors = async () => {
+    setVendorsLoading(true);
+    const { data } = await supabase.from('vendors').select('*').eq('dealer_id', userId).order('name', { ascending: true });
+    setVendors(data || []);
+    setVendorsLoading(false);
+  };
+
+  const handleAddVendor = async () => {
+    if (!vendorForm.name.trim()) { toast.error('Enter vendor name'); return; }
+    setVendorSaving(true);
+    const { data, error } = await supabase.from('vendors').insert({
+      dealer_id: userId, name: vendorForm.name.trim(), category: vendorForm.category,
+      contact: vendorForm.contact.trim() || null, phone: vendorForm.phone.trim() || null,
+      address: vendorForm.address.trim() || null, notes: vendorForm.notes.trim() || null,
+    }).select().single();
+    if (error) { toast.error('Failed to add vendor'); }
+    else {
+      logActivity({ dealerId: userId, actor: profile, tableName: 'vendors', recordId: data.id, action: 'created', summary: `Vendor added — ${data.name} (${data.category})` });
+      setVendors(p => [...p, data].sort((a, b) => a.name.localeCompare(b.name)));
+      setShowVendorAdd(false);
+      setVendorForm({ name: '', category: 'workshop', contact: '', phone: '', address: '', notes: '' });
+      toast.success('Vendor added');
+    }
+    setVendorSaving(false);
+  };
+
+  const handleToggleVendor = async (id, is_active) => {
+    const { error } = await supabase.from('vendors').update({ is_active }).eq('id', id);
+    if (!error) setVendors(p => p.map(v => v.id === id ? { ...v, is_active } : v));
+  };
+
+  const fetchReconJobs = async (unit) => {
+    setReconUnit(unit);
+    setReconJobs([]);
+    setReconLoading(true);
+    setShowReconAdd(false);
+    setReconForm({ title: '', category: 'other', vendor: '', cost: '', eta_date: '', notes: '' });
+    const { data } = await supabase
+      .from('recon_jobs')
+      .select('*')
+      .eq('stock_unit_id', unit.id)
+      .order('created_at', { ascending: true });
+    setReconJobs(data || []);
+    setReconLoading(false);
+  };
+
+  const handleAddReconJob = async () => {
+    if (!reconForm.title.trim()) { toast.error('Enter a job title'); return; }
+    setReconSaving(true);
+    const { data, error } = await supabase.from('recon_jobs').insert({
+      dealer_id: userId,
+      stock_unit_id: reconUnit.id,
+      title: reconForm.title.trim(),
+      category: reconForm.category,
+      vendor: reconForm.vendor.trim() || null,
+      cost: reconForm.cost ? Number(reconForm.cost) : null,
+      eta_date: reconForm.eta_date || null,
+      notes: reconForm.notes.trim() || null,
+      status: 'pending',
+    }).select().single();
+    if (error) { toast.error('Failed to add job'); }
+    else {
+      logActivity({ dealerId: userId, actor: profile, tableName: 'recon_jobs', recordId: data.id, action: 'created', summary: `Recon job — ${data.title}${data.cost ? ` · RM ${Number(data.cost).toLocaleString()}` : ''}${data.vendor ? ` · ${data.vendor}` : ''}` });
+      setReconJobs(p => [...p, data]); setShowReconAdd(false); setReconForm({ title: '', category: 'other', vendor: '', cost: '', eta_date: '', notes: '' });
+    }
+    setReconSaving(false);
+  };
+
+  const handleReconStatus = async (jobId, newStatus) => {
+    const patch = { status: newStatus, completed_at: newStatus === 'done' ? new Date().toISOString() : null };
+    const { error } = await supabase.from('recon_jobs').update(patch).eq('id', jobId);
+    if (!error) setReconJobs(p => p.map(j => j.id === jobId ? { ...j, ...patch } : j));
+  };
+
   const fetchHistory = async (unit) => {
     setHistoryUnit(unit);
     setHistoryLogs([]);
@@ -5084,6 +5811,33 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
       .limit(50);
     setHistoryLogs(data || []);
     setHistoryLoading(false);
+  };
+
+  const handleSavePrices = async () => {
+    if (!editPriceUnit) return;
+    setEditPriceSaving(true);
+    const patch = {
+      purchase_price: Number(editPriceForm.purchase_price) || 0,
+      recon_cost:     Number(editPriceForm.recon_cost)     || 0,
+      asking_price:   Number(editPriceForm.asking_price)   || 0,
+    };
+    const { error } = await supabase.from('stock_units').update(patch).eq('id', editPriceUnit.id).eq('dealer_id', userId);
+    if (!error) {
+      const changes = [];
+      const fc = {};
+      if (patch.purchase_price !== (Number(editPriceUnit.purchase_price)||0)) { changes.push(`purchase RM ${(Number(editPriceUnit.purchase_price)||0).toLocaleString()} → RM ${patch.purchase_price.toLocaleString()}`); fc.purchase_price = { from: Number(editPriceUnit.purchase_price)||0, to: patch.purchase_price }; }
+      if (patch.recon_cost     !== (Number(editPriceUnit.recon_cost)||0))     { changes.push(`recon RM ${(Number(editPriceUnit.recon_cost)||0).toLocaleString()} → RM ${patch.recon_cost.toLocaleString()}`); fc.recon_cost = { from: Number(editPriceUnit.recon_cost)||0, to: patch.recon_cost }; }
+      if (patch.asking_price   !== (Number(editPriceUnit.asking_price)||0))   { changes.push(`asking RM ${(Number(editPriceUnit.asking_price)||0).toLocaleString()} → RM ${patch.asking_price.toLocaleString()}`); fc.asking_price = { from: Number(editPriceUnit.asking_price)||0, to: patch.asking_price }; }
+      if (changes.length) {
+        logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: editPriceUnit.id, action: 'prices_updated', summary: `Prices updated — ${changes.join('; ')}`, fieldChanges: fc });
+      }
+      setUnits(u => u.map(x => x.id === editPriceUnit.id ? { ...x, ...patch } : x));
+      toast.success('Prices updated');
+      setEditPriceUnit(null);
+    } else {
+      toast.error('Failed to save prices');
+    }
+    setEditPriceSaving(false);
   };
 
   const statusBadge = (s) => {
@@ -5126,7 +5880,9 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid #e5e7eb' }}>
           <h2 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: 0 }}>Stock Units</h2>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button disabled title="CSV import coming soon" className="flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-lg opacity-40 cursor-not-allowed" style={{ background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.3)', color: '#f87171' }}><Upload className="w-3.5 h-3.5" />Import Stock</button>
+            <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvFile} />
+            <button onClick={() => { setShowVendors(true); fetchVendors(); }} className="flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-lg" style={{ background: 'rgba(107,114,128,0.08)', border: '1px solid rgba(107,114,128,0.2)', color: '#6b7280' }}><Wrench className="w-3.5 h-3.5" />Vendors</button>
+            <button onClick={() => { setShowCsvImport(true); setCsvRows([]); setCsvError(''); }} className="flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-lg" style={{ background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.3)', color: '#f87171' }}><Upload className="w-3.5 h-3.5" />Import CSV</button>
             <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><PlusCircle className="w-3.5 h-3.5" />Add Stock</button>
           </div>
         </div>
@@ -5184,8 +5940,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                 <thead>
                   <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                     {stockView === 'available'
-                      ? ['Car', 'Age', 'Purchase Price', 'Recon', 'Asking', 'Days', 'Gross Profit', 'Status', ''].map(h => <th key={h} style={thStyle}>{h}</th>)
-                      : ['Car', 'Age', 'Purchase Price', 'Recon', 'Days in Stock', 'Gross Profit', 'Status', 'Sold Price', 'Sold Date'].map(h => <th key={h} style={thStyle}>{h}</th>)
+                      ? ['Car', 'Age', can('view_cost') ? 'Purchase Price' : null, can('view_cost') ? 'Recon' : null, 'Asking', 'Days', can('view_gross') ? 'Gross Profit' : null, 'Status', ''].filter(Boolean).map(h => <th key={h} style={thStyle}>{h}</th>)
+                      : ['Car', 'Age', can('view_cost') ? 'Purchase Price' : null, can('view_cost') ? 'Recon' : null, 'Days in Stock', can('view_gross') ? 'Gross Profit' : null, 'Status', 'Sold Price', 'Sold Date'].filter(Boolean).map(h => <th key={h} style={thStyle}>{h}</th>)
                     }
                   </tr>
                 </thead>
@@ -5206,7 +5962,18 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                           {car ? (
                             <>
                               <p style={{ fontSize: 13, color: '#111827', fontWeight: 500, margin: 0 }}>{car.brand} {car.model}</p>
-                              <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>{car.year}{car.plate_number ? ` · ${car.plate_number}` : ''}</p>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                                <span style={{ fontSize: 11, color: '#6b7280' }}>{car.year}</span>
+                                {(car.plate_number || u.registration_number) ? (
+                                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.07em', color: '#374151', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 4, padding: '1px 6px' }}>
+                                    {(car.plate_number || u.registration_number).toUpperCase()}
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: 10, fontWeight: 600, color: '#9ca3af', background: '#fafafa', border: '1px dashed #d1d5db', borderRadius: 4, padding: '1px 6px' }}>
+                                    no plate
+                                  </span>
+                                )}
+                              </div>
                               {u.status === 'in_stock' && (() => {
                                 const ps  = puspakomStatus(u.puspakom_b7_date);
                                 const b5  = b5Status(u.puspakom_b5_date);
@@ -5236,8 +6003,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                             ? <span style={{ color: carAge >= 10 ? '#f87171' : carAge >= 5 ? '#fbbf24' : '#34d399', fontWeight: 600 }}>{carAge}yr</span>
                             : <span style={{ color: '#4b5563' }}>—</span>}
                         </td>
-                        <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>{(() => { const cb = costBasis(u); return cb > 0 ? <span style={{ color: '#111827' }}>RM {cb.toLocaleString()}</span> : <span style={{ color: '#9ca3af' }}>—</span>; })()}</td>
-                        <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>{Number(u.recon_cost) > 0 ? <span style={{ color: '#374151' }}>RM {Number(u.recon_cost).toLocaleString()}</span> : <span style={{ color: '#9ca3af' }}>—</span>}</td>
+                        {can('view_cost') && <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>{(() => { const cb = costBasis(u); return cb > 0 ? <span style={{ color: '#111827' }}>RM {cb.toLocaleString()}</span> : <span style={{ color: '#9ca3af' }}>—</span>; })()}</td>}
+                        {can('view_cost') && <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>{Number(u.recon_cost) > 0 ? <span style={{ color: '#374151' }}>RM {Number(u.recon_cost).toLocaleString()}</span> : <span style={{ color: '#9ca3af' }}>—</span>}</td>}
                         {stockView === 'available' && (
                           <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(Number(u.asking_price)||0).toLocaleString()}</td>
                         )}
@@ -5246,15 +6013,18 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                             ? <span style={{ color: '#93c5fd', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}><AlertTriangle style={{ width: 11, height: 11 }} />{daysNum}d</span>
                             : <span style={{ color: '#9ca3af' }}>{days !== '—' ? `${days}d` : '—'}</span>}
                         </td>
-                        <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>
+                        {can('view_gross') && <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>
                           {gp != null ? <span style={{ color: gp >= 0 ? '#34d399' : '#93c5fd', fontWeight: 600 }}>RM {gp.toLocaleString()}</span> : '—'}
-                        </td>
+                        </td>}
                         <td style={{ padding: '12px 14px' }}>{statusBadge(u.status)}</td>
                         {stockView === 'available' ? (
                           <td style={{ padding: '12px 14px' }}>
                             <div style={{ display: 'flex', gap: 6, flexDirection: 'column' }}>
                               <button onClick={() => { setSoldTarget(u); setSoldForm({ sold_price: u.asking_price ? String(u.asking_price) : '', sold_date: new Date().toISOString().slice(0, 10) }); }} style={{ fontSize: 11, color: '#93c5fd', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Mark Sold</button>
                               <button onClick={() => fetchHistory(u)} style={{ fontSize: 11, color: '#9ca3af', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>History</button>
+                              <button onClick={() => fetchPnl(u)} style={{ fontSize: 11, color: '#34d399', background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>P&L</button>
+                              <button onClick={() => fetchReconJobs(u)} style={{ fontSize: 11, color: '#f59e0b', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Recon</button>
+                              {can('view_cost') && <button onClick={() => { setEditPriceUnit(u); setEditPriceForm({ purchase_price: String(u.purchase_price||''), recon_cost: String(u.recon_cost||''), asking_price: String(u.asking_price||'') }); }} style={{ fontSize: 11, color: '#a78bfa', background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Edit Prices</button>}
                             </div>
                           </td>
                         ) : (
@@ -5299,10 +6069,23 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
             <div className="overflow-y-auto p-5 space-y-3">
               <div>
                 <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Car Listing</label>
-                <select value={addForm.listing_id} onChange={e => setAddForm(p => ({ ...p, listing_id: e.target.value }))} className={iCls} style={{ background: '#fff' }}>
+                <select value={addForm.listing_id} onChange={e => {
+                  const lid = e.target.value;
+                  const listing = listings.find(l => l.id === lid);
+                  setAddForm(p => ({
+                    ...p,
+                    listing_id: lid,
+                    asking_price: listing?.selling_price ? String(listing.selling_price) : p.asking_price,
+                  }));
+                }} className={iCls} style={{ background: '#fff' }}>
                   <option value="">Select listing...</option>
                   {listings.map(l => <option key={l.id} value={l.id}>{l.brand} {l.model} {l.year}{l.plate_number ? ` · ${l.plate_number}` : ''}</option>)}
                 </select>
+                {addForm.listing_id && units.some(u => u.listing_id === addForm.listing_id && u.status !== 'sold') && (
+                  <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />A stock unit already exists for this listing.
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Price (RM)</label><input type="number" value={addForm.purchase_price} onChange={e => setAddForm(p => ({ ...p, purchase_price: e.target.value }))} placeholder="0" className={iCls} /></div>
@@ -5394,6 +6177,343 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Prices Modal */}
+      {editPriceUnit && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+          <div className="modal-top rounded-2xl w-full max-w-sm" style={{ background: '#fff' }}>
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div>
+                <h3 className="font-semibold text-gray-900" style={{ fontSize: 15 }}>Edit Prices</h3>
+                <p style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{editPriceUnit.car_listings?.brand} {editPriceUnit.car_listings?.model} {editPriceUnit.car_listings?.year}</p>
+              </div>
+              <button onClick={() => setEditPriceUnit(null)} className="text-gray-400 hover:text-gray-700 p-1"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              {[['Purchase Price', 'purchase_price'], ['Recon Cost', 'recon_cost'], ['Asking Price', 'asking_price']].map(([label, key]) => (
+                <div key={key}>
+                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">{label}</label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-500">RM</span>
+                    <input type="number" value={editPriceForm[key]} onChange={e => setEditPriceForm(p => ({ ...p, [key]: e.target.value }))}
+                      className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-red-400" />
+                  </div>
+                </div>
+              ))}
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setEditPriceUnit(null)} className="flex-1 py-2 rounded-lg border border-gray-200 text-sm text-gray-600">Cancel</button>
+                <button onClick={handleSavePrices} disabled={editPriceSaving}
+                  className="flex-1 py-2 rounded-lg text-white text-sm font-semibold" style={{ background: '#111827', opacity: editPriceSaving ? 0.6 : 1 }}>
+                  {editPriceSaving ? 'Saving…' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* P&L Modal */}
+      {pnlUnit && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-md flex flex-col" style={{ maxHeight: '80vh', background: '#fff' }}>
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div>
+                <h3 className="font-semibold text-gray-900" style={{ fontSize: 15 }}>Unit P&L</h3>
+                <p style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                  {pnlUnit.car_listings?.brand} {pnlUnit.car_listings?.model} {pnlUnit.car_listings?.year}
+                  {pnlUnit.car_listings?.plate_number || pnlUnit.registration_number ? ` · ${pnlUnit.car_listings?.plate_number || pnlUnit.registration_number}` : ''}
+                </p>
+              </div>
+              <button onClick={() => { setPnlUnit(null); setPnlData(null); }} className="text-gray-400 hover:text-gray-700 p-1"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-5">
+              {pnlLoading ? (
+                <p className="text-gray-500 text-sm text-center py-8">Loading…</p>
+              ) : pnlData && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {/* Revenue */}
+                  <div style={{ padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Revenue</p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                      <span style={{ color: '#374151' }}>{pnlData.isSold ? 'Sold price' : 'Asking price'}</span>
+                      <span style={{ color: '#111827', fontWeight: 600 }}>RM {pnlData.revenue.toLocaleString()}</span>
+                    </div>
+                    {pnlData.addonRevenue > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginTop: 4 }}>
+                        <span style={{ color: '#374151' }}>Add-ons sold ({pnlData.addons.length})</span>
+                        <span style={{ color: '#111827', fontWeight: 600 }}>RM {pnlData.addonRevenue.toLocaleString()}</span>
+                      </div>
+                    )}
+                  </div>
+                  {/* Costs */}
+                  <div style={{ padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Costs</p>
+                    {[
+                      ['Purchase price', pnlData.purchasePrice],
+                      ['Recon cost', pnlData.reconCost],
+                      ['Included services', pnlData.servicesCost],
+                      ['Commission paid', pnlData.commission],
+                      ['Add-on cost', pnlData.addonCost],
+                    ].filter(([, v]) => v > 0).map(([label, val]) => (
+                      <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
+                        <span style={{ color: '#374151' }}>{label}</span>
+                        <span style={{ color: '#f87171' }}>− RM {val.toLocaleString()}</span>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#9ca3af', marginTop: 4 }}>
+                      <span>Total costs</span>
+                      <span>RM {pnlData.totalCosts.toLocaleString()}</span>
+                    </div>
+                  </div>
+                  {/* Net */}
+                  <div style={{ padding: '14px 0 4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>Net P&L</span>
+                      <span style={{ fontSize: 20, fontFamily: "'Bebas Neue',cursive", color: pnlData.netPnl >= 0 ? '#34d399' : '#f87171', letterSpacing: 1 }}>
+                        {pnlData.netPnl < 0 ? '− ' : ''}RM {Math.abs(pnlData.netPnl).toLocaleString()}
+                      </span>
+                    </div>
+                    {!pnlData.isSold && <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>Based on current asking price — updates when sold.</p>}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recon Job Card Modal */}
+      {reconUnit && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg flex flex-col" style={{ maxHeight: '88vh', background: '#fff' }}>
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div>
+                <h3 className="font-semibold text-gray-900" style={{ fontSize: 15 }}>Recon Job Card</h3>
+                <p style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                  {reconUnit.car_listings?.brand} {reconUnit.car_listings?.model} {reconUnit.car_listings?.year}
+                  {reconUnit.car_listings?.plate_number || reconUnit.registration_number ? ` · ${reconUnit.car_listings?.plate_number || reconUnit.registration_number}` : ''}
+                </p>
+              </div>
+              <button onClick={() => { setReconUnit(null); setReconJobs([]); }} className="text-gray-400 hover:text-gray-700 p-1"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-5">
+              {reconLoading ? (
+                <p className="text-gray-500 text-sm text-center py-8">Loading…</p>
+              ) : (
+                <>
+                  {/* Job list */}
+                  {reconJobs.length === 0 && !showReconAdd && (
+                    <p style={{ fontSize: 13, color: '#9ca3af', textAlign: 'center', padding: '20px 0' }}>No recon jobs yet.</p>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                    {reconJobs.map(job => {
+                      const statusColor = job.status === 'done' ? '#34d399' : job.status === 'in_progress' ? '#f59e0b' : '#9ca3af';
+                      const cat = RECON_CATS.find(c => c.value === job.category)?.label || job.category;
+                      return (
+                        <div key={job.id} style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 12px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                            <div style={{ flex: 1 }}>
+                              <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>{job.title}</p>
+                              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                                <span style={{ fontSize: 10, color: '#6b7280' }}>{cat}</span>
+                                {job.vendor && <span style={{ fontSize: 10, color: '#6b7280' }}>· {job.vendor}</span>}
+                                {job.cost != null && <span style={{ fontSize: 10, fontWeight: 600, color: '#374151' }}>RM {Number(job.cost).toLocaleString()}</span>}
+                                {job.eta_date && <span style={{ fontSize: 10, color: '#9ca3af' }}>ETA {new Date(job.eta_date).toLocaleDateString('en-MY', { day: '2-digit', month: 'short' })}</span>}
+                              </div>
+                            </div>
+                            <select value={job.status} onChange={e => handleReconStatus(job.id, e.target.value)}
+                              style={{ fontSize: 10, fontWeight: 600, color: statusColor, background: `${statusColor}18`, border: `1px solid ${statusColor}40`, borderRadius: 5, padding: '3px 7px', cursor: 'pointer', appearance: 'none', outline: 'none' }}>
+                              <option value="pending">Pending</option>
+                              <option value="in_progress">In Progress</option>
+                              <option value="done">Done</option>
+                            </select>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Summary */}
+                  {reconJobs.length > 0 && (() => {
+                    const totalCost = reconJobs.reduce((s, j) => s + (Number(j.cost) || 0), 0);
+                    const done = reconJobs.filter(j => j.status === 'done').length;
+                    return (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', background: '#f3f4f6', borderRadius: 8, marginBottom: 12, fontSize: 12 }}>
+                        <span style={{ color: '#6b7280' }}>{done}/{reconJobs.length} jobs done</span>
+                        {totalCost > 0 && <span style={{ fontWeight: 600, color: '#111827' }}>Total: RM {totalCost.toLocaleString()}</span>}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Add job form */}
+                  {showReconAdd ? (
+                    <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: 14 }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>New Recon Job</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        <input value={reconForm.title} onChange={e => setReconForm(f => ({ ...f, title: e.target.value }))} placeholder="Job title *" style={{ gridColumn: '1/-1', ...{ width: '100%', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' } }} />
+                        <select value={reconForm.category} onChange={e => setReconForm(f => ({ ...f, category: e.target.value }))} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 10px', fontSize: 12, outline: 'none', appearance: 'none' }}>
+                          {RECON_CATS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                        </select>
+                        <input value={reconForm.vendor} onChange={e => setReconForm(f => ({ ...f, vendor: e.target.value }))} placeholder="Vendor / workshop" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none' }} />
+                        <input type="number" value={reconForm.cost} onChange={e => setReconForm(f => ({ ...f, cost: e.target.value }))} placeholder="Cost (RM)" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none' }} />
+                        <input type="date" value={reconForm.eta_date} onChange={e => setReconForm(f => ({ ...f, eta_date: e.target.value }))} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none', colorScheme: 'light' }} />
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                        <button onClick={() => setShowReconAdd(false)} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                        <button onClick={handleAddReconJob} disabled={reconSaving} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#f59e0b', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: reconSaving ? 0.6 : 1 }}>
+                          {reconSaving ? 'Saving…' : 'Add Job'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => setShowReconAdd(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', padding: '9px', borderRadius: 8, background: '#fffbeb', border: '1px dashed #fbbf24', color: '#d97706', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      + Add Recon Job
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CSV Import Modal */}
+      {showCsvImport && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-2xl flex flex-col" style={{ maxHeight: '88vh', background: '#fff' }}>
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div>
+                <h3 className="font-semibold text-gray-900" style={{ fontSize: 15 }}>Import Stock from CSV</h3>
+                <p style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Columns: brand/make, model, year, plate/reg, purchase_price, recon_cost, asking_price</p>
+              </div>
+              <button onClick={() => { setShowCsvImport(false); setCsvRows([]); setCsvError(''); }} className="text-gray-400 hover:text-gray-700 p-1"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-5">
+              {csvRows.length === 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '24px 0' }}>
+                  <button onClick={() => csvInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: '#fef2f2', border: '2px dashed #fca5a5', borderRadius: 10, color: '#dc2626', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                    <Upload style={{ width: 16, height: 16 }} />Choose CSV File
+                  </button>
+                  {csvError && <p style={{ fontSize: 12, color: '#dc2626', textAlign: 'center' }}>{csvError}</p>}
+                  <p style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', maxWidth: 360 }}>
+                    First row must be a header. Recognised columns: brand, make, model, year, plate, reg, purchase_price, cost, recon_cost, asking_price, selling_price.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{csvRows.length} units to import</span>
+                    <button onClick={() => { setCsvRows([]); setCsvError(''); csvInputRef.current?.click(); }} style={{ fontSize: 11, color: '#6b7280', background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>Change file</button>
+                  </div>
+                  <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #e5e7eb' }}>
+                    <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                          {['Brand','Model','Year','Plate','Buy Price','Recon','Asking'].map(h => (
+                            <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#6b7280', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {csvRows.slice(0, 20).map((r, i) => (
+                          <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                            {[r.brand, r.model, r.year, r.plate_number,
+                              r.purchase_price ? `RM ${r.purchase_price.toLocaleString()}` : '—',
+                              r.recon_cost ? `RM ${r.recon_cost.toLocaleString()}` : '—',
+                              r.asking_price ? `RM ${r.asking_price.toLocaleString()}` : '—',
+                            ].map((v, j) => (
+                              <td key={j} style={{ padding: '7px 12px', color: v && v !== '—' ? '#111827' : '#9ca3af' }}>{v || '—'}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {csvRows.length > 20 && <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 6 }}>Showing first 20 of {csvRows.length} rows.</p>}
+                </>
+              )}
+            </div>
+            {csvRows.length > 0 && (
+              <div className="p-5 border-t border-gray-100 flex gap-3">
+                <button onClick={() => { setShowCsvImport(false); setCsvRows([]); }} style={{ flex: 1, padding: '9px', borderRadius: 8, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+                <button onClick={handleCsvImport} disabled={csvSaving} style={{ flex: 2, padding: '9px', borderRadius: 8, background: '#dc2626', border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: csvSaving ? 0.6 : 1 }}>
+                  {csvSaving ? 'Importing…' : `Import ${csvRows.length} Units`}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Vendors Modal */}
+      {showVendors && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg flex flex-col" style={{ maxHeight: '88vh', background: '#fff' }}>
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-900" style={{ fontSize: 15 }}>Vendor / Supplier Directory</h3>
+              <button onClick={() => { setShowVendors(false); setShowVendorAdd(false); }} className="text-gray-400 hover:text-gray-700 p-1"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-5">
+              {vendorsLoading ? (
+                <p className="text-gray-500 text-sm text-center py-8">Loading…</p>
+              ) : (
+                <>
+                  {vendors.length === 0 && !showVendorAdd && (
+                    <p style={{ fontSize: 13, color: '#9ca3af', textAlign: 'center', padding: '20px 0' }}>No vendors yet.</p>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                    {vendors.map(v => {
+                      const cat = VENDOR_CATS.find(c => c.value === v.category)?.label || v.category;
+                      return (
+                        <div key={v.id} style={{ background: v.is_active ? '#f9fafb' : '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 14px', opacity: v.is_active ? 1 : 0.6 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div style={{ flex: 1 }}>
+                              <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: '0 0 3px' }}>{v.name}</p>
+                              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 11, color: '#6b7280' }}>
+                                <span>{cat}</span>
+                                {v.phone && <a href={`tel:${v.phone}`} style={{ color: '#2563eb', textDecoration: 'none' }}>{v.phone}</a>}
+                                {v.contact && <span>{v.contact}</span>}
+                              </div>
+                              {v.notes && <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 3 }}>{v.notes}</p>}
+                            </div>
+                            <button onClick={() => handleToggleVendor(v.id, !v.is_active)} style={{ fontSize: 10, fontWeight: 600, color: v.is_active ? '#16a34a' : '#9ca3af', background: v.is_active ? '#f0fdf4' : '#f3f4f6', border: `1px solid ${v.is_active ? '#bbf7d0' : '#e5e7eb'}`, borderRadius: 5, padding: '3px 8px', cursor: 'pointer', flexShrink: 0 }}>
+                              {v.is_active ? 'Active' : 'Inactive'}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {showVendorAdd ? (
+                    <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8, padding: 14 }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: '#0369a1', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>New Vendor</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        <input value={vendorForm.name} onChange={e => setVendorForm(f => ({ ...f, name: e.target.value }))} placeholder="Vendor name *" style={{ gridColumn: '1/-1', ...{ width: '100%', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' } }} />
+                        <select value={vendorForm.category} onChange={e => setVendorForm(f => ({ ...f, category: e.target.value }))} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 10px', fontSize: 12, outline: 'none', appearance: 'none' }}>
+                          {VENDOR_CATS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                        </select>
+                        <input value={vendorForm.phone} onChange={e => setVendorForm(f => ({ ...f, phone: e.target.value }))} placeholder="Phone" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none' }} />
+                        <input value={vendorForm.contact} onChange={e => setVendorForm(f => ({ ...f, contact: e.target.value }))} placeholder="Contact person" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none' }} />
+                        <input value={vendorForm.notes} onChange={e => setVendorForm(f => ({ ...f, notes: e.target.value }))} placeholder="Notes" style={{ gridColumn: '1/-1', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none' }} />
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                        <button onClick={() => setShowVendorAdd(false)} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                        <button onClick={handleAddVendor} disabled={vendorSaving} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#0369a1', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: vendorSaving ? 0.6 : 1 }}>
+                          {vendorSaving ? 'Saving…' : 'Add Vendor'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => setShowVendorAdd(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', padding: '9px', borderRadius: 8, background: '#f0f9ff', border: '1px dashed #7dd3fc', color: '#0369a1', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      + Add Vendor
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -7675,14 +8795,14 @@ export default function DashboardPage() {
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-20 lg:hidden"
-          style={{ background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(4px)' }}
+          style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
           onClick={() => startTransition(() => setSidebarOpen(false))}
         />
       )}
 
       {/* ── Sidebar ── */}
       <aside
-        className={`fixed top-0 left-0 h-dvh overflow-hidden z-30 flex flex-col w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+        className={`fixed top-0 left-0 h-dvh overflow-hidden z-30 flex flex-col w-full lg:w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
         style={{ background: '#FFFFFF', borderRight: '1px solid #EAECF0' }}
       >
         <div className="flex-shrink-0 px-4 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid #EAECF0' }}>
@@ -7717,6 +8837,7 @@ export default function DashboardPage() {
         </div>
 
         <nav className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-2 sm:p-3 space-y-px mt-1">
+          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#9ca3af', padding: '4px 12px 6px' }}>Menu</p>
           {NAV.map(({ id, Icon, label, badge }) => (
             <button
               key={id}
