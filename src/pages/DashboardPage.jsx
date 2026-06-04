@@ -5642,9 +5642,12 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
     const addonRevenue   = addons.reduce((s, a) => s + (Number(a.sold_price) || 0), 0);
     const addonCost      = addons.reduce((s, a) => s + (Number(a.dealer_products?.cost_price) || 0), 0);
     const revenue        = Number(unit.sold_price) || Number(unit.asking_price) || Number(unit.car_listings?.selling_price) || 0;
-    const totalCosts     = purchasePrice + reconCost + servicesCost + commission + addonCost + handoverCost;
-    const netPnl         = revenue + addonRevenue - totalCosts;
-    setPnlData({ purchasePrice, reconCost, servicesCost, commission, handoverCost, addonRevenue, addonCost, revenue, totalCosts, netPnl, addons, isSold: unit.status === 'sold' });
+    const vehicleCosts   = purchasePrice + reconCost + servicesCost + commission + handoverCost;
+    const frontGross     = revenue - vehicleCosts;
+    const backGross      = addonRevenue - addonCost;
+    const totalCosts     = vehicleCosts + addonCost;
+    const netPnl         = frontGross + backGross;
+    setPnlData({ purchasePrice, reconCost, servicesCost, commission, handoverCost, addonRevenue, addonCost, revenue, frontGross, backGross, totalCosts, netPnl, addons, isSold: unit.status === 'sold' });
     setPnlLoading(false);
   };
 
@@ -6099,34 +6102,52 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                   </p>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Price (RM)</label><input type="number" value={addForm.purchase_price} onChange={e => setAddForm(p => ({ ...p, purchase_price: e.target.value }))} placeholder="0" className={iCls} /></div>
-                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Date</label><input type="date" value={addForm.purchase_date} onChange={e => setAddForm(p => ({ ...p, purchase_date: e.target.value }))} className={iCls} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Recon Cost (RM)</label><input type="number" value={addForm.recon_cost} onChange={e => setAddForm(p => ({ ...p, recon_cost: e.target.value }))} placeholder="0" className={iCls} /></div>
-                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Asking Price (RM)</label><input type="number" value={addForm.asking_price} onChange={e => setAddForm(p => ({ ...p, asking_price: e.target.value }))} placeholder="0" className={iCls} /></div>
-              </div>
-              <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Source</label><input type="text" value={addForm.purchase_source} onChange={e => setAddForm(p => ({ ...p, purchase_source: e.target.value }))} placeholder="e.g. Auction, Trade-in" className={iCls} /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">PUSPAKOM B5 Date</label>
-                  <input type="date" value={addForm.puspakom_b5_date} onChange={e => setAddForm(p => ({ ...p, puspakom_b5_date: e.target.value }))} className={iCls} />
-                  <p className="text-[10px] text-gray-500 mt-1">Chassis / body inspection.</p>
+              {/* Procurement section */}
+              <div style={{ borderTop: '1px solid #f1f3f5', paddingTop: 10 }}>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Procurement</p>
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Price (RM)</label><input type="number" value={addForm.purchase_price} onChange={e => setAddForm(p => ({ ...p, purchase_price: e.target.value }))} placeholder="0" className={iCls} /></div>
+                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Date</label><input type="date" value={addForm.purchase_date} onChange={e => setAddForm(p => ({ ...p, purchase_date: e.target.value }))} className={iCls} /></div>
                 </div>
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Recon Est. (RM)</label><input type="number" value={addForm.recon_cost} onChange={e => setAddForm(p => ({ ...p, recon_cost: e.target.value }))} placeholder="0" className={iCls} /></div>
+                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Asking Price (RM)</label><input type="number" value={addForm.asking_price} onChange={e => setAddForm(p => ({ ...p, asking_price: e.target.value }))} placeholder="0" className={iCls} /></div>
+                </div>
+                <div className="mb-3"><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Source</label><input type="text" value={addForm.purchase_source} onChange={e => setAddForm(p => ({ ...p, purchase_source: e.target.value }))} placeholder="e.g. Auction, Trade-in, Consignment" className={iCls} /></div>
+              </div>
+              {/* Inspection section */}
+              <div style={{ borderTop: '1px solid #f1f3f5', paddingTop: 10 }}>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Inspection &amp; Compliance</p>
                 <div>
-                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">PUSPAKOM B7 Date</label>
-                  <input type="date" value={addForm.puspakom_b7_date} onChange={e => setAddForm(p => ({ ...p, puspakom_b7_date: e.target.value }))} className={iCls} />
-                  <p className="text-[10px] text-gray-500 mt-1">Engine cert valid 3 months.</p>
+                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Encumbrance Status</label>
+                  <select value={addForm.encumbrance_status} onChange={e => setAddForm(p => ({ ...p, encumbrance_status: e.target.value }))} className={iCls} style={{ background: '#fff' }}>
+                    <option value="unknown">Unknown — not verified yet</option>
+                    <option value="clear">Clear — free from HP / loan</option>
+                    <option value="under_hp">Under HP — outstanding loan (settle before transfer)</option>
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">PUSPAKOM B5 Date</label>
+                    <input type="date" value={addForm.puspakom_b5_date} onChange={e => setAddForm(p => ({ ...p, puspakom_b5_date: e.target.value }))} className={iCls} />
+                    <p className="text-[10px] text-gray-400 mt-1">Chassis / body. RM 30.</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">PUSPAKOM B7 Date</label>
+                    <input type="date" value={addForm.puspakom_b7_date} onChange={e => setAddForm(p => ({ ...p, puspakom_b7_date: e.target.value }))} className={iCls} />
+                    <p className="text-[10px] text-gray-400 mt-1">Engine cert. RM 60. Valid 3 months.</p>
+                  </div>
                 </div>
               </div>
-              <div>
-                <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Encumbrance Status</label>
-                <select value={addForm.encumbrance_status} onChange={e => setAddForm(p => ({ ...p, encumbrance_status: e.target.value }))} className={iCls} style={{ background: '#fff' }}>
-                  <option value="unknown">Unknown — not verified</option>
-                  <option value="clear">Clear — free from HP / loan</option>
-                  <option value="under_hp">Under HP — outstanding loan</option>
-                </select>
+              {/* Intake checklist reminder */}
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 12px' }}>
+                <p className="text-[10px] font-bold text-green-700 uppercase tracking-widest mb-2">Intake checklist</p>
+                {['Physical inspection done', 'Geran / registration card sighted', 'Keys + spare key received', 'Service history noted', 'Photos uploaded to listing'].map(item => (
+                  <p key={item} className="text-[11px] text-green-800 m-0 flex items-center gap-1.5 mb-1">
+                    <span style={{ width: 12, height: 12, borderRadius: 2, border: '1.5px solid #16a34a', display: 'inline-block', flexShrink: 0 }} />
+                    {item}
+                  </p>
+                ))}
               </div>
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Notes</label><textarea value={addForm.notes} onChange={e => setAddForm(p => ({ ...p, notes: e.target.value }))} rows={2} placeholder="Optional notes..." className={taCls} /></div>
             </div>
@@ -6248,45 +6269,60 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                 <p className="text-gray-500 text-sm text-center py-8">Loading…</p>
               ) : pnlData && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  {/* Revenue */}
+                  {/* Front end */}
                   <div style={{ padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
-                    <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Revenue</p>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                      <span style={{ color: '#374151' }}>{pnlData.isSold ? 'Sold price' : 'Asking price'}</span>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Front End (Vehicle)</p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
+                      <span style={{ color: '#374151' }}>{pnlData.isSold ? 'Sale price' : 'Asking price'}</span>
                       <span style={{ color: '#111827', fontWeight: 600 }}>RM {pnlData.revenue.toLocaleString()}</span>
                     </div>
-                    {pnlData.addonRevenue > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginTop: 4 }}>
-                        <span style={{ color: '#374151' }}>Add-ons sold ({pnlData.addons.length})</span>
-                        <span style={{ color: '#111827', fontWeight: 600 }}>RM {pnlData.addonRevenue.toLocaleString()}</span>
-                      </div>
-                    )}
-                  </div>
-                  {/* Costs */}
-                  <div style={{ padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
-                    <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Costs</p>
                     {[
                       ['Purchase price', pnlData.purchasePrice],
                       ['Recon cost', pnlData.reconCost],
                       ['Included services', pnlData.servicesCost],
                       ['Commission paid', pnlData.commission],
-                      ['Add-on cost', pnlData.addonCost],
                       ['Handover processing', pnlData.handoverCost],
                     ].filter(([, v]) => v > 0).map(([label, val]) => (
-                      <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                        <span style={{ color: '#374151' }}>{label}</span>
-                        <span style={{ color: '#f87171' }}>− RM {val.toLocaleString()}</span>
+                      <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
+                        <span style={{ color: '#6b7280' }}>{label}</span>
+                        <span style={{ color: '#f87171' }}>− RM {Number(val).toLocaleString()}</span>
                       </div>
                     ))}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#9ca3af', marginTop: 4 }}>
-                      <span>Total costs</span>
-                      <span>RM {pnlData.totalCosts.toLocaleString()}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, marginTop: 6, paddingTop: 6, borderTop: '1px dashed #e5e7eb' }}>
+                      <span style={{ color: '#374151' }}>Front gross</span>
+                      <span style={{ color: pnlData.frontGross >= 0 ? '#059669' : '#f87171' }}>
+                        {pnlData.frontGross < 0 ? '− ' : ''}RM {Math.abs(pnlData.frontGross).toLocaleString()}
+                      </span>
                     </div>
                   </div>
+                  {/* Back end */}
+                  {(pnlData.addonRevenue > 0 || pnlData.addonCost > 0) && (
+                    <div style={{ padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Back End (F&I / Add-ons)</p>
+                      {pnlData.addonRevenue > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 3 }}>
+                          <span style={{ color: '#374151' }}>Add-ons sold ({pnlData.addons.length})</span>
+                          <span style={{ color: '#111827', fontWeight: 600 }}>RM {pnlData.addonRevenue.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {pnlData.addonCost > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
+                          <span style={{ color: '#6b7280' }}>Add-on cost</span>
+                          <span style={{ color: '#f87171' }}>− RM {pnlData.addonCost.toLocaleString()}</span>
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, marginTop: 6, paddingTop: 6, borderTop: '1px dashed #e5e7eb' }}>
+                        <span style={{ color: '#374151' }}>Back gross</span>
+                        <span style={{ color: pnlData.backGross >= 0 ? '#059669' : '#f87171' }}>
+                          {pnlData.backGross < 0 ? '− ' : ''}RM {Math.abs(pnlData.backGross).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                   {/* Net */}
                   <div style={{ padding: '14px 0 4px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>Net P&L</span>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>Total Gross</span>
                       <span style={{ fontSize: 20, fontFamily: "'Bebas Neue',cursive", color: pnlData.netPnl >= 0 ? '#34d399' : '#f87171', letterSpacing: 1 }}>
                         {pnlData.netPnl < 0 ? '− ' : ''}RM {Math.abs(pnlData.netPnl).toLocaleString()}
                       </span>
@@ -7847,12 +7883,94 @@ function CustomersTab({ dealerId }) {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [handoverMap, setHandoverMap] = useState({});   // lead_id → progress %
+  const [packagesMap, setPackagesMap] = useState({});   // customer_id → [packages]
+  const [expandedPkg, setExpandedPkg] = useState(null); // customer_id being expanded
+  const [addPkg, setAddPkg] = useState(null);           // customer_id for add form
+  const [pkgForm, setPkgForm] = useState({ package_name: '', total_visits: 3, valid_months: 12, sold_price: '' });
+  const [pkgSaving, setPkgSaving] = useState(false);
 
   useEffect(() => {
     supabase.from("customers").select("*").eq("dealer_id", dealerId)
       .order("created_at", { ascending: false })
-      .then(({ data }) => { setCustomers(data || []); setLoading(false); });
+      .then(async ({ data }) => {
+        const list = data || [];
+        setCustomers(list);
+
+        // Fetch handover progress for all leads in one query
+        const leadIds = list.map(c => c.lead_id).filter(Boolean);
+        if (leadIds.length > 0) {
+          const { data: tasks } = await supabase
+            .from("post_sale_tasks")
+            .select("lead_id, status")
+            .in("lead_id", leadIds);
+          const map = {};
+          for (const t of tasks || []) {
+            if (!map[t.lead_id]) map[t.lead_id] = { total: 0, done: 0 };
+            if (t.status !== 'na') {
+              map[t.lead_id].total++;
+              if (t.status === 'done') map[t.lead_id].done++;
+            }
+          }
+          const pct = {};
+          for (const [lid, v] of Object.entries(map))
+            pct[lid] = v.total === 0 ? 0 : Math.round((v.done / v.total) * 100);
+          setHandoverMap(pct);
+        }
+
+        // Fetch service packages for all customers
+        const custIds = list.map(c => c.id);
+        if (custIds.length > 0) {
+          const { data: pkgs } = await supabase
+            .from("service_packages")
+            .select("*")
+            .in("customer_id", custIds)
+            .order("created_at", { ascending: false });
+          const pm = {};
+          for (const p of pkgs || []) {
+            if (!pm[p.customer_id]) pm[p.customer_id] = [];
+            pm[p.customer_id].push(p);
+          }
+          setPackagesMap(pm);
+        }
+
+        setLoading(false);
+      });
   }, [dealerId]);
+
+  const handleAddPackage = async (customer) => {
+    if (!pkgForm.package_name) return;
+    setPkgSaving(true);
+    const row = {
+      dealer_id: dealerId,
+      customer_id: customer.id,
+      lead_id: customer.lead_id || null,
+      listing_id: customer.listing_id || null,
+      package_name: pkgForm.package_name,
+      total_visits: Number(pkgForm.total_visits) || 3,
+      valid_months: Number(pkgForm.valid_months) || 12,
+      sold_price: pkgForm.sold_price ? Number(pkgForm.sold_price) : null,
+      sold_at: new Date().toISOString().slice(0, 10),
+    };
+    const { data } = await supabase.from("service_packages").insert(row).select().single();
+    if (data) {
+      setPackagesMap(p => ({ ...p, [customer.id]: [data, ...(p[customer.id] || [])] }));
+      setExpandedPkg(customer.id);
+    }
+    setAddPkg(null);
+    setPkgForm({ package_name: '', total_visits: 3, valid_months: 12, sold_price: '' });
+    setPkgSaving(false);
+  };
+
+  const handleLogVisit = async (pkg) => {
+    if (pkg.used_visits >= pkg.total_visits) return;
+    const updated = { used_visits: pkg.used_visits + 1, updated_at: new Date().toISOString() };
+    await supabase.from("service_packages").update(updated).eq("id", pkg.id);
+    setPackagesMap(p => {
+      const list = (p[pkg.customer_id] || []).map(pk => pk.id === pkg.id ? { ...pk, ...updated } : pk);
+      return { ...p, [pkg.customer_id]: list };
+    });
+  };
 
   const today = new Date();
   const expiryColor = (diff) => diff === null ? "#6b7280" : diff < 0 ? "#f87171" : diff <= 30 ? "#fbbf24" : "#4ade80";
@@ -7926,50 +8044,131 @@ function CustomersTab({ dealerId }) {
         <table className="w-full border-collapse" style={{ fontFamily: "'DM Sans',sans-serif" }}>
           <thead>
             <tr className="border-b border-gray-100">
-              {["Customer", "Phone", "Car Bought", "Purchase Date", "Road Tax", "Insurance", ""].map(h => (
+              {["Customer", "Phone", "Car Bought", "Purchase Date", "Road Tax", "Insurance", "Handover", ""].map(h => (
                 <th key={h} className="px-4 py-2.5 text-[10px] text-gray-500 uppercase tracking-widest font-semibold text-left whitespace-nowrap bg-gray-50">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.map(c => {
-              const rtDiff = c.road_tax_expiry ? (new Date(c.road_tax_expiry) - today) / 86400000 : null;
+              const rtDiff  = c.road_tax_expiry  ? (new Date(c.road_tax_expiry)  - today) / 86400000 : null;
               const insDiff = c.insurance_expiry ? (new Date(c.insurance_expiry) - today) / 86400000 : null;
+              const progress = c.lead_id ? (handoverMap[c.lead_id] ?? null) : null;
+              const pkgs = packagesMap[c.customer_id] || packagesMap[c.id] || [];
+              const isExpanded = expandedPkg === c.id;
               return (
-                <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-2.5">
-                    <p className="text-sm font-semibold text-gray-900 m-0">{c.name || "—"}</p>
-                  </td>
-                  <td className="px-4 py-2.5 text-sm text-gray-500">
-                    {c.phone ? (
-                      <a href={`https://wa.me/${c.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:text-green-700 flex items-center gap-1 no-underline">
-                        <Phone className="w-3 h-3" />{c.phone}
-                      </a>
-                    ) : "—"}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <p className="text-sm text-gray-700 m-0">{[c.car_brand, c.car_model].filter(Boolean).join(" ") || "—"}</p>
-                    {c.car_plate && <p className="text-[11px] text-gray-500 mt-0.5 m-0">{c.car_plate}{c.car_year ? ` · ${c.car_year}` : ""}</p>}
-                  </td>
-                  <td className="px-4 py-2.5 text-xs text-gray-500 whitespace-nowrap">
-                    {c.purchase_date ? new Date(c.purchase_date).toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
-                  </td>
-                  <td className="px-4 py-2.5 text-xs whitespace-nowrap font-medium" style={{ color: expiryColor(rtDiff) }}>
-                    {expiryLabel(c.road_tax_expiry, rtDiff)}
-                  </td>
-                  <td className="px-4 py-2.5 text-xs whitespace-nowrap font-medium" style={{ color: expiryColor(insDiff) }}>
-                    {expiryLabel(c.insurance_expiry, insDiff)}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <button onClick={() => setEditing({ ...c })} className="text-xs px-3 py-1 rounded-lg bg-gray-50 border border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-colors">
-                      Edit
-                    </button>
-                  </td>
-                </tr>
+                <React.Fragment key={c.id}>
+                  <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-2.5">
+                      <p className="text-sm font-semibold text-gray-900 m-0">{c.name || "—"}</p>
+                      {pkgs.length > 0 && (
+                        <button onClick={() => setExpandedPkg(isExpanded ? null : c.id)} className="text-[10px] text-violet-600 hover:underline mt-0.5 block">
+                          {pkgs.length} service pkg{pkgs.length > 1 ? 's' : ''}
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-sm text-gray-500">
+                      {c.phone ? (
+                        <a href={`https://wa.me/${c.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:text-green-700 flex items-center gap-1 no-underline">
+                          <Phone className="w-3 h-3" />{c.phone}
+                        </a>
+                      ) : "—"}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <p className="text-sm text-gray-700 m-0">{[c.car_brand, c.car_model].filter(Boolean).join(" ") || "—"}</p>
+                      {c.car_plate && <p className="text-[11px] text-gray-500 mt-0.5 m-0">{c.car_plate}{c.car_year ? ` · ${c.car_year}` : ""}</p>}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-gray-500 whitespace-nowrap">
+                      {c.purchase_date ? new Date(c.purchase_date).toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs whitespace-nowrap font-medium" style={{ color: expiryColor(rtDiff) }}>
+                      {expiryLabel(c.road_tax_expiry, rtDiff)}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs whitespace-nowrap font-medium" style={{ color: expiryColor(insDiff) }}>
+                      {expiryLabel(c.insurance_expiry, insDiff)}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {progress === null ? (
+                        <span className="text-xs text-gray-400">—</span>
+                      ) : (
+                        <div style={{ minWidth: 64 }}>
+                          <div style={{ height: 5, borderRadius: 3, background: '#f3f4f6', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${progress}%`, borderRadius: 3, background: progress === 100 ? '#34d399' : '#6366f1' }} />
+                          </div>
+                          <p className="text-[10px] text-gray-500 mt-0.5 m-0">{progress}%</p>
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setEditing({ ...c })} className="text-xs px-3 py-1 rounded-lg bg-gray-50 border border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-colors whitespace-nowrap">Edit</button>
+                        <button onClick={() => { setAddPkg(c.id); setPkgForm({ package_name: '', total_visits: 3, valid_months: 12, sold_price: '' }); }} className="text-xs px-3 py-1 rounded-lg bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 transition-colors whitespace-nowrap">+ Pkg</button>
+                      </div>
+                    </td>
+                  </tr>
+                  {/* Service packages expand row */}
+                  {isExpanded && pkgs.length > 0 && (
+                    <tr className="border-b border-gray-100 bg-violet-50/40">
+                      <td colSpan={8} className="px-6 py-3">
+                        <p className="text-[10px] font-bold text-violet-600 uppercase tracking-widest mb-2">Service Packages</p>
+                        <div className="flex flex-wrap gap-3">
+                          {pkgs.map(pkg => {
+                            const expired = pkg.expires_at && new Date(pkg.expires_at) < today;
+                            return (
+                              <div key={pkg.id} className="bg-white border border-violet-200 rounded-xl p-3" style={{ minWidth: 180 }}>
+                                <p className="text-sm font-semibold text-gray-900 m-0">{pkg.package_name}</p>
+                                <p className="text-[11px] text-gray-500 mt-1 m-0">{pkg.used_visits}/{pkg.total_visits} visits used</p>
+                                <div style={{ height: 4, borderRadius: 2, background: '#ede9fe', margin: '6px 0' }}>
+                                  <div style={{ height: '100%', width: `${(pkg.used_visits / pkg.total_visits) * 100}%`, borderRadius: 2, background: '#7c3aed' }} />
+                                </div>
+                                {pkg.expires_at && (
+                                  <p className="text-[10px] m-0" style={{ color: expired ? '#f87171' : '#9ca3af' }}>
+                                    {expired ? 'Expired' : 'Expires'} {new Date(pkg.expires_at).toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" })}
+                                  </p>
+                                )}
+                                {pkg.used_visits < pkg.total_visits && !expired && (
+                                  <button onClick={() => handleLogVisit(pkg)} className="mt-2 text-[10px] px-2 py-1 rounded bg-violet-100 text-violet-700 hover:bg-violet-200 transition-colors">Log visit</button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  {/* Add package inline form */}
+                  {addPkg === c.id && (
+                    <tr className="border-b border-gray-100 bg-violet-50/60">
+                      <td colSpan={8} className="px-6 py-3">
+                        <p className="text-[10px] font-bold text-violet-600 uppercase tracking-widest mb-2">New Service Package</p>
+                        <div className="flex flex-wrap gap-3 items-end">
+                          <div>
+                            <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">Package Name</label>
+                            <input value={pkgForm.package_name} onChange={e => setPkgForm(p => ({ ...p, package_name: e.target.value }))} placeholder="e.g. Annual Service Plan" className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:border-violet-400" style={{ width: 200 }} />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">Visits</label>
+                            <input type="number" value={pkgForm.total_visits} onChange={e => setPkgForm(p => ({ ...p, total_visits: e.target.value }))} className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:border-violet-400" style={{ width: 70 }} />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">Valid (months)</label>
+                            <input type="number" value={pkgForm.valid_months} onChange={e => setPkgForm(p => ({ ...p, valid_months: e.target.value }))} className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:border-violet-400" style={{ width: 70 }} />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">Price (RM)</label>
+                            <input type="number" value={pkgForm.sold_price} onChange={e => setPkgForm(p => ({ ...p, sold_price: e.target.value }))} placeholder="0" className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:border-violet-400" style={{ width: 90 }} />
+                          </div>
+                          <button onClick={() => handleAddPackage(c)} disabled={pkgSaving || !pkgForm.package_name} className="px-4 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-semibold disabled:opacity-50">Save</button>
+                          <button onClick={() => setAddPkg(null)} className="px-4 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs">Cancel</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               );
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-600 text-sm">
+              <tr><td colSpan={8} className="px-4 py-10 text-center text-gray-600 text-sm">
                 {customers.length === 0
                   ? "No customers yet. Customers are created automatically when a lead is marked as Won."
                   : "No results for your search."}
