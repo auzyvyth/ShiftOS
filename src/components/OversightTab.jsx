@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import {
   TrendingUp, TrendingDown, AlertTriangle, Activity, Users,
-  Target, Clock, Award, Eye, ChevronRight, RefreshCw,
+  Target, Clock, Award, Eye, ChevronRight, RefreshCw, Info,
 } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis } from 'recharts';
 
@@ -150,6 +150,45 @@ function ExceptionAlerts({ alerts, onNavigate, onFocusAnomalies }) {
   );
 }
 
+// ─── Info tooltip (hover on desktop, tap on mobile) ───────────────────────────
+function InfoTip({ children }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+  return (
+    <span ref={ref} style={{ position: 'relative', display: 'inline-flex', verticalAlign: 'middle' }}
+      onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <button onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
+        style={{ display: 'inline-flex', padding: 0, marginLeft: 4, background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}>
+        <Info style={{ width: 12, height: 12 }} />
+      </button>
+      {open && (
+        <span style={{ position: 'absolute', top: '130%', right: 0, zIndex: 50, width: 230, background: '#111827', color: '#f9fafb', fontSize: 11, fontWeight: 400, lineHeight: 1.5, letterSpacing: 0, textTransform: 'none', textAlign: 'left', padding: '10px 12px', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
+          {children}
+        </span>
+      )}
+    </span>
+  );
+}
+
+const SCORE_TIP = (
+  <>
+    <strong style={{ color: '#fff' }}>Quality score (0–100)</strong>, 30-day rolling. Weighted blend:
+    <span style={{ display: 'block', marginTop: 6 }}>• Conversion (won/leads) — 40%</span>
+    <span style={{ display: 'block' }}>• Avg gross profit per sale — 25%</span>
+    <span style={{ display: 'block' }}>• First-response speed — 15%</span>
+    <span style={{ display: 'block' }}>• HP document completion — 10%</span>
+    <span style={{ display: 'block' }}>• Active with live leads — 10%</span>
+  </>
+);
+
+const DOCS_TIP = 'Share of this salesman’s financed deals with all 8 hire-purchase documents completed, last 30 days.';
+
 // ─── Salesman Scoreboard ──────────────────────────────────────────────────────
 function SalesmanScores({ scores }) {
   if (!scores || scores.length === 0) {
@@ -162,7 +201,11 @@ function SalesmanScores({ scores }) {
         <thead>
           <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
             {['#', 'Salesman', 'Score', 'Conv.', 'Response', 'Avg GP', 'Docs', 'Leads'].map((h, i) => (
-              <th key={h} style={{ padding: '11px 16px', fontSize: 10, color: '#6b7280', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', textAlign: i >= 2 ? 'right' : 'left' }}>{h}</th>
+              <th key={h} style={{ padding: '11px 16px', fontSize: 10, color: '#6b7280', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', textAlign: i >= 2 ? 'right' : 'left', whiteSpace: 'nowrap' }}>
+                {h}
+                {h === 'Score' && <InfoTip>{SCORE_TIP}</InfoTip>}
+                {h === 'Docs' && <InfoTip>{DOCS_TIP}</InfoTip>}
+              </th>
             ))}
           </tr>
         </thead>

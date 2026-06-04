@@ -338,7 +338,7 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 3);
 
-      // Lead → viewing rate: leads where status moved past 'new'
+      // Worked rate: share of leads contacted/progressed past the 'new' stage
       const advanced = all.filter((l) => l.stage && l.stage !== "new").length;
       const viewingRate =
         total > 0 ? Math.round((advanced / total) * 100) : null;
@@ -531,6 +531,16 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
         .map(([id, val]) => ({ car_id: id, ...val }))
         .sort((a, b) => b.views - a.views)
         .slice(0, 5);
+
+      // Resolve slugs so each top car links to its public listing.
+      if (topCars.length > 0) {
+        const { data: slugRows } = await supabase
+          .from("public_car_listings")
+          .select("id, slug")
+          .in("id", topCars.map((c) => c.car_id));
+        const slugById = Object.fromEntries((slugRows || []).map((r) => [r.id, r.slug]));
+        topCars.forEach((c) => { c.slug = slugById[c.car_id] || null; });
+      }
 
       setTrafficData({
         pageVisits: totalPageVisits,
@@ -750,7 +760,7 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
                 letterSpacing: "0.06em",
               }}
             >
-              Viewing Rate
+              Worked Rate
             </span>
             <span
               style={{
@@ -762,7 +772,7 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
               {leadData?.viewingRate != null ? `${leadData.viewingRate}%` : "—"}
             </span>
             <span style={{ fontSize: 11, color: "#4b5563" }}>
-              moved past new
+              contacted past new
             </span>
           </div>
 
@@ -991,15 +1001,23 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
               Top Viewed Cars
             </p>
             <div className="space-y-1.5">
-              {trafficData.topCars.map((c, i) => (
-                <div
+              {trafficData.topCars.map((c, i) => {
+                const Row = c.slug ? "a" : "div";
+                const linkProps = c.slug
+                  ? { href: `/cars/${c.slug}`, target: "_blank", rel: "noopener noreferrer" }
+                  : {};
+                return (
+                <Row
                   key={c.car_id}
+                  {...linkProps}
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: 10,
                     padding: "6px 0",
                     borderBottom: "1px solid #EAECF0",
+                    textDecoration: "none",
+                    cursor: c.slug ? "pointer" : "default",
                   }}
                 >
                   <span
@@ -1016,7 +1034,7 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
                   <span
                     style={{
                       fontSize: 13,
-                      color: "#111827",
+                      color: c.slug ? "#2563eb" : "#111827",
                       flex: 1,
                       minWidth: 0,
                       overflow: "hidden",
@@ -1036,8 +1054,9 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
                   >
                     {c.views} view{c.views !== 1 ? "s" : ""}
                   </span>
-                </div>
-              ))}
+                </Row>
+                );
+              })}
             </div>
           </div>
         )}

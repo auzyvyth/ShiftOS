@@ -5,7 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid,
 } from 'recharts';
-import { TrendingUp, TrendingDown, Car, DollarSign, Layers, Clock, Calendar, MessageCircle, ArrowRightLeft, FileText, UserPlus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Car, DollarSign, Layers, Clock, Calendar, MessageCircle, ArrowRightLeft, FileText, UserPlus, CheckCircle2 } from 'lucide-react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STAGE_COLORS = {
@@ -115,7 +115,7 @@ function SectionHeader({ title, sub, live }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function OverviewTab({ dealerId }) {
+export default function OverviewTab({ dealerId, onNavigate }) {
   const [pnl, setPnl]           = useState(null);
   const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading]   = useState(true);
@@ -200,6 +200,17 @@ export default function OverviewTab({ dealerId }) {
         : 0;
       const stale = available.filter(c => (now - new Date(c.created_at)) / 86400000 > 30).length;
 
+      // Cold leads = active pipeline with no touch in 5+ days. The single most
+      // actionable morning signal: real buyers going quiet.
+      const COLD_DAYS = 5;
+      const coldLeads = activeLeads
+        .filter(l => (now - new Date(l.updated_at)) / 86400000 >= COLD_DAYS)
+        .sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
+      const coldLeadsCount = coldLeads.length;
+      const coldOldestDays = coldLeadsCount
+        ? Math.floor((now - new Date(coldLeads[0].updated_at)) / 86400000)
+        : 0;
+
       const teamRows = staff.map((s, idx) => {
         const lastAct = lastActivityByUser[s.id] || lastLeadTouchSm[s.id] || null;
         return {
@@ -225,13 +236,15 @@ export default function OverviewTab({ dealerId }) {
         activeLeads: activeLeads.length,
         activeListings: available.length,
         stageCounts, sourceCounts, teamRows, avgDays, stale,
+        coldLeadsCount, coldOldestDays,
         aptsToday: aptsToday.length, recentActivities,
       });
     }).catch(() => {
       // Show empty state rather than hanging forever
       setSnapshot({
         activeLeads: 0, activeListings: 0, stageCounts: {}, sourceCounts: {},
-        teamRows: [], avgDays: 0, stale: 0, aptsToday: 0, recentActivities: [],
+        teamRows: [], avgDays: 0, stale: 0, coldLeadsCount: 0, coldOldestDays: 0,
+        aptsToday: 0, recentActivities: [],
       });
     }).finally(() => setLoading(false));
   }, [dealerId, tick]);
@@ -305,6 +318,7 @@ export default function OverviewTab({ dealerId }) {
           .ov-rev-stock  { grid-template-columns: 1fr !important; }
           .ov-pipe-src   { grid-template-columns: 1fr !important; }
           .ov-team-conv  { grid-template-columns: 1fr !important; }
+          .ov-attn-grid  { grid-template-columns: 1fr !important; }
         }
         @media (max-width: 480px) {
           .ov-kpi-grid   { grid-template-columns: 1fr 1fr !important; }
@@ -312,6 +326,47 @@ export default function OverviewTab({ dealerId }) {
           .ov-conv-col-hide { display: none !important; }
         }
       `}</style>
+
+      {/* ── Needs Attention strip ── */}
+      {(() => {
+        const alerts = [];
+        if (snapshot.coldLeadsCount > 0) alerts.push({
+          key: 'cold', tone: '#DC2626', bg: '#FEF2F2', border: '#FECACA', Icon: MessageCircle,
+          label: `${snapshot.coldLeadsCount} cold lead${snapshot.coldLeadsCount === 1 ? '' : 's'}`,
+          detail: `no reply in 5d+ · oldest ${snapshot.coldOldestDays}d`, go: 'crm',
+        });
+        if (snapshot.stale > 0) alerts.push({
+          key: 'stale', tone: '#D97706', bg: '#FFFBEB', border: '#FDE68A', Icon: Clock,
+          label: `${snapshot.stale} aged unit${snapshot.stale === 1 ? '' : 's'}`,
+          detail: 'on lot 30d+ · review price', go: 'listings',
+        });
+        if (snapshot.aptsToday > 0) alerts.push({
+          key: 'appt', tone: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE', Icon: Calendar,
+          label: `${snapshot.aptsToday} appointment${snapshot.aptsToday === 1 ? '' : 's'} today`,
+          detail: 'check the bookings board', go: 'crm',
+        });
+        if (alerts.length === 0) return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 12, padding: '12px 16px' }}>
+            <CheckCircle2 style={{ width: 16, height: 16, color: '#16A34A' }} />
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#15803D', margin: 0 }}>All clear — no cold leads or aged stock needing attention.</p>
+          </div>
+        );
+        return (
+          <div className="ov-attn-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${alerts.length},1fr)`, gap: 10 }}>
+            {alerts.map(a => (
+              <button key={a.key} onClick={() => onNavigate?.(a.go)} style={{ display: 'flex', alignItems: 'center', gap: 11, textAlign: 'left', background: a.bg, border: `1px solid ${a.border}`, borderRadius: 12, padding: '12px 14px', cursor: onNavigate ? 'pointer' : 'default', width: '100%', fontFamily: 'inherit', transition: 'filter 0.12s' }} onMouseEnter={e => e.currentTarget.style.filter = 'brightness(0.98)'} onMouseLeave={e => e.currentTarget.style.filter = 'none'}>
+                <div style={{ width: 34, height: 34, borderRadius: 9, background: '#fff', border: `1px solid ${a.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <a.Icon style={{ width: 16, height: 16, color: a.tone }} />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: 13.5, fontWeight: 700, color: a.tone, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.label}</p>
+                  <p style={{ fontSize: 11, color: '#6B7280', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.detail}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* ── KPI Row ── */}
       <div className="ov-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>

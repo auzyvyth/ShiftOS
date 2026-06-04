@@ -107,3 +107,18 @@ export function computeProgress(tasks) {
   const done = counted.filter((t) => t.status === 'done').length;
   return Math.round((done / counted.length) * 100);
 }
+
+// The next actionable step for a deal — the first non-done, non-na step in the
+// official sequence. Returns { label, owner } or null if everything is done.
+// Lets the handover board show what's blocking a deal without opening it.
+const STEP_INDEX = Object.fromEntries(POST_SALE_STEPS.map((s, i) => [s.key, { ...s, order: i }]));
+export function nextBlocker(tasks) {
+  const open = (tasks || [])
+    .filter((t) => t.status === 'pending' || t.status === 'in_progress')
+    .map((t) => ({ ...t, meta: STEP_INDEX[t.step_key] }))
+    .filter((t) => t.meta)
+    .sort((a, b) => a.meta.order - b.meta.order);
+  if (open.length === 0) return null;
+  const t = open[0];
+  return { label: t.meta.label, owner: OWNER_LABELS[t.owner_role] || t.meta.owner, status: t.status };
+}
