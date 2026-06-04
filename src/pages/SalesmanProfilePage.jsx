@@ -38,10 +38,7 @@ export default function SalesmanProfilePage() {
   useEffect(() => {
     async function load() {
       const { data: p } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('slug', slug)
-        .eq('role', 'salesman')
+        .rpc('get_salesman_by_slug', { p_slug: slug })
         .maybeSingle();
 
       if (!p) { setNotFound(true); setLoading(false); return; }
@@ -88,7 +85,7 @@ export default function SalesmanProfilePage() {
   const waPhone = (profile?.whatsapp_number || '').replace(/\D/g, '');
   const waHref = waPhone ? `https://wa.me/${waPhone.startsWith('6') ? waPhone : '6' + waPhone}` : null;
   const firstName = (profile?.full_name || 'Agent').split(' ')[0];
-  const isVerified = !!(profile?.ic_number);
+  const isVerified = !!(profile?.is_verified);
   const locationCity = profile?.city || dealer?.city;
   const locationState = profile?.state || dealer?.state;
   const locationStr = [locationCity, locationState].filter(Boolean).join(', ');
