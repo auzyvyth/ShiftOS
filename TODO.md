@@ -9,20 +9,47 @@
 
 ## Dev tasks
 
+---
+
+### FEATURE ROADMAP — ranked by priority + ROI
+
+#### TIER 1 — Core revenue intelligence (highest ROI, justify RM5k/month)
+
+- [ ] **NEW-1: Real per-unit gross profit** — Front gross = sale price − purchase price − recon − handover costs. Back gross = F&I product commissions + loan referral fees + insurance agent cut (~10%). Surface in StockTab P&L modal and OversightTab. Currently AUD-8 exists but excludes back gross and handover costs. The single most important dealer KPI — without it, owners are guessing profitability.
+
+- [ ] **NEW-2: Auto-create customer record on "won" + seed handover** — When a lead moves to `won`, automatically: (1) create a `customers` row with buyer IC/contact/car/expiry dates, (2) pre-seed the post_sale_tasks checklist. Today both happen manually. Closes the gap sale → handover → after-sales with zero extra clicks. Prerequisite for all retention features. *(was PS-2)*
+
+- [ ] **NEW-3: Car intake / procurement workflow** — Guided form when a car arrives at the lot: purchase price, recon estimate, encumbrance status, Puspakom B5/B7 booking date, photos. Stock_units already has the columns; there's no guided intake UI. Without step-0 data, the P&L cost basis is missing or wrong.
+
+#### TIER 2 — Retention + accuracy (builds on Tier 1)
+
+- [ ] **NEW-4: Customers panel — post-sale lifecycle per customer** — After a car is sold the customer shouldn't disappear. Panel per customer showing: car owned, road tax expiry, insurance expiry, next service due, outstanding handover steps. Foundation for proactive outreach and renewal upsells.
+
+- [ ] **NEW-5: Connect handover costs to per-unit P&L** — Add post_sale_tasks cost totals (Puspakom RM30/60 + JPJ RM100 + road tax) into the gross calculation in StockTab P&L modal. Small code change, large accuracy gain. *(was PS-1)*
+
+- [ ] **NEW-6: Road tax & insurance renewal reminders** — 30-day automated alerts per customer when road tax or insurance is about to expire. Dealers earn referral commission (~10%) on renewals they facilitate. Requires NEW-4 customer panel to exist first.
+
+#### TIER 3 — Stickiness + operations (medium value, lower complexity)
+
+- [ ] **NEW-7: Overdue handover step reminders** — Fire a Telegram/dealer_notifications alert when a post_sale_tasks step's due_date passes and status is still pending or in_progress. due_date column already exists; just needs a cron + notification. *(was PS-3)*
+
+- [ ] **NEW-8: Fix document email delivery** — Resend / edge function email sending is broken end-to-end. Investigate RESEND_API_KEY secret, sender domain verification (alerts@xdrive.my), edge function logs. Blocks "Send to buyer" on issued documents. *(was ENT-15)*
+
+- [ ] **NEW-9: Service package tracking** — Record prepaid service packages sold per customer (e.g. 3-visit annual bundle, 6-month/10,000km intervals). Show upcoming service due dates per customer. Dealers who offer servicing need this to track what's owed.
+
+#### TIER 4 — High complexity, longer-term
+
+- [ ] **NEW-10: Workshop module** — Full job card system: service job per vehicle, parts used, labor hours, technician assigned, cost vs. quote, completion status. Parts inventory per VIN/plate. Service history timeline. High build cost but transforms ShiftOS into a full aftersales DMS.
+
+---
+
 ### INFRASTRUCTURE
 
 - **INFRA-1: Supabase storage cleanup** — Storage is full. Audit bucket usage, delete orphaned images (listings that were deleted but images remain), consider image compression pipeline or CDN offload. (Requires manual review of what to delete — user decision needed.)
 
-### POST-SALE / REVENUE (decisions needed)
-
-- **PS-1: Connect post-sale costs to unit P&L** — StockTab P&L modal (AUD-8) sums purchase + recon + services + commission + addon cost, but NOT the new post_sale_tasks costs (Puspakom RM30/60, JPJ RM100, road tax). Decide whether handover processing cost should be deducted from per-unit gross (needs listing_id <-> lead match).
-- **PS-2: Auto-create customer + seed handover on "won"** — Today post_sale_tasks seed on first board open, and the customers table (expiry reminders) is populated separately. Decide whether marking a lead "won" should auto-create a customers row and pre-seed the handover checklist. Closes the loop sale -> handover -> after-sales.
-- **PS-3: Handover step reminders** — due_date exists on post_sale_tasks but no reminder fires. Decide whether overdue steps should push a notification (reuse dealer_notifications / Telegram).
-
 ### FOLLOW-UP / MINOR
 
-- **ENT-14: Document email delivery** — "Send to buyer" button on issued documents; sends HTML doc to buyer email via Supabase Edge Function / Resend.
-- **ENT-15: Email delivery not working** — Resend / edge function email sending is failing end-to-end. Investigate RESEND_API_KEY secret, sender domain verification (alerts@xdrive.my), and edge function logs. notify-price-alerts was redeployed with verify_jwt=false to fix 401 cron block, but actual delivery needs end-to-end testing.
+- **ENT-14: Document email delivery UI** — "Send to buyer" button on issued documents; sends HTML doc to buyer email via Supabase Edge Function / Resend. Blocked until ENT-15/NEW-8 is fixed.
 
 ---
 
