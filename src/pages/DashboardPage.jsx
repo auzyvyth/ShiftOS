@@ -3721,19 +3721,28 @@ function TeamTab({ managerDealership, dealerId, profile }) {
     if (!dealerId) return;
     const { data } = await supabase
       .from("car_listings")
-      .select("assigned_to, commission_amount, commission_status")
+      .select("assigned_to, commission_amount, commission_status, selling_price, price, purchase_price, recon_cost, included_services_cost")
       .eq("dealer_id", dealerId)
       .eq("status", "sold")
       .not("assigned_to", "is", null);
     if (!data) return;
     const map = {};
-    data.forEach(({ assigned_to, commission_amount, commission_status }) => {
-      if (!map[assigned_to]) map[assigned_to] = { sold: 0, commission: 0, pending: 0, approved: 0, paid: 0 };
+    data.forEach((row) => {
+      const { assigned_to, commission_amount, commission_status } = row;
+      if (!map[assigned_to]) map[assigned_to] = { sold: 0, commission: 0, pending: 0, approved: 0, paid: 0, gross: 0 };
       map[assigned_to].sold += 1;
       const amt = Number(commission_amount) || 0;
       map[assigned_to].commission += amt;
       const cs = commission_status || 'pending';
       map[assigned_to][cs] = (map[assigned_to][cs] || 0) + amt;
+      // Front gross per unit: sale - cost - recon - included services - commission.
+      // Only counted when a purchase price exists, so units with no cost data
+      // don't show a misleading "full sale price = profit".
+      const cost = Number(row.purchase_price) || 0;
+      if (cost > 0) {
+        const sale = Number(row.selling_price ?? row.price) || 0;
+        map[assigned_to].gross += sale - cost - (Number(row.recon_cost) || 0) - (Number(row.included_services_cost) || 0) - amt;
+      }
     });
     setSoldMap(map);
   };
@@ -4160,9 +4169,10 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                       ...s,
                       sold: soldMap[s.id]?.sold || 0,
                       commission: soldMap[s.id]?.commission || 0,
+                      gross: soldMap[s.id]?.gross || 0,
                       clicks: analyticsMap[s.slug]?.clicks || 0,
                     }))
-                    .sort((a, b) => b.sold - a.sold || b.clicks - a.clicks)
+                    .sort((a, b) => b.sold - a.sold || b.gross - a.gross || b.clicks - a.clicks)
                 : null;
               const rankColors = [
                 { bg: 'rgba(250,204,21,0.12)', color: '#fbbf24', border: 'rgba(250,204,21,0.22)' },
@@ -4173,7 +4183,13 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                 <>
                   {leaderboard && (
                     <div style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb' }}>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Leaderboard</p>
+                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+                        <p style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>Leaderboard</p>
+                        <div style={{ display: 'flex', gap: 18 }}>
+                          <span style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', width: 54, textAlign: 'right' }}>Gross</span>
+                          <span className="lb-comm-head" style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', width: 72, textAlign: 'right' }}>Commission</span>
+                        </div>
+                      </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                         {leaderboard.map((s, i) => {
                           const rc = rankColors[i] || { bg: '#f9fafb', color: '#6b7280', border: '#e5e7eb' };
@@ -4186,10 +4202,13 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                                 background: rc.bg, color: rc.color,
                                 border: `1px solid ${rc.border}`,
                               }}>{i + 1}</span>
-                              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.full_name}</span>
-                              <span style={{ fontSize: 12, fontWeight: 700, color: s.sold > 0 ? '#16a34a' : '#9ca3af', minWidth: 18, textAlign: 'right' }}>{s.sold}</span>
-                              <span style={{ fontSize: 10, color: '#9ca3af', marginRight: 6 }}>sold</span>
-                              <span style={{ fontSize: 12, fontWeight: 600, color: '#374151', minWidth: 72, textAlign: 'right' }}>
+                              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{s.full_name}</span>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: s.sold > 0 ? '#16a34a' : '#9ca3af', minWidth: 16, textAlign: 'right' }}>{s.sold}</span>
+                              <span style={{ fontSize: 10, color: '#9ca3af', marginRight: 4 }}>sold</span>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: s.gross > 0 ? '#16a34a' : s.gross < 0 ? '#dc2626' : '#9ca3af', width: 54, textAlign: 'right' }}>
+                                {s.gross ? `RM ${Math.round(s.gross).toLocaleString()}` : '—'}
+                              </span>
+                              <span className="lb-comm-val" style={{ fontSize: 12, fontWeight: 600, color: '#374151', width: 72, textAlign: 'right' }}>
                                 RM {s.commission > 0 ? s.commission.toLocaleString() : '0'}
                               </span>
                             </div>
@@ -9347,7 +9366,7 @@ export default function DashboardPage() {
 
           {/* ── Overview Tab ── */}
           {activeTab === "overview" && userId && (
-            <OverviewTab dealerId={getDealerIdFromProfile(profile)} />
+            <OverviewTab dealerId={getDealerIdFromProfile(profile)} onNavigate={handleTabChange} />
           )}
 
           {/* ── Listings Tab ── */}
@@ -9544,7 +9563,7 @@ export default function DashboardPage() {
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
                         <thead>
                           <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            {['', 'Vehicle', 'Price', 'Cost', 'Recon', 'Gross', 'Year / Km', 'Grade', 'Age', 'Status'].map((h, i) => (
+                            {['', 'Vehicle', 'Price', 'Cost', 'Recon', 'Gross', 'Year / Km', 'Grade', 'Seller', 'Age', 'Status'].map((h, i) => (
                               <th key={i} style={{ padding: '11px 16px', fontSize: 10, letterSpacing: '0.13em', textTransform: 'uppercase', color: '#374151', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap', fontFamily: "'DM Sans', sans-serif" }}>{h}</th>
                             ))}
                           </tr>
@@ -9620,6 +9639,22 @@ export default function DashboardPage() {
                                       ? <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'capitalize' }}>{l.condition}</span>
                                       : <span style={{ color: '#374151', fontSize: 12 }}>—</span>
                                   }
+                                </td>
+                                {/* Seller */}
+                                <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                                  {(() => {
+                                    const sm = l.assigned_to ? salesmenById[l.assigned_to] : null;
+                                    if (!sm) return <span style={{ fontSize: 11, color: '#9ca3af', fontStyle: 'italic' }}>Unassigned</span>;
+                                    const nm = sm.full_name || 'Salesman';
+                                    return (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                                        <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0, overflow: 'hidden' }}>
+                                          {sm.avatar_url ? <img src={sm.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : nm[0].toUpperCase()}
+                                        </div>
+                                        <span style={{ fontSize: 12, color: '#374151', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 110 }}>{nm}</span>
+                                      </div>
+                                    );
+                                  })()}
                                 </td>
                                 {/* Age */}
                                 <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
@@ -9699,6 +9734,15 @@ export default function DashboardPage() {
                               {(l.vin || l.vin_number) && <span style={{ fontSize: 10, color: '#4b5563', fontFamily: 'monospace', letterSpacing: '0.04em' }}>{(l.vin || l.vin_number).trim()}</span>}
                               {l.mileage && <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 500 }}>{Number(l.mileage).toLocaleString()} km</span>}
                               {l.state && <><span style={{ color: '#1f2937', fontSize: 10 }}>·</span><span style={{ fontSize: 11, color: '#6b7280' }}>{l.state}</span></>}
+                              {(() => {
+                                const sm = l.assigned_to ? salesmenById[l.assigned_to] : null;
+                                const nm = sm?.full_name || null;
+                                return (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: nm ? '#2563eb' : '#9ca3af', background: nm ? 'rgba(37,99,235,0.08)' : 'rgba(156,163,175,0.1)', border: `1px solid ${nm ? 'rgba(37,99,235,0.2)' : 'rgba(156,163,175,0.25)'}`, borderRadius: 4, padding: '1px 6px' }}>
+                                    <UserPlus style={{ width: 9, height: 9 }} />{nm || 'Unassigned'}
+                                  </span>
+                                );
+                              })()}
                               <AgeBadge createdAt={l.created_at} />
                               {(() => {
                                 const rtD = l.road_tax_expiry ? (new Date(l.road_tax_expiry) - Date.now()) / 86400000 : null;

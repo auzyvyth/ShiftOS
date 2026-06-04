@@ -4,7 +4,7 @@ import { Gauge, Settings2, MessageCircle, Fuel, Calendar, Heart, Images } from '
 import GradeBadge from './GradeBadge';
 import { buildWaUrl } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
-import { trackEvent } from '../utils/analytics';
+import { trackEvent, getOrCreateSessionId } from '../utils/analytics';
 import { getRef } from '../utils/refTracking';
 import { isSubdomain } from '../hooks/useTenant';
 import { useSavedCars } from '../hooks/useSavedCars';
@@ -511,6 +511,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
                   source:        'car_card',
                   status:        'new',
                   ref_slug:      getRef() || null,
+                  session_id:    getOrCreateSessionId(),
                 }).then(() => {});
                 trackEvent(supabase, 'whatsapp_click', {
                   car_id:    car.id,

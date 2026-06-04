@@ -276,7 +276,7 @@ export default function HPBoard({ dealerId }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #EAECF0' }}>
-                {['Bank', 'Buyer', 'Car', 'Salesman', 'Amount', 'Tenure', 'Monthly', 'Days', 'Rejection', 'Status', 'Action'].map(h => (
+                {['Bank', 'Buyer', 'Car', 'Salesman', 'Amount', 'Tenure', 'Monthly', 'Submitted', 'Rejection', 'Status', 'Action'].map(h => (
                   <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -299,7 +299,7 @@ export default function HPBoard({ dealerId }) {
                     <td style={{ padding: '10px 12px', color: '#111827', fontWeight: 600 }}>{fmtRM(row.loan_amount)}</td>
                     <td style={{ padding: '10px 12px', color: '#6b7280' }}>{row.tenure_months}m</td>
                     <td style={{ padding: '10px 12px', color: '#374151', fontWeight: 500 }}>{row.monthly_install ? fmtRM(row.monthly_install) : '—'}</td>
-                    <td style={{ padding: '10px 12px', color: overdue ? '#ef4444' : '#374151', fontWeight: overdue ? 700 : 400 }}>{days}d{overdue ? ' !' : ''}</td>
+                    <td style={{ padding: '10px 12px', color: overdue ? '#ef4444' : '#374151', fontWeight: overdue ? 700 : 400, whiteSpace: 'nowrap' }}>{days === 0 ? 'today' : `${days}d ago`}{overdue ? ' · overdue' : ''}</td>
                     <td style={{ padding: '10px 12px', color: '#6b7280', fontSize: 12 }}>{rejLabel}</td>
                     <td style={{ padding: '10px 12px' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

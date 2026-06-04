@@ -50,5 +50,5 @@ export default [
 		},
 	},
 	{ files: ['server/**/*.js', 'api/**/*.js', 'middleware.js'], languageOptions: { globals: globals.node } },
-	{ files: ['tools/**/*.js', 'tailwind.config.js'], languageOptions: { globals: globals.node } },
+	{ files: ['tools/**/*.js', 'tailwind.config.js', 'playwright.config.js'], languageOptions: { globals: globals.node } },
 ];
