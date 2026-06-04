@@ -36,9 +36,7 @@ export async function trackEvent(eventType, { carId = null, carName = null, deal
   if (!resolvedDealerId) {
     // Resolve dealer_id from the salesman's slug via dealership name match
     const { data: salesman } = await supabase
-      .from('profiles')
-      .select('dealership')
-      .eq('slug', slug)
+      .rpc('get_salesman_by_slug', { p_slug: slug })
       .maybeSingle();
 
     if (salesman?.dealership) {

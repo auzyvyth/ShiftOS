@@ -32,10 +32,7 @@ export function useCTAContext() {
       // Priority 1: ?ref= salesman
       if (ref) {
         const { data } = await supabase
-          .from('profiles')
-          .select('id, full_name, whatsapp_number, slug')
-          .eq('slug', ref)
-          .eq('role', 'salesman')
+          .rpc('get_salesman_by_slug', { p_slug: ref })
           .maybeSingle();
         if (data) {
           sessionStorage.setItem(REF_SESSION_KEY, ref); // persist across SPA navigation
