@@ -54,23 +54,26 @@ Dealer dashboard NAV (DashboardPage.jsx NAV array): overview, crm, listings, add
   ↳ handover = post-sale lifecycle board (PostSaleBoard). Salesman panel also has a "handover" tab scoped to their own won deals.
 
 ## Post-sale handover (Module A)
-- Won deal (lead.stage = won/closed_won) → Handover tab shows it with a progress bar
+- Won deal (lead.stage = won/closed_won) → DB trigger `auto_create_customer_on_won` fires immediately: creates customers row (name/phone/IC/email/car/plate/price) AND pre-seeds 8-step post_sale_tasks checklist (B7 auto-NA if not financed). Idempotent — safe to re-trigger.
 - src/components/postsale/{PostSaleBoard,PostSaleChecklist}.jsx + src/hooks/usePostSaleTasks.js + src/utils/postSaleSteps.js
 - Malaysian sequence (fees are official rates, editable): loan settlement → buyer insurance → Puspakom B5 (RM30) → B7 (RM60, financed only, auto-NA if not financed) → JPJ pindah milik (RM100, biometric both parties, buyer within 7 days) → road tax → geran collection → handover
+- Handover processing costs (sum of non-NA step costs) are deducted from per-unit gross in StockTab P&L modal
 - F&I add-ons (Module C) already live in LeadDrawer (deal_products); revenue/gross (Module B) in RevOpsPage; customer expiry reminders (Module D) in CustomersTab
 
 ## Key DB tables
 car_listings (dealer_id, assigned_to, status, commission_amount, sold_at, included_services JSONB, included_services_cost numeric)
-stock_units (dealer_id, listing_id, purchase_price, recon_cost, status, included_services JSONB)
+stock_units (dealer_id, listing_id, purchase_price, recon_cost, status, included_services JSONB, puspakom_b5_date, puspakom_b7_date, encumbrance_status[clear|under_hp|unknown])
 profiles (role, slug, dealership, site_name, whatsapp_number, brand_color)
   ↳ manager/admin rows also have dealer_id (FK to profiles.id of their parent dealer)
 appointments (dealer_id, salesman_id, car_listing_id, appointment_date)
 analytics_events (dealer_id, salesman_slug, event_type, car_id)
-leads (dealer_id, salesman_id, stage, source, …)
+leads (dealer_id, salesman_id, stage, source, buyer_name, phone, buyer_email, buyer_ic, buyer_address, loan_bank, loan_amount, loan_status, …)
 dealer_products (dealer_id, name, category, cost_price, selling_price, is_active)
 deal_products (dealer_id, lead_id, listing_id, product_id, sold_price)
 salesman_listings (dealer_id, salesman_id, listing_id) — many-to-many; a salesman features a dealer car on their own listings WITHOUT creating a lead. Pipeline = real buyers only.
-post_sale_tasks (dealer_id, lead_id, listing_id, salesman_id, step_key, status[pending|in_progress|done|na], owner_role, due_date, cost, notes, sort_order) — handover checklist per won deal. Steps in src/utils/postSaleSteps.js. Auto-seeded on first board open.
+post_sale_tasks (dealer_id, lead_id, listing_id, salesman_id, step_key, status[pending|in_progress|done|na], owner_role, due_date, cost, notes, sort_order) — handover checklist per won deal. Steps in src/utils/postSaleSteps.js. Auto-seeded by DB trigger on won + lazy-seeded on first board open. UNIQUE(lead_id, step_key).
+customers (dealer_id, lead_id, listing_id, name, phone, email, ic_number, purchase_date, car_brand, car_model, car_year, car_plate, selling_price, payment_type, road_tax_expiry, insurance_expiry, notes) — auto-created by trigger on won. UNIQUE(lead_id).
+service_packages (dealer_id, customer_id, lead_id, listing_id, package_name, total_visits, used_visits, valid_months, sold_price, sold_at, expires_at[generated]) — prepaid service bundles per customer. Managed in CustomersTab.
 
 ## Service categories (serviceCategories.js)
 Keys: protection, tint, window_tint, warranty, insurance, road_tax, service, accessories, workshop, other
@@ -115,6 +118,21 @@ This session's git proxy blocks direct push to origin/main. Use this workflow ev
 - Schema changes (ALTER TABLE, CREATE VIEW) go directly to the live Supabase DB via MCP apply_migration
 - Always update public_car_listings VIEW after adding columns to car_listings
 - Supabase branch (isolated staging DB) available at ~$9.70/month — ask user before enabling
+
+## Edge functions (Supabase)
+- send-telegram — sends Telegram message server-side; reads bot token from DB, never exposed to client
+- telegram-notify — webhook; auto-posts new listings to dealer Telegram channel
+- invites — creates auth user + profile for manager/admin/accountant/fi_officer roles
+- send-document — emails issued dealer_documents to buyer via Resend. BLOCKED: needs RESEND_API_KEY + RESEND_FROM_EMAIL secrets set in Supabase dashboard
+- expiry-reminders — daily cron (00:00 UTC = 8am KL); fires dealer_notifications for road tax/insurance expiring in 30 or 7 days, and for overdue post_sale_tasks steps. Also notifies salesman_notifications. 24h dedup.
+- ai-proxy — proxies Claude API calls for AI features
+
+## P&L model (StockTab)
+fetchPnl in DashboardPage.jsx computes per-unit gross in two parts:
+- Front gross = sale price − purchase price − recon cost − included services − commission − handover processing costs
+- Back gross = F&I add-on revenue − add-on cost (deal_products)
+- Total gross = front + back
+Both displayed in separate labelled sections in the P&L modal.
 
 ## RLS policy safety
 - NEVER write an RLS policy on a table whose USING/CHECK expression does a subquery on that SAME table — it causes infinite recursion and breaks every read (symptom: profile fetch fails → app redirects to login in a loop)
