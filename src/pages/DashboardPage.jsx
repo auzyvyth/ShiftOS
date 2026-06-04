@@ -5617,24 +5617,34 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
     setPnlLoading(true);
     const listingId = unit.listing_id || unit.car_listings?.id;
     let addons = [];
+    let handoverTasks = [];
     if (listingId) {
-      const { data } = await supabase
-        .from('deal_products')
-        .select('sold_price, dealer_products(name, cost_price)')
-        .eq('listing_id', listingId)
-        .eq('dealer_id', userId);
-      addons = data || [];
+      const [{ data: dp }, { data: pst }] = await Promise.all([
+        supabase
+          .from('deal_products')
+          .select('sold_price, dealer_products(name, cost_price)')
+          .eq('listing_id', listingId)
+          .eq('dealer_id', userId),
+        supabase
+          .from('post_sale_tasks')
+          .select('step_key, status, cost')
+          .eq('listing_id', listingId)
+          .eq('dealer_id', userId),
+      ]);
+      addons = dp || [];
+      handoverTasks = pst || [];
     }
     const purchasePrice  = Number(unit.purchase_price) || 0;
     const reconCost      = Number(unit.recon_cost) || 0;
     const servicesCost   = Number(unit.car_listings?.included_services_cost) || 0;
     const commission     = Number(unit.car_listings?.commission_amount) || 0;
+    const handoverCost   = handoverTasks.filter((t) => t.status !== 'na').reduce((s, t) => s + (Number(t.cost) || 0), 0);
     const addonRevenue   = addons.reduce((s, a) => s + (Number(a.sold_price) || 0), 0);
     const addonCost      = addons.reduce((s, a) => s + (Number(a.dealer_products?.cost_price) || 0), 0);
     const revenue        = Number(unit.sold_price) || Number(unit.asking_price) || Number(unit.car_listings?.selling_price) || 0;
-    const totalCosts     = purchasePrice + reconCost + servicesCost + commission + addonCost;
+    const totalCosts     = purchasePrice + reconCost + servicesCost + commission + addonCost + handoverCost;
     const netPnl         = revenue + addonRevenue - totalCosts;
-    setPnlData({ purchasePrice, reconCost, servicesCost, commission, addonRevenue, addonCost, revenue, totalCosts, netPnl, addons, isSold: unit.status === 'sold' });
+    setPnlData({ purchasePrice, reconCost, servicesCost, commission, handoverCost, addonRevenue, addonCost, revenue, totalCosts, netPnl, addons, isSold: unit.status === 'sold' });
     setPnlLoading(false);
   };
 
@@ -6261,6 +6271,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                       ['Included services', pnlData.servicesCost],
                       ['Commission paid', pnlData.commission],
                       ['Add-on cost', pnlData.addonCost],
+                      ['Handover processing', pnlData.handoverCost],
                     ].filter(([, v]) => v > 0).map(([label, val]) => (
                       <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
                         <span style={{ color: '#374151' }}>{label}</span>

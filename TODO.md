@@ -17,7 +17,7 @@
 
 - [ ] **NEW-1: Real per-unit gross profit** — Front gross = sale price − purchase price − recon − handover costs. Back gross = F&I product commissions + loan referral fees + insurance agent cut (~10%). Surface in StockTab P&L modal and OversightTab. Currently AUD-8 exists but excludes back gross and handover costs. The single most important dealer KPI — without it, owners are guessing profitability.
 
-- [ ] **NEW-2: Auto-create customer record on "won" + seed handover** — When a lead moves to `won`, automatically: (1) create a `customers` row with buyer IC/contact/car/expiry dates, (2) pre-seed the post_sale_tasks checklist. Today both happen manually. Closes the gap sale → handover → after-sales with zero extra clicks. Prerequisite for all retention features. *(was PS-2)*
+- [x] **NEW-2: Auto-create customer record on "won" + seed handover** — DONE. `auto_create_customer_on_won` trigger upgraded: now also captures buyer IC + email into the customers row, AND pre-seeds the full Malaysian post_sale_tasks handover checklist (8 steps, B7 auto-NA when not financed) the instant a lead hits won/closed_won. Idempotent via NOT EXISTS + UNIQUE(lead_id, step_key). Frontend lazy-seed kept as fallback for pre-existing won deals.
 
 - [ ] **NEW-3: Car intake / procurement workflow** — Guided form when a car arrives at the lot: purchase price, recon estimate, encumbrance status, Puspakom B5/B7 booking date, photos. Stock_units already has the columns; there's no guided intake UI. Without step-0 data, the P&L cost basis is missing or wrong.
 
@@ -25,7 +25,7 @@
 
 - [ ] **NEW-4: Customers panel — post-sale lifecycle per customer** — After a car is sold the customer shouldn't disappear. Panel per customer showing: car owned, road tax expiry, insurance expiry, next service due, outstanding handover steps. Foundation for proactive outreach and renewal upsells.
 
-- [ ] **NEW-5: Connect handover costs to per-unit P&L** — Add post_sale_tasks cost totals (Puspakom RM30/60 + JPJ RM100 + road tax) into the gross calculation in StockTab P&L modal. Small code change, large accuracy gain. *(was PS-1)*
+- [x] **NEW-5: Connect handover costs to per-unit P&L** — DONE. StockTab P&L modal (`fetchPnl`) now fetches post_sale_tasks for the listing, sums cost of all non-NA steps (Puspakom B5/B7 + JPJ + road tax etc.), deducts it from net P&L, and shows a "Handover processing" cost line. Matches the handover board's processing-cost total logic.
 
 - [ ] **NEW-6: Road tax & insurance renewal reminders** — 30-day automated alerts per customer when road tax or insurance is about to expire. Dealers earn referral commission (~10%) on renewals they facilitate. Requires NEW-4 customer panel to exist first.
 
