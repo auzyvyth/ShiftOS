@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient';
 const SESSION_KEY = 'shiftos_session';
 const REF_KEY     = 'shiftos_ref';
 
-function getSessionId() {
+export function getSessionId() {
   let sid = sessionStorage.getItem(SESSION_KEY);
   if (!sid) { sid = crypto.randomUUID(); sessionStorage.setItem(SESSION_KEY, sid); }
   return sid;
