@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import useTenant, { isSubdomain } from "../hooks/useTenant";
-import { trackEvent, getSlugFromURL } from "../utils/analytics";
+import { trackEvent, getSlugFromURL, getOrCreateSessionId } from "../utils/analytics";
 
 const HC_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
@@ -599,6 +599,7 @@ function MetaBlock({ extraClass = "", metaItems, priceVal, waHref, s, tenant }) 
                     source: 'hero_carousel',
                     status: 'new',
                     ref_slug: getSlugFromURL(),
+                    session_id: getOrCreateSessionId(),
                   });
                 } catch (e) { console.warn(e); }
               })();
