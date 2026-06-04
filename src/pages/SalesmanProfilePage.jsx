@@ -56,9 +56,9 @@ export default function SalesmanProfilePage() {
       ]);
 
       if (p.dealer_id) {
-        const { data: d } = await supabase.from('profiles')
-          .select('dealership, city, state')
-          .eq('id', p.dealer_id).maybeSingle();
+        const { data: d } = await supabase
+          .rpc('get_dealer_profile_by_id', { p_dealer_id: p.dealer_id })
+          .maybeSingle();
         setDealer(d);
       }
 
