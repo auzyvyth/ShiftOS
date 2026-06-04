@@ -4,7 +4,8 @@ import { supabase } from '../supabaseClient';
 const SELECT_QUERY = `
   *,
   car_listing:car_listing_id ( id, brand, model, year, selling_price, images ),
-  assigned_profile:assigned_to ( id, full_name )
+  assigned_profile:assigned_to ( id, full_name ),
+  salesman_profile:salesman_id ( id, full_name )
 `;
 
 export function useLeads() {

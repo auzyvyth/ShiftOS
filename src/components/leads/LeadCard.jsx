@@ -32,7 +32,8 @@ export default function LeadCard({ lead, onOpen }) {
   const carPrice     = car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString()}` : null;
   const followUp     = lead.follow_up_at;
   const fuStyle      = followUpStyle(followUp);
-  const assignedName = lead.assigned_profile?.full_name;
+  const ownerName    = lead.assigned_profile?.full_name || lead.salesman_profile?.full_name;
+  const ownerFirst   = ownerName ? ownerName.split(' ')[0] : null;
   const highlight    = HIGHLIGHT_SOURCES[lead.lead_source];
 
   return (
@@ -110,14 +111,23 @@ export default function LeadCard({ lead, onOpen }) {
                 </span>
               </div>
             )}
-            {assignedName && (
-              <div title={assignedName} style={{
-                width: 18, height: 18, borderRadius: '50%',
+            {ownerName && (
+              <div title={`Lead by ${ownerName}`} style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '1px 6px 1px 2px', borderRadius: 20,
                 background: '#ede9fe', border: '1px solid #ddd6fe',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 8, fontWeight: 700, color: '#7c3aed',
               }}>
-                {assignedName[0]?.toUpperCase()}
+                <div style={{
+                  width: 16, height: 16, borderRadius: '50%',
+                  background: '#7c3aed',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 8, fontWeight: 700, color: 'white',
+                }}>
+                  {ownerName[0]?.toUpperCase()}
+                </div>
+                <span style={{ fontSize: 9, fontWeight: 700, color: '#7c3aed', whiteSpace: 'nowrap' }}>
+                  {ownerFirst}
+                </span>
               </div>
             )}
             <span style={{ fontSize: 10, fontWeight: 600, minWidth: 22, textAlign: 'right' }} className={txtCls}>

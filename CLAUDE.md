@@ -50,6 +50,14 @@ fi_officer → /fi
 
 ## Dashboard nav tabs (DashboardPage.jsx)
 listings, add, leads, analytics, team, hero, stock, enquiries, bookings, documents, revops, services, settings
+Dealer dashboard NAV (DashboardPage.jsx NAV array): overview, crm, listings, add, stock, hp, handover, analytics, team, customers, outreach, ai_manager, documents, storefront, oversight
+  ↳ handover = post-sale lifecycle board (PostSaleBoard). Salesman panel also has a "handover" tab scoped to their own won deals.
+
+## Post-sale handover (Module A)
+- Won deal (lead.stage = won/closed_won) → Handover tab shows it with a progress bar
+- src/components/postsale/{PostSaleBoard,PostSaleChecklist}.jsx + src/hooks/usePostSaleTasks.js + src/utils/postSaleSteps.js
+- Malaysian sequence (fees are official rates, editable): loan settlement → buyer insurance → Puspakom B5 (RM30) → B7 (RM60, financed only, auto-NA if not financed) → JPJ pindah milik (RM100, biometric both parties, buyer within 7 days) → road tax → geran collection → handover
+- F&I add-ons (Module C) already live in LeadDrawer (deal_products); revenue/gross (Module B) in RevOpsPage; customer expiry reminders (Module D) in CustomersTab
 
 ## Key DB tables
 car_listings (dealer_id, assigned_to, status, commission_amount, sold_at, included_services JSONB, included_services_cost numeric)
@@ -61,6 +69,8 @@ analytics_events (dealer_id, salesman_slug, event_type, car_id)
 leads (dealer_id, salesman_id, stage, source, …)
 dealer_products (dealer_id, name, category, cost_price, selling_price, is_active)
 deal_products (dealer_id, lead_id, listing_id, product_id, sold_price)
+salesman_listings (dealer_id, salesman_id, listing_id) — many-to-many; a salesman features a dealer car on their own listings WITHOUT creating a lead. Pipeline = real buyers only.
+post_sale_tasks (dealer_id, lead_id, listing_id, salesman_id, step_key, status[pending|in_progress|done|na], owner_role, due_date, cost, notes, sort_order) — handover checklist per won deal. Steps in src/utils/postSaleSteps.js. Auto-seeded on first board open.
 
 ## Service categories (serviceCategories.js)
 Keys: protection, tint, window_tint, warranty, insurance, road_tax, service, accessories, workshop, other

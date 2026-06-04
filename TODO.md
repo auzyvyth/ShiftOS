@@ -9,18 +9,56 @@
 
 ## Dev tasks
 
+---
+
+### FEATURE ROADMAP — ranked by priority + ROI
+
+#### TIER 1 — Core revenue intelligence (highest ROI, justify RM5k/month)
+
+- [x] **NEW-1: Real per-unit gross profit** — DONE. P&L modal restructured into Front End (vehicle) and Back End (F&I/add-ons) sections. Front gross = sale price − purchase − recon − services − commission − handover processing. Back gross = add-on revenue − add-on cost. Both labelled clearly; total gross shown at the bottom. fetchPnl now computes frontGross + backGross separately.
+
+- [x] **NEW-2: Auto-create customer record on "won" + seed handover** — DONE. `auto_create_customer_on_won` trigger upgraded: now also captures buyer IC + email into the customers row, AND pre-seeds the full Malaysian post_sale_tasks handover checklist (8 steps, B7 auto-NA when not financed) the instant a lead hits won/closed_won. Idempotent via NOT EXISTS + UNIQUE(lead_id, step_key). Frontend lazy-seed kept as fallback for pre-existing won deals.
+
+- [x] **NEW-3: Car intake / procurement workflow** — DONE. StockTab "Add Stock" form reorganised into two sections: Procurement (price, date, source, recon est., asking price) and Inspection & Compliance (encumbrance status with plain-English labels, Puspakom B5/B7 dates with fee hints). Added a green intake checklist reminder (physical inspection, geran sighted, keys, service history, photos) so nothing gets forgotten on day one.
+
+#### TIER 2 — Retention + accuracy (builds on Tier 1)
+
+- [x] **NEW-4: Customers panel — post-sale lifecycle per customer** — DONE. CustomersTab now fetches post_sale_tasks per lead and shows a handover progress bar (% done) in a new column. Service packages (NEW-9) inline expanded rows also added — "N service pkgs" link expands per customer, "+ Pkg" button adds a new package inline with name/visits/validity/price. Visit log button decrements remaining visits.
+
+- [x] **NEW-5: Connect handover costs to per-unit P&L** — DONE. StockTab P&L modal (`fetchPnl`) now fetches post_sale_tasks for the listing, sums cost of all non-NA steps (Puspakom B5/B7 + JPJ + road tax etc.), deducts it from net P&L, and shows a "Handover processing" cost line. Matches the handover board's processing-cost total logic.
+
+- [x] **NEW-6: Road tax & insurance renewal reminders** — DONE. `expiry-reminders` edge function deployed (v2, verify_jwt=false for cron). Checks all customers daily at 00:00 UTC (8am KL); fires dealer_notifications at 30-day and 7-day marks for road tax and insurance expiry. 24-hour dedup guard prevents repeat alerts.
+
+#### TIER 3 — Stickiness + operations (medium value, lower complexity)
+
+- [x] **NEW-7: Overdue handover step reminders** — DONE. Same `expiry-reminders` edge function also handles overdue post_sale_tasks: finds pending/in_progress steps where due_date < today, inserts dealer_notifications AND salesman_notifications (if lead has a salesman). 24-hour dedup. Cron runs daily 00:00 UTC.
+
+- [ ] **NEW-8: Fix document email delivery** — BLOCKED ON USER ACTION. `send-document` edge function code is correct and complete. Edge function logs show zero calls to it — it has never been triggered. Root cause: `RESEND_API_KEY` is not set as a Supabase edge function secret. Fix: (1) Set secret in Supabase dashboard → Edge Functions → Secrets: `RESEND_API_KEY=<your key>` and `RESEND_FROM_EMAIL=noreply@xdrive.my`. (2) Verify `xdrive.my` as a sender domain in your Resend dashboard. Once secrets are set, the "Send to buyer" button on issued documents will work immediately.
+
+- [x] **NEW-9: Service package tracking** — DONE. `service_packages` table created (dealer_id, customer_id, lead_id, package_name, total_visits, used_visits, valid_months, sold_price, sold_at, expires_at generated column). RLS policy attached. UI in CustomersTab: expand per customer to see packages with visit progress bars; "+ Pkg" inline form; "Log visit" button decrements remaining visits in real-time.
+
+#### TIER 4 — High complexity, longer-term
+
+- [ ] **NEW-10: Workshop module** — Full job card system: service job per vehicle, parts used, labor hours, technician assigned, cost vs. quote, completion status. Parts inventory per VIN/plate. Service history timeline. High build cost but transforms ShiftOS into a full aftersales DMS.
+
+---
+
 ### INFRASTRUCTURE
 
 - **INFRA-1: Supabase storage cleanup** — Storage is full. Audit bucket usage, delete orphaned images (listings that were deleted but images remain), consider image compression pipeline or CDN offload. (Requires manual review of what to delete — user decision needed.)
 
 ### FOLLOW-UP / MINOR
 
-- **ENT-14: Document email delivery** — "Send to buyer" button on issued documents; sends HTML doc to buyer email via Supabase Edge Function / Resend.
-- **ENT-15: Email delivery not working** — Resend / edge function email sending is failing end-to-end. Investigate RESEND_API_KEY secret, sender domain verification (alerts@xdrive.my), and edge function logs. notify-price-alerts was redeployed with verify_jwt=false to fix 401 cron block, but actual delivery needs end-to-end testing.
+- **ENT-14: Document email delivery UI** — "Send to buyer" button on issued documents; sends HTML doc to buyer email via Supabase Edge Function / Resend. Blocked until ENT-15/NEW-8 is fixed.
 
 ---
 
 ## Done (reference)
+
+- **PS-A: Post-sale handover board (Module A)** — post_sale_tasks table; Handover tab on dealer dashboard + salesman panel; Malaysian transfer checklist (loan settlement, insurance, Puspakom B5/B7, JPJ pindah milik, road tax, geran, handover) with per-step status/owner/cost/due date and processing-cost total.
+- **FIX: Salesman pipeline pollution** — Add-to-deals now uses salesman_listings (many-to-many feature), no longer dumps fake "New prospect" leads into the dealer pipeline.
+- **FIX: Lead attribution** — Dealer pipeline cards show "by {salesman}" via salesman_id join.
+- **FIX: Null-phone crash** — formatWhatsAppURL guards null; all-tabs crash resolved.
 
 - **SEC-1: 2FA / TOTP** — Supabase native MFA; enroll (QR+verify) in Settings, AAL2 challenge on password login, disable. (needs ACT-1 to function)
 - **SEC-2: Permission matrix** — role_permissions table + RLS, usePermissions hook, Settings matrix; enforces view_commission + view_all_leads in Salesmanpanel.
