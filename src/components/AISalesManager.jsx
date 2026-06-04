@@ -61,7 +61,7 @@ export default function AISalesManager({ snapshot, dealerName }) {
     setLoading(true);
 
     try {
-      const AI_PROXY = `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/ai/messages`;
+      const AI_PROXY = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/ai/messages` : '/api/ai-messages';
       const res = await fetch(AI_PROXY, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

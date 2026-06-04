@@ -62,7 +62,8 @@ import LayerCanvas, {
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CANVAS_W = 1080;
 const CANVAS_H = 1920;
-const SERVER_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const SERVER_URL = import.meta.env.VITE_API_URL || "";
+const AI_MESSAGES_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/ai/messages` : '/api/ai-messages';
 const AI_LIMIT = 100;
 
 const FORMATS = [
@@ -477,7 +478,7 @@ async function incrementAIUsage(dealerId) {
 // ─── AI: canvas edit command ──────────────────────────────────────────────────
 async function applyAICommand(command, elements, theme, selectedElementId) {
   const system = `You are a canvas design AI for TikTok car listing slides. Canvas is 1080x1920px. Return ONLY valid JSON: {"elements":[only changed elements with id + changed fields],"theme":{only changed theme fields}}. Never return unchanged items. x:0-1080, y:0-1920, fontSize:20-200.`;
-  const res = await fetch(`${SERVER_URL}/ai/messages`, {
+  const res = await fetch(AI_MESSAGES_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -519,7 +520,7 @@ Price: ${priceStr} | Mileage: ${listing?.mileage ? Number(listing.mileage).toLoc
 Condition: ${listing?.condition || ""} | Trans: ${listing?.transmission || ""} | Fuel: ${listing?.fuel_type || ""}
 ${hookText ? 'Hook: "' + hookText + '"' : ""} | Language: ${lang}
 Return ONLY JSON array: [{"hookText":"max 6 words ALL CAPS","headline":"full car title"}]`;
-  const res = await fetch(`${SERVER_URL}/ai/messages`, {
+  const res = await fetch(AI_MESSAGES_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
