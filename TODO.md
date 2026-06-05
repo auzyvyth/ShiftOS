@@ -11,6 +11,17 @@
 
 ---
 
+### UNIFIED CAR INTAKE (DMS workflow) — in progress
+
+- [x] **DMS-1: AddCarForm (dealer unified intake)** — DONE. New `src/components/AddCarForm.jsx` replaces the old listing-then-prompt flow on the dealer dashboard "Add" tab. One 4-step flow: Identity → Procurement → Condition & Pricing (with live cost floor) → Photos & Publish. Publish toggle: ON inserts car_listings (trigger auto-creates stock_unit, then patches cost fields); OFF inserts stock_units directly (internal inventory, no public listing). Salesman CarForm untouched. `dealer_cost_settings` table created with RLS (dealer_id = get_my_dealer_id()).
+- [ ] **DMS-2: Dealer cost settings UI** — NEXT. Add a "Cost settings" section to SettingsTab so dealers can set monthly_overhead, avg_fleet_size, floor_plan_rate, runner_fee, admin_fee, warranty_reserve_pct. Until set, the cost floor shows govt rates only (degrades gracefully). Table + RLS already exist (dealer_cost_settings).
+- [ ] **DMS-3: Plate / VIN decode** — auto-fill make/model/year/CC/transmission from plate (JPJ API restricted — needs lookup table for local models) or VIN (recond/foreign). Removes most Step-1 typing.
+- [ ] **DMS-4: Holding cost in StockTab + P&L** — surface accrued holding cost (days_in_stock × daily rate from settings) as a live line in the stock row and P&L modal. Daily rate already computed in AddCarForm cost floor.
+- [ ] **DMS-5: Estimated vs actual recon reconciliation** — P&L modal shows recon estimate (intake) next to sum of actual recon job-card costs, so overruns are visible.
+- [ ] **DMS-6: Advertising spend per unit** — optional per-campaign log (Mudah/Carlist/FB boost) deducted in P&L. Phase 2.
+
+---
+
 ### LAUNCH PAGE AUDIT — ranked by conversion impact
 
 - [ ] **PAGE-1: Add product screenshots** — "See It In Action" section with 4 placeholder slots (P&L modal, Owner dashboard, CRM pipeline, Handover checklist). Dealer can't see what they're buying without this. *(placeholder section added; drop real screenshots in)*

@@ -66,6 +66,7 @@ function SubTabBar({ tabs, active, onChange }) {
   );
 }
 const CarForm          = React.lazy(() => import("../components/CarForm"));
+const AddCarForm       = React.lazy(() => import("../components/AddCarForm"));
 const CarFormFast      = React.lazy(() => import("../components/CarFormFast"));
 const TikTokStudioV3   = React.lazy(() => import("../components/TikTokStudioV3"));
 const FinancingCalculator = React.lazy(() => import("../components/FinancingCalculator"));
@@ -8555,6 +8556,16 @@ export default function DashboardPage() {
     setPendingStockListing(l);
     setPendingStockForm({ purchase_price: l.base_price ? String(l.base_price) : '', purchase_date: new Date().toISOString().slice(0,10), purchase_source: 'Direct Buy', recon_cost: l.recon_cost ? String(l.recon_cost) : '' });
   };
+  // AddCarForm already captures cost/procurement data, so no pending-stock prompt.
+  const handleAddCarPublished = (l) => {
+    setListings((p) => [l, ...p]);
+    handleTabChange("listings");
+    toast.success("Car added and published to your marketplace.");
+  };
+  const handleAddCarStocked = () => {
+    handleTabChange("stock");
+    toast.success("Car added to your inventory.");
+  };
   const handleTabChange = useCallback((tab) => {
     startTransition(() => {
       setActiveTab(tab);
@@ -9870,7 +9881,7 @@ export default function DashboardPage() {
           <React.Suspense fallback={<div className="flex items-center justify-center h-64 text-gray-600 text-sm">Loading…</div>}>
           {activeTab === "add" && (
             <div className="card-top rounded-xl p-4 sm:p-6" style={T.cardDark}>
-              <CarForm onCreate={handleNew} />
+              <AddCarForm onPublished={handleAddCarPublished} onStocked={handleAddCarStocked} />
             </div>
           )}
           {activeTab === "analytics" && (
