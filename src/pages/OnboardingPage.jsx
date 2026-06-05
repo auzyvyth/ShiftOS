@@ -1,12 +1,31 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { PLAN_CONFIG } from "../utils/planConfig";
 
 const PLAN_ROUTE_MAP = {
-  lite:    { accountType: "salesman", plan: "salesman_lite" },
-  premium: { accountType: "salesman", plan: "salesman_full" },
-  dealer:  { accountType: "dealership", plan: "dealer_starter" },
+  lite:           { accountType: "salesman",   plan: "salesman_lite"   },
+  premium:        { accountType: "salesman",   plan: "salesman_full"   },
+  dealer:         { accountType: "dealership", plan: "dealer_starter"  },
+  dealer_growth:  { accountType: "dealership", plan: "dealer_growth"   },
+  dealer_pro:     { accountType: "dealership", plan: "dealer_pro"      },
 };
+
+const DEALER_TIER_OPTIONS = [
+  {
+    key: "dealer_starter",
+    features: ["Full inventory + per-unit P&L", "Lead CRM pipeline", "Branded storefront", "Document generator"],
+  },
+  {
+    key: "dealer_growth",
+    popular: true,
+    features: ["Everything in Starter", "F&I + multi-bank HP", "Post-sale handover automation", "Customer lifecycle + reminders"],
+  },
+  {
+    key: "dealer_pro",
+    features: ["Everything in Growth", "Owner P&L dashboard + scorecards", "Full audit trail", "Priority support"],
+  },
+];
 
 const STATES = [
   "Johor","Kedah","Kelantan","Kuala Lumpur","Labuan","Melaka",
@@ -39,6 +58,7 @@ function buildStages(accountType, hasUser, presetType) {
     );
   if (accountType === "dealership")
     s.push(
+      { id: "plan_tier", field: "plan", q: "Choose your plan", type: "tier" },
       { id: "dname",  field: "dealerName",  q: "Dealership name?",     type: "text",  ph: "Fast Track Auto Sdn Bhd" },
       { id: "dtype",  field: "dealerType",  q: "Type of dealership?",  type: "pills", options: DEALER_TYPES },
       { id: "dstate", field: "state",       q: "Which state?",          type: "sel",   options: STATES },
@@ -186,6 +206,7 @@ export default function OnboardingPage() {
       case "sbrand": return v.salesmanBrand.trim().length >= 2;
       case "sslug":  return /^[a-z0-9]{3,20}$/.test(v.salesmanSlug);
       case "sstate": return !!v.salesmanState;
+      case "plan_tier": return !!v.plan;
       case "review":   return !loading;
       case "payment":  return !loading;
       default:         return true;
@@ -258,7 +279,7 @@ export default function OnboardingPage() {
               phone: v.phone !== "+60" ? v.phone : null,
               dealership: v.dealerName.trim(),
               location: v.city ? `${v.city}, ${v.state}` : v.state,
-              role: "dealer", plan: "dealer_full", is_active: true, onboarding_complete: true,
+              role: "dealer", plan: v.plan || "dealer_starter", is_active: true, onboarding_complete: true,
               subdomain: v.subdomain, ssm_number: v.ssmNumber || null,
               ic: v.ic || null, ic_submitted: !!v.ic,
               ic_deadline: v.ic ? null : new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
@@ -383,7 +404,7 @@ export default function OnboardingPage() {
       </>
     );
 
-  const isAutoAdv = ["cards","pills","sel"].includes(stage.type);
+  const isAutoAdv = ["cards","pills","sel","tier"].includes(stage.type);
   const isReview = stage.id === "review";
   const isLegal = stage.type === "legal";
   const isPayment = stage.type === "payment";
@@ -404,7 +425,11 @@ export default function OnboardingPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             {presetCfg && (
               <span style={{ fontFamily: "'Azeret Mono',monospace", fontSize: 9, letterSpacing: "2px", color: "rgba(220,38,38,0.8)", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 3, padding: "3px 8px", textTransform: "uppercase" }}>
-                {planSlug === "lite" ? "Salesman Lite · Free" : planSlug === "premium" ? "Salesman Premium · RM99/mo" : "Dealer · 14-day trial"}
+                {planSlug === "lite" ? "Salesman Lite · Free"
+                  : planSlug === "premium" ? "Salesman Premium · RM50/mo"
+                  : planSlug === "dealer_growth" ? "Dealer Growth · 14-day trial"
+                  : planSlug === "dealer_pro" ? "Dealer Pro · 14-day trial"
+                  : "Dealer Starter · 14-day trial"}
               </span>
             )}
             <span className="ob-counter">{String(si + 1).padStart(2, "0")} / {String(stages.length).padStart(2, "0")}</span>
@@ -442,7 +467,7 @@ export default function OnboardingPage() {
             {stage.type === "cards" && (
               <div className="ob-cards">
                 {[
-                  { val: "dealership", label: "Dealership",    sub: "Full team dashboard · RM700/mo after trial" },
+                  { val: "dealership", label: "Dealership",    sub: "Full team dashboard · plans from RM399/mo · 14-day free trial" },
                   { val: "salesman",   label: "Sole Salesman", sub: "Free forever · No credit card needed" },
                 ].map((c) => (
                   <button key={c.val} className={`ob-card${v.accountType === c.val ? " ob-card-on" : ""}`}
@@ -451,6 +476,38 @@ export default function OnboardingPage() {
                     <div className="ob-card-sub">{c.sub}</div>
                   </button>
                 ))}
+              </div>
+            )}
+
+            {/* Tier selection */}
+            {stage.type === "tier" && (
+              <div className="ob-cards" style={{ flexDirection: "column" }}>
+                {DEALER_TIER_OPTIONS.map((t) => {
+                  const cfg = PLAN_CONFIG[t.key];
+                  return (
+                    <button key={t.key} className={`ob-card${v.plan === t.key ? " ob-card-on" : ""}`}
+                      onClick={() => { upd("plan")(t.key); setTimeout(() => goNext(), 220); }}
+                      style={{ width: "100%" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                        <div className="ob-card-label" style={{ marginBottom: 0 }}>
+                          {cfg.label}
+                          {t.popular && (
+                            <span style={{ fontSize: 9, background: "rgba(220,38,38,0.18)", color: "#f87171", borderRadius: 3, padding: "2px 7px", marginLeft: 8, letterSpacing: "0.08em", verticalAlign: "middle" }}>POPULAR</span>
+                          )}
+                        </div>
+                        <span style={{ fontFamily: "'Azeret Mono',monospace", fontSize: 13, color: "#f87171", flexShrink: 0 }}>
+                          RM{cfg.price}/mo
+                        </span>
+                      </div>
+                      <div className="ob-card-sub" style={{ marginBottom: 6 }}>
+                        {cfg.listingCap} listings · {cfg.seatCap} team seats · 14-day free trial
+                      </div>
+                      <div style={{ fontSize: 11, color: "rgba(232,237,245,0.38)", lineHeight: 1.6 }}>
+                        {t.features.join(" · ")}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -539,6 +596,7 @@ export default function OnboardingPage() {
                 <RR k="Phone" v_={v.phone} />
                 {v.accountType === "dealership" && (
                   <>
+                    <RR k="Plan"       v_={PLAN_CONFIG[v.plan]?.label || v.plan} accent="#fbbf24" />
                     <RR k="Dealership" v_={v.dealerName} />
                     <RR k="Type"       v_={v.dealerType} />
                     <RR k="Location"   v_={v.city ? `${v.city}, ${v.state}` : v.state} />
