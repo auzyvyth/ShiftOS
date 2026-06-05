@@ -1,4 +1,17 @@
-export const BRANDS = ['Perodua','Proton','Honda','Toyota','Mazda','BMW','Mercedes-Benz','Hyundai','Nissan','Mitsubishi','Kia','Volvo'];
+// Canonical brand whitelist used for filtering. Must cover every brand the
+// brand strips link to AND every brand value that can exist in the DB (from
+// CarForm CAR_DATA), otherwise sanitizeBrand() drops the param and the page
+// renders unfiltered. Includes both "Mercedes" and "Mercedes-Benz" so neither
+// stored spelling slips through.
+export const BRANDS = [
+  'Perodua','Proton','Honda','Toyota','Nissan','Mazda','Mitsubishi','Suzuki',
+  'Subaru','Daihatsu','Hyundai','Kia','BMW','Mercedes-Benz','Mercedes',
+  'Volkswagen','Audi','Porsche','Lexus','Volvo','Tesla','Ford','MG','BYD',
+  'MINI','Chery','Haval','Geely','Jaguar','Land Rover','Ferrari','Lamborghini',
+  'Bentley',
+];
+// Brands surfaced in the filter <select> dropdowns (curated, common-first).
+export const BRAND_OPTIONS = ['Perodua','Proton','Honda','Toyota','Mazda','BMW','Mercedes-Benz','Hyundai','Nissan','Mitsubishi','Kia','Volvo','Lexus','Subaru','Volkswagen','Audi','Suzuki','Daihatsu'];
 export const BODY_TYPES = ['Sedan','SUV','MPV','Hatchback','Coupe','Pickup'];
 export const TRANSMISSIONS = ['Auto','Manual'];
 export const FINANCING_TYPES = [

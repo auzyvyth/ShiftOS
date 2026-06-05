@@ -20,7 +20,18 @@ import Pagination from '../components/ui/Pagination';
 /* ── Constants ───────────────────────────────────────────────────────────── */
 const PER_PAGE = 15;
 
-const BRANDS = ['Perodua','Proton','Honda','Toyota','Mazda','BMW','Mercedes-Benz','Hyundai','Nissan','Mitsubishi','Kia','Volvo'];
+// Filter whitelist — must cover every brand the strip links to AND every
+// brand value that can exist in the DB, else sanitize.brand drops the param
+// and the page renders unfiltered (the "URL changes but nothing filters" bug).
+const BRANDS = [
+  'Perodua','Proton','Honda','Toyota','Nissan','Mazda','Mitsubishi','Suzuki',
+  'Subaru','Daihatsu','Hyundai','Kia','BMW','Mercedes-Benz','Mercedes',
+  'Volkswagen','Audi','Porsche','Lexus','Volvo','Tesla','Ford','MG','BYD',
+  'MINI','Chery','Haval','Geely','Jaguar','Land Rover','Ferrari','Lamborghini',
+  'Bentley',
+];
+// Curated list for the sidebar <select> dropdown (common brands first).
+const BRAND_OPTIONS = ['Perodua','Proton','Honda','Toyota','Mazda','BMW','Mercedes-Benz','Hyundai','Nissan','Mitsubishi','Kia','Volvo','Lexus','Subaru','Volkswagen','Audi','Suzuki','Daihatsu'];
 const BODY_TYPES = ['Sedan','SUV','MPV','Hatchback','Coupe','Pickup'];
 const TRANSMISSIONS = ['Auto','Manual'];
 const FINANCING_TYPES = [
@@ -107,7 +118,7 @@ function Filters({
           setSearchParams(n,{replace:true});
         }}>
           <option value="">All Brands</option>
-          {BRANDS.map(b=><option key={b} value={b}>{b}</option>)}
+          {BRAND_OPTIONS.map(b=><option key={b} value={b}>{b}</option>)}
         </select>
       </FG>
       <FG title="Model">
@@ -382,6 +393,11 @@ export default function ShowroomPage() {
     { label:'BMW',         to:'/showroom?brand=BMW',          logo:'/brands/bmw.svg' },
     { label:'Mercedes',    to:'/showroom?brand=Mercedes-Benz',logo:'/brands/mercedes.svg',   invert:true },
     { label:'Hyundai',     to:'/showroom?brand=Hyundai',      logo:'/brands/hyundai.svg',    invert:true },
+    { label:'Kia',         to:'/showroom?brand=Kia',          logo:'/brands/kia.svg' },
+    { label:'Lexus',       to:'/showroom?brand=Lexus',        logo:'/brands/lexus.svg',      invert:true },
+    { label:'Subaru',      to:'/showroom?brand=Subaru',       logo:'/brands/subaru.svg' },
+    { label:'VW',          to:'/showroom?brand=Volkswagen',   logo:'/brands/volkswagen.svg' },
+    { label:'Audi',        to:'/showroom?brand=Audi',         logo:'/brands/audi.svg',       invert:true },
   ];
 
   if (isSubdomain()) return <Navigate to="/" replace />;
