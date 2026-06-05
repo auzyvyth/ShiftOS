@@ -24,20 +24,20 @@
 
 ### LAUNCH PAGE AUDIT — ranked by conversion impact
 
-- [ ] **PAGE-1: Add product screenshots** — "See It In Action" section with 4 placeholder slots (P&L modal, Owner dashboard, CRM pipeline, Handover checklist). Dealer can't see what they're buying without this. *(placeholder section added; drop real screenshots in)*
-- [ ] **PAGE-2: Fix "Start Free" vs paid pricing confusion** — Add "14-day free trial, then RM399/mo" copy to Starter and Growth pricing cards. Hero trust line already says "No contract · Cancel anytime" but doesn't mention trial.
-- [ ] **PAGE-3: Fix onboarding tier carry** — All "Get Started" buttons landed on dealer_starter regardless. Growth → /onboarding/dealer_growth, Pro → WhatsApp. In-flow tier-confirm step added. Profile.plan now saves chosen tier.
-- [ ] **PAGE-4: Fix Pro "Talk to Sales" CTA** — Was routing to /onboarding/dealer. Now opens WhatsApp directly.
-- [ ] **PAGE-5: Replace anonymous testimonial** — "— Dealer, Penang" with no name/photo hurts credibility. Replace with a real named quote (name + dealership + city) once you have one, or remove it until then.
-- [ ] **PAGE-6: Fix language whiplash** — Pain quotes are in BM, solution titles/descriptions are in English. Align both halves of each pain/solution card to one language (recommend English throughout or add BM solution titles).
-- [ ] **PAGE-7: Add FAQ section** — Dealers ask: can I import Excel stock? PDPA compliant? What happens to data on cancel? Works on mobile? What if I exceed listing cap? Add 5-6 Q&As above the final CTA.
-- [ ] **PAGE-8: Rewrite stats strip** — "100% Leads auto-logged" and "1 dashboard replaces 5+ tools" read as invented. Name the 5 tools: Excel, WhatsApp pipelines, manual JPJ tracking, doc printing, Telegram posting.
-- [ ] **PAGE-9: Benefit-led feature copy** — Feature cards list what the product does, not what pain it removes. Rewrite each card opening with the outcome, not the feature name.
-- [ ] **PAGE-10: Add plan comparison table** — Side-by-side 3-column table for dealer plans (Starter / Growth / Pro) instead of stacked "Everything in Growth" lists.
-- [ ] **PAGE-11: Mobile nav** — On 375px, header shows only logo + CTA. No way to jump to Pricing or Features. Add a minimal hamburger or sticky "Pricing" anchor link.
-- [ ] **PAGE-12: Fix invisible footer text** — Copyright line is color #1f2937 on #06080F background — effectively invisible. Change to #374151 minimum.
-- [ ] **PAGE-13: Soften "Join the dealers..."** — Implies large installed base. Change to "Built for dealers who want real numbers" until you have a count worth citing.
-- [ ] **PAGE-14: Remove or update city eyebrow** — "PENANG · KL · JB" limits perception if expanding. Change to "Across Malaysia" or remove.
+- [ ] **PAGE-1: Add product screenshots** — BLOCKED ON USER ASSETS. "See It In Action" section has 4 placeholder slots ready (Per-Unit P&L modal, Owner dashboard, Sales CRM pipeline, Post-Sale handover board). Send 4 PNG/JPG screenshots (16:9) and they drop straight into `public/screenshots/` + the grid in ShiftOSPage.jsx.
+- [x] **PAGE-2: Free-trial pricing copy** — DONE. Starter/Growth cards show "14 days free, then RMxxx/mo · no card required"; CTAs now "Start Free Trial"; hero trust line reads "14-day free trial · No credit card · No contract · Live in 30 minutes". Pro shows "Book a Demo" + "For multi-branch dealers" sub-label.
+- [x] **PAGE-3: Onboarding tier carry** — DONE (Growth → /onboarding/dealer_growth, Pro → WhatsApp demo).
+- [x] **PAGE-4: Pro CTA → WhatsApp** — DONE (Pro card + nav "Book a Demo" open the demo WhatsApp link).
+- [x] **PAGE-5: Remove anonymous testimonial** — DONE. The unattributed "— Dealer, Penang" quote was removed (not replaced with a fabricated name). Slot now holds the FAQ section. Add a real named quote later when available.
+- [x] **PAGE-6: Language whiplash** — DONE. All six pain quotes converted to English to match the English solution titles/descriptions.
+- [x] **PAGE-7: FAQ section** — DONE. 6 Q&As (PDPA/data safety, Excel/CSV import, data on cancel, mobile, listing/seat cap, onboarding+language) in an accordion above the final CTA; copy researched against PDPA 2025 amendments.
+- [x] **PAGE-8: Stats strip rewrite** — DONE. Replaced invented stats with a "Replaces the five tools you juggle today" strip naming Excel sheets, WhatsApp lead chats, manual JPJ/Puspakom tracking, printed paperwork, Telegram posts.
+- [x] **PAGE-9: Benefit-led feature copy** — DONE. Each of the 9 feature cards now leads with an outcome headline (category demoted to a small kicker, mechanics in the supporting line).
+- [x] **PAGE-10: Plan comparison table** — DONE. Collapsible "Compare all features" 3-column table (Starter/Growth/Pro) under the dealer pricing cards; grouped rows, Growth column highlighted, fits 375px.
+- [x] **PAGE-11: Mobile nav** — DONE. Hamburger menu at <=860px revealing Features/Pricing/FAQ/Marketplace/Log in + both CTAs.
+- [x] **PAGE-12: Footer text contrast** — DONE. Copyright + "Powered by" lines bumped from #1f2937 to #4b5563.
+- [x] **PAGE-13: Soften final CTA** — DONE. "Built for dealers who want real numbers — leaner operations, more sales, and zero guesswork."
+- [x] **PAGE-14: City eyebrow** — DONE. "PENANG · KL · JB" → "BUILT FOR MALAYSIA".
 - [ ] **PAGE-WATCH: xlsx 2FA gate** — Future: require 2FA challenge before dealer file upload to neutralise the xlsx prototype-pollution risk (low-priority, attacker must already be authenticated dealer).
 
 ---
