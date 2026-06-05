@@ -52,6 +52,33 @@ const blankForm = {
   included_services: [],
 };
 
+// Module-level style constants and helper components.
+// These MUST live outside AddCarForm — defining components inside a render
+// function gives them a new identity every render, causing React to remount
+// them on every keystroke (focus lost, one-char-at-a-time bug).
+const INP = { width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #EAECF0", fontSize: 14, color: color.ink, background: "#fff", outline: "none", fontFamily: "inherit" };
+const LBL = { fontSize: 12, fontWeight: 600, color: color.ink, marginBottom: 6, display: "block" };
+
+const FormCtx = React.createContext(null);
+
+function Field({ label, required, children, hint }) {
+  return (
+    <div>
+      <label style={LBL}>{label}{required && <span style={{ color: color.accent }}> *</span>}</label>
+      {children}
+      {hint && <p style={{ fontSize: 11, color: color.textMuted, marginTop: 4 }}>{hint}</p>}
+    </div>
+  );
+}
+function FText({ k, ph, type = "text" }) {
+  const { form, setVal } = React.useContext(FormCtx);
+  return <input style={INP} type={type} value={form[k]} placeholder={ph} onChange={(e) => setVal(k, e.target.value)} />;
+}
+function FSelect({ k, options }) {
+  const { form, setVal } = React.useContext(FormCtx);
+  return <select style={INP} value={form[k]} onChange={(e) => setVal(k, e.target.value)}>{options.map((o) => <option key={o} value={o}>{o}</option>)}</select>;
+}
+
 export default function AddCarForm({ onPublished, onStocked }) {
   const { profile } = useProfile();
   const dealerId = getDealerIdFromProfile(profile);
@@ -290,27 +317,8 @@ export default function AddCarForm({ onPublished, onStocked }) {
     }
   };
 
-  // ── UI primitives ──────────────────────────────────────────────────────────
-  const lbl = { fontSize: 12, fontWeight: 600, color: color.ink, marginBottom: 6, display: "block" };
-  const inp = { width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #EAECF0", fontSize: 14, color: color.ink, background: "#fff", outline: "none", fontFamily: "inherit" };
-  const Field = ({ label, required, children, hint }) => (
-    <div>
-      <label style={lbl}>{label}{required && <span style={{ color: color.accent }}> *</span>}</label>
-      {children}
-      {hint && <p style={{ fontSize: 11, color: color.textMuted, marginTop: 4 }}>{hint}</p>}
-    </div>
-  );
-  const Text = ({ k, ph, type = "text" }) => (
-    <input style={inp} type={type} value={form[k]} placeholder={ph}
-      onChange={(e) => setVal(k, e.target.value)} />
-  );
-  const Select = ({ k, options }) => (
-    <select style={inp} value={form[k]} onChange={(e) => setVal(k, e.target.value)}>
-      {options.map((o) => <option key={o} value={o}>{o}</option>)}
-    </select>
-  );
-
   return (
+    <FormCtx.Provider value={{ form, setVal }}>
     <div style={{ fontFamily: "'DM Sans',sans-serif" }}>
       {/* Step indicator */}
       <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
@@ -349,11 +357,11 @@ export default function AddCarForm({ onPublished, onStocked }) {
       {/* ── Step 1: Identity ── */}
       {step === 1 && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 16 }}>
-          <Field label="Plate number" hint="Primary identifier"><Text k="plate_number" ph="WXY 1234" /></Field>
+          <Field label="Plate number" hint="Primary identifier"><FText k="plate_number" ph="WXY 1234" /></Field>
           <div style={{ gridColumn: "1 / -1" }}>
-            <label style={lbl}>VIN / chassis</label>
+            <label style={LBL}>VIN / chassis</label>
             <div style={{ display: "flex", gap: 8 }}>
-              <input style={{ ...inp, flex: 1, textTransform: "uppercase" }} value={form.vin_number}
+              <input style={{ ...INP, flex: 1, textTransform: "uppercase" }} value={form.vin_number}
                 placeholder="17-char VIN — auto-fills make, model, year, CC"
                 onChange={(e) => { setVal("vin_number", e.target.value); setVinResult(null); }} />
               <button type="button" onClick={handleDecodeVin}
@@ -368,16 +376,16 @@ export default function AddCarForm({ onPublished, onStocked }) {
             {vinResult === "miss" && <p style={{ fontSize: 11, color: "#B45309", marginTop: 4 }}>Not found (common for Perodua/Proton). Pick make + model below — we will auto-fill CC.</p>}
             {vinResult === "invalid" && <p style={{ fontSize: 11, color: color.textMuted, marginTop: 4 }}>A standard VIN is 17 characters. Leave blank if unknown.</p>}
           </div>
-          <Field label="Make" required><Select k="brand" options={["", ...MAKES]} /></Field>
-          <Field label="Model" required><Text k="model" ph="Civic" /></Field>
-          <Field label="Variant"><Text k="variant" ph="1.5 TC-P" /></Field>
-          <Field label="Year" required><Text k="year" ph="2020" type="number" /></Field>
-          <Field label="Engine CC" required hint={decoded ? "Auto-filled from model — edit if needed" : "Used to estimate road tax"}><Text k="engine_cc" ph="1498" type="number" /></Field>
-          <Field label="Transmission"><Select k="transmission" options={["Auto", "Manual"]} /></Field>
-          <Field label="Fuel"><Select k="fuel_type" options={["Petrol", "Diesel", "Hybrid", "Electric"]} /></Field>
-          <Field label="Colour"><Text k="colour" ph="White" /></Field>
-          <Field label="Mileage (km)" required><Text k="mileage" ph="45000" type="number" /></Field>
-          <Field label="Body type"><Select k="body_type" options={BODY_TYPES} /></Field>
+          <Field label="Make" required><FSelect k="brand" options={["", ...MAKES]} /></Field>
+          <Field label="Model" required><FText k="model" ph="Civic" /></Field>
+          <Field label="Variant"><FText k="variant" ph="1.5 TC-P" /></Field>
+          <Field label="Year" required><FText k="year" ph="2020" type="number" /></Field>
+          <Field label="Engine CC" required hint={decoded ? "Auto-filled from model — edit if needed" : "Used to estimate road tax"}><FText k="engine_cc" ph="1498" type="number" /></Field>
+          <Field label="Transmission"><FSelect k="transmission" options={["Auto", "Manual"]} /></Field>
+          <Field label="Fuel"><FSelect k="fuel_type" options={["Petrol", "Diesel", "Hybrid", "Electric"]} /></Field>
+          <Field label="Colour"><FText k="colour" ph="White" /></Field>
+          <Field label="Mileage (km)" required><FText k="mileage" ph="45000" type="number" /></Field>
+          <Field label="Body type"><FSelect k="body_type" options={BODY_TYPES} /></Field>
           <div style={{ display: "flex", alignItems: "center", gap: 8, alignSelf: "end", paddingBottom: 10 }}>
             <input type="checkbox" id="recon" checked={form.is_recon} onChange={(e) => setVal("is_recon", e.target.checked)} />
             <label htmlFor="recon" style={{ fontSize: 13, color: color.ink }}>Recond / imported unit</label>
@@ -388,20 +396,20 @@ export default function AddCarForm({ onPublished, onStocked }) {
       {/* ── Step 2: Procurement ── */}
       {step === 2 && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 16 }}>
-          <Field label="Purchase price (RM)" required hint="Your acquisition cost"><Text k="purchase_price" ph="45000" type="number" /></Field>
-          <Field label="Purchase date" required><Text k="purchase_date" type="date" /></Field>
-          <Field label="Source" required><Select k="purchase_source" options={SOURCES} /></Field>
+          <Field label="Purchase price (RM)" required hint="Your acquisition cost"><FText k="purchase_price" ph="45000" type="number" /></Field>
+          <Field label="Purchase date" required><FText k="purchase_date" type="date" /></Field>
+          <Field label="Source" required><FSelect k="purchase_source" options={SOURCES} /></Field>
           <Field label="Encumbrance" required hint="Gates the handover workflow">
-            <select style={inp} value={form.encumbrance_status} onChange={(e) => setVal("encumbrance_status", e.target.value)}>
+            <select style={INP} value={form.encumbrance_status} onChange={(e) => setVal("encumbrance_status", e.target.value)}>
               <option value="clear">Clear — no loan</option>
               <option value="under_hp">Under HP — loan outstanding</option>
               <option value="unknown">Unknown — to verify</option>
             </select>
           </Field>
           {form.encumbrance_status === "under_hp" && (
-            <Field label="Loan settlement amount (RM)" hint="Outstanding to settle before transfer"><Text k="loan_settlement_amount" ph="32000" type="number" /></Field>
+            <Field label="Loan settlement amount (RM)" hint="Outstanding to settle before transfer"><FText k="loan_settlement_amount" ph="32000" type="number" /></Field>
           )}
-          <Field label="Seller name / contact"><Text k="seller_contact" ph="optional reference" /></Field>
+          <Field label="Seller name / contact"><FText k="seller_contact" ph="optional reference" /></Field>
         </div>
       )}
 
@@ -409,21 +417,21 @@ export default function AddCarForm({ onPublished, onStocked }) {
       {step === 3 && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" }} className="addcar-pricing">
           <div style={{ display: "grid", gap: 16 }}>
-            <Field label="Recon estimate (RM)" required hint="Refine later via recon job cards"><Text k="recon_cost" ph="2500" type="number" /></Field>
-            <Field label="Condition"><Select k="condition" options={CONDITIONS} /></Field>
+            <Field label="Recon estimate (RM)" required hint="Refine later via recon job cards"><FText k="recon_cost" ph="2500" type="number" /></Field>
+            <Field label="Condition"><FSelect k="condition" options={CONDITIONS} /></Field>
             <Field label="Condition notes">
-              <textarea style={{ ...inp, minHeight: 64, resize: "vertical" }} value={form.condition_notes}
+              <textarea style={{ ...INP, minHeight: 64, resize: "vertical" }} value={form.condition_notes}
                 placeholder="Front bumper scratch, needs respray…" onChange={(e) => setVal("condition_notes", e.target.value)} />
             </Field>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <input type="checkbox" id="b5done" checked={form.b5_done} onChange={(e) => setVal("b5_done", e.target.checked)} />
               <label htmlFor="b5done" style={{ fontSize: 13, color: color.ink }}>Puspakom B5 already done</label>
             </div>
-            {form.b5_done && <Field label="B5 date"><Text k="puspakom_b5_date" type="date" /></Field>}
-            <Field label="Asking price (RM)" required><Text k="asking_price" ph="55000" type="number" /></Field>
-            <Field label="Min acceptable (RM)" hint="Private floor — never shown to buyers"><Text k="min_price" ph="52000" type="number" /></Field>
-            <Field label="Commission (RM)" hint="Pre-filled from your commission config"><Text k="commission_amount" ph="0" type="number" /></Field>
-            <Field label="Warranty offered (months)" hint="Triggers warranty reserve if set in settings"><Text k="warranty_months" ph="6" type="number" /></Field>
+            {form.b5_done && <Field label="B5 date"><FText k="puspakom_b5_date" type="date" /></Field>}
+            <Field label="Asking price (RM)" required><FText k="asking_price" ph="55000" type="number" /></Field>
+            <Field label="Min acceptable (RM)" hint="Private floor — never shown to buyers"><FText k="min_price" ph="52000" type="number" /></Field>
+            <Field label="Commission (RM)" hint="Pre-filled from your commission config"><FText k="commission_amount" ph="0" type="number" /></Field>
+            <Field label="Warranty offered (months)" hint="Triggers warranty reserve if set in settings"><FText k="warranty_months" ph="6" type="number" /></Field>
           </div>
 
           {/* Live cost floor */}
@@ -488,7 +496,7 @@ export default function AddCarForm({ onPublished, onStocked }) {
           </div>
 
           <div>
-            <label style={lbl}>Photos {form.publish && <span style={{ color: color.accent }}>* (min 1 to publish)</span>}</label>
+            <label style={LBL}>Photos {form.publish && <span style={{ color: color.accent }}>* (min 1 to publish)</span>}</label>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               {form.images.map((url, i) => (
                 <div key={i} style={{ position: "relative", width: 92, height: 70, borderRadius: 8, overflow: "hidden", border: "1px solid #EAECF0" }}>
@@ -506,22 +514,22 @@ export default function AddCarForm({ onPublished, onStocked }) {
           </div>
 
           <Field label="Short description" hint="Optional — shown on the public listing">
-            <textarea style={{ ...inp, minHeight: 64, resize: "vertical" }} value={form.description}
+            <textarea style={{ ...INP, minHeight: 64, resize: "vertical" }} value={form.description}
               placeholder="One owner, full service record, accident-free…" onChange={(e) => setVal("description", e.target.value)} />
           </Field>
-          <Field label="Original / 'was' price (RM)" hint="Shows a discount badge on the listing"><Text k="original_price" ph="58000" type="number" /></Field>
+          <Field label="Original / 'was' price (RM)" hint="Shows a discount badge on the listing"><FText k="original_price" ph="58000" type="number" /></Field>
 
           {/* Included services */}
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <label style={lbl}>Included services (buyer-facing)</label>
+              <label style={LBL}>Included services (buyer-facing)</label>
               <button onClick={addService} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 600, color: color.accent, background: "none", border: "none", cursor: "pointer" }}><Plus className="w-3 h-3" /> Add</button>
             </div>
             {form.included_services.map((s, i) => (
               <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 110px 110px 30px", gap: 8, marginBottom: 8, alignItems: "center" }}>
-                <input style={inp} placeholder="e.g. Tint, PPF, 1yr warranty" value={s.name} onChange={(e) => updService(i, "name", e.target.value)} />
-                <input style={inp} type="number" placeholder="cost" value={s.cost_price} onChange={(e) => updService(i, "cost_price", e.target.value)} />
-                <input style={inp} type="number" placeholder="price" value={s.selling_price} onChange={(e) => updService(i, "selling_price", e.target.value)} />
+                <input style={INP} placeholder="e.g. Tint, PPF, 1yr warranty" value={s.name} onChange={(e) => updService(i, "name", e.target.value)} />
+                <input style={INP} type="number" placeholder="cost" value={s.cost_price} onChange={(e) => updService(i, "cost_price", e.target.value)} />
+                <input style={INP} type="number" placeholder="price" value={s.selling_price} onChange={(e) => updService(i, "selling_price", e.target.value)} />
                 <button onClick={() => rmService(i)} style={{ border: "none", background: "none", cursor: "pointer", color: color.textMuted }}><Trash2 className="w-4 h-4" /></button>
               </div>
             ))}
@@ -550,5 +558,6 @@ export default function AddCarForm({ onPublished, onStocked }) {
 
       <style>{`@media(max-width:760px){.addcar-pricing{grid-template-columns:1fr!important;}}`}</style>
     </div>
+    </FormCtx.Provider>
   );
 }
