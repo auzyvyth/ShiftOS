@@ -6,6 +6,7 @@ import {
 import { supabase } from "../supabaseClient";
 import { useProfile, getDealerIdFromProfile } from "../hooks/useProfile";
 import { estimateRoadTax } from "../utils/roadTax";
+import { lookupCarSpec } from "../utils/carSpecs";
 import { color } from "../theme/tokens";
 
 // Official Malaysian transfer baseline (government rates, before runner markup)
@@ -60,10 +61,26 @@ export default function AddCarForm({ onPublished, onStocked }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [decoded, setDecoded] = useState(false);
   const photosRef = useRef(null);
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
   const setVal = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  // Local-model spec auto-fill: when make + model are both set, fill engine CC
+  // and body type IF the dealer hasn't already typed them.
+  useEffect(() => {
+    const spec = lookupCarSpec(form.brand, form.model);
+    if (!spec) { setDecoded(false); return; }
+    setForm((f) => {
+      const next = { ...f };
+      let changed = false;
+      if (!String(f.engine_cc).trim()) { next.engine_cc = String(spec.cc); changed = true; }
+      if (BODY_TYPES.includes(spec.body) && f.body_type === "Sedan" && spec.body !== "Sedan") { next.body_type = spec.body; changed = true; }
+      return changed ? next : f;
+    });
+    setDecoded(true);
+  }, [form.brand, form.model]); // eslint-disable-line
 
   // ── Load dealer cost settings (silent auto-applied costs) ──────────────────
   useEffect(() => {
@@ -312,7 +329,7 @@ export default function AddCarForm({ onPublished, onStocked }) {
           <Field label="Model" required><Text k="model" ph="Civic" /></Field>
           <Field label="Variant"><Text k="variant" ph="1.5 TC-P" /></Field>
           <Field label="Year" required><Text k="year" ph="2020" type="number" /></Field>
-          <Field label="Engine CC" required hint="Used to estimate road tax"><Text k="engine_cc" ph="1498" type="number" /></Field>
+          <Field label="Engine CC" required hint={decoded ? "Auto-filled from model — edit if needed" : "Used to estimate road tax"}><Text k="engine_cc" ph="1498" type="number" /></Field>
           <Field label="Transmission"><Select k="transmission" options={["Auto", "Manual"]} /></Field>
           <Field label="Fuel"><Select k="fuel_type" options={["Petrol", "Diesel", "Hybrid", "Electric"]} /></Field>
           <Field label="Colour"><Text k="colour" ph="White" /></Field>

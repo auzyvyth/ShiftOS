@@ -893,6 +893,12 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const [dealDisclaimer, setDealDisclaimer] = useState(profile?.deal_disclaimer || "");
   const [commType, setCommType] = useState(profile?.commission_config?.type || "percent_gross");
   const [commValue, setCommValue] = useState(profile?.commission_config?.value != null ? String(profile.commission_config.value) : "10");
+  // Cost-floor settings (separate table: dealer_cost_settings)
+  const settingsDealerId = getDealerIdFromProfile(profile);
+  const [costSettings, setCostSettings] = useState({
+    monthly_overhead: "", avg_fleet_size: "", floor_plan_rate: "",
+    runner_fee: "", admin_fee: "", warranty_reserve_pct: "",
+  });
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -1008,6 +1014,23 @@ function SettingsTab({ profile, onProfileUpdate }) {
   useEffect(() => {
     setSubdomain(profile?.subdomain || '');
   }, [profile?.subdomain]);
+
+  // Load dealer cost-floor settings once
+  useEffect(() => {
+    if (!settingsDealerId) return;
+    supabase.from("dealer_cost_settings").select("*").eq("dealer_id", settingsDealerId).maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setCostSettings({
+          monthly_overhead: data.monthly_overhead != null ? String(data.monthly_overhead) : "",
+          avg_fleet_size: data.avg_fleet_size != null ? String(data.avg_fleet_size) : "",
+          floor_plan_rate: data.floor_plan_rate != null ? String(data.floor_plan_rate) : "",
+          runner_fee: data.runner_fee != null ? String(data.runner_fee) : "",
+          admin_fee: data.admin_fee != null ? String(data.admin_fee) : "",
+          warranty_reserve_pct: data.warranty_reserve_pct != null ? String(data.warranty_reserve_pct) : "",
+        });
+      });
+  }, [settingsDealerId]);
 
   const changeCount = profile?.dealership_change_count || 0;
   const changesLeft = MAX_DEALERSHIP_CHANGES - changeCount;
@@ -1254,6 +1277,29 @@ function SettingsTab({ profile, onProfileUpdate }) {
 
   const saveDealSheet = () => saveSection("dealsheet", { deal_disclaimer: dealDisclaimer.trim() || null });
 
+  const saveCostSettings = async () => {
+    setSaving((p) => ({ ...p, costs: true }));
+    setErrors((p) => ({ ...p, costs: "" }));
+    try {
+      const numOrNull = (v) => (v === "" || v == null ? 0 : Number(v) || 0);
+      const { error } = await supabase.from("dealer_cost_settings").upsert({
+        dealer_id: settingsDealerId,
+        monthly_overhead: numOrNull(costSettings.monthly_overhead),
+        avg_fleet_size: costSettings.avg_fleet_size === "" ? 20 : Number(costSettings.avg_fleet_size) || 20,
+        floor_plan_rate: numOrNull(costSettings.floor_plan_rate),
+        runner_fee: numOrNull(costSettings.runner_fee),
+        admin_fee: numOrNull(costSettings.admin_fee),
+        warranty_reserve_pct: numOrNull(costSettings.warranty_reserve_pct),
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      flash("costs");
+    } catch (e) {
+      setErrors((p) => ({ ...p, costs: e.message }));
+    }
+    setSaving((p) => ({ ...p, costs: false }));
+  };
+
   const saveCommission = () => saveSection("commission", {
     commission_config: { type: commType, value: Number(commValue) || 0 },
   });
@@ -1281,6 +1327,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
     ]},
     { group: 'Operations', items: [
       { key: 'commission', icon: DollarSign, label: 'Commission', desc: 'Sales commission structure' },
+      { key: 'costs', icon: Calculator, label: 'Cost Floor', desc: 'Overhead, runner & holding costs' },
       { key: 'dealsheet', icon: FileText, label: 'Deal Sheet', desc: 'Customer proposal settings' },
       { key: 'services', icon: Package, label: 'Services', desc: 'Products & add-on catalogue' },
     ]},
@@ -1906,6 +1953,63 @@ function SettingsTab({ profile, onProfileUpdate }) {
         </p>
         <div className="flex justify-end pt-1">
           <SaveBtn sectionKey="commission" onClick={saveCommission} saving={saving} saved={saved} />
+        </div>
+      </SettingsSection>}
+      {effectiveNav === 'costs' && <SettingsSection
+        title="Cost Floor Settings"
+        subtitle="Silent per-unit costs applied automatically to every car's cost floor and P&L"
+        icon={Calculator}
+        iconColor="text-blue-500"
+        iconBg="rgba(59,130,246,0.08)"
+        iconBorder="rgba(59,130,246,0.18)"
+      >
+        <p className="text-xs text-gray-500" style={{ marginBottom: 4 }}>
+          Set these once. They apply to every car automatically — no per-unit typing. Leave a field at 0 to skip it.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <SettingsField label="Monthly overhead (RM)">
+            <input type="number" min="0" value={costSettings.monthly_overhead}
+              onChange={(e) => setCostSettings(s => ({ ...s, monthly_overhead: e.target.value }))}
+              className={iCls} placeholder="e.g. 18000" />
+          </SettingsField>
+          <SettingsField label="Avg fleet size (units)">
+            <input type="number" min="1" value={costSettings.avg_fleet_size}
+              onChange={(e) => setCostSettings(s => ({ ...s, avg_fleet_size: e.target.value }))}
+              className={iCls} placeholder="e.g. 20" />
+          </SettingsField>
+        </div>
+        <p className="text-xs text-gray-500" style={{ marginTop: -4 }}>
+          Daily holding cost = overhead ÷ fleet size ÷ 30. Used when no floor-plan rate is set below.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <SettingsField label="Floor-plan rate (% / year)">
+            <input type="number" min="0" step="0.1" value={costSettings.floor_plan_rate}
+              onChange={(e) => setCostSettings(s => ({ ...s, floor_plan_rate: e.target.value }))}
+              className={iCls} placeholder="e.g. 3.5" />
+          </SettingsField>
+          <SettingsField label="Runner / agent fee (RM)">
+            <input type="number" min="0" value={costSettings.runner_fee}
+              onChange={(e) => setCostSettings(s => ({ ...s, runner_fee: e.target.value }))}
+              className={iCls} placeholder="e.g. 250" />
+          </SettingsField>
+          <SettingsField label="Admin / docs per unit (RM)">
+            <input type="number" min="0" value={costSettings.admin_fee}
+              onChange={(e) => setCostSettings(s => ({ ...s, admin_fee: e.target.value }))}
+              className={iCls} placeholder="e.g. 80" />
+          </SettingsField>
+          <SettingsField label="Warranty reserve (% of sale)">
+            <input type="number" min="0" step="0.1" value={costSettings.warranty_reserve_pct}
+              onChange={(e) => setCostSettings(s => ({ ...s, warranty_reserve_pct: e.target.value }))}
+              className={iCls} placeholder="e.g. 1.5" />
+          </SettingsField>
+        </div>
+        <p className="text-xs text-gray-500">
+          Floor-plan rate charges interest on each car's purchase price per day it sits. If both overhead and floor-plan
+          are set, floor-plan takes priority. Runner fee is added on top of the RM100 JPJ government rate.
+        </p>
+        {errors.costs && <p className="text-xs text-red-500">{errors.costs}</p>}
+        <div className="flex justify-end pt-1">
+          <SaveBtn sectionKey="costs" onClick={saveCostSettings} saving={saving} saved={saved} />
         </div>
       </SettingsSection>}
       {effectiveNav === 'telegram' && <SettingsSection
@@ -5449,6 +5553,12 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
   const [reconForm, setReconForm] = useState({ title: '', category: 'other', vendor: '', cost: '', eta_date: '', notes: '' });
   const [reconSaving, setReconSaving] = useState(false);
   const [showReconAdd, setShowReconAdd] = useState(false);
+  // Advertising spend per unit (DMS-6)
+  const [adUnit, setAdUnit] = useState(null);
+  const [adEntries, setAdEntries] = useState([]);
+  const [adLoading, setAdLoading] = useState(false);
+  const [adForm, setAdForm] = useState({ channel: 'mudah', amount: '', spent_at: new Date().toISOString().slice(0, 10), notes: '' });
+  const [adSaving, setAdSaving] = useState(false);
   const [showCsvImport, setShowCsvImport] = useState(false);
   const [showVendors, setShowVendors] = useState(false);
   const [vendors, setVendors] = useState([]);
@@ -5482,6 +5592,14 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
   };
 
   useEffect(() => { if (userId) fetchUnits(); }, [userId]);
+
+  // Dealer cost-floor settings → holding cost in P&L (DMS-4)
+  const [costCfg, setCostCfg] = useState(null);
+  useEffect(() => {
+    if (!userId) return;
+    supabase.from('dealer_cost_settings').select('*').eq('dealer_id', userId).maybeSingle()
+      .then(({ data }) => setCostCfg(data || {}));
+  }, [userId]);
 
   const daysInStock = (u) => {
     if (u.days_in_stock != null && u.days_in_stock > 0) return u.days_in_stock;
@@ -5638,6 +5756,14 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
     const listingId = unit.listing_id || unit.car_listings?.id;
     let addons = [];
     let handoverTasks = [];
+    let reconJobsList = [];
+    let adSpendList = [];
+    const [{ data: rj }, { data: ads }] = await Promise.all([
+      supabase.from('recon_jobs').select('cost, status').eq('stock_unit_id', unit.id),
+      supabase.from('ad_spend').select('amount').eq('stock_unit_id', unit.id),
+    ]);
+    reconJobsList = rj || [];
+    adSpendList = ads || [];
     if (listingId) {
       const [{ data: dp }, { data: pst }] = await Promise.all([
         supabase
@@ -5656,18 +5782,37 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
     }
     const purchasePrice  = Number(unit.purchase_price) || 0;
     const reconCost      = Number(unit.recon_cost) || 0;
+    const reconActual    = reconJobsList.reduce((s, j) => s + (Number(j.cost) || 0), 0);
     const servicesCost   = Number(unit.car_listings?.included_services_cost) || 0;
     const commission     = Number(unit.car_listings?.commission_amount) || 0;
     const handoverCost   = handoverTasks.filter((t) => t.status !== 'na').reduce((s, t) => s + (Number(t.cost) || 0), 0);
+    const adSpend        = adSpendList.reduce((s, a) => s + (Number(a.amount) || 0), 0);
     const addonRevenue   = addons.reduce((s, a) => s + (Number(a.sold_price) || 0), 0);
     const addonCost      = addons.reduce((s, a) => s + (Number(a.dealer_products?.cost_price) || 0), 0);
     const revenue        = Number(unit.sold_price) || Number(unit.asking_price) || Number(unit.car_listings?.selling_price) || 0;
-    const vehicleCosts   = purchasePrice + reconCost + servicesCost + commission + handoverCost;
+
+    // Holding cost: floor-plan interest (priority) or overhead/fleet, × days held
+    const cc = costCfg || {};
+    let dailyHold = 0;
+    if (Number(cc.floor_plan_rate) > 0 && purchasePrice > 0) {
+      dailyHold = purchasePrice * (Number(cc.floor_plan_rate) / 100) / 365;
+    } else if (Number(cc.monthly_overhead) > 0) {
+      dailyHold = Number(cc.monthly_overhead) / Math.max(1, Number(cc.avg_fleet_size) || 20) / 30;
+    }
+    let holdingDays = 0;
+    const startDate = unit.purchase_date || unit.created_at;
+    if (startDate) {
+      const end = unit.status === 'sold' && unit.sold_date ? new Date(unit.sold_date) : new Date();
+      holdingDays = Math.max(0, Math.floor((end - new Date(startDate)) / 86400000));
+    }
+    const holdingCost = Math.round(dailyHold * holdingDays);
+
+    const vehicleCosts   = purchasePrice + reconCost + servicesCost + commission + handoverCost + holdingCost + adSpend;
     const frontGross     = revenue - vehicleCosts;
     const backGross      = addonRevenue - addonCost;
     const totalCosts     = vehicleCosts + addonCost;
     const netPnl         = frontGross + backGross;
-    setPnlData({ purchasePrice, reconCost, servicesCost, commission, handoverCost, addonRevenue, addonCost, revenue, frontGross, backGross, totalCosts, netPnl, addons, isSold: unit.status === 'sold' });
+    setPnlData({ purchasePrice, reconCost, reconActual, servicesCost, commission, handoverCost, holdingCost, holdingDays, dailyHold, adSpend, addonRevenue, addonCost, revenue, frontGross, backGross, totalCosts, netPnl, addons, isSold: unit.status === 'sold' });
     setPnlLoading(false);
   };
 
@@ -5803,6 +5948,40 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
       .order('created_at', { ascending: true });
     setReconJobs(data || []);
     setReconLoading(false);
+  };
+
+  const openAdSpend = async (unit) => {
+    setAdUnit(unit);
+    setAdEntries([]);
+    setAdLoading(true);
+    setAdForm({ channel: 'mudah', amount: '', spent_at: new Date().toISOString().slice(0, 10), notes: '' });
+    const { data } = await supabase.from('ad_spend').select('*').eq('stock_unit_id', unit.id).order('spent_at', { ascending: false });
+    setAdEntries(data || []);
+    setAdLoading(false);
+  };
+  const handleAddAdSpend = async () => {
+    if (!adForm.amount || Number(adForm.amount) <= 0) { toast.error('Enter an amount'); return; }
+    setAdSaving(true);
+    const { data, error } = await supabase.from('ad_spend').insert({
+      dealer_id: userId,
+      stock_unit_id: adUnit.id,
+      listing_id: adUnit.listing_id || null,
+      channel: adForm.channel,
+      amount: Number(adForm.amount),
+      spent_at: adForm.spent_at || null,
+      notes: adForm.notes.trim() || null,
+    }).select().single();
+    if (error) { toast.error('Failed to add spend'); }
+    else {
+      setAdEntries(p => [data, ...p]);
+      setAdForm({ channel: 'mudah', amount: '', spent_at: new Date().toISOString().slice(0, 10), notes: '' });
+    }
+    setAdSaving(false);
+  };
+  const handleDeleteAdSpend = async (id) => {
+    const { error } = await supabase.from('ad_spend').delete().eq('id', id);
+    if (error) { toast.error('Failed to delete'); return; }
+    setAdEntries(p => p.filter(e => e.id !== id));
   };
 
   const handleAddReconJob = async () => {
@@ -6059,6 +6238,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                               <button onClick={() => fetchHistory(u)} style={{ fontSize: 11, color: '#9ca3af', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>History</button>
                               <button onClick={() => fetchPnl(u)} style={{ fontSize: 11, color: '#34d399', background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>P&L</button>
                               <button onClick={() => fetchReconJobs(u)} style={{ fontSize: 11, color: '#f59e0b', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Recon</button>
+                              {can('view_cost') && <button onClick={() => openAdSpend(u)} style={{ fontSize: 11, color: '#ec4899', background: 'rgba(236,72,153,0.08)', border: '1px solid rgba(236,72,153,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Ads</button>}
                               {can('view_cost') && <button onClick={() => { setEditPriceUnit(u); setEditPriceForm({ purchase_price: String(u.purchase_price||''), recon_cost: String(u.recon_cost||''), asking_price: String(u.asking_price||'') }); }} style={{ fontSize: 11, color: '#a78bfa', background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Edit Prices</button>}
                             </div>
                           </td>
@@ -6302,12 +6482,28 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                       ['Included services', pnlData.servicesCost],
                       ['Commission paid', pnlData.commission],
                       ['Handover processing', pnlData.handoverCost],
+                      ['Advertising', pnlData.adSpend],
+                      [`Holding (${pnlData.holdingDays}d)`, pnlData.holdingCost],
                     ].filter(([, v]) => v > 0).map(([label, val]) => (
                       <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
                         <span style={{ color: '#6b7280' }}>{label}</span>
                         <span style={{ color: '#f87171' }}>− RM {Number(val).toLocaleString()}</span>
                       </div>
                     ))}
+                    {/* Recon estimate vs actual reconciliation (DMS-5) */}
+                    {pnlData.reconActual > 0 && pnlData.reconActual !== pnlData.reconCost && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 2, marginBottom: 3, paddingLeft: 8 }}>
+                        <span style={{ color: '#9ca3af' }}>↳ actual recon jobs</span>
+                        <span style={{ color: pnlData.reconActual > pnlData.reconCost ? '#f59e0b' : '#059669' }}>
+                          RM {pnlData.reconActual.toLocaleString()} {pnlData.reconActual > pnlData.reconCost ? `(+${(pnlData.reconActual - pnlData.reconCost).toLocaleString()} over)` : '(under est.)'}
+                        </span>
+                      </div>
+                    )}
+                    {pnlData.holdingCost > 0 && (
+                      <p style={{ fontSize: 10, color: '#9ca3af', marginTop: 1, marginBottom: 2, paddingLeft: 8 }}>
+                        ↳ RM {Math.round(pnlData.dailyHold).toLocaleString()}/day carrying cost
+                      </p>
+                    )}
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, marginTop: 6, paddingTop: 6, borderTop: '1px dashed #e5e7eb' }}>
                       <span style={{ color: '#374151' }}>Front gross</span>
                       <span style={{ color: pnlData.frontGross >= 0 ? '#059669' : '#f87171' }}>
@@ -6350,6 +6546,62 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                     {!pnlData.isSold && <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>Based on current asking price — updates when sold.</p>}
                   </div>
                 </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Advertising Spend Modal (DMS-6) */}
+      {adUnit && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg flex flex-col" style={{ maxHeight: '88vh', background: '#fff' }}>
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div>
+                <h3 className="font-semibold text-gray-900" style={{ fontSize: 15 }}>Advertising Spend</h3>
+                <p style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                  {adUnit.car_listings?.brand || adUnit.brand} {adUnit.car_listings?.model || adUnit.model} {adUnit.car_listings?.year || adUnit.year}
+                  {adUnit.car_listings?.plate_number || adUnit.registration_number ? ` · ${adUnit.car_listings?.plate_number || adUnit.registration_number}` : ''}
+                </p>
+              </div>
+              <button onClick={() => { setAdUnit(null); setAdEntries([]); }} className="text-gray-400 hover:text-gray-700 p-1"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-5">
+              {/* Add form */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+                <select value={adForm.channel} onChange={e => setAdForm(f => ({ ...f, channel: e.target.value }))} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 10px', fontSize: 12, outline: 'none', appearance: 'none' }}>
+                  {['mudah', 'carlist', 'facebook', 'tiktok', 'instagram', 'other'].map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+                </select>
+                <input type="number" value={adForm.amount} onChange={e => setAdForm(f => ({ ...f, amount: e.target.value }))} placeholder="Amount (RM)" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none' }} />
+                <input type="date" value={adForm.spent_at} onChange={e => setAdForm(f => ({ ...f, spent_at: e.target.value }))} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none', colorScheme: 'light' }} />
+                <input value={adForm.notes} onChange={e => setAdForm(f => ({ ...f, notes: e.target.value }))} placeholder="Notes (optional)" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none' }} />
+                <button onClick={handleAddAdSpend} disabled={adSaving} style={{ gridColumn: '1/-1', background: '#ec4899', color: '#fff', border: 'none', borderRadius: 6, padding: '9px', fontSize: 13, fontWeight: 600, cursor: adSaving ? 'default' : 'pointer' }}>{adSaving ? 'Adding…' : 'Add spend'}</button>
+              </div>
+              {/* List */}
+              {adLoading ? (
+                <p className="text-gray-500 text-sm text-center py-6">Loading…</p>
+              ) : adEntries.length === 0 ? (
+                <p className="text-gray-400 text-sm text-center py-6">No advertising logged for this car yet.</p>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', background: '#f3f4f6', borderRadius: 8, marginBottom: 10, fontSize: 12 }}>
+                    <span style={{ color: '#6b7280' }}>{adEntries.length} entr{adEntries.length === 1 ? 'y' : 'ies'}</span>
+                    <span style={{ fontWeight: 700, color: '#111827' }}>Total: RM {adEntries.reduce((s, e) => s + (Number(e.amount) || 0), 0).toLocaleString()}</span>
+                  </div>
+                  {adEntries.map(e => (
+                    <div key={e.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', border: '1px solid #f3f4f6', borderRadius: 8, marginBottom: 6 }}>
+                      <div style={{ minWidth: 0 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#111827', textTransform: 'capitalize' }}>{e.channel}</span>
+                        <span style={{ fontSize: 12, color: '#6b7280', marginLeft: 8 }}>{e.spent_at ? new Date(e.spent_at).toLocaleDateString('en-MY') : ''}</span>
+                        {e.notes && <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{e.notes}</p>}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>RM {Number(e.amount).toLocaleString()}</span>
+                        <button onClick={() => handleDeleteAdSpend(e.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    </div>
+                  ))}
+                </>
               )}
             </div>
           </div>
