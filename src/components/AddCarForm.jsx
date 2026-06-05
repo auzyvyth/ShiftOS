@@ -7,6 +7,7 @@ import { supabase } from "../supabaseClient";
 import { useProfile, getDealerIdFromProfile } from "../hooks/useProfile";
 import { estimateRoadTax } from "../utils/roadTax";
 import { lookupCarSpec } from "../utils/carSpecs";
+import { decodeVin, isLikelyVin } from "../utils/vinDecode";
 import { color } from "../theme/tokens";
 
 // Official Malaysian transfer baseline (government rates, before runner markup)
@@ -62,10 +63,35 @@ export default function AddCarForm({ onPublished, onStocked }) {
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [decoded, setDecoded] = useState(false);
+  const [decodingVin, setDecodingVin] = useState(false);
+  const [vinResult, setVinResult] = useState(null); // "hit" | "miss" | null
   const photosRef = useRef(null);
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
   const setVal = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  // ── VIN decode (free NHTSA lookup) ─────────────────────────────────────────
+  // Explicit user action: fills make/model/year/CC/body from the VIN. Best for
+  // CBU units; national cars (Perodua/Proton) miss → fall back to manual + the
+  // local carSpecs auto-fill that runs on make+model.
+  const handleDecodeVin = async () => {
+    setVinResult(null); setError("");
+    if (!isLikelyVin(form.vin_number)) { setVinResult("invalid"); return; }
+    setDecodingVin(true);
+    const r = await decodeVin(form.vin_number);
+    setDecodingVin(false);
+    if (!r) { setVinResult("miss"); return; }
+    const makeMatch = MAKES.find((m) => m.toLowerCase() === (r.make || "").toLowerCase()) || "Other";
+    setForm((f) => ({
+      ...f,
+      brand: f.brand || makeMatch,
+      model: f.model || r.model || "",
+      year: f.year || (r.year || ""),
+      engine_cc: String(f.engine_cc).trim() || (r.cc ? String(r.cc) : ""),
+      body_type: r.body && BODY_TYPES.includes(r.body) ? r.body : f.body_type,
+    }));
+    setVinResult("hit");
+  };
 
   // Local-model spec auto-fill: when make + model are both set, fill engine CC
   // and body type IF the dealer hasn't already typed them.
@@ -324,7 +350,24 @@ export default function AddCarForm({ onPublished, onStocked }) {
       {step === 1 && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 16 }}>
           <Field label="Plate number" hint="Primary identifier"><Text k="plate_number" ph="WXY 1234" /></Field>
-          <Field label="VIN / chassis"><Text k="vin_number" ph="optional" /></Field>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label style={lbl}>VIN / chassis</label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input style={{ ...inp, flex: 1, textTransform: "uppercase" }} value={form.vin_number}
+                placeholder="17-char VIN — auto-fills make, model, year, CC"
+                onChange={(e) => { setVal("vin_number", e.target.value); setVinResult(null); }} />
+              <button type="button" onClick={handleDecodeVin}
+                disabled={decodingVin || !isLikelyVin(form.vin_number)}
+                style={{ padding: "0 16px", borderRadius: 8, border: "none", whiteSpace: "nowrap",
+                  background: isLikelyVin(form.vin_number) && !decodingVin ? color.accent : "#FCA5A5",
+                  color: "#fff", fontSize: 13, fontWeight: 700, cursor: isLikelyVin(form.vin_number) && !decodingVin ? "pointer" : "default" }}>
+                {decodingVin ? "Decoding…" : "Decode"}
+              </button>
+            </div>
+            {vinResult === "hit" && <p style={{ fontSize: 11, color: "#059669", marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}><Check className="w-3 h-3" /> Decoded — review the fields below and edit if needed.</p>}
+            {vinResult === "miss" && <p style={{ fontSize: 11, color: "#B45309", marginTop: 4 }}>Not found (common for Perodua/Proton). Pick make + model below — we will auto-fill CC.</p>}
+            {vinResult === "invalid" && <p style={{ fontSize: 11, color: color.textMuted, marginTop: 4 }}>A standard VIN is 17 characters. Leave blank if unknown.</p>}
+          </div>
           <Field label="Make" required><Select k="brand" options={["", ...MAKES]} /></Field>
           <Field label="Model" required><Text k="model" ph="Civic" /></Field>
           <Field label="Variant"><Text k="variant" ph="1.5 TC-P" /></Field>
