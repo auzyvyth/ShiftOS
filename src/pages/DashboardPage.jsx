@@ -9189,15 +9189,6 @@ export default function DashboardPage() {
               Admin Panel
             </a>
           )}
-          <button
-            onClick={() => window.open(getStorefrontUrl(), '_blank')}
-            className="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
-            style={{ color: color.textMuted }}
-          >
-            <Home className="w-4 h-4 flex-shrink-0" />
-            View Site
-            <Eye className="w-3 h-3 ml-auto opacity-40" />
-          </button>
         </nav>
 
         {/* ── Sidebar bottom ── */}
@@ -9215,17 +9206,29 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Dealership chip */}
+          {/* Dealership link */}
           {profile?.dealership && (
-            <div
-              className="flex items-center gap-2 rounded-lg px-3 py-2 mx-1"
-              style={{ background: '#F7F8FA', border: '1px solid #EAECF0' }}
+            <a
+              href={getStorefrontUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open your public storefront"
+              className="flex items-center gap-2 rounded-lg px-3 py-2 mx-1 group"
+              style={{ background: '#F7F8FA', border: '1px solid #EAECF0', textDecoration: 'none', transition: 'background 0.15s, border-color 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.borderColor = 'rgba(220,38,38,0.25)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#F7F8FA'; e.currentTarget.style.borderColor = '#EAECF0'; }}
             >
-              <Building2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: color.textMuted }} />
-              <p style={{ fontSize: 12, fontWeight: 600, color: color.ink }} className="truncate flex-1">
-                {profile.dealership}
-              </p>
-            </div>
+              <Building2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#DC2626' }} />
+              <div className="flex-1 min-w-0">
+                <p style={{ fontSize: 12, fontWeight: 600, color: color.ink }} className="truncate">
+                  {profile.dealership}
+                </p>
+                <p style={{ fontSize: 10, color: '#DC2626', marginTop: 1 }} className="truncate">
+                  {profile.subdomain ? `${profile.subdomain}.xdrive.my` : 'xdrive.my'}
+                </p>
+              </div>
+              <ExternalLink className="w-3 h-3 flex-shrink-0" style={{ color: '#DC2626', opacity: 0.6 }} />
+            </a>
           )}
 
           {/* Plan tier chip */}
