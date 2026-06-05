@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Gauge, Settings2, MessageCircle, Fuel, Calendar, Heart, Images } from 'lucide-react';
+import { Gauge, Settings2, Fuel, Calendar, Heart, Images } from 'lucide-react';
 import GradeBadge from './GradeBadge';
-import { buildWaUrl } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
-import { trackEvent, getOrCreateSessionId } from '../utils/analytics';
-import { getRef } from '../utils/refTracking';
+import { trackEvent } from '../utils/analytics';
 import { isSubdomain } from '../hooks/useTenant';
 import { useSavedCars } from '../hooks/useSavedCars';
 import { calcMonthly } from '../utils/financing';
@@ -24,9 +22,7 @@ const formatAge = (days) => {
   return `Listed ${Math.floor(days / 30)}mo ago`;
 };
 
-const XDRIVE_PHONE = '60174155191';
-
-const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }) => {
+const CarCard = ({ car, showDiscountBadge = true, priority = false }) => {
   const navigate = useNavigate();
   const [imgError, setImgError]   = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -81,14 +77,6 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
   const subLine  = [colour, location].filter(Boolean).join(' · ') || null;
   const ageLabel = formatAge(ageDays);
 
-  const waText = `Hi, I'm interested in the ${year} ${brand} ${model}${variant ? ' ' + variant : ''}. Can you share more details?`;
-  const ctxResolved = ctaContext?.type !== 'loading' ? ctaContext : null;
-  const whatsappUrl = buildWaUrl(
-    ctxResolved || { type: 'listing', profile: null, ref: null },
-    XDRIVE_PHONE,
-    waText
-  );
-
   /* ── Palettes ── */
   const xd = xdrive ? {
     cardBg:      '#FFFFFF',
@@ -112,9 +100,6 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
     divider:     '1px solid #F1F5F9',
     footerColor: '#94A3B8',
     freshColor:  ageDays !== null && ageDays <= 2 ? '#DC2626' : '#94A3B8',
-    waBtn:       isSold
-      ? { bg:'#F8FAFC',                    border:'1px solid #E2E8F0',               color:'#94A3B8' }
-      : { bg:'rgba(37,211,102,0.08)',       border:'1px solid rgba(37,211,102,0.28)', color:'#15803D' },
     noImg:       '#94A3B8',
     condBadge: {
       used:  { bg: 'rgba(255,255,255,0.88)', color: '#334155' },
@@ -141,9 +126,6 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
     divider:     '1px solid rgba(255,255,255,0.06)',
     footerColor: '#6b7280',
     freshColor:  ageDays !== null && ageDays <= 2 ? '#f87171' : '#6b7280',
-    waBtn:       isSold
-      ? { bg:'rgba(255,255,255,0.03)',      border:'0.5px solid rgba(255,255,255,0.06)', color:'#6b7280' }
-      : { bg:'rgba(37,211,102,0.08)',       border:'1px solid rgba(37,211,102,0.2)',     color:'#25D366' },
     noImg:       '#2d3748',
     condBadge: {
       used:  { bg: 'rgba(0,0,0,0.55)',        color: '#d1d5db' },
@@ -187,18 +169,12 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
           box-shadow: 0 16px 40px rgba(220,38,38,0.18);
           border-color: rgba(220,38,38,0.4) !important;
         }
-        .cc-wa:hover {
-          background: rgba(37,211,102,0.18) !important;
-          border-color: rgba(37,211,102,0.5) !important;
-        }
-
         @media (max-width: 520px) {
           .cc-body         { padding: 9px 10px 11px !important; }
           .cc-name         { font-size: 12px !important; }
           .cc-price-main   { font-size: 16px !important; }
           .cc-monthly-row  { display: none !important; }
           .cc-spec-val     { font-size: 10px !important; }
-          .cc-wa           { width: 28px !important; height: 28px !important; }
         }
       `}</style>
 
@@ -476,9 +452,8 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
           {/* Divider */}
           <div style={{ borderTop: xd.divider, marginBottom: 8 }} />
 
-          {/* ── Footer: freshness + grade | WA ── */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 'auto', minHeight: 28 }}>
-
+          {/* ── Footer: freshness + grade ── */}
+          <div style={{ display: 'flex', alignItems: 'center', marginTop: 'auto', minHeight: 28 }}>
             <div style={{ minWidth: 0, overflow: 'hidden', flex: 1 }}>
               {hasGrade ? (
                 <GradeBadge auctionGrade={auctionGrade} interiorGrade={interiorGrade} size="sm" />
@@ -493,49 +468,6 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
                 </span>
               ) : null}
             </div>
-
-            <a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`WhatsApp enquiry for ${year} ${brand} ${model}`}
-              className="cc-wa"
-              onClick={e => {
-                e.stopPropagation();
-                supabase.from('whatsapp_enquiries').insert({
-                  dealer_id:     car.dealer_id || null,
-                  listing_id:    car.id        || null,
-                  buyer_name:    null,
-                  buyer_phone:   null,
-                  buyer_message: waText,
-                  source:        'car_card',
-                  status:        'new',
-                  ref_slug:      getRef() || null,
-                  session_id:    getOrCreateSessionId(),
-                }).then(() => {});
-                trackEvent(supabase, 'whatsapp_click', {
-                  car_id:    car.id,
-                  car_name:  `${year} ${brand} ${model}`,
-                  dealer_id: car.dealer_id || null,
-                  metadata:  { source: 'car_card' },
-                });
-              }}
-              style={{
-                flexShrink:    0,
-                display:       'flex', alignItems: 'center', justifyContent: 'center',
-                width:         32, height: 32,
-                background:    xd.waBtn.bg,
-                border:        xd.waBtn.border,
-                color:         xd.waBtn.color,
-                borderRadius:  10,
-                textDecoration: 'none',
-                transition:    'all 0.18s',
-                pointerEvents: isSold ? 'none' : 'auto',
-              }}
-            >
-              <MessageCircle size={14} />
-            </a>
-
           </div>
         </div>
       </article>
