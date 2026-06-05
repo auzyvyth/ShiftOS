@@ -974,13 +974,10 @@ export default function MarketplacePage() {
               ].map(({ label, brandVal, logo, initials, color }) => {
                 const isActive = brandVal ? searchParams.get('brand') === brandVal : !searchParams.get('brand');
                 return (
-                  <button
+                  <Link
                     key={label}
-                    onClick={() => {
-                      setParam('brand', brandVal);
-                      document.getElementById('mp-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }}
-                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', width: 'auto' }}
+                    to={brandVal ? `/showroom?brand=${encodeURIComponent(brandVal)}` : '/showroom'}
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: 0, cursor: 'pointer', width: 'auto', textDecoration: 'none' }}
                   >
                     <div className="mp-brand-card" style={{
                       width: '84px', height: '68px', borderRadius: '14px', padding: '10px',
@@ -998,7 +995,7 @@ export default function MarketplacePage() {
                       <span style={{ display: logo ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', borderRadius: '8px', background: color || 'rgba(0,0,0,0.08)', color: '#fff', fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', fontFamily: "'Outfit',sans-serif" }}>{initials}</span>
                     </div>
                     <span style={{ fontSize: '11px', color: isActive ? '#dc2626' : '#374151', fontFamily: "'Outfit',sans-serif", fontWeight: isActive ? '700' : '500', textAlign: 'center', maxWidth: '84px', lineHeight: 1.2 }}>{label}</span>
-                  </button>
+                  </Link>
                 );
               })}
             </div>

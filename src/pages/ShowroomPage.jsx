@@ -20,7 +20,18 @@ import Pagination from '../components/ui/Pagination';
 /* ── Constants ───────────────────────────────────────────────────────────── */
 const PER_PAGE = 15;
 
-const BRANDS = ['Perodua','Proton','Honda','Toyota','Mazda','BMW','Mercedes-Benz','Hyundai','Nissan','Mitsubishi','Kia','Volvo'];
+// Filter whitelist — must cover every brand the strip links to AND every
+// brand value that can exist in the DB, else sanitize.brand drops the param
+// and the page renders unfiltered (the "URL changes but nothing filters" bug).
+const BRANDS = [
+  'Perodua','Proton','Honda','Toyota','Nissan','Mazda','Mitsubishi','Suzuki',
+  'Subaru','Daihatsu','Hyundai','Kia','BMW','Mercedes-Benz','Mercedes',
+  'Volkswagen','Audi','Porsche','Lexus','Volvo','Tesla','Ford','MG','BYD',
+  'MINI','Chery','Haval','Geely','Jaguar','Land Rover','Ferrari','Lamborghini',
+  'Bentley',
+];
+// Curated list for the sidebar <select> dropdown (common brands first).
+const BRAND_OPTIONS = ['Perodua','Proton','Honda','Toyota','Mazda','BMW','Mercedes-Benz','Hyundai','Nissan','Mitsubishi','Kia','Volvo','Lexus','Subaru','Volkswagen','Audi','Suzuki','Daihatsu'];
 const BODY_TYPES = ['Sedan','SUV','MPV','Hatchback','Coupe','Pickup'];
 const TRANSMISSIONS = ['Auto','Manual'];
 const FINANCING_TYPES = [
@@ -107,7 +118,7 @@ function Filters({
           setSearchParams(n,{replace:true});
         }}>
           <option value="">All Brands</option>
-          {BRANDS.map(b=><option key={b} value={b}>{b}</option>)}
+          {BRAND_OPTIONS.map(b=><option key={b} value={b}>{b}</option>)}
         </select>
       </FG>
       <FG title="Model">
@@ -232,6 +243,18 @@ export default function ShowroomPage() {
 
   const [searchInput, setSearchInput] = useState(q);
   useEffect(() => setSearchInput(q), [q]);
+  // Debounce search input → update URL param q so results update as you type
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const sq = sanitize.q(searchInput);
+      if (sq === q) return;
+      const next = new URLSearchParams(searchParams);
+      if (sq) next.set('q', sq); else next.delete('q');
+      next.delete('page');
+      setSearchParams(next, { replace: true });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [searchInput]); // eslint-disable-line
   const [variantInput, setVariantInput] = useState(variant);
   useEffect(() => setVariantInput(variant), [variant]);
 
@@ -370,6 +393,11 @@ export default function ShowroomPage() {
     { label:'BMW',         to:'/showroom?brand=BMW',          logo:'/brands/bmw.svg' },
     { label:'Mercedes',    to:'/showroom?brand=Mercedes-Benz',logo:'/brands/mercedes.svg',   invert:true },
     { label:'Hyundai',     to:'/showroom?brand=Hyundai',      logo:'/brands/hyundai.svg',    invert:true },
+    { label:'Kia',         to:'/showroom?brand=Kia',          logo:'/brands/kia.svg' },
+    { label:'Lexus',       to:'/showroom?brand=Lexus',        logo:'/brands/lexus.svg',      invert:true },
+    { label:'Subaru',      to:'/showroom?brand=Subaru',       logo:'/brands/subaru.svg' },
+    { label:'VW',          to:'/showroom?brand=Volkswagen',   logo:'/brands/volkswagen.svg' },
+    { label:'Audi',        to:'/showroom?brand=Audi',         logo:'/brands/audi.svg',       invert:true },
   ];
 
   if (isSubdomain()) return <Navigate to="/" replace />;
@@ -493,7 +521,8 @@ export default function ShowroomPage() {
           <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'0 24px' }}>
             <div className="sr-brand-scroll" style={{ display:'flex', gap:'10px', overflowX:'auto', paddingBottom:'4px', scrollbarWidth:'none' }}>
               {BRAND_LOGOS.map(({ label, to, logo, initials, color }) => {
-                const active = brand === label || (label==='All' && !brand);
+                const activeBrand = to === '/showroom' ? '' : (new URLSearchParams(to.split('?')[1]||'').get('brand')||'');
+                const active = activeBrand ? brand === activeBrand : !brand;
                 return (
                   <Link key={label} to={to} style={{ flexShrink:0, display:'flex', flexDirection:'column', alignItems:'center', gap:'6px', textDecoration:'none' }}>
                     <div style={{ width:'76px', height:'60px', borderRadius:'12px', padding:'10px', background: active?'rgba(220,38,38,0.08)':'#ffffff', border:`1px solid ${active?'rgba(220,38,38,0.35)':'rgba(0,0,0,0.09)'}`, display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s' }}>

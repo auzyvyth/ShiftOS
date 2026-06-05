@@ -204,6 +204,11 @@ const STYLES = `
   /* ── Team roles grid ── */
   .sos-roles{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;}
 
+  /* ── Screenshots grid ── */
+  @media(max-width:860px){
+    .sos-screenshots{grid-template-columns:1fr!important;}
+  }
+
   @media(max-width:860px){
     .sos-nav-links{display:none!important;}
     .sos-hero-h1{font-size:44px!important;line-height:1.04!important;}
@@ -309,23 +314,26 @@ const PLAN_FEATURES = {
   ],
   dealer_pro: [
     "Everything in Growth",
+    "Realtime AI assistant (stock, leads, P&L)",
     "Owner P&L dashboard + scorecards",
     "Full audit trail",
     "Priority onboarding & support",
   ],
 };
 
+const WA   = "https://wa.me/60174155191?text=Hi%2C%20I%27m%20interested%20in%20ShiftOS%20for%20my%20dealership";
+const DEMO = "https://wa.me/60174155191?text=Hi%2C%20I%27d%20like%20to%20book%20a%20ShiftOS%20demo%20for%20my%20dealership";
+
 const PLAN_META = {
-  salesman_lite: { cta: "Daftar Percuma", to: "/onboarding/lite",    variant: "outline" },
-  salesman_full: { cta: "Mula Sekarang",  to: "/onboarding/premium", variant: "primary" },
-  dealer_starter:{ cta: "Get Started",    to: "/onboarding/dealer",  variant: "outline" },
-  dealer_growth: { cta: "Get Started",    to: "/onboarding/dealer",  variant: "primary", popular: true },
-  dealer_pro:    { cta: "Talk to Sales",  to: "/onboarding/dealer",  variant: "gold" },
+  salesman_lite: { cta: "Daftar Percuma", to: "/onboarding/lite",           variant: "outline" },
+  salesman_full: { cta: "Mula Sekarang",  to: "/onboarding/premium",        variant: "primary" },
+  dealer_starter:{ cta: "Get Started",    to: "/onboarding/dealer",         variant: "outline" },
+  dealer_growth: { cta: "Get Started",    to: "/onboarding/dealer_growth",  variant: "primary", popular: true },
+  dealer_pro:    { cta: "Book a Demo",    href: DEMO,                       variant: "gold" },
 };
 
 const SALESMAN_PLANS = ["salesman_lite", "salesman_full"];
 const DEALER_PLANS   = ["dealer_starter", "dealer_growth", "dealer_pro"];
-const WA = "https://wa.me/60174155191?text=Hi%2C%20I%27m%20interested%20in%20ShiftOS%20for%20my%20dealership";
 
 // ─── Scroll reveal ────────────────────────────────────────────────────────────
 function Reveal({ children, delay = 0, style }) {
@@ -416,7 +424,8 @@ function PriceCard({ planKey }) {
         <Link to={meta.to} className="sos-btn-outline" style={{ justifyContent: "center", fontSize: 14 }}>{meta.cta}</Link>
       )}
       {meta.variant === "gold" && (
-        <Link to={meta.to} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 26px", borderRadius: 11, background: "linear-gradient(135deg,#d97706,#92400e)", color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none", boxShadow: "0 4px 20px rgba(180,120,40,0.38),inset 0 1px 0 rgba(255,255,255,0.14)", transition: "transform .15s,box-shadow .15s" }}>{meta.cta}</Link>
+        <a href={meta.href || meta.to} target={meta.href ? "_blank" : undefined} rel={meta.href ? "noopener noreferrer" : undefined}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 26px", borderRadius: 11, background: "linear-gradient(135deg,#d97706,#92400e)", color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none", boxShadow: "0 4px 20px rgba(180,120,40,0.38),inset 0 1px 0 rgba(255,255,255,0.14)", transition: "transform .15s,box-shadow .15s" }}>{meta.cta}</a>
       )}
     </div>
   );
@@ -510,9 +519,14 @@ export default function ShiftOSPage() {
                 onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "#6b7280")}>Log in</Link>
             </div>
-            <Link to="/onboarding/dealer" className="sos-btn-primary" style={{ fontSize: 13, padding: "9px 18px" }}>
-              Start Free <ArrowRight size={15} />
-            </Link>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <a href={DEMO} target="_blank" rel="noopener noreferrer" className="sos-btn-outline" style={{ fontSize: 13, padding: "9px 18px" }}>
+                Book a Demo
+              </a>
+              <Link to="/onboarding/dealer" className="sos-btn-primary" style={{ fontSize: 13, padding: "9px 18px" }}>
+                Start Free <ArrowRight size={15} />
+              </Link>
+            </div>
           </div>
         </nav>
 
@@ -539,8 +553,8 @@ export default function ShiftOSPage() {
               <Link to="/onboarding/dealer" className="sos-btn-primary" style={{ fontSize: 15, padding: "14px 30px" }}>
                 Start Free <ArrowRight size={16} />
               </Link>
-              <a href={WA} target="_blank" rel="noopener noreferrer" className="sos-btn-outline" style={{ fontSize: 15, padding: "14px 30px" }}>
-                <MessageCircle size={16} /> Talk to Us
+              <a href={DEMO} target="_blank" rel="noopener noreferrer" className="sos-btn-outline" style={{ fontSize: 15, padding: "14px 30px" }}>
+                <MessageCircle size={16} /> Book a Demo
               </a>
             </div>
             <p style={{ fontSize: 12, color: "#374151", letterSpacing: ".04em" }}>
@@ -566,6 +580,54 @@ export default function ShiftOSPage() {
               ))}
             </div>
           </Reveal>
+        </section>
+
+        {/* ── See It In Action ── */}
+        <section className="sos-wrap" style={{ paddingBottom: 96 }}>
+          <Reveal>
+            <div style={{ textAlign: "center", marginBottom: 44 }}>
+              <div className="sos-eyebrow" style={{ marginBottom: 18 }}>See it in action</div>
+              <h2 className="sos-h" style={{ fontSize: 50, color: "#fff", marginBottom: 12 }}>The Dashboard Your Team Uses Daily</h2>
+              <p style={{ fontSize: 15, color: "#6b7280", maxWidth: 480, margin: "0 auto", lineHeight: 1.65 }}>
+                Real screens from ShiftOS — not mockups.
+              </p>
+            </div>
+          </Reveal>
+          <div className="sos-screenshots" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
+            {[
+              { label: "Per-Unit P&L Modal",       caption: "Front gross + back gross per car — sale price minus every cost, calculated automatically.",              badge: "Owner · P&L" },
+              { label: "Owner Dashboard",           caption: "MTD revenue, units sold, capital tied up, and goal pace — all in one screen updated in real time.",     badge: "Owner · Analytics" },
+              { label: "Sales CRM Pipeline",        caption: "Every lead attributed to a salesman, response time tracked, stale-lead alerts fired automatically.",    badge: "Sales · CRM" },
+              { label: "Post-Sale Handover Board",  caption: "Auto-seeded JPJ + Puspakom + road tax checklist the moment a deal is marked won. No step forgotten.",  badge: "Operations · Handover" },
+            ].map(({ label, caption, badge }) => (
+              <Reveal key={label}>
+                <div className="sos-glass" style={{ overflow: "hidden" }}>
+                  <div style={{
+                    aspectRatio: "16 / 9",
+                    background: "rgba(255,255,255,0.02)",
+                    border: "2px dashed rgba(220,38,38,0.25)",
+                    borderRadius: "18px 18px 0 0",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 12,
+                    padding: 24,
+                  }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(220,38,38,0.7)" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                    </div>
+                    <p style={{ fontSize: 13, color: "rgba(220,38,38,0.55)", fontWeight: 600, letterSpacing: "0.04em", textAlign: "center" }}>{label}</p>
+                    <p style={{ fontSize: 11, color: "rgba(255,255,255,0.15)", letterSpacing: "0.06em", textTransform: "uppercase" }}>screenshot coming soon</p>
+                  </div>
+                  <div style={{ padding: "16px 22px 20px", background: "rgba(0,0,0,0.18)" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#f87171", letterSpacing: "0.08em", textTransform: "uppercase", background: "rgba(220,38,38,0.1)", borderRadius: 4, padding: "2px 8px", marginBottom: 8, display: "inline-block" }}>{badge}</span>
+                    <p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6, marginTop: 6 }}>{caption}</p>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
         </section>
 
         {/* ── Pain → Solution ── */}
@@ -702,8 +764,8 @@ export default function ShiftOSPage() {
                 <Link to="/onboarding/dealer" className="sos-btn-primary" style={{ fontSize: 15, padding: "15px 34px" }}>
                   Start Free <ArrowRight size={16} />
                 </Link>
-                <a href={WA} target="_blank" rel="noopener noreferrer" className="sos-btn-outline" style={{ fontSize: 15, padding: "15px 34px" }}>
-                  <MessageCircle size={16} /> WhatsApp Us
+                <a href={DEMO} target="_blank" rel="noopener noreferrer" className="sos-btn-outline" style={{ fontSize: 15, padding: "15px 34px" }}>
+                  <MessageCircle size={16} /> Book a Demo
                 </a>
               </div>
             </div>

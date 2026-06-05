@@ -23,14 +23,14 @@ export const PLAN_CONFIG = {
   },
   dealer_growth: {
     label: 'Dealer Growth',
-    price: 799,
+    price: 699,
     listingCap: 60,
     seatCap: 8,
     isDealer: true,
   },
   dealer_pro: {
     label: 'Dealer Pro',
-    price: 1499,
+    price: 999,
     listingCap: 150,
     seatCap: 15,
     isDealer: true,
