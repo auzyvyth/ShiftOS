@@ -314,20 +314,22 @@ const PLAN_FEATURES = {
   ],
   dealer_pro: [
     "Everything in Growth",
+    "Realtime AI assistant (stock, leads, P&L)",
     "Owner P&L dashboard + scorecards",
     "Full audit trail",
     "Priority onboarding & support",
   ],
 };
 
-const WA = "https://wa.me/60174155191?text=Hi%2C%20I%27m%20interested%20in%20ShiftOS%20for%20my%20dealership";
+const WA   = "https://wa.me/60174155191?text=Hi%2C%20I%27m%20interested%20in%20ShiftOS%20for%20my%20dealership";
+const DEMO = "https://wa.me/60174155191?text=Hi%2C%20I%27d%20like%20to%20book%20a%20ShiftOS%20demo%20for%20my%20dealership";
 
 const PLAN_META = {
   salesman_lite: { cta: "Daftar Percuma", to: "/onboarding/lite",           variant: "outline" },
   salesman_full: { cta: "Mula Sekarang",  to: "/onboarding/premium",        variant: "primary" },
   dealer_starter:{ cta: "Get Started",    to: "/onboarding/dealer",         variant: "outline" },
   dealer_growth: { cta: "Get Started",    to: "/onboarding/dealer_growth",  variant: "primary", popular: true },
-  dealer_pro:    { cta: "Talk to Sales",  href: WA,                         variant: "gold" },
+  dealer_pro:    { cta: "Book a Demo",    href: DEMO,                       variant: "gold" },
 };
 
 const SALESMAN_PLANS = ["salesman_lite", "salesman_full"];
@@ -517,9 +519,14 @@ export default function ShiftOSPage() {
                 onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "#6b7280")}>Log in</Link>
             </div>
-            <Link to="/onboarding/dealer" className="sos-btn-primary" style={{ fontSize: 13, padding: "9px 18px" }}>
-              Start Free <ArrowRight size={15} />
-            </Link>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <a href={DEMO} target="_blank" rel="noopener noreferrer" className="sos-btn-outline" style={{ fontSize: 13, padding: "9px 18px" }}>
+                Book a Demo
+              </a>
+              <Link to="/onboarding/dealer" className="sos-btn-primary" style={{ fontSize: 13, padding: "9px 18px" }}>
+                Start Free <ArrowRight size={15} />
+              </Link>
+            </div>
           </div>
         </nav>
 
@@ -546,8 +553,8 @@ export default function ShiftOSPage() {
               <Link to="/onboarding/dealer" className="sos-btn-primary" style={{ fontSize: 15, padding: "14px 30px" }}>
                 Start Free <ArrowRight size={16} />
               </Link>
-              <a href={WA} target="_blank" rel="noopener noreferrer" className="sos-btn-outline" style={{ fontSize: 15, padding: "14px 30px" }}>
-                <MessageCircle size={16} /> Talk to Us
+              <a href={DEMO} target="_blank" rel="noopener noreferrer" className="sos-btn-outline" style={{ fontSize: 15, padding: "14px 30px" }}>
+                <MessageCircle size={16} /> Book a Demo
               </a>
             </div>
             <p style={{ fontSize: 12, color: "#374151", letterSpacing: ".04em" }}>
@@ -757,8 +764,8 @@ export default function ShiftOSPage() {
                 <Link to="/onboarding/dealer" className="sos-btn-primary" style={{ fontSize: 15, padding: "15px 34px" }}>
                   Start Free <ArrowRight size={16} />
                 </Link>
-                <a href={WA} target="_blank" rel="noopener noreferrer" className="sos-btn-outline" style={{ fontSize: 15, padding: "15px 34px" }}>
-                  <MessageCircle size={16} /> WhatsApp Us
+                <a href={DEMO} target="_blank" rel="noopener noreferrer" className="sos-btn-outline" style={{ fontSize: 15, padding: "15px 34px" }}>
+                  <MessageCircle size={16} /> Book a Demo
                 </a>
               </div>
             </div>
