@@ -232,6 +232,18 @@ export default function ShowroomPage() {
 
   const [searchInput, setSearchInput] = useState(q);
   useEffect(() => setSearchInput(q), [q]);
+  // Debounce search input → update URL param q so results update as you type
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const sq = sanitize.q(searchInput);
+      if (sq === q) return;
+      const next = new URLSearchParams(searchParams);
+      if (sq) next.set('q', sq); else next.delete('q');
+      next.delete('page');
+      setSearchParams(next, { replace: true });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [searchInput]); // eslint-disable-line
   const [variantInput, setVariantInput] = useState(variant);
   useEffect(() => setVariantInput(variant), [variant]);
 
@@ -493,7 +505,8 @@ export default function ShowroomPage() {
           <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'0 24px' }}>
             <div className="sr-brand-scroll" style={{ display:'flex', gap:'10px', overflowX:'auto', paddingBottom:'4px', scrollbarWidth:'none' }}>
               {BRAND_LOGOS.map(({ label, to, logo, initials, color }) => {
-                const active = brand === label || (label==='All' && !brand);
+                const activeBrand = to === '/showroom' ? '' : (new URLSearchParams(to.split('?')[1]||'').get('brand')||'');
+                const active = activeBrand ? brand === activeBrand : !brand;
                 return (
                   <Link key={label} to={to} style={{ flexShrink:0, display:'flex', flexDirection:'column', alignItems:'center', gap:'6px', textDecoration:'none' }}>
                     <div style={{ width:'76px', height:'60px', borderRadius:'12px', padding:'10px', background: active?'rgba(220,38,38,0.08)':'#ffffff', border:`1px solid ${active?'rgba(220,38,38,0.35)':'rgba(0,0,0,0.09)'}`, display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s' }}>
