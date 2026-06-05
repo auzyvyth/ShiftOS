@@ -8289,6 +8289,7 @@ export default function DashboardPage() {
   const [showFastModal, setShowFastModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState(new Set());
   const [tiktokListing, setTiktokListing] = useState(null);
   const [priceEditListing, setPriceEditListing] = useState(null);
   const [markSoldListing, setMarkSoldListing] = useState(null);
@@ -8378,6 +8379,11 @@ export default function DashboardPage() {
       document.body.style.width = '';
     };
   }, [sidebarOpen]);
+
+  useEffect(() => {
+    const gid = TAB_TO_GROUP[activeTab];
+    if (gid) setOpenGroups(prev => new Set([...prev, gid]));
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let active = true;
@@ -8897,23 +8903,64 @@ export default function DashboardPage() {
     handover:   { title: "Handover",         sub: "Post-sale processing: JPJ transfer, Puspakom, road tax & insurance" },
   };
 
-  const NAV = [
-    { id: "overview",   Icon: Gauge,           label: "Overview" },
-    { id: "crm",        Icon: MessageCircle,   label: "Leads / CRM" },
-    { id: "listings",   Icon: Car,             label: "Listings",          badge: listings.length },
-    { id: "add",        Icon: PlusCircle,      label: "Add Listing" },
-    { id: "stock",      Icon: Package,         label: "Stock" },
-    { id: "hp",         Icon: CreditCard,      label: "HP Board" },
-    { id: "handover",   Icon: ClipboardCheck,  label: "Handover" },
-    { id: "analytics",  Icon: BarChart2,       label: "Analytics" },
-    { id: "team",       Icon: Users,           label: "Team" },
-    { id: "customers",  Icon: UserCheck,       label: "Customers" },
-    { id: "outreach",   Icon: Megaphone,       label: "Outreach Hub" },
-    { id: "ai_manager", Icon: Bot,             label: "AI Sales Manager" },
-    { id: "documents",  Icon: FileText,        label: "Documents" },
-    { id: "storefront", Icon: Globe,           label: "Storefront" },
-    { id: "oversight",  Icon: Shield,          label: "GM Oversight" },
+  const NAV_GROUPS = [
+    { id: "overview", Icon: Gauge, label: "Overview", direct: true },
+    {
+      id: "g_sales", Icon: TrendingUp, label: "Sales",
+      items: [
+        { id: "crm",  Icon: MessageCircle, label: "Leads / CRM" },
+        { id: "hp",   Icon: CreditCard,    label: "HP Board" },
+      ],
+    },
+    {
+      id: "g_inventory", Icon: Package, label: "Inventory",
+      items: [
+        { id: "listings", Icon: Car,        label: "Listings", badge: listings.length },
+        { id: "add",      Icon: PlusCircle, label: "Add Listing" },
+        { id: "stock",    Icon: Package,    label: "Stock" },
+      ],
+    },
+    {
+      id: "g_operations", Icon: ClipboardCheck, label: "Operations",
+      items: [
+        { id: "handover",  Icon: ClipboardCheck, label: "Handover" },
+        { id: "customers", Icon: UserCheck,       label: "Customers" },
+        { id: "documents", Icon: FileText,         label: "Documents" },
+      ],
+    },
+    {
+      id: "g_growth", Icon: BarChart2, label: "Growth",
+      items: [
+        { id: "analytics",  Icon: BarChart2, label: "Analytics" },
+        { id: "outreach",   Icon: Megaphone, label: "Outreach Hub" },
+        { id: "storefront", Icon: Globe,     label: "Storefront" },
+        { id: "ai_manager", Icon: Bot,       label: "AI Manager" },
+      ],
+    },
+    {
+      id: "g_admin", Icon: Users, label: "Admin",
+      items: [
+        { id: "team",      Icon: Users,  label: "Team" },
+        { id: "oversight", Icon: Shield, label: "GM Oversight" },
+      ],
+    },
   ];
+
+  const TAB_TO_GROUP = {
+    crm: "g_sales",       hp: "g_sales",
+    listings: "g_inventory", add: "g_inventory", stock: "g_inventory",
+    handover: "g_operations", customers: "g_operations", documents: "g_operations",
+    analytics: "g_growth", outreach: "g_growth", storefront: "g_growth", ai_manager: "g_growth",
+    team: "g_admin",      oversight: "g_admin",
+  };
+
+  const toggleGroup = useCallback((gid) => {
+    setOpenGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(gid)) next.delete(gid); else next.add(gid);
+      return next;
+    });
+  }, []);
 
   const STAT_CARDS = [
     {
@@ -9069,27 +9116,69 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-2 sm:p-3 space-y-px mt-1">
-          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#9ca3af', padding: '4px 12px 6px' }}>Menu</p>
-          {NAV.map(({ id, Icon, label, badge }) => (
-            <button
-              key={id}
-              onClick={() => handleTabChange(id)}
-              className={`nav-item w-full flex items-center gap-3 px-3 py-2 sm:py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === id ? "nav-active" : ""}`}
-              style={{ color: activeTab === id ? '#DC2626' : color.textMuted }}
-            >
-              <Icon className="w-4 h-4 flex-shrink-0" />
-              {label}
-              {badge !== undefined && (
-                <span
-                  className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold tabular-nums"
-                  style={{ background: activeTab === id ? '#FEE2E2' : '#F1F3F5', color: activeTab === id ? '#DC2626' : color.textMuted }}
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-2 sm:p-3 mt-1" style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {NAV_GROUPS.map((group) => {
+            if (group.direct) {
+              return (
+                <button
+                  key={group.id}
+                  onClick={() => handleTabChange(group.id)}
+                  className={`nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === group.id ? "nav-active" : ""}`}
+                  style={{ color: activeTab === group.id ? '#DC2626' : color.textMuted }}
                 >
-                  {badge}
-                </span>
-              )}
-            </button>
-          ))}
+                  <group.Icon className="w-4 h-4 flex-shrink-0" />
+                  {group.label}
+                </button>
+              );
+            }
+            const isOpen = openGroups.has(group.id);
+            const hasActive = group.items.some(i => i.id === activeTab);
+            return (
+              <div key={group.id}>
+                <button
+                  onClick={() => toggleGroup(group.id)}
+                  className="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
+                  style={{ color: hasActive ? '#DC2626' : color.textMuted }}
+                >
+                  <group.Icon className="w-4 h-4 flex-shrink-0" />
+                  <span style={{ flex: 1, textAlign: 'left' }}>{group.label}</span>
+                  {hasActive && !isOpen && (
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#DC2626', flexShrink: 0 }} />
+                  )}
+                  <ChevronRight
+                    className="w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200"
+                    style={{ color: color.textMuted, opacity: 0.5, transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                  />
+                </button>
+                {isOpen && (
+                  <div style={{ marginTop: 1, marginLeft: 12, paddingLeft: 10, borderLeft: '1px solid #EAECF0', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {group.items.map(({ id, Icon, label, badge }) => (
+                      <button
+                        key={id}
+                        onClick={() => handleTabChange(id)}
+                        className={`nav-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === id ? "nav-active" : ""}`}
+                        style={{ color: activeTab === id ? '#DC2626' : color.textMuted }}
+                      >
+                        <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                        {label}
+                        {badge !== undefined && (
+                          <span
+                            className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold tabular-nums"
+                            style={{ background: activeTab === id ? '#FEE2E2' : '#F1F3F5', color: activeTab === id ? '#DC2626' : color.textMuted }}
+                          >
+                            {badge}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          <div style={{ height: 1, background: '#EAECF0', margin: '6px 4px' }} />
+
           {profile?.role === 'superadmin' && (
             <a
               href="/platform"
