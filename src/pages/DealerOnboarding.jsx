@@ -84,7 +84,7 @@ const STEPS = [
   { label: 'TERMS', sub: 'Required agreement' },
   { label: 'ACCOUNT', sub: 'Email or Google' },
   { label: 'IDENTITY', sub: 'Owner IC' },
-  { label: 'PHONE OTP', sub: 'Number verification' },
+  { label: 'PHONE', sub: 'Contact number' },
   { label: 'BUSINESS', sub: 'Dealership info' },
   { label: 'LOCATION', sub: 'State & city' },
   { label: 'SUBDOMAIN', sub: 'Your XDrive URL' },
@@ -222,7 +222,6 @@ export default function DealerOnboarding() {
   const [userId, setUserId] = useState(null);
   const [userEmail, setUserEmail] = useState('');
   const [legalScrolled, setLegalScrolled] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
   const [showResumeChoice, setShowResumeChoice] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [subTaken, setSubTaken] = useState(false);
@@ -231,14 +230,13 @@ export default function DealerOnboarding() {
   const [form, setForm] = useState({
     email: '', password: '',
     fullName: '', icNumber: '',
-    phone: '+60', otp: ['', '', '', '', '', ''],
+    phone: '+60',
     dealerName: '', dealerType: '', ssmNumber: '', fleetSize: '',
     state: '', city: '', address: '',
     subdomain: '',
   });
 
   const legalRef = useRef(null);
-  const otpRefs = useRef([]);
   const subTimer = useRef(null);
 
   const upd = (k) => (val) => setForm(p => ({ ...p, [k]: val }));
@@ -348,43 +346,6 @@ export default function DealerOnboarding() {
     }
   };
 
-  const sendOTP = async () => {
-    setErr('');
-    setLoading(true);
-    try {
-      const normalized = normalizePhone(form.phone);
-      const { error } = await supabase.auth.signInWithOtp({ phone: normalized });
-      if (error) throw error;
-      setOtpSent(true);
-      upd('otp')(['', '', '', '', '', '']);
-    } catch (e) {
-      setErr(e.message || 'Failed to send OTP. Ensure phone auth is enabled in Supabase and the number is valid.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const verifyOTP = async () => {
-    setErr('');
-    const token = form.otp.join('');
-    if (token.length !== 6) { setErr('Enter all 6 digits'); return; }
-    setLoading(true);
-    try {
-      const normalized = normalizePhone(form.phone);
-      const { error } = await supabase.auth.verifyOtp({
-        phone: normalized,
-        token,
-        type: 'sms',
-      });
-      if (error) throw error;
-      setStep(4);
-    } catch (e) {
-      setErr(e.message || 'Invalid OTP. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const checkSubdomain = async (sub) => {
     if (!sub || sub.length < 3) { setSubTaken(false); return; }
     setSubChecking(true);
@@ -401,28 +362,6 @@ export default function DealerOnboarding() {
     upd('subdomain')(clean);
     clearTimeout(subTimer.current);
     subTimer.current = setTimeout(() => checkSubdomain(clean), 450);
-  };
-
-  const handleOtpInput = (idx, val) => {
-    if (val.length > 1) {
-      const digits = val.replace(/\D/g, '').slice(0, 6);
-      const next = [...form.otp];
-      digits.split('').forEach((d, i) => { if (i < 6) next[i] = d; });
-      upd('otp')(next);
-      const last = Math.min(digits.length - 1, 5);
-      if (otpRefs.current[last]) otpRefs.current[last].focus();
-      return;
-    }
-    const next = [...form.otp];
-    next[idx] = val.replace(/\D/g, '').slice(-1);
-    upd('otp')(next);
-    if (val && idx < 5 && otpRefs.current[idx + 1]) otpRefs.current[idx + 1].focus();
-  };
-
-  const handleOtpKey = (idx, e) => {
-    if (e.key === 'Backspace' && !form.otp[idx] && idx > 0 && otpRefs.current[idx - 1]) {
-      otpRefs.current[idx - 1].focus();
-    }
   };
 
   const submit = async () => {
@@ -472,7 +411,7 @@ export default function DealerOnboarding() {
     setShowResumeChoice(false);
     setUserId(null);
     setUserEmail('');
-    setForm({ email: '', password: '', fullName: '', icNumber: '', phone: '+60', otp: ['','','','','',''], dealerName: '', dealerType: '', ssmNumber: '', fleetSize: '', state: '', city: '', address: '', subdomain: '' });
+    setForm({ email: '', password: '', fullName: '', icNumber: '', phone: '+60', dealerName: '', dealerType: '', ssmNumber: '', fleetSize: '', state: '', city: '', address: '', subdomain: '' });
     setStep(0);
   };
 
@@ -613,56 +552,19 @@ export default function DealerOnboarding() {
 
             {step === 3 && (
               <>
-                <p className="eo-eyebrow">PHONE VERIFICATION — REQUIRED</p>
-                <div className="eo-heading">Verify Phone Number</div>
-                <p className="eo-sub">Your mobile number is used for account security and critical dealership notifications.</p>
-                {!otpSent ? (
-                  <>
-                    <label className="eo-label">OWNER MOBILE NUMBER</label>
-                    <input className="eo-inp" type="tel" placeholder="+60123456789" value={form.phone}
-                      onChange={e => upd('phone')(e.target.value)} autoComplete="tel" />
-                    <p className="eo-hint">Malaysian mobile numbers only (+60). A 6-digit OTP will be sent via SMS.</p>
-                    {err && <div className="eo-error">{err}</div>}
-                    <button className="eo-btn" onClick={sendOTP} disabled={loading || form.phone.replace(/\D/g, '').length < 9}>
-                      {loading ? 'SENDING…' : 'SEND OTP'}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <p className="eo-hint" style={{ margin: '0 0 4px' }}>OTP sent to {normalizePhone(form.phone)}</p>
-                    <label className="eo-label">ENTER 6-DIGIT OTP</label>
-                    <div className="eo-otp-row">
-                      {form.otp.map((digit, i) => (
-                        <input
-                          key={i}
-                          ref={el => otpRefs.current[i] = el}
-                          className="eo-otp-box"
-                          type="text"
-                          inputMode="numeric"
-                          maxLength={6}
-                          value={digit}
-                          onChange={e => handleOtpInput(i, e.target.value)}
-                          onKeyDown={e => handleOtpKey(i, e)}
-                          onFocus={e => e.target.select()}
-                        />
-                      ))}
-                    </div>
-                    {err && <div className="eo-error" style={{ marginTop: 12 }}>{err}</div>}
-                    <button className="eo-btn" onClick={verifyOTP} disabled={loading || form.otp.join('').length < 6}>
-                      {loading ? 'VERIFYING…' : 'VERIFY OTP'}
-                    </button>
-                    <button className="eo-ghost" onClick={() => { setOtpSent(false); setErr(''); }}>
-                      CHANGE NUMBER
-                    </button>
-                    <p style={{ textAlign: 'center', marginTop: 16, fontSize: 12, color: 'rgba(255,255,255,0.18)' }}>
-                      Didn't receive it?{' '}
-                      <button style={{ background: 'none', border: 'none', color: 'rgba(220,38,38,0.55)', fontSize: 12, cursor: 'pointer' }}
-                        onClick={sendOTP} disabled={loading}>
-                        Resend OTP
-                      </button>
-                    </p>
-                  </>
-                )}
+                <p className="eo-eyebrow">STEP 4 OF {STEPS.length}</p>
+                <div className="eo-heading">Contact Number</div>
+                <p className="eo-sub">Your mobile number is used for dealership notifications and WhatsApp enquiries from buyers.</p>
+                <label className="eo-label">OWNER MOBILE NUMBER</label>
+                <input className="eo-inp" type="tel" placeholder="+60123456789" value={form.phone}
+                  onChange={e => upd('phone')(e.target.value)} autoComplete="tel" />
+                <p className="eo-hint">Malaysian numbers only (+60).</p>
+                {err && <div className="eo-error">{err}</div>}
+                <button className="eo-btn"
+                  onClick={() => { setErr(''); setStep(4); }}
+                  disabled={form.phone.replace(/\D/g, '').length < 9}>
+                  CONTINUE
+                </button>
               </>
             )}
 
