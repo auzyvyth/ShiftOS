@@ -299,7 +299,8 @@
       "performanceMobile": "Stats",
       "merge": "Join Dealership",
       "mergeMobile": "Merge",
-      "settings": "Settings"
+      "settings": "Settings",
+      "help": "Help"
     },
     "header": {
       "litePanel": "Lite Panel",

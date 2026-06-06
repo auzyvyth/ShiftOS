@@ -39,7 +39,7 @@ import { getEmbedUrl } from "../utils/videoEmbed";
 import CustomSelect from "../components/ui/CustomSelect";
 
 const CAR_FIELDS =
-  "id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at";
+  "id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at,market_avg_price";
 
 const BRANDS = [
   "Perodua",
@@ -473,7 +473,7 @@ const HomePage = () => {
     borderBottom: "1px solid rgba(255,255,255,0.05)",
   };
 
-  if (loading || tenantLoading) return <SciFiLoader />;
+  if (tenant === undefined) return <SciFiLoader />;
 
   return (
     <>

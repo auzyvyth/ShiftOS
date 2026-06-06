@@ -31,8 +31,8 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          # Dummy values — CI only checks the code compiles.
-          # Real credentials live in Vercel; Sentry source maps upload there on prod deploy.
+          # Dummy values — CI only checks that the code compiles.
+          # Real credentials live in Vercel; Sentry source maps upload on production deploy there.
           VITE_SUPABASE_URL: https://placeholder.supabase.co
           VITE_SUPABASE_ANON_KEY: placeholder
           VITE_SENTRY_DSN: ""
