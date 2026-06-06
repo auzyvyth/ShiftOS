@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from "react";
-import { Route, Routes, BrowserRouter as Router, useLocation } from "react-router-dom";
+import { Route, Routes, BrowserRouter as Router, useLocation, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
@@ -101,7 +101,10 @@ function App() {
           <Route path="/signup" element={<OnboardingPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
-          <Route path="/onboarding/:plan" element={<OnboardingPage />} />
+          <Route path="/onboarding/lite"    element={<Navigate to="/salesman-onboarding/lite"    replace />} />
+          <Route path="/onboarding/premium" element={<Navigate to="/salesman-onboarding/premium" replace />} />
+          <Route path="/onboarding/dealer"  element={<Navigate to="/dealer-onboarding/starter"   replace />} />
+          <Route path="/onboarding/:plan"   element={<OnboardingPage />} />
           <Route path="/salesman-onboarding" element={<SalesmanOnboarding />} />
           <Route path="/salesman-onboarding/:tier" element={<SalesmanOnboarding />} />
           <Route path="/dealer-onboarding" element={<DealerOnboarding />} />

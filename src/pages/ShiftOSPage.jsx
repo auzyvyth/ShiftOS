@@ -316,11 +316,11 @@ const PLAN_FEATURES = {
 };
 
 const PLAN_META = {
-  salesman_lite: { cta: "Daftar Percuma", to: "/onboarding/lite",    variant: "outline" },
-  salesman_full: { cta: "Mula Sekarang",  to: "/onboarding/premium", variant: "primary" },
-  dealer_starter:{ cta: "Get Started",    to: "/onboarding/dealer",  variant: "outline" },
-  dealer_growth: { cta: "Get Started",    to: "/onboarding/dealer",  variant: "primary", popular: true },
-  dealer_pro:    { cta: "Talk to Sales",  to: "/onboarding/dealer",  variant: "gold" },
+  salesman_lite: { cta: "Daftar Percuma", to: "/salesman-onboarding/lite",    variant: "outline" },
+  salesman_full: { cta: "Mula Sekarang",  to: "/salesman-onboarding/premium", variant: "primary" },
+  dealer_starter:{ cta: "Get Started",    to: "/dealer-onboarding/starter",   variant: "outline" },
+  dealer_growth: { cta: "Get Started",    to: "/dealer-onboarding/growth",    variant: "primary", popular: true },
+  dealer_pro:    { cta: "Talk to Sales",  to: "/dealer-onboarding/pro",       variant: "gold" },
 };
 
 const SALESMAN_PLANS = ["salesman_lite", "salesman_full"];
@@ -510,7 +510,7 @@ export default function ShiftOSPage() {
                 onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "#6b7280")}>Log in</Link>
             </div>
-            <Link to="/onboarding/dealer" className="sos-btn-primary" style={{ fontSize: 13, padding: "9px 18px" }}>
+            <Link to="/dealer-onboarding/starter" className="sos-btn-primary" style={{ fontSize: 13, padding: "9px 18px" }}>
               Start Free <ArrowRight size={15} />
             </Link>
           </div>
@@ -536,7 +536,7 @@ export default function ShiftOSPage() {
           </Reveal>
           <Reveal delay={220}>
             <div className="sos-cta-btns" style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 28 }}>
-              <Link to="/onboarding/dealer" className="sos-btn-primary" style={{ fontSize: 15, padding: "14px 30px" }}>
+              <Link to="/dealer-onboarding/starter" className="sos-btn-primary" style={{ fontSize: 15, padding: "14px 30px" }}>
                 Start Free <ArrowRight size={16} />
               </Link>
               <a href={WA} target="_blank" rel="noopener noreferrer" className="sos-btn-outline" style={{ fontSize: 15, padding: "14px 30px" }}>
@@ -699,7 +699,7 @@ export default function ShiftOSPage() {
                 Join the dealers running leaner, selling more, and finally knowing their real numbers.
               </p>
               <div className="sos-cta-btns" style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-                <Link to="/onboarding/dealer" className="sos-btn-primary" style={{ fontSize: 15, padding: "15px 34px" }}>
+                <Link to="/dealer-onboarding/starter" className="sos-btn-primary" style={{ fontSize: 15, padding: "15px 34px" }}>
                   Start Free <ArrowRight size={16} />
                 </Link>
                 <a href={WA} target="_blank" rel="noopener noreferrer" className="sos-btn-outline" style={{ fontSize: 15, padding: "15px 34px" }}>
