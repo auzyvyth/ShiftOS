@@ -27,7 +27,6 @@ const DashboardPage      = lazy(() => import("./pages/DashboardPage"));
 const SalesmanPanel      = lazy(() => import("./pages/Salesmanpanel"));
 const SalesmanLite       = lazy(() => import("./pages/SalesmanLite"));
 const SalesmanPremium    = lazy(() => import("./pages/SalesmanPremium"));
-const OnboardingPage     = lazy(() => import("./pages/OnboardingPage"));
 const SalesmanOnboarding = lazy(() => import("./pages/SalesmanOnboarding"));
 const DealerOnboarding   = lazy(() => import("./pages/DealerOnboarding"));
 const AdminPanel         = lazy(() => import("./pages/AdminPanel"));
@@ -98,13 +97,13 @@ function App() {
           {/* Auth */}
           <Route path="/style-guide" element={<StyleGuidePage />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<OnboardingPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/onboarding" element={<OnboardingPage />} />
+          <Route path="/signup"             element={<Navigate to="/salesman-onboarding/lite"    replace />} />
+          <Route path="/register"           element={<Navigate to="/salesman-onboarding/lite"    replace />} />
+          <Route path="/onboarding"         element={<Navigate to="/salesman-onboarding/lite"    replace />} />
           <Route path="/onboarding/lite"    element={<Navigate to="/salesman-onboarding/lite"    replace />} />
           <Route path="/onboarding/premium" element={<Navigate to="/salesman-onboarding/premium" replace />} />
           <Route path="/onboarding/dealer"  element={<Navigate to="/dealer-onboarding/starter"   replace />} />
-          <Route path="/onboarding/:plan"   element={<OnboardingPage />} />
+          <Route path="/onboarding/:plan"   element={<Navigate to="/salesman-onboarding/lite"    replace />} />
           <Route path="/salesman-onboarding" element={<SalesmanOnboarding />} />
           <Route path="/salesman-onboarding/:tier" element={<SalesmanOnboarding />} />
           <Route path="/dealer-onboarding" element={<DealerOnboarding />} />
