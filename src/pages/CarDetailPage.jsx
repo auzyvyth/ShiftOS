@@ -985,10 +985,12 @@ export default function CarDetailPage() {
         }
         .cdp-back-btn:hover { color: #e2e8f0; }
         .cdp-header-title {
+          position: absolute; left: 50%; transform: translateX(-50%);
           font-size: 13px; font-weight: 500; color: white;
           opacity: 0; transition: opacity 0.3s; pointer-events: none;
-          max-width: 40%; text-align: center;
+          max-width: calc(100% - 220px); text-align: center;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          z-index: 0;
         }
         .cdp-header-title.visible { opacity: 1; }
         .cdp-enquire-btn {
