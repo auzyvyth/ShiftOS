@@ -50,6 +50,12 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
   const discountPct = hasDiscount ? Math.round(((originalPrice - price) / originalPrice) * 100) : null;
   const isHot       = hasDiscount && discountPct >= 3;
   const isNew       = ageDays !== null && ageDays <= 7;
+  const marketAvg   = car.market_avg_price || null;
+  const marketBand  = (marketAvg && price > 0)
+    ? price <= marketAvg * 0.93 ? 'below'
+    : price >= marketAvg * 1.07 ? 'above'
+    : 'fair'
+    : null;
   const isSold      = status === 'sold';
 
   const photoCount = Array.isArray(car.images) ? car.images.length : 0;
@@ -444,6 +450,35 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
                 </span>
               ) : <span />}
             </div>
+
+            {/* Market price signal pill */}
+            {marketBand && (
+              <div style={{ marginTop: 6 }}>
+                <span style={{
+                  display:      'inline-flex',
+                  alignItems:   'center',
+                  fontSize:     9,
+                  fontWeight:   700,
+                  lineHeight:   1,
+                  padding:      '3px 7px',
+                  borderRadius: 20,
+                  background:   marketBand === 'below' ? (xdrive ? 'rgba(34,197,94,0.15)' : 'rgba(22,163,74,0.09)')
+                              : marketBand === 'fair'  ? (xdrive ? 'rgba(59,130,246,0.15)' : 'rgba(37,99,235,0.08)')
+                              :                         (xdrive ? 'rgba(245,158,11,0.15)' : 'rgba(217,119,6,0.09)'),
+                  color:        marketBand === 'below' ? (xdrive ? '#4ade80' : '#15803d')
+                              : marketBand === 'fair'  ? (xdrive ? '#93c5fd' : '#1d4ed8')
+                              :                         (xdrive ? '#fbbf24' : '#b45309'),
+                  border:       `1px solid ${
+                    marketBand === 'below' ? (xdrive ? 'rgba(34,197,94,0.3)'   : 'rgba(22,163,74,0.2)')
+                  : marketBand === 'fair'  ? (xdrive ? 'rgba(59,130,246,0.3)'  : 'rgba(37,99,235,0.18)')
+                  :                         (xdrive ? 'rgba(245,158,11,0.3)'   : 'rgba(217,119,6,0.2)')}`,
+                }}>
+                  {marketBand === 'below' ? '▼ Below Market'
+                 : marketBand === 'fair'  ? '● Fair Price'
+                 :                          '▲ Above Market'}
+                </span>
+              </div>
+            )}
 
           </div>
 

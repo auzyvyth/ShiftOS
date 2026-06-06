@@ -15,6 +15,7 @@ const SELECT_COLS = [
   'state','city','is_recon','auction_grade','interior_grade',
   'import_country','chassis_status','car_documents','warranty_months',
   'loan_eligible','previous_owners','created_at','images','status',
+  'market_avg_price',
 ].join(', ');
 
 const fmtRM = n => n != null ? `RM ${Number(n).toLocaleString('en-MY')}` : '—';
@@ -43,24 +44,31 @@ function smartHL(vals, dir, n) {
   return nums.map(v => v === target ? 'win' : null);
 }
 
+// Weighted value score 0–100: mileage 35%, year 30%, price 25%, warranty 5%, grade 5%.
+// Each metric normalised to 0–100 across the compared set; ties score 50.
+function getValueScore(car, cars) {
+  const norm = (val, all, invert) => {
+    const vals = all.map(Number).filter(v => !isNaN(v));
+    if (vals.length < 2 || val == null) return 50;
+    const min = Math.min(...vals), max = Math.max(...vals);
+    if (max === min) return 50;
+    const pct = (Number(val) - min) / (max - min) * 100;
+    return invert ? 100 - pct : pct;
+  };
+  return Math.round(
+    norm(car.selling_price,       cars.map(c => c.selling_price),             true)  * 0.30 +
+    norm(car.mileage,             cars.map(c => c.mileage),                   true)  * 0.35 +
+    norm(car.year,                cars.map(c => c.year),                      false) * 0.25 +
+    norm(car.warranty_months || 0,cars.map(c => c.warranty_months || 0),      false) * 0.05 +
+    norm(gradeNum(car.auction_grade), cars.map(c => gradeNum(c.auction_grade)),false) * 0.05
+  );
+}
+
 function getVerdict(cars) {
   if (cars.length < 2) return null;
-  const scores = Array(cars.length).fill(0);
-  const check = (vals, dir) => {
-    const w = smartHL(vals, dir, cars.length).indexOf('win');
-    if (w >= 0) scores[w]++;
-  };
-  check(cars.map(c => c.selling_price), 'low');
-  check(cars.map(c => c.mileage), 'low');
-  check(cars.map(c => c.year), 'high');
-  check(cars.map(c => gradeNum(c.auction_grade)), 'high');
-  check(cars.map(c => gradeNum(c.interior_grade)), 'high');
-  check(cars.map(c => c.warranty_months || 0), 'high');
-  check(cars.map(c => ageDays(c.created_at)), 'low');
-  check(cars.map(c => Array.isArray(c.car_documents) ? c.car_documents.length : 0), 'high');
-  check(cars.map(c => completeness(c)), 'high');
+  const scores = cars.map(c => getValueScore(c, cars));
   const max = Math.max(...scores);
-  return { car: cars[scores.indexOf(max)], score: max };
+  return { car: cars[scores.indexOf(max)], score: max, scores };
 }
 
 // ── Primitives ──────────────────────────────────────────────────────────────
@@ -153,15 +161,42 @@ export default function ComparePage() {
   const verdict = getVerdict(cars);
 
   const verdictReasons = (() => {
-    if (!verdict) return '';
-    const i = cars.indexOf(verdict.car);
-    const parts = [];
-    if (smartHL(cars.map(c => c.selling_price), 'low', n)[i] === 'win') parts.push('lowest asking price');
-    if (smartHL(cars.map(c => c.mileage), 'low', n)[i] === 'win') parts.push('lowest mileage');
-    if (smartHL(cars.map(c => c.year), 'high', n)[i] === 'win') parts.push('newest year');
-    if (smartHL(cars.map(c => Array.isArray(c.car_documents) ? c.car_documents.length : 0), 'high', n)[i] === 'win')
-      parts.push('most verified documents');
-    return parts.length ? parts.join(', ') : 'best overall value';
+    if (!verdict || cars.length < 2) return '';
+    const winIdx  = cars.indexOf(verdict.car);
+    const winner  = verdict.car;
+    const runnerUp = cars
+      .map((c, i) => ({ c, score: verdict.scores[i] }))
+      .filter((_, i) => i !== winIdx)
+      .sort((a, b) => b.score - a.score)[0]?.c;
+    if (!runnerUp) return 'best overall value';
+    const priceDiff = (runnerUp.selling_price || 0) - (winner.selling_price || 0);
+    const kmDiff    = (runnerUp.mileage || 0)        - (winner.mileage || 0);
+    const yrDiff    = (winner.year || 0)             - (runnerUp.year || 0);
+    // Clean sweep: cheaper, less km, and same-or-newer
+    if (priceDiff >= 0 && kmDiff >= 0 && yrDiff >= 0) {
+      const parts = [];
+      if (priceDiff > 500)  parts.push(`RM ${priceDiff.toLocaleString('en-MY')} cheaper`);
+      if (kmDiff > 5000)    parts.push(`${Math.round(kmDiff / 1000)}k fewer km`);
+      if (yrDiff > 0)       parts.push(`${yrDiff} yr newer`);
+      return parts.length
+        ? parts.join(' · ') + ` than the ${runnerUp.year} ${runnerUp.model}`
+        : 'best overall value';
+    }
+    // Costs more but wins on condition/age
+    if (priceDiff < 0) {
+      const monthly = Math.round(Math.abs(priceDiff) * 0.9 * 1.245 / 84);
+      const gains = [];
+      if (kmDiff > 10000) gains.push(`${Math.round(kmDiff / 1000)}k fewer km`);
+      if (yrDiff > 0)     gains.push(`${yrDiff} yr newer`);
+      if (gains.length)
+        return `${gains.join(' + ')} for only RM ${monthly}/mo more than the ${runnerUp.year} ${runnerUp.model}`;
+    }
+    // Mixed — surface specific wins
+    const gains = [];
+    if (smartHL(cars.map(c => c.mileage),            'low',  n)[winIdx] === 'win') gains.push('lowest mileage');
+    if (smartHL(cars.map(c => c.year),               'high', n)[winIdx] === 'win') gains.push('newest year');
+    if (smartHL(cars.map(c => c.warranty_months||0), 'high', n)[winIdx] === 'win') gains.push('best warranty');
+    return gains.length ? gains.join(', ') : 'best balance of price, mileage, and age';
   })();
 
   const loanHL = (() => {
@@ -408,6 +443,29 @@ export default function ComparePage() {
             <Sec label="Pricing" />
             <Row label="Asking Price" values={cars.map(c => fmtRM(c.selling_price))} highlight={smartHL(cars.map(c => c.selling_price), 'low', n)} />
             <Row label="Monthly Est." values={cars.map(c => { const m = calcMonthly(c.selling_price); return m ? `RM ${m.toLocaleString()}` : '—'; })} />
+            {cars.some(c => c.market_avg_price) && (
+              <Row
+                label="Market Signal"
+                values={cars.map(c => {
+                  if (!c.market_avg_price || !c.selling_price) return '—';
+                  return c.selling_price <= c.market_avg_price * 0.93 ? 'below'
+                       : c.selling_price >= c.market_avg_price * 1.07 ? 'above' : 'fair';
+                })}
+                renderCell={val => {
+                  if (val === '—') return <span style={{ color: '#d1d5db' }}>—</span>;
+                  const cfg = {
+                    below: { bg: 'rgba(22,163,74,0.1)',  color: '#15803d', label: '▼ Below Market' },
+                    fair:  { bg: 'rgba(37,99,235,0.08)', color: '#1d4ed8', label: '● Fair Price'   },
+                    above: { bg: 'rgba(217,119,6,0.1)',  color: '#b45309', label: '▲ Above Market' },
+                  }[val];
+                  return (
+                    <span style={{ display:'inline-flex', fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:20, background:cfg.bg, color:cfg.color }}>
+                      {cfg.label}
+                    </span>
+                  );
+                }}
+              />
+            )}
 
             <Sec label="Basics" />
             <Row label="Year" values={cars.map(c => c.year || '—')} highlight={smartHL(cars.map(c => c.year), 'high', n)} />
@@ -452,6 +510,22 @@ export default function ComparePage() {
             )}
 
             <Sec label="Trust & Value" />
+            <Row
+              label="Value Score"
+              values={cars.map(c => String(getValueScore(c, cars)))}
+              highlight={smartHL(cars.map(c => getValueScore(c, cars)), 'high', n)}
+              renderCell={(val, i, win) => {
+                const score = getValueScore(cars[i], cars);
+                return (
+                  <div style={{ width: '100%', minWidth: 0 }}>
+                    <span style={{ fontSize: 'clamp(10px,1.6vw,12px)', fontWeight: win ? 700 : 400, color: win ? '#dc2626' : '#374151' }}>{score}</span>
+                    <div style={{ height: 3, background: '#f1f5f9', borderRadius: 2, marginTop: 3 }}>
+                      <div style={{ height: '100%', width: `${score}%`, background: win ? '#dc2626' : '#d1d5db', borderRadius: 2, transition: 'width 0.4s' }} />
+                    </div>
+                  </div>
+                );
+              }}
+            />
             <Row
               label="Documents"
               values={cars.map(c => { const cnt = Array.isArray(c.car_documents) ? c.car_documents.length : 0; return cnt > 0 ? `${cnt} doc${cnt !== 1 ? 's' : ''}` : 'None'; })}
