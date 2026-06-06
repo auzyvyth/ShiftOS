@@ -57,9 +57,10 @@ export default function PriceAlertButton({ filters, hasFilters }) {
   }, [alertsOpen]);
 
   const signInWithGoogle = async () => {
+    sessionStorage.setItem('post_auth_return', window.location.href);
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.href },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
   };
 
