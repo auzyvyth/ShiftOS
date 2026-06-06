@@ -259,14 +259,12 @@ export default function SalesmanLite() {
   const [followUpDate, setFollowUpDate] = useState("");
   const [followUpSaving, setFollowUpSaving] = useState(false);
   // Commission
-  const [commissionData, setCommissionData] = useState({ total: 0, count: 0 });
+  const [commissionData, setCommissionData] = useState({ total: 0, revenue: 0, count: 0 });
 
   // Goal panel
   const [goal, setGoal] = useState({ target: 0, focusCarId: null, earningsTarget: 0 });
   const [goalEditing, setGoalEditing] = useState(false);
   const [goalDraft, setGoalDraft] = useState(0);
-  const [earningsEditing, setEarningsEditing] = useState(false);
-  const [earningsDraft, setEarningsDraft] = useState("");
   const saveGoal = (patch) => {
     const next = { ...goal, ...patch };
     setGoal(next);
@@ -372,7 +370,11 @@ export default function SalesmanLite() {
   const updateListingStatus = async (car, newStatus) => {
     setStatusMenuCarId(null);
     const prevStatus = car.status;
-    setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: newStatus } : c));
+    const prevSoldAt = car.sold_at ?? null;
+    // Optimistically stamp sold_at so commission goal/count pick the deal up immediately
+    // (the DB trigger stamp_sold_at sets the authoritative value, backfilled via realtime).
+    const optimisticSoldAt = newStatus === "sold" ? (prevSoldAt || new Date().toISOString()) : prevSoldAt;
+    setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: newStatus, sold_at: optimisticSoldAt } : c));
     // Use RPC to avoid PostgREST bug with GENERATED ALWAYS columns (gross_profit)
     const { error: statusErr } = await supabase.rpc("update_listing_status", {
       p_listing_id: car.id,
@@ -381,11 +383,13 @@ export default function SalesmanLite() {
     });
     if (statusErr) {
       console.error("updateListingStatus:", statusErr);
-      setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: prevStatus } : c));
+      setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: prevStatus, sold_at: prevSoldAt } : c));
       toast.error("Failed to update status");
       return;
     }
-    writeCache(`slite_listings_${userId}`, myListings.map((c) => c.id === car.id ? { ...c, status: newStatus } : c));
+    writeCache(`slite_listings_${userId}`, myListings.map((c) => c.id === car.id ? { ...c, status: newStatus, sold_at: optimisticSoldAt } : c));
+    // Keep the "This Month" revenue/commission card in sync when selling from the Listings tab
+    refreshCommissionData();
   };
 
   // delete listing
@@ -608,13 +612,13 @@ export default function SalesmanLite() {
         supabase
           .from("car_listings")
           .select(
-            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, included_services, included_services_cost, sold_at, my_commission, rejection_reason",
+            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, included_services, included_services_cost, sold_at, commission_amount, rejection_reason",
           )
           .eq("assigned_to", uid),
         supabase
           .from("car_listings")
           .select(
-            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, included_services, included_services_cost, sold_at, my_commission, rejection_reason",
+            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, included_services, included_services_cost, sold_at, commission_amount, rejection_reason",
           )
           .eq("dealer_id", uid),
       ]).then(([r1, r2]) => {
@@ -631,27 +635,19 @@ export default function SalesmanLite() {
         setMyListings(merged);
         writeCache(`slite_listings_${uid}`, merged);
         precacheImages(merged);
-        // Profit this month from sold listings (salesman-lite owns listings as dealer)
+        // Commission earned this month from sold listings (salesman earns commission, not vehicle gross)
         const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
         supabase
           .from("car_listings")
-          .select("gross_profit, selling_price, purchase_price, recon_cost, included_services_cost, sold_at")
+          .select("commission_amount, selling_price, sold_at")
           .eq("dealer_id", uid)
           .eq("status", "sold")
           .gte("sold_at", monthStart)
           .then(({ data: soldThisMonth }) => {
             const rows = soldThisMonth || [];
-            const revenue  = rows.reduce((s, l) => s + (Number(l.selling_price) || 0), 0);
-            const purchase = rows.reduce((s, l) => s + (Number(l.purchase_price) || 0), 0);
-            const recon    = rows.reduce((s, l) => s + (Number(l.recon_cost) || 0), 0);
-            const services = rows.reduce((s, l) => s + (Number(l.included_services_cost) || 0), 0);
-            const profit   = rows.reduce((s, l) => {
-              const gp = l.gross_profit != null
-                ? Number(l.gross_profit)
-                : (Number(l.selling_price) || 0) - (Number(l.purchase_price) || 0) - (Number(l.recon_cost) || 0) - (Number(l.included_services_cost) || 0);
-              return s + gp;
-            }, 0);
-            setCommissionData({ total: profit, revenue, purchase, recon, services, count: rows.length });
+            const revenue    = rows.reduce((s, l) => s + (Number(l.selling_price) || 0), 0);
+            const commission = rows.reduce((s, l) => s + (Number(l.commission_amount) || 0), 0);
+            setCommissionData({ total: commission, revenue, count: rows.length });
           });
       });
 
@@ -1153,22 +1149,14 @@ export default function SalesmanLite() {
     const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
     const { data } = await supabase
       .from("car_listings")
-      .select("gross_profit, selling_price, purchase_price, recon_cost, included_services_cost, sold_at")
+      .select("commission_amount, selling_price, sold_at")
       .eq("dealer_id", userId)
       .eq("status", "sold")
       .gte("sold_at", monthStart);
     const rows = data || [];
-    const revenue  = rows.reduce((s, l) => s + (Number(l.selling_price) || 0), 0);
-    const purchase = rows.reduce((s, l) => s + (Number(l.purchase_price) || 0), 0);
-    const recon    = rows.reduce((s, l) => s + (Number(l.recon_cost) || 0), 0);
-    const services = rows.reduce((s, l) => s + (Number(l.included_services_cost) || 0), 0);
-    const profit   = rows.reduce((s, l) => {
-      const gp = l.gross_profit != null
-        ? Number(l.gross_profit)
-        : (Number(l.selling_price) || 0) - (Number(l.purchase_price) || 0) - (Number(l.recon_cost) || 0) - (Number(l.included_services_cost) || 0);
-      return s + gp;
-    }, 0);
-    setCommissionData({ total: profit, revenue, purchase, recon, services, count: rows.length });
+    const revenue    = rows.reduce((s, l) => s + (Number(l.selling_price) || 0), 0);
+    const commission = rows.reduce((s, l) => s + (Number(l.commission_amount) || 0), 0);
+    setCommissionData({ total: commission, revenue, count: rows.length });
   };
 
   const handleMarkWon = async () => {
@@ -1873,7 +1861,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     const agendaStale = staleLeads.filter((l) => !l.follow_up_at);
     const hasAgenda = agendaAppts.length > 0 || agendaFollowUps.length > 0 || agendaStale.length > 0;
 
-    // Goal panel data — commission earned this month (sum of my_commission on sold listings)
+    // Goal panel data — commission earned this month (sum of commission_amount on sold listings)
     const soldThisMonth = myListings
       .filter(c => {
         if (c.status !== "sold" || !c.sold_at) return false;
@@ -1881,7 +1869,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         const now = new Date();
         return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
       })
-      .reduce((sum, c) => sum + (Number(c.my_commission) || 0), 0);
+      .reduce((sum, c) => sum + (Number(c.commission_amount) || 0), 0);
     const soldCountThisMonth = myListings.filter(c => {
       if (c.status !== "sold" || !c.sold_at) return false;
       const d = new Date(c.sold_at);
@@ -1892,13 +1880,12 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     const daysLeft = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate();
     const pct = goal.target > 0 ? Math.min((soldThisMonth / goal.target) * 100, 100) : 0;
     const focusCar = goal.focusCarId ? myListings.find(c => c.id === goal.focusCarId && c.status === "available") : null;
+    const scoreCar = (c) => {
+      const s = carStatsMap[c?.id] || {};
+      return (s.views || 0) * 2 + (s.enquiries || 0) * 5;
+    };
     const autoFocus = !focusCar && available.length > 0
-      ? available.reduce((best, c) => {
-          const s = listingStats[c.id] || {};
-          const score = (s.views || 0) * 2 + (s.enquiries || 0) * 5;
-          const bestScore = (listingStats[best?.id]?.views || 0) * 2 + (listingStats[best?.id]?.enquiries || 0) * 5;
-          return score > bestScore ? c : best;
-        }, available[0])
+      ? available.reduce((best, c) => (scoreCar(c) > scoreCar(best) ? c : best), available[0])
       : null;
     const highlighted = focusCar || autoFocus;
 
@@ -2110,83 +2097,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           )}
         </div>
 
-        {/* ── Earnings Target ── */}
-        <div style={CARD}>
-          <div style={CARD_HEADER}>
-            <span>Earnings Target</span>
-            <span>{daysLeft}d left</span>
-          </div>
-          <div style={{ padding: 18 }}>
-            {earningsEditing ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 12, color: "#6b7280" }}>RM</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="500"
-                  value={earningsDraft}
-                  onChange={e => setEarningsDraft(e.target.value)}
-                  placeholder="e.g. 20000"
-                  style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, padding: "6px 10px", color: "#fff", fontSize: 14, fontWeight: 700, fontFamily: "inherit", outline: "none" }}
-                  autoFocus
-                />
-                <button
-                  onClick={() => {
-                    const val = Math.floor(Math.max(1, Number(earningsDraft) || 0));
-                    if (!val) return; // empty / zero — don't wipe an existing target
-                    saveGoal({ earningsTarget: val });
-                    setEarningsEditing(false);
-                  }}
-                  style={{ fontSize: 11, padding: "5px 14px", borderRadius: 6, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}
-                >Save</button>
-                <button
-                  onClick={() => setEarningsEditing(false)}
-                  style={{ fontSize: 11, padding: "5px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}
-                >Cancel</button>
-              </div>
-            ) : goal.earningsTarget > 0 ? (() => {
-              const earned = commissionData.total;
-              const epct = Math.min((earned / goal.earningsTarget) * 100, 100);
-              const earnedDisplay = Math.max(earned, 0); // clamp negatives — show 0 not "-RM X"
-              const epctDisplay = Math.max(epct, 0);
-              const remaining = Math.max(goal.earningsTarget - earnedDisplay, 0);
-              return (
-                <div>
-                  <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 10 }}>
-                    <div>
-                      <p style={{ margin: "0 0 2px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>Earned this month</p>
-                      <p style={{ margin: 0, fontSize: 28, fontWeight: 800, color: epct >= 100 ? "#22c55e" : "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>
-                        RM {earnedDisplay.toLocaleString("en-MY")}
-                        <span style={{ fontSize: 14, fontWeight: 500, color: "#475569" }}> / RM {goal.earningsTarget.toLocaleString("en-MY")}</span>
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => { setEarningsDraft(String(goal.earningsTarget)); setEarningsEditing(true); }}
-                      style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#475569", cursor: "pointer", fontFamily: "inherit", flexShrink: 0, marginBottom: 4 }}
-                    >Edit</button>
-                  </div>
-                  <div style={{ height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 99, overflow: "hidden", marginBottom: 8 }}>
-                    <div style={{ height: "100%", width: `${epctDisplay}%`, background: epct >= 100 ? "#22c55e" : epct >= 60 ? "#3b82f6" : "#ef4444", borderRadius: 99, transition: "width 0.5s ease" }} />
-                  </div>
-                  {epct >= 100
-                    ? <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#22c55e" }}>Target smashed! RM {Math.abs(remaining).toLocaleString("en-MY")} over goal.</p>
-                    : <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>
-                        RM {remaining.toLocaleString("en-MY")} to go
-                        {daysLeft > 0 ? ` · ~RM ${Math.round(remaining / daysLeft).toLocaleString("en-MY")}/day needed` : " · last day!"}
-                      </p>
-                  }
-                </div>
-              );
-            })() : (
-              <button
-                onClick={() => { setEarningsDraft(""); setEarningsEditing(true); }}
-                style={{ width: "100%", padding: "14px", borderRadius: 10, background: "rgba(220,38,38,0.06)", border: "1px dashed rgba(220,38,38,0.2)", color: "#ef4444", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
-              >
-                + Set an earnings target (RM)
-              </button>
-            )}
-          </div>
-        </div>
+        {/* Earnings Target card removed — merged into the single Monthly Goal (commission) above */}
 
         {/* ── Follow-up Needed ── */}
         {staleLeads.length > 0 && (
@@ -2286,17 +2197,15 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             </div>
             <div style={{ padding: 18 }}>
               <div style={{ marginBottom: 16 }}>
-                <p style={{ margin: "0 0 2px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>Net Profit</p>
+                <p style={{ margin: "0 0 2px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>Commission Earned</p>
                 <p style={{ margin: 0, fontSize: 32, fontWeight: 800, color: commissionData.total >= 0 ? "#22c55e" : "#ef4444", letterSpacing: "-0.04em", lineHeight: 1 }}>
                   RM {commissionData.total.toLocaleString("en-MY")}
                 </p>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "rgba(255,255,255,0.06)", borderRadius: 10, overflow: "hidden" }}>
                 {[
-                  { label: "Revenue", value: commissionData.revenue, color: "#3b82f6" },
-                  { label: "Purchase Cost", value: commissionData.purchase, color: "#94a3b8" },
-                  { label: "Recon Cost", value: commissionData.recon, color: "#94a3b8" },
-                  { label: "Services", value: commissionData.services, color: "#94a3b8" },
+                  { label: "Revenue (sales)", value: commissionData.revenue, color: "#3b82f6" },
+                  { label: "Avg / deal", value: commissionData.count > 0 ? Math.round(commissionData.total / commissionData.count) : 0, color: "#22c55e" },
                 ].map(({ label, value, color }) => (
                   <div key={label} style={{ padding: "12px 14px", background: "#0d1117" }}>
                     <p style={{ margin: "0 0 3px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</p>
@@ -3269,14 +3178,15 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                           min="0"
                           step="100"
                           placeholder="0"
-                          defaultValue={car.my_commission != null ? car.my_commission : ""}
+                          defaultValue={car.commission_amount != null ? car.commission_amount : ""}
                           onBlur={async e => {
                             const val = e.target.value === "" ? null : Number(e.target.value);
-                            if (val === (car.my_commission ?? null)) return;
-                            await supabase.from("car_listings").update({ my_commission: val }).eq("id", car.id);
-                            setMyListings(prev => prev.map(c => c.id === car.id ? { ...c, my_commission: val } : c));
+                            if (val === (car.commission_amount ?? null)) return;
+                            await supabase.from("car_listings").update({ commission_amount: val }).eq("id", car.id);
+                            setMyListings(prev => prev.map(c => c.id === car.id ? { ...c, commission_amount: val } : c));
+                            refreshCommissionData();
                           }}
-                          style={{ flex: 1, minWidth: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderLeft: "none", borderRadius: "0 5px 5px 0", padding: "3px 7px", color: car.my_commission ? "#60a5fa" : "#6b7280", fontSize: 12, fontWeight: car.my_commission ? 700 : 400, fontFamily: "inherit", outline: "none" }}
+                          style={{ flex: 1, minWidth: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderLeft: "none", borderRadius: "0 5px 5px 0", padding: "3px 7px", color: car.commission_amount ? "#60a5fa" : "#6b7280", fontSize: 12, fontWeight: car.commission_amount ? 700 : 400, fontFamily: "inherit", outline: "none" }}
                         />
                       </div>
                     </div>
