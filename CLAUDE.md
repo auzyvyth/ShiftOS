@@ -6,6 +6,14 @@
 3. After completing an item, delete it from `TODO.md`, commit the updated file, and push.
 4. Do not start work without asking the user which item to tackle.
 
+## Session end protocol — "FFT"
+When the user says "FFT", produce a handoff summary for the next agent. No questions, just write it. Structure:
+1. **Deploy status** — what merged to prod (PR #, commit sha), CI state, branch sync state, whether local main / staging / feature branch are aligned.
+2. **What shipped this session** — each change as a titled bullet with the file(s) touched and a one-line why. Include root cause for any bug fix.
+3. **Open items for next agent** — unfinished work, blocked tasks, anything from TODO.md still pending, with recommended next step.
+4. **Rule set** — condensed restatement of the non-negotiables below (multi-tenancy/security, deployment flow, design/mobile, prompt discipline) plus current tier pricing.
+Keep it scannable (headings + bullets), no emojis. Verify deploy/git state with real commands before writing — do not assume.
+
 ## Stack
 React + Vite, Supabase, Tailwind CSS, deployed on Vercel
 

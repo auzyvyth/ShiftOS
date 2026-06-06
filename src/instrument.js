@@ -33,5 +33,12 @@ if (_dsn) {
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
     enableLogs: true,
+    beforeSend(event, hint) {
+      const err = hint?.originalException;
+      // Supabase gotrue-js uses Web Locks with steal:true for cross-tab auth
+      // coordination. The old tab gets AbortError — expected, not a real error.
+      if (err?.name === 'AbortError' && err?.message?.includes('steal')) return null;
+      return event;
+    },
   });
 }
