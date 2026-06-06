@@ -328,7 +328,7 @@ export default function SalesmanOnboarding() {
     setLoading(true);
     try {
       const normalized = normalizePhone(form.phone);
-      const { error } = await supabase.auth.updateUser({ phone: normalized });
+      const { error } = await supabase.auth.signInWithOtp({ phone: normalized });
       if (error) throw error;
       setOtpSent(true);
       upd('otp')(['', '', '', '', '', '']);
@@ -349,7 +349,7 @@ export default function SalesmanOnboarding() {
       const { error } = await supabase.auth.verifyOtp({
         phone: normalized,
         token,
-        type: 'phone_change',
+        type: 'sms',
       });
       if (error) throw error;
       setStep(4);
