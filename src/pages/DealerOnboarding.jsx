@@ -94,7 +94,7 @@ const STEPS = [
 const TIERS = {
   starter: {
     label: 'DEALER STARTER',
-    price: 'RM 700 / mo',
+    price: 'RM 299 / mo',
     trial: '14-day free trial',
     features: [
       'Up to 30 active listings',
@@ -107,7 +107,7 @@ const TIERS = {
   },
   growth: {
     label: 'DEALER GROWTH',
-    price: 'RM 1,200 / mo',
+    price: 'RM 599 / mo',
     trial: '14-day free trial',
     features: [
       'Up to 80 active listings',
@@ -120,7 +120,7 @@ const TIERS = {
   },
   pro: {
     label: 'DEALER PRO',
-    price: 'RM 2,500 / mo',
+    price: 'RM 1,199 / mo',
     trial: '14-day free trial',
     features: [
       'Unlimited listings',

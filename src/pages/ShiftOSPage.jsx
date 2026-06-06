@@ -399,7 +399,7 @@ function PriceCard({ planKey }) {
         <span style={{ fontSize: 16, color: "#6b7280", marginLeft: 2 }}>/mo</span>
       </div>
       <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 24, lineHeight: 1.5 }}>
-        {cfg.listingCap} listings · {cfg.seatCap} {cfg.seatCap === 1 ? "seat" : "team seats"}
+        {cfg.listingCap ?? "Unlimited"} listings · {cfg.seatCap ? `${cfg.seatCap} ${cfg.seatCap === 1 ? "seat" : "team seats"}` : "Unlimited team"}
       </p>
       <ul style={{ listStyle: "none", flex: 1, marginBottom: 28 }}>
         {feats.map((f) => (
