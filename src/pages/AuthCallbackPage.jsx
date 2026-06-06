@@ -23,9 +23,12 @@ export default function AuthCallbackPage() {
         .eq('id', session.user.id)
         .maybeSingle();
 
-      // No profile at all → brand new user, needs onboarding
+      // No profile at all → brand new user, needs onboarding.
+      // Restore plan slug saved before the OAuth redirect so the preset carries through.
       if (!profile) {
-        navigate('/onboarding');
+        const savedPlan = sessionStorage.getItem("ob_plan_slug");
+        if (savedPlan) sessionStorage.removeItem("ob_plan_slug");
+        navigate(savedPlan ? `/onboarding/${savedPlan}` : '/onboarding');
         return;
       }
 

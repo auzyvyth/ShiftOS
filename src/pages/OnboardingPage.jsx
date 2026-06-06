@@ -79,6 +79,7 @@ export default function OnboardingPage() {
   const [animKey, setAnimKey] = useState(0);
   const [dir, setDir] = useState("fwd");
   const [showPw, setShowPw] = useState(false);
+  const [showResumeChoice, setShowResumeChoice] = useState(false);
   const [legalScrolled, setLegalScrolled] = useState(false);
   const inputRef = useRef(null);
   const legalRef = useRef(null);
@@ -135,6 +136,10 @@ export default function OnboardingPage() {
           }
         }
         if (Object.keys(updates).length) setV((p) => ({ ...p, ...updates }));
+        // Show resume-vs-start-over choice when a partial sign-up is detected.
+        // Skip the prompt if onboarding is already complete — they're just
+        // navigating in as a logged-in user and should continue normally.
+        if (!prof.onboarding_complete) setShowResumeChoice(true);
       } else {
         const updates = {};
         if (savedType) updates.accountType = savedType;
@@ -220,7 +225,7 @@ export default function OnboardingPage() {
       setLoading(true); setError("");
       const { data, error: err } = await supabase.auth.signUp({
         email: v.email.trim(), password: v.password,
-        options: { emailRedirectTo: `${window.location.origin}/onboarding${planSlug ? `/${planSlug}` : ''}` },
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
       });
       if (err) { setError(err.message); setLoading(false); return; }
       if (data.user) {
@@ -250,8 +255,8 @@ export default function OnboardingPage() {
               dealership: v.salesmanBrand.trim(),
               location: v.salesmanCity ? `${v.salesmanCity}, ${v.salesmanState}` : v.salesmanState,
               ic: v.ic || null, ic_submitted: !!v.ic,
-              ic_deadline: v.ic ? null : new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-              selected_plan: "salesman_free", pdpa_consent: true, pdpa_consent_at: new Date().toISOString(),
+              ic_deadline: v.ic ? null : (profileData?.ic_deadline || new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString()),
+              selected_plan: v.plan || "salesman_lite", pdpa_consent: true, pdpa_consent_at: new Date().toISOString(),
             }
           : {
               id: userId, email: v.email || userEmail, full_name: v.fullName.trim(),
@@ -261,7 +266,7 @@ export default function OnboardingPage() {
               role: "dealer", plan: "dealer_full", is_active: true, onboarding_complete: true,
               subdomain: v.subdomain, ssm_number: v.ssmNumber || null,
               ic: v.ic || null, ic_submitted: !!v.ic,
-              ic_deadline: v.ic ? null : new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+              ic_deadline: v.ic ? null : (profileData?.ic_deadline || new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString()),
               selected_plan: "standard", pdpa_consent: true, pdpa_consent_at: new Date().toISOString(),
             };
         const { error: err } = await supabase.from("profiles").upsert(payload);
@@ -317,9 +322,10 @@ export default function OnboardingPage() {
 
   const handleGoogleSignUp = async () => {
     if (v.accountType) sessionStorage.setItem("ob_account_type", v.accountType);
+    if (planSlug) sessionStorage.setItem("ob_plan_slug", planSlug);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/onboarding${planSlug ? `/${planSlug}` : ''}` },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
     if (error) setError(error.message);
   };
@@ -335,6 +341,43 @@ export default function OnboardingPage() {
   };
 
   if (!authReady) return null;
+
+  if (showResumeChoice)
+    return (
+      <>
+        <style>{CSS}</style>
+        <div className="ob-root" style={{ justifyContent: "center", alignItems: "center", display: "flex" }}>
+          <div style={{ width: "min(420px,90%)", textAlign: "center" }}>
+            <div className="ob-logo" style={{ justifyContent: "center", marginBottom: 32 }}>
+              <div className="ob-lm">⚡</div>
+              <span className="ob-lt">SHIFTOS</span>
+            </div>
+            <p style={{ fontFamily: "'Azeret Mono',monospace", fontSize: 10, letterSpacing: "2px", color: "rgba(220,38,38,0.8)", textTransform: "uppercase", marginBottom: 20 }}>INCOMPLETE SIGN-UP FOUND</p>
+            <h2 style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 36, letterSpacing: 3, color: "#E8EDF5", marginBottom: 8 }}>WELCOME BACK</h2>
+            <p style={{ color: "rgba(232,237,245,0.4)", fontSize: 13, marginBottom: 4 }}>You have an incomplete sign-up as</p>
+            <p style={{ color: "#E8EDF5", fontWeight: 600, fontSize: 14, marginBottom: 32, wordBreak: "break-all" }}>{userEmail}</p>
+            <button className="ob-btn-act" style={{ width: "100%", justifyContent: "center", marginBottom: 14 }}
+              onClick={() => setShowResumeChoice(false)}>
+              CONTINUE SIGN-UP
+            </button>
+            <button className="ob-btn-ghost" style={{ width: "100%", marginBottom: 20 }}
+              onClick={async () => {
+                await supabase.auth.signOut();
+                setShowResumeChoice(false);
+                setUserId(null);
+                setUserEmail("");
+                setEmailConfirmed(false);
+                setProfileData(null);
+                setV({ accountType: presetCfg?.accountType || "", plan: presetCfg?.plan || "", fullName: "", phone: "+60", ic: "", email: "", password: "", confirm: "", dealerName: "", dealerType: "", state: "", city: "", subdomain: "", ssmNumber: "", fleetSize: "", salesmanBrand: "", salesmanSlug: "", salesmanState: "", salesmanCity: "" });
+                setIdx(0);
+              }}>
+              USE A DIFFERENT ACCOUNT
+            </button>
+            <a href="/login" style={{ fontSize: 12, color: "rgba(232,237,245,0.25)", textDecoration: "none", fontFamily: "'Azeret Mono',monospace" }}>← Sign in to existing account</a>
+          </div>
+        </div>
+      </>
+    );
 
   if (confirmSent)
     return (
