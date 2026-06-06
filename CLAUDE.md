@@ -161,3 +161,72 @@ Both displayed in separate labelled sections in the P&L modal.
 - Always read the target file first before editing
 - One concern per session: data OR layout OR styling OR mobile
 - Never use emojis in UI code, commit messages, or responses
+
+## Dealer dashboard audit — pending fixes (2026-06-06)
+Full report: AUDIT_DEALER_DASHBOARD.md. Root cause across all: drift between two
+things that should be one (stage names, plan columns, GP source, sold timestamp,
+source-of-truth table). Reference for "done right": DashboardPage `fetchPnl`.
+
+### CRITICAL
+- [ ] C4 — Tiering split-brain. Caps enforce on `profiles.plan`; onboarding writes
+  `selected_plan` (legacy junk values); DB `plan_config` is a third disagreeing copy.
+  New dealers get unlimited listings, no enforcement. FIX: collapse to one column
+  (`selected_plan`), point cap triggers `check_listing_cap`/`enforce_listing_cap` at
+  it, backfill legacy values to real keys, reconcile `plan_config` with
+  `src/utils/planConfig.js`. Prerequisite for tiering enforcement.
+- [ ] C1 — `car_listings.gross_profit` is a dead column (always 0; trigger
+  `compute_listing_gp` only sets days_in_stock). RevOpsPage.jsx:290-300 trusts it so
+  GP MTD is always wrong. FIX: stop trusting the column, recompute from parts like
+  fetchPnl (and add commission — see H1).
+- [ ] C2 — RevOpsPage.jsx:431 / ServicesPage.jsx:170 filter won deals as
+  `closed_won,deposit_taken` but prod uses `won`. FIX: filter on the real won stage(s).
+- [ ] C3 — LeadDrawer.jsx:673 writes `closed_won`; LeadsPage.jsx:102-107 only buckets
+  STAGE_ORDER so closed deals vanish from the board. FIX: standardize stage set (see below).
+- [ ] C5 — DashboardPage.jsx:365 `bucketGPByMonth` reads `u.sold_at` on stock_units
+  (only `sold_date` exists) -> GP sparkline always flat. FIX: use `sold_date`.
+
+### HIGH
+- [ ] H1 — RevOps front-gross fallback omits commission and fetches no commission
+  column (RevOpsPage.jsx:294). FIX: subtract commission_amount; add to select.
+- [ ] H2 — useLeads.js:31 `addLead` sets `dealer_id: user.id` (orphans manager/admin
+  leads) and forces `stage:'new'`. FIX: derive via getDealerIdFromProfile; honor payload stage.
+- [ ] H3 — AddLeadModal.jsx:196 offers lead_source values the CHECK rejects -> silent
+  insert failure. FIX: restrict options to allowed set (or widen CHECK) + show error toast.
+- [ ] H4 — AddLeadModal.jsx:36 car list uses `eq('dealer_id', user.id)`; empty for
+  manager/admin. FIX: derive dealer id by role.
+- [ ] H5 — LeadDrawer.jsx:650 close modal only fires for literal `closed_won`, but the
+  progress bar writes `won`, bypassing close+car+stock+sibling sync. FIX: route Won
+  through the close flow.
+- [ ] H6 — Two sources of truth: RevOps uses car_listings, Oversight/Overview use
+  stock_units -> different revenue/units for same month. FIX: pick one source.
+- [ ] H7 — gm_salesman_scores keys on `assigned_to` (25/64 rows); app uses
+  `salesman_id` (40/64). FIX: key the RPC on salesman_id.
+- [ ] H8 — LeadDrawer.jsx:701 sibling-lost update omits `won`, can flip a real win to
+  closed_lost; deposit gate :1143 omits closed_won. FIX: consistent terminal-state set.
+
+### MEDIUM
+- [ ] M1 — compute_stock_unit_gp omits included_services_cost + commission -> stock GP overstated.
+- [ ] M2 — Duplicate listing-cap triggers (enforce_listing_cap + trg_enforce_listing_cap). Drop one.
+- [ ] M3 — Overlapping/mutually-firing stock<->listing sync triggers; recon_cost clobbered on sale.
+- [ ] M4 — OverviewTab.jsx:178 counts won/closed_* as active pipeline. FIX: exclude real terminal stages.
+- [ ] M5 — gm_pnl_snapshot LMTD window carries intraday remainder / ignores month length.
+- [ ] M6 — LeadDrawer.jsx:310 appointment insert reads `lead.name` (undefined) -> buyer_name NULL. Use buyer_name.
+- [ ] M7 — calcInsuranceEst (LeadDrawer.jsx:133) duplicate caps / subtracts full cap per band -> wrong premium.
+- [ ] M8 — Add-on avgPerDeal numerator includes null-lead rows, denominator excludes them (RevOps:436 / Services:178).
+- [ ] M9 — fn_auto_deal_financial ON CONFLICT DO NOTHING with no constraint target -> dup on re-sell. Confirm reader.
+- [ ] M10 — defaultTasksFor (postSaleSteps.js:93) parallel B7 seed path can diverge from the DB won-trigger.
+
+### LOW
+- [ ] L1 — RevOpsPage.jsx:859 hardcoded `6217` response-time bar divisor.
+- [ ] L2 — Unguarded `Number(sold_price)` reduces (RevOps:436 / Services:178) -> NaN risk.
+- [ ] L3 — DashboardPage.jsx:5692 StockTab handleMarkSold never refetches; derived fields stale.
+- [ ] L4 — Neither mark-sold path writes actual sold_price to car_listings; per-salesman gross uses asking price.
+- [ ] L5 — OverviewTab delta() returns null when prev=0, hides growth-from-zero.
+- [ ] L6 — useLeads.fetchLeads has no frontend dealer_id filter (RLS-only).
+- [ ] L7 — Swallowed select errors across RevOps/Services (no error checks).
+- [ ] L8 — Inline loan calc flat-rate vs HP reducing-balance -> two monthly figures for one deal.
+
+### Recommended order
+1) C4 (tiering)  2) C1+H1 (GP/commission)  3) C2+C3+H5+H8+M4 (one stage standard kills 5)
+4) H2+H3+H4 (AddLead correctness)  5) C5+M6 (column typos)  6) H6+H7 (one source/owner)
+7) DB hygiene M1/M2/M3/M5/M9  8) LOW items.
