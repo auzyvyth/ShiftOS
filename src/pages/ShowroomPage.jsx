@@ -15,7 +15,6 @@ import { CAR_DATA } from '../components/CarForm';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import PriceAlertButton from '../components/PriceAlertButton';
 import ShowroomCard, { ShowroomCardSkeleton } from '../components/ShowroomCard';
-import Pagination from '../components/ui/Pagination';
 
 /* ── Constants ───────────────────────────────────────────────────────────── */
 const PER_PAGE = 15;
@@ -258,10 +257,11 @@ export default function ShowroomPage() {
   const [variantInput, setVariantInput] = useState(variant);
   useEffect(() => setVariantInput(variant), [variant]);
 
-  const [cars, setCars]               = useState([]);
+  const [allCars, setAllCars]         = useState([]);
   const [totalCount, setTotal]        = useState(0);
   const [loading, setLoading]         = useState(true);
   const [fetching, setFetching]       = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError]             = useState(null);
   const initialLoad = useRef(true);
   const [drawerOpen, setDrawerOpen]   = useState(false);
@@ -291,8 +291,12 @@ export default function ShowroomPage() {
   const totalPages = Math.ceil(totalCount / PER_PAGE);
 
   const fetchCars = useCallback(async () => {
-    if (initialLoad.current) { setLoading(true); } else { setFetching(true); }
     setError(null);
+    if (page === 1) {
+      if (initialLoad.current) { setLoading(true); } else { setFetching(true); }
+    } else {
+      setLoadingMore(true);
+    }
     try {
       const from = (page-1)*PER_PAGE, to = from+PER_PAGE-1;
       let query = supabase.from('public_car_listings')
@@ -328,13 +332,13 @@ export default function ShowroomPage() {
       query = query.range(from, to);
       const { data, error:err, count } = await query;
       if (err) throw err;
-      setCars(data || []); setTotal(count || 0);
+      if (page === 1) { setAllCars(data || []); } else { setAllCars(prev => [...prev, ...(data || [])]); }
+      setTotal(count || 0);
     } catch { setError('Failed to load listings. Please try again.'); }
-    finally { setLoading(false); setFetching(false); initialLoad.current = false; }
+    finally { setLoading(false); setFetching(false); setLoadingMore(false); initialLoad.current = false; }
   }, [page, brand, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, fuelType, colour, sellerType, model, variant, sort]);
 
   useEffect(() => { fetchCars(); }, [fetchCars]);
-  useEffect(() => { window.scrollTo({ top:0, behavior:'smooth' }); }, [page]);
 
   const activeChips = [
     q           && { key:'q',           label:`"${q}"` },
@@ -543,8 +547,8 @@ export default function ShowroomPage() {
         <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'24px 24px 80px' }}>
 
           {/* Active chips + results count */}
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'10px', marginBottom:'20px' }}>
-            <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', alignItems:'center' }}>
+          <div style={{ marginBottom:'20px' }}>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', alignItems:'center', marginBottom:'8px' }}>
               <span style={{ color:'#6b7280', fontSize:'13px' }}>
                 <span style={{ color:'#111827', fontWeight:'700' }}>{loading?'…':totalCount.toLocaleString()}</span> cars found
               </span>
@@ -556,20 +560,22 @@ export default function ShowroomPage() {
               ))}
               {hasFilters && <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', fontSize:'12px', fontWeight:'600', fontFamily:"'Outfit',sans-serif" }}><RotateCcw size={11} style={{ marginRight:3 }}/>Clear all</button>}
             </div>
-            <PriceAlertButton
-              hasFilters={hasFilters}
-              filters={{
-                brand:     brand     || null,
-                model:     model     || null,
-                variant:   variant   || null,
-                bodyType:  bodyType  || null,
-                state:     state     || null,
-                condition: condition || null,
-                maxPrice:  maxPrice  || null,
-                minYear:   yearFrom  || null,
-                maxYear:   yearTo    || null,
-              }}
-            />
+            <div style={{ display:'flex', justifyContent:'flex-end' }}>
+              <PriceAlertButton
+                hasFilters={hasFilters}
+                filters={{
+                  brand:     brand     || null,
+                  model:     model     || null,
+                  variant:   variant   || null,
+                  bodyType:  bodyType  || null,
+                  state:     state     || null,
+                  condition: condition || null,
+                  maxPrice:  maxPrice  || null,
+                  minYear:   yearFrom  || null,
+                  maxYear:   yearTo    || null,
+                }}
+              />
+            </div>
           </div>
 
           <div className="sr-layout" style={{ display:'flex', gap:'24px', alignItems:'flex-start' }}>
@@ -601,7 +607,7 @@ export default function ShowroomPage() {
                 <div className="sr-grid" style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:'14px', opacity: fetching?0.45:1, transition:'opacity 0.2s' }}>
                   {loading
                     ? Array.from({ length:PER_PAGE }).map((_,i)=><ShowroomCardSkeleton key={i}/>)
-                    : cars.length===0
+                    : allCars.length===0
                       ? (
                         <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'80px 20px' }}>
                           <Car size={52} color="#9ca3af" style={{ marginBottom:'16px' }}/>
@@ -610,7 +616,7 @@ export default function ShowroomPage() {
                           <button onClick={resetAll} style={{ background:'#dc2626', color:'#fff', border:'none', padding:'12px 28px', borderRadius:'50px', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>Browse All Cars</button>
                         </div>
                       )
-                      : cars.map((car,i)=>{
+                      : allCars.map((car,i)=>{
                           const inCompare=isInCompare(car.id), compareFull=compareIds.length>=4&&!inCompare;
                           return (
                             <ShowroomCard
@@ -625,16 +631,29 @@ export default function ShowroomPage() {
                           );
                         })
                   }
+                  {loadingMore && Array.from({ length:PER_PAGE }).map((_,i)=><ShowroomCardSkeleton key={`lm-${i}`}/>)}
                 </div>
                 </div>
               )}
-              {!loading && !error && totalPages>1 && (
-                <div style={{ padding:'40px 0 20px' }}>
-                  <Pagination page={page} totalPages={totalPages} onPage={setPage}/>
-                  <p style={{ textAlign:'center', color:'#6b7280', fontSize:'13px', marginTop:'12px' }}>
-                    Showing {((page-1)*PER_PAGE)+1}–{Math.min(page*PER_PAGE,totalCount)} of {totalCount.toLocaleString()} cars
+              {!loading && !loadingMore && !error && allCars.length > 0 && page * PER_PAGE < totalCount && (
+                <div style={{ padding:'32px 0 16px', textAlign:'center' }}>
+                  <button
+                    onClick={() => setPage(page + 1)}
+                    style={{ background:'#ffffff', border:'1px solid rgba(0,0,0,0.12)', color:'#111827', fontSize:'14px', fontWeight:'700', padding:'12px 36px', borderRadius:'50px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s' }}
+                    onMouseEnter={e=>{ e.currentTarget.style.borderColor='rgba(220,38,38,0.5)'; e.currentTarget.style.color='#dc2626'; }}
+                    onMouseLeave={e=>{ e.currentTarget.style.borderColor='rgba(0,0,0,0.12)'; e.currentTarget.style.color='#111827'; }}
+                  >
+                    Load more
+                  </button>
+                  <p style={{ textAlign:'center', color:'#9ca3af', fontSize:'12px', marginTop:'10px', fontFamily:"'Outfit',sans-serif" }}>
+                    Showing {allCars.length} of {totalCount.toLocaleString()} cars
                   </p>
                 </div>
+              )}
+              {!loading && !loadingMore && !error && allCars.length > 0 && page * PER_PAGE >= totalCount && totalCount > PER_PAGE && (
+                <p style={{ textAlign:'center', color:'#9ca3af', fontSize:'12px', padding:'28px 0 8px', fontFamily:"'Outfit',sans-serif" }}>
+                  All {totalCount.toLocaleString()} cars shown
+                </p>
               )}
             </div>
 

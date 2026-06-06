@@ -56,7 +56,30 @@ export default function PriceAlertButton({ filters, hasFilters }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [alertsOpen]);
 
+  // After OAuth redirect: if a pending alert flag exists and session is now set, auto-save
+  useEffect(() => {
+    if (!session) return;
+    if (!localStorage.getItem('xd_pending_alert')) return;
+    localStorage.removeItem('xd_pending_alert');
+    supabase.from('price_alerts').insert({
+      user_id:   session.user.id,
+      email:     session.user.email,
+      brand:     filters.brand    || null,
+      model:     filters.model    || null,
+      variant:   filters.variant  || null,
+      body_type: filters.bodyType || null,
+      state:     filters.state    || null,
+      condition: filters.condition|| null,
+      max_price: filters.maxPrice ? Number(filters.maxPrice) : null,
+      min_year:  filters.minYear  ? Number(filters.minYear)  : null,
+      max_year:  filters.maxYear  ? Number(filters.maxYear)  : null,
+    }).then(({ error }) => {
+      if (!error) { setSaved(true); setTimeout(() => setSaved(false), 2500); }
+    });
+  }, [session]); // eslint-disable-line
+
   const signInWithGoogle = async () => {
+    localStorage.setItem('xd_pending_alert', '1');
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.href },

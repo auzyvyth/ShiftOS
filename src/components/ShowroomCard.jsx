@@ -230,11 +230,11 @@ export function ShowroomCardSkeleton() {
   const b = '#e5e7eb';
   const s = 'sc-shimmer 1.5s infinite';
   return (
-    <div style={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px', overflow: 'hidden', display: 'flex', height: '190px' }}>
+    <div className="sc-root" style={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px', overflow: 'hidden', display: 'flex', height: '190px' }}>
       {/* Image column — same 38% / 210px as real card */}
-      <div style={{ width: '38%', maxWidth: '210px', flexShrink: 0, background: 'linear-gradient(90deg,#e5e7eb 25%,#d1d5db 50%,#e5e7eb 75%)', backgroundSize: '200% 100%', animation: s }} />
+      <div className="sc-img-col" style={{ width: '38%', maxWidth: '210px', flexShrink: 0, background: 'linear-gradient(90deg,#e5e7eb 25%,#d1d5db 50%,#e5e7eb 75%)', backgroundSize: '200% 100%', animation: s }} />
       {/* Content column — matches padding: 11px 14px */}
-      <div style={{ flex: 1, padding: '11px 14px 11px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div className="sc-content-col" style={{ flex: 1, padding: '11px 14px 11px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         {/* Row 1: condition pill + year pill */}
         <div style={{ display: 'flex', gap: 5, marginBottom: 8 }}>
           <div style={{ height: 20, width: 42, background: b, borderRadius: 20, animation: s }} />
