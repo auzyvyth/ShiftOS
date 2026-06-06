@@ -323,7 +323,8 @@ const PLAN_META = {
   dealer_pro:    { cta: "Talk to Sales",  to: "/dealer-onboarding/pro",       variant: "gold" },
 };
 
-const SALESMAN_PLANS = ["salesman_lite", "salesman_full"];
+// salesman_full (Premium) hidden for now — solo focus is Lite. Re-add to show the card again.
+const SALESMAN_PLANS = ["salesman_lite"];
 const DEALER_PLANS   = ["dealer_starter", "dealer_growth", "dealer_pro"];
 const WA = "https://wa.me/60174155191?text=Hi%2C%20I%27m%20interested%20in%20ShiftOS%20for%20my%20dealership";
 
