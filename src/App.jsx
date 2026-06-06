@@ -28,6 +28,8 @@ const SalesmanPanel      = lazy(() => import("./pages/Salesmanpanel"));
 const SalesmanLite       = lazy(() => import("./pages/SalesmanLite"));
 const SalesmanPremium    = lazy(() => import("./pages/SalesmanPremium"));
 const OnboardingPage     = lazy(() => import("./pages/OnboardingPage"));
+const SalesmanOnboarding = lazy(() => import("./pages/SalesmanOnboarding"));
+const DealerOnboarding   = lazy(() => import("./pages/DealerOnboarding"));
 const AdminPanel         = lazy(() => import("./pages/AdminPanel"));
 const AdminPage          = lazy(() => import("./pages/AdminPage"));
 const ManagerPanel       = lazy(() => import("./pages/ManagerPanel"));
@@ -100,6 +102,10 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/onboarding/:plan" element={<OnboardingPage />} />
+          <Route path="/salesman-onboarding" element={<SalesmanOnboarding />} />
+          <Route path="/salesman-onboarding/:tier" element={<SalesmanOnboarding />} />
+          <Route path="/dealer-onboarding" element={<DealerOnboarding />} />
+          <Route path="/dealer-onboarding/:tier" element={<DealerOnboarding />} />
           <Route path="/auth/confirm" element={<AuthConfirmPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/auth/reset" element={<ResetPasswordPage />} />

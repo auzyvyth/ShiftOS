@@ -28,17 +28,29 @@ export default function AuthCallbackPage() {
       if (!profile) {
         const savedPlan = sessionStorage.getItem("ob_plan_slug");
         if (savedPlan) sessionStorage.removeItem("ob_plan_slug");
-        navigate(savedPlan ? `/onboarding/${savedPlan}` : '/onboarding');
+
+        if (savedPlan === 'lite' || savedPlan === 'premium') {
+          navigate(`/salesman-onboarding/${savedPlan}`);
+        } else if (savedPlan === 'starter' || savedPlan === 'growth' || savedPlan === 'pro') {
+          navigate(`/dealer-onboarding/${savedPlan}`);
+        } else {
+          navigate(savedPlan ? `/onboarding/${savedPlan}` : '/onboarding');
+        }
         return;
       }
 
       const { role, subdomain, dealer_id } = profile;
 
-      // Only dealer/superadmin go through onboarding.
+      // Incomplete onboarding — route back to the correct onboarding page.
       // A dealer with a subdomain has completed onboarding regardless of the flag —
       // use subdomain as the authoritative signal to prevent flag drift locking users out.
       if ((role === 'dealer' || role === 'superadmin') && profile.onboarding_complete === false && !subdomain) {
-        navigate('/onboarding');
+        navigate('/dealer-onboarding');
+        return;
+      }
+
+      if (role === 'salesman' && profile.onboarding_complete === false) {
+        navigate('/salesman-onboarding');
         return;
       }
 
