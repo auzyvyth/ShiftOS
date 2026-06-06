@@ -473,7 +473,7 @@ const HomePage = () => {
     borderBottom: "1px solid rgba(255,255,255,0.05)",
   };
 
-  if (loading || tenantLoading) return <SciFiLoader />;
+  if (tenant === undefined) return <SciFiLoader />;
 
   return (
     <>
