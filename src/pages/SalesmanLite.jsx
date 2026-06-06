@@ -8,6 +8,7 @@ import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import CarForm from "../components/CarForm";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import TikTokStudioV3 from "../components/TikTokStudioV3";
+import SalesmanLiteHelp from "../components/SalesmanLiteHelp";
 import {
   LogOut,
   Copy,
@@ -61,6 +62,7 @@ import {
   RefreshCw,
   Voicemail,
   CheckCircle,
+  BookOpen,
 } from "lucide-react";
 
 function useWindowSize() {
@@ -1598,6 +1600,11 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       label: t("salesmanLite.tabs.settings"),
       icon: <Settings style={{ width: 14, height: 14 }} />,
     },
+    {
+      tab: "help",
+      label: t("salesmanLite.tabs.help"),
+      icon: <BookOpen style={{ width: 14, height: 14 }} />,
+    },
   ];
 
   const TABS_MOBILE = [
@@ -1623,6 +1630,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     { tab: "performance", label: t("salesmanLite.tabs.performanceMobile"), icon: <BarChart2 size={18} /> },
     { tab: "merge", label: t("salesmanLite.tabs.mergeMobile"), icon: <GitMerge size={18} /> },
     { tab: "settings", label: t("salesmanLite.tabs.settings"), icon: <Settings size={18} /> },
+    { tab: "help", label: t("salesmanLite.tabs.help"), icon: <BookOpen size={18} /> },
   ];
 
   // ── NOTIFICATION PANEL ────────────────────────────────────────────────────
@@ -7331,6 +7339,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           )}
           {activeTab === "merge" && renderMerge()}
           {activeTab === "settings" && renderSettings()}
+          {activeTab === "help" && <SalesmanLiteHelp />}
         </div>
       </div>
 

@@ -298,7 +298,8 @@
       "performanceMobile": "Statistik",
       "merge": "Sertai Pengedar",
       "mergeMobile": "Gabung",
-      "settings": "Tetapan"
+      "settings": "Tetapan",
+      "help": "Bantuan"
     },
     "header": {
       "litePanel": "Panel Lite",
