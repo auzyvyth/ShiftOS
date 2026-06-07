@@ -3129,17 +3129,21 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       </p>
                       <div style={{ position: "relative", flexShrink: 0 }}>
                         <button
-                          onClick={(e) => { e.stopPropagation(); setStatusMenuCarId(statusMenuCarId === car.id ? null : car.id); }}
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize cursor-pointer ${
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isPending || isRejected) return; // locked until the dealer approves/rejects the listing
+                            setStatusMenuCarId(statusMenuCarId === car.id ? null : car.id);
+                          }}
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize ${isPending || isRejected ? "opacity-50 cursor-not-allowed" : "cursor-pointer"} ${
                             ["available"].includes(car.status || "available") ? "bg-green-500/15 text-green-400 border-green-500/30" :
                             car.status === "reserved" ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" :
                             car.status === "sold" ? "bg-gray-700 text-gray-400 border-gray-600" :
                             "bg-gray-700 text-gray-400 border-gray-600"
                           }`}
                         >
-                          {car.status || "available"} ▾
+                          {car.status || "available"}{!(isPending || isRejected) && " ▾"}
                         </button>
-                        {statusMenuCarId === car.id && (
+                        {!isPending && !isRejected && statusMenuCarId === car.id && (
                           <div
                             onClick={(e) => e.stopPropagation()}
                             style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 50, background: "#1e2433", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, overflow: "hidden", minWidth: 110, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}
