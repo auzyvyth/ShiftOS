@@ -20,6 +20,14 @@ i18n
     },
     fallbackLng: 'en',
     debug: false,
+    detection: {
+      // localStorage can silently fail to persist (private browsing, strict
+      // privacy settings, "clear data on close") — cache to a long-lived
+      // cookie too so the choice survives a close/reopen either way
+      order: ['querystring', 'cookie', 'localStorage', 'sessionStorage', 'navigator', 'htmlTag'],
+      caches: ['localStorage', 'cookie'],
+      cookieMinutes: 60 * 24 * 365,
+    },
     interpolation: {
       escapeValue: false, 
     }
