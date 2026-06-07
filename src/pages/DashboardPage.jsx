@@ -2698,9 +2698,13 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
         ...messages.map((m) => ({ role: m.role, content: m.content })),
         { role: "user", content: msg },
       ];
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(`${SERVER_URL}/ai/messages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1000,

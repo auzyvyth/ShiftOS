@@ -89,9 +89,13 @@ async function streamAnthropic(messages, systemPrompt, onChunk) {
     "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1/ai/messages";
   const body = { model: ANTH_MODEL, max_tokens: 1024, stream: true, messages };
   if (systemPrompt) body.system = systemPrompt;
+  const { data: { session } } = await supabase.auth.getSession();
   const res = await fetch(AI_PROXY, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+    },
     body: JSON.stringify(body),
   });
   if (!res.ok) {

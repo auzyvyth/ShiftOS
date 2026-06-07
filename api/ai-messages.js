@@ -2,6 +2,11 @@
 // Vercel Node.js serverless function — Anthropic Messages API proxy
 // Uses streaming to keep connection alive during long PDF analyses
 
+import { createClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL = 'https://lemdkdizdlcirhbzqlos.supabase.co';
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+
 export const config = {
   api: {
     bodyParser: { sizeLimit: '25mb' },
@@ -11,6 +16,18 @@ export const config = {
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+
+  const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const { data: { user }, error: authErr } = await authClient.auth.getUser(token);
+  if (authErr || !user) {
+    return res.status(401).json({ error: 'unauthorized' });
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;

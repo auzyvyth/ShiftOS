@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send } from 'lucide-react';
+import { supabase } from '../supabaseClient';
 
 function buildSystemPrompt(snapshot, dealerName) {
   return `You are the AI Sales Manager for ${dealerName}, a Malaysian used car dealership on ShiftOS.
@@ -61,10 +62,14 @@ export default function AISalesManager({ snapshot, dealerName }) {
     setLoading(true);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const AI_PROXY = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/ai/messages` : '/api/ai-messages';
       const res = await fetch(AI_PROXY, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,

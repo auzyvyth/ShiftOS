@@ -284,9 +284,13 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
     setCoachLoading(true);
     try {
       const AI_PROXY = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/ai/messages` : '/api/ai-messages';
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(AI_PROXY, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
