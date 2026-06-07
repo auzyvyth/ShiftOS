@@ -74,6 +74,14 @@
 
 ---
 
+### DEALER SUBDOMAIN PERFORMANCE AUDIT (2026-06-07) — ranked by impact
+
+- [ ] **PERF-1 (CRITICAL): RLS policy bloat on car_listings/profiles** — `car_listings` carries ~13 policies calling `auth.uid()`/`auth.role()` directly per-row (not wrapped in `(select ...)`) plus 4-5 overlapping permissive SELECT policies for anon/authenticated (`public_read_listings`, `salesman_reads_assigned_listings`, `salesman_reads_own_listings`, `superadmin_select_all_listings`, `superadmin_read_all_listings`). `profiles` (joined into every listing) has 29 similar warnings. The storefront's core query evaluates ALL of these per row for anonymous visitors. FIX: migration wrapping `auth.<fn>()` in `(select auth.<fn>())`, collapse overlapping anon/authenticated SELECT policies into one.
+- [ ] **PERF-2 (CRITICAL): Listings/hero queries wait on full tenant resolution** — HomePage.jsx:249-250 gates car-listings fetch on `tenant !== undefined`; HeroCarousel.jsx:662 has the same gate. useTenant does setSession + full profile fetch + realtime setup before resolving — a hard waterfall in front of the two most visible fetches. FIX: resolve dealerId via getSubdomain() directly so listings/hero fire in parallel with tenant profile fetch.
+- [ ] **PERF-3 (HIGH): Triple-redundant dealer-profile fetch** — useTenant.js:81-85 (full PROFILE_SELECT incl. whatsapp_number), useCTAContext.js:53-57, and HomePage.jsx:205-212 (whatsapp_number again) all hit public_dealer_profiles for the same dealer. FIX: delete HomePage.jsx:203-213, use tenant.whatsapp_number directly.
+- [ ] **PERF-4 (MEDIUM): Redundant per-row dealer join in listings query** — HomePage.jsx:255 joins dealer:profiles(...) onto all 30 rows even though every row is the same dealer (already in `tenant`). FIX: skip the join when tenant?.id is set; attach tenant as the dealer object client-side.
+- [ ] **PERF-5 (LOW): Sold-count stat delayed by flat 800ms timer** — HomePage.jsx:298 `setTimeout(fetchSoldCount, 800)` instead of firing in parallel with load(). FIX: Promise.all alongside load().
+
 ### INFRASTRUCTURE
 
 - **INFRA-1: Supabase storage cleanup** — Storage is full. Audit bucket usage, delete orphaned images (listings that were deleted but images remain), consider image compression pipeline or CDN offload. (Requires manual review of what to delete — user decision needed.)
