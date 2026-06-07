@@ -6,7 +6,6 @@ import { supabase } from "../supabaseClient";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import CarFormFast from "../components/CarFormFast";
 import CarForm from "../components/CarForm";
-import TikTokStudioV3 from "../components/TikTokStudioV3";
 import {
  LogOut,
  Copy,
@@ -287,9 +286,6 @@ export default function SalesmanPremium() {
  const [carDetailImgIdx, setCarDetailImgIdx] = useState(0);
  const [carDetailTab, setCarDetailTab] = useState("specs");
  const [carDetailLbOpen, setCarDetailLbOpen] = useState(false);
-
- // TikTok Studio
- const [tiktokListing, setTiktokListing] = useState(null);
  const [editListing, setEditListing] = useState(null);
 
  // tour
@@ -2642,20 +2638,6 @@ export default function SalesmanPremium() {
  >AI Caption
  </button>
  <button
- onClick={() => setTiktokListing(car)}
- style={{
- fontSize: 10,
- padding: "4px 8px",
- borderRadius: 6,
- background: "rgba(239,68,68,0.1)",
- border: "1px solid rgba(239,68,68,0.25)",
- color: "#f87171",
- cursor: "pointer",
- textAlign: "center",
- }}
- >TikTok
- </button>
- <button
  onClick={() => setEditListing(car)}
  style={{
  fontSize: 10,
@@ -3361,18 +3343,6 @@ export default function SalesmanPremium() {
  "rgba(249,115,22,0.25)",
  () => {
  openBroadcast(car);
- close();
- },
- )}
- {actionBtn(
- <>
- <Eye size={13} style={{ flexShrink: 0 }} />TikTok Studio
- </>,
- "#f87171",
- "rgba(239,68,68,0.08)",
- "rgba(239,68,68,0.25)",
- () => {
- setTiktokListing(car);
  close();
  },
  )}
@@ -7109,7 +7079,6 @@ export default function SalesmanPremium() {
  </div>
  )}
 
- {/* TikTok Studio modal */}
  {editListing && (
  <div
  className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
@@ -7183,26 +7152,6 @@ export default function SalesmanPremium() {
  </div>
  )}
 
- {tiktokListing && (
- <div
- style={
- isMobile
-? {
- position: "fixed",
- inset: 0,
- zIndex: 9999,
- overflowY: "auto",
- borderRadius: 0,
- }
- : {}
- }
- >
- <TikTokStudioV3
- listing={tiktokListing}
- onClose={() => setTiktokListing(null)}
- />
- </div>
- )}
  </div>
  );
 }

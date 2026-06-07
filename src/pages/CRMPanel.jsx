@@ -133,7 +133,7 @@ function EnquiriesTab({ userId, onOpenDoc }) {
     if (!userId) return;
     supabase
       .from("profiles")
-      .select("full_name, dealership, enquiry_wa_template, whatsapp_number")
+      .select("full_name, dealership, enquiry_wa_template, whatsapp_number, plan")
       .eq("id", userId)
       .single()
       .then(({ data }) => {
@@ -1083,7 +1083,8 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                 </div>
               )}
 
-              {/* ── Negotiation Coach ── */}
+              {/* ── Negotiation Coach (Dealer Pro only) ── */}
+              {dealerProfile?.plan === 'dealer_pro' && (
               <div style={{ paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: 8 }}>
                 <button
                   onClick={() => {
@@ -1255,6 +1256,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                   </div>
                 )}
               </div>
+              )}
             </div>
           </div>
         </>

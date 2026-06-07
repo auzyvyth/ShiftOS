@@ -85,8 +85,9 @@ const MY_BANK_RATES = {
 };
 
 async function streamAnthropic(messages, systemPrompt, onChunk) {
-  const AI_PROXY =
-    "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1/ai/messages";
+  const AI_PROXY = import.meta.env.VITE_API_URL
+    ? `${import.meta.env.VITE_API_URL}/ai/messages`
+    : "/api/ai-messages";
   const body = { model: ANTH_MODEL, max_tokens: 1024, stream: true, messages };
   if (systemPrompt) body.system = systemPrompt;
   const { data: { session } } = await supabase.auth.getSession();
@@ -130,6 +131,7 @@ async function streamAnthropic(messages, systemPrompt, onChunk) {
 export default function AccountantPanel() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
+  const [dealerPlan, setDealerPlan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeNav, setActiveNav] = useState("overview");
   const [notifications, setNotifications] = useState([]);
@@ -245,6 +247,14 @@ export default function AccountantPanel() {
       }
       setProfile(p);
       setLoading(false);
+      if (p.dealer_id) {
+        supabase
+          .from("profiles")
+          .select("plan")
+          .eq("id", p.dealer_id)
+          .maybeSingle()
+          .then(({ data: dp }) => setDealerPlan(dp?.plan || null));
+      }
       const loadNotifs = () =>
         supabase
           .from("salesman_notifications")
@@ -1166,7 +1176,7 @@ export default function AccountantPanel() {
     { id: "ar",           label: "Receivables" },
     { id: "stock",        label: "Stock Value" },
     { id: "kpi",          label: "KPIs" },
-    { id: "advisor",      label: "AI Advisor" },
+    ...(dealerPlan === "dealer_pro" ? [{ id: "advisor", label: "AI Advisor" }] : []),
   ];
 
   // ── Excel-style grid helpers ─────────────────────────────────
@@ -1996,7 +2006,7 @@ export default function AccountantPanel() {
               ) : null}
             </span>
           )}
-          {activeNav === "advisor" && (
+          {activeNav === "advisor" && dealerPlan === "dealer_pro" && (
             <div
               style={{
                 display: "flex",
@@ -3834,6 +3844,7 @@ export default function AccountantPanel() {
                     </button>
                   )}
 
+                  {dealerPlan === "dealer_pro" && (
                   <div
                     style={{
                       background: "rgba(255,255,255,0.02)",
@@ -3929,13 +3940,14 @@ export default function AccountantPanel() {
                       }}
                     />
                   </div>
+                  )}
                 </>
               )}
             </div>
           )}
 
           {/* ── AI ADVISOR ── */}
-          {activeNav === "advisor" && (
+          {activeNav === "advisor" && dealerPlan === "dealer_pro" && (
             <div style={{ display: "flex", height: "100%" }}>
               {/* Left 60%: chat panel */}
               <div

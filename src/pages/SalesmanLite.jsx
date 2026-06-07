@@ -7,7 +7,6 @@ import { supabase } from "../supabaseClient";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import CarForm from "../components/CarForm";
 import { getCategoryCfg } from "../utils/serviceCategories";
-import TikTokStudioV3 from "../components/TikTokStudioV3";
 import SalesmanLiteHelp from "../components/SalesmanLiteHelp";
 import {
   LogOut,
@@ -337,9 +336,6 @@ export default function SalesmanLite() {
   const [carDetailImgIdx, setCarDetailImgIdx] = useState(0);
   const [carDetailTab, setCarDetailTab] = useState("specs");
   const [carDetailLbOpen, setCarDetailLbOpen] = useState(false);
-
-  // TikTok Studio
-  const [tiktokListing, setTiktokListing] = useState(null);
   const [editListing, setEditListing] = useState(null);
 
   // tour
@@ -351,13 +347,6 @@ export default function SalesmanLite() {
   const [broadcastMsg, setBroadcastMsg] = useState("");
   const [broadcastProgress, setBroadcastProgress] = useState(null);
   const [broadcastDone, setBroadcastDone] = useState(false);
-
-  // AI caption
-  const [aiCaptionCar, setAiCaptionCar] = useState(null);
-  const [aiCaptions, setAiCaptions] = useState({});
-  const [aiCaptionLoading, setAiCaptionLoading] = useState(false);
-  const [aiCaptionTab, setAiCaptionTab] = useState("wa");
-  const [captionCopied, setCaptionCopied] = useState(false);
 
   // boost placeholder
   const [boostCarId, setBoostCarId] = useState(null);
@@ -1461,60 +1450,6 @@ export default function SalesmanLite() {
       () => setListingCopied((prev) => ({ ...prev, [car.id]: null })),
       1500,
     );
-  };
-
-  const generateAiCaptions = async (car, force = false) => {
-    setAiCaptionCar(car);
-    setAiCaptionTab("wa");
-    setCaptionCopied(false);
-    const existing = aiCaptions[car.id];
-    if (!force && existing && !existing.wa?.startsWith("Couldn't")) return;
-    if (aiCaptionLoading) return; // block re-entry including Regenerate
-    const AI_CAP_KEY = "slite_ai_cap_count";
-    const AI_CAP_DATE = "slite_ai_cap_date";
-    const today = new Date().toDateString();
-    const savedDate = sessionStorage.getItem(AI_CAP_DATE);
-    const count = savedDate === today ? parseInt(sessionStorage.getItem(AI_CAP_KEY) || "0", 10) : 0;
-    if (count >= 10) { toast.error("AI caption limit reached for today (10/10)"); return; }
-    sessionStorage.setItem(AI_CAP_DATE, today);
-    sessionStorage.setItem(AI_CAP_KEY, String(count + 1));
-    setAiCaptionLoading(true);
-    const name = [car.year, car.brand, car.model, car.variant]
-      .filter(Boolean)
-      .join(" ");
-    const price = car.selling_price
-      ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
-      : null;
-    const mileage = car.mileage
-      ? `${Number(car.mileage).toLocaleString()} km`
-      : null;
-    const prompt = `You are a car dealer social media assistant in Malaysia. Generate two captions for this car listing in JSON format only.
-
-Car: ${name}${price ? `, ${price}` : ""}${mileage ? `, ${mileage}` : ""}${car.transmission ? `, ${car.transmission}` : ""}${car.colour ? `, ${car.colour}` : ""}
-
-Return valid JSON only (no markdown, no code block), exactly this shape:
-{"wa":"<WhatsApp caption — friendly Manglish, 3–5 lines, includes price, condition, CTA to WhatsApp. Use emojis.>","tiktok":"<TikTok caption — punchy, 1–2 lines max, hype energy, relevant hashtags at end>"}`;
-    try {
-      const { data, error } = await supabase.functions.invoke("ai-proxy", {
-        body: { prompt },
-      });
-      if (error) throw error;
-      const raw =
-        data?.reply ?? data?.content ?? data?.text ?? data?.message ?? "{}";
-      const parsed = JSON.parse(raw);
-      setAiCaptions((p) => ({ ...p, [car.id]: parsed }));
-    } catch (e) {
-      console.error("generateAiCaption:", e);
-      setAiCaptions((p) => ({
-        ...p,
-        [car.id]: {
-          wa: "Couldn't generate caption. Please try again.",
-          tiktok: "Couldn't generate caption. Please try again.",
-        },
-      }));
-    } finally {
-      setAiCaptionLoading(false);
-    }
   };
 
   const openBroadcast = (car) => {
@@ -3391,14 +3326,6 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                                     Broadcast
                                   </button>
                                 )}
-                                <button onClick={() => { generateAiCaptions(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: "#c084fc", fontSize: 12, textAlign: "left" }}>
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-                                  AI Caption
-                                </button>
-                                <button onClick={() => { setTiktokListing(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: "#f87171", fontSize: 12, textAlign: "left" }}>
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.17 8.17 0 0 0 4.78 1.52V6.76a4.85 4.85 0 0 1-1.01-.07z"/></svg>
-                                  TikTok
-                                </button>
                                 <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "2px 0" }} />
                               </>
                             )}
@@ -4109,18 +4036,6 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 )}
                 {actionBtn(
                   <>
-                    <Sparkles size={13} style={{ flexShrink: 0 }} /> AI Caption
-                  </>,
-                  "#c084fc",
-                  "rgba(168,85,247,0.08)",
-                  "rgba(168,85,247,0.25)",
-                  () => {
-                    generateAiCaptions(car);
-                    close();
-                  },
-                )}
-                {actionBtn(
-                  <>
                     <Bell size={13} style={{ flexShrink: 0 }} /> Broadcast
                   </>,
                   "#fb923c",
@@ -4128,18 +4043,6 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   "rgba(249,115,22,0.25)",
                   () => {
                     openBroadcast(car);
-                    close();
-                  },
-                )}
-                {actionBtn(
-                  <>
-                    <Eye size={13} style={{ flexShrink: 0 }} /> TikTok Studio
-                  </>,
-                  "#f87171",
-                  "rgba(239,68,68,0.08)",
-                  "rgba(239,68,68,0.25)",
-                  () => {
-                    setTiktokListing(car);
                     close();
                   },
                 )}
@@ -7653,202 +7556,6 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           );
         })()}
 
-      {/* AI Caption modal */}
-      {aiCaptionCar && (
-        <div
-          onClick={() => setAiCaptionCar(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.78)",
-            zIndex: 999,
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "center",
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "#111827",
-              borderRadius: "16px 16px 0 0",
-              width: "100%",
-              maxWidth: 480,
-              padding: 24,
-              paddingBottom: 36,
-            }}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-white font-semibold text-sm">
-                  AI Caption Writer
-                </p>
-                <p className="text-gray-400 text-xs mt-0.5">
-                  {[aiCaptionCar.year, aiCaptionCar.brand, aiCaptionCar.model]
-                    .filter(Boolean)
-                    .join(" ")}
-                </p>
-              </div>
-              <button
-                onClick={() => setAiCaptionCar(null)}
-                className="text-gray-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex gap-2 mb-4">
-              {["wa", "tiktok"].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => {
-                    setAiCaptionTab(tab);
-                    setCaptionCopied(false);
-                  }}
-                  style={{
-                    padding: "6px 16px",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    border:
-                      aiCaptionTab === tab
-                        ? "1px solid rgba(168,85,247,0.5)"
-                        : "1px solid rgba(255,255,255,0.08)",
-                    background:
-                      aiCaptionTab === tab
-                        ? "rgba(168,85,247,0.15)"
-                        : "rgba(255,255,255,0.04)",
-                    color: aiCaptionTab === tab ? "#c084fc" : "#9ca3af",
-                  }}
-                >
-                  {tab === "wa" ? "WhatsApp" : "TikTok"}
-                </button>
-              ))}
-            </div>
-
-            {aiCaptionLoading ? (
-              <div className="space-y-2">
-                {[70, 90, 55, 80].map((w, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      height: 18,
-                      width: `${w}%`,
-                      background: "rgba(255,255,255,0.07)",
-                      borderRadius: 4,
-                      animation: "pulse 1.5s infinite",
-                    }}
-                  />
-                ))}
-              </div>
-            ) : (
-              <>
-                {aiCaptions[aiCaptionCar.id]?.[aiCaptionTab]?.startsWith("Couldn't") && (
-                  <div style={{ padding: "8px 12px", marginBottom: 8, borderRadius: 8, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 12 }}>
-                    ⚠️ Caption generation failed. Check that AI tokens are configured, then tap Regenerate.
-                  </div>
-                )}
-                <textarea
-                  value={aiCaptions[aiCaptionCar.id]?.[aiCaptionTab]?.startsWith("Couldn't") ? "" : (aiCaptions[aiCaptionCar.id]?.[aiCaptionTab] ?? "")}
-                  onChange={(e) =>
-                    setAiCaptions((p) => ({
-                      ...p,
-                      [aiCaptionCar.id]: {
-                        ...p[aiCaptionCar.id],
-                        [aiCaptionTab]: e.target.value,
-                      },
-                    }))
-                  }
-                  rows={6}
-                  style={{
-                    width: "100%",
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    borderRadius: 10,
-                    color: "#e5e7eb",
-                    fontSize: 13,
-                    lineHeight: 1.6,
-                    padding: "10px 12px",
-                    resize: "vertical",
-                    outline: "none",
-                  }}
-                />
-              </>
-            )}
-
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={() => {
-                  const text =
-                    aiCaptions[aiCaptionCar.id]?.[aiCaptionTab] ?? "";
-                  navigator.clipboard.writeText(text);
-                  setCaptionCopied(true);
-                  setTimeout(() => setCaptionCopied(false), 2000);
-                }}
-                disabled={aiCaptionLoading || !aiCaptions[aiCaptionCar.id]}
-                style={{
-                  flex: 1,
-                  padding: "9px 0",
-                  borderRadius: 10,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  background: captionCopied
-                    ? "rgba(34,197,94,0.15)"
-                    : "rgba(168,85,247,0.15)",
-                  border: captionCopied
-                    ? "1px solid rgba(34,197,94,0.4)"
-                    : "1px solid rgba(168,85,247,0.4)",
-                  color: captionCopied ? "#4ade80" : "#c084fc",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                }}
-              >
-                {captionCopied ? (
-                  <Check className="w-3.5 h-3.5" />
-                ) : (
-                  <Copy className="w-3.5 h-3.5" />
-                )}
-                {captionCopied ? "Copied!" : "Copy"}
-              </button>
-              <button
-                onClick={() => {
-                  setAiCaptions((p) => {
-                    const next = { ...p };
-                    delete next[aiCaptionCar.id];
-                    return next;
-                  });
-                  generateAiCaptions(aiCaptionCar, true);
-                }}
-                disabled={aiCaptionLoading}
-                style={{
-                  flex: 1,
-                  padding: "9px 0",
-                  borderRadius: 10,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  color: "#9ca3af",
-                  cursor: aiCaptionLoading ? "not-allowed" : "pointer",
-                  opacity: aiCaptionLoading ? 0.4 : 1,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                }}
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                Regenerate
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TikTok Studio modal */}
       {editListing && (
         <div
           className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
@@ -7957,27 +7664,6 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           </div>
         );
       })()}
-
-      {tiktokListing && (
-        <div
-          style={
-            isMobile
-              ? {
-                  position: "fixed",
-                  inset: 0,
-                  zIndex: 9999,
-                  overflowY: "auto",
-                  borderRadius: 0,
-                }
-              : {}
-          }
-        >
-          <TikTokStudioV3
-            listing={tiktokListing}
-            onClose={() => setTiktokListing(null)}
-          />
-        </div>
-      )}
 
       {/* ── Quick Brief Modal ── */}
       {quickBriefCar && (() => {

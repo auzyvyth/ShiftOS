@@ -68,7 +68,6 @@ function SubTabBar({ tabs, active, onChange }) {
 const CarForm          = React.lazy(() => import("../components/CarForm"));
 const AddCarForm       = React.lazy(() => import("../components/AddCarForm"));
 const CarFormFast      = React.lazy(() => import("../components/CarFormFast"));
-const TikTokStudioV3   = React.lazy(() => import("../components/TikTokStudioV3"));
 const FinancingCalculator = React.lazy(() => import("../components/FinancingCalculator"));
 const LeadsPage        = React.lazy(() => import("./LeadsPage"));
 const CRMPanel         = React.lazy(() => import("./CRMPanel"));
@@ -108,7 +107,6 @@ import {
   UserPlus,
   ToggleLeft,
   ToggleRight,
-  Video,
   Tag,
   Flame,
   BarChart2,
@@ -2699,7 +2697,10 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
         { role: "user", content: msg },
       ];
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${SERVER_URL}/ai/messages`, {
+      const AI_PROXY = import.meta.env.VITE_API_URL
+        ? `${import.meta.env.VITE_API_URL}/ai/messages`
+        : "/api/ai-messages";
+      const res = await fetch(AI_PROXY, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -3349,6 +3350,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
           );
         })()}
       </div>
+      {profile?.plan === "dealer_pro" && (
       <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
         <button
           onClick={() => setChatOpen((v) => !v)}
@@ -3461,6 +3463,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
@@ -5126,7 +5129,7 @@ function DrawerDamageMap({ damageMap }) {
 
 function ListingDetailDrawer({
   listing, salesmen, salesmenById, onClose, onUpdate, onDelete,
-  setEditListing, setTiktokListing, setPriceEditListing, setMarkSoldListing,
+  setEditListing, setPriceEditListing, setMarkSoldListing,
   setDeleteId, copyListing, copiedListingId, handleAssign, handleUnassign,
   handleStatus, updatingStatus, getListingAge,
 }) {
@@ -5379,11 +5382,6 @@ function ListingDetailDrawer({
                 {/* Edit */}
                 <button onClick={() => { setEditListing(listing); }} style={{ ...btnBase, border: '1px solid rgba(56,189,248,0.25)', color: '#64b4ff' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
                   <Pencil style={{ width: 14, height: 14, flexShrink: 0 }} />Edit Listing
-                </button>
-
-                {/* TikTok */}
-                <button onClick={() => setTiktokListing(listing)} style={{ ...btnBase, border: '1px solid rgba(255,100,100,0.25)', color: '#ff6b6b' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
-                  <Video style={{ width: 14, height: 14, flexShrink: 0 }} />ShiftOS Studio
                 </button>
 
                 {/* Price */}
@@ -8550,7 +8548,6 @@ export default function DashboardPage() {
   const [deleteId, setDeleteId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState(new Set());
-  const [tiktokListing, setTiktokListing] = useState(null);
   const [priceEditListing, setPriceEditListing] = useState(null);
   const [markSoldListing, setMarkSoldListing] = useState(null);
   const [markSoldLoading, setMarkSoldLoading] = useState(false);
@@ -9204,7 +9201,9 @@ export default function DashboardPage() {
         { id: "analytics",  Icon: BarChart2, label: "Analytics" },
         { id: "outreach",   Icon: Megaphone, label: "Outreach Hub" },
         { id: "storefront", Icon: Globe,     label: "Storefront" },
-        { id: "ai_manager", Icon: Bot,       label: "AI Manager" },
+        ...(profile?.plan !== "dealer_starter"
+          ? [{ id: "ai_manager", Icon: Bot, label: "AI Manager" }]
+          : []),
       ],
     },
     {
@@ -10172,13 +10171,18 @@ export default function DashboardPage() {
               )}
             </>
           )}
-          {activeTab === "ai_manager" && snapshot && (
+          {activeTab === "ai_manager" && profile?.plan === "dealer_starter" && (
+            <div className="flex items-center justify-center h-64 text-gray-600 text-sm">
+              AI Sales Manager is available on Dealer Growth and Dealer Pro plans. Upgrade your plan to unlock it.
+            </div>
+          )}
+          {activeTab === "ai_manager" && profile?.plan !== "dealer_starter" && snapshot && (
             <AISalesManager
               snapshot={snapshot}
               dealerName={profile?.dealership || profile?.site_name || "Your Dealership"}
             />
           )}
-          {activeTab === "ai_manager" && !snapshot && (
+          {activeTab === "ai_manager" && profile?.plan !== "dealer_starter" && !snapshot && (
             <div className="flex items-center justify-center h-64 text-gray-600 text-sm">
               Loading dealer data...
             </div>
@@ -10265,7 +10269,6 @@ export default function DashboardPage() {
             setDetailListing(null);
           }}
           setEditListing={setEditListing}
-          setTiktokListing={setTiktokListing}
           setPriceEditListing={setPriceEditListing}
           setMarkSoldListing={setMarkSoldListing}
           setDeleteId={setDeleteId}
@@ -10474,13 +10477,6 @@ export default function DashboardPage() {
           <Check className="w-4 h-4 text-green-200" />
           {assignToast.msg}
         </div>
-      )}
-
-      {tiktokListing && (
-        <TikTokStudioV3
-          listing={tiktokListing}
-          onClose={() => setTiktokListing(null)}
-        />
       )}
 
       {/* Edit listing modal */}

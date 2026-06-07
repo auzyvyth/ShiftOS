@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 import * as pdfjsLib from "pdfjs-dist";
@@ -219,6 +219,8 @@ async function callClaude(messages, onProgress) {
 
 export default function ImportStockPage() {
   const navigate = useNavigate();
+  const [planChecked, setPlanChecked] = useState(false);
+  const [planAllowed, setPlanAllowed] = useState(false);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -229,6 +231,19 @@ export default function ImportStockPage() {
   const [imported, setImported] = useState(null);
   const [importError, setImportError] = useState("");
   const [analyseError, setAnalyseError] = useState("");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) { setPlanChecked(true); return; }
+      const { data: p } = await supabase
+        .from("profiles")
+        .select("plan")
+        .eq("id", user.id)
+        .maybeSingle();
+      setPlanAllowed(p?.plan === "dealer_growth" || p?.plan === "dealer_pro");
+      setPlanChecked(true);
+    });
+  }, []);
 
   const handleSample = () => {
     setRows(SAMPLE_ROWS);
@@ -347,6 +362,32 @@ export default function ImportStockPage() {
     }
     setImporting(false);
   };
+
+  if (planChecked && !planAllowed) {
+    return (
+      <div
+        className="min-h-screen font-['DM_Sans',sans-serif] flex items-center justify-center px-4"
+        style={{ background: "#080C14" }}
+      >
+        <div
+          className="max-w-md w-full rounded-2xl p-6 text-center"
+          style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}
+        >
+          <h1 className="text-xl font-bold text-white mb-2">AI Stock Import is locked</h1>
+          <p className="text-sm text-gray-500 mb-5">
+            This feature is available on Dealer Growth and Dealer Pro plans. Upgrade your plan to unlock AI-powered stock import.
+          </p>
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
+            style={{ background: "#dc2626" }}
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
