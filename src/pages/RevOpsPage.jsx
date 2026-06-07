@@ -257,20 +257,12 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
     const fetch = async () => {
       setRevLoading(true);
 
-      const monthStart = startOfMonth();
-
-      // Sold this month.
-      // NOTE: sold_price is not reliably populated on car_listings (only set via the
-      // stock-unit sync path), so the realized sale price is sold_price ?? selling_price.
-      // gross_profit is a dead column (never computed) — always recompute from parts.
-      const { data: soldThisMonth } = await supabase
-        .from("car_listings")
-        .select(
-          "sold_price, selling_price, purchase_price, recon_cost, included_services_cost, commission_amount",
-        )
-        .eq("dealer_id", userId)
-        .eq("status", "sold")
-        .gte("sold_date", monthStart);
+      // H6: pull MTD revenue/GP/units from gm_pnl_snapshot (the same RPC
+      // Overview/Oversight use, backed by stock_units) instead of running a
+      // second, independently-computed query against car_listings — the two
+      // tables are synced via triggers but can drift, which previously made
+      // RevOps and Overview disagree on the same month's numbers.
+      const { data: pnl } = await supabase.rpc("gm_pnl_snapshot", { p_dealer_id: userId });
 
       // Active listings for stock turn
       const { count: activeCount } = await supabase
@@ -286,25 +278,11 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
         .eq("dealer_id", userId)
         .not("stage", "in", "(won,closed_won,lost,closed_lost)");
 
-      const salePrice = (r) => (Number(r.sold_price) || Number(r.selling_price) || 0);
-      const revMTD = (soldThisMonth || []).reduce((s, r) => s + salePrice(r), 0);
-      const gpMTD = (soldThisMonth || []).reduce((s, r) => {
-        // Front gross = sale - purchase - recon - included services - commission
-        const gp =
-          salePrice(r) -
-          (Number(r.purchase_price) || 0) -
-          (Number(r.recon_cost) || 0) -
-          (Number(r.included_services_cost) || 0) -
-          (Number(r.commission_amount) || 0);
-        return s + gp;
-      }, 0);
-      const unitsSoldMTD = (soldThisMonth || []).length;
-
       setRevData({
-        revMTD,
-        gpMTD,
+        revMTD: Number(pnl?.mtd?.revenue) || 0,
+        gpMTD: Number(pnl?.mtd?.gross_profit) || 0,
         activeLeads: activeLeads ?? 0,
-        unitsSoldMTD,
+        unitsSoldMTD: Number(pnl?.mtd?.units) || 0,
         activeCount: activeCount ?? 0,
       });
       setRevLoading(false);

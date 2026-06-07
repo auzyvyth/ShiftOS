@@ -197,7 +197,7 @@ source-of-truth table). Reference for "done right": DashboardPage `fetchPnl`.
 - [x] H5 — LeadDrawer.jsx:650 close modal only fires for literal `closed_won`, but the
   progress bar writes `won`, bypassing close+car+stock+sibling sync. FIX: route Won
   through the close flow.
-- [ ] H6 — Two sources of truth: RevOps uses car_listings, Oversight/Overview use
+- [x] H6 — Two sources of truth: RevOps uses car_listings, Oversight/Overview use
   stock_units -> different revenue/units for same month. FIX: pick one source.
 - [x] H7 — gm_salesman_scores keys on `assigned_to` (25/64 rows); app uses
   `salesman_id` (40/64). FIX: key the RPC on salesman_id.
