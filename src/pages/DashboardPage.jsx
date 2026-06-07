@@ -5645,6 +5645,9 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
 
   const totalGP = thisMonth.reduce((s, u) => s + (grossProfit(u) || 0), 0);
   const totalValue = activeUnits.reduce((s, u) => s + (Number(u.asking_price) || 0), 0);
+  // Revenue = realised sale price across all sold units (fall back to asking if a
+  // pipeline-close didn't stamp a sold_price).
+  const soldRevenue = soldUnits.reduce((s, u) => s + (Number(u.sold_price) || Number(u.asking_price) || 0), 0);
   const unitsWithDays = activeUnits.filter(u => typeof daysInStock(u) === 'number');
   const avgDays = unitsWithDays.length
     ? Math.round(unitsWithDays.reduce((s, u) => s + daysInStock(u), 0) / unitsWithDays.length)
@@ -6071,7 +6074,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
   };
 
   const summaryCards = [
-    { label: 'Total Units',          val: activeUnits.length,                  Icon: Package,       glow: 'rgba(103,232,249,0.13)',                                           grad: 'grad-cyan'                                                          },
+    { label: 'Revenue (sold)',       val: `RM ${soldRevenue.toLocaleString()}`, Icon: Banknote,     glow: 'rgba(110,231,183,0.13)',                                           grad: soldRevenue > 0 ? 'grad-green' : 'grad-cyan'                          },
     { label: 'Stock Value',          val: `RM ${totalValue.toLocaleString()}`,  Icon: Banknote,      glow: 'rgba(251,191,36,0.13)',                                            grad: 'grad-red'                                                           },
     { label: 'Avg Days in Stock',    val: avgDays,                              Icon: Clock,         glow: 'rgba(167,139,250,0.13)',                                           grad: avgDays > 60 ? 'grad-red' : avgDays > 30 ? 'grad-gold' : 'grad-purple' },
     { label: 'Gross Profit (month)', val: `RM ${totalGP.toLocaleString()}`,     Icon: TrendingUp,    glow: 'rgba(110,231,183,0.13)',                                           grad: totalGP > 0 ? 'grad-green' : 'grad-white', spark: gpSparkData, sparkColor: '#34d399' },
@@ -8830,7 +8833,9 @@ export default function DashboardPage() {
     window.location.href = 'https://xdrive.my/login';
   };
   const handleNew = (l) => {
-    setListings((p) => [l, ...p]);
+    // Dedup against the realtime INSERT event, which may have already prepended
+    // this row before the optimistic add runs (causes a brief double listing).
+    setListings((p) => (p.some((x) => x.id === l.id) ? p : [l, ...p]));
     navigate("/dashboard/listings", { replace: true });
     setActiveTab("listings");
     // Prompt to add stock purchase details
@@ -8839,7 +8844,9 @@ export default function DashboardPage() {
   };
   // AddCarForm already captures cost/procurement data, so no pending-stock prompt.
   const handleAddCarPublished = (l) => {
-    setListings((p) => [l, ...p]);
+    // Dedup: the realtime car_listings INSERT subscription may race ahead and add
+    // this same row, so guard against a duplicate render of the freshly-added car.
+    setListings((p) => (p.some((x) => x.id === l.id) ? p : [l, ...p]));
     handleTabChange("listings");
     toast.success("Car added and published to your marketplace.");
   };
@@ -10026,11 +10033,13 @@ export default function DashboardPage() {
                                       : <span style={{ color: '#374151', fontSize: 12 }}>—</span>
                                   }
                                 </td>
-                                {/* Seller */}
+                                {/* Seller — only meaningful once sold (shows the salesman who closed
+                                    the deal). Available cars aren't "assigned", so leave it blank. */}
                                 <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                                   {(() => {
+                                    if (!isSold) return <span style={{ color: '#d1d5db', fontSize: 12 }}>—</span>;
                                     const sm = l.assigned_to ? salesmenById[l.assigned_to] : null;
-                                    if (!sm) return <span style={{ fontSize: 11, color: '#9ca3af', fontStyle: 'italic' }}>Unassigned</span>;
+                                    if (!sm) return <span style={{ fontSize: 11, color: '#9ca3af', fontStyle: 'italic' }}>Dealer</span>;
                                     const nm = sm.full_name || 'Salesman';
                                     return (
                                       <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
@@ -10189,7 +10198,7 @@ export default function DashboardPage() {
                 />
               )}
               {analyticsSub === "revenue" && userId && (
-                <RevOpsPage userId={userId} onNavigateToStock={() => handleTabChange("stock")} />
+                <RevOpsPage userId={userId} onNavigateToStock={() => handleTabChange("stock")} onNavigateToLeads={() => handleTabChange("leads")} />
               )}
               {analyticsSub === "marketplace" && (
                 <MarketplaceAnalyticsTab profile={profile} />

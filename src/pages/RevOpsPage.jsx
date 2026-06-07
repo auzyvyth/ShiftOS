@@ -138,7 +138,7 @@ function SectionCard({ title, children, loading, skeletonRows = 2 }) {
   );
 }
 
-function AlertBanner({ type, message, onDismiss }) {
+function AlertBanner({ type, message, cta, onClick, onDismiss }) {
   const styles = {
     red: {
       bg: "rgba(220,38,38,0.06)",
@@ -154,10 +154,15 @@ function AlertBanner({ type, message, onDismiss }) {
     },
   };
   const s = styles[type] || styles.amber;
+  const clickable = typeof onClick === "function";
   return (
     <div
+      onClick={clickable ? onClick : undefined}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={clickable ? (e) => { if (e.key === "Enter") onClick(); } : undefined}
       className="flex items-start gap-3 px-4 py-3 rounded-lg"
-      style={{ background: s.bg, border: `1px solid ${s.border}` }}
+      style={{ background: s.bg, border: `1px solid ${s.border}`, cursor: clickable ? "pointer" : "default" }}
     >
       <AlertTriangle
         style={{
@@ -170,9 +175,14 @@ function AlertBanner({ type, message, onDismiss }) {
       />
       <span style={{ fontSize: 13, color: s.text, flex: 1, lineHeight: 1.5 }}>
         {message}
+        {clickable && (
+          <span style={{ color: s.icon, fontWeight: 700, marginLeft: 6, whiteSpace: "nowrap" }}>
+            {cta || "View"} →
+          </span>
+        )}
       </span>
       <button
-        onClick={onDismiss}
+        onClick={(e) => { e.stopPropagation(); onDismiss(); }}
         style={{
           color: "#6b7280",
           flexShrink: 0,
@@ -225,7 +235,7 @@ function ResponseTimeDot({ minutes }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function RevOpsPage({ userId, onNavigateToStock }) {
+export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLeads }) {
   // ── Revenue data ────────────────────────────────────────────────────────────
   const [revData, setRevData] = useState(null);
   const [revLoading, setRevLoading] = useState(true);
@@ -399,12 +409,15 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
       setAddonLoading(true);
       const monthStart = startOfMonth();
 
-      // All deal_products this month
+      // Add-ons on deals WON this month — tie revenue to the deal's close date
+      // (leads.updated_at when it flipped to won), not when the add-on row was
+      // created, so add-ons attached before the close still count for sold cars.
       const { data: addonRows, error: addonErr } = await supabase
         .from("deal_products")
-        .select("id, sold_price, lead_id, product_id, dealer_products(name)")
+        .select("id, sold_price, lead_id, product_id, dealer_products(name), leads!inner(stage, updated_at)")
         .eq("dealer_id", userId)
-        .gte("created_at", monthStart);
+        .in("leads.stage", ["won", "closed_won"])
+        .gte("leads.updated_at", monthStart);
       if (addonErr) console.error("[RevOps] deal_products fetch error:", addonErr.message);
 
       // Won leads this month (for attachment rate denominator) — both won variants
@@ -515,20 +528,25 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
           views: (carViewMap[e.car_id]?.views || 0) + 1,
         };
       });
-      const topCars = Object.entries(carViewMap)
+      // Rank every viewed car, then keep only the ones still live on the
+      // marketplace (public_car_listings excludes sold cars), so a sold car
+      // drops off the list automatically. Show up to 10.
+      const ranked = Object.entries(carViewMap)
         .map(([id, val]) => ({ car_id: id, ...val }))
-        .sort((a, b) => b.views - a.views)
-        .slice(0, 5);
+        .sort((a, b) => b.views - a.views);
 
-      // Resolve slugs so each top car links to its public listing.
-      if (topCars.length > 0) {
+      let topCars = [];
+      if (ranked.length > 0) {
         const { data: slugRows, error: slugErr } = await supabase
           .from("public_car_listings")
           .select("id, slug")
-          .in("id", topCars.map((c) => c.car_id));
+          .in("id", ranked.map((c) => c.car_id));
         if (slugErr) console.error("[RevOps] public_car_listings slug fetch error:", slugErr.message);
         const slugById = Object.fromEntries((slugRows || []).map((r) => [r.id, r.slug]));
-        topCars.forEach((c) => { c.slug = slugById[c.car_id] || null; });
+        topCars = ranked
+          .filter((c) => slugById[c.car_id]) // still publicly listed (not sold)
+          .slice(0, 10)
+          .map((c) => ({ ...c, slug: slugById[c.car_id] }));
       }
 
       setTrafficData({
@@ -568,6 +586,8 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
           id: "unresponded",
           type: "red",
           message: `${unresponded.length} lead${unresponded.length > 1 ? "s" : ""} haven't been responded to — oldest is ${hrs}h ago`,
+          cta: "Open leads",
+          action: "leads",
         });
       }
 
@@ -587,6 +607,8 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
           id: "aged_stock",
           type: "amber",
           message: `${agedCount} unit${agedCount > 1 ? "s" : ""} have been in stock over 45 days — consider a price review`,
+          cta: "Review stock",
+          action: "stock",
         });
       }
 
@@ -598,13 +620,15 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
           .select("id", { count: "exact", head: true })
           .eq("dealer_id", userId)
           .eq("status", "sold")
-          .gte("sold_date", startOfMonth());
+          .gte("sold_at", startOfMonth());
 
         if (salesCount === 0) {
           newAlerts.push({
             id: "no_sales",
             type: "amber",
             message: "No sales recorded this month yet",
+            cta: "View stock",
+            action: "stock",
           });
         }
       }
@@ -645,14 +669,22 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
 
       {/* ── Alerts strip ──────────────────────────────────────────────────── */}
       <div className="space-y-2" style={{ overflow: 'hidden' }}>
-        {visibleAlerts.map((a) => (
-          <AlertBanner
-            key={a.id}
-            type={a.type}
-            message={a.message}
-            onDismiss={() => dismissAlert(a.id)}
-          />
-        ))}
+        {visibleAlerts.map((a) => {
+          const onClick =
+            a.action === "leads" ? onNavigateToLeads
+            : a.action === "stock" ? onNavigateToStock
+            : undefined;
+          return (
+            <AlertBanner
+              key={a.id}
+              type={a.type}
+              message={a.message}
+              cta={a.cta}
+              onClick={onClick}
+              onDismiss={() => dismissAlert(a.id)}
+            />
+          );
+        })}
       </div>
 
       {/* ── Section 1: Revenue Overview ──────────────────────────────────── */}
