@@ -3806,6 +3806,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const [msgText, setMsgText] = useState('');
   const [msgSending, setMsgSending] = useState(false);
   const [msgDone, setMsgDone] = useState(false);
+  const msgDoneTimer = useRef(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("+60");
@@ -4675,10 +4676,11 @@ function TeamTab({ managerDealership, dealerId, profile }) {
           }));
           const { error } = await supabase.from('salesman_notifications').insert(inserts);
           setMsgSending(false);
-          if (error) { alert('Failed to send: ' + error.message); return; }
+          if (error) { toast.error('Failed to send: ' + error.message); return; }
           setMsgDone(true);
           setMsgText('');
-          setTimeout(() => setMsgDone(false), 3000);
+          if (msgDoneTimer.current) clearTimeout(msgDoneTimer.current);
+          msgDoneTimer.current = setTimeout(() => setMsgDone(false), 3000);
         };
         return (
           <div className="rounded-xl overflow-hidden" style={T.cardDark}>
@@ -4763,7 +4765,9 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                   border: 'none', transition: 'all 0.15s',
                   ...(msgDone
                     ? { background: '#ecfdf5', color: '#15803d', border: '1px solid #86efac' }
-                    : { ...T.btnRed, opacity: (!msgText.trim() || recipients.length === 0) ? 0.4 : 1 }),
+                    : (!msgText.trim() || recipients.length === 0)
+                      ? { background: '#f3f4f6', color: '#9ca3af', border: '1px solid #e5e7eb', cursor: 'not-allowed' }
+                      : T.btnRed),
                 }}
               >
                 {msgDone ? (
@@ -7826,6 +7830,7 @@ function OutreachHub({ dealerId, listings }) {
   const [template, setTemplate]   = useState('followup');
   const [sentToday, setSentToday] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [draft, setDraft]         = useState('');   // editable message preview
 
   useEffect(() => {
     if (!dealerId) return;
@@ -7897,6 +7902,14 @@ function OutreachHub({ dealerId, listings }) {
       gen: e => `Hi ${(e.buyer_name || 'there').split(' ')[0]}! ⏰\n\nQuick heads-up: the ${e.listing?.brand || ''} ${e.listing?.model || ''} is getting a lot of interest lately.\n\nIf you're still considering it, now's the time! I can hold it for 24h with a small deposit.\n\nLet me know! 🚗`,
     },
   };
+
+  // Seed the editable preview whenever the selected lead or template changes.
+  // The dealer can then tweak the text inline before opening WhatsApp.
+  useEffect(() => {
+    if (selected) setDraft(TEMPLATES[template]?.gen(selected) || '');
+    else setDraft('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, template]);
 
   const urgencyColor = { critical:'#ef4444', high:'#f97316', medium:'#fbbf24', low:'#a3e635', warm:'#60a5fa', cold:'#94a3b8' };
 
@@ -8005,7 +8018,7 @@ function OutreachHub({ dealerId, listings }) {
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:4, marginBottom:2 }}>
-                      <span style={{ fontSize:13, fontWeight:600, color:'#f9fafb', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.buyer_name || 'Unknown'}</span>
+                      <span style={{ fontSize:13, fontWeight:600, color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.buyer_name || 'Unknown'}</span>
                       <span style={{ fontSize:9, fontWeight:700, color:uc, flexShrink:0, padding:'1px 6px', background:`${uc}14`, borderRadius:4 }}>{fmtAge(lead)}</span>
                     </div>
                     <span style={{ fontSize:11, color:'#4b5563', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'block' }}>
@@ -8063,7 +8076,7 @@ function OutreachHub({ dealerId, listings }) {
                 {selected.listing && (
                   <div style={{ textAlign:'right', flexShrink:0 }}>
                     <p style={{ fontSize:11, color:'#60a5fa', marginBottom:1 }}>{selected.listing.brand} {selected.listing.model}</p>
-                    {selected.listing.selling_price && <p style={{ fontSize:13, fontWeight:700, color:'white' }}>RM {selected.listing.selling_price.toLocaleString()}</p>}
+                    {selected.listing.selling_price && <p style={{ fontSize:13, fontWeight:700, color:'#111827' }}>RM {selected.listing.selling_price.toLocaleString()}</p>}
                   </div>
                 )}
               </div>
@@ -8090,19 +8103,30 @@ function OutreachHub({ dealerId, listings }) {
                 </div>
               </div>
 
-              {/* Message preview */}
+              {/* Message preview — editable so dealers can tweak before sending */}
               <div style={{ flex:1 }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-                  <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.14em', color:'#374151', fontWeight:700 }}>Preview</p>
-                  <span style={{ fontSize:10, background:'#f0fdf4', border:'1px solid #86efac', borderRadius:5, padding:'2px 8px', color:'#15803d', fontWeight:600 }}>WhatsApp</span>
+                  <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.14em', color:'#374151', fontWeight:700 }}>Preview · editable</p>
+                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    {draft !== (TEMPLATES[template]?.gen(selected) || '') && (
+                      <button onClick={() => setDraft(TEMPLATES[template]?.gen(selected) || '')}
+                        style={{ fontSize:10, background:'none', border:'none', color:'#6b7280', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", textDecoration:'underline', padding:0 }}>
+                        Reset
+                      </button>
+                    )}
+                    <span style={{ fontSize:10, background:'#f0fdf4', border:'1px solid #86efac', borderRadius:5, padding:'2px 8px', color:'#15803d', fontWeight:600 }}>WhatsApp</span>
+                  </div>
                 </div>
-                <div style={{ background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:10, padding:'14px 16px', minHeight:120, maxHeight:200, overflowY:'auto' }}>
-                  <p style={{ fontSize:13, color:'#94a3b8', lineHeight:1.75, whiteSpace:'pre-wrap' }}>{TEMPLATES[template]?.gen(selected)}</p>
-                </div>
+                <textarea
+                  value={draft}
+                  onChange={e => setDraft(e.target.value)}
+                  rows={6}
+                  style={{ width:'100%', boxSizing:'border-box', background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:10, padding:'14px 16px', minHeight:120, maxHeight:240, fontSize:13, color:'#1f2937', lineHeight:1.75, fontFamily:"'DM Sans',sans-serif", resize:'vertical', outline:'none' }}
+                />
               </div>
 
               {/* Send */}
-              <button onClick={() => openWA(selected, TEMPLATES[template].gen(selected))} className="btn-shimmer"
+              <button onClick={() => openWA(selected, draft || TEMPLATES[template].gen(selected))} className="btn-shimmer"
                 style={{ width:'100%', padding:'14px', borderRadius:12, background:'linear-gradient(135deg,#22c55e,#16a34a)', border:'none', boxShadow:'0 4px 20px rgba(34,197,94,0.3)', color:'white', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
                 <MessageCircle size={16} /> Open WhatsApp — {(selected.buyer_name || 'Lead').split(' ')[0]}
               </button>
@@ -8129,7 +8153,7 @@ function OutreachHub({ dealerId, listings }) {
             {Object.entries(TEMPLATES).map(([k, t]) => <option key={k} value={k} style={{ background:'#fff' }}>{t.icon} {t.label}</option>)}
           </select>
           <button onClick={launchCampaign}
-            style={{ padding:'9px 20px', borderRadius:9, background:'rgba(167,139,250,0.18)', border:'1px solid rgba(167,139,250,0.35)', color:'#c4b5fd', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', gap:7, whiteSpace:'nowrap', transition:'all 0.15s' }}
+            style={{ padding:'9px 20px', borderRadius:9, background:'rgba(167,139,250,0.18)', border:'1px solid rgba(167,139,250,0.35)', color:'#6d28d9', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', gap:7, whiteSpace:'nowrap', transition:'all 0.15s' }}
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.28)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.18)'; }}>
             <Send size={13} /> Launch ({Math.min(visibleLeads.length, 10)})

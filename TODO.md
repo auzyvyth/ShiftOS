@@ -83,16 +83,12 @@
 - [ ] **PERF-4 (MEDIUM): Redundant per-row dealer join in listings query** — HomePage.jsx:255 joins dealer:profiles(...) onto all 30 rows even though every row is the same dealer (already in `tenant`). FIX: skip the join when tenant?.id is set; attach tenant as the dealer object client-side.
 - [ ] **PERF-5 (LOW): Sold-count stat delayed by flat 800ms timer** — HomePage.jsx:298 `setTimeout(fetchSoldCount, 800)` instead of firing in parallel with load(). FIX: Promise.all alongside load().
 
-### DEALER DASHBOARD UX/BUG AUDIT (2026-06-07) — ranked by size
+### DEALER DASHBOARD UX/BUG AUDIT (2026-06-07) — all DASH-1..9 shipped
 
-- [ ] **DASH-1 (LARGEST): CRM pipeline grid redesign** — LeadsPage.jsx is a vertical stacked list (stages as collapsible sticky sections). Redesign to a responsive grid of stage columns (3 cols desktop / 2 tablet / 1 mobile), each column internally scrollable showing ~5-6 leads. Compact card shows: lead name, car model, owner (assigned salesman), car price, date created. Remove the WhatsApp button/links from the card (cards are info-only → click opens LeadDrawer for actions). Card: src/components/leads/LeadCard.jsx; helpers: STAGE_ORDER/STAGE_CONFIG in src/lib/leadsHelpers.js.
-- [ ] **DASH-2: Outreach Hub follow-up template customization** — OutreachHub (DashboardPage.jsx:7882-7899) uses hardcoded TEMPLATES; ignores the existing `profiles.whatsapp_templates` system (DEFAULT_WA_TEMPLATES + renderWaTemplate in src/lib/leadsHelpers.js:85-104, settings UI at DashboardPage.jsx:809-824). FIX: wire OutreachHub to read dealer-customized templates from the same source the settings tab writes.
-- [ ] **DASH-3: AI Manager + Handover tabs invisible text** — both render light text on light dashboard bg (#F7F8FA). AISalesManager.jsx:94 root `color:'#e5e7eb'`; PostSaleBoard.jsx (handover) uses `rgba(255,255,255,0.4-0.5)` / off-white throughout. Shared root cause: dark-theme components dropped into light shell. FIX: recolor text to dark values (#111827/#374151/#6b7280).
-- [ ] **DASH-5: send-document CORS — buyer email blocked** — preflight rejects `baggage` header. supabase/functions/send-document/index.ts:11-20 `Access-Control-Allow-Headers` missing `baggage`/`sentry-trace`. FIX: append `, baggage, sentry-trace` (also send-telegram + invites have same gap). Requires edge function redeploy.
-- [ ] **DASH-6: GM Oversight slow load** — OversightTab.jsx:508-529 blocks entire tab on Promise.all of 3 heavy RPCs (gm_pnl_snapshot, gm_exception_alerts, gm_salesman_scores), no .catch() (stuck RPC = infinite spinner). FIX: profile RPC times first (may compound with VOLATILE-helper issue), add error handling, progressive render, defer AuditTrail/GoalTracker child fetches.
-- [ ] **DASH-7: HP board visual hierarchy** — HPBoard.jsx:314-322 Approve/Reject/Disbursed buttons all identical weight (10px, translucent bg, differ only by color). FIX: make Approve solid/bold primary; Reject outline/secondary. Reduce per-row cognitive load.
-- [ ] **DASH-8: Team tab pale send-message button + bugs** — DashboardPage.jsx:4766 button uses `opacity:0.4` when form incomplete, washing out red text+bg. FIX: distinct disabled style (gray bg + muted text) not opacity. Also: native alert() for errors (:4678) should be toast; add defensive dealer-scoping on recipients (:4664-4676); minor msgDone race (:4679-4681).
-- [ ] **DASH-9: AddCarForm publish toggle copy** — AddCarForm.jsx:477-496 step 4 toggle reads "Publish to marketplace" / "Keep internal only". Reword "internal only" to clearer framing (e.g. "Keep in dealer inventory" vs "Publish to public marketplace"). Maps to car_listings insert (status available) vs stock_units-only.
+Note: send-telegram, invites, ai-proxy and create-salesman edge functions have
+the same `baggage`/`sentry-trace` CORS header fix applied in source (DASH-5) but
+are NOT yet redeployed — only send-document was redeployed (the reported blocker).
+Redeploy the other four when convenient to prevent the same Sentry preflight issue.
 
 ### INFRASTRUCTURE
 

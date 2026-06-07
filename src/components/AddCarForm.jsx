@@ -485,8 +485,8 @@ export default function AddCarForm({ onPublished, onStocked }) {
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               {form.publish ? <Globe className="w-5 h-5" style={{ color: color.accent }} /> : <Lock className="w-5 h-5" style={{ color: color.textMuted }} />}
               <div>
-                <p style={{ fontSize: 14, fontWeight: 700, color: color.ink }}>{form.publish ? "Publish to marketplace" : "Keep internal only"}</p>
-                <p style={{ fontSize: 12, color: color.textMuted }}>{form.publish ? "Live on your storefront + xdrive.my. Photos required." : "Saved to inventory + P&L only. Publish later when ready."}</p>
+                <p style={{ fontSize: 14, fontWeight: 700, color: color.ink }}>{form.publish ? "Publish to public marketplace" : "Keep in dealer inventory"}</p>
+                <p style={{ fontSize: 12, color: color.textMuted }}>{form.publish ? "Live on your storefront + xdrive.my for buyers to see. Photos required." : "Private — visible to your team only, tracked in stock + P&L. You can publish it anytime."}</p>
               </div>
             </div>
             <button onClick={() => setVal("publish", !form.publish)}

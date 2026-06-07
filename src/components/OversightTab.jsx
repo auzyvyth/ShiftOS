@@ -92,6 +92,9 @@ function Section({ title, subtitle, action, children }) {
 
 // ─── Exception Alerts ─────────────────────────────────────────────────────────
 function ExceptionAlerts({ alerts, onNavigate, onFocusAnomalies }) {
+  if (!alerts) {
+    return <p style={{ fontSize: 13, color: '#9ca3af', margin: 0 }}>Scanning for issues…</p>;
+  }
   const items = [];
   if (alerts.loss_makers?.length) items.push({ icon: AlertTriangle, label: `${alerts.loss_makers.length} listing(s) priced below cost`, severity: 'high', detail: alerts.loss_makers.slice(0, 3).map(l => l.name).join(', '), action: () => onNavigate?.('listings') });
   if (alerts.stuck_hp > 0) items.push({ icon: Clock, label: `${alerts.stuck_hp} HP submission(s) stuck >7 days`, severity: 'high', action: () => onNavigate?.('hp') });
@@ -507,17 +510,36 @@ export default function OversightTab({ dealerId, onNavigate }) {
 
   useEffect(() => {
     if (!dealerId) return;
+    let cancelled = false;
     setLoading(true);
-    Promise.all([
-      supabase.rpc('gm_pnl_snapshot', { p_dealer_id: dealerId }),
-      supabase.rpc('gm_exception_alerts', { p_dealer_id: dealerId }),
-      supabase.rpc('gm_salesman_scores', { p_dealer_id: dealerId }),
-    ]).then(([p, e, s]) => {
-      setPnl(p.data);
-      setAlerts(e.data);
-      setScores(s.data || []);
-      setLoading(false);
-    });
+
+    // Fire each RPC independently so one slow/failing query can't block the
+    // whole tab (previously a single Promise.all with no .catch() = infinite
+    // spinner if any RPC hung). The P&L snapshot gates the main render; alerts
+    // and scores fill in progressively as they arrive.
+    supabase.rpc('gm_pnl_snapshot', { p_dealer_id: dealerId })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) console.error('[Oversight] gm_pnl_snapshot:', error.message);
+        setPnl(data || null);
+        setLoading(false);
+      });
+
+    supabase.rpc('gm_exception_alerts', { p_dealer_id: dealerId })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) console.error('[Oversight] gm_exception_alerts:', error.message);
+        setAlerts(data || null);
+      });
+
+    supabase.rpc('gm_salesman_scores', { p_dealer_id: dealerId })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) console.error('[Oversight] gm_salesman_scores:', error.message);
+        setScores(data || []);
+      });
+
+    return () => { cancelled = true; };
   }, [dealerId, refreshKey]);
 
   if (loading || !pnl) {

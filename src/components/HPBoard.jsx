@@ -313,12 +313,14 @@ export default function HPBoard({ dealerId }) {
                       <div style={{ display: 'flex', gap: 4 }}>
                         {row.status === 'pending' && (
                           <>
-                            <button onClick={() => handleStatusUpdate(row.id, { status: 'approved', approved_at: new Date().toISOString() })} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 5, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', color: '#22c55e', cursor: 'pointer', whiteSpace: 'nowrap' }}>Approve</button>
-                            <button onClick={() => setRejectTarget(row.id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 5, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', cursor: 'pointer' }}>Reject</button>
+                            {/* Approve = primary: solid, bold, filled. Reject = secondary: muted outline. */}
+                            <button onClick={() => handleStatusUpdate(row.id, { status: 'approved', approved_at: new Date().toISOString() })} style={{ fontSize: 11, fontWeight: 700, padding: '5px 13px', borderRadius: 6, background: '#16a34a', border: '1px solid #16a34a', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>Approve</button>
+                            <button onClick={() => setRejectTarget(row.id)} style={{ fontSize: 11, fontWeight: 500, padding: '5px 11px', borderRadius: 6, background: '#fff', border: '1px solid #e5e7eb', color: '#6b7280', cursor: 'pointer' }}>Reject</button>
                           </>
                         )}
                         {row.status === 'approved' && (
-                          <button onClick={() => handleStatusUpdate(row.id, { status: 'disbursed', disbursed_at: new Date().toISOString() })} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 5, background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', color: '#60a5fa', cursor: 'pointer', whiteSpace: 'nowrap' }}>Disbursed</button>
+                          /* Mark disbursed = the single primary action in this state. */
+                          <button onClick={() => handleStatusUpdate(row.id, { status: 'disbursed', disbursed_at: new Date().toISOString() })} style={{ fontSize: 11, fontWeight: 700, padding: '5px 13px', borderRadius: 6, background: '#2563eb', border: '1px solid #2563eb', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>Mark Disbursed</button>
                         )}
                       </div>
                     </td>

@@ -61,7 +61,11 @@ export default function PostSaleBoard({ dealerId, salesmanId = null }) {
     return () => { cancelled = true; };
   }, [dealerId, salesmanId]);
 
-  if (loading) return <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', padding: 16 }}>Loading sold deals…</p>;
+  // Shared dark panel — this board is built dark-first; the dashboard shell is
+  // light, so it needs its own dark background wrapper to stay legible.
+  const PANEL = { background: '#0B1016', border: '1px solid #1c232e', borderRadius: 16, padding: 'clamp(12px, 3vw, 18px)' };
+
+  if (loading) return <div style={PANEL}><p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', margin: 0 }}>Loading sold deals…</p></div>;
 
   const visible = (hideDone ? deals.filter((d) => progressMap[d.id] !== 100) : deals)
     .slice()
@@ -79,7 +83,7 @@ export default function PostSaleBoard({ dealerId, salesmanId = null }) {
 
   if (deals.length === 0) {
     return (
-      <div style={{ padding: 32, textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>
+      <div style={{ ...PANEL, textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>
         <Car size={28} style={{ opacity: 0.4, marginBottom: 8 }} />
         <p style={{ fontSize: 13, margin: 0 }}>No sold deals yet. Won deals show up here for handover processing.</p>
       </div>
@@ -87,7 +91,7 @@ export default function PostSaleBoard({ dealerId, salesmanId = null }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ ...PANEL, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: 0 }}>
