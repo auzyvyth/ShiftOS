@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   Wallet, Users, Bot, Globe, MessageCircle, ArrowRight, Check,
   ClipboardCheck, Landmark, BellRing, LineChart, ShieldCheck,
@@ -475,6 +475,7 @@ export default function ShiftOSPage() {
   const featRef    = useRef(null);
   const pricingRef = useRef(null);
   const [track, setTrack] = useState("dealer");
+  const location = useLocation();
 
   useEffect(() => {
     const s = document.createElement("style");
@@ -483,6 +484,14 @@ export default function ShiftOSPage() {
     document.title = "ShiftOS — The Dealer Management System for Malaysian Car Dealers";
     return () => { document.head.removeChild(s); };
   }, []);
+
+  useEffect(() => {
+    if (location.hash === "#pricing") {
+      setTimeout(() => pricingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+    } else if (location.hash === "#features") {
+      setTimeout(() => featRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+    }
+  }, [location.hash]);
 
   const scrollTo = useCallback((ref) => {
     ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });

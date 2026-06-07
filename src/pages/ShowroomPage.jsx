@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'; // useRef kept for initialLoad
-import { useSearchParams, useNavigate, Link, Navigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useLocation, Link, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { X, RotateCcw, Car, SlidersHorizontal, Flame } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
@@ -217,6 +217,16 @@ export default function ShowroomPage() {
   useMarketplaceTracking();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.hash === '#brands') {
+      setTimeout(() => {
+        document.getElementById('brands')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
+    }
+  }, [location.hash]);
+
   const ctaCtx = useCTAContext();
   const { addToCompare, removeFromCompare, isInCompare, compareIds } = useCompare();
 
@@ -517,7 +527,7 @@ export default function ShowroomPage() {
         </div>
 
         {/* ── Brand strip ── */}
-        <div style={{ borderBottom:'1px solid rgba(0,0,0,0.06)', padding:'24px 0', background:'#F7F6F2' }}>
+        <div id="brands" style={{ borderBottom:'1px solid rgba(0,0,0,0.06)', padding:'24px 0', background:'#F7F6F2', scrollMarginTop: 90 }}>
           <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'0 24px' }}>
             <div className="sr-brand-scroll" style={{ display:'flex', gap:'10px', overflowX:'auto', paddingBottom:'4px', scrollbarWidth:'none' }}>
               {BRAND_LOGOS.map(({ label, to, logo, initials, color }) => {
