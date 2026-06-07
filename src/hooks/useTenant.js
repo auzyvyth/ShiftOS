@@ -5,14 +5,6 @@ import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 export const MARKETPLACE_DOMAIN = "xdrive.my";
 export const DASHBOARD_DOMAIN = "shiftos.com";
 
-const PROFILE_SELECT =
-  "id, dealership, site_name, subdomain, avatar_url, site_logo_url, logo_url, " +
-  "email, phone, whatsapp_number, social_facebook, social_instagram, social_tiktok, " +
-  "location, city, state, about_text, brand_color, custom_domain, slug, " +
-  "storefront_why, storefront_how, storefront_testimonials, storefront_cta, " +
-  "hero_title, hero_subtitle, hero_cta_text, " +
-  "announcement_bar, announcement_bar_enabled";
-
 // The ?tenant= override is a dev/preview convenience only. Allowing it in
 // production would let anyone spoof a competitor's storefront under the
 // xdrive.my domain (phishing / brand-confusion vector), so it is gated to
@@ -78,10 +70,11 @@ export default function useTenant() {
         return;
       }
 
+      // RPC (SECURITY DEFINER) — public_dealer_profiles is security_invoker and
+      // subject to profiles RLS, which has no anon-read policy for dealer rows.
+      // Anonymous storefront visitors must go through this narrow lookup instead.
       const { data } = await supabase
-        .from("public_dealer_profiles")
-        .select(PROFILE_SELECT)
-        .eq("subdomain", subdomain)
+        .rpc("get_dealer_profile_by_subdomain", { p_subdomain: subdomain })
         .maybeSingle();
 
       const profile = data || null;
@@ -106,9 +99,7 @@ export default function useTenant() {
             async () => {
               // Re-fetch the full profile so all storefront fields refresh
               const { data: updated } = await supabase
-                .from("public_dealer_profiles")
-                .select(PROFILE_SELECT)
-                .eq("id", profile.id)
+                .rpc("get_dealer_profile_by_subdomain", { p_subdomain: subdomain })
                 .maybeSingle();
               if (updated) setTenant(updated);
             }
