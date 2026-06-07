@@ -188,11 +188,11 @@ source-of-truth table). Reference for "done right": DashboardPage `fetchPnl`.
 ### HIGH
 - [x] H1 — RevOps front-gross fallback omits commission and fetches no commission
   column (RevOpsPage.jsx:294). FIX: subtract commission_amount; add to select.
-- [ ] H2 — useLeads.js:31 `addLead` sets `dealer_id: user.id` (orphans manager/admin
+- [x] H2 — useLeads.js:31 `addLead` sets `dealer_id: user.id` (orphans manager/admin
   leads) and forces `stage:'new'`. FIX: derive via getDealerIdFromProfile; honor payload stage.
-- [ ] H3 — AddLeadModal.jsx:196 offers lead_source values the CHECK rejects -> silent
+- [x] H3 — AddLeadModal.jsx:196 offers lead_source values the CHECK rejects -> silent
   insert failure. FIX: restrict options to allowed set (or widen CHECK) + show error toast.
-- [ ] H4 — AddLeadModal.jsx:36 car list uses `eq('dealer_id', user.id)`; empty for
+- [x] H4 — AddLeadModal.jsx:36 car list uses `eq('dealer_id', user.id)`; empty for
   manager/admin. FIX: derive dealer id by role.
 - [x] H5 — LeadDrawer.jsx:650 close modal only fires for literal `closed_won`, but the
   progress bar writes `won`, bypassing close+car+stock+sibling sync. FIX: route Won
@@ -222,7 +222,7 @@ source-of-truth table). Reference for "done right": DashboardPage `fetchPnl`.
 - [ ] L3 — DashboardPage.jsx:5692 StockTab handleMarkSold never refetches; derived fields stale.
 - [ ] L4 — Neither mark-sold path writes actual sold_price to car_listings; per-salesman gross uses asking price.
 - [ ] L5 — OverviewTab delta() returns null when prev=0, hides growth-from-zero.
-- [ ] L6 — useLeads.fetchLeads has no frontend dealer_id filter (RLS-only).
+- [x] L6 — useLeads.fetchLeads has no frontend dealer_id filter (RLS-only).
 - [ ] L7 — Swallowed select errors across RevOps/Services (no error checks).
 - [ ] L8 — Inline loan calc flat-rate vs HP reducing-balance -> two monthly figures for one deal.
 

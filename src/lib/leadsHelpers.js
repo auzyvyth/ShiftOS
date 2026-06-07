@@ -106,7 +106,8 @@ export function renderWaTemplate(str, lead, car) {
 // ─── Lead source config ────────────────────────────────────────────────────────
 
 export const SOURCE_CONFIG = {
-  drevo_enquiry: { label: 'Enquiry',   bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
+  drevo_enquiry: { label: 'XDrive Enquiry', bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
+  enquiry:       { label: 'General Enquiry', bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
   walk_in:       { label: 'Walk-In',   bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
   mudah:         { label: 'Mudah',     bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
   carlist:       { label: 'Carlist',   bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
@@ -118,6 +119,11 @@ export const SOURCE_CONFIG = {
   other:         { label: 'Other',     bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
   manual:        { label: 'Manual',    bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
 };
+
+// leads.lead_source has a DB CHECK constraint allowing only this set — any
+// other value rejects the whole insert. Forms that create leads must offer
+// only these (SOURCE_CONFIG carries extra display-only aliases for older rows).
+export const LEAD_SOURCE_DB_VALUES = ['walk_in', 'whatsapp', 'referral', 'drevo_enquiry', 'enquiry', 'manual'];
 
 export const INCOME_OPTIONS = [
   'Below RM 1,500',

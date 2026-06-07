@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { X, UserPlus, Search } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
-import { INCOME_OPTIONS, EMPLOYMENT_OPTIONS, SOURCE_CONFIG, STAGE_ORDER, STAGE_CONFIG } from '../../lib/leadsHelpers';
+import { useProfile, getDealerIdFromProfile } from '../../hooks/useProfile';
+import { INCOME_OPTIONS, EMPLOYMENT_OPTIONS, SOURCE_CONFIG, LEAD_SOURCE_DB_VALUES, STAGE_ORDER, STAGE_CONFIG } from '../../lib/leadsHelpers';
 
 const inp = "w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 transition-all";
 const sel = inp + " appearance-none";
@@ -23,6 +25,7 @@ const EMPTY = {
 };
 
 export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
+  const { profile } = useProfile();
   const [form, setForm]       = useState(EMPTY);
   const [cars, setCars]       = useState([]);
   const [carSearch, setCarSearch] = useState('');
@@ -31,18 +34,18 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const dealerId = getDealerIdFromProfile(profile);
+      if (!dealerId) return;
       const { data } = await supabase
         .from('car_listings')
         .select('id, brand, model, year, variant, selling_price')
-        .eq('dealer_id', user.id)
+        .eq('dealer_id', dealerId)
         .neq('status', 'sold')
         .order('brand');
       setCars(data || []);
     }
     load();
-  }, []);
+  }, [profile]);
 
   const filtered = cars.filter(c => {
     const q = carSearch.toLowerCase();
@@ -88,6 +91,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
       onClose();
     } catch (err) {
       console.error(err);
+      toast.error(err?.message || 'Failed to add lead — please try again');
       setSaving(false);
     }
   }
@@ -193,8 +197,8 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
                 className={`${sel} ${errors.lead_source ? 'border-red-400 bg-red-50' : ''}`}
               >
                 <option value="" disabled>Select…</option>
-                {Object.entries(SOURCE_CONFIG).map(([k, v]) => (
-                  <option key={k} value={k}>{v.label}</option>
+                {LEAD_SOURCE_DB_VALUES.map(k => (
+                  <option key={k} value={k}>{SOURCE_CONFIG[k]?.label || k}</option>
                 ))}
               </select>
               {errors.lead_source && <p className="text-xs text-red-500 mt-1">{errors.lead_source}</p>}
