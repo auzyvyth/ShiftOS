@@ -179,6 +179,21 @@ export default function LoginPage() {
       .eq("id", user.id)
       .maybeSingle();
 
+    // No profiles row — auth account exists but sign-up was never completed.
+    // Send them back to onboarding instead of falling through to the salesman
+    // default below, which would loop them between /login and /salesman forever.
+    if (!profile) {
+      const savedPlan = sessionStorage.getItem('ob_plan_slug');
+      if (savedPlan === 'lite' || savedPlan === 'premium') {
+        window.location.href = `${base}/salesman-onboarding/${savedPlan}`;
+      } else if (savedPlan === 'starter' || savedPlan === 'growth' || savedPlan === 'pro') {
+        window.location.href = `${base}/dealer-onboarding/${savedPlan}`;
+      } else {
+        window.location.href = `${base}/onboarding`;
+      }
+      return;
+    }
+
     const subdomain = profile?.subdomain;
     const role = profile?.role;
 
