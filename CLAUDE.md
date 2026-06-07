@@ -168,7 +168,7 @@ things that should be one (stage names, plan columns, GP source, sold timestamp,
 source-of-truth table). Reference for "done right": DashboardPage `fetchPnl`.
 
 ### CRITICAL
-- [ ] C4 — Tiering split-brain. Caps enforce on `profiles.plan`; onboarding writes
+- [x] C4 — Tiering split-brain. Caps enforce on `profiles.plan`; onboarding writes
   `selected_plan` (legacy junk values); DB `plan_config` is a third disagreeing copy.
   New dealers get unlimited listings, no enforcement. FIX: collapse to one column
   (`selected_plan`), point cap triggers `check_listing_cap`/`enforce_listing_cap` at
@@ -206,7 +206,7 @@ source-of-truth table). Reference for "done right": DashboardPage `fetchPnl`.
 
 ### MEDIUM
 - [x] M1 — compute_stock_unit_gp omits included_services_cost + commission -> stock GP overstated.
-- [ ] M2 — Duplicate listing-cap triggers (enforce_listing_cap + trg_enforce_listing_cap). Drop one.
+- [x] M2 — Duplicate listing-cap triggers (enforce_listing_cap + trg_enforce_listing_cap). Drop one.
 - [ ] M3 — Overlapping/mutually-firing stock<->listing sync triggers; recon_cost clobbered on sale.
 - [x] M4 — OverviewTab.jsx:178 counts won/closed_* as active pipeline. FIX: exclude real terminal stages.
 - [x] M5 — gm_pnl_snapshot LMTD window carries intraday remainder / ignores month length.

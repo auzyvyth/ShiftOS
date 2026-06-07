@@ -372,7 +372,7 @@ export default function DealerOnboarding() {
     if (!form.state) { setErr('Please select your state'); return; }
     setLoading(true);
     try {
-      const planMap = { starter: 'standard', growth: 'standard', pro: 'dealer_full' };
+      const planMap = { starter: 'dealer_starter', growth: 'dealer_growth', pro: 'dealer_pro' };
       const { error } = await supabase.from('profiles').upsert({
         id: userId,
         email: userEmail,
@@ -389,7 +389,7 @@ export default function DealerOnboarding() {
         dealer_type: form.dealerType || null,
         is_active: true,
         onboarding_complete: true,
-        selected_plan: planMap[tier] || 'standard',
+        plan: planMap[tier] || 'dealer_starter',
         pdpa_consent: true,
         pdpa_consent_at: new Date().toISOString(),
         ic_deadline: null,
