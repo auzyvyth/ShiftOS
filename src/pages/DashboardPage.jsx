@@ -3827,7 +3827,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
     if (!dealerId) return;
     const { data } = await supabase
       .from("car_listings")
-      .select("assigned_to, commission_amount, commission_status, selling_price, price, purchase_price, recon_cost, included_services_cost")
+      .select("assigned_to, commission_amount, commission_status, sold_price, selling_price, price, purchase_price, recon_cost, included_services_cost")
       .eq("dealer_id", dealerId)
       .eq("status", "sold")
       .not("assigned_to", "is", null);
@@ -3846,7 +3846,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
       // don't show a misleading "full sale price = profit".
       const cost = Number(row.purchase_price) || 0;
       if (cost > 0) {
-        const sale = Number(row.selling_price ?? row.price) || 0;
+        const sale = Number(row.sold_price ?? row.selling_price ?? row.price) || 0;
         map[assigned_to].gross += sale - cost - (Number(row.recon_cost) || 0) - (Number(row.included_services_cost) || 0) - amt;
       }
     });
@@ -5684,13 +5684,15 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
     if (listingId) {
       await supabase
         .from('car_listings')
-        .update({ status: 'sold', sold_at: new Date().toISOString() })
+        .update({ status: 'sold', sold_at: new Date().toISOString(), sold_price: payload.sold_price, sold_date: payload.sold_date })
         .eq('id', listingId)
         .neq('status', 'sold');
     }
     const car = soldTarget.car_listings || {};
     logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: soldTarget.id, action: 'marked_sold', summary: `Stock unit sold${car.brand ? ` — ${car.brand} ${car.model} ${car.year}` : ''} · RM ${(payload.sold_price||0).toLocaleString()}` });
-    setUnits(p => p.map(u => u.id === soldTarget.id ? { ...u, ...payload } : u));
+    // Refetch — server-side triggers recompute days_in_stock/gross_profit/recon_cost etc.
+    // that an optimistic local patch can't reflect.
+    await fetchUnits();
     setSoldTarget(null);
     setSoldSaving(false);
   };
@@ -8922,7 +8924,7 @@ export default function DashboardPage() {
     try {
       const { data, error } = await supabase
         .from("car_listings")
-        .update({ status: "sold", sold_at: new Date().toISOString() })
+        .update({ status: "sold", sold_at: new Date().toISOString(), sold_price: markSoldListing.selling_price ?? null, sold_date: new Date().toISOString().slice(0, 10) })
         .eq("id", markSoldListing.id)
         .select();
       if (error) throw error;

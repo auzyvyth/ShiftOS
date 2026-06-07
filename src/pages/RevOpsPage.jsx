@@ -262,7 +262,8 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
       // second, independently-computed query against car_listings — the two
       // tables are synced via triggers but can drift, which previously made
       // RevOps and Overview disagree on the same month's numbers.
-      const { data: pnl } = await supabase.rpc("gm_pnl_snapshot", { p_dealer_id: userId });
+      const { data: pnl, error: pnlErr } = await supabase.rpc("gm_pnl_snapshot", { p_dealer_id: userId });
+      if (pnlErr) console.error("[RevOps] gm_pnl_snapshot error:", pnlErr.message);
 
       // Active listings for stock turn
       const { count: activeCount } = await supabase
@@ -297,11 +298,12 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
       setLeadLoading(true);
       const since = thirtyDaysAgo();
 
-      const { data: leads } = await supabase
+      const { data: leads, error: leadsErr } = await supabase
         .from("leads")
         .select("id, stage, lead_source, created_at, first_response_at")
         .eq("dealer_id", userId)
         .gte("created_at", since);
+      if (leadsErr) console.error("[RevOps] leads fetch error:", leadsErr.message);
 
       const all = leads || [];
       const total = all.length;
@@ -335,7 +337,8 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
 
       setLeadData({ total, topSources, viewingRate, avgResponseMin });
 
-      const { data: scores } = await supabase.rpc('gm_salesman_scores', { p_dealer_id: userId });
+      const { data: scores, error: scoresErr } = await supabase.rpc('gm_salesman_scores', { p_dealer_id: userId });
+      if (scoresErr) console.error("[RevOps] gm_salesman_scores error:", scoresErr.message);
       setSalesmanScores(
         (scores || [])
           .filter(s => s.avg_response_min != null)
@@ -352,13 +355,14 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
     if (!userId) return;
     const fetch = async () => {
       setStockLoading(true);
-      const { data: units } = await supabase
+      const { data: units, error: unitsErr } = await supabase
         .from("stock_units")
         .select(
           "id, created_at, brand, model, year, asking_price, status, purchase_date",
         )
         .eq("dealer_id", userId)
         .eq("status", "in_stock");
+      if (unitsErr) console.error("[RevOps] stock_units fetch error:", unitsErr.message);
 
       const all = units || [];
       const now = Date.now();
@@ -396,11 +400,12 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
       const monthStart = startOfMonth();
 
       // All deal_products this month
-      const { data: addonRows } = await supabase
+      const { data: addonRows, error: addonErr } = await supabase
         .from("deal_products")
         .select("id, sold_price, lead_id, product_id, dealer_products(name)")
         .eq("dealer_id", userId)
         .gte("created_at", monthStart);
+      if (addonErr) console.error("[RevOps] deal_products fetch error:", addonErr.message);
 
       // Won leads this month (for attachment rate denominator) — both won variants
       const { count: wonCount } = await supabase
@@ -517,10 +522,11 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
 
       // Resolve slugs so each top car links to its public listing.
       if (topCars.length > 0) {
-        const { data: slugRows } = await supabase
+        const { data: slugRows, error: slugErr } = await supabase
           .from("public_car_listings")
           .select("id, slug")
           .in("id", topCars.map((c) => c.car_id));
+        if (slugErr) console.error("[RevOps] public_car_listings slug fetch error:", slugErr.message);
         const slugById = Object.fromEntries((slugRows || []).map((r) => [r.id, r.slug]));
         topCars.forEach((c) => { c.slug = slugById[c.car_id] || null; });
       }

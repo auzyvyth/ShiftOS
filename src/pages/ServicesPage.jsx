@@ -146,11 +146,12 @@ export default function ServicesPage({ userId }) {
   const fetchProducts = async () => {
     if (!userId) return;
     setProdLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("dealer_products")
       .select("*")
       .eq("dealer_id", userId)
       .order("created_at", { ascending: false });
+    if (error) console.error("[Services] dealer_products fetch error:", error.message);
     setProducts(data || []);
     setProdLoading(false);
   };
@@ -161,18 +162,20 @@ export default function ServicesPage({ userId }) {
     setSummaryLoading(true);
     const monthStart = startOfMonth();
 
-    const { data: addonRows } = await supabase
+    const { data: addonRows, error: addonErr } = await supabase
       .from("deal_products")
       .select("id, sold_price, lead_id, product_id, dealer_products(name)")
       .eq("dealer_id", userId)
       .gte("created_at", monthStart);
+    if (addonErr) console.error("[Services] deal_products fetch error:", addonErr.message);
 
-    const { count: wonCount } = await supabase
+    const { count: wonCount, error: wonErr } = await supabase
       .from("leads")
       .select("id", { count: "exact", head: true })
       .eq("dealer_id", userId)
       .in("stage", ["won", "closed_won"])
       .gte("updated_at", monthStart);
+    if (wonErr) console.error("[Services] won leads count error:", wonErr.message);
 
     const rows = addonRows || [];
     const totalRevenue = rows.reduce((s, r) => s + (Number(r.sold_price) || 0), 0);
@@ -210,7 +213,7 @@ export default function ServicesPage({ userId }) {
   const fetchRecent = async () => {
     if (!userId) return;
     setRecentLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("deal_products")
       .select(
         "id, sold_price, created_at, dealer_products(name), leads(buyer_name, car_listing_id)",
@@ -218,6 +221,7 @@ export default function ServicesPage({ userId }) {
       .eq("dealer_id", userId)
       .order("created_at", { ascending: false })
       .limit(10);
+    if (error) console.error("[Services] recent deal_products fetch error:", error.message);
     setRecentRows(data || []);
     setRecentLoading(false);
   };

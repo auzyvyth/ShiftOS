@@ -207,24 +207,24 @@ source-of-truth table). Reference for "done right": DashboardPage `fetchPnl`.
 ### MEDIUM
 - [x] M1 — compute_stock_unit_gp omits included_services_cost + commission -> stock GP overstated.
 - [x] M2 — Duplicate listing-cap triggers (enforce_listing_cap + trg_enforce_listing_cap). Drop one.
-- [ ] M3 — Overlapping/mutually-firing stock<->listing sync triggers; recon_cost clobbered on sale.
+- [x] M3 — Overlapping/mutually-firing stock<->listing sync triggers; recon_cost clobbered on sale.
 - [x] M4 — OverviewTab.jsx:178 counts won/closed_* as active pipeline. FIX: exclude real terminal stages.
 - [x] M5 — gm_pnl_snapshot LMTD window carries intraday remainder / ignores month length.
-- [ ] M6 — LeadDrawer.jsx:310 appointment insert reads `lead.name` (undefined) -> buyer_name NULL. Use buyer_name.
-- [ ] M7 — calcInsuranceEst (LeadDrawer.jsx:133) duplicate caps / subtracts full cap per band -> wrong premium.
+- [x] M6 — LeadDrawer.jsx:310 appointment insert reads `lead.name` (undefined) -> buyer_name NULL. Use buyer_name.
+- [x] M7 — calcInsuranceEst (LeadDrawer.jsx:133) duplicate caps / subtracts full cap per band -> wrong premium.
 - [x] M8 — Add-on avgPerDeal numerator includes null-lead rows, denominator excludes them (RevOps:436 / Services:178).
-- [ ] M9 — fn_auto_deal_financial ON CONFLICT DO NOTHING with no constraint target -> dup on re-sell. Confirm reader.
-- [ ] M10 — defaultTasksFor (postSaleSteps.js:93) parallel B7 seed path can diverge from the DB won-trigger.
+- [x] M9 — fn_auto_deal_financial ON CONFLICT DO NOTHING with no constraint target -> dup on re-sell. Confirm reader.
+- [x] M10 — defaultTasksFor (postSaleSteps.js:93) parallel B7 seed path can diverge from the DB won-trigger.
 
 ### LOW
 - [x] L1 — RevOpsPage.jsx:859 hardcoded `6217` response-time bar divisor.
 - [x] L2 — Unguarded `Number(sold_price)` reduces (RevOps:436 / Services:178) -> NaN risk.
-- [ ] L3 — DashboardPage.jsx:5692 StockTab handleMarkSold never refetches; derived fields stale.
-- [ ] L4 — Neither mark-sold path writes actual sold_price to car_listings; per-salesman gross uses asking price.
-- [ ] L5 — OverviewTab delta() returns null when prev=0, hides growth-from-zero.
+- [x] L3 — DashboardPage.jsx:5692 StockTab handleMarkSold never refetches; derived fields stale.
+- [x] L4 — Neither mark-sold path writes actual sold_price to car_listings; per-salesman gross uses asking price.
+- [x] L5 — OverviewTab delta() returns null when prev=0, hides growth-from-zero.
 - [x] L6 — useLeads.fetchLeads has no frontend dealer_id filter (RLS-only).
-- [ ] L7 — Swallowed select errors across RevOps/Services (no error checks).
-- [ ] L8 — Inline loan calc flat-rate vs HP reducing-balance -> two monthly figures for one deal.
+- [x] L7 — Swallowed select errors across RevOps/Services (no error checks).
+- [x] L8 — Inline loan calc flat-rate vs HP reducing-balance -> two monthly figures for one deal.
 
 ### Recommended order
 1) C4 (tiering)  2) C1+H1 (GP/commission)  3) C2+C3+H5+H8+M4 (one stage standard kills 5)

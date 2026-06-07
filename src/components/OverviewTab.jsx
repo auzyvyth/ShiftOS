@@ -48,7 +48,7 @@ function fmt(n) {
   return `RM ${v.toLocaleString()}`;
 }
 function delta(val, prev) {
-  if (!prev || prev === 0) return null;
+  if (!prev || prev === 0) return val > 0 ? 100 : null;
   return ((val - prev) / prev) * 100;
 }
 function timeAgo(ts) {
