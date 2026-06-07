@@ -268,7 +268,11 @@ export default function SalesmanLite() {
   const saveGoal = (patch) => {
     const next = { ...goal, ...patch };
     setGoal(next);
-    if (userId) localStorage.setItem(`slite_goal_${userId}`, JSON.stringify(next));
+    if (!userId) return;
+    localStorage.setItem(`slite_goal_${userId}`, JSON.stringify(next));
+    supabase.from("profiles").update({ lite_goal: next }).eq("id", userId).then(({ error }) => {
+      if (error) console.error("saveGoal:", error);
+    });
   };
 
   // settings
@@ -540,7 +544,7 @@ export default function SalesmanLite() {
 
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, ic_number, account_status, instagram, tiktok, facebook, website")
+        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, ic_number, account_status, instagram, tiktok, facebook, website, lite_goal")
         .eq("id", uid)
         .maybeSingle();
 
@@ -586,6 +590,19 @@ export default function SalesmanLite() {
 
       setProfile(profileData);
       setLoading(false);
+
+      if (profileData.lite_goal) {
+        setGoal(prev => ({ ...prev, ...profileData.lite_goal }));
+        localStorage.setItem(`slite_goal_${uid}`, JSON.stringify(profileData.lite_goal));
+      } else {
+        try {
+          const cached = JSON.parse(localStorage.getItem(`slite_goal_${uid}`));
+          if (cached) {
+            setGoal(prev => ({ ...prev, ...cached }));
+            supabase.from("profiles").update({ lite_goal: cached }).eq("id", uid).then(() => {});
+          }
+        } catch {}
+      }
 
       if (
         !profileData.onboarding_tour_done &&
@@ -900,14 +917,6 @@ export default function SalesmanLite() {
     const t = setTimeout(measure, 80);
     return () => clearTimeout(t);
   }, [tourStep]);
-
-  useEffect(() => {
-    if (!userId) return;
-    try {
-      const saved = JSON.parse(localStorage.getItem(`slite_goal_${userId}`));
-      if (saved) setGoal(prev => ({ ...prev, ...saved }));
-    } catch {}
-  }, [userId]);
 
   // Browser notification: fire when user returns to tab and has stale leads
   useEffect(() => {
