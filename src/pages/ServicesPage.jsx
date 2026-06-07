@@ -141,6 +141,8 @@ export default function ServicesPage({ userId }) {
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [recentRows, setRecentRows] = useState([]);
   const [recentLoading, setRecentLoading] = useState(true);
+  const [soldUnits, setSoldUnits] = useState([]);
+  const [soldUnitsLoading, setSoldUnitsLoading] = useState(true);
 
   // ── Fetch products ─────────────────────────────────────────────────────────
   const fetchProducts = async () => {
@@ -226,10 +228,48 @@ export default function ServicesPage({ userId }) {
     setRecentLoading(false);
   };
 
+  // ── Fetch sold units + their attached add-ons (per-unit comparison view) ──
+  const fetchSoldUnits = async () => {
+    if (!userId) return;
+    setSoldUnitsLoading(true);
+
+    const { data: customerRows, error: custErr } = await supabase
+      .from("customers")
+      .select("id, lead_id, name, car_brand, car_model, car_year, car_plate, purchase_date")
+      .eq("dealer_id", userId)
+      .order("purchase_date", { ascending: false })
+      .limit(20);
+    if (custErr) console.error("[Services] customers fetch error:", custErr.message);
+
+    const rows = customerRows || [];
+    const leadIds = rows.map((c) => c.lead_id).filter(Boolean);
+
+    let addonsByLead = {};
+    if (leadIds.length > 0) {
+      const { data: addonRows, error: addonErr } = await supabase
+        .from("deal_products")
+        .select("lead_id, sold_price, dealer_products(name)")
+        .eq("dealer_id", userId)
+        .in("lead_id", leadIds);
+      if (addonErr) console.error("[Services] sold-unit add-ons fetch error:", addonErr.message);
+      (addonRows || []).forEach((r) => {
+        if (!r.lead_id) return;
+        (addonsByLead[r.lead_id] = addonsByLead[r.lead_id] || []).push({
+          name: r.dealer_products?.name || "Unknown",
+          price: r.sold_price,
+        });
+      });
+    }
+
+    setSoldUnits(rows.map((c) => ({ ...c, addons: addonsByLead[c.lead_id] || [] })));
+    setSoldUnitsLoading(false);
+  };
+
   useEffect(() => {
     fetchProducts();
     fetchSummary();
     fetchRecent();
+    fetchSoldUnits();
   }, [userId]);
 
   // ── Panel helpers ──────────────────────────────────────────────────────────
@@ -324,11 +364,11 @@ export default function ServicesPage({ userId }) {
 
   const inp = {
     width: "100%",
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.09)",
+    background: "#ffffff",
+    border: "1px solid #e5e7eb",
     borderRadius: 6,
     padding: "9px 13px",
-    color: "white",
+    color: "#111827",
     fontSize: 13,
     fontFamily: "'DM Sans',sans-serif",
     outline: "none",
@@ -1050,6 +1090,141 @@ export default function ServicesPage({ userId }) {
         </div>
       </div>
 
+      {/* ── Units Sold & Add-ons (per-unit comparison) ── */}
+      <div
+        className="rounded-lg"
+        style={{
+          marginTop: 20,
+          background: "#FFFFFF",
+          border: "1px solid #EAECF0",
+          overflow: "hidden",
+        }}
+      >
+        <div style={{ padding: "14px 18px", borderBottom: "1px solid #EAECF0" }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: "#111827", margin: 0 }}>
+            Units Sold &amp; Add-ons
+          </p>
+          <p style={{ fontSize: 11, color: "#6b7280", margin: "2px 0 0" }}>
+            Which sold cars had add-ons attached, and which didn&apos;t — use this to spot units worth pushing harder on.
+          </p>
+        </div>
+        <div style={{ padding: "0 0 4px" }}>
+          {soldUnitsLoading ? (
+            <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+              {[1, 2, 3].map((i) => (
+                <Skel key={i} h="h-10" />
+              ))}
+            </div>
+          ) : soldUnits.length === 0 ? (
+            <p style={{ fontSize: 12, color: "#4b5563", padding: "16px 18px" }}>
+              No sold units yet.
+            </p>
+          ) : (
+            <>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "76px 1.2fr 1fr 1.6fr",
+                  gap: 8,
+                  padding: "8px 14px",
+                  borderBottom: "1px solid #F3F4F6",
+                  background: "#F9FAFB",
+                }}
+              >
+                {["Sold", "Car", "Buyer", "Add-ons attached"].map((h) => (
+                  <span
+                    key={h}
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 800,
+                      color: "#374151",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                    }}
+                  >
+                    {h}
+                  </span>
+                ))}
+              </div>
+              {soldUnits.map((u, i) => (
+                <div
+                  key={u.id}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "76px 1.2fr 1fr 1.6fr",
+                    gap: 8,
+                    padding: "9px 14px",
+                    alignItems: "center",
+                    borderBottom: i < soldUnits.length - 1 ? "1px solid #F3F4F6" : "none",
+                  }}
+                >
+                  <span style={{ fontSize: 11, color: "#4b5563" }}>{fmtDate(u.purchase_date)}</span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: "#374151",
+                      fontWeight: 600,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {[u.car_year, u.car_brand, u.car_model].filter(Boolean).join(" ") || "—"}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: "#9ca3af",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {u.name || "—"}
+                  </span>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                    {u.addons.length === 0 ? (
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          color: "#d97706",
+                          background: "#fffbeb",
+                          border: "1px solid #fde68a",
+                          borderRadius: 20,
+                          padding: "2px 8px",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        No add-ons
+                      </span>
+                    ) : (
+                      u.addons.map((a, j) => (
+                        <span
+                          key={j}
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 600,
+                            color: "#16a34a",
+                            background: "#f0fdf4",
+                            border: "1px solid #bbf7d0",
+                            borderRadius: 20,
+                            padding: "2px 8px",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {a.name}
+                        </span>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      </div>
+
       {/* ── Add / Edit slide-out panel ── */}
       {panelOpen && (
         <>
@@ -1074,9 +1249,9 @@ export default function ServicesPage({ userId }) {
               bottom: 0,
               zIndex: 50,
               width: "min(400px, 100vw)",
-              background: "linear-gradient(155deg,#0d0d14 0%,#0a0a0f 100%)",
-              borderLeft: "1px solid rgba(255,255,255,0.07)",
-              boxShadow: "-20px 0 60px rgba(0,0,0,0.7)",
+              background: "#ffffff",
+              borderLeft: "1px solid #e5e7eb",
+              boxShadow: "-20px 0 60px rgba(0,0,0,0.25)",
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
@@ -1101,7 +1276,7 @@ export default function ServicesPage({ userId }) {
             <div
               style={{
                 padding: "18px 20px 16px",
-                borderBottom: "1px solid rgba(255,255,255,0.05)",
+                borderBottom: "1px solid #eceef1",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -1111,7 +1286,7 @@ export default function ServicesPage({ userId }) {
                 style={{
                   fontSize: 15,
                   fontWeight: 700,
-                  color: "white",
+                  color: "#111827",
                   margin: 0,
                 }}
               >
@@ -1120,8 +1295,8 @@ export default function ServicesPage({ userId }) {
               <button
                 onClick={closePanel}
                 style={{
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: "#f9fafb",
+                  border: "1px solid #e5e7eb",
                   borderRadius: 6,
                   width: 30,
                   height: 30,
@@ -1129,7 +1304,7 @@ export default function ServicesPage({ userId }) {
                   alignItems: "center",
                   justifyContent: "center",
                   cursor: "pointer",
-                  color: "#9ca3af",
+                  color: "#6b7280",
                 }}
               >
                 <X style={{ width: 14, height: 14 }} />
@@ -1311,7 +1486,7 @@ export default function ServicesPage({ userId }) {
                   padding: "4px 0",
                 }}
               >
-                <span style={{ fontSize: 13, color: "#9ca3af" }}>Active</span>
+                <span style={{ fontSize: 13, color: "#6b7280" }}>Active</span>
                 <button
                   onClick={() =>
                     setForm((p) => ({ ...p, is_active: !p.is_active }))
@@ -1345,7 +1520,7 @@ export default function ServicesPage({ userId }) {
                   padding: "4px 0",
                 }}
               >
-                <span style={{ fontSize: 13, color: "#9ca3af" }}>
+                <span style={{ fontSize: 13, color: "#6b7280" }}>
                   Track Stock
                 </span>
                 <button
@@ -1442,7 +1617,7 @@ export default function ServicesPage({ userId }) {
             <div
               style={{
                 padding: "14px 20px",
-                borderTop: "1px solid rgba(255,255,255,0.05)",
+                borderTop: "1px solid #eceef1",
               }}
             >
               <button
