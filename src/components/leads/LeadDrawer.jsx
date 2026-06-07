@@ -647,7 +647,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
       setShowLossPanel(true);
       return;
     }
-    if (newStage === 'closed_won') {
+    if (newStage === 'won') {
       setSelectedCloser(lead.salesman_id || lead.assigned_to || '');
       setShowCloseModal(true);
       return;
@@ -658,7 +658,6 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
       .then(updated => {
         if (updated) setLead(updated);
         addActivity({ activity_type: 'stage_changed', from_stage: oldStage, to_stage: newStage }).catch(() => {});
-        if (newStage === 'won') toast.success('Lead marked as Won!');
       })
       .catch(() => {
         setLead(p => ({ ...p, stage: oldStage }));
@@ -670,9 +669,9 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     setCloseSaving(true);
     const oldStage = lead.stage;
     try {
-      const updated = await onUpdate(lead.id, { stage: 'closed_won' });
-      setLead(p => ({ ...p, stage: 'closed_won', ...(updated || {}) }));
-      addActivity({ activity_type: 'stage_changed', from_stage: oldStage, to_stage: 'closed_won' }).catch(() => {});
+      const updated = await onUpdate(lead.id, { stage: 'won' });
+      setLead(p => ({ ...p, stage: 'won', ...(updated || {}) }));
+      addActivity({ activity_type: 'stage_changed', from_stage: oldStage, to_stage: 'won' }).catch(() => {});
 
       if (lead.car_listing_id) {
         const soldAt = new Date().toISOString();
@@ -695,10 +694,10 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
 
         await supabase
           .from('leads')
-          .update({ stage: 'closed_lost' })
+          .update({ stage: 'lost', loss_reason: 'Sold to another buyer' })
           .eq('car_listing_id', lead.car_listing_id)
           .neq('id', lead.id)
-          .not('stage', 'in', '("closed_won","closed_lost","lost")');
+          .not('stage', 'in', '("won","closed_won","lost","closed_lost")');
       }
 
       setShowCloseModal(false);
@@ -1140,7 +1139,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
             </div>
 
             {/* ── Deposit / Booking Fee ── */}
-            {(['deposit_taken','won'].includes(lead.stage) || depositAmount !== '') && (
+            {(['deposit_taken','won','closed_won'].includes(lead.stage) || depositAmount !== '') && (
               <div style={{ ...w.section, borderColor: '#99f6e4', background: '#f0fdfa' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                   <p style={{ ...w.label, margin: 0, color: '#0d9488' }}>Deposit / Booking Fee</p>

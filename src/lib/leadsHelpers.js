@@ -2,7 +2,7 @@
 import { Sparkles, Phone, Calendar, MessageSquare, DollarSign, Trophy, XCircle, Car } from 'lucide-react';
 
 export const STAGE_ORDER = [
-  'new', 'contacted', 'viewing_booked', 'negotiating', 'deposit_taken', 'won', 'lost',
+  'new', 'contacted', 'viewing_booked', 'test_drive', 'negotiating', 'deposit_taken', 'won', 'lost',
 ];
 
 export const STAGE_CONFIG = {
@@ -18,6 +18,13 @@ export const STAGE_CONFIG = {
   closed_won:     { label: 'Closed Won',      icon: Trophy,         color: 'text-emerald-600', bg: '#ecfdf5',  border: '#a7f3d0',  headerBorder: '#059669' },
   closed_lost:    { label: 'Closed Lost',     icon: XCircle,        color: 'text-red-600',     bg: '#fef2f2',  border: '#fecaca',  headerBorder: '#dc2626' },
 };
+
+// Legacy stage values that may still exist on old rows — fold them onto the
+// canonical STAGE_ORDER bucket so they don't silently disappear from the board.
+const STAGE_ALIASES = { closed_won: 'won', closed_lost: 'lost' };
+export function canonicalStage(stage) {
+  return STAGE_ALIASES[stage] || stage;
+}
 
 // ─── Loss reasons ──────────────────────────────────────────────────────────────
 

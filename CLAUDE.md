@@ -180,7 +180,7 @@ source-of-truth table). Reference for "done right": DashboardPage `fetchPnl`.
   fetchPnl (and add commission — see H1).
 - [x] C2 — RevOpsPage.jsx:431 / ServicesPage.jsx:170 filter won deals as
   `closed_won,deposit_taken` but prod uses `won`. FIX: filter on the real won stage(s).
-- [ ] C3 — LeadDrawer.jsx:673 writes `closed_won`; LeadsPage.jsx:102-107 only buckets
+- [x] C3 — LeadDrawer.jsx:673 writes `closed_won`; LeadsPage.jsx:102-107 only buckets
   STAGE_ORDER so closed deals vanish from the board. FIX: standardize stage set (see below).
 - [x] C5 — DashboardPage.jsx:365 `bucketGPByMonth` reads `u.sold_at` on stock_units
   (only `sold_date` exists) -> GP sparkline always flat. FIX: use `sold_date`.
@@ -194,14 +194,14 @@ source-of-truth table). Reference for "done right": DashboardPage `fetchPnl`.
   insert failure. FIX: restrict options to allowed set (or widen CHECK) + show error toast.
 - [ ] H4 — AddLeadModal.jsx:36 car list uses `eq('dealer_id', user.id)`; empty for
   manager/admin. FIX: derive dealer id by role.
-- [ ] H5 — LeadDrawer.jsx:650 close modal only fires for literal `closed_won`, but the
+- [x] H5 — LeadDrawer.jsx:650 close modal only fires for literal `closed_won`, but the
   progress bar writes `won`, bypassing close+car+stock+sibling sync. FIX: route Won
   through the close flow.
 - [ ] H6 — Two sources of truth: RevOps uses car_listings, Oversight/Overview use
   stock_units -> different revenue/units for same month. FIX: pick one source.
 - [x] H7 — gm_salesman_scores keys on `assigned_to` (25/64 rows); app uses
   `salesman_id` (40/64). FIX: key the RPC on salesman_id.
-- [ ] H8 — LeadDrawer.jsx:701 sibling-lost update omits `won`, can flip a real win to
+- [x] H8 — LeadDrawer.jsx:701 sibling-lost update omits `won`, can flip a real win to
   closed_lost; deposit gate :1143 omits closed_won. FIX: consistent terminal-state set.
 
 ### MEDIUM
