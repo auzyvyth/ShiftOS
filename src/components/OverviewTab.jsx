@@ -175,7 +175,9 @@ export default function OverviewTab({ dealerId, onNavigate }) {
           lastActivityByUser[a.created_by] = a.created_at;
       }
 
-      const activeLeads = allLeads.filter(l => !['sold','lost'].includes(l.stage));
+      // Exclude every terminal stage variant; 'sold' was never a lead stage
+      const TERMINAL_STAGES = ['won','closed_won','lost','closed_lost'];
+      const activeLeads = allLeads.filter(l => !TERMINAL_STAGES.includes(l.stage));
       const leadsPerSm  = {};
       const lastLeadTouchSm = {};
       for (const l of allLeads) {

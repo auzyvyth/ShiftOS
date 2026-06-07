@@ -362,8 +362,9 @@ function bucketGPByMonth(units, months = 6) {
   const result = Array(months).fill(0);
   const now = new Date();
   units.forEach(u => {
-    if (!u.sold_at || !u.sold_price) return;
-    const d = new Date(u.sold_at);
+    // stock_units use sold_date (there is no sold_at on stock_units)
+    if (!u.sold_date || !u.sold_price) return;
+    const d = new Date(u.sold_date);
     const monthsAgo = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
     if (monthsAgo >= 0 && monthsAgo < months) {
       const gp = (u.sold_price || 0) - (u.purchase_price || 0) - (u.recon_cost || 0);

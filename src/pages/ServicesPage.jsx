@@ -171,16 +171,19 @@ export default function ServicesPage({ userId }) {
       .from("leads")
       .select("id", { count: "exact", head: true })
       .eq("dealer_id", userId)
-      .in("stage", ["closed_won", "deposit_taken"])
+      .in("stage", ["won", "closed_won"])
       .gte("updated_at", monthStart);
 
     const rows = addonRows || [];
-    const totalRevenue = rows.reduce((s, r) => s + Number(r.sold_price), 0);
+    const totalRevenue = rows.reduce((s, r) => s + (Number(r.sold_price) || 0), 0);
     const uniqueLeads = new Set(
       rows.filter((r) => r.lead_id).map((r) => r.lead_id),
     );
+    const leadLinkedRevenue = rows
+      .filter((r) => r.lead_id)
+      .reduce((s, r) => s + (Number(r.sold_price) || 0), 0);
     const avgPerDeal =
-      uniqueLeads.size > 0 ? Math.round(totalRevenue / uniqueLeads.size) : null;
+      uniqueLeads.size > 0 ? Math.round(leadLinkedRevenue / uniqueLeads.size) : null;
     const attachRate =
       wonCount > 0 ? Math.round((uniqueLeads.size / wonCount) * 100) : null;
 

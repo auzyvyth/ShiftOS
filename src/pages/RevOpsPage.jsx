@@ -259,11 +259,14 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
 
       const monthStart = startOfMonth();
 
-      // Sold this month
+      // Sold this month.
+      // NOTE: sold_price is not reliably populated on car_listings (only set via the
+      // stock-unit sync path), so the realized sale price is sold_price ?? selling_price.
+      // gross_profit is a dead column (never computed) — always recompute from parts.
       const { data: soldThisMonth } = await supabase
         .from("car_listings")
         .select(
-          "sold_price, gross_profit, purchase_price, recon_cost, included_services_cost",
+          "sold_price, selling_price, purchase_price, recon_cost, included_services_cost, commission_amount",
         )
         .eq("dealer_id", userId)
         .eq("status", "sold")
@@ -276,26 +279,23 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
         .eq("dealer_id", userId)
         .neq("status", "sold");
 
-      // Active leads (pipeline value proxy)
+      // Active leads (pipeline value proxy) — exclude every terminal stage variant
       const { count: activeLeads } = await supabase
         .from("leads")
         .select("id", { count: "exact", head: true })
         .eq("dealer_id", userId)
-        .not("stage", "in", "(closed_won,closed_lost)");
+        .not("stage", "in", "(won,closed_won,lost,closed_lost)");
 
-      const revMTD = (soldThisMonth || []).reduce(
-        (s, r) => s + (Number(r.sold_price) || 0),
-        0,
-      );
+      const salePrice = (r) => (Number(r.sold_price) || Number(r.selling_price) || 0);
+      const revMTD = (soldThisMonth || []).reduce((s, r) => s + salePrice(r), 0);
       const gpMTD = (soldThisMonth || []).reduce((s, r) => {
-        // Use stored gross_profit if available, otherwise compute including services cost
+        // Front gross = sale - purchase - recon - included services - commission
         const gp =
-          r.gross_profit != null
-            ? Number(r.gross_profit)
-            : (Number(r.sold_price) || 0) -
-              (Number(r.purchase_price) || 0) -
-              (Number(r.recon_cost) || 0) -
-              (Number(r.included_services_cost) || 0);
+          salePrice(r) -
+          (Number(r.purchase_price) || 0) -
+          (Number(r.recon_cost) || 0) -
+          (Number(r.included_services_cost) || 0) -
+          (Number(r.commission_amount) || 0);
         return s + gp;
       }, 0);
       const unitsSoldMTD = (soldThisMonth || []).length;
@@ -424,22 +424,27 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
         .eq("dealer_id", userId)
         .gte("created_at", monthStart);
 
-      // Won leads this month (for attachment rate denominator)
+      // Won leads this month (for attachment rate denominator) — both won variants
       const { count: wonCount } = await supabase
         .from("leads")
         .select("id", { count: "exact", head: true })
         .eq("dealer_id", userId)
-        .in("stage", ["closed_won", "deposit_taken"])
+        .in("stage", ["won", "closed_won"])
         .gte("updated_at", monthStart);
 
       const rows = addonRows || [];
-      const totalRevenue = rows.reduce((s, r) => s + Number(r.sold_price), 0);
+      const totalRevenue = rows.reduce((s, r) => s + (Number(r.sold_price) || 0), 0);
       const uniqueLeads = new Set(
         rows.filter((r) => r.lead_id).map((r) => r.lead_id),
       );
+      // avg per deal: divide revenue from lead-linked add-ons by the number of those
+      // leads, so numerator and denominator cover the same rows
+      const leadLinkedRevenue = rows
+        .filter((r) => r.lead_id)
+        .reduce((s, r) => s + (Number(r.sold_price) || 0), 0);
       const avgPerDeal =
         uniqueLeads.size > 0
-          ? Math.round(totalRevenue / uniqueLeads.size)
+          ? Math.round(leadLinkedRevenue / uniqueLeads.size)
           : null;
       const attachRate =
         wonCount > 0 ? Math.round((uniqueLeads.size / wonCount) * 100) : null;
@@ -856,7 +861,9 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
                 const mins = s.avg_response_min;
                 const label = mins >= 60 ? `${Math.round(mins / 60)}h` : `${mins}m`;
                 const color = mins > 120 ? '#dc2626' : mins > 30 ? '#d97706' : '#16a34a';
-                const pct = Math.min(100, Math.round((mins / 6217) * 100));
+                // bar width relative to the slowest responder in the set, not a magic constant
+                const maxMins = Math.max(...salesmanScores.map(x => x.avg_response_min || 0), 1);
+                const pct = Math.min(100, Math.round((mins / maxMins) * 100));
                 return (
                   <div key={s.salesman_id || s.name} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontSize: 12, color: '#374151', width: 90, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
