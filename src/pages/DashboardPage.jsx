@@ -7037,12 +7037,15 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
         body: JSON.stringify({ doc_id: doc.id, dealer_id: userId }),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) { toast.error(body.error || 'Failed to send email'); }
-      else {
+      if (!res.ok) {
+        // Surface the real server error (e.g. "Email service not configured")
+        // instead of masking everything as a generic network failure.
+        toast.error(body.error || `Failed to send email (status ${res.status})`);
+      } else {
         toast.success(`Document emailed to ${doc.buyer_email}`);
         setDocuments(p => p.map(d => d.id === doc.id ? { ...d, email_sent_at: new Date().toISOString() } : d));
       }
-    } catch { toast.error('Network error — could not send email'); }
+    } catch (e) { toast.error(`Couldn't reach the email service${e?.message ? ` (${e.message})` : ''} — try again`); }
     setEmailSendingId(null);
   };
 
@@ -8191,6 +8194,7 @@ function CustomersTab({ dealerId }) {
   const [handoverMap, setHandoverMap] = useState({});   // lead_id → progress %
   const [packagesMap, setPackagesMap] = useState({});   // customer_id → [packages]
   const [expandedPkg, setExpandedPkg] = useState(null); // customer_id being expanded
+  const [expiryFilter, setExpiryFilter] = useState(null); // 'ins' | 'rt' — show only due/expired
   const [addPkg, setAddPkg] = useState(null);           // customer_id for add form
   const [pkgForm, setPkgForm] = useState({ package_name: '', total_visits: 3, valid_months: 12, sold_price: '' });
   const [pkgSaving, setPkgSaving] = useState(false);
@@ -8303,35 +8307,75 @@ function CustomersTab({ dealerId }) {
     setSaving(false);
   };
 
-  const filtered = customers.filter(c =>
-    !search || `${c.name || ""} ${c.phone || ""}`.toLowerCase().includes(search.toLowerCase())
-  );
+  // "Due" = expiring within 30 days OR already expired (negative diff). The old
+  // logic ignored already-expired policies, so an overdue insurance showed nowhere.
+  const isDue = (date) => { if (!date) return false; const diff = (new Date(date) - today) / 86400000; return diff <= 30; };
+  const isExpired = (date) => { if (!date) return false; return (new Date(date) - today) / 86400000 < 0; };
+
+  const filtered = customers.filter(c => {
+    if (search && !`${c.name || ""} ${c.phone || ""}`.toLowerCase().includes(search.toLowerCase())) return false;
+    if (expiryFilter === "ins" && !isDue(c.insurance_expiry)) return false;
+    if (expiryFilter === "rt" && !isDue(c.road_tax_expiry)) return false;
+    return true;
+  });
 
   const thisMonthCount = customers.filter(c => {
     const d = new Date(c.created_at);
     return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
   }).length;
-  const rtExpiring = customers.filter(c => { if (!c.road_tax_expiry) return false; const diff = (new Date(c.road_tax_expiry) - today) / 86400000; return diff >= 0 && diff <= 30; }).length;
-  const insExpiring = customers.filter(c => { if (!c.insurance_expiry) return false; const diff = (new Date(c.insurance_expiry) - today) / 86400000; return diff >= 0 && diff <= 30; }).length;
+  const rtDue = customers.filter(c => isDue(c.road_tax_expiry)).length;
+  const insDue = customers.filter(c => isDue(c.insurance_expiry)).length;
+  const rtExpired = customers.filter(c => isExpired(c.road_tax_expiry)).length;
+  const insExpired = customers.filter(c => isExpired(c.insurance_expiry)).length;
 
   if (loading) return <div className="p-8 text-gray-600 text-sm">Loading…</div>;
 
   return (
     <div>
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+      {/* Stats — the two expiry cards are clickable and filter the table below. */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
         {[
-          { label: "Total Customers", val: customers.length, color: "#dc2626" },
-          { label: "This Month", val: thisMonthCount, color: "#4ade80" },
-          { label: "Road Tax Expiring", val: rtExpiring, color: "#fbbf24" },
-          { label: "Insurance Expiring", val: insExpiring, color: "#c084fc" },
-        ].map(({ label, val, color }) => (
-          <div key={label} className="bg-white border border-gray-200 rounded-xl p-4">
-            <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">{label}</p>
-            <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 32, color, lineHeight: 1, margin: 0 }}>{val}</p>
-          </div>
-        ))}
+          { label: "Total Customers", val: customers.length, color: "#dc2626", filter: null, sub: null },
+          { label: "This Month", val: thisMonthCount, color: "#4ade80", filter: null, sub: null },
+          { label: "Road Tax Due", val: rtDue, color: "#fbbf24", filter: "rt", sub: rtExpired > 0 ? `${rtExpired} expired` : null },
+          { label: "Insurance Due", val: insDue, color: "#c084fc", filter: "ins", sub: insExpired > 0 ? `${insExpired} expired` : null },
+        ].map(({ label, val, color, filter, sub }) => {
+          const active = filter && expiryFilter === filter;
+          return (
+            <button
+              key={label}
+              type="button"
+              onClick={() => filter && setExpiryFilter(active ? null : filter)}
+              className="bg-white border rounded-xl p-4 text-left transition-colors"
+              style={{ borderColor: active ? color : "#e5e7eb", cursor: filter ? "pointer" : "default", boxShadow: active ? `0 0 0 1px ${color}` : "none" }}
+            >
+              <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">{label}</p>
+              <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 32, color, lineHeight: 1, margin: 0 }}>{val}</p>
+              {sub
+                ? <p className="text-[10px] font-bold mt-1 m-0" style={{ color: "#dc2626" }}>{sub}</p>
+                : filter ? <p className="text-[10px] text-gray-400 mt-1 m-0">{active ? "Showing — clear" : "Click to filter"}</p> : null}
+            </button>
+          );
+        })}
       </div>
+
+      {/* Expiry action banner — surfaces overdue/soon policies with a one-tap filter */}
+      {(insExpired > 0 || rtExpired > 0) && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg mb-4" style={{ background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.18)" }}>
+          <AlertTriangle style={{ width: 15, height: 15, color: "#dc2626", flexShrink: 0 }} />
+          <span className="text-[13px] flex-1" style={{ color: "#374151", lineHeight: 1.5 }}>
+            {[insExpired > 0 ? `${insExpired} insurance` : null, rtExpired > 0 ? `${rtExpired} road tax` : null].filter(Boolean).join(" and ")} {insExpired + rtExpired > 1 ? "policies have" : "policy has"} expired — renew to keep customers covered.
+          </span>
+          <button
+            type="button"
+            onClick={() => setExpiryFilter(insExpired > 0 ? "ins" : "rt")}
+            className="text-xs font-bold whitespace-nowrap"
+            style={{ color: "#dc2626" }}
+          >
+            Review →
+          </button>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative mb-4">
@@ -8368,7 +8412,7 @@ function CustomersTab({ dealerId }) {
                       <p className="text-sm font-semibold text-gray-900 m-0">{c.name || "—"}</p>
                       {pkgs.length > 0 && (
                         <button onClick={() => setExpandedPkg(isExpanded ? null : c.id)} className="text-[10px] text-violet-600 hover:underline mt-0.5 block">
-                          {pkgs.length} service pkg{pkgs.length > 1 ? 's' : ''}
+                          {pkgs.length} service plan{pkgs.length > 1 ? 's' : ''}
                         </button>
                       )}
                     </td>
@@ -8407,7 +8451,7 @@ function CustomersTab({ dealerId }) {
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
                         <button onClick={() => setEditing({ ...c })} className="text-xs px-3 py-1 rounded-lg bg-gray-50 border border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-colors whitespace-nowrap">Edit</button>
-                        <button onClick={() => { setAddPkg(c.id); setPkgForm({ package_name: '', total_visits: 3, valid_months: 12, sold_price: '' }); }} className="text-xs px-3 py-1 rounded-lg bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 transition-colors whitespace-nowrap">+ Pkg</button>
+                        <button onClick={() => { setAddPkg(c.id); setPkgForm({ package_name: '', total_visits: 3, valid_months: 12, sold_price: '' }); }} className="text-xs px-3 py-1 rounded-lg bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 transition-colors whitespace-nowrap">+ Service Plan</button>
                       </div>
                     </td>
                   </tr>
@@ -9408,6 +9452,7 @@ export default function DashboardPage() {
               {notifCount > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#DC2626', color: '#fff', fontSize: 8, fontWeight: 800, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{notifCount > 9 ? '9+' : notifCount}</span>}
             </button>
           </div>
+          <ReportBugButton variant="inline" context="Dealer Dashboard" userLabel={profile?.full_name || profile?.email || ""} />
           <button
             onClick={() => startTransition(() => setSidebarOpen(false))}
             className="lg:hidden p-1.5 rounded-lg transition-colors flex-shrink-0"
@@ -9620,6 +9665,7 @@ export default function DashboardPage() {
           <span style={{ fontSize: 12, color: color.textMuted }} className="truncate flex-1 min-w-0">
             {TITLES[activeTab]?.title}
           </span>
+          <ReportBugButton variant="inline" context="Dealer Dashboard" userLabel={profile?.full_name || profile?.email || ""} />
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <button
               onClick={() => setNotifOpen(p => !p)}
@@ -10644,7 +10690,6 @@ export default function DashboardPage() {
       )}
 
     </div>
-    <ReportBugButton context="Dealer Dashboard" userLabel={profile?.full_name || profile?.email || ""} />
     </>
   );
 }

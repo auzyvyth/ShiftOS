@@ -3,7 +3,9 @@ import { Bug, X } from "lucide-react";
 
 const SUPPORT_WHATSAPP = "60174155191";
 
-export default function ReportBugButton({ context = "", userLabel = "" }) {
+// variant: "floating" = fixed circle (legacy, used in salesman lite),
+//          "inline"   = small header icon button (sits next to the nav, no overlap)
+export default function ReportBugButton({ context = "", userLabel = "", variant = "floating" }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
 
@@ -24,22 +26,43 @@ export default function ReportBugButton({ context = "", userLabel = "" }) {
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        title="Report a bug"
-        className="fixed z-50 flex items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105"
-        style={{
-          bottom: 24,
-          left: 24,
-          width: 48,
-          height: 48,
-          background: "#dc2626",
-          color: "#fff",
-          border: "1px solid rgba(255,255,255,0.15)",
-        }}
-      >
-        <Bug className="w-5 h-5" />
-      </button>
+      {variant === "inline" ? (
+        <button
+          onClick={() => setOpen(true)}
+          title="Report a bug"
+          aria-label="Report a bug"
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: "#6b7280",
+            padding: 4,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          <Bug className="w-4 h-4" />
+        </button>
+      ) : (
+        <button
+          onClick={() => setOpen(true)}
+          title="Report a bug"
+          className="fixed z-50 flex items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105"
+          style={{
+            bottom: 24,
+            left: 24,
+            width: 48,
+            height: 48,
+            background: "#dc2626",
+            color: "#fff",
+            border: "1px solid rgba(255,255,255,0.15)",
+          }}
+        >
+          <Bug className="w-5 h-5" />
+        </button>
+      )}
 
       {open && (
         <div
