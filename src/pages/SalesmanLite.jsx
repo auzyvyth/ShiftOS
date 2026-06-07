@@ -8,6 +8,7 @@ import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import CarForm from "../components/CarForm";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import SalesmanLiteHelp from "../components/SalesmanLiteHelp";
+import ReportBugButton from "../components/ReportBugButton";
 import {
   LogOut,
   Copy,
@@ -7890,6 +7891,7 @@ export default function SalesmanLite() {
           </div>
         );
       })()}
+      <ReportBugButton context="Salesman Lite" userLabel={profile?.full_name || profile?.email || ""} />
     </div>
   );
 }

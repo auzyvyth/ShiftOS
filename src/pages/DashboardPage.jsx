@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback, startTransition, Component } from "react";
 import DOMPurify from "dompurify";
 import SuspendedBanner from "../components/SuspendedBanner";
+import ReportBugButton from "../components/ReportBugButton";
 import { createPortal } from 'react-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
 import { Helmet } from "react-helmet";
@@ -10610,6 +10611,7 @@ export default function DashboardPage() {
       )}
 
     </div>
+    <ReportBugButton context="Dealer Dashboard" userLabel={profile?.full_name || profile?.email || ""} />
     </>
   );
 }
