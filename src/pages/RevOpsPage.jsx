@@ -257,17 +257,13 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
     const fetch = async () => {
       setRevLoading(true);
 
-      const monthStart = startOfMonth();
-
-      // Sold this month
-      const { data: soldThisMonth } = await supabase
-        .from("car_listings")
-        .select(
-          "sold_price, gross_profit, purchase_price, recon_cost, included_services_cost",
-        )
-        .eq("dealer_id", userId)
-        .eq("status", "sold")
-        .gte("sold_date", monthStart);
+      // H6: pull MTD revenue/GP/units from gm_pnl_snapshot (the same RPC
+      // Overview/Oversight use, backed by stock_units) instead of running a
+      // second, independently-computed query against car_listings — the two
+      // tables are synced via triggers but can drift, which previously made
+      // RevOps and Overview disagree on the same month's numbers.
+      const { data: pnl, error: pnlErr } = await supabase.rpc("gm_pnl_snapshot", { p_dealer_id: userId });
+      if (pnlErr) console.error("[RevOps] gm_pnl_snapshot error:", pnlErr.message);
 
       // Active listings for stock turn
       const { count: activeCount } = await supabase
@@ -276,35 +272,18 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
         .eq("dealer_id", userId)
         .neq("status", "sold");
 
-      // Active leads (pipeline value proxy)
+      // Active leads (pipeline value proxy) — exclude every terminal stage variant
       const { count: activeLeads } = await supabase
         .from("leads")
         .select("id", { count: "exact", head: true })
         .eq("dealer_id", userId)
-        .not("stage", "in", "(closed_won,closed_lost)");
-
-      const revMTD = (soldThisMonth || []).reduce(
-        (s, r) => s + (Number(r.sold_price) || 0),
-        0,
-      );
-      const gpMTD = (soldThisMonth || []).reduce((s, r) => {
-        // Use stored gross_profit if available, otherwise compute including services cost
-        const gp =
-          r.gross_profit != null
-            ? Number(r.gross_profit)
-            : (Number(r.sold_price) || 0) -
-              (Number(r.purchase_price) || 0) -
-              (Number(r.recon_cost) || 0) -
-              (Number(r.included_services_cost) || 0);
-        return s + gp;
-      }, 0);
-      const unitsSoldMTD = (soldThisMonth || []).length;
+        .not("stage", "in", "(won,closed_won,lost,closed_lost)");
 
       setRevData({
-        revMTD,
-        gpMTD,
+        revMTD: Number(pnl?.mtd?.revenue) || 0,
+        gpMTD: Number(pnl?.mtd?.gross_profit) || 0,
         activeLeads: activeLeads ?? 0,
-        unitsSoldMTD,
+        unitsSoldMTD: Number(pnl?.mtd?.units) || 0,
         activeCount: activeCount ?? 0,
       });
       setRevLoading(false);
@@ -319,11 +298,12 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
       setLeadLoading(true);
       const since = thirtyDaysAgo();
 
-      const { data: leads } = await supabase
+      const { data: leads, error: leadsErr } = await supabase
         .from("leads")
         .select("id, stage, lead_source, created_at, first_response_at")
         .eq("dealer_id", userId)
         .gte("created_at", since);
+      if (leadsErr) console.error("[RevOps] leads fetch error:", leadsErr.message);
 
       const all = leads || [];
       const total = all.length;
@@ -357,7 +337,8 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
 
       setLeadData({ total, topSources, viewingRate, avgResponseMin });
 
-      const { data: scores } = await supabase.rpc('gm_salesman_scores', { p_dealer_id: userId });
+      const { data: scores, error: scoresErr } = await supabase.rpc('gm_salesman_scores', { p_dealer_id: userId });
+      if (scoresErr) console.error("[RevOps] gm_salesman_scores error:", scoresErr.message);
       setSalesmanScores(
         (scores || [])
           .filter(s => s.avg_response_min != null)
@@ -374,13 +355,14 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
     if (!userId) return;
     const fetch = async () => {
       setStockLoading(true);
-      const { data: units } = await supabase
+      const { data: units, error: unitsErr } = await supabase
         .from("stock_units")
         .select(
           "id, created_at, brand, model, year, asking_price, status, purchase_date",
         )
         .eq("dealer_id", userId)
         .eq("status", "in_stock");
+      if (unitsErr) console.error("[RevOps] stock_units fetch error:", unitsErr.message);
 
       const all = units || [];
       const now = Date.now();
@@ -418,28 +400,34 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
       const monthStart = startOfMonth();
 
       // All deal_products this month
-      const { data: addonRows } = await supabase
+      const { data: addonRows, error: addonErr } = await supabase
         .from("deal_products")
         .select("id, sold_price, lead_id, product_id, dealer_products(name)")
         .eq("dealer_id", userId)
         .gte("created_at", monthStart);
+      if (addonErr) console.error("[RevOps] deal_products fetch error:", addonErr.message);
 
-      // Won leads this month (for attachment rate denominator)
+      // Won leads this month (for attachment rate denominator) — both won variants
       const { count: wonCount } = await supabase
         .from("leads")
         .select("id", { count: "exact", head: true })
         .eq("dealer_id", userId)
-        .in("stage", ["closed_won", "deposit_taken"])
+        .in("stage", ["won", "closed_won"])
         .gte("updated_at", monthStart);
 
       const rows = addonRows || [];
-      const totalRevenue = rows.reduce((s, r) => s + Number(r.sold_price), 0);
+      const totalRevenue = rows.reduce((s, r) => s + (Number(r.sold_price) || 0), 0);
       const uniqueLeads = new Set(
         rows.filter((r) => r.lead_id).map((r) => r.lead_id),
       );
+      // avg per deal: divide revenue from lead-linked add-ons by the number of those
+      // leads, so numerator and denominator cover the same rows
+      const leadLinkedRevenue = rows
+        .filter((r) => r.lead_id)
+        .reduce((s, r) => s + (Number(r.sold_price) || 0), 0);
       const avgPerDeal =
         uniqueLeads.size > 0
-          ? Math.round(totalRevenue / uniqueLeads.size)
+          ? Math.round(leadLinkedRevenue / uniqueLeads.size)
           : null;
       const attachRate =
         wonCount > 0 ? Math.round((uniqueLeads.size / wonCount) * 100) : null;
@@ -534,10 +522,11 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
 
       // Resolve slugs so each top car links to its public listing.
       if (topCars.length > 0) {
-        const { data: slugRows } = await supabase
+        const { data: slugRows, error: slugErr } = await supabase
           .from("public_car_listings")
           .select("id, slug")
           .in("id", topCars.map((c) => c.car_id));
+        if (slugErr) console.error("[RevOps] public_car_listings slug fetch error:", slugErr.message);
         const slugById = Object.fromEntries((slugRows || []).map((r) => [r.id, r.slug]));
         topCars.forEach((c) => { c.slug = slugById[c.car_id] || null; });
       }
@@ -856,7 +845,9 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
                 const mins = s.avg_response_min;
                 const label = mins >= 60 ? `${Math.round(mins / 60)}h` : `${mins}m`;
                 const color = mins > 120 ? '#dc2626' : mins > 30 ? '#d97706' : '#16a34a';
-                const pct = Math.min(100, Math.round((mins / 6217) * 100));
+                // bar width relative to the slowest responder in the set, not a magic constant
+                const maxMins = Math.max(...salesmanScores.map(x => x.avg_response_min || 0), 1);
+                const pct = Math.min(100, Math.round((mins / maxMins) * 100));
                 return (
                   <div key={s.salesman_id || s.name} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontSize: 12, color: '#374151', width: 90, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

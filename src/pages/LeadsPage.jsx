@@ -8,7 +8,7 @@ import LeadDrawer from '../components/leads/LeadDrawer';
 import AddLeadModal from '../components/leads/AddLeadModal';
 import {
   STAGE_ORDER, STAGE_CONFIG, SOURCE_CONFIG,
-  getLeadAgeDays, avatarGradient, getInitials,
+  getLeadAgeDays, avatarGradient, getInitials, canonicalStage,
 } from '../lib/leadsHelpers';
 
 const T = {
@@ -102,7 +102,7 @@ export default function LeadsPage() {
   const byStage = useMemo(() => {
     const map = {};
     STAGE_ORDER.forEach(s => { map[s] = []; });
-    filtered.forEach(l => { if (map[l.stage]) map[l.stage].push(l); });
+    filtered.forEach(l => { const s = canonicalStage(l.stage); if (map[s]) map[s].push(l); });
     return map;
   }, [filtered]);
 

@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../supabaseClient';
+import { getDealerIdFromProfile } from './useProfile';
 
 const SELECT_QUERY = `
   *,
@@ -12,25 +13,46 @@ export function useLeads() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const dealerIdRef = useRef(null);
+
+  // Resolve the dealer_id the same way the rest of the app does — manager/admin
+  // belong to a dealer (profile.dealer_id), dealer/superadmin/owner ARE the dealer
+  // (profile.id). Raw user.id orphans manager/admin-created rows.
+  const resolveDealerId = useCallback(async () => {
+    if (dealerIdRef.current) return dealerIdRef.current;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, role, dealer_id')
+      .eq('id', user.id)
+      .maybeSingle();
+    dealerIdRef.current = getDealerIdFromProfile(profile);
+    return dealerIdRef.current;
+  }, []);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
-    const { data, error: err } = await supabase
+    const dealerId = await resolveDealerId();
+    let query = supabase
       .from('leads')
       .select(SELECT_QUERY)
       .eq('is_deleted', false)
       .order('created_at', { ascending: false });
+    if (dealerId) query = query.eq('dealer_id', dealerId);
+
+    const { data, error: err } = await query;
 
     if (err) { setError(err); setLoading(false); return; }
     setLeads(data || []);
     setLoading(false);
-  }, []);
+  }, [resolveDealerId]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
   const addLead = useCallback(async (payload) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    const row = { ...payload, dealer_id: user.id, stage: 'new' };
+    const dealerId = await resolveDealerId();
+    const row = { stage: 'new', ...payload, dealer_id: dealerId };
     const { data, error: err } = await supabase
       .from('leads')
       .insert(row)
@@ -39,7 +61,7 @@ export function useLeads() {
     const inserted = data?.[0];
     if (inserted) setLeads(prev => [inserted, ...prev]);
     return inserted;
-  }, []);
+  }, [resolveDealerId]);
 
   const updateLeadStage = useCallback(async (id, stage) => {
     const stagePayload = { stage, updated_at: new Date().toISOString() };

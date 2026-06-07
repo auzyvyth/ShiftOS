@@ -131,10 +131,11 @@ function calcInsuranceEst(sum, ncd, vehicleType, cc) {
     gross = (NON_SALOON_RATES.find(t => ccNum <= t.maxCc) || NON_SALOON_RATES.at(-1)).rate;
   } else {
     gross = 26;
+    // Sum-insured bands per the PIAM comprehensive motor tariff (West Malaysia rates).
     const tiers = [
-      { cap: 15000, rate: 0.01615 }, { cap: 15000, rate: 0.01540 },
-      { cap: 25000, rate: 0.01400 }, { cap: 25000, rate: 0.01370 },
-      { cap: 50000, rate: 0.01295 }, { cap: 50000, rate: 0.01250 },
+      { cap: 15000, rate: 0.01615 },
+      { cap: 25000, rate: 0.01400 },
+      { cap: 50000, rate: 0.01295 },
       { cap: Infinity, rate: 0.01220 },
     ];
     let rem = Math.max(0, sum - 1000);
@@ -306,7 +307,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
       dealer_id: lead.dealer_id,
       lead_id: lead.id,
       car_listing_id: lead.car_listing?.id || null,
-      buyer_name: lead.name || null,
+      buyer_name: lead.buyer_name || null,
       buyer_phone: lead.phone || null,
       appointment_date: apptForm.appointment_date,
       booking_type: apptForm.booking_type || 'viewing',
@@ -647,7 +648,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
       setShowLossPanel(true);
       return;
     }
-    if (newStage === 'closed_won') {
+    if (newStage === 'won') {
       setSelectedCloser(lead.salesman_id || lead.assigned_to || '');
       setShowCloseModal(true);
       return;
@@ -658,7 +659,6 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
       .then(updated => {
         if (updated) setLead(updated);
         addActivity({ activity_type: 'stage_changed', from_stage: oldStage, to_stage: newStage }).catch(() => {});
-        if (newStage === 'won') toast.success('Lead marked as Won!');
       })
       .catch(() => {
         setLead(p => ({ ...p, stage: oldStage }));
@@ -670,9 +670,9 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     setCloseSaving(true);
     const oldStage = lead.stage;
     try {
-      const updated = await onUpdate(lead.id, { stage: 'closed_won' });
-      setLead(p => ({ ...p, stage: 'closed_won', ...(updated || {}) }));
-      addActivity({ activity_type: 'stage_changed', from_stage: oldStage, to_stage: 'closed_won' }).catch(() => {});
+      const updated = await onUpdate(lead.id, { stage: 'won' });
+      setLead(p => ({ ...p, stage: 'won', ...(updated || {}) }));
+      addActivity({ activity_type: 'stage_changed', from_stage: oldStage, to_stage: 'won' }).catch(() => {});
 
       if (lead.car_listing_id) {
         const soldAt = new Date().toISOString();
@@ -695,10 +695,10 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
 
         await supabase
           .from('leads')
-          .update({ stage: 'closed_lost' })
+          .update({ stage: 'lost', loss_reason: 'Sold to another buyer' })
           .eq('car_listing_id', lead.car_listing_id)
           .neq('id', lead.id)
-          .not('stage', 'in', '("closed_won","closed_lost","lost")');
+          .not('stage', 'in', '("won","closed_won","lost","closed_lost")');
       }
 
       setShowCloseModal(false);
@@ -1098,7 +1098,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 14, fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>{carLabel}</p>
                     {car.selling_price && <p style={{ fontSize: 13, fontWeight: 700, color: '#dc2626', margin: 0 }}>RM {Number(car.selling_price).toLocaleString()}</p>}
-                    {instalment && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0' }}>Est. RM {instalment.toLocaleString()}/mo</p>}
+                    {instalment && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0' }}>Est. RM {instalment.toLocaleString()}/mo (flat rate)</p>}
                   </div>
                   {car.slug && <a href={`/cars/${car.slug}`} target="_blank" rel="noopener noreferrer" style={{ color: '#9ca3af', flexShrink: 0 }}><ExternalLink style={{ width: 14, height: 14 }} /></a>}
                 </div>
@@ -1140,7 +1140,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
             </div>
 
             {/* ── Deposit / Booking Fee ── */}
-            {(['deposit_taken','won'].includes(lead.stage) || depositAmount !== '') && (
+            {(['deposit_taken','won','closed_won'].includes(lead.stage) || depositAmount !== '') && (
               <div style={{ ...w.section, borderColor: '#99f6e4', background: '#f0fdfa' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                   <p style={{ ...w.label, margin: 0, color: '#0d9488' }}>Deposit / Booking Fee</p>
@@ -1588,7 +1588,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                       {/* Results */}
                       <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 12px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid #f1f3f5' }}>
-                          <span style={{ fontSize: 12, color: '#6b7280' }}>Monthly Instalment</span>
+                          <span style={{ fontSize: 12, color: '#6b7280' }}>Monthly Instalment (flat rate est.)</span>
                           <span style={{ fontSize: 15, fontWeight: 800, color: '#6366f1' }}>RM {Math.round(dealMonthly).toLocaleString()}/mo</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>

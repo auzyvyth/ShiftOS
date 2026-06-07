@@ -2,7 +2,7 @@
 import { Sparkles, Phone, Calendar, MessageSquare, DollarSign, Trophy, XCircle, Car } from 'lucide-react';
 
 export const STAGE_ORDER = [
-  'new', 'contacted', 'viewing_booked', 'negotiating', 'deposit_taken', 'won', 'lost',
+  'new', 'contacted', 'viewing_booked', 'test_drive', 'negotiating', 'deposit_taken', 'won', 'lost',
 ];
 
 export const STAGE_CONFIG = {
@@ -18,6 +18,13 @@ export const STAGE_CONFIG = {
   closed_won:     { label: 'Closed Won',      icon: Trophy,         color: 'text-emerald-600', bg: '#ecfdf5',  border: '#a7f3d0',  headerBorder: '#059669' },
   closed_lost:    { label: 'Closed Lost',     icon: XCircle,        color: 'text-red-600',     bg: '#fef2f2',  border: '#fecaca',  headerBorder: '#dc2626' },
 };
+
+// Legacy stage values that may still exist on old rows — fold them onto the
+// canonical STAGE_ORDER bucket so they don't silently disappear from the board.
+const STAGE_ALIASES = { closed_won: 'won', closed_lost: 'lost' };
+export function canonicalStage(stage) {
+  return STAGE_ALIASES[stage] || stage;
+}
 
 // ─── Loss reasons ──────────────────────────────────────────────────────────────
 
@@ -99,7 +106,8 @@ export function renderWaTemplate(str, lead, car) {
 // ─── Lead source config ────────────────────────────────────────────────────────
 
 export const SOURCE_CONFIG = {
-  drevo_enquiry: { label: 'Enquiry',   bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
+  drevo_enquiry: { label: 'XDrive Enquiry', bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
+  enquiry:       { label: 'General Enquiry', bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
   walk_in:       { label: 'Walk-In',   bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
   mudah:         { label: 'Mudah',     bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
   carlist:       { label: 'Carlist',   bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
@@ -111,6 +119,11 @@ export const SOURCE_CONFIG = {
   other:         { label: 'Other',     bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
   manual:        { label: 'Manual',    bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
 };
+
+// leads.lead_source has a DB CHECK constraint allowing only this set — any
+// other value rejects the whole insert. Forms that create leads must offer
+// only these (SOURCE_CONFIG carries extra display-only aliases for older rows).
+export const LEAD_SOURCE_DB_VALUES = ['walk_in', 'whatsapp', 'referral', 'drevo_enquiry', 'enquiry', 'manual'];
 
 export const INCOME_OPTIONS = [
   'Below RM 1,500',

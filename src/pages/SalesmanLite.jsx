@@ -1364,7 +1364,13 @@ export default function SalesmanLite() {
       setAddLeadSaving(false);
       return;
     }
-    if (data) setLeads((p) => [data, ...p]);
+    if (data) {
+      const linkedCar = data.car_listing_id ? myListings.find((c) => c.id === data.car_listing_id) : null;
+      const enriched = linkedCar
+        ? { ...data, car_listings: { brand: linkedCar.brand, model: linkedCar.model, year: linkedCar.year, selling_price: linkedCar.selling_price } }
+        : data;
+      setLeads((p) => [enriched, ...p]);
+    }
     setAddLeadSaving(false);
     setShowAddLead(false);
     setAddLeadForm({
@@ -3129,17 +3135,21 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       </p>
                       <div style={{ position: "relative", flexShrink: 0 }}>
                         <button
-                          onClick={(e) => { e.stopPropagation(); setStatusMenuCarId(statusMenuCarId === car.id ? null : car.id); }}
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize cursor-pointer ${
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isPending || isRejected) return; // locked until the dealer approves/rejects the listing
+                            setStatusMenuCarId(statusMenuCarId === car.id ? null : car.id);
+                          }}
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize ${isPending || isRejected ? "opacity-50 cursor-not-allowed" : "cursor-pointer"} ${
                             ["available"].includes(car.status || "available") ? "bg-green-500/15 text-green-400 border-green-500/30" :
                             car.status === "reserved" ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" :
                             car.status === "sold" ? "bg-gray-700 text-gray-400 border-gray-600" :
                             "bg-gray-700 text-gray-400 border-gray-600"
                           }`}
                         >
-                          {car.status || "available"} ▾
+                          {car.status || "available"}{!(isPending || isRejected) && " ▾"}
                         </button>
-                        {statusMenuCarId === car.id && (
+                        {!isPending && !isRejected && statusMenuCarId === car.id && (
                           <div
                             onClick={(e) => e.stopPropagation()}
                             style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 50, background: "#1e2433", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, overflow: "hidden", minWidth: 110, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}
@@ -7288,8 +7298,15 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       {testDriveConfirm && (() => {
         const { lead: tdLead, nextStage: tdNext } = testDriveConfirm;
         const car = tdLead.car_listings;
-        const carName = car ? `${car.brand} ${car.model}` : "the car";
+        const carName = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
+        const fullCar = tdLead.car_listing_id ? myListings.find((c) => c.id === tdLead.car_listing_id) : null;
         const dismiss = () => setTestDriveConfirm(null);
+        const viewCar = () => {
+          dismiss();
+          setSelectedCar(fullCar);
+          setCarDetailImgIdx(0);
+          setCarDetailTab("specs");
+        };
         const proceed = () => {
           dismiss();
           advanceLeadStage(tdLead, tdNext, true);
@@ -7304,7 +7321,17 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               {/* icon */}
               <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>🚗</div>
               <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>How did the test drive go?</p>
-              <p style={{ margin: "0 0 24px", fontSize: 13, color: "#6b7280" }}>{tdLead.buyer_name || "Buyer"} · {carName}</p>
+              <p style={{ margin: "0 0 24px", fontSize: 13, color: "#6b7280", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span>{tdLead.buyer_name || "Buyer"} · {carName || "no car linked"}</span>
+                {fullCar && (
+                  <button
+                    onClick={viewCar}
+                    style={{ fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 99, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd", cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    View car
+                  </button>
+                )}
+              </p>
               {/* options */}
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <button

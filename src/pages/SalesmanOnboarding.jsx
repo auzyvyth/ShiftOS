@@ -356,7 +356,7 @@ export default function SalesmanOnboarding() {
         city: form.city || null,
         is_active: true,
         onboarding_complete: true,
-        selected_plan: tier === 'premium' ? 'salesman_full' : 'salesman_lite',
+        plan: tier === 'premium' ? 'salesman_full' : 'salesman_lite',
         pdpa_consent: true,
         pdpa_consent_at: new Date().toISOString(),
         ic_deadline: null,

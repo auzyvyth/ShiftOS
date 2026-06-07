@@ -48,7 +48,7 @@ function fmt(n) {
   return `RM ${v.toLocaleString()}`;
 }
 function delta(val, prev) {
-  if (!prev || prev === 0) return null;
+  if (!prev || prev === 0) return val > 0 ? 100 : null;
   return ((val - prev) / prev) * 100;
 }
 function timeAgo(ts) {
@@ -175,7 +175,9 @@ export default function OverviewTab({ dealerId, onNavigate }) {
           lastActivityByUser[a.created_by] = a.created_at;
       }
 
-      const activeLeads = allLeads.filter(l => !['sold','lost'].includes(l.stage));
+      // Exclude every terminal stage variant; 'sold' was never a lead stage
+      const TERMINAL_STAGES = ['won','closed_won','lost','closed_lost'];
+      const activeLeads = allLeads.filter(l => !TERMINAL_STAGES.includes(l.stage));
       const leadsPerSm  = {};
       const lastLeadTouchSm = {};
       for (const l of allLeads) {
