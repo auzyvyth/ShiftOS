@@ -64,7 +64,7 @@
 
 - [x] **NEW-7: Overdue handover step reminders** — DONE. Same `expiry-reminders` edge function also handles overdue post_sale_tasks: finds pending/in_progress steps where due_date < today, inserts dealer_notifications AND salesman_notifications (if lead has a salesman). 24-hour dedup. Cron runs daily 00:00 UTC.
 
-- [ ] **NEW-8: Fix document email delivery** — BLOCKED ON USER ACTION. `send-document` edge function code is correct and complete. Edge function logs show zero calls to it — it has never been triggered. Root cause: `RESEND_API_KEY` is not set as a Supabase edge function secret. Fix: (1) Set secret in Supabase dashboard → Edge Functions → Secrets: `RESEND_API_KEY=<your key>` and `RESEND_FROM_EMAIL=noreply@xdrive.my`. (2) Verify `xdrive.my` as a sender domain in your Resend dashboard. Once secrets are set, the "Send to buyer" button on issued documents will work immediately.
+- [x] **NEW-8: Fix document email delivery** — DONE. `RESEND_API_KEY` and `RESEND_FROM_EMAIL` (=`documents@xdrive.my`) confirmed set as Supabase Edge Function secrets; `xdrive.my` verified as a sending domain in Resend. The "Send to buyer" button on issued documents should now work end-to-end.
 
 - [x] **NEW-9: Service package tracking** — DONE. `service_packages` table created (dealer_id, customer_id, lead_id, package_name, total_visits, used_visits, valid_months, sold_price, sold_at, expires_at generated column). RLS policy attached. UI in CustomersTab: expand per customer to see packages with visit progress bars; "+ Pkg" inline form; "Log visit" button decrements remaining visits in real-time.
 
