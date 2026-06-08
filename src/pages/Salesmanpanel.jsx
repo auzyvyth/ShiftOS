@@ -8,7 +8,6 @@ import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { usePermissions } from "../hooks/usePermissions";
 import { usePresence } from "../hooks/usePresence";
-import TikTokStudioV3 from "../components/TikTokStudioV3";
 import PostSaleBoard from "../components/postsale/PostSaleBoard";
 import { toast } from "sonner";
 import { generateDealSheet } from "../utils/dealSheet";
@@ -150,7 +149,6 @@ export default function SalesmanPanel() {
  // my listings
  const [myListings, setMyListings] = useState([]);
  const [listingCopied, setListingCopied] = useState({}); // { [carId]: 'link' | 'wa' | null }
- const [tiktokListing, setTiktokListing] = useState(null);
 
  // shared dealer inventory (browse + add to deals)
  const [listingsView, setListingsView] = useState("mine"); // "mine" | "inventory"
@@ -3199,18 +3197,6 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  close();
  },
  )}
- {actionBtn(
- <>
- <Eye size={13} style={{ flexShrink: 0 }} />TikTok Studio
- </>,
- "#f87171",
- "rgba(239,68,68,0.08)",
- "rgba(239,68,68,0.25)",
- () => {
- setTiktokListing(car);
- close();
- },
- )}
 
  {/* CVR stats */}
  <div
@@ -4030,20 +4016,6 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  textAlign: "center",
  }}
  >AI Caption
- </button>
- <button
- onClick={() => setTiktokListing(car)}
- style={{
- fontSize: 10,
- padding: "4px 8px",
- borderRadius: 6,
- background: "rgba(239,68,68,0.1)",
- border: "1px solid rgba(239,68,68,0.25)",
- color: "#f87171",
- cursor: "pointer",
- textAlign: "center",
- }}
- >TikTok
  </button>
  </div>
  </div>
@@ -7757,28 +7729,6 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </>
  )}
  </div>
- </div>
- )}
-
- {/* TikTok Studio modal */}
- {tiktokListing && (
- <div
- style={
- isMobile
-? {
- position: "fixed",
- inset: 0,
- zIndex: 9999,
- overflowY: "auto",
- borderRadius: 0,
- }
- : {}
- }
- >
- <TikTokStudioV3
- listing={tiktokListing}
- onClose={() => setTiktokListing(null)}
- />
  </div>
  )}
 

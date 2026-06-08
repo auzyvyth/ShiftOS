@@ -11,6 +11,7 @@ const PROTECTED = new Set([
   '/api/booking',
   '/api/waitlist',
   '/api/ai-messages',
+  '/api/car-specs',
 ]);
 
 // Per-IP sliding-window limits
@@ -19,6 +20,7 @@ const LIMITS = {
   '/api/booking':    { window: '60 s',  max: 3,  prefix: 'rl:booking' },
   '/api/waitlist':   { window: '300 s', max: 3,  prefix: 'rl:waitlist' },
   '/api/ai-messages':{ window: '60 s',  max: 20, prefix: 'rl:ai' },
+  '/api/car-specs':  { window: '60 s',  max: 30, prefix: 'rl:carspecs' },
 };
 
 let limiters = null;
@@ -71,5 +73,5 @@ export default async function middleware(req) {
 }
 
 export const config = {
-  matcher: ['/api/enquiry', '/api/booking', '/api/waitlist', '/api/ai-messages'],
+  matcher: ['/api/enquiry', '/api/booking', '/api/waitlist', '/api/ai-messages', '/api/car-specs'],
 };

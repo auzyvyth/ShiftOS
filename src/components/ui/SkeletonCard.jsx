@@ -33,18 +33,20 @@ export default function SkeletonCard({ variant = 'dark' }) {
         backgroundSize:  '200% 100%',
         animation:       s,
       }} />
-      {/* Body — matches padding: 11px 13px 13px */}
-      <div style={{ padding: '11px 13px 13px' }}>
-        {/* Name */}
-        <div style={{ height: 13, width: '78%', background: bar, borderRadius: 4, marginBottom: 4, animation: s }} />
-        {/* Sub line */}
-        <div style={{ height: 10, width: '50%', background: bar, borderRadius: 4, marginBottom: 17, animation: s, animationDelay: '0.05s' }} />
+      {/* Body — matches padding: 11px 13px 13px, flex column like cc-body */}
+      <div style={{ padding: '11px 13px 13px', display: 'flex', flexDirection: 'column' }}>
+        {/* Name — h3 fontSize 13 / lineHeight 1.3 / margin 0 0 2px ≈ 19px */}
+        <div style={{ height: 13, width: '78%', background: bar, borderRadius: 4, marginBottom: 6, animation: s }} />
+        {/* Sub line — p height 14 + margin 0 0 9px = 23px */}
+        <div style={{ height: 10, width: '50%', background: bar, borderRadius: 4, marginBottom: 13, animation: s, animationDelay: '0.05s' }} />
         {/* Strikethrough row — 16px reserved */}
         <div style={{ height: 16 }} />
         {/* Main price */}
         <div style={{ height: 22, width: '65%', background: bar, borderRadius: 5, marginBottom: 5, animation: s, animationDelay: '0.07s' }} />
         {/* Monthly pill */}
-        <div style={{ height: 20, width: '55%', background: bar, borderRadius: 20, marginBottom: 10, animation: s, animationDelay: '0.1s' }} />
+        <div style={{ height: 20, width: '55%', background: bar, borderRadius: 20, marginBottom: 0, animation: s, animationDelay: '0.1s' }} />
+        {/* Market price signal pill — marginTop 6 + ~17px pill ≈ 23px reserved (cards almost always show this) */}
+        <div style={{ height: 17, width: '40%', background: bar, borderRadius: 20, marginTop: 6, marginBottom: 10, animation: s, animationDelay: '0.13s' }} />
         {/* 2×2 spec grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', rowGap: 6, columnGap: 8, marginBottom: 10 }}>
           {[0, 1, 2, 3].map(i => (

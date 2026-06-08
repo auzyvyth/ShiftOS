@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   Wallet, Users, Bot, Globe, MessageCircle, ArrowRight, Check,
   ClipboardCheck, Landmark, BellRing, LineChart, ShieldCheck,
@@ -475,6 +475,7 @@ export default function ShiftOSPage() {
   const featRef    = useRef(null);
   const pricingRef = useRef(null);
   const [track, setTrack] = useState("dealer");
+  const location = useLocation();
 
   useEffect(() => {
     const s = document.createElement("style");
@@ -483,6 +484,14 @@ export default function ShiftOSPage() {
     document.title = "ShiftOS — The Dealer Management System for Malaysian Car Dealers";
     return () => { document.head.removeChild(s); };
   }, []);
+
+  useEffect(() => {
+    if (location.hash === "#pricing") {
+      setTimeout(() => pricingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+    } else if (location.hash === "#features") {
+      setTimeout(() => featRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+    }
+  }, [location.hash]);
 
   const scrollTo = useCallback((ref) => {
     ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -511,9 +520,9 @@ export default function ShiftOSPage() {
                 onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "#6b7280")}>Log in</Link>
             </div>
-            <Link to="/dealer-onboarding/starter" className="sos-btn-primary" style={{ fontSize: 13, padding: "9px 18px" }}>
+            <button onClick={() => scrollTo(pricingRef)} className="sos-btn-primary" style={{ fontSize: 13, padding: "9px 18px", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
               Start Free <ArrowRight size={15} />
-            </Link>
+            </button>
           </div>
         </nav>
 
@@ -537,9 +546,9 @@ export default function ShiftOSPage() {
           </Reveal>
           <Reveal delay={220}>
             <div className="sos-cta-btns" style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 28 }}>
-              <Link to="/dealer-onboarding/starter" className="sos-btn-primary" style={{ fontSize: 15, padding: "14px 30px" }}>
+              <button onClick={() => scrollTo(pricingRef)} className="sos-btn-primary" style={{ fontSize: 15, padding: "14px 30px", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
                 Start Free <ArrowRight size={16} />
-              </Link>
+              </button>
               <a href={WA} target="_blank" rel="noopener noreferrer" className="sos-btn-outline" style={{ fontSize: 15, padding: "14px 30px" }}>
                 <MessageCircle size={16} /> Talk to Us
               </a>
@@ -700,9 +709,9 @@ export default function ShiftOSPage() {
                 Join the dealers running leaner, selling more, and finally knowing their real numbers.
               </p>
               <div className="sos-cta-btns" style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-                <Link to="/dealer-onboarding/starter" className="sos-btn-primary" style={{ fontSize: 15, padding: "15px 34px" }}>
+                <button onClick={() => scrollTo(pricingRef)} className="sos-btn-primary" style={{ fontSize: 15, padding: "15px 34px", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
                   Start Free <ArrowRight size={16} />
-                </Link>
+                </button>
                 <a href={WA} target="_blank" rel="noopener noreferrer" className="sos-btn-outline" style={{ fontSize: 15, padding: "15px 34px" }}>
                   <MessageCircle size={16} /> WhatsApp Us
                 </a>

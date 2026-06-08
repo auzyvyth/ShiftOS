@@ -753,7 +753,7 @@ export default function CarDetailPage() {
   function handleEnquirySubmit() {
     // Open WhatsApp immediately — must happen synchronously in the click handler
     // before any await, otherwise popup blockers will intercept window.open.
-    const message = `Hi, I'm ${enquiryForm.name}. I'm interested in the ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""} listed at RM ${car.selling_price?.toLocaleString()}. My number is ${enquiryForm.phone}.`;
+    const message = `Hi, I'm ${enquiryForm.name}. I'm interested in the ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""} listed at RM ${car.selling_price?.toLocaleString()}.`;
     window.open(buildWaUrl(ctaCtx, contactPhone, message), "_blank");
     setShowEnquiryModal(false);
     setEnquiryForm({ name: "", phone: "", state: "" });

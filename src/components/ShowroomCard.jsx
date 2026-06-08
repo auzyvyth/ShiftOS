@@ -245,8 +245,9 @@ export function ShowroomCardSkeleton() {
         {/* Row 2: name — 2 lines */}
         <div style={bar({ height: 13, width: '82%', borderRadius: 4, marginBottom: 5, animationDelay: '0.05s' })} />
         <div style={bar({ height: 13, width: '58%', borderRadius: 4, marginBottom: 6, animationDelay: '0.07s' })} />
-        {/* Row 3: spec line */}
-        <div style={bar({ height: 10, width: '90%', borderRadius: 4, animationDelay: '0.1s' })} />
+        {/* Row 3: spec line — clamps to 2 lines on the real card, reserve the same */}
+        <div style={bar({ height: 10, width: '90%', borderRadius: 4, marginBottom: 4, animationDelay: '0.1s' })} />
+        <div style={bar({ height: 10, width: '60%', borderRadius: 4, marginBottom: 6, animationDelay: '0.12s' })} />
         <div style={{ flex: 1 }} />
         {/* Row 4: compare button */}
         <div style={bar({ height: 22, width: 78, borderRadius: 7, marginBottom: 5, animationDelay: '0.1s' })} />

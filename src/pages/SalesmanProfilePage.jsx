@@ -83,8 +83,9 @@ export default function SalesmanProfilePage() {
   }, [profile?.bio, bioExpanded]);
 
   const waPhone = (profile?.whatsapp_number || '').replace(/\D/g, '');
-  const waHref = waPhone ? `https://wa.me/${waPhone.startsWith('6') ? waPhone : '6' + waPhone}` : null;
   const firstName = (profile?.full_name || 'Agent').split(' ')[0];
+  const waMessage = `Hi ${firstName}, I came across your listings on ShiftOS and would like to know more.`;
+  const waHref = waPhone ? `https://wa.me/${waPhone.startsWith('6') ? waPhone : '6' + waPhone}?text=${encodeURIComponent(waMessage)}` : null;
   const isVerified = !!(profile?.is_verified);
   const locationCity = profile?.city || dealer?.city;
   const locationState = profile?.state || dealer?.state;

@@ -66,6 +66,11 @@ const SERVER_URL = import.meta.env.VITE_API_URL || "";
 const AI_MESSAGES_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/ai/messages` : '/api/ai-messages';
 const AI_LIMIT = 100;
 
+async function getAIAuthHeaders() {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+}
+
 const FORMATS = [
   {
     id: "9:16",
@@ -480,7 +485,7 @@ async function applyAICommand(command, elements, theme, selectedElementId) {
   const system = `You are a canvas design AI for TikTok car listing slides. Canvas is 1080x1920px. Return ONLY valid JSON: {"elements":[only changed elements with id + changed fields],"theme":{only changed theme fields}}. Never return unchanged items. x:0-1080, y:0-1920, fontSize:20-200.`;
   const res = await fetch(AI_MESSAGES_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(await getAIAuthHeaders()) },
     body: JSON.stringify({
       model: "claude-sonnet-4-6",
       max_tokens: 800,
@@ -522,7 +527,7 @@ ${hookText ? 'Hook: "' + hookText + '"' : ""} | Language: ${lang}
 Return ONLY JSON array: [{"hookText":"max 6 words ALL CAPS","headline":"full car title"}]`;
   const res = await fetch(AI_MESSAGES_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(await getAIAuthHeaders()) },
     body: JSON.stringify({
       model: "claude-sonnet-4-6",
       max_tokens: 1000,

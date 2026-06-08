@@ -61,7 +61,10 @@ export default function PostSaleBoard({ dealerId, salesmanId = null }) {
     return () => { cancelled = true; };
   }, [dealerId, salesmanId]);
 
-  if (loading) return <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', padding: 16 }}>Loading sold deals…</p>;
+  // Light panel — matches the dashboard shell (white cards, dark text).
+  const PANEL = { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 16, padding: 'clamp(12px, 3vw, 18px)' };
+
+  if (loading) return <div style={PANEL}><p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>Loading sold deals…</p></div>;
 
   const visible = (hideDone ? deals.filter((d) => progressMap[d.id] !== 100) : deals)
     .slice()
@@ -79,7 +82,7 @@ export default function PostSaleBoard({ dealerId, salesmanId = null }) {
 
   if (deals.length === 0) {
     return (
-      <div style={{ padding: 32, textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>
+      <div style={{ ...PANEL, textAlign: 'center', color: '#6b7280' }}>
         <Car size={28} style={{ opacity: 0.4, marginBottom: 8 }} />
         <p style={{ fontSize: 13, margin: 0 }}>No sold deals yet. Won deals show up here for handover processing.</p>
       </div>
@@ -87,24 +90,24 @@ export default function PostSaleBoard({ dealerId, salesmanId = null }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ ...PANEL, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: 0 }}>
+          <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>
             {deals.filter((d) => progressMap[d.id] !== 100).length} in processing
           </p>
           {overdueCount > 0 && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#f87171', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 8, padding: '3px 9px' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#dc2626', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '3px 9px' }}>
               <AlertTriangle size={12} />{overdueCount} overdue
             </span>
           )}
           {doneCount > 0 && (
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#4ade80', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 8, padding: '3px 9px' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#059669', background: 'rgba(5,150,105,0.08)', border: '1px solid rgba(5,150,105,0.2)', borderRadius: 8, padding: '3px 9px' }}>
               {doneCount} completed
             </span>
           )}
         </div>
-        <button onClick={() => setHideDone((v) => !v)} style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.6)', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '5px 10px', cursor: 'pointer' }}>
+        <button onClick={() => setHideDone((v) => !v)} style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8, padding: '5px 10px', cursor: 'pointer' }}>
           {hideDone ? 'Show completed' : 'Hide completed'}
         </button>
       </div>
@@ -116,18 +119,18 @@ export default function PostSaleBoard({ dealerId, salesmanId = null }) {
         const isOpen = open === d.id;
         const done = prog === 100;
         const age = daysSince(d.updated_at);
-        const slaColor = done ? '#4ade80' : age > SLA_BREACH_DAYS ? '#f87171' : age >= SLA_WARN_DAYS ? '#fbbf24' : 'rgba(255,255,255,0.45)';
+        const slaColor = done ? '#059669' : age > SLA_BREACH_DAYS ? '#dc2626' : age >= SLA_WARN_DAYS ? '#d97706' : '#9ca3af';
         const blocker = done ? null : nextBlocker(tasksMap[d.id]);
         return (
-          <div key={d.id} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, overflow: 'hidden' }}>
+          <div key={d.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
             <button
               onClick={() => setOpen(isOpen ? null : d.id)}
               style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
             >
-              {isOpen ? <ChevronDown size={16} color="rgba(255,255,255,0.5)" /> : <ChevronRight size={16} color="rgba(255,255,255,0.5)" />}
+              {isOpen ? <ChevronDown size={16} color="#9ca3af" /> : <ChevronRight size={16} color="#9ca3af" />}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 14, fontWeight: 700, color: '#f1f5f9', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.buyer_name || 'Buyer'}</p>
-                <p style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <p style={{ fontSize: 14, fontWeight: 700, color: '#111827', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.buyer_name || 'Buyer'}</p>
+                <p style={{ fontSize: 11.5, color: '#6b7280', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {carLabel}{d.salesman_profile?.full_name ? ` · ${d.salesman_profile.full_name.split(' ')[0]}` : ''}
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '5px 0 0', flexWrap: 'wrap' }}>
@@ -138,27 +141,27 @@ export default function PostSaleBoard({ dealerId, salesmanId = null }) {
                     </span>
                   )}
                   {blocker && (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 600, color: '#cbd5e1', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '1px 7px', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      Next: {blocker.label}<span style={{ color: 'rgba(255,255,255,0.4)' }}> · {blocker.owner}</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 600, color: '#374151', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 6, padding: '1px 7px', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      Next: {blocker.label}<span style={{ color: '#9ca3af' }}> · {blocker.owner}</span>
                     </span>
                   )}
                 </div>
               </div>
               {done ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#4ade80', flexShrink: 0 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#059669', flexShrink: 0 }}>
                   <CheckCircle2 size={14} /> Done
                 </span>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, width: 90 }}>
-                  <div style={{ flex: 1, height: 5, borderRadius: 99, background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                  <div style={{ flex: 1, height: 5, borderRadius: 99, background: '#e5e7eb', overflow: 'hidden' }}>
                     <div style={{ width: `${prog < 0 ? 0 : prog}%`, height: '100%', background: '#dc2626' }} />
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)', minWidth: 30, textAlign: 'right' }}>{prog < 0 ? '–' : `${prog}%`}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', minWidth: 30, textAlign: 'right' }}>{prog < 0 ? '–' : `${prog}%`}</span>
                 </div>
               )}
             </button>
             {isOpen && (
-              <div style={{ padding: '0 14px 14px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ padding: '0 14px 14px', borderTop: '1px solid #f3f4f6' }}>
                 <div style={{ paddingTop: 12 }}>
                   <PostSaleChecklist lead={d} />
                 </div>

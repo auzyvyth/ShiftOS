@@ -12,6 +12,19 @@ export function usePostSaleTasks(lead) {
   const load = useCallback(async () => {
     if (!leadId) return;
     setLoading(true);
+
+    // Is the car clean-title (no outstanding loan)? If so the loan-settlement
+    // step doesn't apply and should be auto-marked N/A.
+    let encumbranceClear = false;
+    if (lead?.car_listing_id) {
+      const { data: su } = await supabase
+        .from('stock_units')
+        .select('encumbrance_status')
+        .eq('listing_id', lead.car_listing_id)
+        .maybeSingle();
+      encumbranceClear = su?.encumbrance_status === 'clear';
+    }
+
     const { data } = await supabase
       .from('post_sale_tasks')
       .select('*')
@@ -19,13 +32,20 @@ export function usePostSaleTasks(lead) {
       .order('sort_order', { ascending: true });
 
     if (data && data.length > 0) {
+      // Reconcile a clean-title car whose loan-settlement step was seeded 'pending'
+      // by the DB trigger (which doesn't see encumbrance) — flip it to N/A once.
+      const loanStep = data.find((t) => t.step_key === 'loan_settlement');
+      if (encumbranceClear && loanStep && loanStep.status === 'pending') {
+        await supabase.from('post_sale_tasks').update({ status: 'na' }).eq('id', loanStep.id);
+        loanStep.status = 'na';
+      }
       setTasks(data);
       setLoading(false);
       return;
     }
 
     // No tasks yet — seed the default checklist for this deal.
-    const rows = defaultTasksFor(lead).map((t) => ({
+    const rows = defaultTasksFor(lead, { encumbranceClear }).map((t) => ({
       ...t,
       dealer_id: lead.dealer_id,
       lead_id: leadId,

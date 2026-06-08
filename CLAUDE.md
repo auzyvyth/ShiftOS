@@ -149,12 +149,16 @@ Both displayed in separate labelled sections in the P&L modal.
 - leads.lead_source CHECK only allows: walk_in, whatsapp, referral, drevo_enquiry, enquiry, manual — any other value rejects the whole insert
 - After adding any policy, test it with a real row read before shipping
 
+## Theme — know which surface you're on
+- The DEALER DASHBOARD is LIGHT: white cards (#fff), border #e5e7eb, primary text #111827, secondary #6b7280, accent #dc2626. Any panel embedded in the dealer dashboard (incl. handover/PostSaleBoard, CRM bookings) MUST be light to match — do NOT force a dark wrapper on it.
+- The #080C14 / dark background applies to the PUBLIC marketplace + marketing surfaces (HomePage, hero, public car pages), NOT the dealer dashboard.
+- On dark surfaces only: use white/light text (rgba(255,255,255,x)); on the light dealer dashboard use dark text (#111827 / #6b7280 / rgba(0,0,0,x)).
+
 ## Mobile-first requirement
 - Every UI change must be mobile-friendly — test at 375px width before considering done
-- Dashboard background is #080C14 — never use white/light text colors without a dark background wrapper
 - Sidebar/panel layouts: use `hidden md:block` for desktop sidebar, horizontal scrolling pill nav for mobile
 - Fixed pixel widths on layout containers are banned — use flex/grid with minWidth: 0 on flex children
-- Inline style colors for text must account for the dark background: use rgba(255,255,255,x) not rgba(0,0,0,x)
+- Match the text color to the surface (see Theme section above) — never light text on a light card
 
 ## Prompt discipline
 - Never write more than 80 lines of instructions per prompt

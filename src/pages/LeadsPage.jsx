@@ -3,12 +3,11 @@ import { toast } from 'sonner';
 import { Plus, Search, X, Inbox } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useLeads } from '../hooks/useLeads';
-import LeadCard from '../components/leads/LeadCard';
+import LeadGridCard from '../components/leads/LeadGridCard';
 import LeadDrawer from '../components/leads/LeadDrawer';
 import AddLeadModal from '../components/leads/AddLeadModal';
 import {
-  STAGE_ORDER, STAGE_CONFIG, SOURCE_CONFIG,
-  getLeadAgeDays, avatarGradient, getInitials, canonicalStage,
+  STAGE_ORDER, STAGE_CONFIG, SOURCE_CONFIG, canonicalStage,
 } from '../lib/leadsHelpers';
 
 const T = {
@@ -34,23 +33,50 @@ function EmptyState({ onAdd }) {
   );
 }
 
-// ─── Stage section header (sticky) ───────────────────────────────────────────
-function StageSectionHeader({ stage, count }) {
-  const cfg = STAGE_CONFIG[stage];
+// Pipeline stages shown as grid columns (legacy test_drive added only if populated).
+const GRID_STAGES = ['new', 'contacted', 'viewing_booked', 'negotiating', 'deposit_taken', 'won', 'lost'];
+
+// ─── Stage column (header + internally-scrollable lead list) ──────────────────
+function StageColumn({ stage, leads, onOpen, solo }) {
+  const cfg = STAGE_CONFIG[stage] || STAGE_CONFIG.new;
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 8,
-      padding: '10px 16px 8px',
-      background: '#f9fafb',
-      borderBottom: '1px solid #f1f3f5',
-      borderTop: '1px solid #f1f3f5',
-      position: 'sticky', top: 0, zIndex: 10,
+      display: 'flex', flexDirection: 'column', minWidth: 0,
+      background: '#f4f5f7', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden',
     }}>
-      <div style={{ width: 7, height: 7, borderRadius: '50%', background: cfg.headerBorder, flexShrink: 0 }} />
-      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: cfg.headerBorder }}>
-        {cfg.label}
-      </span>
-      <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>{count}</span>
+      {/* Column header */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 7,
+        padding: '9px 12px',
+        background: '#fff', borderBottom: `2px solid ${cfg.headerBorder}`,
+      }}>
+        <div style={{ width: 8, height: 8, borderRadius: '50%', background: cfg.headerBorder, flexShrink: 0 }} />
+        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: cfg.headerBorder }}>
+          {cfg.label}
+        </span>
+        <span style={{
+          marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#6b7280',
+          background: '#f3f4f6', borderRadius: 20, padding: '1px 8px', minWidth: 22, textAlign: 'center',
+        }}>
+          {leads.length}
+        </span>
+      </div>
+
+      {/* Scrollable lead list — sized to show ~5-6 cards, scroll for more */}
+      <div className="lp-col-body" style={{
+        display: 'flex', flexDirection: 'column', gap: 8,
+        padding: 8,
+        maxHeight: solo ? 'calc(100vh - 230px)' : 480,
+        overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch',
+      }}>
+        {leads.length === 0 ? (
+          <div style={{ padding: '24px 8px', textAlign: 'center', color: '#b0b6bf', fontSize: 11.5 }}>
+            No leads here
+          </div>
+        ) : (
+          leads.map(lead => <LeadGridCard key={lead.id} lead={lead} onOpen={onOpen} />)
+        )}
+      </div>
     </div>
   );
 }
@@ -112,10 +138,12 @@ export default function LeadsPage() {
     return counts;
   }, [filtered, byStage]);
 
-  const visibleLeads = useMemo(() => {
-    if (activeStage === 'all') return filtered;
-    return byStage[activeStage] || [];
-  }, [activeStage, filtered, byStage]);
+  // Columns to render in the grid: core pipeline stages always, plus any legacy
+  // stage (e.g. test_drive) that still has leads so none silently disappear.
+  const gridStages = useMemo(() => {
+    const legacy = STAGE_ORDER.filter(s => !GRID_STAGES.includes(s) && (byStage[s]?.length > 0));
+    return STAGE_ORDER.filter(s => GRID_STAGES.includes(s) || legacy.includes(s));
+  }, [byStage]);
 
   async function handleAddLead(payload) {
     const lead = await addLead(payload);
@@ -148,6 +176,12 @@ export default function LeadsPage() {
       <style>{`
         .lp-filter-bar::-webkit-scrollbar { display: none; }
         .lp-stage-tabs::-webkit-scrollbar { display: none; }
+        .lp-col-body::-webkit-scrollbar { width: 6px; }
+        .lp-col-body::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+        .lp-col-body::-webkit-scrollbar-track { background: transparent; }
+        .lp-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        @media (min-width: 640px)  { .lp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (min-width: 1024px) { .lp-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
         @media (max-width: 480px) {
           .lp-src-select { display: none !important; }
           .lp-assigned-select { display: none !important; }
@@ -253,30 +287,15 @@ export default function LeadsPage() {
         <EmptyState onAdd={() => setShowAdd(true)} />
       ) : (
         <div className="flex-1 overflow-y-auto overscroll-contain" style={{ background: '#f3f4f6', WebkitOverflowScrolling: 'touch' }}>
-          <div style={{ margin: '8px 0 0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb', paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}>
+          <div className="lp-grid" style={{ padding: 12, paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}>
             {activeStage === 'all' ? (
-              STAGE_ORDER.map(stage => {
-                const stageLeads = byStage[stage] || [];
-                if (stageLeads.length === 0) return null;
-                return (
-                  <div key={stage}>
-                    <StageSectionHeader stage={stage} count={stageLeads.length} />
-                    {stageLeads.map(lead => (
-                      <LeadCard key={lead.id} lead={lead} onOpen={setOpenLead} />
-                    ))}
-                  </div>
-                );
-              })
+              gridStages.map(stage => (
+                <StageColumn key={stage} stage={stage} leads={byStage[stage] || []} onOpen={setOpenLead} />
+              ))
             ) : (
-              visibleLeads.length === 0 ? (
-                <div style={{ background: '#fff', padding: '48px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <p style={{ color: '#9ca3af', fontSize: 13 }}>No leads in this stage.</p>
-                </div>
-              ) : (
-                visibleLeads.map(lead => (
-                  <LeadCard key={lead.id} lead={lead} onOpen={setOpenLead} />
-                ))
-              )
+              <div style={{ gridColumn: '1 / -1' }}>
+                <StageColumn stage={activeStage} leads={byStage[activeStage] || []} onOpen={setOpenLead} solo />
+              </div>
             )}
           </div>
         </div>

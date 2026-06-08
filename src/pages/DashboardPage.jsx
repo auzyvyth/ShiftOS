@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback, startTransition, Component } from "react";
 import DOMPurify from "dompurify";
 import SuspendedBanner from "../components/SuspendedBanner";
+import ReportBugButton from "../components/ReportBugButton";
 import { createPortal } from 'react-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
 import { Helmet } from "react-helmet";
@@ -68,7 +69,6 @@ function SubTabBar({ tabs, active, onChange }) {
 const CarForm          = React.lazy(() => import("../components/CarForm"));
 const AddCarForm       = React.lazy(() => import("../components/AddCarForm"));
 const CarFormFast      = React.lazy(() => import("../components/CarFormFast"));
-const TikTokStudioV3   = React.lazy(() => import("../components/TikTokStudioV3"));
 const FinancingCalculator = React.lazy(() => import("../components/FinancingCalculator"));
 const LeadsPage        = React.lazy(() => import("./LeadsPage"));
 const CRMPanel         = React.lazy(() => import("./CRMPanel"));
@@ -108,7 +108,6 @@ import {
   UserPlus,
   ToggleLeft,
   ToggleRight,
-  Video,
   Tag,
   Flame,
   BarChart2,
@@ -2698,9 +2697,16 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
         ...messages.map((m) => ({ role: m.role, content: m.content })),
         { role: "user", content: msg },
       ];
-      const res = await fetch(`${SERVER_URL}/ai/messages`, {
+      const { data: { session } } = await supabase.auth.getSession();
+      const AI_PROXY = import.meta.env.VITE_API_URL
+        ? `${import.meta.env.VITE_API_URL}/ai/messages`
+        : "/api/ai-messages";
+      const res = await fetch(AI_PROXY, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1000,
@@ -3345,6 +3351,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
           );
         })()}
       </div>
+      {profile?.plan === "dealer_pro" && (
       <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
         <button
           onClick={() => setChatOpen((v) => !v)}
@@ -3457,6 +3464,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
@@ -3798,6 +3806,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const [msgText, setMsgText] = useState('');
   const [msgSending, setMsgSending] = useState(false);
   const [msgDone, setMsgDone] = useState(false);
+  const msgDoneTimer = useRef(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("+60");
@@ -4667,10 +4676,11 @@ function TeamTab({ managerDealership, dealerId, profile }) {
           }));
           const { error } = await supabase.from('salesman_notifications').insert(inserts);
           setMsgSending(false);
-          if (error) { alert('Failed to send: ' + error.message); return; }
+          if (error) { toast.error('Failed to send: ' + error.message); return; }
           setMsgDone(true);
           setMsgText('');
-          setTimeout(() => setMsgDone(false), 3000);
+          if (msgDoneTimer.current) clearTimeout(msgDoneTimer.current);
+          msgDoneTimer.current = setTimeout(() => setMsgDone(false), 3000);
         };
         return (
           <div className="rounded-xl overflow-hidden" style={T.cardDark}>
@@ -4755,7 +4765,9 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                   border: 'none', transition: 'all 0.15s',
                   ...(msgDone
                     ? { background: '#ecfdf5', color: '#15803d', border: '1px solid #86efac' }
-                    : { ...T.btnRed, opacity: (!msgText.trim() || recipients.length === 0) ? 0.4 : 1 }),
+                    : (!msgText.trim() || recipients.length === 0)
+                      ? { background: '#f3f4f6', color: '#9ca3af', border: '1px solid #e5e7eb', cursor: 'not-allowed' }
+                      : T.btnRed),
                 }}
               >
                 {msgDone ? (
@@ -5122,7 +5134,7 @@ function DrawerDamageMap({ damageMap }) {
 
 function ListingDetailDrawer({
   listing, salesmen, salesmenById, onClose, onUpdate, onDelete,
-  setEditListing, setTiktokListing, setPriceEditListing, setMarkSoldListing,
+  setEditListing, setPriceEditListing, setMarkSoldListing,
   setDeleteId, copyListing, copiedListingId, handleAssign, handleUnassign,
   handleStatus, updatingStatus, getListingAge,
 }) {
@@ -5375,11 +5387,6 @@ function ListingDetailDrawer({
                 {/* Edit */}
                 <button onClick={() => { setEditListing(listing); }} style={{ ...btnBase, border: '1px solid rgba(56,189,248,0.25)', color: '#64b4ff' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
                   <Pencil style={{ width: 14, height: 14, flexShrink: 0 }} />Edit Listing
-                </button>
-
-                {/* TikTok */}
-                <button onClick={() => setTiktokListing(listing)} style={{ ...btnBase, border: '1px solid rgba(255,100,100,0.25)', color: '#ff6b6b' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
-                  <Video style={{ width: 14, height: 14, flexShrink: 0 }} />ShiftOS Studio
                 </button>
 
                 {/* Price */}
@@ -5638,6 +5645,9 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
 
   const totalGP = thisMonth.reduce((s, u) => s + (grossProfit(u) || 0), 0);
   const totalValue = activeUnits.reduce((s, u) => s + (Number(u.asking_price) || 0), 0);
+  // Revenue = realised sale price across all sold units (fall back to asking if a
+  // pipeline-close didn't stamp a sold_price).
+  const soldRevenue = soldUnits.reduce((s, u) => s + (Number(u.sold_price) || Number(u.asking_price) || 0), 0);
   const unitsWithDays = activeUnits.filter(u => typeof daysInStock(u) === 'number');
   const avgDays = unitsWithDays.length
     ? Math.round(unitsWithDays.reduce((s, u) => s + daysInStock(u), 0) / unitsWithDays.length)
@@ -6064,7 +6074,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
   };
 
   const summaryCards = [
-    { label: 'Total Units',          val: activeUnits.length,                  Icon: Package,       glow: 'rgba(103,232,249,0.13)',                                           grad: 'grad-cyan'                                                          },
+    { label: 'Revenue (sold)',       val: `RM ${soldRevenue.toLocaleString()}`, Icon: Banknote,     glow: 'rgba(110,231,183,0.13)',                                           grad: soldRevenue > 0 ? 'grad-green' : 'grad-cyan'                          },
     { label: 'Stock Value',          val: `RM ${totalValue.toLocaleString()}`,  Icon: Banknote,      glow: 'rgba(251,191,36,0.13)',                                            grad: 'grad-red'                                                           },
     { label: 'Avg Days in Stock',    val: avgDays,                              Icon: Clock,         glow: 'rgba(167,139,250,0.13)',                                           grad: avgDays > 60 ? 'grad-red' : avgDays > 30 ? 'grad-gold' : 'grad-purple' },
     { label: 'Gross Profit (month)', val: `RM ${totalGP.toLocaleString()}`,     Icon: TrendingUp,    glow: 'rgba(110,231,183,0.13)',                                           grad: totalGP > 0 ? 'grad-green' : 'grad-white', spark: gpSparkData, sparkColor: '#34d399' },
@@ -7027,12 +7037,15 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
         body: JSON.stringify({ doc_id: doc.id, dealer_id: userId }),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) { toast.error(body.error || 'Failed to send email'); }
-      else {
+      if (!res.ok) {
+        // Surface the real server error (e.g. "Email service not configured")
+        // instead of masking everything as a generic network failure.
+        toast.error(body.error || `Failed to send email (status ${res.status})`);
+      } else {
         toast.success(`Document emailed to ${doc.buyer_email}`);
         setDocuments(p => p.map(d => d.id === doc.id ? { ...d, email_sent_at: new Date().toISOString() } : d));
       }
-    } catch { toast.error('Network error — could not send email'); }
+    } catch (e) { toast.error(`Couldn't reach the email service${e?.message ? ` (${e.message})` : ''} — try again`); }
     setEmailSendingId(null);
   };
 
@@ -7823,6 +7836,7 @@ function OutreachHub({ dealerId, listings }) {
   const [template, setTemplate]   = useState('followup');
   const [sentToday, setSentToday] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [draft, setDraft]         = useState('');   // editable message preview
 
   useEffect(() => {
     if (!dealerId) return;
@@ -7894,6 +7908,14 @@ function OutreachHub({ dealerId, listings }) {
       gen: e => `Hi ${(e.buyer_name || 'there').split(' ')[0]}! ⏰\n\nQuick heads-up: the ${e.listing?.brand || ''} ${e.listing?.model || ''} is getting a lot of interest lately.\n\nIf you're still considering it, now's the time! I can hold it for 24h with a small deposit.\n\nLet me know! 🚗`,
     },
   };
+
+  // Seed the editable preview whenever the selected lead or template changes.
+  // The dealer can then tweak the text inline before opening WhatsApp.
+  useEffect(() => {
+    if (selected) setDraft(TEMPLATES[template]?.gen(selected) || '');
+    else setDraft('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, template]);
 
   const urgencyColor = { critical:'#ef4444', high:'#f97316', medium:'#fbbf24', low:'#a3e635', warm:'#60a5fa', cold:'#94a3b8' };
 
@@ -8002,7 +8024,7 @@ function OutreachHub({ dealerId, listings }) {
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:4, marginBottom:2 }}>
-                      <span style={{ fontSize:13, fontWeight:600, color:'#f9fafb', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.buyer_name || 'Unknown'}</span>
+                      <span style={{ fontSize:13, fontWeight:600, color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.buyer_name || 'Unknown'}</span>
                       <span style={{ fontSize:9, fontWeight:700, color:uc, flexShrink:0, padding:'1px 6px', background:`${uc}14`, borderRadius:4 }}>{fmtAge(lead)}</span>
                     </div>
                     <span style={{ fontSize:11, color:'#4b5563', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'block' }}>
@@ -8060,7 +8082,7 @@ function OutreachHub({ dealerId, listings }) {
                 {selected.listing && (
                   <div style={{ textAlign:'right', flexShrink:0 }}>
                     <p style={{ fontSize:11, color:'#60a5fa', marginBottom:1 }}>{selected.listing.brand} {selected.listing.model}</p>
-                    {selected.listing.selling_price && <p style={{ fontSize:13, fontWeight:700, color:'white' }}>RM {selected.listing.selling_price.toLocaleString()}</p>}
+                    {selected.listing.selling_price && <p style={{ fontSize:13, fontWeight:700, color:'#111827' }}>RM {selected.listing.selling_price.toLocaleString()}</p>}
                   </div>
                 )}
               </div>
@@ -8087,19 +8109,30 @@ function OutreachHub({ dealerId, listings }) {
                 </div>
               </div>
 
-              {/* Message preview */}
+              {/* Message preview — editable so dealers can tweak before sending */}
               <div style={{ flex:1 }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-                  <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.14em', color:'#374151', fontWeight:700 }}>Preview</p>
-                  <span style={{ fontSize:10, background:'#f0fdf4', border:'1px solid #86efac', borderRadius:5, padding:'2px 8px', color:'#15803d', fontWeight:600 }}>WhatsApp</span>
+                  <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.14em', color:'#374151', fontWeight:700 }}>Preview · editable</p>
+                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    {draft !== (TEMPLATES[template]?.gen(selected) || '') && (
+                      <button onClick={() => setDraft(TEMPLATES[template]?.gen(selected) || '')}
+                        style={{ fontSize:10, background:'none', border:'none', color:'#6b7280', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", textDecoration:'underline', padding:0 }}>
+                        Reset
+                      </button>
+                    )}
+                    <span style={{ fontSize:10, background:'#f0fdf4', border:'1px solid #86efac', borderRadius:5, padding:'2px 8px', color:'#15803d', fontWeight:600 }}>WhatsApp</span>
+                  </div>
                 </div>
-                <div style={{ background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:10, padding:'14px 16px', minHeight:120, maxHeight:200, overflowY:'auto' }}>
-                  <p style={{ fontSize:13, color:'#94a3b8', lineHeight:1.75, whiteSpace:'pre-wrap' }}>{TEMPLATES[template]?.gen(selected)}</p>
-                </div>
+                <textarea
+                  value={draft}
+                  onChange={e => setDraft(e.target.value)}
+                  rows={6}
+                  style={{ width:'100%', boxSizing:'border-box', background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:10, padding:'14px 16px', minHeight:120, maxHeight:240, fontSize:13, color:'#1f2937', lineHeight:1.75, fontFamily:"'DM Sans',sans-serif", resize:'vertical', outline:'none' }}
+                />
               </div>
 
               {/* Send */}
-              <button onClick={() => openWA(selected, TEMPLATES[template].gen(selected))} className="btn-shimmer"
+              <button onClick={() => openWA(selected, draft || TEMPLATES[template].gen(selected))} className="btn-shimmer"
                 style={{ width:'100%', padding:'14px', borderRadius:12, background:'linear-gradient(135deg,#22c55e,#16a34a)', border:'none', boxShadow:'0 4px 20px rgba(34,197,94,0.3)', color:'white', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
                 <MessageCircle size={16} /> Open WhatsApp — {(selected.buyer_name || 'Lead').split(' ')[0]}
               </button>
@@ -8126,7 +8159,7 @@ function OutreachHub({ dealerId, listings }) {
             {Object.entries(TEMPLATES).map(([k, t]) => <option key={k} value={k} style={{ background:'#fff' }}>{t.icon} {t.label}</option>)}
           </select>
           <button onClick={launchCampaign}
-            style={{ padding:'9px 20px', borderRadius:9, background:'rgba(167,139,250,0.18)', border:'1px solid rgba(167,139,250,0.35)', color:'#c4b5fd', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', gap:7, whiteSpace:'nowrap', transition:'all 0.15s' }}
+            style={{ padding:'9px 20px', borderRadius:9, background:'rgba(167,139,250,0.18)', border:'1px solid rgba(167,139,250,0.35)', color:'#6d28d9', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', gap:7, whiteSpace:'nowrap', transition:'all 0.15s' }}
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.28)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.18)'; }}>
             <Send size={13} /> Launch ({Math.min(visibleLeads.length, 10)})
@@ -8161,6 +8194,7 @@ function CustomersTab({ dealerId }) {
   const [handoverMap, setHandoverMap] = useState({});   // lead_id → progress %
   const [packagesMap, setPackagesMap] = useState({});   // customer_id → [packages]
   const [expandedPkg, setExpandedPkg] = useState(null); // customer_id being expanded
+  const [expiryFilter, setExpiryFilter] = useState(null); // 'ins' | 'rt' — show only due/expired
   const [addPkg, setAddPkg] = useState(null);           // customer_id for add form
   const [pkgForm, setPkgForm] = useState({ package_name: '', total_visits: 3, valid_months: 12, sold_price: '' });
   const [pkgSaving, setPkgSaving] = useState(false);
@@ -8273,35 +8307,75 @@ function CustomersTab({ dealerId }) {
     setSaving(false);
   };
 
-  const filtered = customers.filter(c =>
-    !search || `${c.name || ""} ${c.phone || ""}`.toLowerCase().includes(search.toLowerCase())
-  );
+  // "Due" = expiring within 30 days OR already expired (negative diff). The old
+  // logic ignored already-expired policies, so an overdue insurance showed nowhere.
+  const isDue = (date) => { if (!date) return false; const diff = (new Date(date) - today) / 86400000; return diff <= 30; };
+  const isExpired = (date) => { if (!date) return false; return (new Date(date) - today) / 86400000 < 0; };
+
+  const filtered = customers.filter(c => {
+    if (search && !`${c.name || ""} ${c.phone || ""}`.toLowerCase().includes(search.toLowerCase())) return false;
+    if (expiryFilter === "ins" && !isDue(c.insurance_expiry)) return false;
+    if (expiryFilter === "rt" && !isDue(c.road_tax_expiry)) return false;
+    return true;
+  });
 
   const thisMonthCount = customers.filter(c => {
     const d = new Date(c.created_at);
     return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
   }).length;
-  const rtExpiring = customers.filter(c => { if (!c.road_tax_expiry) return false; const diff = (new Date(c.road_tax_expiry) - today) / 86400000; return diff >= 0 && diff <= 30; }).length;
-  const insExpiring = customers.filter(c => { if (!c.insurance_expiry) return false; const diff = (new Date(c.insurance_expiry) - today) / 86400000; return diff >= 0 && diff <= 30; }).length;
+  const rtDue = customers.filter(c => isDue(c.road_tax_expiry)).length;
+  const insDue = customers.filter(c => isDue(c.insurance_expiry)).length;
+  const rtExpired = customers.filter(c => isExpired(c.road_tax_expiry)).length;
+  const insExpired = customers.filter(c => isExpired(c.insurance_expiry)).length;
 
   if (loading) return <div className="p-8 text-gray-600 text-sm">Loading…</div>;
 
   return (
     <div>
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+      {/* Stats — the two expiry cards are clickable and filter the table below. */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
         {[
-          { label: "Total Customers", val: customers.length, color: "#dc2626" },
-          { label: "This Month", val: thisMonthCount, color: "#4ade80" },
-          { label: "Road Tax Expiring", val: rtExpiring, color: "#fbbf24" },
-          { label: "Insurance Expiring", val: insExpiring, color: "#c084fc" },
-        ].map(({ label, val, color }) => (
-          <div key={label} className="bg-white border border-gray-200 rounded-xl p-4">
-            <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">{label}</p>
-            <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 32, color, lineHeight: 1, margin: 0 }}>{val}</p>
-          </div>
-        ))}
+          { label: "Total Customers", val: customers.length, color: "#dc2626", filter: null, sub: null },
+          { label: "This Month", val: thisMonthCount, color: "#4ade80", filter: null, sub: null },
+          { label: "Road Tax Due", val: rtDue, color: "#fbbf24", filter: "rt", sub: rtExpired > 0 ? `${rtExpired} expired` : null },
+          { label: "Insurance Due", val: insDue, color: "#c084fc", filter: "ins", sub: insExpired > 0 ? `${insExpired} expired` : null },
+        ].map(({ label, val, color, filter, sub }) => {
+          const active = filter && expiryFilter === filter;
+          return (
+            <button
+              key={label}
+              type="button"
+              onClick={() => filter && setExpiryFilter(active ? null : filter)}
+              className="bg-white border rounded-xl p-4 text-left transition-colors"
+              style={{ borderColor: active ? color : "#e5e7eb", cursor: filter ? "pointer" : "default", boxShadow: active ? `0 0 0 1px ${color}` : "none" }}
+            >
+              <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">{label}</p>
+              <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 32, color, lineHeight: 1, margin: 0 }}>{val}</p>
+              {sub
+                ? <p className="text-[10px] font-bold mt-1 m-0" style={{ color: "#dc2626" }}>{sub}</p>
+                : filter ? <p className="text-[10px] text-gray-400 mt-1 m-0">{active ? "Showing — clear" : "Click to filter"}</p> : null}
+            </button>
+          );
+        })}
       </div>
+
+      {/* Expiry action banner — surfaces overdue/soon policies with a one-tap filter */}
+      {(insExpired > 0 || rtExpired > 0) && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg mb-4" style={{ background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.18)" }}>
+          <AlertTriangle style={{ width: 15, height: 15, color: "#dc2626", flexShrink: 0 }} />
+          <span className="text-[13px] flex-1" style={{ color: "#374151", lineHeight: 1.5 }}>
+            {[insExpired > 0 ? `${insExpired} insurance` : null, rtExpired > 0 ? `${rtExpired} road tax` : null].filter(Boolean).join(" and ")} {insExpired + rtExpired > 1 ? "policies have" : "policy has"} expired — renew to keep customers covered.
+          </span>
+          <button
+            type="button"
+            onClick={() => setExpiryFilter(insExpired > 0 ? "ins" : "rt")}
+            className="text-xs font-bold whitespace-nowrap"
+            style={{ color: "#dc2626" }}
+          >
+            Review →
+          </button>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative mb-4">
@@ -8338,7 +8412,7 @@ function CustomersTab({ dealerId }) {
                       <p className="text-sm font-semibold text-gray-900 m-0">{c.name || "—"}</p>
                       {pkgs.length > 0 && (
                         <button onClick={() => setExpandedPkg(isExpanded ? null : c.id)} className="text-[10px] text-violet-600 hover:underline mt-0.5 block">
-                          {pkgs.length} service pkg{pkgs.length > 1 ? 's' : ''}
+                          {pkgs.length} service plan{pkgs.length > 1 ? 's' : ''}
                         </button>
                       )}
                     </td>
@@ -8377,7 +8451,7 @@ function CustomersTab({ dealerId }) {
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
                         <button onClick={() => setEditing({ ...c })} className="text-xs px-3 py-1 rounded-lg bg-gray-50 border border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-colors whitespace-nowrap">Edit</button>
-                        <button onClick={() => { setAddPkg(c.id); setPkgForm({ package_name: '', total_visits: 3, valid_months: 12, sold_price: '' }); }} className="text-xs px-3 py-1 rounded-lg bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 transition-colors whitespace-nowrap">+ Pkg</button>
+                        <button onClick={() => { setAddPkg(c.id); setPkgForm({ package_name: '', total_visits: 3, valid_months: 12, sold_price: '' }); }} className="text-xs px-3 py-1 rounded-lg bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 transition-colors whitespace-nowrap">+ Service Plan</button>
                       </div>
                     </td>
                   </tr>
@@ -8546,7 +8620,6 @@ export default function DashboardPage() {
   const [deleteId, setDeleteId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState(new Set());
-  const [tiktokListing, setTiktokListing] = useState(null);
   const [priceEditListing, setPriceEditListing] = useState(null);
   const [markSoldListing, setMarkSoldListing] = useState(null);
   const [markSoldLoading, setMarkSoldLoading] = useState(false);
@@ -8804,7 +8877,9 @@ export default function DashboardPage() {
     window.location.href = 'https://xdrive.my/login';
   };
   const handleNew = (l) => {
-    setListings((p) => [l, ...p]);
+    // Dedup against the realtime INSERT event, which may have already prepended
+    // this row before the optimistic add runs (causes a brief double listing).
+    setListings((p) => (p.some((x) => x.id === l.id) ? p : [l, ...p]));
     navigate("/dashboard/listings", { replace: true });
     setActiveTab("listings");
     // Prompt to add stock purchase details
@@ -8813,7 +8888,9 @@ export default function DashboardPage() {
   };
   // AddCarForm already captures cost/procurement data, so no pending-stock prompt.
   const handleAddCarPublished = (l) => {
-    setListings((p) => [l, ...p]);
+    // Dedup: the realtime car_listings INSERT subscription may race ahead and add
+    // this same row, so guard against a duplicate render of the freshly-added car.
+    setListings((p) => (p.some((x) => x.id === l.id) ? p : [l, ...p]));
     handleTabChange("listings");
     toast.success("Car added and published to your marketplace.");
   };
@@ -9200,7 +9277,9 @@ export default function DashboardPage() {
         { id: "analytics",  Icon: BarChart2, label: "Analytics" },
         { id: "outreach",   Icon: Megaphone, label: "Outreach Hub" },
         { id: "storefront", Icon: Globe,     label: "Storefront" },
-        { id: "ai_manager", Icon: Bot,       label: "AI Manager" },
+        ...(profile?.plan !== "dealer_starter"
+          ? [{ id: "ai_manager", Icon: Bot, label: "AI Manager" }]
+          : []),
       ],
     },
     {
@@ -9373,6 +9452,7 @@ export default function DashboardPage() {
               {notifCount > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#DC2626', color: '#fff', fontSize: 8, fontWeight: 800, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{notifCount > 9 ? '9+' : notifCount}</span>}
             </button>
           </div>
+          <ReportBugButton variant="inline" context="Dealer Dashboard" userLabel={profile?.full_name || profile?.email || ""} />
           <button
             onClick={() => startTransition(() => setSidebarOpen(false))}
             className="lg:hidden p-1.5 rounded-lg transition-colors flex-shrink-0"
@@ -9585,6 +9665,7 @@ export default function DashboardPage() {
           <span style={{ fontSize: 12, color: color.textMuted }} className="truncate flex-1 min-w-0">
             {TITLES[activeTab]?.title}
           </span>
+          <ReportBugButton variant="inline" context="Dealer Dashboard" userLabel={profile?.full_name || profile?.email || ""} />
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <button
               onClick={() => setNotifOpen(p => !p)}
@@ -9998,11 +10079,13 @@ export default function DashboardPage() {
                                       : <span style={{ color: '#374151', fontSize: 12 }}>—</span>
                                   }
                                 </td>
-                                {/* Seller */}
+                                {/* Seller — only meaningful once sold (shows the salesman who closed
+                                    the deal). Available cars aren't "assigned", so leave it blank. */}
                                 <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                                   {(() => {
+                                    if (!isSold) return <span style={{ color: '#d1d5db', fontSize: 12 }}>—</span>;
                                     const sm = l.assigned_to ? salesmenById[l.assigned_to] : null;
-                                    if (!sm) return <span style={{ fontSize: 11, color: '#9ca3af', fontStyle: 'italic' }}>Unassigned</span>;
+                                    if (!sm) return <span style={{ fontSize: 11, color: '#9ca3af', fontStyle: 'italic' }}>Dealer</span>;
                                     const nm = sm.full_name || 'Salesman';
                                     return (
                                       <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
@@ -10161,20 +10244,25 @@ export default function DashboardPage() {
                 />
               )}
               {analyticsSub === "revenue" && userId && (
-                <RevOpsPage userId={userId} onNavigateToStock={() => handleTabChange("stock")} />
+                <RevOpsPage userId={userId} onNavigateToStock={() => handleTabChange("stock")} onNavigateToLeads={() => handleTabChange("leads")} />
               )}
               {analyticsSub === "marketplace" && (
                 <MarketplaceAnalyticsTab profile={profile} />
               )}
             </>
           )}
-          {activeTab === "ai_manager" && snapshot && (
+          {activeTab === "ai_manager" && profile?.plan === "dealer_starter" && (
+            <div className="flex items-center justify-center h-64 text-gray-600 text-sm">
+              AI Sales Manager is available on Dealer Growth and Dealer Pro plans. Upgrade your plan to unlock it.
+            </div>
+          )}
+          {activeTab === "ai_manager" && profile?.plan !== "dealer_starter" && snapshot && (
             <AISalesManager
               snapshot={snapshot}
               dealerName={profile?.dealership || profile?.site_name || "Your Dealership"}
             />
           )}
-          {activeTab === "ai_manager" && !snapshot && (
+          {activeTab === "ai_manager" && profile?.plan !== "dealer_starter" && !snapshot && (
             <div className="flex items-center justify-center h-64 text-gray-600 text-sm">
               Loading dealer data...
             </div>
@@ -10261,7 +10349,6 @@ export default function DashboardPage() {
             setDetailListing(null);
           }}
           setEditListing={setEditListing}
-          setTiktokListing={setTiktokListing}
           setPriceEditListing={setPriceEditListing}
           setMarkSoldListing={setMarkSoldListing}
           setDeleteId={setDeleteId}
@@ -10470,13 +10557,6 @@ export default function DashboardPage() {
           <Check className="w-4 h-4 text-green-200" />
           {assignToast.msg}
         </div>
-      )}
-
-      {tiktokListing && (
-        <TikTokStudioV3
-          listing={tiktokListing}
-          onClose={() => setTiktokListing(null)}
-        />
       )}
 
       {/* Edit listing modal */}

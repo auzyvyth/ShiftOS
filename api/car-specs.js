@@ -1,6 +1,11 @@
 // Vercel serverless function — proxy for API Ninjas cars endpoint
 // Keeps the API key server-side and normalises the response shape
 
+import { createClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL = 'https://lemdkdizdlcirhbzqlos.supabase.co';
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+
 const CLASS_TO_BODY = {
   "compact car":      "Hatchback",
   "subcompact car":   "Hatchback",
@@ -58,6 +63,17 @@ function normalise(raw) {
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   if (req.method === "OPTIONS") return res.status(200).end();
+
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+  const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const { data: { user }, error: authErr } = await authClient.auth.getUser(token);
+  if (authErr || !user) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
 
   const { make, model, year } = req.query;
   if (!make || !model || !year) {

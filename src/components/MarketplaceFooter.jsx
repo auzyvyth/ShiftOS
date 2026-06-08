@@ -16,7 +16,7 @@ export default function MarketplaceFooter() {
       heading: 'For Buyers',
       links: [
         { label: 'Browse All Cars',    to: '/showroom' },
-        { label: 'Search by Brand',    to: '/showroom' },
+        { label: 'Search by Brand',    to: '/showroom#brands' },
         { label: 'Hot Deals',          to: '/marketplace?hot_deals=true' },
         { label: 'Compare Cars',       to: '/compare' },
         { label: 'Saved Listings',     to: '/saved' },
@@ -27,10 +27,10 @@ export default function MarketplaceFooter() {
     {
       heading: 'For Dealers',
       links: [
-        { label: 'List Your Inventory', to: '/signup' },
+        { label: 'List Your Inventory', to: '/shiftos#features' },
         { label: 'ShiftOS DMS',         to: '/shiftos' },
-        { label: 'Dealer Pricing',      to: '/signup' },
-        { label: 'Partner with XDrive', to: '/signup' },
+        { label: 'Dealer Pricing',      to: '/shiftos#pricing' },
+        { label: 'Partner with XDrive', href: `https://wa.me/${settings.support_whatsapp}?text=${encodeURIComponent("Hi! I'm interested in partnering with XDrive / ShiftOS for my dealership. Can we discuss?")}` },
       ],
     },
     {

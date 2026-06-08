@@ -1066,7 +1066,10 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
     // 3. Hit the serverless proxy
     (async () => {
       try {
-        const res = await fetch(`/api/car-specs?make=${encodeURIComponent(form.brand)}&model=${encodeURIComponent(form.model)}&year=${y}`);
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch(`/api/car-specs?make=${encodeURIComponent(form.brand)}&model=${encodeURIComponent(form.model)}&year=${y}`, {
+          headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+        });
         if (!res.ok) return;
         const { spec } = await res.json();
         if (spec) {
