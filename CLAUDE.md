@@ -122,6 +122,27 @@ This session's git proxy blocks direct push to origin/main. Use this workflow ev
 - Never use --force on main without warning the user.
 - Never run git reset --hard without warning the user that local changes will be lost.
 
+### Squash-merge drift — diagnose by content, never by commit hash
+PRs into `main` are merged via **squash**, which collapses a branch's commits into ONE
+new commit with a fresh hash. If a long-lived session/feature branch keeps building on
+its pre-squash history while that same work lands on `main` under a new hash, the two
+histories "diverge" even though the content is identical — `git log branch..main` and
+`main..branch` will both show commits, none of which are actually new work.
+- NEVER assume commits unique to your branch (per `git log origin/main..HEAD`) are
+  "new work to ship" — first diff the actual FILE CONTENT against `origin/main`
+  (`git diff origin/main <commit> -- <file>` or `git show origin/main:<file> | grep ...`)
+  to confirm the change isn't already present under a different hash.
+- NEVER force-push a diverged branch over `main` or rebase blindly — either can silently
+  revert work that landed on `main` after your branch's last sync point, or drop real
+  changes during bad conflict resolutions. This is almost certainly how features went
+  missing in a prior session.
+- To ship real new work from a diverged branch: create a fresh branch off `origin/main`,
+  cherry-pick ONLY the commits you've confirmed (by content-diff) are genuinely new,
+  resolve conflicts in favor of `main`'s version when both sides fix the same bug
+  differently, then PR → squash-merge as normal.
+- Prevention: rebase your working branch onto `origin/main` regularly (e.g. start of
+  each session) so drift never accumulates into a large diff to untangle later.
+
 ## DB migrations
 - Schema changes (ALTER TABLE, CREATE VIEW) go directly to the live Supabase DB via MCP apply_migration
 - Always update public_car_listings VIEW after adding columns to car_listings
