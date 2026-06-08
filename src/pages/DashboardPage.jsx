@@ -1458,7 +1458,6 @@ function SettingsTab({ profile, onProfileUpdate }) {
             </label>
             <div className="flex items-center gap-2 flex-1">
               <div className="flex items-center bg-white border border-gray-200 rounded-lg overflow-hidden flex-1">
-                <span className="px-3 text-gray-500 text-sm select-none border-r border-gray-200 py-2 bg-gray-50">xdrive.my/</span>
                 <input
                   type="text"
                   value={subdomain}
@@ -1470,6 +1469,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
                   placeholder="your-dealership"
                   className="flex-1 bg-transparent py-2 px-3 text-gray-900 text-sm outline-none"
                 />
+                <span className="px-3 text-gray-500 text-sm select-none border-l border-gray-200 py-2 bg-gray-50">.xdrive.my</span>
               </div>
               {subdomainStatus === 'checking' && <span className="text-xs text-gray-500 whitespace-nowrap">Checking...</span>}
               {subdomainStatus === 'taken' && <span className="text-xs text-blue-400 whitespace-nowrap">⚠ Already taken</span>}
@@ -1477,7 +1477,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
             </div>
             {subdomain !== profile?.subdomain && profile?.subdomain && (
               <p className="text-xs text-yellow-400 mt-1">
-                ⚠ Changing your subdomain will break existing links shared as <code className="text-yellow-300">xdrive.my/{profile.subdomain}</code>
+                ⚠ Changing your subdomain will break existing links shared as <code className="text-yellow-300">{profile.subdomain}.xdrive.my</code>
               </p>
             )}
           </div>
