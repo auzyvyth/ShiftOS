@@ -251,6 +251,7 @@ export default function SalesmanPanel() {
  const [followUpSaving, setFollowUpSaving] = useState(false);
  const [testDriveConfirm, setTestDriveConfirm] = useState(null);
  const [linkCarLeadId, setLinkCarLeadId] = useState(null);
+ const [linkCarSearch, setLinkCarSearch] = useState("");
  const [batchWALeads, setBatchWALeads] = useState(null);
  const [batchWAIdx, setBatchWAIdx] = useState(0);
  const [mobileLeadStage, setMobileLeadStage] = useState("new");
@@ -1563,7 +1564,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  lead_source: "manual",
  is_deleted: false,
  })
- .select()
+ .select("*, car_listings(brand, model, year, selling_price)")
  .single();
  if (data) setLeads((p) => [data, ...p]);
  setAddLeadSaving(false);
@@ -4157,6 +4158,62 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </div>
  </div>
  );
+
+ const renderLinkCarModal = () => {
+ if (!linkCarLeadId) return null;
+ const lead = leads.find((l) => l.id === linkCarLeadId);
+ if (!lead) return null;
+ const seen = new Set();
+ const allCars = [...myListings, ...availableCars].filter((c) => c && !seen.has(c.id) && seen.add(c.id));
+ const q = linkCarSearch.trim().toLowerCase();
+ const cars = q
+ ? allCars.filter((c) => [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ").toLowerCase().includes(q))
+ : allCars;
+ return (
+ <div onClick={() => { setLinkCarLeadId(null); setLinkCarSearch(""); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+ <div onClick={(e) => e.stopPropagation()} style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px 16px 0 0", padding: "20px 20px 28px", width: "100%", maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+ <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{lead.car_listing_id ? "Change Car" : "Link a Car"}</p>
+ <button onClick={() => { setLinkCarLeadId(null); setLinkCarSearch(""); }} style={{ background: "transparent", border: "none", color: "#4b5563", cursor: "pointer", padding: 4, display: "flex" }}>
+ <X size={18} />
+ </button>
+ </div>
+ <p style={{ margin: "0 0 14px", fontSize: 12, color: "#4b5563" }}>{lead.buyer_name || "—"}</p>
+ <input
+ value={linkCarSearch}
+ onChange={(e) => setLinkCarSearch(e.target.value)}
+ placeholder="Search make, model, year..."
+ style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 9, color: "#e5e7eb", fontSize: 13, padding: "10px 12px", outline: "none", fontFamily: "inherit", boxSizing: "border-box", marginBottom: 12 }}
+ />
+ <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+ {cars.length === 0 ? (
+ <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "20px 0" }}>No cars match your search.</p>
+ ) : cars.map((car) => {
+ const title = [car.year, car.brand, car.model].filter(Boolean).join(" ");
+ const isLinked = lead.car_listing_id === car.id;
+ const img = Array.isArray(car.images) ? car.images[0] : null;
+ return (
+ <button
+ key={car.id}
+ onClick={() => { if (!isLinked) handleLinkCar(lead.id, car.id); setLinkCarSearch(""); }}
+ style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 11px", borderRadius: 10, background: isLinked ? "rgba(96,165,250,0.1)" : "rgba(255,255,255,0.03)", border: isLinked ? "1px solid rgba(96,165,250,0.3)" : "1px solid rgba(255,255,255,0.07)", cursor: isLinked ? "default" : "pointer", textAlign: "left", fontFamily: "inherit", width: "100%", boxSizing: "border-box" }}
+ >
+ <div style={{ width: 48, height: 36, borderRadius: 7, overflow: "hidden", flexShrink: 0, background: "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+ {img ? <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Car size={18} color="rgba(255,255,255,0.2)" />}
+ </div>
+ <div style={{ minWidth: 0, flex: 1 }}>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}{car.variant ? ` ${car.variant}` : ""}</p>
+ <p style={{ margin: "1px 0 0", fontSize: 11, color: "#6b7280" }}>RM {(Number(car.selling_price) || 0).toLocaleString("en-MY")}</p>
+ </div>
+ {isLinked && <span style={{ fontSize: 10, fontWeight: 700, color: "#60a5fa", textTransform: "uppercase", letterSpacing: "0.05em", flexShrink: 0 }}>Linked</span>}
+ </button>
+ );
+ })}
+ </div>
+ </div>
+ </div>
+ );
+ };
 
  const renderDepositModal = () => {
  if (!depositModal) return null;
@@ -7811,6 +7868,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  {renderFollowUpModal()}
  {renderBatchWAModal()}
  {renderDepositModal()}
+ {renderLinkCarModal()}
  </div>
  </>
  );
