@@ -213,6 +213,16 @@ export default function SalesmanLite() {
   const [myListings, setMyListings] = useState([]);
   const [listingCopied, setListingCopied] = useState({});
   const [showAddForm, setShowAddForm] = useState(false);
+  // First-listing activation gate (pre-walkthrough). A salesman with zero
+  // listings is held on a non-skippable screen until they add their first car.
+  const [listingsReady, setListingsReady] = useState(false);
+  const [firstListingDone, setFirstListingDone] = useState(false);
+  const [gateIntent, setGateIntent] = useState(null); // null | 'adding'
+  useEffect(() => {
+    if (profile?.id && localStorage.getItem(`slite_first_listing_${profile.id}`)) {
+      setFirstListingDone(true);
+    }
+  }, [profile?.id]);
 
   // leads
   const [leads, setLeads] = useState([]);
@@ -640,6 +650,8 @@ export default function SalesmanLite() {
           })
           .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         setMyListings(merged);
+        setListingsReady(true);
+        if (merged.length > 0) localStorage.setItem(`slite_first_listing_${uid}`, '1');
         writeCache(`slite_listings_${uid}`, merged);
         precacheImages(merged);
         // Commission earned this month from sold listings (salesman earns commission, not vehicle gross)
@@ -6632,6 +6644,68 @@ export default function SalesmanLite() {
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     );
+  }
+
+  // ── FIRST-LISTING ACTIVATION GATE (pre-walkthrough) ───────────────────────
+  // Salesman listings are created as `pending_approval` (CarForm), so we gate on
+  // whether they own ANY listing yet — not on status === 'available'.
+  {
+    const hasListing = myListings.length > 0;
+    const storeUrl = profile?.slug ? `https://xdrive.my/s/${profile.slug}` : null;
+
+    // Step 2 — they just added their first car: celebrate + share, then enter.
+    if (listingsReady && !firstListingDone && gateIntent === "adding" && hasListing) {
+      return (
+        <div style={{ minHeight: "100vh", background: "#05070e", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "'DM Sans', sans-serif" }}>
+          <div style={{ maxWidth: 420, width: "100%", textAlign: "center" }}>
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+              <Check size={30} color="#22c55e" />
+            </div>
+            <h2 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.9rem", letterSpacing: 2, color: "#fff", marginBottom: 8 }}>Your first listing is in</h2>
+            <p style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.7, marginBottom: 24 }}>
+              Your profile is set up. Share your store link so buyers can browse your cars — new listings go live once approved.
+            </p>
+            {storeUrl && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 14px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <span style={{ flex: 1, textAlign: "left", fontSize: 13, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>xdrive.my/s/{profile.slug}</span>
+                  <button onClick={() => { navigator.clipboard.writeText(storeUrl); toast.success("Store link copied"); }} style={{ fontSize: 11, fontWeight: 600, color: "#93c5fd", background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}>Copy</button>
+                </div>
+                <a href={`https://wa.me/?text=${encodeURIComponent(`Check out my cars on XDrive 👇\n${storeUrl}`)}`} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 14px", borderRadius: 10, background: "#22c55e", color: "#05070e", textDecoration: "none", fontSize: 14, fontWeight: 700 }}>
+                  <MessageSquare size={16} /> Share on WhatsApp
+                </a>
+              </div>
+            )}
+            <button onClick={() => { localStorage.setItem(`slite_first_listing_${profile.id}`, "1"); setFirstListingDone(true); setGateIntent(null); }} style={{ fontSize: 13, fontWeight: 600, color: "#94a3b8", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+              Continue to dashboard
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // Step 1 — zero listings: non-skippable activation screen.
+    if (listingsReady && !firstListingDone && !hasListing && gateIntent !== "adding") {
+      return (
+        <div style={{ minHeight: "100vh", background: "#05070e", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "'DM Sans', sans-serif" }}>
+          <div style={{ maxWidth: 420, width: "100%", textAlign: "center" }}>
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+              <Car size={30} color="#f87171" />
+            </div>
+            <h2 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.9rem", letterSpacing: 2, color: "#fff", marginBottom: 8 }}>Set up your first listing to activate your profile</h2>
+            <p style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.7, marginBottom: 28 }}>
+              Add a car to get your public store live. Buyers can only find you once you have at least one listing up.
+            </p>
+            <button onClick={() => { setGateIntent("adding"); switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 26px", borderRadius: 10, background: "#dc2626", color: "#fff", border: "none", cursor: "pointer", fontSize: 15, fontWeight: 700 }}>
+              <Plus size={18} /> Add Your First Car
+            </button>
+            <div style={{ marginTop: 24 }}>
+              <button onClick={handleLogout} style={{ fontSize: 12, color: "#4b5563", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Sign out</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
   }
 
   // ── MAIN RENDER ───────────────────────────────────────────────────────────
