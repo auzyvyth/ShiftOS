@@ -229,6 +229,9 @@ export default function SalesmanPanel() {
  const [drawerLeadId, setDrawerLeadId] = useState(null);
  const [dealSheetBusyId, setDealSheetBusyId] = useState(null);
  const [dealSheetLink, setDealSheetLink] = useState(null);
+ const [depositModal, setDepositModal] = useState(null);
+ const [depositAmount, setDepositAmount] = useState("");
+ const [depositCopied, setDepositCopied] = useState(false);
  const [deletingLeadId, setDeletingLeadId] = useState(null);
  const [lostSavingId, setLostSavingId] = useState(null);
  const [stageSavingId, setStageSavingId] = useState(null);
@@ -4155,6 +4158,70 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </div>
  );
 
+ const renderDepositModal = () => {
+ if (!depositModal) return null;
+ const lead = depositModal;
+ const car = lead.car_listings;
+ const carName = car? `${car.year || ""} ${car.brand} ${car.model}`.trim() : "Vehicle";
+ const today = new Date().toLocaleDateString("en-MY", { day: "numeric", month: "long", year: "numeric" });
+ const receipt = [
+ `📋 *DEPOSIT RECEIPT*`,
+ `━━━━━━━━━━━━━━━━━━`,
+ `Date: ${today}`,
+ `Buyer: ${lead.buyer_name || "—"}`,
+ lead.phone? `Contact: ${lead.phone}` : null,
+ ``,
+ `Vehicle: ${carName}`,
+ car?.selling_price? `Agreed Price: RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null,
+ `Deposit Paid: RM ${depositAmount || "___"}`,
+ ``,
+ `This deposit confirms the buyer's intention to purchase the above vehicle. Balance payable upon completion of sale.`,
+ ``,
+ `Salesman: ${profile?.full_name || "—"}`,
+ profile?.whatsapp_number? `Contact: ${profile.whatsapp_number}` : null,
+ ].filter(s => s !== null).join("\n");
+ return (
+ <div onClick={() => setDepositModal(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+ <div onClick={e => e.stopPropagation()} style={{ background: "#111827", borderRadius: "16px 16px 0 0", width: "100%", maxWidth: 480, padding: 24, paddingBottom: 36 }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+ <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9", fontSize: 14 }}>Deposit Receipt</p>
+ <button onClick={() => setDepositModal(null)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer" }}><X size={18} /></button>
+ </div>
+ <p style={{ margin: "0 0 14px", fontSize: 11, color: "#4b5563" }}>{lead.buyer_name || "Lead"} · {carName}</p>
+ <div style={{ marginBottom: 12 }}>
+ <p style={{ margin: "0 0 4px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>Deposit Amount (RM)</p>
+ <input
+ type="number"
+ value={depositAmount}
+ onChange={e => setDepositAmount(e.target.value)}
+ placeholder="e.g. 1000"
+ style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#f1f5f9", fontSize: 14, padding: "10px 12px", outline: "none", boxSizing: "border-box" }}
+ />
+ </div>
+ <textarea readOnly value={receipt} rows={12} style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "#e5e7eb", fontSize: 12, lineHeight: 1.7, padding: "10px 12px", resize: "none", outline: "none", fontFamily: "inherit", marginBottom: 12 }} />
+ <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+ <button
+ onClick={() => { navigator.clipboard.writeText(receipt); setDepositCopied(true); setTimeout(() => setDepositCopied(false), 2000); }}
+ style={{ padding: "10px 0", borderRadius: 10, fontSize: 12, fontWeight: 700, background: depositCopied? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.06)", border: `1px solid ${depositCopied? "rgba(34,197,94,0.4)" : "rgba(255,255,255,0.12)"}`, color: depositCopied? "#4ade80" : "#9ca3af", cursor: "pointer" }}
+ >
+ {depositCopied? "Copied ✓" : "Copy Text"}
+ </button>
+ <button
+ onClick={() => {
+ const phone = (lead.phone || "").replace(/\D/g, "");
+ if (phone) window.open(`https://wa.me/${phone.startsWith("6")? phone : "6" + phone}?text=${encodeURIComponent(receipt)}`, "_blank", "noopener,noreferrer");
+ setDepositModal(null);
+ }}
+ style={{ padding: "10px 0", borderRadius: 10, fontSize: 12, fontWeight: 700, background: "rgba(37,211,102,0.12)", border: "1px solid rgba(37,211,102,0.3)", color: "#4ade80", cursor: "pointer" }}
+ >
+ Send via WA
+ </button>
+ </div>
+ </div>
+ </div>
+ );
+ };
+
  const renderWAModal = () =>
  waModalLead && (
  <div
@@ -4805,7 +4872,14 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
 
  {/* Deal Sheet generator */}
  <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 12 }}>
- <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>Deal Sheet</p>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+ <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>Deal Sheet</p>
+ {pl.stage === "deposit_taken" && (
+ <button onClick={() => { setDepositModal(pl); setDepositAmount(""); setDepositCopied(false); }} style={{ fontSize: 11, fontWeight: 600, padding: "6px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", fontFamily: "inherit" }}>
+ Deposit Receipt
+ </button>
+ )}
+ </div>
  {!dealSheetLink || dealSheetBusyId === pl.id ? (
  <button onClick={() => handleGenerateDealSheet(pl)} disabled={dealSheetBusyId === pl.id || !plCar} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 600, padding: "9px 14px", borderRadius: 8, background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd", cursor: plCar ? "pointer" : "not-allowed", opacity: (dealSheetBusyId === pl.id || !plCar) ? 0.55 : 1, fontFamily: "inherit" }}>
  <FileText size={13} />
@@ -7736,6 +7810,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  {renderLogCallModal()}
  {renderFollowUpModal()}
  {renderBatchWAModal()}
+ {renderDepositModal()}
  </div>
  </>
  );
