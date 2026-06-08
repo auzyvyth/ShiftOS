@@ -36,39 +36,87 @@ function EmptyState({ onAdd }) {
 // Pipeline stages shown as grid columns (legacy test_drive added only if populated).
 const GRID_STAGES = ['new', 'contacted', 'viewing_booked', 'negotiating', 'deposit_taken', 'won', 'lost'];
 
-// ─── Stage column (header + internally-scrollable lead list) ──────────────────
-function StageColumn({ stage, leads, onOpen, solo }) {
+// ─── Stage column header (shared by trigger card + modal) ─────────────────────
+function StageColumnHeader({ cfg, count, onClose }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 7,
+      padding: '9px 12px', flexShrink: 0,
+      background: '#fff', borderBottom: `2px solid ${cfg.headerBorder}`,
+    }}>
+      <div style={{ width: 8, height: 8, borderRadius: '50%', background: cfg.headerBorder, flexShrink: 0 }} />
+      <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: cfg.headerBorder }}>
+        {cfg.label}
+      </span>
+      <span style={{
+        marginLeft: onClose ? 8 : 'auto', fontSize: 11, fontWeight: 700, color: '#6b7280',
+        background: '#f3f4f6', borderRadius: 20, padding: '1px 8px', minWidth: 22, textAlign: 'center',
+      }}>
+        {count}
+      </span>
+      {onClose && (
+        <button onClick={onClose} aria-label="Close" style={{
+          marginLeft: 'auto', background: '#f3f4f6', border: 'none', borderRadius: '50%',
+          width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', color: '#6b7280', flexShrink: 0,
+        }}>
+          <X className="w-3.5 h-3.5" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── Stage trigger card — compact preview; click opens the scrollable popup ────
+function StageColumn({ stage, leads, onClick }) {
+  const cfg = STAGE_CONFIG[stage] || STAGE_CONFIG.new;
+  const preview = leads.slice(0, 3);
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'flex', flexDirection: 'column', minWidth: 0, width: '100%', textAlign: 'left',
+        background: '#f4f5f7', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden',
+        cursor: 'pointer', padding: 0, font: 'inherit', touchAction: 'manipulation',
+      }}
+    >
+      <StageColumnHeader cfg={cfg} count={leads.length} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 10 }}>
+        {leads.length === 0 ? (
+          <div style={{ padding: '16px 8px', textAlign: 'center', color: '#b0b6bf', fontSize: 11.5 }}>
+            No leads here
+          </div>
+        ) : (
+          <>
+            {preview.map(lead => (
+              <div key={lead.id} style={{
+                fontSize: 12, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '6px 10px',
+              }}>
+                <span style={{ fontWeight: 700, color: '#111827' }}>{lead.buyer_name || 'Unknown buyer'}</span>
+                {lead.car_listing && <span style={{ color: '#6b7280' }}> · {lead.car_listing.brand} {lead.car_listing.model}</span>}
+              </div>
+            ))}
+            <div style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', marginTop: 2 }}>
+              {leads.length > preview.length ? `+${leads.length - preview.length} more — tap to view all` : 'Tap to view'}
+            </div>
+          </>
+        )}
+      </div>
+    </button>
+  );
+}
+
+// ─── Stage panel — full inline scrollable list (used for the single-stage tab view) ──
+function StagePanel({ stage, leads, onOpen }) {
   const cfg = STAGE_CONFIG[stage] || STAGE_CONFIG.new;
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', minWidth: 0,
       background: '#f4f5f7', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden',
     }}>
-      {/* Column header */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 7,
-        padding: '9px 12px',
-        background: '#fff', borderBottom: `2px solid ${cfg.headerBorder}`,
-      }}>
-        <div style={{ width: 8, height: 8, borderRadius: '50%', background: cfg.headerBorder, flexShrink: 0 }} />
-        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: cfg.headerBorder }}>
-          {cfg.label}
-        </span>
-        <span style={{
-          marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#6b7280',
-          background: '#f3f4f6', borderRadius: 20, padding: '1px 8px', minWidth: 22, textAlign: 'center',
-        }}>
-          {leads.length}
-        </span>
-      </div>
-
-      {/* Scrollable lead list — sized to show ~5-6 cards, scroll for more */}
-      <div className="lp-col-body" style={{
-        display: 'flex', flexDirection: 'column', gap: 8,
-        padding: 8,
-        maxHeight: solo ? 'calc(100vh - 230px)' : 480,
-        overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch',
-      }}>
+      <StageColumnHeader cfg={cfg} count={leads.length} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 8 }}>
         {leads.length === 0 ? (
           <div style={{ padding: '24px 8px', textAlign: 'center', color: '#b0b6bf', fontSize: 11.5 }}>
             No leads here
@@ -81,11 +129,51 @@ function StageColumn({ stage, leads, onOpen, solo }) {
   );
 }
 
+// ─── Stage popup — only this list scrolls; click outside or × to close ─────────
+function StageModal({ stage, leads, onOpen, onClose }) {
+  const cfg = STAGE_CONFIG[stage] || STAGE_CONFIG.new;
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 60,
+        background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(2px)',
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      }}
+      className="sm:items-center"
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl"
+        style={{
+          background: '#fff', border: '1px solid #e5e7eb',
+          maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        }}
+      >
+        <StageColumnHeader cfg={cfg} count={leads.length} onClose={onClose} />
+        <div className="lp-col-body" style={{
+          display: 'flex', flexDirection: 'column', gap: 8, padding: 10,
+          overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch',
+        }}>
+          {leads.length === 0 ? (
+            <div style={{ padding: '24px 8px', textAlign: 'center', color: '#b0b6bf', fontSize: 11.5 }}>
+              No leads here
+            </div>
+          ) : (
+            leads.map(lead => <LeadGridCard key={lead.id} lead={lead} onOpen={onOpen} />)
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main component ────────────────────────────────────────────────────────────
 export default function LeadsPage() {
   const { leads, loading, addLead, updateLeadStage, updateLead, deleteLead, optimisticStageChange, revertStageChange } = useLeads();
 
   const [openLead, setOpenLead]             = useState(null);
+  const [openStage, setOpenStage]           = useState(null);
   const [showAdd, setShowAdd]               = useState(false);
   const [search, setSearch]                 = useState('');
   const [filterSource, setFilterSource]     = useState('');
@@ -172,7 +260,7 @@ export default function LeadsPage() {
   const hasFilters = search || filterSource || filterAssigned;
 
   return (
-    <div className="flex flex-col h-full min-h-0" style={{ fontFamily: "'DM Sans',sans-serif" }}>
+    <div className="flex flex-col" style={{ fontFamily: "'DM Sans',sans-serif" }}>
       <style>{`
         .lp-filter-bar::-webkit-scrollbar { display: none; }
         .lp-stage-tabs::-webkit-scrollbar { display: none; }
@@ -286,19 +374,28 @@ export default function LeadsPage() {
       ) : leads.length === 0 ? (
         <EmptyState onAdd={() => setShowAdd(true)} />
       ) : (
-        <div className="flex-1 overflow-y-auto overscroll-contain" style={{ background: '#f3f4f6', WebkitOverflowScrolling: 'touch' }}>
+        <div className="flex-1" style={{ background: '#f3f4f6' }}>
           <div className="lp-grid" style={{ padding: 12, paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}>
             {activeStage === 'all' ? (
               gridStages.map(stage => (
-                <StageColumn key={stage} stage={stage} leads={byStage[stage] || []} onOpen={setOpenLead} />
+                <StageColumn key={stage} stage={stage} leads={byStage[stage] || []} onClick={() => setOpenStage(stage)} />
               ))
             ) : (
               <div style={{ gridColumn: '1 / -1' }}>
-                <StageColumn stage={activeStage} leads={byStage[activeStage] || []} onOpen={setOpenLead} solo />
+                <StagePanel stage={activeStage} leads={byStage[activeStage] || []} onOpen={setOpenLead} />
               </div>
             )}
           </div>
         </div>
+      )}
+
+      {openStage && (
+        <StageModal
+          stage={openStage}
+          leads={byStage[openStage] || []}
+          onOpen={lead => { setOpenStage(null); setOpenLead(lead); }}
+          onClose={() => setOpenStage(null)}
+        />
       )}
 
       {openLead && (

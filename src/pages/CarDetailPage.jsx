@@ -47,6 +47,7 @@ import { isSubdomain } from "../hooks/useTenant";
 import { trackEvent, getSlugFromURL } from "../utils/analytics";
 import { useMarketplaceTracking } from "../hooks/useMarketplaceTracking";
 import { calcMonthly } from "../utils/financing";
+import { toast } from "sonner";
 
 /* ─── helpers ─── */
 const fmt = (n) => Number(n).toLocaleString("en-MY");
@@ -754,7 +755,14 @@ export default function CarDetailPage() {
     // Open WhatsApp immediately — must happen synchronously in the click handler
     // before any await, otherwise popup blockers will intercept window.open.
     const message = `Hi, I'm ${enquiryForm.name}. I'm interested in the ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""} listed at RM ${car.selling_price?.toLocaleString()}.`;
-    window.open(buildWaUrl(ctaCtx, contactPhone, message), "_blank");
+    const waUrl = buildWaUrl(ctaCtx, contactPhone, message);
+    // buildWaUrl returns '#' when no phone is resolvable — opening that just
+    // reloads the current page in a new tab, so guard against it.
+    if (waUrl && waUrl !== "#") {
+      window.open(waUrl, "_blank", "noopener,noreferrer");
+    } else {
+      toast.error("This dealer hasn't added a WhatsApp number yet. We've saved your enquiry instead.");
+    }
     setShowEnquiryModal(false);
     setEnquiryForm({ name: "", phone: "", state: "" });
 
@@ -3184,34 +3192,41 @@ export default function CarDetailPage() {
 
       {/* ── enquiry modal ── */}
       {showEnquiryModal && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div style={{ background: th.card, border: '1px solid rgba(220,38,38,0.15)', borderRadius: '20px' }} className="p-6 w-full max-w-sm">
-            <h3 className="text-white font-semibold text-lg mb-1">Contact Dealer</h3>
-            <p className="text-gray-500 text-sm mb-4">Enter your details to continue to WhatsApp</p>
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+          onClick={e => { if (e.target === e.currentTarget) setShowEnquiryModal(false); }}>
+          <div style={{ background: th.card, border: `1px solid ${th.border}`, borderRadius: '20px' }} className="p-6 w-full max-w-sm">
+            <h3 className="font-semibold text-lg mb-1" style={{ color: th.text }}>Contact Dealer</h3>
+            <p className="text-sm mb-4" style={{ color: th.textMuted }}>Enter your details to continue to WhatsApp</p>
             <input
               placeholder="Your name"
               aria-label="Your name"
               value={enquiryForm.name}
               onChange={e => setEnquiryForm(p => ({ ...p, name: e.target.value }))}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white text-sm mb-3 outline-none focus:border-red-500"
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('cdp-enq-phone')?.focus(); } }}
+              onFocus={() => setFocused('enq_name')} onBlur={() => setFocused(null)}
+              style={inputStyle(focusedField === 'enq_name', th)}
             />
             <input
+              id="cdp-enq-phone"
               placeholder="Phone number (e.g. 0123456789)"
               aria-label="Phone number"
+              inputMode="tel"
               value={enquiryForm.phone}
               onChange={e => setEnquiryForm(p => ({ ...p, phone: e.target.value }))}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white text-sm mb-3 outline-none focus:border-red-500"
+              onKeyDown={e => { if (e.key === 'Enter' && enquiryForm.name && enquiryForm.phone) { e.preventDefault(); handleEnquirySubmit(); } }}
+              onFocus={() => setFocused('enq_phone')} onBlur={() => setFocused(null)}
+              style={inputStyle(focusedField === 'enq_phone', th)}
             />
             <select
               value={enquiryForm.state}
               aria-label="Your state"
               onChange={e => setEnquiryForm(p => ({ ...p, state: e.target.value }))}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white text-sm mb-4 outline-none focus:border-red-500"
-              style={{ cursor: 'pointer' }}
+              onFocus={() => setFocused('enq_state')} onBlur={() => setFocused(null)}
+              style={{ ...inputStyle(focusedField === 'enq_state', th), cursor: 'pointer', marginBottom: 16 }}
             >
-              <option value="" style={{ background: th.card }}>Your state (optional)</option>
+              <option value="" style={{ background: th.card, color: th.text }}>Your state (optional)</option>
               {['Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka','Negeri Sembilan','Pahang','Penang','Perak','Perlis','Putrajaya','Sabah','Sarawak','Selangor','Terengganu'].map(s => (
-                <option key={s} value={s} style={{ background: th.card }}>{s}</option>
+                <option key={s} value={s} style={{ background: th.card, color: th.text }}>{s}</option>
               ))}
             </select>
             <button
@@ -3222,7 +3237,7 @@ export default function CarDetailPage() {
             >
               {enquirySubmitting ? 'Opening WhatsApp...' : 'Continue to WhatsApp'}
             </button>
-            <button onClick={() => setShowEnquiryModal(false)} className="w-full mt-2 text-gray-500 text-sm py-2">
+            <button onClick={() => setShowEnquiryModal(false)} className="w-full mt-2 text-sm py-2" style={{ color: th.textMuted }}>
               Cancel
             </button>
           </div>
