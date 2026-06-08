@@ -49,11 +49,16 @@ function buildHtml(doc: Record<string, any>, dealership: string): string {
     ? doc.included_services_snapshot
     : [];
 
+  const icHtml = doc.buyer_ic
+    ? `<input type="checkbox" id="ic-reveal-${doc.id}" class="ic-toggle"/><span class="ic-value">${doc.buyer_ic}</span><label for="ic-reveal-${doc.id}" class="ic-reveal">Tap to reveal</label>`
+    : "—";
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="format-detection" content="telephone=no, date=no, address=no, email=no, url=no"/>
 <title>${doc.doc_type} — ${doc.doc_ref || ""}</title>
 <style>
   body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f4f4f5;margin:0;padding:24px 0;}
@@ -78,6 +83,12 @@ function buildHtml(doc: Record<string, any>, dealership: string): string {
   .check{width:16px;height:16px;border-radius:4px;border:1.5px solid #d1d5db;display:inline-block;flex-shrink:0;}
   .footer{background:#f9fafb;padding:18px 32px;border-top:1px solid #e5e7eb;text-align:center;}
   .footer p{font-size:11px;color:#9ca3af;margin:0;}
+  a, a:link, a:visited{color:inherit !important;text-decoration:none !important;cursor:default;pointer-events:none;}
+  .ic-toggle{display:none;}
+  .ic-value{filter:blur(5px);-webkit-filter:blur(5px);user-select:none;display:inline-block;transition:filter .15s ease;}
+  .ic-toggle:checked + .ic-value{filter:none;-webkit-filter:none;}
+  .ic-toggle:checked ~ .ic-reveal{display:none;}
+  .ic-reveal{display:inline-block;margin-left:8px;font-size:10px;font-weight:700;letter-spacing:.04em;color:#dc2626;text-transform:uppercase;cursor:pointer;pointer-events:auto;}
 </style>
 </head>
 <body>
@@ -108,7 +119,7 @@ function buildHtml(doc: Record<string, any>, dealership: string): string {
       <p class="section-title">Buyer</p>
       <div class="grid">
         <div class="field"><label>Name</label><p>${doc.buyer_name || "—"}</p></div>
-        <div class="field"><label>IC Number</label><p>${doc.buyer_ic || "—"}</p></div>
+        <div class="field"><label>IC Number</label><p>${icHtml}</p></div>
         <div class="field"><label>Phone</label><p>${doc.buyer_phone || "—"}</p></div>
         <div class="field"><label>Address</label><p>${doc.buyer_address || "—"}</p></div>
       </div>
