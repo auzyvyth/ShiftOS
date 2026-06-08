@@ -7014,6 +7014,7 @@ export default function SalesmanLite() {
                   />
                 )}
               </button>
+              <ReportBugButton variant="inline" context="Salesman Lite" userLabel={profile?.full_name || profile?.email || ""} />
               <button
                 onClick={() => setTourStep(0)}
                 title="Show tour"
@@ -7115,6 +7116,7 @@ export default function SalesmanLite() {
                   />
                 )}
               </button>
+              <ReportBugButton variant="inline" context="Salesman Lite" userLabel={profile?.full_name || profile?.email || ""} />
               <button
                 onClick={() => setShowAddLead(true)}
                 style={{
@@ -7901,7 +7903,6 @@ export default function SalesmanLite() {
           </div>
         );
       })()}
-      <ReportBugButton context="Salesman Lite" userLabel={profile?.full_name || profile?.email || ""} />
     </div>
   );
 }
