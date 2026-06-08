@@ -42,6 +42,15 @@ if (_dsn) {
       // after React re-renders and call Range.selectNode on detached nodes.
       // Not reproducible from our code — no createRange/selectNode anywhere in src.
       if (err?.message?.includes("selectNode") && err?.message?.includes("has no parent")) return null;
+      // Stale code-split chunk after a fresh deploy — old tabs reference hashed
+      // filenames the CDN no longer serves. main.jsx already auto-reloads on
+      // this exact error; Sentry's own rejection handler just reports it first.
+      const msg = err?.message || '';
+      if (
+        msg.includes('Failed to fetch dynamically imported module') ||
+        msg.includes('Importing a module script failed') ||
+        msg.includes('error loading dynamically imported module')
+      ) return null;
       return event;
     },
   });
