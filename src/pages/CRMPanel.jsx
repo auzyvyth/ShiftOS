@@ -2189,7 +2189,7 @@ const CRM_CSS = `
 export default function CRMPanel({ userId, listings = [], salesmen = [] }) {
   const [crmTab, setCrmTab] = useState('leads');
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
       <style>{CRM_CSS}</style>
       <div className="crm-tabs" style={{ padding: '0 4px' }}>
         <button className={`crm-tab${crmTab === 'leads' ? ' active' : ''}`} onClick={() => setCrmTab('leads')}>

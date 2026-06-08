@@ -116,11 +116,7 @@ function StagePanel({ stage, leads, onOpen }) {
       background: '#f4f5f7', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden',
     }}>
       <StageColumnHeader cfg={cfg} count={leads.length} />
-      <div className="lp-col-body" style={{
-        display: 'flex', flexDirection: 'column', gap: 8, padding: 8,
-        maxHeight: 'calc(100vh - 230px)',
-        overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch',
-      }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 8 }}>
         {leads.length === 0 ? (
           <div style={{ padding: '24px 8px', textAlign: 'center', color: '#b0b6bf', fontSize: 11.5 }}>
             No leads here
@@ -264,7 +260,7 @@ export default function LeadsPage() {
   const hasFilters = search || filterSource || filterAssigned;
 
   return (
-    <div className="flex flex-col h-full min-h-0" style={{ fontFamily: "'DM Sans',sans-serif" }}>
+    <div className="flex flex-col" style={{ fontFamily: "'DM Sans',sans-serif" }}>
       <style>{`
         .lp-filter-bar::-webkit-scrollbar { display: none; }
         .lp-stage-tabs::-webkit-scrollbar { display: none; }
@@ -378,7 +374,7 @@ export default function LeadsPage() {
       ) : leads.length === 0 ? (
         <EmptyState onAdd={() => setShowAdd(true)} />
       ) : (
-        <div className="flex-1 overflow-y-auto overscroll-contain" style={{ background: '#f3f4f6', WebkitOverflowScrolling: 'touch' }}>
+        <div className="flex-1" style={{ background: '#f3f4f6' }}>
           <div className="lp-grid" style={{ padding: 12, paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}>
             {activeStage === 'all' ? (
               gridStages.map(stage => (

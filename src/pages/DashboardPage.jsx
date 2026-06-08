@@ -8914,6 +8914,8 @@ export default function DashboardPage() {
       marketplace: { tab: "analytics",  sub: ["analytics", "marketplace"] },
       services:    { tab: "storefront", sub: ["storefront", "services"] },
       hero:        { tab: "storefront", sub: ["storefront", "hero"] },
+      // AI Sales Manager moved into the Overview tab (greets the user every morning)
+      ai_manager:  { tab: "overview",   sub: ["overview", ""] },
     };
     const mapped = ALIAS[tabParam];
     if (mapped) {
@@ -9012,6 +9014,29 @@ export default function DashboardPage() {
       console.error(e);
     }
     setMarkSoldLoading(false);
+  };
+
+  // Publish an internal (unpublished) car to the public marketplace — flips
+  // status to 'available'; the public_car_listings view then exposes it.
+  const [publishingId, setPublishingId] = useState(null);
+  const handlePublishListing = async (l) => {
+    if (!l || publishingId) return;
+    setPublishingId(l.id);
+    try {
+      const { data, error } = await supabase
+        .from("car_listings")
+        .update({ status: "available" })
+        .eq("id", l.id)
+        .select();
+      if (error) throw error;
+      const updated = data?.[0] ?? { ...l, status: "available" };
+      logActivity({ dealerId: userId, actor: profile, tableName: 'car_listings', recordId: l.id, action: 'published', summary: `Published to marketplace — ${l.brand} ${l.model} ${l.year}` });
+      setListings((p) => p.map((x) => (x.id === updated.id ? updated : x)));
+      if (detailListing?.id === updated.id) setDetailListing(updated);
+    } catch (e) {
+      console.error('[handlePublishListing]', e);
+    }
+    setPublishingId(null);
   };
 
   const activeFilterCount = [filterMinPrice, filterMaxPrice, filterMinMileage, filterMaxMileage, filterCondition, filterTransmission, filterState].filter(Boolean).length;
@@ -9137,6 +9162,12 @@ export default function DashboardPage() {
       label: "Sold",
       dot: "bg-red-400",
       cls: "bg-blue-400/10 text-blue-400 border-blue-400/20",
+      next: "available",
+    },
+    unpublished: {
+      label: "Unpublished",
+      dot: "bg-gray-400",
+      cls: "bg-gray-400/10 text-gray-500 border-gray-400/20",
       next: "available",
     },
   };
@@ -9276,9 +9307,6 @@ export default function DashboardPage() {
         { id: "analytics",  Icon: BarChart2, label: "Analytics" },
         { id: "outreach",   Icon: Megaphone, label: "Outreach Hub" },
         { id: "storefront", Icon: Globe,     label: "Storefront" },
-        ...(profile?.plan !== "dealer_starter"
-          ? [{ id: "ai_manager", Icon: Bot, label: "AI Manager" }]
-          : []),
       ],
     },
     {
@@ -9804,7 +9832,15 @@ export default function DashboardPage() {
 
           {/* ── Overview Tab ── */}
           {activeTab === "overview" && userId && (
-            <OverviewTab dealerId={getDealerIdFromProfile(profile)} onNavigate={handleTabChange} />
+            <div className="space-y-4">
+              {profile?.plan !== "dealer_starter" && snapshot && (
+                <AISalesManager
+                  snapshot={snapshot}
+                  dealerName={profile?.dealership || profile?.site_name || "Your Dealership"}
+                />
+              )}
+              <OverviewTab dealerId={getDealerIdFromProfile(profile)} onNavigate={handleTabChange} />
+            </div>
           )}
 
           {/* ── Listings Tab ── */}
@@ -9950,6 +9986,7 @@ export default function DashboardPage() {
                       { key: 'available', label: 'Available', count: listings.filter(l => (l.status || 'available') === 'available').length },
                       { key: 'reserved', label: 'Reserved', count: listings.filter(l => l.status === 'reserved').length },
                       { key: 'sold',     label: 'Sold',     count: listings.filter(l => l.status === 'sold').length },
+                      { key: 'unpublished', label: 'Unpublished', count: listings.filter(l => l.status === 'unpublished').length },
                     ].map(({ key, label, count }) => (
                       <button
                         key={key}
@@ -9959,7 +9996,7 @@ export default function DashboardPage() {
                           padding: '10px 16px', fontSize: 13,
                           fontWeight: statusFilter === key ? 600 : 400,
                           fontFamily: "'DM Sans', sans-serif",
-                          color: statusFilter === key ? '#f9fafb' : '#4b5563',
+                          color: statusFilter === key ? '#111827' : '#4b5563',
                           borderBottom: statusFilter === key ? '2px solid #dc2626' : '2px solid transparent',
                           marginBottom: -1,
                           display: 'flex', alignItems: 'center', gap: 7,
@@ -10104,6 +10141,16 @@ export default function DashboardPage() {
                                 {/* Status */}
                                 <td style={{ padding: '12px 16px' }} onClick={e => e.stopPropagation()}>
                                   <StatusBadge listing={l} />
+                                  {l.status === 'unpublished' && (
+                                    <button
+                                      onClick={e => { e.stopPropagation(); handlePublishListing(l); }}
+                                      disabled={publishingId === l.id}
+                                      style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, fontSize: 10, fontWeight: 700, color: '#fff', background: '#dc2626', border: 'none', borderRadius: 5, padding: '4px 9px', cursor: publishingId === l.id ? 'default' : 'pointer', whiteSpace: 'nowrap', opacity: publishingId === l.id ? 0.6 : 1 }}
+                                    >
+                                      <Globe style={{ width: 10, height: 10 }} />
+                                      {publishingId === l.id ? 'Publishing…' : 'Publish'}
+                                    </button>
+                                  )}
                                   {Array.isArray(l.included_services) && l.included_services.length > 0 && (
                                     <button
                                       onClick={e => { e.stopPropagation(); setSvcPopupListing(l); }}
@@ -10199,6 +10246,16 @@ export default function DashboardPage() {
                                   {l.included_services.length} svc
                                 </button>
                               )}
+                              {l.status === 'unpublished' && (
+                                <button
+                                  onClick={e => { e.stopPropagation(); handlePublishListing(l); }}
+                                  disabled={publishingId === l.id}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 700, color: '#fff', background: '#dc2626', border: 'none', borderRadius: 4, padding: '3px 9px', cursor: publishingId === l.id ? 'default' : 'pointer', opacity: publishingId === l.id ? 0.6 : 1 }}
+                                >
+                                  <Globe style={{ width: 9, height: 9 }} />
+                                  {publishingId === l.id ? 'Publishing…' : 'Publish'}
+                                </button>
+                              )}
                             </div>
                           </div>
                         );
@@ -10250,22 +10307,6 @@ export default function DashboardPage() {
               )}
             </>
           )}
-          {activeTab === "ai_manager" && profile?.plan === "dealer_starter" && (
-            <div className="flex items-center justify-center h-64 text-gray-600 text-sm">
-              AI Sales Manager is available on Dealer Growth and Dealer Pro plans. Upgrade your plan to unlock it.
-            </div>
-          )}
-          {activeTab === "ai_manager" && profile?.plan !== "dealer_starter" && snapshot && (
-            <AISalesManager
-              snapshot={snapshot}
-              dealerName={profile?.dealership || profile?.site_name || "Your Dealership"}
-            />
-          )}
-          {activeTab === "ai_manager" && profile?.plan !== "dealer_starter" && !snapshot && (
-            <div className="flex items-center justify-center h-64 text-gray-600 text-sm">
-              Loading dealer data...
-            </div>
-          )}
           {activeTab === "team" && (
             <TeamTab managerDealership={profile?.dealership} dealerId={getDealerIdFromProfile(profile)} profile={profile} />
           )}
@@ -10310,7 +10351,7 @@ export default function DashboardPage() {
           {activeTab === "hp" && userId && (
             <div className="space-y-2">
               <div>
-                <h2 className="text-white font-semibold text-base">HP Board</h2>
+                <h2 className="font-semibold text-base" style={{ color: '#111827' }}>HP Board</h2>
                 <p className="text-gray-600 text-xs mt-0.5">Hire-purchase submissions across all deals — track bank status and follow-ups</p>
               </div>
               <HPBoard dealerId={userId} />

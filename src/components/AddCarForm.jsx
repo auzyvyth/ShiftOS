@@ -93,9 +93,34 @@ export default function AddCarForm({ onPublished, onStocked }) {
   const [decodingVin, setDecodingVin] = useState(false);
   const [vinResult, setVinResult] = useState(null); // "hit" | "miss" | null
   const photosRef = useRef(null);
+  const rootRef = useRef(null);
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
   const setVal = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  // ── Keyboard: Enter advances to the next field; on the last field of a step
+  // it moves to the next step (or submits on the final step). Shift+Enter and
+  // textareas keep their default newline behaviour.
+  const handleKeyDown = (e) => {
+    if (e.key !== "Enter" || e.shiftKey) return;
+    const t = e.target;
+    if (!t || t.tagName === "TEXTAREA" || t.tagName === "BUTTON") return;
+    if (t.tagName !== "INPUT" && t.tagName !== "SELECT") return;
+    e.preventDefault();
+    const container = rootRef.current;
+    if (!container) return;
+    const focusables = Array.from(
+      container.querySelectorAll("input:not([type=file]), select, textarea"),
+    ).filter((el) => !el.disabled && el.offsetParent !== null);
+    const idx = focusables.indexOf(t);
+    if (idx > -1 && idx < focusables.length - 1) {
+      focusables[idx + 1].focus();
+    } else if (step < 4) {
+      if (stepValid(step)) setStep((s) => s + 1);
+    } else if (canSubmit && !saving) {
+      submit();
+    }
+  };
 
   // ── VIN decode (free NHTSA lookup) ─────────────────────────────────────────
   // Explicit user action: fills make/model/year/CC/body from the VIN. Best for
@@ -255,62 +280,49 @@ export default function AddCarForm({ onPublished, onStocked }) {
     };
 
     try {
-      if (form.publish) {
-        // Listing-first: insert listing → trigger auto-creates stock_unit → patch costs
-        const { data: listing, error: lErr } = await supabase
-          .from("car_listings")
-          .insert({
-            dealer_id: dealerId,
-            brand: form.brand, model: form.model, variant: form.variant || null,
-            year: num(form.year), engine_cc: num(form.engine_cc) || null,
-            transmission: form.transmission, fuel_type: form.fuel_type,
-            body_type: form.body_type, colour: form.colour || null,
-            mileage: num(form.mileage), plate_number: form.plate_number || null,
-            vin_number: form.vin_number || null, is_recon: form.is_recon,
-            condition: form.condition,
-            selling_price: num(form.asking_price),
-            original_price: num(form.original_price) || null,
-            base_price: num(form.purchase_price),
-            purchase_price: num(form.purchase_price),
-            recon_cost: num(form.recon_cost),
-            commission_amount: num(form.commission_amount),
-            warranty_months: num(form.warranty_months) || null,
-            included_services: form.included_services,
-            included_services_cost: servicesCost,
-            images: form.images,
-            description: form.description || null,
-            status: "available",
-          })
-          .select()
-          .single();
-        if (lErr) throw lErr;
-
-        // Patch the auto-created stock unit with management/cost fields
-        const { error: sErr } = await supabase
-          .from("stock_units")
-          .update(stockCostFields)
-          .eq("listing_id", listing.id);
-        if (sErr) throw sErr;
-
-        onPublished?.(listing);
-      } else {
-        // Internal only: stock_unit directly, no public listing
-        const { error: sErr } = await supabase.from("stock_units").insert({
+      // Listing-first for BOTH paths: insert a car_listings row → trigger
+      // auto-creates the linked stock_unit → patch costs. Marketplace cars use
+      // status 'available'; internal-only cars use 'unpublished' (kept private by
+      // the public_car_listings view, excluded from the listing cap + Telegram).
+      // This way internal stock is still visible/manageable in the Listings tab
+      // and can be published later with a single status flip.
+      const { data: listing, error: lErr } = await supabase
+        .from("car_listings")
+        .insert({
           dealer_id: dealerId,
           brand: form.brand, model: form.model, variant: form.variant || null,
           year: num(form.year), engine_cc: num(form.engine_cc) || null,
           transmission: form.transmission, fuel_type: form.fuel_type,
           body_type: form.body_type, colour: form.colour || null,
-          mileage: num(form.mileage), registration_number: form.plate_number || null,
+          mileage: num(form.mileage), plate_number: form.plate_number || null,
           vin_number: form.vin_number || null, is_recon: form.is_recon,
-          asking_price: num(form.asking_price),
+          condition: form.condition,
+          selling_price: num(form.asking_price),
+          original_price: num(form.original_price) || null,
+          base_price: num(form.purchase_price),
+          purchase_price: num(form.purchase_price),
+          recon_cost: num(form.recon_cost),
+          commission_amount: num(form.commission_amount),
+          warranty_months: num(form.warranty_months) || null,
           included_services: form.included_services,
-          status: "in_stock",
-          ...stockCostFields,
-        });
-        if (sErr) throw sErr;
-        onStocked?.();
-      }
+          included_services_cost: servicesCost,
+          images: form.images,
+          description: form.description || null,
+          status: form.publish ? "available" : "unpublished",
+        })
+        .select()
+        .single();
+      if (lErr) throw lErr;
+
+      // Patch the auto-created stock unit with management/cost fields
+      const { error: sErr } = await supabase
+        .from("stock_units")
+        .update(stockCostFields)
+        .eq("listing_id", listing.id);
+      if (sErr) throw sErr;
+
+      if (form.publish) onPublished?.(listing);
+      else onStocked?.();
     } catch (err) {
       setError(err.message || "Could not save. Please try again.");
       setSaving(false);
@@ -319,7 +331,7 @@ export default function AddCarForm({ onPublished, onStocked }) {
 
   return (
     <FormCtx.Provider value={{ form, setVal }}>
-    <div style={{ fontFamily: "'DM Sans',sans-serif" }}>
+    <div ref={rootRef} onKeyDown={handleKeyDown} style={{ fontFamily: "'DM Sans',sans-serif" }}>
       {/* Step indicator */}
       <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
         {STEPS.map((s) => {
@@ -477,22 +489,40 @@ export default function AddCarForm({ onPublished, onStocked }) {
       {/* ── Step 4: Photos & Publish ── */}
       {step === 4 && (
         <div style={{ display: "grid", gap: 20 }}>
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-            padding: 16, borderRadius: 12, border: `1px solid ${form.publish ? color.accent : "#EAECF0"}`,
-            background: form.publish ? "#FEF2F2" : "#fff",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              {form.publish ? <Globe className="w-5 h-5" style={{ color: color.accent }} /> : <Lock className="w-5 h-5" style={{ color: color.textMuted }} />}
-              <div>
-                <p style={{ fontSize: 14, fontWeight: 700, color: color.ink }}>{form.publish ? "Publish to public marketplace" : "Keep in dealer inventory"}</p>
-                <p style={{ fontSize: 12, color: color.textMuted }}>{form.publish ? "Live on your storefront + xdrive.my for buyers to see. Photos required." : "Private — visible to your team only, tracked in stock + P&L. You can publish it anytime."}</p>
-              </div>
+          <div>
+            <label style={LBL}>Where should this car go?</label>
+            <div className="addcar-publish" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              {/* Left — internal only */}
+              <button type="button" onClick={() => setVal("publish", false)}
+                style={{
+                  textAlign: "left", display: "flex", flexDirection: "column", gap: 6, cursor: "pointer",
+                  padding: 16, borderRadius: 12,
+                  border: `2px solid ${!form.publish ? color.ink : "#EAECF0"}`,
+                  background: !form.publish ? "#F7F8FA" : "#fff",
+                }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Lock className="w-5 h-5" style={{ color: !form.publish ? color.ink : color.textMuted, flexShrink: 0 }} />
+                  <span style={{ fontSize: 14, fontWeight: 700, color: color.ink }}>System only</span>
+                  {!form.publish && <Check className="w-4 h-4" style={{ marginLeft: "auto", color: color.ink, flexShrink: 0 }} />}
+                </div>
+                <p style={{ fontSize: 12, color: color.textMuted, lineHeight: 1.5 }}>Goes to your stock only. Visible to your team, tracked in P&L. You can publish it anytime later.</p>
+              </button>
+              {/* Right — marketplace */}
+              <button type="button" onClick={() => setVal("publish", true)}
+                style={{
+                  textAlign: "left", display: "flex", flexDirection: "column", gap: 6, cursor: "pointer",
+                  padding: 16, borderRadius: 12,
+                  border: `2px solid ${form.publish ? color.accent : "#EAECF0"}`,
+                  background: form.publish ? "#FEF2F2" : "#fff",
+                }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Globe className="w-5 h-5" style={{ color: form.publish ? color.accent : color.textMuted, flexShrink: 0 }} />
+                  <span style={{ fontSize: 14, fontWeight: 700, color: color.ink }}>Marketplace</span>
+                  {form.publish && <Check className="w-4 h-4" style={{ marginLeft: "auto", color: color.accent, flexShrink: 0 }} />}
+                </div>
+                <p style={{ fontSize: 12, color: color.textMuted, lineHeight: 1.5 }}>Goes live on your storefront + xdrive.my for buyers, and is also kept in your stock. Photos required.</p>
+              </button>
             </div>
-            <button onClick={() => setVal("publish", !form.publish)}
-              style={{ width: 46, height: 26, borderRadius: 13, border: "none", cursor: "pointer", background: form.publish ? color.accent : "#D1D5DB", position: "relative", flexShrink: 0 }}>
-              <span style={{ position: "absolute", top: 3, left: form.publish ? 23 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .15s" }} />
-            </button>
           </div>
 
           <div>
@@ -556,7 +586,7 @@ export default function AddCarForm({ onPublished, onStocked }) {
         )}
       </div>
 
-      <style>{`@media(max-width:760px){.addcar-pricing{grid-template-columns:1fr!important;}}`}</style>
+      <style>{`@media(max-width:760px){.addcar-pricing{grid-template-columns:1fr!important;}}@media(max-width:520px){.addcar-publish{grid-template-columns:1fr!important;}}`}</style>
     </div>
     </FormCtx.Provider>
   );

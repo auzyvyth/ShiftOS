@@ -280,7 +280,8 @@ export default function OverviewTab({ dealerId, onNavigate }) {
         .slice(0, 6)
     : [];
 
-  const sparkData = (pnl?.sparkline || []).map(d => ({ day: d.day?.slice(5), rev: Number(d.revenue || 0) }));
+  // gm_pnl_snapshot returns sparkline rows as { d: <date>, rev: <revenue> }
+  const sparkData = (pnl?.sparkline || []).map(d => ({ day: d.d?.slice(5), rev: Number(d.rev || 0) }));
 
   if (loading) {
     return (
