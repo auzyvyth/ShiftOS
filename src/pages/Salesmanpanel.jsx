@@ -617,7 +617,7 @@ Rules:
 - cold: lost, or no contact for 7+ days and stage is still "new"
 - warm: everything else`;
  const { data: aiData } = await supabase.functions.invoke("ai-proxy", {
- body: { prompt },
+ body: { prompt, feature: "lead_score" },
  });
  const raw =
  aiData?.reply??
@@ -1131,7 +1131,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  setAiLoading(true);
  try {
  const { data, error } = await supabase.functions.invoke("ai-proxy", {
- body: { prompt },
+ body: { prompt, feature: "wa_reply" },
  });
  if (error) throw error;
  const reply =
@@ -1226,7 +1226,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const features = [car.transmission, car.colour, car.fuel_type, car.body_type].filter(Boolean).join(", ") || "standard features";
  const prompt = `You are a Malaysian used car salesman writing a social media caption in Bahasa Malaysia with some English. Tone: casual, excited, trustworthy. Car: ${name}. Price: ${price}. Mileage: ${mileage}. Key features: ${features}. Platform: ${platform}. Write one punchy caption with relevant emojis and a WhatsApp CTA. Max 150 words.`;
  try {
- const text = await callClaude(prompt, "You write viral Malaysian car sales captions. Reply with the caption text only, no labels.");
+ const text = await callClaude(prompt, "You write viral Malaysian car sales captions. Reply with the caption text only, no labels.", "caption");
  setAiCaptions((p) => ({ ...p, [cacheKey]: text }));
  await supabase.from("ai_caption_logs").insert({ salesman_id: userId, car_id: car.id, platform, caption: text }).then(null, () => {});
  await logAiUsage("caption");
@@ -1246,7 +1246,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const carName = car? `${car.brand} ${car.model}` : "the car";
  const prompt = `You are a Malaysian used car salesman. A buyer named ${lead.buyer_name || "kawan"} enquired about ${carName}. Their stage is ${lead.stage || "new"}. Last note: ${lead.notes || "no notes"}. AI score: ${leadScores[lead.id]?.score || "unknown"}. Write a short, friendly WhatsApp reply in casual Bahasa Malaysia + English mix. Max 3 sentences. Include the car name. End with a soft next step.`;
  try {
- const text = await callClaude(prompt, "You are a friendly Malaysian car salesman. Reply with the WhatsApp message text only.");
+ const text = await callClaude(prompt, "You are a friendly Malaysian car salesman. Reply with the WhatsApp message text only.", "wa_reply");
  setAiWaReplies((p) => ({ ...p, [lead.id]: text }));
  await supabase.from("ai_wa_reply_logs").insert({ salesman_id: userId, lead_id: lead.id, reply: text }).then(null, () => {});
  await logAiUsage("wa_reply");
@@ -1266,7 +1266,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const lastActivity = lead.updated_at? Math.floor((Date.now() - new Date(lead.updated_at)) / 86400000) : daysOld;
  const prompt = `Score this car sales lead. Respond ONLY with JSON:\n{"score":"hot"|"warm"|"cold","reason":"string max 15 words"}\nLead data:\n- Stage: ${lead.stage}\n- Days since created: ${daysOld}\n- Follow-up set: ${lead.follow_up_at? "yes" : "no"}\n- Last activity: ${lastActivity} days ago\n- Enquiry message: ${lead.notes || "none"}\n- Employment: ${lead.employment_type || "unknown"}\n- Income bracket: ${lead.income_bracket || "unknown"}\nHot = likely to buy within 2 weeks. Warm = interested but needs nurturing. Cold = low engagement or stale.`;
  try {
- const raw = await callClaude(prompt, "You are a lead scoring AI. Respond with JSON only, no markdown.");
+ const raw = await callClaude(prompt, "You are a lead scoring AI. Respond with JSON only, no markdown.", "lead_score");
  const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
  const now = new Date().toISOString();
  await supabase.from("leads").update({ ai_score: parsed.score, ai_score_reason: parsed.reason, ai_scored_at: now }).eq("id", lead.id);
@@ -1299,7 +1299,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const daysSince = lead.updated_at? Math.floor((Date.now() - new Date(lead.updated_at)) / 86400000) : 0;
  const prompt = `Suggest one follow-up action for this car sales lead.\nRespond ONLY with JSON:\n{"type":"call"|"whatsapp"|"visit"|"offer"|"close","suggestion":"string max 20 words in BM/English mix"}\nLead: ${lead.buyer_name || "Lead"}, stage: ${lead.stage}, score: ${lead.ai_score || "unknown"}, days since last contact: ${daysSince}, last outcome: ${lead.last_call_outcome || "none"}`;
  try {
- const raw = await callClaude(prompt, "You are a sales coach. Respond with JSON only.");
+ const raw = await callClaude(prompt, "You are a sales coach. Respond with JSON only.", "followup");
  const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
  return { lead, ...parsed, is_acted_on: false };
  } catch { return { lead, type: "whatsapp", suggestion: "Hantar mesej WhatsApp semak status", is_acted_on: false }; }

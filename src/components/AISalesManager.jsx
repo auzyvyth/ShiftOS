@@ -64,6 +64,7 @@ export default function AISalesManager({ snapshot, dealerName }) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const AI_PROXY = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/ai/messages` : '/api/ai-messages';
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(AI_PROXY, {
         method: 'POST',
         headers: {
@@ -71,8 +72,7 @@ export default function AISalesManager({ snapshot, dealerName }) {
           ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
+          feature: 'sales_manager',
           system: buildSystemPrompt(snapshot, dealerName),
           messages: next,
         }),

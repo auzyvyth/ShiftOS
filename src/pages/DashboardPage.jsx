@@ -2708,8 +2708,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
           ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
+          feature: "sales_manager",
           system: ctx(),
           messages: history,
         }),

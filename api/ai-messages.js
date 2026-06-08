@@ -1,6 +1,14 @@
 /* eslint-env node */
 // Vercel Node.js serverless function — Anthropic Messages API proxy
 // Uses streaming to keep connection alive during long PDF analyses
+//
+// Hardened: requires a valid Supabase session, resolves the caller's dealer
+// scope (every sub-role shares its parent dealer's quota + assistant), pins
+// model/max_tokens server-side per feature, and enforces the shared per-dealer
+// daily quota — see lib/aiGuard.js for the policy shared with the Express twin
+// and the Supabase ai-proxy edge function.
+
+import { guardAiRequest } from '../lib/aiGuard.js';
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -35,7 +43,14 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Server missing ANTHROPIC_API_KEY' });
   }
 
-  const { betas, ...anthropicBody } = req.body || {};
+  const { feature, betas, system, messages } = req.body || {};
+
+  const guard = await guardAiRequest(req, feature);
+  if (!guard.ok) {
+    return res.status(guard.status).json({ error: guard.error });
+  }
+
+  const finalSystem = system ? `${guard.roleContext}\n\n${system}` : guard.roleContext;
 
   const headers = {
     'Content-Type': 'application/json',
@@ -49,7 +64,13 @@ export default async function handler(req, res) {
     resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers,
-      body: JSON.stringify({ ...anthropicBody, stream: true }),
+      body: JSON.stringify({
+        model: guard.model,
+        max_tokens: guard.maxTokens,
+        system: finalSystem,
+        messages,
+        stream: true,
+      }),
     });
   } catch (err) {
     return res.status(500).json({ error: 'Anthropic unreachable: ' + err.message });

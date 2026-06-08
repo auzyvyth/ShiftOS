@@ -4,7 +4,6 @@ import { Bell } from "lucide-react";
 import { supabase } from "../supabaseClient";
 
 const ACCENT = "#22c55e";
-const ANTH_MODEL = "claude-sonnet-4-20250514";
 
 const DEAL_STATUS_COLORS = {
   pending: { bg: "rgba(234,179,8,0.15)", color: "#fbbf24" },
@@ -88,7 +87,7 @@ async function streamAnthropic(messages, systemPrompt, onChunk) {
   const AI_PROXY = import.meta.env.VITE_API_URL
     ? `${import.meta.env.VITE_API_URL}/ai/messages`
     : "/api/ai-messages";
-  const body = { model: ANTH_MODEL, max_tokens: 1024, stream: true, messages };
+  const body = { feature: "accountant", messages };
   if (systemPrompt) body.system = systemPrompt;
   const { data: { session } } = await supabase.auth.getSession();
   const res = await fetch(AI_PROXY, {
