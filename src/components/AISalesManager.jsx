@@ -88,7 +88,6 @@ export default function AISalesManager({ snapshot, dealerName }) {
     setLoading(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const AI_PROXY = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/ai/messages` : '/api/ai-messages';
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(AI_PROXY, {
