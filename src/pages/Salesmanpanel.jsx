@@ -261,6 +261,7 @@ export default function SalesmanPanel() {
  const [waModalLead, setWaModalLead] = useState(null);
  const [waModalMsg, setWaModalMessage] = useState("");
  const [playbookLeadId, setPlaybookLeadId] = useState(null);
+ const [expandedScriptKey, setExpandedScriptKey] = useState(null);
  const [copiedScriptLine, setCopiedScriptLine] = useState(null);
 
  // Monthly target
@@ -4790,12 +4791,24 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const pbCarName = pbCar? `${pbCar.year || ""} ${pbCar.brand} ${pbCar.model}`.trim() : "this car";
  const pbStage = pl.stage;
  const scripts = {
+ opener: { label: "Opening the conversation", color: "#60a5fa", lines: [`"Hi ${pl.buyer_name?.split(" ")[0] || "there"}! Thanks for your interest in the ${pbCarName || "car"} — happy to answer anything or set up a viewing whenever suits you."`, `"Are you looking to view this week, or just exploring options for now? Either way, I'm here to help."`, `"Let me know your budget range — I can also suggest similar units if this one doesn't quite fit."`] },
  price: { label: "Price too high", color: "#f87171", lines: [`"Let's look at what you're actually paying monthly — at 90% loan over 7 years, that's roughly RM ${pbCar?.selling_price? Math.round(pbCar.selling_price * 0.9 * 1.245 / 84).toLocaleString() : "X"}/mo."`, `"What's your target price? Let me see what I can work out — I want to make this happen for you."`, `"This is already market price. The value is there."`] },
  mileage: { label: "High mileage concern", color: "#fb923c", lines: [`"Mileage matters less than service history. A well-maintained ${pbCarName} beats a low-km car that's been neglected."`, `"These engines are built to go 300k+ km with regular service. The price already reflects the mileage."`, `"I can help you run a CARFAX/JPJ check so you can see exactly what this car's been through."`] },
  timing: { label: "Not ready yet", color: "#fbbf24", lines: [`"Totally understand — what would need to change for you to feel ready? Is it financing, or something else?"`, `"I can hold this for you with a small refundable deposit while you sort things out. No pressure."`, `"Just so you know — cars at this price point move fast. I'd hate for you to miss it."`] },
- trust: { label: "Not sure / need to think", color: "#f87171", lines: [`"What specific questions can I answer right now? Let's remove all the uncertainty together."`, `"I'm not here to rush you — but I want to make sure you have everything you need to decide confidently."`, `"Can I send you a full brief on this car — specs, loan estimate, everything — so you have it all in one place?"`] },
+ trust: { label: "Not sure / need to think", color: "#a78bfa", lines: [`"What specific questions can I answer right now? Let's remove all the uncertainty together."`, `"I'm not here to rush you — but I want to make sure you have everything you need to decide confidently."`, `"Can I send you a full brief on this car — specs, loan estimate, everything — so you have it all in one place?"`] },
+ closing: { label: "Closing the deal", color: "#4ade80", lines: [`"Great news — let's lock this in. A small deposit secures the unit and the price while we sort the paperwork."`, `"I'll prep the deal sheet now so you can see the full breakdown — loan, on-the-roads, everything included."`, `"Once the deposit's in, I'll start the handover checklist right away — smooth and fast on my end."`] },
  };
- const close = () => { setDrawerLeadId(null); setEditingNoteId(null); setPlaybookLeadId(null); setExpandedActivityLeadId(null); setLostPromptId(null); setDeleteConfirmId(null); setDealSheetLink(null); };
+ const STAGE_SCRIPT_KEYS = {
+ new: ["opener", "trust"],
+ contacted: ["opener", "trust", "timing"],
+ viewing_booked: ["price", "mileage", "trust"],
+ test_drive: ["price", "mileage", "timing"],
+ negotiating: ["price", "mileage", "timing", "trust"],
+ deposit_taken: ["closing"],
+ won: ["closing"],
+ };
+ const activeScriptKeys = STAGE_SCRIPT_KEYS[pbStage] || ["opener", "price", "trust"];
+ const close = () => { setDrawerLeadId(null); setEditingNoteId(null); setPlaybookLeadId(null); setExpandedScriptKey(null); setExpandedActivityLeadId(null); setLostPromptId(null); setDeleteConfirmId(null); setDealSheetLink(null); };
  return (
  <>
  {/* backdrop */}
@@ -4870,7 +4883,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
 
  {/* Tool row 2 */}
  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
- <button onClick={() => { setExpandedActivityLeadId(null); setPlaybookLeadId(playbookLeadId === pl.id? null : pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: playbookLeadId === pl.id? "rgba(168,85,247,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${playbookLeadId === pl.id? "rgba(168,85,247,0.3)" : "rgba(255,255,255,0.08)"}`, color: playbookLeadId === pl.id? "#c084fc" : "#9ca3af" }}>Scripts
+ <button onClick={() => { setExpandedActivityLeadId(null); setExpandedScriptKey(null); setPlaybookLeadId(playbookLeadId === pl.id? null : pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: playbookLeadId === pl.id? "rgba(168,85,247,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${playbookLeadId === pl.id? "rgba(168,85,247,0.3)" : "rgba(255,255,255,0.08)"}`, color: playbookLeadId === pl.id? "#c084fc" : "#9ca3af" }}>Scripts
  </button>
  <button onClick={() => { setPlaybookLeadId(null); if (expandedActivityLeadId === pl.id) setExpandedActivityLeadId(null); else fetchLeadActivities(pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: expandedActivityLeadId === pl.id? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${expandedActivityLeadId === pl.id? "rgba(96,165,250,0.3)" : "rgba(255,255,255,0.08)"}`, color: expandedActivityLeadId === pl.id? "#93c5fd" : "#9ca3af" }}>
  <History size={12} />History
@@ -4907,18 +4920,30 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </div>
  )}
 
- {/* Objection Scripts */}
- {playbookLeadId === pl.id && ["negotiating","viewing_booked","test_drive","contacted"].includes(pbStage) && (
- <div style={{ background: "rgba(168,85,247,0.05)", border: "1px solid rgba(168,85,247,0.15)", borderRadius: 8, padding: "12px 14px" }}>
- <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "#c084fc", textTransform: "uppercase", letterSpacing: "0.08em" }}>Objection Scripts</p>
- {Object.entries(scripts).map(([key, s]) => (
- <div key={key} style={{ marginBottom: 10 }}>
- <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 600, color: s.color }}>{s.label}</p>
+ {/* Scripts — compact accordion, tailored to the lead's current stage */}
+ {playbookLeadId === pl.id && (
+ <div style={{ background: "rgba(168,85,247,0.05)", border: "1px solid rgba(168,85,247,0.15)", borderRadius: 8, padding: "10px 12px" }}>
+ <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, color: "#c084fc", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+ Scripts for "{pbStage?.replace(/_/g," ") || "new"}" stage
+ </p>
+ <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+ {activeScriptKeys.map((key) => {
+ const s = scripts[key];
+ if (!s) return null;
+ const isOpen = expandedScriptKey === `${pl.id}-${key}`;
+ return (
+ <div key={key} style={{ background: "rgba(255,255,255,0.025)", border: `1px solid ${isOpen? `${s.color}40` : "rgba(255,255,255,0.06)"}`, borderRadius: 7, overflow: "hidden" }}>
+ <button onClick={() => setExpandedScriptKey(isOpen? null : `${pl.id}-${key}`)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+ <span style={{ fontSize: 12, fontWeight: 600, color: s.color }}>{s.label}</span>
+ <ChevronRight size={13} color="#4b5563" style={{ transform: isOpen? "rotate(90deg)" : "none", transition: "transform .15s ease", flexShrink: 0 }} />
+ </button>
+ {isOpen && (
+ <div style={{ padding: "0 10px 10px" }}>
  {s.lines.map((line, lineIdx) => {
  const lineKey = `${pl.id}-${key}-${lineIdx}`;
  const isCopied = copiedScriptLine === lineKey;
  return (
- <div key={lineIdx} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 4, overflowX: "hidden" }}>
+ <div key={lineIdx} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 6, overflowX: "hidden" }}>
  <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.55, flex: 1, minWidth: 0, wordBreak: "break-word", whiteSpace: "pre-wrap" }}>{line}</p>
  <button onClick={() => { navigator.clipboard.writeText(line.replace(/^"|"$/g,"")); setCopiedScriptLine(lineKey); setTimeout(() => setCopiedScriptLine(null), 1500); }} style={{ background: "none", border: "none", color: isCopied? "#4ade80" : "#4b5563", cursor: "pointer", padding: 0, flexShrink: 0 }}>
  {isCopied? <Check size={12} /> : <Copy size={12} />}
@@ -4927,7 +4952,11 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  );
  })}
  </div>
- ))}
+ )}
+ </div>
+ );
+ })}
+ </div>
  </div>
  )}
 
