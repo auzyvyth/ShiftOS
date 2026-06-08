@@ -197,6 +197,7 @@ export default function SalesmanPanel() {
  const [aiFollowups, setAiFollowups] = useState([]);
  const [followupsLoading, setFollowupsLoading] = useState(false);
  const [aiWaReplies, setAiWaReplies] = useState({});
+ const [aiWaDraft, setAiWaDraft] = useState({});
  const [waReplyLoading, setWaReplyLoading] = useState({});
  const [waReplyCopied, setWaReplyCopied] = useState({});
  const [captionPlatform, setCaptionPlatform] = useState("whatsapp");
@@ -1241,17 +1242,20 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  }
  };
 
- const generateAiWaReply = async (lead) => {
+ const generateAiWaReply = async (lead, userPrompt) => {
  if (!isPremium) return;
  const quotaOk = await checkQuota("wa_reply");
  if (!quotaOk) return;
  setWaReplyLoading((p) => ({ ...p, [lead.id]: true }));
  const car = lead.car_listings;
  const carName = car? `${car.brand} ${car.model}` : "the car";
- const prompt = `You are a Malaysian used car salesman. A buyer named ${lead.buyer_name || "kawan"} enquired about ${carName}. Their stage is ${lead.stage || "new"}. Last note: ${lead.notes || "no notes"}. AI score: ${leadScores[lead.id]?.score || "unknown"}. Write a short, friendly WhatsApp reply in casual Bahasa Malaysia + English mix. Max 3 sentences. Include the car name. End with a soft next step.`;
+ const context = `Buyer: ${lead.buyer_name || "kawan"}. Car: ${carName}. Stage: ${lead.stage || "new"}. Last note: ${lead.notes || "no notes"}. AI score: ${leadScores[lead.id]?.score || "unknown"}.`;
+ const instruction = (userPrompt || "").trim() || "Write a short, friendly WhatsApp reply in casual Bahasa Malaysia + English mix. Max 3 sentences. Include the car name. End with a soft next step.";
+ const prompt = `You are a Malaysian used car salesman messaging a buyer on WhatsApp.\nLead context — ${context}\nInstruction from the salesman: ${instruction}\nWrite the WhatsApp message text only — no preamble, no quotes.`;
  try {
  const text = await callClaude(prompt, "You are a friendly Malaysian car salesman. Reply with the WhatsApp message text only.");
  setAiWaReplies((p) => ({ ...p, [lead.id]: text }));
+ setAiWaDraft((p) => ({ ...p, [lead.id]: text }));
  await supabase.from("ai_wa_reply_logs").insert({ salesman_id: userId, lead_id: lead.id, reply: text }).then(null, () => {});
  await logAiUsage("wa_reply");
  } catch {
@@ -4959,25 +4963,38 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </div>
 
  {/* AI WA Reply in drawer */}
- {isPremium && pl.buyer_name && pl.phone && (
+ {isPremium && pl.buyer_name && pl.phone && (() => {
+ const defaultPrompt = `Write a short, friendly WhatsApp reply about the ${plCarName || "car"}, matching ${pl.buyer_name || "the buyer"}'s stage (${pl.stage || "new"}). Casual Bahasa Malaysia + English mix, max 3 sentences, end with a soft next step.`;
+ const draft = aiWaDraft[pl.id] ?? defaultPrompt;
+ const generated = aiWaReplies[pl.id];
+ const showingGenerated = generated && draft === generated;
+ return (
  <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 12 }}>
  <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>AI WA Reply</p>
- {!aiWaReplies[pl.id]? (
- <button onClick={() => generateAiWaReply(pl)} disabled={waReplyLoading[pl.id]} style={{ fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.2)", color: "#fca5a5", cursor: "pointer" }}>
- {waReplyLoading[pl.id]? "Generating..." : "Generate AI Reply"}
+ <p style={{ margin: "0 0 6px", fontSize: 11, color: "#4b5563" }}>
+ {showingGenerated? "Generated message — edit freely, or write a new instruction and generate again." : "Write what you want the message to say, then generate."}
+ </p>
+ <textarea
+ value={draft}
+ onChange={(e) => setAiWaDraft((p) => ({ ...p, [pl.id]: e.target.value }))}
+ rows={4}
+ placeholder="e.g. remind them about the test drive on Saturday, keep it casual"
+ style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#e5e7eb", fontSize: 12, padding: "8px 10px", resize: "vertical", boxSizing: "border-box", fontFamily: "inherit" }}
+ />
+ <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+ <button onClick={() => generateAiWaReply(pl, draft)} disabled={waReplyLoading[pl.id] || !draft.trim()} style={{ fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.2)", color: "#fca5a5", cursor: "pointer" }}>
+ {waReplyLoading[pl.id]? "Generating..." : showingGenerated? "Generate Again" : "Generate"}
  </button>
- ) : (
- <div>
- <textarea readOnly value={aiWaReplies[pl.id]} rows={4} style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#e5e7eb", fontSize: 12, padding: "8px 10px", resize: "none", boxSizing: "border-box" }} />
- <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
- <button onClick={() => { navigator.clipboard.writeText(aiWaReplies[pl.id]); setWaReplyCopied(p=>({...p,[pl.id]:true})); setTimeout(()=>setWaReplyCopied(p=>({...p,[pl.id]:false})),1500); }} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 5, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}>{waReplyCopied[pl.id]?"Copied!":"Copy"}</button>
- {pl.phone && <button onClick={()=>{const ph=pl.phone.replace(/\D/g,"");window.open(`https://wa.me/${ph.startsWith("6")?ph:"6"+ph}?text=${encodeURIComponent(aiWaReplies[pl.id])}`,"_blank");}} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 5, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>Send via WA</button>}
- <button onClick={()=>setAiWaReplies(p=>{const n={...p};delete n[pl.id];return n;})} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 5, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#6b7280", cursor: "pointer" }}>Regenerate</button>
- </div>
- </div>
+ {showingGenerated && (
+ <>
+ <button onClick={() => { navigator.clipboard.writeText(draft); setWaReplyCopied(p=>({...p,[pl.id]:true})); setTimeout(()=>setWaReplyCopied(p=>({...p,[pl.id]:false})),1500); }} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 5, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}>{waReplyCopied[pl.id]?"Copied!":"Copy"}</button>
+ {pl.phone && <button onClick={()=>{const ph=pl.phone.replace(/\D/g,"");window.open(`https://wa.me/${ph.startsWith("6")?ph:"6"+ph}?text=${encodeURIComponent(draft)}`,"_blank");}} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 5, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>Send via WA</button>}
+ </>
  )}
  </div>
- )}
+ </div>
+ );
+ })()}
 
  {/* Divider */}
  <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} />
