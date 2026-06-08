@@ -911,13 +911,23 @@ export default function SalesmanLite() {
   // Browser notification: fire when user returns to tab and has stale leads
   useEffect(() => {
     if (browserNotifPerm !== 'granted') return;
-    const handler = () => {
+    const handler = async () => {
       if (document.hidden || staleLeads.length === 0) return;
       const names = staleLeads.slice(0, 3).map(l => l.buyer_name || 'Unknown').join(', ');
-      new Notification(`${staleLeads.length} lead${staleLeads.length !== 1 ? 's' : ''} need follow-up`, {
-        body: names,
-        tag: 'slite-followup',
-      });
+      const title = `${staleLeads.length} lead${staleLeads.length !== 1 ? 's' : ''} need follow-up`;
+      const options = { body: names, tag: 'slite-followup' };
+      try {
+        // Pages controlled by a service worker (PWA) can't use `new Notification` —
+        // it throws "Illegal constructor"; must go through the SW registration instead.
+        const reg = navigator.serviceWorker && (await navigator.serviceWorker.getRegistration());
+        if (reg && reg.showNotification) {
+          reg.showNotification(title, options);
+        } else {
+          new Notification(title, options);
+        }
+      } catch {
+        // notification not critical — ignore failures silently
+      }
     };
     document.addEventListener('visibilitychange', handler);
     return () => document.removeEventListener('visibilitychange', handler);

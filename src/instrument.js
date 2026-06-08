@@ -38,6 +38,10 @@ if (_dsn) {
       // Supabase gotrue-js uses Web Locks with steal:true for cross-tab auth
       // coordination. The old tab gets AbortError — expected, not a real error.
       if (err?.name === 'AbortError' && err?.message?.includes('steal')) return null;
+      // Browser extensions (translate, grammar/spell checkers) mutate the DOM
+      // after React re-renders and call Range.selectNode on detached nodes.
+      // Not reproducible from our code — no createRange/selectNode anywhere in src.
+      if (err?.message?.includes("selectNode") && err?.message?.includes("has no parent")) return null;
       return event;
     },
   });
