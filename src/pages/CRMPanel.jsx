@@ -25,6 +25,11 @@ const iCls =
 const taCls =
   "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/10 transition-all resize-none";
 
+// Light-theme input styles for modals on the white dealer-dashboard surface (e.g. Add Booking)
+const lInputCls =
+  "w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/10 transition-all";
+const lTaCls = lInputCls + " resize-none";
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function relativeTime(dateStr) {
   if (!dateStr) return '';
@@ -1880,11 +1885,11 @@ function BookingsTab({ userId, listings, salesmen }) {
           style={{ background: "rgba(0,0,0,0.78)" }}
         >
           <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col">
-            <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
-              <h3 className="font-semibold text-white">Add Booking</h3>
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <h3 className="font-semibold" style={{ color: '#111827' }}>Add Booking</h3>
               <button
                 onClick={() => setShowAdd(false)}
-                className="text-gray-500 hover:text-white p-1"
+                className="text-gray-400 hover:text-gray-700 p-1"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1901,21 +1906,21 @@ function BookingsTab({ userId, listings, salesmen }) {
                       setAddForm((p) => ({ ...p, buyer_name: e.target.value }))
                     }
                     placeholder="Ahmad"
-                    className={iCls}
+                    className={lInputCls}
                   />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">
                     Buyer Phone
                   </label>
-                  <div className={`flex items-center overflow-hidden ${iCls}`} style={{ padding:0 }}>
-                    <span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-700 bg-gray-800/50 flex-shrink-0">+60</span>
+                  <div className={`flex items-center overflow-hidden ${lInputCls}`} style={{ padding:0 }}>
+                    <span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0">+60</span>
                     <input
                       type="tel"
                       value={(addForm.buyer_phone||'').replace(/^\+?60/,'')}
                       onChange={(e) => setAddForm((p) => ({ ...p, buyer_phone: '+60'+e.target.value.replace(/\D/g,'') }))}
                       placeholder="X-XXXXXXX"
-                      className="flex-1 bg-transparent border-none outline-none text-white text-sm px-3 py-2.5"
+                      className="flex-1 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5"
                     />
                   </div>
                 </div>
@@ -1929,8 +1934,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                   onChange={(e) =>
                     setAddForm((p) => ({ ...p, listing_id: e.target.value }))
                   }
-                  className={iCls}
-                  style={{ background: "rgba(255,255,255,0.05)" }}
+                  className={lInputCls}
                 >
                   <option value="">Select listing...</option>
                   {listings.map((l) => (
@@ -1953,16 +1957,11 @@ function BookingsTab({ userId, listings, salesmen }) {
                         booking_type: e.target.value,
                       }))
                     }
-                    className={iCls}
-                    style={{ background: "rgba(255,255,255,0.05)" }}
+                    className={lInputCls}
                   >
                     {["test_drive", "viewing", "handover", "follow_up"].map(
                       (t) => (
-                        <option
-                          key={t}
-                          value={t}
-                          style={{ background: "#111118" }}
-                        >
+                        <option key={t} value={t}>
                           {t.replace("_", " ")}
                         </option>
                       ),
@@ -1983,7 +1982,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                       }))
                     }
                     placeholder="60"
-                    className={iCls}
+                    className={lInputCls}
                   />
                 </div>
               </div>
@@ -1997,7 +1996,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                   onChange={(e) =>
                     setAddForm((p) => ({ ...p, scheduled_at: e.target.value }))
                   }
-                  className={iCls}
+                  className={lInputCls}
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -2010,16 +2009,11 @@ function BookingsTab({ userId, listings, salesmen }) {
                     onChange={(e) =>
                       setAddForm((p) => ({ ...p, salesman_id: e.target.value }))
                     }
-                    className={iCls}
-                    style={{ background: "rgba(255,255,255,0.05)" }}
+                    className={lInputCls}
                   >
                     <option value="">Unassigned</option>
                     {salesmen.map((s) => (
-                      <option
-                        key={s.id}
-                        value={s.id}
-                        style={{ background: "#111118" }}
-                      >
+                      <option key={s.id} value={s.id}>
                         {s.full_name}
                       </option>
                     ))}
@@ -2039,7 +2033,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                       }))
                     }
                     placeholder="0"
-                    className={iCls}
+                    className={lInputCls}
                   />
                 </div>
               </div>
@@ -2053,15 +2047,15 @@ function BookingsTab({ userId, listings, salesmen }) {
                     setAddForm((p) => ({ ...p, notes: e.target.value }))
                   }
                   rows={2}
-                  className={taCls}
+                  className={lTaCls}
                 />
               </div>
             </div>
-            <div className="p-5 border-t border-white/[0.06] flex gap-3">
+            <div className="p-5 border-t border-gray-100 flex gap-3">
               <button
                 onClick={() => setShowAdd(false)}
-                className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all"
-                style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-800 transition-all"
+                style={{ border: "1px solid #e5e7eb" }}
               >
                 Cancel
               </button>
@@ -2163,7 +2157,7 @@ const CRM_CSS = `
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid #e5e7eb;
     margin-bottom: 16px;
     flex-shrink: 0;
   }
@@ -2173,7 +2167,7 @@ const CRM_CSS = `
     padding: 10px 18px;
     font-size: 13px;
     font-weight: 500;
-    color: #4b5563;
+    color: #6b7280;
     background: none;
     border: none;
     border-bottom: 2px solid transparent;
@@ -2183,9 +2177,9 @@ const CRM_CSS = `
     white-space: nowrap;
     margin-bottom: -1px;
   }
-  .crm-tab:hover { color: #9ca3af; }
+  .crm-tab:hover { color: #111827; }
   .crm-tab.active {
-    color: #fff;
+    color: #111827;
     border-bottom-color: #dc2626;
     font-weight: 600;
   }
