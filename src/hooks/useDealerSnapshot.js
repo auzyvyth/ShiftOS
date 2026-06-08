@@ -10,7 +10,11 @@ export function useDealerSnapshot(userId) {
 
     async function fetch() {
       setLoading(true);
-      const [listingsRes, enquiriesRes, appointmentsRes, stockRes, analyticsRes] =
+      const yesterdayStart = new Date();
+      yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+      yesterdayStart.setHours(0, 0, 0, 0);
+
+      const [listingsRes, enquiriesRes, appointmentsRes, stockRes, analyticsRes, activityRes] =
         await Promise.all([
           supabase
             .from('car_listings')
@@ -32,6 +36,13 @@ export function useDealerSnapshot(userId) {
             .from('analytics_events')
             .select('event_type, created_at')
             .eq('dealer_id', userId),
+          supabase
+            .from('activity_log')
+            .select('actor_id, actor_name, actor_role, summary, action, table_name, created_at')
+            .eq('dealer_id', userId)
+            .gte('created_at', yesterdayStart.toISOString())
+            .order('created_at', { ascending: false })
+            .limit(300),
         ]);
 
       const listings = listingsRes.data || [];
@@ -39,6 +50,30 @@ export function useDealerSnapshot(userId) {
       const appointments = appointmentsRes.data || [];
       const stock = stockRes.data || [];
       const events = analyticsRes.data || [];
+      const activity = activityRes.data || [];
+
+      // Group yesterday/today's activity_log rows by actor so the morning
+      // briefing can summarise what each role (salesman, manager, accountant,
+      // f&i officer, admin) actually did — not just dealership-wide numbers.
+      const teamActivityMap = new Map();
+      for (const row of activity) {
+        if (!row.actor_id || row.actor_role === 'dealer' || row.actor_role === 'owner') continue;
+        const key = row.actor_id;
+        if (!teamActivityMap.has(key)) {
+          teamActivityMap.set(key, {
+            name: row.actor_name || 'Unknown',
+            role: row.actor_role || 'unknown',
+            count: 0,
+            highlights: [],
+          });
+        }
+        const entry = teamActivityMap.get(key);
+        entry.count++;
+        if (row.summary && entry.highlights.length < 4 && !entry.highlights.includes(row.summary)) {
+          entry.highlights.push(row.summary);
+        }
+      }
+      const teamActivity = Array.from(teamActivityMap.values()).sort((a, b) => b.count - a.count);
 
       const now = Date.now();
       const active = listings.filter(c => c.status === 'available');
@@ -110,6 +145,7 @@ export function useDealerSnapshot(userId) {
         totalGPThisMonth,
         totalStockValue,
         topEvents,
+        teamActivity,
       });
       setLoading(false);
     }

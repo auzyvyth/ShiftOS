@@ -2,7 +2,27 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
+const ROLE_LABELS = {
+  salesman: 'Salesman',
+  manager: 'Manager',
+  admin: 'Admin',
+  accountant: 'Accountant',
+  fi_officer: 'F&I Officer',
+  superadmin: 'Super-admin',
+};
+
 function buildSystemPrompt(snapshot, dealerName) {
+  const team = snapshot.teamActivity || [];
+  const teamLines = team.length
+    ? team
+        .map(t => {
+          const label = ROLE_LABELS[t.role] || t.role;
+          const detail = t.highlights.length ? ` — ${t.highlights.join('; ')}` : '';
+          return `${t.name} (${label}): ${t.count} action${t.count === 1 ? '' : 's'}${detail}`;
+        })
+        .join('\n')
+    : 'No team activity logged in the last 24h.';
+
   return `You are the AI Sales Manager for ${dealerName}, a Malaysian used car dealership on ShiftOS.
 
 Personality: Direct, sharp, no fluff. Speak like a senior sales manager. Occasionally use casual Malay terms (boss, confirm, lah). Never say "I am an AI". You ARE the Sales Manager.
@@ -16,17 +36,23 @@ Live dealership data:
 - Stock value on hand: RM${snapshot.totalStockValue?.toLocaleString()}
 - WhatsApp clicks (7d): ${snapshot.topEvents}
 
+Team activity in the last 24 hours (one line per person — name, role, action count, and what they actually did):
+${teamLines}
+
 Rules:
-1. Morning briefing = max 5 bullet points, each actionable
+1. Morning briefing = two parts:
+   a) Max 4 bullet points on dealership numbers, each actionable
+   b) A short "Team" section — one line per person who was active, naming them, their role, and what they did (use the team activity data above verbatim, don't invent actions). If someone on the team did nothing, you can mention that too.
 2. Always reference real numbers from the data above
-3. Call out specific problem areas — stale stock by name, cold leads count
+3. Call out specific problem areas — stale stock by name, cold leads count, or a team member who's gone quiet
 4. Suggest specific RM figures for price drops based on days on lot
-5. Under 120 words unless asked for a full report
-6. Never give generic advice`;
+5. Under 160 words unless asked for a full report
+6. Never give generic advice, never invent activity that isn't in the data above`;
 }
 
 const QUICK_PROMPTS = [
   'Morning briefing',
+  'What did my team do yesterday?',
   'Which cars to reprice?',
   "Why aren't leads converting?",
   'Roast my team',
@@ -62,8 +88,8 @@ export default function AISalesManager({ snapshot, dealerName }) {
     setLoading(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const AI_PROXY = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/ai/messages` : '/api/ai-messages';
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(AI_PROXY, {
         method: 'POST',
         headers: {
@@ -71,8 +97,7 @@ export default function AISalesManager({ snapshot, dealerName }) {
           ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
+          feature: 'sales_manager',
           system: buildSystemPrompt(snapshot, dealerName),
           messages: next,
         }),

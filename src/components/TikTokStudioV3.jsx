@@ -487,8 +487,7 @@ async function applyAICommand(command, elements, theme, selectedElementId) {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(await getAIAuthHeaders()) },
     body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 800,
+      feature: "tiktok_studio",
       system,
       messages: [
         {
@@ -529,8 +528,7 @@ Return ONLY JSON array: [{"hookText":"max 6 words ALL CAPS","headline":"full car
     method: "POST",
     headers: { "Content-Type": "application/json", ...(await getAIAuthHeaders()) },
     body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1000,
+      feature: "tiktok_studio",
       messages: [{ role: "user", content: prompt }],
     }),
   });

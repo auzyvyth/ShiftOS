@@ -146,8 +146,7 @@ async function callClaude(messages, onProgress) {
       ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 16000,
+      feature: "stock_import",
       system: SYSTEM_PROMPT,
       messages,
     }),

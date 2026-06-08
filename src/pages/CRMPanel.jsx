@@ -292,8 +292,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
           ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
+          feature: 'crm_assist',
           system: buildCoachPrompt(selected, stockData, dealerProfile),
           messages: newHistory,
         }),
