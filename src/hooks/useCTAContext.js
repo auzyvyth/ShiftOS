@@ -44,12 +44,13 @@ export function useCTAContext() {
         sessionStorage.removeItem(REF_SESSION_KEY);
       }
 
-      // Priority 2: subdomain dealer
+      // Priority 2: subdomain dealer. Use the SECURITY DEFINER RPC, not the
+      // public_dealer_profiles view — the view is security_invoker and anon
+      // RLS returns no rows, so the CTA whatsapp_number would come back empty
+      // for logged-out storefront visitors.
       if (subdomain) {
         const { data } = await supabase
-          .from('public_dealer_profiles')
-          .select('id, dealership, whatsapp_number, site_name, subdomain')
-          .eq('subdomain', subdomain)
+          .rpc('get_dealer_profile_by_subdomain', { p_subdomain: subdomain })
           .maybeSingle();
         if (data) {
           setCtx({ type: 'dealer', profile: data, ref: null });
