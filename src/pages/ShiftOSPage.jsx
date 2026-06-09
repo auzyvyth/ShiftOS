@@ -474,7 +474,15 @@ function PricingSection({ track }) {
 export default function ShiftOSPage() {
   const featRef    = useRef(null);
   const pricingRef = useRef(null);
-  const [track, setTrack] = useState("dealer");
+  // Allow deep-linking the salesman track from the marketplace "For Salesmen"
+  // entry point (/shiftos?for=salesman) so salesmen land on their own tab
+  // instead of the dealer default.
+  const [track, setTrack] = useState(() => {
+    const p = new URLSearchParams(window.location.search);
+    return p.get("for") === "salesman" || window.location.hash === "#salesmen"
+      ? "salesman"
+      : "dealer";
+  });
   const location = useLocation();
 
   useEffect(() => {
@@ -486,12 +494,16 @@ export default function ShiftOSPage() {
   }, []);
 
   useEffect(() => {
-    if (location.hash === "#pricing") {
+    const params = new URLSearchParams(location.search);
+    if (params.get("for") === "salesman" || location.hash === "#salesmen") {
+      setTrack("salesman");
+      setTimeout(() => pricingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+    } else if (location.hash === "#pricing") {
       setTimeout(() => pricingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
     } else if (location.hash === "#features") {
       setTimeout(() => featRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
     }
-  }, [location.hash]);
+  }, [location.hash, location.search]);
 
   const scrollTo = useCallback((ref) => {
     ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
