@@ -358,10 +358,12 @@ export default function Header() {
   const waHref = waUrl ? waUrl(`Hi ${siteName}, I need help finding a car`) : "#";
 
   const onSub = isSubdomain();
+  // On a subdomain, /showroom redirects to "/" (it is the marketplace-wide
+  // search). The tenant-scoped car list is /cars, so browse must target that.
   const navLinks = onSub
     ? [
         { name: t("nav.home"),       path: "/",              key: "home" },
-        { name: t("nav.browseCars"), path: "/showroom",      key: "cars" },
+        { name: t("nav.browseCars"), path: "/cars",          key: "cars" },
         { name: t("nav.calculator"), path: "/calculator",    key: "calculator" },
         { name: t("nav.howItWorks"), path: "/#how-it-works", key: "howitworks" },
       ]
