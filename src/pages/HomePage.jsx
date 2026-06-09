@@ -415,7 +415,7 @@ const HomePage = () => {
     d: step.desc,
   }));
   const howTitle = howData.title;
-  const testimonials = testimonialsData.map((item) => ({
+  const testimonials = (Array.isArray(testimonialsData) ? testimonialsData : []).map((item) => ({
     name: item.name,
     loc: item.location,
     text: item.text,
