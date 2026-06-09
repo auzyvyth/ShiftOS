@@ -359,5 +359,227 @@
       "submitBtn": "Hantar Kod",
       "submitting": "Menghantar..."
     }
+  },
+  "shiftos": {
+    "nav": {
+      "features": "Ciri",
+      "pricing": "Harga",
+      "marketplace": "Pasaran",
+      "login": "Log masuk",
+      "startFree": "Mula Percuma"
+    },
+    "hero": {
+      "eyebrow": "THE DEALER OS · PENANG · KL · JB",
+      "title1": "Urus Seluruh Pengedar Anda",
+      "title2lead": "Dari",
+      "title2accent": "Satu Papan Pemuka",
+      "subtitle": "Inventori, lead, pembiayaan, pindah milik pasca-jualan dan untung sebenar - dalam satu sistem yang dibina untuk pengedar kereta Malaysia. Ganti Excel, kumpulan WhatsApp berselerak dan kertas kerja manual.",
+      "startFree": "Mula Percuma",
+      "talkToUs": "Hubungi Kami",
+      "trust": "Siap dalam 30 minit · Tiada kontrak · Batal bila-bila masa"
+    },
+    "stats": {
+      "s1": "Satu papan pemuka ganti 5+ alat",
+      "s2": "Lead & test drive dilog automatik",
+      "s3": "Yuran pemasangan · tiada kontrak",
+      "s4": "Untuk mula beroperasi"
+    },
+    "pain": {
+      "eyebrow": "Masalah sebenar, diselesaikan",
+      "title": "Setiap Pengedar Hadap Tembok Yang Sama",
+      "subtitle": "ShiftOS dibina berdasarkan masalah yang sebenarnya merugikan pengedar Malaysia.",
+      "label": "Masalahnya",
+      "items": {
+        "p1": {
+          "tag": "P&L Langsung",
+          "quote": "Berapa untung sebenar setiap unit? Lepas tolak recon, komisen, kos transfer - tak pernah tahu betul-betul.",
+          "title": "Untung kasar sebenar setiap unit, secara automatik",
+          "desc": "ShiftOS kira untung depan (jualan - belian - recon - servis - komisen - kos serah) DAN untung belakang (tambahan F&I) untuk setiap unit. Buka modal P&L dan lihat tepat berapa setiap kereta untung - tanpa spreadsheet, tanpa agak-agak."
+        },
+        "p2": {
+          "tag": "Serah Auto",
+          "quote": "Lepas deal close, JPJ, Puspakom, loan settlement, road tax - semua berterabur. Selalu ada step yang terlupa.",
+          "title": "Senarai semak pindah milik Malaysia penuh, dijana sebaik deal menang",
+          "desc": "Tanda lead menang dan rekod pelanggan dicipta + senarai semak serah 8 langkah dijana automatik serta-merta: penyelesaian pinjaman, insurans, Puspakom B5/B7, JPJ pindah milik, cukai jalan, geran, serah. Setiap langkah ada yuran rasmi, pemilik, dan tarikh akhir."
+        },
+        "p3": {
+          "tag": "Akauntabiliti",
+          "quote": "Salesman report sendiri. Susah nak tahu siapa betul-betul produktif dan siapa yang lambat reply lead.",
+          "title": "Setiap lead, pertanyaan dan test drive - dilog & diberi kredit automatik",
+          "desc": "Tak perlu lagi percaya screenshot WhatsApp yang tak disahkan. ShiftOS jejak masa respons, kadar penukaran, kadar tutup, dan untung setiap salesman, kemudian susun seluruh pasukan pada kad skor kualiti yang owner boleh percaya."
+        },
+        "p4": {
+          "tag": "Enjin F&I",
+          "quote": "Hantar loan ke banyak bank satu-satu, tak nampak mana yang approval rate tinggi. Back-end revenue bocor.",
+          "title": "Penghantaran HP pelbagai bank dengan kad skor kelulusan langsung",
+          "desc": "Hantar ke pelbagai bank serentak, jejak status LOU dan JPJ setiap deal, dan lihat kadar kelulusan sebenar serta hari-ke-keputusan setiap bank. Tangkap hasil tambahan F&I sebagai untung belakang pada setiap deal yang ditutup."
+        },
+        "p5": {
+          "tag": "Pengedaran",
+          "quote": "Posting satu listing ambil masa - upload website, Telegram, buat TikTok content asing-asing.",
+          "title": "Senarai sekali - tersiar di mana-mana dalam bawah 5 minit",
+          "desc": "Tambah kereta dan ia tersiar automatik ke storefront berjenama xdrive.my anda, terpapar automatik ke saluran Telegram, dan menjana slaid kandungan TikTok sedia-pos. Tiada salin-tampal, tiada perlu pereka."
+        },
+        "p6": {
+          "tag": "Pengekalan",
+          "quote": "Customer beli sekali je. Road tax & insurance expiry tak track - repeat business dan referrals hilang.",
+          "title": "Kitaran hayat pelanggan yang bawa pembeli kembali",
+          "desc": "Rekod pelanggan penuh setiap jualan dengan peringatan pembaharuan cukai jalan dan insurans automatik pada 30 dan 7 hari. Jual pakej servis prabayar, jejak lawatan, dan tukar pembeli sekali jadi hasil berulang."
+        }
+      }
+    },
+    "features": {
+      "eyebrow": "Satu platform",
+      "title": "Dari Stok Masuk Ke Kereta Terjual",
+      "subtitle": "Sistem pengurusan pengedar penuh - bukan laman senarai. Semua yang pasukan anda sentuh, di satu tempat.",
+      "items": {
+        "inventory": {
+          "title": "Inventori & Stok",
+          "desc": "Pengambilan procurement, Puspakom B5/B7, kad kerja recon, jejak encumbrance, direktori vendor, import CSV, penuaan hari-atas-lot."
+        },
+        "crm": {
+          "title": "CRM Jualan",
+          "desc": "Saluran Kanban, kredit lead, temujanji, jejak deposit, penjana deal-sheet, amaran lead basi setiap salesman."
+        },
+        "fi": {
+          "title": "F&I & Pembiayaan",
+          "desc": "Barisan HP pelbagai bank, kad skor kelulusan bank, pencapaian LOU & JPJ, produk tambahan F&I, kalkulator pembiayaan."
+        },
+        "postsale": {
+          "title": "Pasca-Jualan & Serah",
+          "desc": "Senarai semak pindah milik Malaysia auto-jana, yuran rasmi setiap langkah, tugasan pemilik, kos ditolak dari P&L unit."
+        },
+        "documents": {
+          "title": "Dokumen",
+          "desc": "Perjanjian Jualan, Resit Deposit, Senarai Semak Serah - output CPA 1999 yang betul, pintu kelulusan pengurus, emel ke pembeli."
+        },
+        "ai": {
+          "title": "Penasihat AI",
+          "desc": "Tanya soalan biasa - \"kereta mana yang dah lama tak laku?\" - dan dapat jawapan segera berdasarkan data serta cadangan susulan lead."
+        },
+        "ownerpnl": {
+          "title": "Papan Pemuka P&L Owner",
+          "desc": "Hasil & untung MTD/LMTD masa nyata, unit terjual, modal terikat, sparkline 30 hari, jejak rentak matlamat - satu skrin."
+        },
+        "storefront": {
+          "title": "Storefront & Pasaran",
+          "desc": "Katalog sub.xdrive.my berjenama, auto-senarai di pasaran xdrive.my, auto-pos Telegram, studio slaid TikTok."
+        },
+        "security": {
+          "title": "Keselamatan & Peranan",
+          "desc": "2FA / TOTP, matriks kebenaran terperinci, papan pemuka berskop ikut peranan, RLS berbilang penyewa diperkukuh, log-keluar-semua-peranti."
+        }
+      }
+    },
+    "team": {
+      "title": "Dibina Untuk Seluruh Pasukan Anda",
+      "subtitle": "Pelan pengedar termasuk kerusi pasukan dengan papan pemuka berskop. Semua orang nampak apa yang mereka perlu sahaja - tidak lebih, tidak kurang.",
+      "roles": {
+        "salesman": {
+          "role": "Salesman",
+          "desc": "Saluran sendiri, senarai, komisen, pautan rujukan."
+        },
+        "fi": {
+          "role": "Pegawai F&I",
+          "desc": "Penghantaran HP, barisan bank, produk tambahan."
+        },
+        "accountant": {
+          "role": "Akauntan",
+          "desc": "Bayaran, kelulusan komisen, gaji."
+        },
+        "manager": {
+          "role": "Pengurus",
+          "desc": "Pengawasan pasukan, kelulusan, paparan saluran penuh."
+        },
+        "admin": {
+          "role": "Admin",
+          "desc": "Tetapan, kerusi, integrasi, log audit penuh."
+        }
+      }
+    },
+    "pricing": {
+      "eyebrow": "Harga mudah",
+      "title": "Pelan Yang Berkembang Bersama Anda",
+      "subtitle": "Mula solo atau bina pasukan penuh. Tiada yuran pemasangan, tiada ikatan.",
+      "forDealers": "Untuk Pengedar",
+      "forSalesmen": "Untuk Salesman",
+      "perMonth": "/bln",
+      "unlimited": "Tanpa had",
+      "listings": "senarai",
+      "seat": "kerusi",
+      "seats": "kerusi pasukan",
+      "unlimitedTeam": "Pasukan tanpa had",
+      "mostPopular": "PALING POPULAR",
+      "needMore": "Perlu lebih 150 senarai atau 15 kerusi?",
+      "talkToTeam": "Hubungi pasukan kami",
+      "plans": {
+        "salesman_lite": {
+          "cta": "Daftar Percuma",
+          "features": [
+            "Storefront peribadi - xdrive.my/s/anda",
+            "Peti masuk lead & pertanyaan",
+            "Jejak temujanji",
+            "Amaran lead basi"
+          ]
+        },
+        "salesman_full": {
+          "cta": "Mula Sekarang",
+          "features": [
+            "Semua dalam Lite",
+            "Pautan rujukan + laporan komisen",
+            "Penasihat lead AI",
+            "Alat penghantaran HP / pinjaman",
+            "Penjana deal-sheet"
+          ]
+        },
+        "dealer_starter": {
+          "cta": "Mula Sekarang",
+          "features": [
+            "Inventori penuh + P&L setiap unit",
+            "Saluran CRM lead",
+            "Storefront berjenama + auto-pos Telegram",
+            "Penjana dokumen (SA / DR / HC)",
+            "Studio kandungan TikTok"
+          ]
+        },
+        "dealer_growth": {
+          "cta": "Mula Sekarang",
+          "features": [
+            "Semua dalam Starter",
+            "Modul F&I + HP pelbagai bank",
+            "Automasi serah pasca-jualan",
+            "Kitaran hayat pelanggan + peringatan",
+            "Penasihat prestasi AI"
+          ]
+        },
+        "dealer_pro": {
+          "cta": "Hubungi Jualan",
+          "features": [
+            "Semua dalam Growth",
+            "Papan pemuka P&L owner + kad skor",
+            "Jejak audit penuh",
+            "Onboarding & sokongan keutamaan"
+          ]
+        }
+      }
+    },
+    "testimonial": {
+      "quote": "Dulu semua dalam Excel dan WhatsApp. Sekarang salesman boleh check stok sendiri, owner nampak untung setiap kereta, dan tak ada lagi paperwork JPJ yang terlupa.",
+      "author": "- Pengedar, Penang"
+    },
+    "finalCta": {
+      "title": "Sedia Untuk Kembangkan Pengedar Anda?",
+      "subtitle": "Sertai pengedar yang beroperasi lebih lincah, jual lebih banyak, dan akhirnya tahu angka sebenar mereka.",
+      "startFree": "Mula Percuma",
+      "whatsappUs": "WhatsApp Kami"
+    },
+    "footer": {
+      "tagline": "Sistem pengurusan pengedar untuk pengedar kereta Malaysia.",
+      "features": "Ciri",
+      "pricing": "Harga",
+      "login": "Log masuk",
+      "copyright": "ShiftOS. Dibina untuk pengedar Malaysia.",
+      "poweredBy": "Dikuasakan oleh"
+    }
   }
 }
