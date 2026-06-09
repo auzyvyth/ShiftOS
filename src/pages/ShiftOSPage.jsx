@@ -73,7 +73,7 @@ const STYLES = `
     background:linear-gradient(135deg,#e02020,#b91c1c);
     color:#fff;border:none;border-radius:11px;
     padding:13px 26px;font-family:inherit;font-weight:700;font-size:14px;
-    cursor:pointer;display:inline-flex;align-items:center;gap:9px;text-decoration:none;
+    cursor:pointer;display:inline-flex;align-items:center;gap:9px;text-decoration:none;white-space:nowrap;
     box-shadow:0 4px 24px rgba(220,38,38,0.38),inset 0 1px 0 rgba(255,255,255,0.14);
     transition:transform .15s,box-shadow .15s;letter-spacing:.01em;
   }
@@ -82,7 +82,7 @@ const STYLES = `
     background:rgba(255,255,255,0.04);color:#e2e8f0;
     border:1px solid rgba(255,255,255,0.16);border-radius:11px;
     padding:13px 26px;font-family:inherit;font-weight:600;font-size:14px;
-    cursor:pointer;display:inline-flex;align-items:center;gap:9px;text-decoration:none;
+    cursor:pointer;display:inline-flex;align-items:center;gap:9px;text-decoration:none;white-space:nowrap;
     transition:background .2s,border-color .2s,transform .15s;
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.07);
   }
@@ -207,6 +207,9 @@ const STYLES = `
 
   @media(max-width:860px){
     .sos-nav-links{display:none!important;}
+    /* Compact nav CTA on mobile so the longer BM label ("Mula Percuma") fits
+       on one line next to the logo + language toggle without overflowing. */
+    .sos-nav .sos-btn-primary{padding:8px 13px!important;font-size:12px!important;gap:6px!important;}
     .sos-hero-h1{font-size:44px!important;line-height:1.04!important;}
     .sos-hero-sub{font-size:16px!important;}
     .sos-ps{grid-template-columns:1fr;}
