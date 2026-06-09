@@ -1,4 +1,3 @@
-
 {
   "nav": {
     "home": "Home",
@@ -359,6 +358,228 @@
       "placeholder": "Enter invite code e.g. DEALER-XXXX",
       "submitBtn": "Submit Code",
       "submitting": "Submitting..."
+    }
+  },
+  "shiftos": {
+    "nav": {
+      "features": "Features",
+      "pricing": "Pricing",
+      "marketplace": "Marketplace",
+      "login": "Log in",
+      "startFree": "Start Free"
+    },
+    "hero": {
+      "eyebrow": "THE DEALER OS · PENANG · KL · JB",
+      "title1": "Run Your Entire Dealership",
+      "title2lead": "From",
+      "title2accent": "One Dashboard",
+      "subtitle": "Inventory, leads, financing, post-sale transfers and real profit — in a single system built for Malaysian car dealers. Replace Excel, scattered WhatsApp groups and manual paperwork.",
+      "startFree": "Start Free",
+      "talkToUs": "Talk to Us",
+      "trust": "Setup in 30 minutes · No contract · Cancel anytime"
+    },
+    "stats": {
+      "s1": "Dashboard replaces 5+ tools",
+      "s2": "Leads & test drives auto-logged",
+      "s3": "Setup fee · no contract",
+      "s4": "To go live"
+    },
+    "pain": {
+      "eyebrow": "Real problems, solved",
+      "title": "Every Dealer Hits The Same Walls",
+      "subtitle": "ShiftOS was built around the problems Malaysian dealers actually lose money to.",
+      "label": "The pain",
+      "items": {
+        "p1": {
+          "tag": "Live P&L",
+          "quote": "What's the real profit on each unit? After recon, commission and transfer costs, I never really know.",
+          "title": "Real per-unit gross profit, automatically",
+          "desc": "ShiftOS computes front gross (sale - purchase - recon - services - commission - handover costs) AND back gross (F&I add-ons) for every unit. Open the P&L modal and see exactly what each car made - no spreadsheet, no guessing."
+        },
+        "p2": {
+          "tag": "Auto handover",
+          "quote": "Once a deal closes, JPJ, Puspakom, loan settlement, road tax - it's all over the place. There's always a step we forget.",
+          "title": "The full Malaysian transfer checklist, seeded the moment a deal is won",
+          "desc": "Mark a lead won and a customer record is created + an 8-step handover checklist auto-seeded instantly: loan settlement, insurance, Puspakom B5/B7, JPJ pindah milik, road tax, geran, handover. Every step has the official fee, owner, and due date."
+        },
+        "p3": {
+          "tag": "Accountability",
+          "quote": "Salesmen report on themselves. It's hard to know who's actually productive and who's slow to reply to leads.",
+          "title": "Every lead, enquiry and test drive - auto-logged and attributed",
+          "desc": "No more trusting unverified WhatsApp screenshots. ShiftOS tracks response time, conversion rate, close rate, and gross per salesman, then ranks the whole team on a quality scorecard the owner can trust."
+        },
+        "p4": {
+          "tag": "F&I engine",
+          "quote": "Submitting loans to banks one by one, with no view of which has the highest approval rate. Back-end revenue leaks away.",
+          "title": "Multi-bank HP submission with a live bank approval scorecard",
+          "desc": "Submit to multiple banks in parallel, track LOU and JPJ status per deal, and see each bank's real approval rate and days-to-decision. Capture F&I add-on revenue as back-end gross on every closed deal."
+        },
+        "p5": {
+          "tag": "Distribution",
+          "quote": "Posting one listing takes forever - uploading to the website, Telegram, and making TikTok content all separately.",
+          "title": "List once - published everywhere in under 5 minutes",
+          "desc": "Add a car and it auto-publishes to your branded xdrive.my storefront, auto-posts to your Telegram channel, and generates ready-to-post TikTok content slides. Zero copy-paste, zero designer required."
+        },
+        "p6": {
+          "tag": "Retention",
+          "quote": "Customers buy once and that's it. Road tax & insurance expiry go untracked - repeat business and referrals vanish.",
+          "title": "Customer lifecycle that brings buyers back",
+          "desc": "Full customer record per sale with automatic road-tax and insurance renewal reminders at 30 and 7 days. Sell prepaid service packages, track visits, and turn one-time buyers into recurring revenue."
+        }
+      }
+    },
+    "features": {
+      "eyebrow": "One platform",
+      "title": "From Stock In To Car Sold",
+      "subtitle": "A full dealer management system - not a listing site. Everything your team touches, in one place.",
+      "items": {
+        "inventory": {
+          "title": "Inventory & Stock",
+          "desc": "Procurement intake, Puspakom B5/B7, recon job cards, encumbrance tracking, vendor directory, CSV import, days-on-lot aging."
+        },
+        "crm": {
+          "title": "Sales CRM",
+          "desc": "Kanban pipeline, lead attribution, appointments, deposit tracking, deal-sheet generator, stale-lead alerts per salesman."
+        },
+        "fi": {
+          "title": "F&I & Financing",
+          "desc": "Multi-bank HP queue, bank approval scorecards, LOU & JPJ milestones, F&I add-on products, financing calculator."
+        },
+        "postsale": {
+          "title": "Post-Sale & Handover",
+          "desc": "Auto-seeded Malaysian transfer checklist, per-step official fees, owner assignments, costs deducted from unit P&L."
+        },
+        "documents": {
+          "title": "Documents",
+          "desc": "Sales Agreement, Deposit Receipt, Handover Checklist - proper CPA 1999 output, manager approval gate, email to buyer."
+        },
+        "ai": {
+          "title": "AI Advisor",
+          "desc": "Ask plain questions - \"which cars have sat too long?\" - and get instant, data-backed answers and lead follow-up suggestions."
+        },
+        "ownerpnl": {
+          "title": "Owner P&L Dashboard",
+          "desc": "Real-time MTD/LMTD revenue & gross, units sold, capital tied up, 30-day sparkline, goal pace tracking - one screen."
+        },
+        "storefront": {
+          "title": "Storefront & Market",
+          "desc": "Branded sub.xdrive.my catalog, auto-listing on xdrive.my marketplace, Telegram auto-post, TikTok slide studio."
+        },
+        "security": {
+          "title": "Security & Roles",
+          "desc": "2FA / TOTP, granular permission matrix, scoped dashboards per role, hardened multi-tenant RLS, log-out-all-devices."
+        }
+      }
+    },
+    "team": {
+      "title": "Built For Your Whole Team",
+      "subtitle": "Dealer plans include team seats with scoped dashboards. Everyone sees exactly what they need - nothing more, nothing less.",
+      "roles": {
+        "salesman": {
+          "role": "Salesman",
+          "desc": "Own pipeline, listings, commissions, referral link."
+        },
+        "fi": {
+          "role": "F&I Officer",
+          "desc": "HP submissions, bank queue, add-on products."
+        },
+        "accountant": {
+          "role": "Accountant",
+          "desc": "Payouts, commission approvals, payroll."
+        },
+        "manager": {
+          "role": "Manager",
+          "desc": "Team oversight, approvals, full pipeline view."
+        },
+        "admin": {
+          "role": "Admin",
+          "desc": "Settings, seats, integrations, full audit log."
+        }
+      }
+    },
+    "pricing": {
+      "eyebrow": "Simple pricing",
+      "title": "Plans That Scale With You",
+      "subtitle": "Start solo or build a full team. No setup fee, no lock-in.",
+      "forDealers": "For Dealerships",
+      "forSalesmen": "For Salesmen",
+      "perMonth": "/mo",
+      "unlimited": "Unlimited",
+      "listings": "listings",
+      "seat": "seat",
+      "seats": "team seats",
+      "unlimitedTeam": "Unlimited team",
+      "mostPopular": "MOST POPULAR",
+      "needMore": "Need more than 150 listings or 15 seats?",
+      "talkToTeam": "Talk to our team",
+      "plans": {
+        "salesman_lite": {
+          "cta": "Start Free",
+          "features": [
+            "Personal storefront - xdrive.my/s/you",
+            "Lead & enquiry inbox",
+            "Appointment tracking",
+            "Stale-lead alerts"
+          ]
+        },
+        "salesman_full": {
+          "cta": "Get Started",
+          "features": [
+            "Everything in Lite",
+            "Referral link + commission reports",
+            "AI lead advisor",
+            "HP / loan submission tools",
+            "Deal-sheet generator"
+          ]
+        },
+        "dealer_starter": {
+          "cta": "Get Started",
+          "features": [
+            "Full inventory + per-unit P&L",
+            "Lead CRM pipeline",
+            "Branded storefront + Telegram auto-post",
+            "Document generator (SA / DR / HC)",
+            "TikTok content studio"
+          ]
+        },
+        "dealer_growth": {
+          "cta": "Get Started",
+          "features": [
+            "Everything in Starter",
+            "F&I module + multi-bank HP",
+            "Post-sale handover automation",
+            "Customer lifecycle + reminders",
+            "AI performance advisor"
+          ]
+        },
+        "dealer_pro": {
+          "cta": "Talk to Sales",
+          "features": [
+            "Everything in Growth",
+            "Owner P&L dashboard + scorecards",
+            "Full audit trail",
+            "Priority onboarding & support"
+          ]
+        }
+      }
+    },
+    "testimonial": {
+      "quote": "We used to keep everything in Excel and WhatsApp. Now salesmen check stock themselves, the owner sees the profit on every car, and there's no more forgotten JPJ paperwork.",
+      "author": "- Dealer, Penang"
+    },
+    "finalCta": {
+      "title": "Ready To Scale Your Dealership?",
+      "subtitle": "Join the dealers running leaner, selling more, and finally knowing their real numbers.",
+      "startFree": "Start Free",
+      "whatsappUs": "WhatsApp Us"
+    },
+    "footer": {
+      "tagline": "The dealer management system for Malaysian car dealers.",
+      "features": "Features",
+      "pricing": "Pricing",
+      "login": "Log in",
+      "copyright": "ShiftOS. Built for Malaysian dealers.",
+      "poweredBy": "Powered by"
     }
   }
 }

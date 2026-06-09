@@ -56,10 +56,16 @@ export default function MarketplaceHeader() {
         .mh-dropdown:hover .mh-dropdown-chevron { transform:rotate(180deg); }
         .mh-dropdown-menu { position:absolute; top:calc(100% + 10px); left:50%; transform:translateX(-50%); min-width:170px; background:rgba(10,14,24,0.98); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:6px; display:none; flex-direction:column; gap:2px; backdrop-filter:blur(20px); box-shadow:0 12px 40px rgba(0,0,0,0.7); z-index:200; }
         .mh-dropdown:hover .mh-dropdown-menu { display:flex; }
+        /* Right-aligned variant for the CTA dropdown so it never overflows the viewport edge */
+        .mh-dropdown-menu.right { left:auto; right:0; transform:none; min-width:230px; }
         .mh-dropdown-item { color:#9ca3af; font-size:13px; font-weight:500; text-decoration:none; padding:9px 12px; border-radius:8px; font-family:'Outfit',sans-serif; transition:background 0.12s,color 0.12s; white-space:nowrap; }
         .mh-dropdown-item:hover { background:rgba(255,255,255,0.07); color:#fff; }
-        .mh-cta { display:flex; align-items:center; gap:7px; background:#dc2626; color:#fff; font-size:14px; font-weight:700; padding:9px 18px; border-radius:9px; text-decoration:none; font-family:'Outfit',sans-serif; transition:background 0.15s,transform 0.15s; white-space:nowrap; }
+        .mh-dropdown-item-title { color:#f3f4f6; font-size:13.5px; font-weight:700; }
+        .mh-dropdown-item-sub { color:#6b7280; font-size:11.5px; font-weight:500; margin-top:1px; }
+        .mh-cta { display:flex; align-items:center; gap:7px; background:#dc2626; color:#fff; font-size:14px; font-weight:700; padding:9px 18px; border-radius:9px; text-decoration:none; font-family:'Outfit',sans-serif; transition:background 0.15s,transform 0.15s; white-space:nowrap; cursor:pointer; border:none; }
         .mh-cta:hover { background:#b91c1c; transform:translateY(-1px); }
+        .mh-cta-chevron { transition:transform 0.2s; display:inline-block; font-size:11px; }
+        .mh-dropdown:hover .mh-cta-chevron { transform:rotate(180deg); }
         .mh-signin { display:flex; align-items:center; gap:7px; background:transparent; border:1px solid rgba(255,255,255,0.15); color:#d1d5db; font-size:14px; font-weight:600; padding:9px 16px; border-radius:9px; text-decoration:none; font-family:'Outfit',sans-serif; transition:border-color 0.15s,color 0.15s; white-space:nowrap; }
         .mh-signin:hover { border-color:rgba(255,255,255,0.35); color:#fff; }
         .mh-hamburger { display:none; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:8px; padding:8px; cursor:pointer; align-items:center; justify-content:center; transition:background 0.15s; }
@@ -134,7 +140,21 @@ export default function MarketplaceHeader() {
               <Phone size={13} /> {settings.support_phone}
             </a>
             <a href="/login" className="mh-signin">Sign In</a>
-            <a href="/shiftos" className="mh-cta">List Your Car</a>
+            <div className="mh-dropdown">
+              <button className="mh-cta" aria-haspopup="true">
+                Get Started <span className="mh-cta-chevron">▾</span>
+              </button>
+              <div className="mh-dropdown-menu right" role="menu">
+                <a href="/shiftos" className="mh-dropdown-item">
+                  <div className="mh-dropdown-item-title">For Dealers</div>
+                  <div className="mh-dropdown-item-sub">Run your dealership on ShiftOS</div>
+                </a>
+                <a href="/shiftos?for=salesman#pricing" className="mh-dropdown-item">
+                  <div className="mh-dropdown-item-title">For Salesmen</div>
+                  <div className="mh-dropdown-item-sub">Free plan — list cars, track leads</div>
+                </a>
+              </div>
+            </div>
             <button className="mh-hamburger" aria-label="Toggle menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}>
               {menuOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
@@ -164,7 +184,8 @@ export default function MarketplaceHeader() {
           </button>
           <a href={`tel:+${settings.support_whatsapp}`} className="mh-mobile-link" style={{ display:'flex', alignItems:'center', gap:'8px' }}><Phone size={14} /> {settings.support_phone}</a>
           <a href="/login" className="mh-mobile-link" style={{ color:'#9ca3af', borderBottom:'none' }} onClick={() => setMenuOpen(false)}>Sign In →</a>
-          <a href="/shiftos" className="mh-mobile-cta" onClick={() => setMenuOpen(false)}>List Your Car</a>
+          <a href="/shiftos" className="mh-mobile-cta" onClick={() => setMenuOpen(false)}>Get Started — For Dealers</a>
+          <a href="/shiftos?for=salesman#pricing" className="mh-mobile-cta" style={{ marginTop:8, background:'transparent', border:'1px solid rgba(220,38,38,0.5)', color:'#f87171' }} onClick={() => setMenuOpen(false)}>Get Started — For Salesmen</a>
         </div>
       </header>
       <SavedCarsPanel open={savedOpen} onClose={() => setSavedOpen(false)} />

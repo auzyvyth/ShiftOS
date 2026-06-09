@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Wallet, Users, Bot, Globe, MessageCircle, ArrowRight, Check,
   ClipboardCheck, Landmark, BellRing, LineChart, ShieldCheck,
@@ -72,7 +73,7 @@ const STYLES = `
     background:linear-gradient(135deg,#e02020,#b91c1c);
     color:#fff;border:none;border-radius:11px;
     padding:13px 26px;font-family:inherit;font-weight:700;font-size:14px;
-    cursor:pointer;display:inline-flex;align-items:center;gap:9px;text-decoration:none;
+    cursor:pointer;display:inline-flex;align-items:center;gap:9px;text-decoration:none;white-space:nowrap;
     box-shadow:0 4px 24px rgba(220,38,38,0.38),inset 0 1px 0 rgba(255,255,255,0.14);
     transition:transform .15s,box-shadow .15s;letter-spacing:.01em;
   }
@@ -81,7 +82,7 @@ const STYLES = `
     background:rgba(255,255,255,0.04);color:#e2e8f0;
     border:1px solid rgba(255,255,255,0.16);border-radius:11px;
     padding:13px 26px;font-family:inherit;font-weight:600;font-size:14px;
-    cursor:pointer;display:inline-flex;align-items:center;gap:9px;text-decoration:none;
+    cursor:pointer;display:inline-flex;align-items:center;gap:9px;text-decoration:none;white-space:nowrap;
     transition:background .2s,border-color .2s,transform .15s;
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.07);
   }
@@ -206,6 +207,9 @@ const STYLES = `
 
   @media(max-width:860px){
     .sos-nav-links{display:none!important;}
+    /* Compact nav CTA on mobile so the longer BM label ("Mula Percuma") fits
+       on one line next to the logo + language toggle without overflowing. */
+    .sos-nav .sos-btn-primary{padding:8px 13px!important;font-size:12px!important;gap:6px!important;}
     .sos-hero-h1{font-size:44px!important;line-height:1.04!important;}
     .sos-hero-sub{font-size:16px!important;}
     .sos-ps{grid-template-columns:1fr;}
@@ -220,107 +224,43 @@ const STYLES = `
 `;
 
 // ─── Data ────────────────────────────────────────────────────────────────────
+// Copy lives in i18n (shiftos.*) so the page is fully EN/BM. These arrays hold
+// only the icon + the translation-key id for each item.
 const PAIN_SOLUTIONS = [
-  {
-    Icon: Wallet, tag: "Live P&L",
-    pain: '“Berapa untung sebenar setiap unit? Lepas tolak recon, komisen, kos transfer — tak pernah tahu betul-betul.”',
-    title: "Real per-unit gross profit, automatically",
-    desc: "ShiftOS computes front gross (sale − purchase − recon − services − commission − handover costs) AND back gross (F&I add-ons) for every unit. Open the P&L modal and see exactly what each car made — no spreadsheet, no guessing.",
-  },
-  {
-    Icon: ClipboardCheck, tag: "Auto handover",
-    pain: '“Lepas deal close, JPJ, Puspakom, loan settlement, road tax — semua berterabur. Selalu ada step yang terlupa.”',
-    title: "The full Malaysian transfer checklist, seeded the moment a deal is won",
-    desc: "Mark a lead won → customer record created + 8-step handover checklist auto-seeded instantly: loan settlement → insurance → Puspakom B5/B7 → JPJ pindah milik → road tax → geran → handover. Every step has the official fee, owner, and due date.",
-  },
-  {
-    Icon: Users, tag: "Accountability",
-    pain: '“Salesman report sendiri. Susah nak tahu siapa betul-betul produktif dan siapa yang lambat reply lead.”',
-    title: "Every lead, enquiry and test drive — auto-logged and attributed",
-    desc: "No more trusting unverified WhatsApp screenshots. ShiftOS tracks response time, conversion rate, close rate, and gross per salesman, then ranks the whole team on a quality scorecard the owner can trust.",
-  },
-  {
-    Icon: Landmark, tag: "F&I engine",
-    pain: '“Hantar loan ke banyak bank satu-satu, tak nampak mana yang approval rate tinggi. Back-end revenue bocor.”',
-    title: "Multi-bank HP submission with a live bank approval scorecard",
-    desc: "Submit to multiple banks in parallel, track LOU and JPJ status per deal, and see each bank's real approval rate and days-to-decision. Capture F&I add-on revenue as back-end gross on every closed deal.",
-  },
-  {
-    Icon: Globe, tag: "Distribution",
-    pain: '"Posting satu listing ambil masa — upload website, Telegram, buat TikTok content asing-asing."',
-    title: "List once — published everywhere in under 5 minutes",
-    desc: "Add a car and it auto-publishes to your branded xdrive.my storefront, auto-posts to your Telegram channel, and generates ready-to-post TikTok content slides. Zero copy-paste, zero designer required.",
-  },
-  {
-    Icon: BellRing, tag: "Retention",
-    pain: '"Customer beli sekali je. Road tax & insurance expiry tak track — repeat business dan referrals hilang."',
-    title: "Customer lifecycle that brings buyers back",
-    desc: "Full customer record per sale with automatic road-tax and insurance renewal reminders at 30 and 7 days. Sell prepaid service packages, track visits, and turn one-time buyers into recurring revenue.",
-  },
+  { Icon: Wallet,         key: "p1" },
+  { Icon: ClipboardCheck, key: "p2" },
+  { Icon: Users,          key: "p3" },
+  { Icon: Landmark,       key: "p4" },
+  { Icon: Globe,          key: "p5" },
+  { Icon: BellRing,       key: "p6" },
 ];
 
 const FEATURES = [
-  { Icon: Car,            title: "Inventory & Stock",      desc: "Procurement intake, Puspakom B5/B7, recon job cards, encumbrance tracking, vendor directory, CSV import, days-on-lot aging." },
-  { Icon: LineChart,      title: "Sales CRM",              desc: "Kanban pipeline, lead attribution, appointments, deposit tracking, deal-sheet generator, stale-lead alerts per salesman." },
-  { Icon: Landmark,       title: "F&I & Financing",        desc: "Multi-bank HP queue, bank approval scorecards, LOU & JPJ milestones, F&I add-on products, financing calculator." },
-  { Icon: ClipboardCheck, title: "Post-Sale & Handover",   desc: "Auto-seeded Malaysian transfer checklist, per-step official fees, owner assignments, costs deducted from unit P&L." },
-  { Icon: Receipt,        title: "Documents",              desc: "Sales Agreement, Deposit Receipt, Handover Checklist — proper CPA 1999 output, manager approval gate, email to buyer." },
-  { Icon: Bot,            title: "AI Advisor",             desc: 'Ask plain questions — "which cars have sat too long?" — and get instant, data-backed answers and lead follow-up suggestions.' },
-  { Icon: Wallet,         title: "Owner P&L Dashboard",   desc: "Real-time MTD/LMTD revenue & gross, units sold, capital tied up, 30-day sparkline, goal pace tracking — one screen." },
-  { Icon: Globe,          title: "Storefront & Market",   desc: "Branded sub.xdrive.my catalog, auto-listing on xdrive.my marketplace, Telegram auto-post, TikTok slide studio." },
-  { Icon: ShieldCheck,    title: "Security & Roles",      desc: "2FA / TOTP, granular permission matrix, scoped dashboards per role, hardened multi-tenant RLS, log-out-all-devices." },
+  { Icon: Car,            key: "inventory" },
+  { Icon: LineChart,      key: "crm" },
+  { Icon: Landmark,       key: "fi" },
+  { Icon: ClipboardCheck, key: "postsale" },
+  { Icon: Receipt,        key: "documents" },
+  { Icon: Bot,            key: "ai" },
+  { Icon: Wallet,         key: "ownerpnl" },
+  { Icon: Globe,          key: "storefront" },
+  { Icon: ShieldCheck,    key: "security" },
 ];
 
 const TEAM_ROLES = [
-  { Icon: UserCheck,  role: "Salesman",    desc: "Own pipeline, listings, commissions, referral link." },
-  { Icon: Briefcase,  role: "F&I Officer", desc: "HP submissions, bank queue, add-on products." },
-  { Icon: Calculator, role: "Accountant",  desc: "Payouts, commission approvals, payroll." },
-  { Icon: LineChart,  role: "Manager",     desc: "Team oversight, approvals, full pipeline view." },
-  { Icon: ShieldCheck,role: "Admin",       desc: "Settings, seats, integrations, full audit log." },
+  { Icon: UserCheck,   key: "salesman" },
+  { Icon: Briefcase,   key: "fi" },
+  { Icon: Calculator,  key: "accountant" },
+  { Icon: LineChart,   key: "manager" },
+  { Icon: ShieldCheck, key: "admin" },
 ];
 
-const PLAN_FEATURES = {
-  salesman_lite: [
-    "Personal storefront — xdrive.my/s/you",
-    "Lead & enquiry inbox",
-    "Appointment tracking",
-    "Stale-lead alerts",
-  ],
-  salesman_full: [
-    "Everything in Lite",
-    "Referral link + commission reports",
-    "AI lead advisor",
-    "HP / loan submission tools",
-    "Deal-sheet generator",
-  ],
-  dealer_starter: [
-    "Full inventory + per-unit P&L",
-    "Lead CRM pipeline",
-    "Branded storefront + Telegram auto-post",
-    "Document generator (SA / DR / HC)",
-    "TikTok content studio",
-  ],
-  dealer_growth: [
-    "Everything in Starter",
-    "F&I module + multi-bank HP",
-    "Post-sale handover automation",
-    "Customer lifecycle + reminders",
-    "AI performance advisor",
-  ],
-  dealer_pro: [
-    "Everything in Growth",
-    "Owner P&L dashboard + scorecards",
-    "Full audit trail",
-    "Priority onboarding & support",
-  ],
-};
-
 const PLAN_META = {
-  salesman_lite: { cta: "Daftar Percuma", to: "/salesman-onboarding/lite",    variant: "outline" },
-  salesman_full: { cta: "Mula Sekarang",  to: "/salesman-onboarding/premium", variant: "primary" },
-  dealer_starter:{ cta: "Get Started",    to: "/dealer-onboarding/starter",   variant: "outline" },
-  dealer_growth: { cta: "Get Started",    to: "/dealer-onboarding/growth",    variant: "primary", popular: true },
-  dealer_pro:    { cta: "Talk to Sales",  to: "/dealer-onboarding/pro",       variant: "gold" },
+  salesman_lite: { to: "/salesman-onboarding/lite",    variant: "outline" },
+  salesman_full: { to: "/salesman-onboarding/premium", variant: "primary" },
+  dealer_starter:{ to: "/dealer-onboarding/starter",   variant: "outline" },
+  dealer_growth: { to: "/dealer-onboarding/growth",    variant: "primary", popular: true },
+  dealer_pro:    { to: "/dealer-onboarding/pro",       variant: "gold" },
 };
 
 // salesman_full (Premium) hidden for now — solo focus is Lite. Re-add to show the card again.
@@ -363,9 +303,12 @@ function Logo({ size = 34 }) {
 
 // ─── Pricing card ─────────────────────────────────────────────────────────────
 function PriceCard({ planKey }) {
+  const { t } = useTranslation();
   const cfg  = PLAN_CONFIG[planKey];
   const meta = PLAN_META[planKey];
-  const feats = PLAN_FEATURES[planKey] || [];
+  const feats = t(`shiftos.pricing.plans.${planKey}.features`, { returnObjects: true });
+  const featList = Array.isArray(feats) ? feats : [];
+  const cta = t(`shiftos.pricing.plans.${planKey}.cta`);
   const isPopular = meta.popular;
   const isGold    = meta.variant === "gold";
 
@@ -387,7 +330,7 @@ function PriceCard({ planKey }) {
     <div className="sos-pc" style={{ background: bgGrad, border: `1px solid ${borderCol}`, boxShadow: shadow }}>
       {isPopular && (
         <div style={{ position: "absolute", top: -1, left: "50%", transform: "translateX(-50%)", background: "#dc2626", borderRadius: "0 0 10px 10px", padding: "3px 16px", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: "#fff", whiteSpace: "nowrap" }}>
-          MOST POPULAR
+          {t("shiftos.pricing.mostPopular")}
         </div>
       )}
       <div style={{ marginBottom: 6, marginTop: isPopular ? 18 : 0 }}>
@@ -397,13 +340,13 @@ function PriceCard({ planKey }) {
         <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 58, lineHeight: 1, color: priceCol, letterSpacing: 0 }}>
           {cfg.price === 0 ? "RM0" : `RM${cfg.price}`}
         </span>
-        <span style={{ fontSize: 16, color: "#6b7280", marginLeft: 2 }}>/mo</span>
+        <span style={{ fontSize: 16, color: "#6b7280", marginLeft: 2 }}>{t("shiftos.pricing.perMonth")}</span>
       </div>
       <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 24, lineHeight: 1.5 }}>
-        {cfg.listingCap ?? "Unlimited"} listings · {cfg.seatCap ? `${cfg.seatCap} ${cfg.seatCap === 1 ? "seat" : "team seats"}` : "Unlimited team"}
+        {cfg.listingCap ?? t("shiftos.pricing.unlimited")} {t("shiftos.pricing.listings")} · {cfg.seatCap ? `${cfg.seatCap} ${cfg.seatCap === 1 ? t("shiftos.pricing.seat") : t("shiftos.pricing.seats")}` : t("shiftos.pricing.unlimitedTeam")}
       </p>
       <ul style={{ listStyle: "none", flex: 1, marginBottom: 28 }}>
-        {feats.map((f) => (
+        {featList.map((f) => (
           <li key={f} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13, color: "#cbd5e1", marginBottom: 12, lineHeight: 1.5 }}>
             <Check size={15} color={checkCol} style={{ flexShrink: 0, marginTop: 2 }} />
             {f}
@@ -411,13 +354,13 @@ function PriceCard({ planKey }) {
         ))}
       </ul>
       {meta.variant === "primary" && (
-        <Link to={meta.to} className="sos-btn-primary" style={{ justifyContent: "center", fontSize: 14 }}>{meta.cta}</Link>
+        <Link to={meta.to} className="sos-btn-primary" style={{ justifyContent: "center", fontSize: 14 }}>{cta}</Link>
       )}
       {meta.variant === "outline" && (
-        <Link to={meta.to} className="sos-btn-outline" style={{ justifyContent: "center", fontSize: 14 }}>{meta.cta}</Link>
+        <Link to={meta.to} className="sos-btn-outline" style={{ justifyContent: "center", fontSize: 14 }}>{cta}</Link>
       )}
       {meta.variant === "gold" && (
-        <Link to={meta.to} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 26px", borderRadius: 11, background: "linear-gradient(135deg,#d97706,#92400e)", color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none", boxShadow: "0 4px 20px rgba(180,120,40,0.38),inset 0 1px 0 rgba(255,255,255,0.14)", transition: "transform .15s,box-shadow .15s" }}>{meta.cta}</Link>
+        <Link to={meta.to} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 26px", borderRadius: 11, background: "linear-gradient(135deg,#d97706,#92400e)", color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none", boxShadow: "0 4px 20px rgba(180,120,40,0.38),inset 0 1px 0 rgba(255,255,255,0.14)", transition: "transform .15s,box-shadow .15s" }}>{cta}</Link>
       )}
     </div>
   );
@@ -472,9 +415,20 @@ function PricingSection({ track }) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function ShiftOSPage() {
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language.startsWith("en");
+  const toggleLang = () => i18n.changeLanguage(isEn ? "ms" : "en");
   const featRef    = useRef(null);
   const pricingRef = useRef(null);
-  const [track, setTrack] = useState("dealer");
+  // Allow deep-linking the salesman track from the marketplace "For Salesmen"
+  // entry point (/shiftos?for=salesman) so salesmen land on their own tab
+  // instead of the dealer default.
+  const [track, setTrack] = useState(() => {
+    const p = new URLSearchParams(window.location.search);
+    return p.get("for") === "salesman" || window.location.hash === "#salesmen"
+      ? "salesman"
+      : "dealer";
+  });
   const location = useLocation();
 
   useEffect(() => {
@@ -486,12 +440,16 @@ export default function ShiftOSPage() {
   }, []);
 
   useEffect(() => {
-    if (location.hash === "#pricing") {
+    const params = new URLSearchParams(location.search);
+    if (params.get("for") === "salesman" || location.hash === "#salesmen") {
+      setTrack("salesman");
+      setTimeout(() => pricingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+    } else if (location.hash === "#pricing") {
       setTimeout(() => pricingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
     } else if (location.hash === "#features") {
       setTimeout(() => featRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
     }
-  }, [location.hash]);
+  }, [location.hash, location.search]);
 
   const scrollTo = useCallback((ref) => {
     ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -508,21 +466,27 @@ export default function ShiftOSPage() {
           <div className="sos-wrap" style={{ height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <Logo />
             <div className="sos-nav-links" style={{ display: "flex", alignItems: "center", gap: 32 }}>
-              {[{ label: "Features", ref: featRef }, { label: "Pricing", ref: pricingRef }].map(({ label, ref }) => (
+              {[{ label: t("shiftos.nav.features"), ref: featRef }, { label: t("shiftos.nav.pricing"), ref: pricingRef }].map(({ label, ref }) => (
                 <button key={label} onClick={() => scrollTo(ref)} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", letterSpacing: ".01em", transition: "color .15s" }}
                   onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
                   onMouseLeave={(e) => (e.currentTarget.style.color = "#6b7280")}>{label}</button>
               ))}
               <a href="https://xdrive.my" target="_blank" rel="noopener noreferrer" style={{ color: "#6b7280", fontSize: 14, fontWeight: 500, textDecoration: "none", transition: "color .15s" }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#6b7280")}>Marketplace</a>
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#6b7280")}>{t("shiftos.nav.marketplace")}</a>
               <Link to="/login" style={{ color: "#6b7280", fontSize: 14, fontWeight: 500, textDecoration: "none", transition: "color .15s" }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#6b7280")}>Log in</Link>
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#6b7280")}>{t("shiftos.nav.login")}</Link>
             </div>
-            <button onClick={() => scrollTo(pricingRef)} className="sos-btn-primary" style={{ fontSize: 13, padding: "9px 18px", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-              Start Free <ArrowRight size={15} />
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ display: "flex", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 50, padding: 3 }}>
+                <button onClick={toggleLang} aria-label="Switch to English" aria-pressed={isEn} style={{ padding: "3px 10px", borderRadius: 50, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", letterSpacing: ".06em", fontFamily: "inherit", background: isEn ? "rgba(220,38,38,0.14)" : "transparent", color: isEn ? "#f87171" : "rgba(255,255,255,0.35)" }}>EN</button>
+                <button onClick={toggleLang} aria-label="Tukar ke Bahasa Malaysia" aria-pressed={!isEn} style={{ padding: "3px 10px", borderRadius: 50, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", letterSpacing: ".06em", fontFamily: "inherit", background: !isEn ? "rgba(220,38,38,0.14)" : "transparent", color: !isEn ? "#f87171" : "rgba(255,255,255,0.35)" }}>BM</button>
+              </div>
+              <button onClick={() => scrollTo(pricingRef)} className="sos-btn-primary" style={{ fontSize: 13, padding: "9px 18px", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+                {t("shiftos.nav.startFree")} <ArrowRight size={15} />
+              </button>
+            </div>
           </div>
         </nav>
 
@@ -531,30 +495,30 @@ export default function ShiftOSPage() {
           <Reveal>
             <div className="sos-eyebrow" style={{ marginBottom: 28 }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", boxShadow: "0 0 8px #ef4444" }} />
-              THE DEALER OS · PENANG · KL · JB
+              {t("shiftos.hero.eyebrow")}
             </div>
           </Reveal>
           <Reveal delay={80}>
             <h1 className="sos-h sos-hero-h1" style={{ fontSize: 80, color: "#fff", margin: "0 auto 24px", maxWidth: 980, lineHeight: 1.02 }}>
-              Run Your Entire Dealership<br />From <span className="sos-red">One Dashboard</span>
+              {t("shiftos.hero.title1")}<br />{t("shiftos.hero.title2lead")} <span className="sos-red">{t("shiftos.hero.title2accent")}</span>
             </h1>
           </Reveal>
           <Reveal delay={160}>
             <p className="sos-hero-sub" style={{ fontSize: 18, fontWeight: 400, color: "#94a3b8", maxWidth: 620, margin: "0 auto 42px", lineHeight: 1.65 }}>
-              Inventory, leads, financing, post-sale transfers and real profit — in a single system built for Malaysian car dealers. Replace Excel, scattered WhatsApp groups and manual paperwork.
+              {t("shiftos.hero.subtitle")}
             </p>
           </Reveal>
           <Reveal delay={220}>
             <div className="sos-cta-btns" style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 28 }}>
               <button onClick={() => scrollTo(pricingRef)} className="sos-btn-primary" style={{ fontSize: 15, padding: "14px 30px", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-                Start Free <ArrowRight size={16} />
+                {t("shiftos.hero.startFree")} <ArrowRight size={16} />
               </button>
               <a href={WA} target="_blank" rel="noopener noreferrer" className="sos-btn-outline" style={{ fontSize: 15, padding: "14px 30px" }}>
-                <MessageCircle size={16} /> Talk to Us
+                <MessageCircle size={16} /> {t("shiftos.hero.talkToUs")}
               </a>
             </div>
             <p style={{ fontSize: 12, color: "#374151", letterSpacing: ".04em" }}>
-              Setup in 30 minutes · No contract · Cancel anytime
+              {t("shiftos.hero.trust")}
             </p>
           </Reveal>
         </section>
@@ -564,10 +528,10 @@ export default function ShiftOSPage() {
           <Reveal>
             <div className="sos-glass sos-stats-grid" style={{ overflow: "hidden" }}>
               {[
-                { num: "1",       label: "Dashboard replaces 5+ tools" },
-                { num: "100%",    label: "Leads & test drives auto-logged" },
-                { num: "RM0",     label: "Setup fee · no contract" },
-                { num: "< 30m",   label: "To go live" },
+                { num: "1",       label: t("shiftos.stats.s1") },
+                { num: "100%",    label: t("shiftos.stats.s2") },
+                { num: "RM0",     label: t("shiftos.stats.s3") },
+                { num: "< 30m",   label: t("shiftos.stats.s4") },
               ].map(({ num, label }, i, arr) => (
                 <div key={label} style={{ padding: "34px 20px", textAlign: "center", borderRight: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.07)" : "none" }}>
                   <p className="sos-h sos-red" style={{ fontSize: 42, marginBottom: 8 }}>{num}</p>
@@ -582,28 +546,28 @@ export default function ShiftOSPage() {
         <section className="sos-wrap" style={{ paddingBottom: 96 }}>
           <Reveal>
             <div style={{ textAlign: "center", marginBottom: 52 }}>
-              <div className="sos-eyebrow" style={{ marginBottom: 18 }}>Real problems, solved</div>
-              <h2 className="sos-h" style={{ fontSize: 50, color: "#fff", marginBottom: 12 }}>Every Dealer Hits The Same Walls</h2>
+              <div className="sos-eyebrow" style={{ marginBottom: 18 }}>{t("shiftos.pain.eyebrow")}</div>
+              <h2 className="sos-h" style={{ fontSize: 50, color: "#fff", marginBottom: 12 }}>{t("shiftos.pain.title")}</h2>
               <p style={{ fontSize: 15, color: "#6b7280", maxWidth: 540, margin: "0 auto", lineHeight: 1.65 }}>
-                ShiftOS was built around the problems Malaysian dealers actually lose money to.
+                {t("shiftos.pain.subtitle")}
               </p>
             </div>
           </Reveal>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {PAIN_SOLUTIONS.map(({ Icon, tag, pain, title, desc }, i) => (
-              <Reveal key={title} delay={i * 40}>
+            {PAIN_SOLUTIONS.map(({ Icon, key }, i) => (
+              <Reveal key={key} delay={i * 40}>
                 <div className="sos-glass sos-ps">
                   <div className="sos-ps-l">
-                    <span style={{ fontSize: 10, fontWeight: 800, color: "#f87171", textTransform: "uppercase", letterSpacing: ".12em" }}>The pain</span>
-                    <p style={{ marginTop: 14, fontSize: 15, color: "#cbd5e1", lineHeight: 1.7, fontStyle: "italic" }}>{pain}</p>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: "#f87171", textTransform: "uppercase", letterSpacing: ".12em" }}>{t("shiftos.pain.label")}</span>
+                    <p style={{ marginTop: 14, fontSize: 15, color: "#cbd5e1", lineHeight: 1.7, fontStyle: "italic" }}>“{t(`shiftos.pain.items.${key}.quote`)}”</p>
                   </div>
                   <div className="sos-ps-r">
                     <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
                       <div className="sos-icon"><Icon size={20} color="#ef4444" /></div>
-                      <span style={{ fontSize: 10, fontWeight: 800, color: "#fca5a5", textTransform: "uppercase", letterSpacing: ".1em" }}>{tag}</span>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: "#fca5a5", textTransform: "uppercase", letterSpacing: ".1em" }}>{t(`shiftos.pain.items.${key}.tag`)}</span>
                     </div>
-                    <p style={{ fontSize: 17, fontWeight: 600, color: "#f1f5f9", marginBottom: 10, lineHeight: 1.38 }}>{title}</p>
-                    <p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.7 }}>{desc}</p>
+                    <p style={{ fontSize: 17, fontWeight: 600, color: "#f1f5f9", marginBottom: 10, lineHeight: 1.38 }}>{t(`shiftos.pain.items.${key}.title`)}</p>
+                    <p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.7 }}>{t(`shiftos.pain.items.${key}.desc`)}</p>
                   </div>
                 </div>
               </Reveal>
@@ -615,20 +579,20 @@ export default function ShiftOSPage() {
         <section id="features" ref={featRef} className="sos-wrap" style={{ paddingBottom: 96 }}>
           <Reveal>
             <div style={{ textAlign: "center", marginBottom: 52 }}>
-              <div className="sos-eyebrow" style={{ marginBottom: 18 }}>One platform</div>
-              <h2 className="sos-h" style={{ fontSize: 50, color: "#fff", marginBottom: 12 }}>From Stock In To Car Sold</h2>
+              <div className="sos-eyebrow" style={{ marginBottom: 18 }}>{t("shiftos.features.eyebrow")}</div>
+              <h2 className="sos-h" style={{ fontSize: 50, color: "#fff", marginBottom: 12 }}>{t("shiftos.features.title")}</h2>
               <p style={{ fontSize: 15, color: "#6b7280", maxWidth: 540, margin: "0 auto", lineHeight: 1.65 }}>
-                A full dealer management system — not a listing site. Everything your team touches, in one place.
+                {t("shiftos.features.subtitle")}
               </p>
             </div>
           </Reveal>
           <div className="sos-feat-grid">
-            {FEATURES.map(({ Icon, title, desc }, i) => (
-              <Reveal key={title} delay={i * 30}>
+            {FEATURES.map(({ Icon, key }, i) => (
+              <Reveal key={key} delay={i * 30}>
                 <div className="sos-glass sos-feat" style={{ padding: 26, height: "100%" }}>
                   <div className="sos-icon" style={{ marginBottom: 18 }}><Icon size={20} color="#ef4444" /></div>
-                  <p style={{ fontSize: 15, fontWeight: 600, color: "#f1f5f9", marginBottom: 9 }}>{title}</p>
-                  <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.65 }}>{desc}</p>
+                  <p style={{ fontSize: 15, fontWeight: 600, color: "#f1f5f9", marginBottom: 9 }}>{t(`shiftos.features.items.${key}.title`)}</p>
+                  <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.65 }}>{t(`shiftos.features.items.${key}.desc`)}</p>
                 </div>
               </Reveal>
             ))}
@@ -639,18 +603,18 @@ export default function ShiftOSPage() {
         <section className="sos-wrap" style={{ paddingBottom: 96 }}>
           <Reveal>
             <div className="sos-glass" style={{ padding: "52px 40px", textAlign: "center" }}>
-              <h2 className="sos-h" style={{ fontSize: 46, color: "#fff", marginBottom: 12 }}>Built For Your Whole Team</h2>
+              <h2 className="sos-h" style={{ fontSize: 46, color: "#fff", marginBottom: 12 }}>{t("shiftos.team.title")}</h2>
               <p style={{ fontSize: 15, color: "#6b7280", maxWidth: 580, margin: "0 auto 40px", lineHeight: 1.65 }}>
-                Dealer plans include team seats with scoped dashboards. Everyone sees exactly what they need — nothing more, nothing less.
+                {t("shiftos.team.subtitle")}
               </p>
               <div className="sos-roles">
-                {TEAM_ROLES.map(({ Icon, role, desc }) => (
-                  <div key={role} style={{ padding: "22px 18px", borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", textAlign: "center" }}>
+                {TEAM_ROLES.map(({ Icon, key }) => (
+                  <div key={key} style={{ padding: "22px 18px", borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", textAlign: "center" }}>
                     <div style={{ width: 40, height: 40, borderRadius: 11, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
                       <Icon size={18} color="#ef4444" />
                     </div>
-                    <p style={{ fontSize: 14, fontWeight: 700, color: "#f1f5f9", marginBottom: 6 }}>{role}</p>
-                    <p style={{ fontSize: 12, color: "#6b7280", lineHeight: 1.55 }}>{desc}</p>
+                    <p style={{ fontSize: 14, fontWeight: 700, color: "#f1f5f9", marginBottom: 6 }}>{t(`shiftos.team.roles.${key}.role`)}</p>
+                    <p style={{ fontSize: 12, color: "#6b7280", lineHeight: 1.55 }}>{t(`shiftos.team.roles.${key}.desc`)}</p>
                   </div>
                 ))}
               </div>
@@ -662,15 +626,15 @@ export default function ShiftOSPage() {
         <section id="pricing" ref={pricingRef} className="sos-wrap" style={{ paddingBottom: 96 }}>
           <Reveal>
             <div style={{ textAlign: "center", marginBottom: 40 }}>
-              <div className="sos-eyebrow" style={{ marginBottom: 18 }}>Simple pricing</div>
-              <h2 className="sos-h" style={{ fontSize: 50, color: "#fff", marginBottom: 12 }}>Plans That Scale With You</h2>
+              <div className="sos-eyebrow" style={{ marginBottom: 18 }}>{t("shiftos.pricing.eyebrow")}</div>
+              <h2 className="sos-h" style={{ fontSize: 50, color: "#fff", marginBottom: 12 }}>{t("shiftos.pricing.title")}</h2>
               <p style={{ fontSize: 15, color: "#6b7280", maxWidth: 480, margin: "0 auto 32px", lineHeight: 1.65 }}>
-                Start solo or build a full team. No setup fee, no lock-in.
+                {t("shiftos.pricing.subtitle")}
               </p>
               <div style={{ display: "flex", justifyContent: "center" }}>
                 <div className="sos-seg">
-                  <button className={track === "dealer" ? "on" : ""} onClick={() => setTrack("dealer")}>For Dealerships</button>
-                  <button className={track === "salesman" ? "on" : ""} onClick={() => setTrack("salesman")}>For Salesmen</button>
+                  <button className={track === "dealer" ? "on" : ""} onClick={() => setTrack("dealer")}>{t("shiftos.pricing.forDealers")}</button>
+                  <button className={track === "salesman" ? "on" : ""} onClick={() => setTrack("salesman")}>{t("shiftos.pricing.forSalesmen")}</button>
                 </div>
               </div>
             </div>
@@ -681,9 +645,9 @@ export default function ShiftOSPage() {
           </div>
 
           <p style={{ textAlign: "center", color: "#374151", fontSize: 13, marginTop: 32 }}>
-            Need more than 150 listings or 15 seats?{" "}
+            {t("shiftos.pricing.needMore")}{" "}
             <a href={WA} target="_blank" rel="noopener noreferrer" style={{ color: "#ef4444", textDecoration: "none", fontWeight: 600 }}>
-              Talk to our team <ChevronRight size={13} style={{ verticalAlign: "middle" }} />
+              {t("shiftos.pricing.talkToTeam")} <ChevronRight size={13} style={{ verticalAlign: "middle" }} />
             </a>
           </p>
         </section>
@@ -693,9 +657,9 @@ export default function ShiftOSPage() {
           <Reveal>
             <div style={{ borderLeft: "3px solid #dc2626", paddingLeft: 30 }}>
               <p style={{ fontSize: 19, fontStyle: "italic", color: "#cbd5e1", lineHeight: 1.75, marginBottom: 16 }}>
-                "Dulu semua dalam Excel dan WhatsApp. Sekarang salesman boleh check stok sendiri, owner nampak untung setiap kereta, dan tak ada lagi paperwork JPJ yang terlupa."
+                “{t("shiftos.testimonial.quote")}”
               </p>
-              <p style={{ fontSize: 13, color: "#6b7280" }}>— Dealer, Penang</p>
+              <p style={{ fontSize: 13, color: "#6b7280" }}>{t("shiftos.testimonial.author")}</p>
             </div>
           </Reveal>
         </section>
@@ -704,16 +668,16 @@ export default function ShiftOSPage() {
         <section className="sos-wrap" style={{ paddingBottom: 96 }}>
           <Reveal>
             <div className="sos-glass" style={{ padding: "68px 40px", textAlign: "center", background: "radial-gradient(ellipse 800px 400px at 50% -10%, rgba(220,38,38,0.2) 0%, rgba(255,255,255,0.04) 100%)" }}>
-              <h2 className="sos-h" style={{ fontSize: 50, color: "#fff", marginBottom: 14 }}>Ready To Scale Your Dealership?</h2>
+              <h2 className="sos-h" style={{ fontSize: 50, color: "#fff", marginBottom: 14 }}>{t("shiftos.finalCta.title")}</h2>
               <p style={{ fontSize: 16, color: "#94a3b8", maxWidth: 520, margin: "0 auto 38px", lineHeight: 1.65 }}>
-                Join the dealers running leaner, selling more, and finally knowing their real numbers.
+                {t("shiftos.finalCta.subtitle")}
               </p>
               <div className="sos-cta-btns" style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
                 <button onClick={() => scrollTo(pricingRef)} className="sos-btn-primary" style={{ fontSize: 15, padding: "15px 34px", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-                  Start Free <ArrowRight size={16} />
+                  {t("shiftos.finalCta.startFree")} <ArrowRight size={16} />
                 </button>
                 <a href={WA} target="_blank" rel="noopener noreferrer" className="sos-btn-outline" style={{ fontSize: 15, padding: "15px 34px" }}>
-                  <MessageCircle size={16} /> WhatsApp Us
+                  <MessageCircle size={16} /> {t("shiftos.finalCta.whatsappUs")}
                 </a>
               </div>
             </div>
@@ -726,27 +690,27 @@ export default function ShiftOSPage() {
             <div>
               <Logo size={28} />
               <p style={{ fontSize: 12, color: "#374151", marginTop: 12, maxWidth: 280, lineHeight: 1.6 }}>
-                The dealer management system for Malaysian car dealers.
+                {t("shiftos.footer.tagline")}
               </p>
             </div>
             <div style={{ display: "flex", gap: 32, flexWrap: "wrap" }}>
               <button onClick={() => scrollTo(featRef)} style={{ fontSize: 13, color: "#4b5563", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#4b5563")}>Features</button>
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#4b5563")}>{t("shiftos.footer.features")}</button>
               <button onClick={() => scrollTo(pricingRef)} style={{ fontSize: 13, color: "#4b5563", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#4b5563")}>Pricing</button>
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#4b5563")}>{t("shiftos.footer.pricing")}</button>
               <Link to="/login" style={{ fontSize: 13, color: "#4b5563", textDecoration: "none" }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#4b5563")}>Log in</Link>
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#4b5563")}>{t("shiftos.footer.login")}</Link>
               <Link to="/" style={{ fontSize: 13, color: "#4b5563", textDecoration: "none" }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "#4b5563")}>xdrive.my</Link>
             </div>
           </div>
           <div className="sos-wrap" style={{ padding: 0, borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 22, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-            <p style={{ fontSize: 12, color: "#1f2937" }}>© {new Date().getFullYear()} ShiftOS. Built for Malaysian dealers.</p>
-            <p style={{ fontSize: 12, color: "#1f2937" }}>Powered by <span style={{ color: "#dc2626" }}>XDrive</span></p>
+            <p style={{ fontSize: 12, color: "#1f2937" }}>© {new Date().getFullYear()} {t("shiftos.footer.copyright")}</p>
+            <p style={{ fontSize: 12, color: "#1f2937" }}>{t("shiftos.footer.poweredBy")} <span style={{ color: "#dc2626" }}>XDrive</span></p>
           </div>
         </footer>
 

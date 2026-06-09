@@ -7,21 +7,52 @@ import App from '@/App';
 import { Toaster } from '@/components/ui/toaster';
 import '@/index.css';
 
-// Reload when a lazy chunk fails to fetch after a new deployment
-window.addEventListener('unhandledrejection', (event) => {
-  const msg = event.reason?.message || '';
-  if (
+// After a new deployment, an old tab may reference lazy chunk hashes that no
+// longer exist on the server (the request then returns index.html → a "Failed
+// to load module script" / MIME error). Auto-reload once so the client picks up
+// the fresh build instead of white-screening.
+function isChunkLoadError(msg = '') {
+  return (
     msg.includes('Failed to fetch dynamically imported module') ||
     msg.includes('Importing a module script failed') ||
-    msg.includes('error loading dynamically imported module')
-  ) {
+    msg.includes('error loading dynamically imported module') ||
+    msg.includes('Failed to load module script') ||
+    msg.includes('dynamically imported module')
+  );
+}
+
+// One-shot guard: never reload more than once per short window, so a chunk that
+// genuinely cannot load can't trap the page in an infinite reload loop.
+function reloadOnceForChunk() {
+  const KEY = 'chunk-reload-ts';
+  const last = Number(sessionStorage.getItem(KEY) || 0);
+  if (Date.now() - last < 10000) return;
+  sessionStorage.setItem(KEY, String(Date.now()));
+  window.location.reload();
+}
+
+// Vite's own signal when a dynamically imported module fails to preload.
+window.addEventListener('vite:preloadError', (event) => {
+  event.preventDefault();
+  reloadOnceForChunk();
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  if (isChunkLoadError(event.reason?.message)) {
     event.preventDefault();
-    window.location.reload();
+    reloadOnceForChunk();
   }
 });
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <Sentry.ErrorBoundary fallback={<p>Something went wrong. Please refresh.</p>}>
+  <Sentry.ErrorBoundary
+    fallback={<p>Something went wrong. Please refresh.</p>}
+    onError={(error) => {
+      // Lazy-route failures are caught here (not as unhandledrejection), so the
+      // reload must be triggered from the boundary too.
+      if (isChunkLoadError(error?.message)) reloadOnceForChunk();
+    }}
+  >
     <Suspense fallback={null}>
       <App />
       <Toaster />
