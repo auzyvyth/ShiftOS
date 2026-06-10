@@ -6253,6 +6253,11 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                                   </span>
                                 )}
                               </div>
+                              {car.status === 'unpublished' && (
+                                <span style={{ display: 'inline-block', marginTop: 4, fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#92400e', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 4, padding: '1px 6px' }}>
+                                  Internal
+                                </span>
+                              )}
                               {u.status === 'in_stock' && (() => {
                                 const ps  = puspakomStatus(u.puspakom_b7_date);
                                 const b5  = b5Status(u.puspakom_b5_date);
@@ -10061,7 +10066,6 @@ export default function DashboardPage() {
                       { key: 'available', label: 'Available', count: listings.filter(l => (l.status || 'available') === 'available').length },
                       { key: 'reserved', label: 'Reserved', count: listings.filter(l => l.status === 'reserved').length },
                       { key: 'sold',     label: 'Sold',     count: listings.filter(l => l.status === 'sold').length },
-                      { key: 'unpublished', label: 'Unpublished', count: listings.filter(l => l.status === 'unpublished').length },
                     ].map(({ key, label, count }) => (
                       <button
                         key={key}
