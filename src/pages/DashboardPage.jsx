@@ -1097,7 +1097,6 @@ function SettingsTab({ profile, onProfileUpdate }) {
   };
 
   const saveDealership = async () => {
-    if (dealershipLocked) return;
     if (!dealership.trim()) {
       setErrors((p) => ({
         ...p,
@@ -1106,6 +1105,13 @@ function SettingsTab({ profile, onProfileUpdate }) {
       return;
     }
     const dealershipChanged = dealership.trim() !== profile?.dealership;
+    if (dealershipLocked && dealershipChanged) {
+      setErrors((p) => ({
+        ...p,
+        identity: "Dealership name can only be changed twice. Contact support to change it again.",
+      }));
+      return;
+    }
     const payload = {
       dealership: dealership.trim(),
       site_name: siteName.trim() || dealership.trim(),
@@ -1555,7 +1561,11 @@ function SettingsTab({ profile, onProfileUpdate }) {
           <SaveBtn
             sectionKey="identity"
             onClick={saveDealership}
-            disabled={dealershipLocked || subdomainStatus === 'taken' || subdomainStatus === 'checking'}
+            disabled={
+              (dealershipLocked && dealership.trim() !== (profile?.dealership || '')) ||
+              subdomainStatus === 'taken' ||
+              subdomainStatus === 'checking'
+            }
             saving={saving}
             saved={saved}
           />
@@ -8706,18 +8716,13 @@ export default function DashboardPage() {
     if (!profile?.subdomain || profile?.role === 'superadmin') {
       return 'https://xdrive.my';
     }
-    const hostname = window.location.hostname;
-    // On Vercel preview or localhost the subdomain DNS doesn't exist —
-    // use ?tenant= which useTenant already accepts on non-production hosts.
-    if (
-      hostname === 'localhost' ||
-      hostname === '127.0.0.1' ||
-      hostname.startsWith('192.168') ||
-      hostname.endsWith('.vercel.app')
-    ) {
-      return `${window.location.origin}/?tenant=${profile.subdomain}`;
+    const { hostname, origin } = window.location;
+    // Only use subdomain DNS on production xdrive.my; everywhere else
+    // (localhost, Vercel preview, staging) use the ?tenant= param.
+    if (hostname === 'xdrive.my' || hostname.endsWith('.xdrive.my')) {
+      return `https://${profile.subdomain}.xdrive.my`;
     }
-    return `https://${profile.subdomain}.xdrive.my`;
+    return `${origin}/?tenant=${profile.subdomain}`;
   };
 
   useEffect(() => {
@@ -9649,11 +9654,7 @@ export default function DashboardPage() {
                   {profile.dealership}
                 </p>
                 <p style={{ fontSize: 10, color: 'var(--color-accent)', marginTop: 1 }} className="truncate">
-                  {profile.subdomain
-                    ? (window.location.hostname.endsWith('.vercel.app') || window.location.hostname === 'localhost'
-                        ? `preview: ?tenant=${profile.subdomain}`
-                        : `${profile.subdomain}.xdrive.my`)
-                    : 'xdrive.my'}
+                  {profile.subdomain ? `${profile.subdomain}.xdrive.my` : 'xdrive.my'}
                 </p>
               </div>
               <ExternalLink className="w-3 h-3 flex-shrink-0" style={{ color: 'var(--color-accent)', opacity: 0.6 }} />
