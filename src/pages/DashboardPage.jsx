@@ -8914,8 +8914,7 @@ export default function DashboardPage() {
       marketplace: { tab: "analytics",  sub: ["analytics", "marketplace"] },
       services:    { tab: "storefront", sub: ["storefront", "services"] },
       hero:        { tab: "storefront", sub: ["storefront", "hero"] },
-      // AI Sales Manager moved into the Overview tab (greets the user every morning)
-      ai_manager:  { tab: "overview",   sub: ["overview", ""] },
+      ai_manager:  { tab: "ai_manager", sub: [] },
     };
     const mapped = ALIAS[tabParam];
     if (mapped) {
@@ -9307,6 +9306,7 @@ export default function DashboardPage() {
         { id: "analytics",  Icon: BarChart2, label: "Analytics" },
         { id: "outreach",   Icon: Megaphone, label: "Outreach Hub" },
         { id: "storefront", Icon: Globe,     label: "Storefront" },
+        { id: "ai_manager", Icon: Bot,       label: "AI Manager" },
       ],
     },
     {
@@ -9833,14 +9833,47 @@ export default function DashboardPage() {
           {/* ── Overview Tab ── */}
           {activeTab === "overview" && userId && (
             <div className="space-y-4">
-              {profile?.plan !== "dealer_starter" && snapshot && (
+              {profile?.plan !== "dealer_starter" && (
+                <button
+                  onClick={() => handleTabChange("ai_manager")}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10, width: "100%",
+                    padding: "10px 14px", borderRadius: 10,
+                    background: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.18)",
+                    cursor: "pointer", fontFamily: "'DM Sans',sans-serif", textAlign: "left",
+                  }}
+                >
+                  <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(37,99,235,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <Bot size={16} color="#3b82f6" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#1e3a8a" }}>AI Sales Manager</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "#6b7280" }}>Morning briefing, stale stock alerts, team activity</p>
+                  </div>
+                  <ChevronRight size={16} color="#6b7280" />
+                </button>
+              )}
+              <OverviewTab dealerId={getDealerIdFromProfile(profile)} onNavigate={handleTabChange} />
+            </div>
+          )}
+
+          {/* ── AI Manager Tab ── */}
+          {activeTab === "ai_manager" && userId && (
+            <Suspense fallback={<div style={{ padding: 32, textAlign: "center", color: "#6b7280", fontSize: 13 }}>Loading AI Manager...</div>}>
+              {profile?.plan === "dealer_starter" ? (
+                <div style={{ padding: 32, textAlign: "center" }}>
+                  <Bot size={32} color="#9ca3af" style={{ margin: "0 auto 12px" }} />
+                  <p style={{ color: "#6b7280", fontSize: 14 }}>AI Sales Manager is not available on the Starter plan.</p>
+                </div>
+              ) : snapshot ? (
                 <AISalesManager
                   snapshot={snapshot}
                   dealerName={profile?.dealership || profile?.site_name || "Your Dealership"}
                 />
+              ) : (
+                <div style={{ padding: 32, textAlign: "center", color: "#6b7280", fontSize: 13 }}>Loading snapshot data...</div>
               )}
-              <OverviewTab dealerId={getDealerIdFromProfile(profile)} onNavigate={handleTabChange} />
-            </div>
+            </Suspense>
           )}
 
           {/* ── Listings Tab ── */}
