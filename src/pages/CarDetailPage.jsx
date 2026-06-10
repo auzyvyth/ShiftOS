@@ -535,15 +535,11 @@ export default function CarDetailPage() {
       // Fire analytics immediately — no need to block page load on it
       const refSlug = getRef();
       if (refSlug && carData.dealer_id) {
-        supabase
-          .from("analytics_events")
-          .insert({
-            event_type: "page_view",
-            salesman_slug: refSlug,
-            dealer_id: carData.dealer_id,
-            metadata: { page: window.location.pathname },
-          })
-          .then(() => {});
+        trackEvent(supabase, "page_view", {
+          salesman_slug: refSlug,
+          dealer_id: carData.dealer_id,
+          car_id: carData.id,
+        });
       }
 
       const simFields =
@@ -571,14 +567,11 @@ export default function CarDetailPage() {
             return services;
           })(),
 
-          // Dealer profile
+          // Dealer profile — use SECURITY DEFINER RPC so anon visitors can read
+          // dealer rows even though public_dealer_profiles is security_invoker.
           carData.dealer_id
             ? supabase
-                .from("public_dealer_profiles")
-                .select(
-                  "dealership,site_name,whatsapp_number,avatar_url,site_logo_url,slug,subdomain",
-                )
-                .eq("id", carData.dealer_id)
+                .rpc("get_dealer_profile_by_id", { p_dealer_id: carData.dealer_id })
                 .maybeSingle()
                 .then((r) => r.data)
             : Promise.resolve(null),
@@ -865,7 +858,7 @@ export default function CarDetailPage() {
           This listing is no longer available.
         </p>
         <Link
-          to="/showroom"
+          to={isSubdomain() ? "/cars" : "/showroom"}
           style={{ color: "#dc2626", fontSize: 13, textDecoration: "none" }}
         >
           ← Browse all cars

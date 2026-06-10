@@ -219,27 +219,24 @@ const HomePage = () => {
     if (!tenant?.id) return;
     const slug = getRef();
     if (slug) {
-      supabase
-        .from("analytics_events")
-        .insert({
-          event_type: "page_view",
-          salesman_slug: slug,
-          dealer_id: tenant.id,
-          metadata: { page: window.location.pathname },
-        })
-        .then(() => {});
+      trackEvent(supabase, "page_view", {
+        salesman_slug: slug,
+        dealer_id: tenant.id,
+      });
     }
   }, [tenant?.id]);
 
   useEffect(() => {
     if (tenant === undefined) return;
     const load = async () => {
+      // On a subdomain every listing belongs to the same dealer — skip the
+      // per-row join and attach tenant as the dealer object client-side.
+      const selectFields = tenant?.id
+        ? CAR_FIELDS
+        : `${CAR_FIELDS}, dealer:profiles!dealer_id(dealership, site_name, subdomain, whatsapp_number, site_logo_url, brand_color)`;
       let query = supabase
         .from("public_car_listings")
-        .select(
-          `${CAR_FIELDS}, dealer:profiles!dealer_id(dealership, site_name, subdomain, whatsapp_number, site_logo_url, brand_color)`,
-          { count: "exact" },
-        )
+        .select(selectFields, { count: "exact" })
         .eq("status", "available")
         .order("created_at", { ascending: false })
         .limit(30);
@@ -251,10 +248,21 @@ const HomePage = () => {
 
       const { data, error, count } = await query;
       if (!error && data) {
-        setFeatured(data.slice(0, 6));
+        const tenantDealer = tenant?.id
+          ? {
+              dealership: tenant.dealership,
+              site_name: tenant.site_name,
+              subdomain: tenant.subdomain,
+              whatsapp_number: tenant.whatsapp_number,
+              site_logo_url: tenant.site_logo_url,
+              brand_color: tenant.brand_color,
+            }
+          : null;
+        const enriched = tenantDealer ? data.map((c) => ({ ...c, dealer: tenantDealer })) : data;
+        setFeatured(enriched.slice(0, 6));
         setStock(count || data.length);
         setHotDeals(
-          data
+          enriched
             .filter(isHotDeal)
             .sort(
               (a, b) =>
@@ -278,10 +286,8 @@ const HomePage = () => {
       const { count } = await query;
       setSoldCount(count || 0);
     };
-    load();
-    // sold count is below-fold — defer until after first paint
-    const soldCountTimer = setTimeout(fetchSoldCount, 800);
-    return () => clearTimeout(soldCountTimer);
+    // run both in parallel — sold count doesn't depend on listings data
+    Promise.all([load(), fetchSoldCount()]);
   }, [tenant]);
 
   useEffect(() => {
