@@ -25,6 +25,18 @@ export function usePostSaleTasks(lead) {
       encumbranceClear = su?.encumbrance_status === 'clear';
     }
 
+    // Does this dealership handle road tax / insurance in-house? When not,
+    // those steps are auto-marked N/A so they never show as the dealer's work.
+    let handlesRoadtaxInsurance = true;
+    if (lead?.dealer_id) {
+      const { data: dp } = await supabase
+        .from('profiles')
+        .select('handles_roadtax_insurance')
+        .eq('id', lead.dealer_id)
+        .maybeSingle();
+      handlesRoadtaxInsurance = dp?.handles_roadtax_insurance !== false;
+    }
+
     const { data } = await supabase
       .from('post_sale_tasks')
       .select('*')
@@ -32,12 +44,21 @@ export function usePostSaleTasks(lead) {
       .order('sort_order', { ascending: true });
 
     if (data && data.length > 0) {
-      // Reconcile a clean-title car whose loan-settlement step was seeded 'pending'
-      // by the DB trigger (which doesn't see encumbrance) — flip it to N/A once.
+      // Reconcile steps seeded 'pending' by the DB trigger (which doesn't see
+      // encumbrance or the dealer's road tax/insurance setting) — flip once.
       const loanStep = data.find((t) => t.step_key === 'loan_settlement');
       if (encumbranceClear && loanStep && loanStep.status === 'pending') {
         await supabase.from('post_sale_tasks').update({ status: 'na' }).eq('id', loanStep.id);
         loanStep.status = 'na';
+      }
+      if (!handlesRoadtaxInsurance) {
+        for (const key of ['road_tax', 'insurance']) {
+          const step = data.find((t) => t.step_key === key);
+          if (step && step.status === 'pending') {
+            await supabase.from('post_sale_tasks').update({ status: 'na' }).eq('id', step.id);
+            step.status = 'na';
+          }
+        }
       }
       setTasks(data);
       setLoading(false);
@@ -45,7 +66,7 @@ export function usePostSaleTasks(lead) {
     }
 
     // No tasks yet — seed the default checklist for this deal.
-    const rows = defaultTasksFor(lead, { encumbranceClear }).map((t) => ({
+    const rows = defaultTasksFor(lead, { encumbranceClear, handlesRoadtaxInsurance }).map((t) => ({
       ...t,
       dealer_id: lead.dealer_id,
       lead_id: leadId,

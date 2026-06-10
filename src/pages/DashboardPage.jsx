@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo, useCallback, startTransition, Component } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback, startTransition, Component, Suspense } from "react";
 import DOMPurify from "dompurify";
 import SuspendedBanner from "../components/SuspendedBanner";
 import ReportBugButton from "../components/ReportBugButton";
@@ -893,6 +893,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const [dealDisclaimer, setDealDisclaimer] = useState(profile?.deal_disclaimer || "");
   const [commType, setCommType] = useState(profile?.commission_config?.type || "percent_gross");
   const [commValue, setCommValue] = useState(profile?.commission_config?.value != null ? String(profile.commission_config.value) : "10");
+  const [handlesRti, setHandlesRti] = useState(profile?.handles_roadtax_insurance !== false);
   // Cost-floor settings (separate table: dealer_cost_settings)
   const settingsDealerId = getDealerIdFromProfile(profile);
   const [costSettings, setCostSettings] = useState({
@@ -997,6 +998,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setDealDisclaimer(profile.deal_disclaimer || "");
     setCommType(profile.commission_config?.type || "percent_gross");
     setCommValue(profile.commission_config?.value != null ? String(profile.commission_config.value) : "10");
+    setHandlesRti(profile.handles_roadtax_insurance !== false);
     setTgToken(""); // SEC-5: write-only — never load the stored token back into the form
     setTgChannel(profile.telegram_channel_id || "");
     setTgAutoPost(profile.telegram_auto_post || false);
@@ -1330,6 +1332,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
       { key: 'costs', icon: Calculator, label: 'Cost Floor', desc: 'Overhead, runner & holding costs' },
       { key: 'dealsheet', icon: FileText, label: 'Deal Sheet', desc: 'Customer proposal settings' },
       { key: 'services', icon: Package, label: 'Services', desc: 'Products & add-on catalogue' },
+      { key: 'handover_ops', icon: ClipboardCheck, label: 'Handover', desc: 'Road tax & insurance handling' },
     ]},
     { group: 'Notifications', items: [
       { key: 'telegram', icon: Send, label: 'Telegram', desc: 'Bot alert notifications' },
@@ -1953,6 +1956,37 @@ function SettingsTab({ profile, onProfileUpdate }) {
         </p>
         <div className="flex justify-end pt-1">
           <SaveBtn sectionKey="commission" onClick={saveCommission} saving={saving} saved={saved} />
+        </div>
+      </SettingsSection>}
+      {effectiveNav === 'handover_ops' && <SettingsSection
+        title="Handover Operations"
+        subtitle="Which post-sale work your dealership handles in-house"
+        icon={ClipboardCheck}
+        iconColor="text-amber-500"
+        iconBg="rgba(245,158,11,0.08)"
+        iconBorder="rgba(245,158,11,0.18)"
+      >
+        <div className="flex items-center justify-between">
+          <div style={{ minWidth: 0, paddingRight: 12 }}>
+            <p className="text-gray-900 text-sm font-semibold">We handle road tax & insurance</p>
+            <p className="text-xs text-gray-600 mt-0.5">
+              Turn off if the buyer or an external agent handles road tax and insurance. Those
+              steps are then auto-marked N/A on the handover checklist, and road tax / insurance
+              products are hidden from the add-on pickers.
+            </p>
+          </div>
+          <button
+            onClick={() => setHandlesRti((v) => !v)}
+            className={`relative w-10 h-5 rounded-full transition-all flex-shrink-0 ${handlesRti ? "bg-blue-600" : "bg-gray-300"}`}
+          >
+            <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all shadow ${handlesRti ? "left-5" : "left-0.5"}`} />
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          Only affects new won deals and pickers — steps already marked done are never changed.
+        </p>
+        <div className="flex justify-end pt-1">
+          <SaveBtn sectionKey="handover_ops" onClick={() => saveSection("handover_ops", { handles_roadtax_insurance: handlesRti })} saving={saving} saved={saved} />
         </div>
       </SettingsSection>}
       {effectiveNav === 'costs' && <SettingsSection
@@ -8613,7 +8647,7 @@ export default function DashboardPage() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(tabParam || "overview");
-  const [analyticsSub, setAnalyticsSub] = useState("listings"); // listings | revenue | marketplace
+  const [analyticsSub, setAnalyticsSub] = useState("revenue"); // revenue | listings | marketplace
   const [storefrontSub, setStorefrontSub] = useState("hero");   // hero | services
   const [showFastModal, setShowFastModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
@@ -9276,7 +9310,16 @@ export default function DashboardPage() {
   };
 
   const NAV_GROUPS = [
-    { id: "overview", Icon: Gauge, label: "Overview", direct: true },
+    {
+      id: "g_reports", Icon: BarChart2, label: "Reports",
+      items: [
+        { id: "overview",  Icon: Gauge,      label: "Overview" },
+        { id: "analytics", sub: "revenue",     Icon: DollarSign, label: "Revenue" },
+        { id: "analytics", sub: "listings",    Icon: BarChart2,  label: "Performance" },
+        { id: "analytics", sub: "marketplace", Icon: Globe,      label: "Website" },
+        { id: "oversight", Icon: Shield,      label: "GM Oversight" },
+      ],
+    },
     {
       id: "g_sales", Icon: TrendingUp, label: "Sales",
       items: [
@@ -9301,9 +9344,8 @@ export default function DashboardPage() {
       ],
     },
     {
-      id: "g_growth", Icon: BarChart2, label: "Growth",
+      id: "g_growth", Icon: Megaphone, label: "Growth",
       items: [
-        { id: "analytics",  Icon: BarChart2, label: "Analytics" },
         { id: "outreach",   Icon: Megaphone, label: "Outreach Hub" },
         { id: "storefront", Icon: Globe,     label: "Storefront" },
         { id: "ai_manager", Icon: Bot,       label: "AI Manager" },
@@ -9313,17 +9355,17 @@ export default function DashboardPage() {
       id: "g_admin", Icon: Users, label: "Admin",
       items: [
         { id: "team",      Icon: Users,  label: "Team" },
-        { id: "oversight", Icon: Shield, label: "GM Oversight" },
       ],
     },
   ];
 
   const TAB_TO_GROUP = {
+    overview: "g_reports", analytics: "g_reports", oversight: "g_reports",
     crm: "g_sales",       hp: "g_sales",
     listings: "g_inventory", add: "g_inventory", stock: "g_inventory",
     handover: "g_operations", customers: "g_operations", documents: "g_operations",
-    analytics: "g_growth", outreach: "g_growth", storefront: "g_growth", ai_manager: "g_growth",
-    team: "g_admin",      oversight: "g_admin",
+    outreach: "g_growth", storefront: "g_growth", ai_manager: "g_growth",
+    team: "g_admin",
   };
 
   const toggleGroup = useCallback((gid) => {
@@ -9525,25 +9567,28 @@ export default function DashboardPage() {
                 </button>
                 {isOpen && (
                   <div style={{ marginTop: 1, marginLeft: 12, paddingLeft: 10, borderLeft: '1px solid #EAECF0', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {group.items.map(({ id, Icon, label, badge }) => (
-                      <button
-                        key={id}
-                        onClick={() => handleTabChange(id)}
-                        className={`nav-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === id ? "nav-active" : ""}`}
-                        style={{ color: activeTab === id ? '#DC2626' : color.textMuted }}
-                      >
-                        <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                        {label}
-                        {badge !== undefined && (
-                          <span
-                            className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold tabular-nums"
-                            style={{ background: activeTab === id ? '#FEE2E2' : '#F1F3F5', color: activeTab === id ? '#DC2626' : color.textMuted }}
-                          >
-                            {badge}
-                          </span>
-                        )}
-                      </button>
-                    ))}
+                    {group.items.map(({ id, sub, Icon, label, badge }) => {
+                      const isActive = activeTab === id && (!sub || analyticsSub === sub);
+                      return (
+                        <button
+                          key={sub ? `${id}_${sub}` : id}
+                          onClick={() => { if (sub) setAnalyticsSub(sub); handleTabChange(id); }}
+                          className={`nav-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${isActive ? "nav-active" : ""}`}
+                          style={{ color: isActive ? '#DC2626' : color.textMuted }}
+                        >
+                          <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                          {label}
+                          {badge !== undefined && (
+                            <span
+                              className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold tabular-nums"
+                              style={{ background: isActive ? '#FEE2E2' : '#F1F3F5', color: isActive ? '#DC2626' : color.textMuted }}
+                            >
+                              {badge}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -10317,9 +10362,9 @@ export default function DashboardPage() {
                 active={analyticsSub}
                 onChange={setAnalyticsSub}
                 tabs={[
-                  { id: "listings",    label: "Listings" },
                   { id: "revenue",     label: "Revenue" },
-                  { id: "marketplace", label: "Marketplace" },
+                  { id: "listings",    label: "Performance" },
+                  { id: "marketplace", label: "Website" },
                 ]}
               />
               {analyticsSub === "listings" && (

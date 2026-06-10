@@ -703,9 +703,10 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <MetricCard
-            label="Revenue This Month"
-            value={revData ? fmtRM(revData.revMTD) : null}
-            loading={revLoading}
+            label="Total Revenue This Month"
+            value={revData ? fmtRM(revData.revMTD + (addonData?.totalRevenue || 0)) : null}
+            sub="cars + add-ons & F&I"
+            loading={revLoading || addonLoading}
             icon={DollarSign}
             accentColor="#4ade80"
           />
@@ -737,6 +738,61 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
             accentColor="#a78bfa"
           />
         </div>
+
+        {/* What makes up the total — always visible under the headline so the
+            contributors are readable without scrolling to the add-on section */}
+        {revData && !addonLoading && (() => {
+          const vehicleRev = revData.revMTD;
+          const addonRev = addonData?.totalRevenue || 0;
+          const totalRev = vehicleRev + addonRev;
+          const addonPct = totalRev > 0 ? Math.round((addonRev / totalRev) * 100) : 0;
+          const marginPct = vehicleRev > 0 ? Math.round((revData.gpMTD / vehicleRev) * 100) : 0;
+          return (
+            <div
+              className="grid grid-cols-3 gap-3 mt-3"
+              style={{
+                background: "#fff",
+                border: "1px solid #e5e7eb",
+                borderRadius: 12,
+                padding: "12px 16px",
+              }}
+            >
+              <div className="flex flex-col gap-0.5" style={{ minWidth: 0 }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  Vehicle Sales
+                </span>
+                <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 22, color: "#111827", lineHeight: 1.1 }}>
+                  {fmtRM(vehicleRev)}
+                </span>
+                <span style={{ fontSize: 11, color: "#9ca3af" }}>
+                  {revData.unitsSoldMTD} unit{revData.unitsSoldMTD === 1 ? "" : "s"} sold
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5" style={{ minWidth: 0 }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  Add-ons & F&I
+                </span>
+                <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 22, color: "#111827", lineHeight: 1.1 }}>
+                  {fmtRM(addonRev)}
+                </span>
+                <span style={{ fontSize: 11, color: "#9ca3af" }}>
+                  {addonPct}% of total revenue
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5" style={{ minWidth: 0 }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  Vehicle Margin
+                </span>
+                <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 22, color: "#111827", lineHeight: 1.1 }}>
+                  {marginPct}%
+                </span>
+                <span style={{ fontSize: 11, color: "#9ca3af" }}>
+                  {fmtRM(revData.gpMTD)} gross profit
+                </span>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── Section 2: Lead Performance ──────────────────────────────────── */}

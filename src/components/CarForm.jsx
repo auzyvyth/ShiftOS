@@ -941,13 +941,17 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
   const [catalogueLoaded, setCatalogueLoaded] = useState(false);
   const [serviceSearch, setServiceSearch] = useState("");
   const [commissionConfig, setCommissionConfig] = useState(null); // SET-4
+  const [handlesRti, setHandlesRti] = useState(true); // profiles.handles_roadtax_insurance
   const navigate = useNavigate();
 
   // SET-4: load dealer commission rule for the suggested-commission helper
   useEffect(() => {
     if (!dealerId) return;
-    supabase.from("profiles").select("commission_config").eq("id", dealerId).maybeSingle()
-      .then(({ data }) => setCommissionConfig(data?.commission_config || null));
+    supabase.from("profiles").select("commission_config, handles_roadtax_insurance").eq("id", dealerId).maybeSingle()
+      .then(({ data }) => {
+        setCommissionConfig(data?.commission_config || null);
+        setHandlesRti(data?.handles_roadtax_insurance !== false);
+      });
   }, [dealerId]);
 
   useEffect(() => {
@@ -2756,6 +2760,9 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                               .includes(serviceSearch.toLowerCase()),
                         )
                         .filter((p) => p.is_active !== false)
+                        // Dealers that outsource road tax & insurance don't bundle
+                        // them as included services — hide those categories.
+                        .filter((p) => handlesRti || (p.category !== "road_tax" && p.category !== "insurance"))
                         .map((p) => {
                           const cfg = getCategoryCfg(p.category);
                           const CatIcon = cfg.icon;
