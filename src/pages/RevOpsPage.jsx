@@ -141,8 +141,8 @@ function SectionCard({ title, children, loading, skeletonRows = 2 }) {
 function AlertBanner({ type, message, cta, onClick, onDismiss }) {
   const styles = {
     red: {
-      bg: "rgba(220,38,38,0.06)",
-      border: "rgba(220,38,38,0.18)",
+      bg: "color-mix(in srgb, var(--color-accent) 6%, transparent)",
+      border: "color-mix(in srgb, var(--color-accent) 18%, transparent)",
       icon: "#ef4444",
       text: "#374151",
     },
@@ -876,7 +876,7 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
               {salesmanScores.map(s => {
                 const mins = s.avg_response_min;
                 const label = mins >= 60 ? `${Math.round(mins / 60)}h` : `${mins}m`;
-                const color = mins > 120 ? '#dc2626' : mins > 30 ? '#d97706' : '#16a34a';
+                const color = mins > 120 ? 'var(--color-accent)' : mins > 30 ? '#d97706' : '#16a34a';
                 // bar width relative to the slowest responder in the set, not a magic constant
                 const maxMins = Math.max(...salesmanScores.map(x => x.avg_response_min || 0), 1);
                 const pct = Math.min(100, Math.round((mins / maxMins) * 100));

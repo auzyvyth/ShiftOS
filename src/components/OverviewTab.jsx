@@ -31,7 +31,7 @@ const ROLE_LABELS = {
 };
 const SOURCE_COLORS = ['#3B82F6', '#8B5CF6', '#F59E0B', '#10B981', '#F97316', '#EC4899'];
 const ACTIVE_STAGES = ['new','contacted','negotiating','presented','reserved','documents','hp_submitted'];
-const AVATAR_COLORS = ['#3B82F6','#8B5CF6','#F59E0B','#10B981','#F97316','#EC4899','#DC2626','#06B6D4'];
+const AVATAR_COLORS = ['#3B82F6','#8B5CF6','#F59E0B','#10B981','#F97316','#EC4899','var(--color-accent)','#06B6D4'];
 const ACT_CFG = {
   whatsapp_sent:  { label: 'WhatsApp', icon: MessageCircle,   color: '#16A34A', bg: '#F0FDF4' },
   stage_changed:  { label: 'Stage',    icon: ArrowRightLeft,  color: '#3B82F6', bg: '#EFF6FF' },
@@ -76,7 +76,7 @@ function KpiCard({ icon: Icon, label, value, sub, trend, iconColor }) {
           <Icon style={{ width: 18, height: 18, color: iconColor }} />
         </div>
         {trend != null && (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: up ? '#16A34A' : '#DC2626', background: up ? '#F0FDF4' : '#FEF2F2', borderRadius: 6, padding: '2px 7px' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: up ? '#16A34A' : 'var(--color-accent)', background: up ? '#F0FDF4' : 'var(--color-accent-weak)', borderRadius: 6, padding: '2px 7px' }}>
             {up ? <TrendingUp style={{ width: 11, height: 11 }} /> : <TrendingDown style={{ width: 11, height: 11 }} />}
             {Math.abs(trend).toFixed(1)}%
           </span>
@@ -334,7 +334,7 @@ export default function OverviewTab({ dealerId, onNavigate }) {
       {(() => {
         const alerts = [];
         if (snapshot.coldLeadsCount > 0) alerts.push({
-          key: 'cold', tone: '#DC2626', bg: '#FEF2F2', border: '#FECACA', Icon: MessageCircle,
+          key: 'cold', tone: 'var(--color-accent)', bg: 'var(--color-accent-weak)', border: 'var(--color-accent-border)', Icon: MessageCircle,
           label: `${snapshot.coldLeadsCount} cold lead${snapshot.coldLeadsCount === 1 ? '' : 's'}`,
           detail: `no reply in 5d+ · oldest ${snapshot.coldOldestDays}d`, go: 'crm',
         });
@@ -376,7 +376,7 @@ export default function OverviewTab({ dealerId, onNavigate }) {
         <KpiCard icon={Layers}     label="Open Leads"       value={snapshot.activeLeads}    sub="Active pipeline"                                                iconColor="#3B82F6" />
         <KpiCard icon={Car}        label="Active Listings"  value={snapshot.activeListings}  sub={snapshot.stale ? `${snapshot.stale} stale 30d+` : 'All fresh'} iconColor="#8B5CF6" />
         <KpiCard icon={DollarSign} label="MTD Units Sold"   value={mtd.units ?? 0}           sub="Month to date" trend={unitTrend}                              iconColor="#10B981" />
-        <KpiCard icon={TrendingUp} label="MTD Gross"        value={fmt(mtd.gross_profit)}    sub={mtd.avg_margin ? `${mtd.avg_margin}% margin` : 'No sales yet'} trend={gpTrend} iconColor="#DC2626" />
+        <KpiCard icon={TrendingUp} label="MTD Gross"        value={fmt(mtd.gross_profit)}    sub={mtd.avg_margin ? `${mtd.avg_margin}% margin` : 'No sales yet'} trend={gpTrend} iconColor="var(--color-accent)" />
       </div>
 
       {/* ── Revenue + Stock ── */}
@@ -390,7 +390,7 @@ export default function OverviewTab({ dealerId, onNavigate }) {
                 <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#9CA3AF' }} tickLine={false} axisLine={false} />
                 <YAxis hide />
                 <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #EAECF0', background: '#fff' }} formatter={(v) => [fmt(v), 'Revenue']} />
-                <Line type="monotone" dataKey="rev" stroke="#DC2626" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="rev" stroke="var(--color-accent)" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </Panel>

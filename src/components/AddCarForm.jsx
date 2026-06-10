@@ -342,7 +342,7 @@ export default function AddCarForm({ onPublished, onStocked }) {
               style={{
                 display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 8,
                 border: active ? `1px solid ${color.accent}` : "1px solid #EAECF0",
-                background: active ? "#FEF2F2" : done ? "#F0FDF4" : "#fff",
+                background: active ? "var(--color-accent-weak)" : done ? "#F0FDF4" : "#fff",
                 cursor: s.id < step ? "pointer" : "default", flex: "1 1 auto", minWidth: 0,
               }}>
               <div style={{
@@ -360,7 +360,7 @@ export default function AddCarForm({ onPublished, onStocked }) {
       </div>
 
       {error && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 8, background: "#FEF2F2", border: "1px solid #FECACA", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 8, background: "var(--color-accent-weak)", border: "1px solid var(--color-accent-border)", marginBottom: 16 }}>
           <AlertTriangle className="w-4 h-4" style={{ color: color.accent, flexShrink: 0 }} />
           <span style={{ fontSize: 13, color: "#991B1B" }}>{error}</span>
         </div>
@@ -467,7 +467,7 @@ export default function AddCarForm({ onPublished, onStocked }) {
                 <Info className="w-3 h-3" /> Holding: {RM(floor.dailyHold)}/day accrues from today
               </p>
             )}
-            <div style={{ background: "#fff", borderRadius: 8, padding: "12px 14px", border: `1px solid ${floor.estGross < 0 ? "#FECACA" : floor.estGross < floor.total * 0.08 ? "#FDE68A" : "#BBF7D0"}` }}>
+            <div style={{ background: "#fff", borderRadius: 8, padding: "12px 14px", border: `1px solid ${floor.estGross < 0 ? "var(--color-accent-border)" : floor.estGross < floor.total * 0.08 ? "#FDE68A" : "#BBF7D0"}` }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                 <span style={{ fontSize: 12, color: color.textMuted }}>Asking</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: color.ink }}>{RM(floor.asking)}</span>
@@ -513,7 +513,7 @@ export default function AddCarForm({ onPublished, onStocked }) {
                   textAlign: "left", display: "flex", flexDirection: "column", gap: 6, cursor: "pointer",
                   padding: 16, borderRadius: 12,
                   border: `2px solid ${form.publish ? color.accent : "#EAECF0"}`,
-                  background: form.publish ? "#FEF2F2" : "#fff",
+                  background: form.publish ? "var(--color-accent-weak)" : "#fff",
                 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <Globe className="w-5 h-5" style={{ color: form.publish ? color.accent : color.textMuted, flexShrink: 0 }} />

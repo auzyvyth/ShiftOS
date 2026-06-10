@@ -11,7 +11,7 @@ import {
 } from '../lib/leadsHelpers';
 
 const T = {
-  btnRed: { background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 2px 10px rgba(220,38,38,0.28)' },
+  btnRed: { background: 'linear-gradient(135deg,var(--color-accent),#b91c1c)', boxShadow: '0 2px 10px color-mix(in srgb, var(--color-accent) 28%, transparent)' },
 };
 
 // ─── Empty state ───────────────────────────────────────────────────────────────
@@ -19,7 +19,7 @@ function EmptyState({ onAdd }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center py-24 px-6 text-center">
       <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
-        style={{ background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.12)' }}>
+        style={{ background: 'color-mix(in srgb, var(--color-accent) 7%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 12%, transparent)' }}>
         <Inbox className="w-7 h-7 text-red-500/40" />
       </div>
       <h3 className="text-white font-bold text-lg mb-2">No leads yet</h3>
@@ -329,7 +329,7 @@ export default function LeadsPage() {
           )}
           {hasFilters && (
             <button onClick={() => { setSearch(''); setFilterSource(''); setFilterAssigned(''); }}
-              style={{ fontSize: 11, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 3, touchAction: 'manipulation' }}>
+              style={{ fontSize: 11, color: 'var(--color-accent)', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 3, touchAction: 'manipulation' }}>
               <X className="w-3 h-3" />Clear
             </button>
           )}
@@ -340,8 +340,8 @@ export default function LeadsPage() {
           <button onClick={() => setActiveStage('all')} style={{
             display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 20,
             fontSize: 10, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.12s',
-            background: activeStage === 'all' ? '#dc2626' : '#f9fafb',
-            border: activeStage === 'all' ? '1px solid #dc2626' : '1px solid #e5e7eb',
+            background: activeStage === 'all' ? 'var(--color-accent)' : '#f9fafb',
+            border: activeStage === 'all' ? '1px solid var(--color-accent)' : '1px solid #e5e7eb',
             color: activeStage === 'all' ? '#fff' : '#374151',
             touchAction: 'manipulation',
           }}>

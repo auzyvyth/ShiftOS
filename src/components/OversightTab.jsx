@@ -53,8 +53,8 @@ function HeroKPI({ label, value, prev, format = fmtRMShort, hint, sparkline }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           {up
             ? <TrendingUp style={{ width: 13, height: 13, color: '#16a34a' }} />
-            : <TrendingDown style={{ width: 13, height: 13, color: '#dc2626' }} />}
-          <span style={{ fontSize: 12, color: up ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+            : <TrendingDown style={{ width: 13, height: 13, color: 'var(--color-accent)' }} />}
+          <span style={{ fontSize: 12, color: up ? '#16a34a' : 'var(--color-accent)', fontWeight: 600 }}>
             {up ? '+' : ''}{delta}%
           </span>
           <span style={{ fontSize: 11, color: '#9ca3af' }}>vs last month</span>
@@ -117,9 +117,9 @@ function ExceptionAlerts({ alerts, onNavigate, onFocusAnomalies }) {
     );
   }
 
-  const severityColor = { high: '#dc2626', med: '#d97706', low: '#6b7280' };
-  const severityBg    = { high: '#fef2f2', med: '#fffbeb', low: '#f9fafb' };
-  const severityBorder = { high: '#fecaca', med: '#fde68a', low: '#e5e7eb' };
+  const severityColor = { high: 'var(--color-accent)', med: '#d97706', low: '#6b7280' };
+  const severityBg    = { high: 'var(--color-accent-weak)', med: '#fffbeb', low: '#f9fafb' };
+  const severityBorder = { high: 'var(--color-accent-border)', med: '#fde68a', low: '#e5e7eb' };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -214,7 +214,7 @@ function SalesmanScores({ scores }) {
         </thead>
         <tbody>
           {scores.map((s, i) => {
-            const scoreColor = s.score >= 75 ? '#16a34a' : s.score >= 50 ? '#d97706' : '#dc2626';
+            const scoreColor = s.score >= 75 ? '#16a34a' : s.score >= 50 ? '#d97706' : 'var(--color-accent)';
             return (
               <tr key={s.id} style={{ borderBottom: i === scores.length - 1 ? 'none' : '1px solid #f3f4f6' }}>
                 <td style={{ padding: '14px 16px', color: '#9ca3af', fontWeight: 600 }}>{i + 1}</td>
@@ -276,7 +276,7 @@ function AuditTrail({ dealerId, initialFilter = 'all' }) {
     recon_jobs: 'Recon',
     profiles: 'Account',
   };
-  const actionColor = { create: '#16a34a', update: '#3b82f6', delete: '#dc2626' };
+  const actionColor = { create: '#16a34a', update: '#3b82f6', delete: 'var(--color-accent)' };
 
   return (
     <div>
@@ -384,7 +384,7 @@ function GoalTracker({ dealerId, mtdRevenue, mtdProfit, mtdUnits }) {
     if (!target || target <= 0) return null;
     const pct = Math.min(100, (actual / target) * 100);
     const onPace = pct >= pace * 100 - 5;
-    return { pct, color: onPace ? '#16a34a' : pct >= pace * 100 - 15 ? '#d97706' : '#dc2626', onPace };
+    return { pct, color: onPace ? '#16a34a' : pct >= pace * 100 - 15 ? '#d97706' : 'var(--color-accent)', onPace };
   };
 
   const rUnits = ring(mtdUnits, goal?.target_units);

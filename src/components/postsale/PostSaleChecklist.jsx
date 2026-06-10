@@ -28,7 +28,7 @@ export default function PostSaleChecklist({ lead, compact = false }) {
       {/* Progress */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ flex: 1, height: 6, borderRadius: 99, background: '#e5e7eb', overflow: 'hidden' }}>
-          <div style={{ width: `${progress}%`, height: '100%', background: progress === 100 ? '#059669' : '#dc2626', transition: 'width 0.3s' }} />
+          <div style={{ width: `${progress}%`, height: '100%', background: progress === 100 ? '#059669' : 'var(--color-accent)', transition: 'width 0.3s' }} />
         </div>
         <span style={{ fontSize: 12, fontWeight: 700, color: progress === 100 ? '#059669' : '#6b7280', minWidth: 64, textAlign: 'right' }}>
           {progress === 100 ? 'Completed' : `${progress}%`}

@@ -454,13 +454,13 @@ export default function ServicesPage({ userId }) {
                   gap: 6,
                   padding: "7px 14px",
                   borderRadius: 6,
-                  background: "linear-gradient(135deg,#dc2626,#b91c1c)",
+                  background: "linear-gradient(135deg,var(--color-accent),#b91c1c)",
                   color: "white",
                   fontSize: 12,
                   fontWeight: 600,
                   border: "none",
                   cursor: "pointer",
-                  boxShadow: "0 2px 8px rgba(220,38,38,0.25)",
+                  boxShadow: "0 2px 8px color-mix(in srgb, var(--color-accent) 25%, transparent)",
                 }}
               >
                 <Plus style={{ width: 13, height: 13 }} />
@@ -508,9 +508,9 @@ export default function ServicesPage({ userId }) {
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.borderColor =
-                            "rgba(220,38,38,0.35)";
+                            "color-mix(in srgb, var(--color-accent) 35%, transparent)";
                           e.currentTarget.style.background =
-                            "rgba(220,38,38,0.04)";
+                            "color-mix(in srgb, var(--color-accent) 4%, transparent)";
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.borderColor = "#D1D5DB";
@@ -935,10 +935,10 @@ export default function ServicesPage({ userId }) {
                               borderRadius: 20,
                               background:
                                 i === 0
-                                  ? "rgba(220,38,38,0.08)"
+                                  ? "color-mix(in srgb, var(--color-accent) 8%, transparent)"
                                   : "#F3F4F6",
-                              border: `1px solid ${i === 0 ? "rgba(220,38,38,0.25)" : "#E5E7EB"}`,
-                              color: i === 0 ? "#dc2626" : "#374151",
+                              border: `1px solid ${i === 0 ? "color-mix(in srgb, var(--color-accent) 25%, transparent)" : "#E5E7EB"}`,
+                              color: i === 0 ? "var(--color-accent)" : "#374151",
                             }}
                           >
                             {name} × {count}
@@ -1268,7 +1268,7 @@ export default function ServicesPage({ userId }) {
                 right: 0,
                 height: 1,
                 background:
-                  "linear-gradient(90deg,transparent,rgba(220,38,38,0.5) 40%,rgba(56,189,248,0.3) 70%,transparent)",
+                  "linear-gradient(90deg,transparent,color-mix(in srgb, var(--color-accent) 50%, transparent) 40%,rgba(56,189,248,0.3) 70%,transparent)",
               }}
             />
 
@@ -1627,7 +1627,7 @@ export default function ServicesPage({ userId }) {
                   width: "100%",
                   padding: "11px",
                   borderRadius: 8,
-                  background: "linear-gradient(135deg,#dc2626,#b91c1c)",
+                  background: "linear-gradient(135deg,var(--color-accent),#b91c1c)",
                   border: "none",
                   color: "white",
                   fontSize: 13,

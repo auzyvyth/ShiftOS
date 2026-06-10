@@ -11,7 +11,7 @@ function followUpStyle(dateStr) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const d = new Date(dateStr); d.setHours(0, 0, 0, 0);
   const diff = Math.round((d - today) / 86400000);
-  if (diff < 0)   return { color: '#dc2626', bg: '#fef2f2', border: '#fecaca' };
+  if (diff < 0)   return { color: 'var(--color-accent)', bg: 'var(--color-accent-weak)', border: 'var(--color-accent-border)' };
   if (diff === 0) return { color: '#d97706', bg: '#fffbeb', border: '#fde68a' };
   return            { color: '#6b7280',  bg: '#f9fafb',  border: '#e5e7eb'  };
 }
@@ -96,7 +96,7 @@ export default function LeadCard({ lead, onOpen }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap', overflow: 'hidden' }}>
           {carLabel ? (
             <span style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
-              {carLabel}{carPrice && <span style={{ color: '#dc2626', fontWeight: 700 }}> · {carPrice}</span>}
+              {carLabel}{carPrice && <span style={{ color: 'var(--color-accent)', fontWeight: 700 }}> · {carPrice}</span>}
             </span>
           ) : (
             <span style={{ fontSize: 12, color: '#d1d5db' }}>No car linked</span>

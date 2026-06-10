@@ -118,9 +118,9 @@ function RejectModal({ onConfirm, onCancel }) {
               onClick={() => setCategory(c.value)}
               style={{
                 padding: '9px 14px', borderRadius: 8, textAlign: 'left', fontSize: 13, cursor: 'pointer',
-                background: category === c.value ? '#fef2f2' : '#f9fafb',
+                background: category === c.value ? 'var(--color-accent-weak)' : '#f9fafb',
                 border: `1px solid ${category === c.value ? '#fca5a5' : '#e5e7eb'}`,
-                color: category === c.value ? '#dc2626' : '#374151',
+                color: category === c.value ? 'var(--color-accent)' : '#374151',
                 fontWeight: category === c.value ? 600 : 400,
               }}
             >
@@ -133,7 +133,7 @@ function RejectModal({ onConfirm, onCancel }) {
           <button
             onClick={() => category && onConfirm(category)}
             disabled={!category}
-            style={{ flex: 1, padding: '9px', borderRadius: 8, background: category ? '#dc2626' : 'rgba(220,38,38,0.3)', border: 'none', color: '#fff', cursor: category ? 'pointer' : 'not-allowed', fontSize: 13, fontWeight: 600 }}
+            style={{ flex: 1, padding: '9px', borderRadius: 8, background: category ? 'var(--color-accent)' : 'color-mix(in srgb, var(--color-accent) 30%, transparent)', border: 'none', color: '#fff', cursor: category ? 'pointer' : 'not-allowed', fontSize: 13, fontWeight: 600 }}
           >
             Confirm Reject
           </button>

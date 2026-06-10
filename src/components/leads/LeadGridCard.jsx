@@ -65,7 +65,7 @@ export default function LeadGridCard({ lead, onOpen }) {
 
       {/* Row 3: price */}
       {carPrice && (
-        <div style={{ fontSize: 12.5, fontWeight: 800, color: '#dc2626', marginBottom: 8 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--color-accent)', marginBottom: 8 }}>
           {carPrice}
         </div>
       )}

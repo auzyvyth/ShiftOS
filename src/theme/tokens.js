@@ -2,7 +2,9 @@ export const color = {
   appBg:     '#F7F8FA',
   surface:   '#FFFFFF',
   ink:       '#0F172A',
-  accent:    '#DC2626',
+  // Themeable per dealer — resolves to profiles.brand_color on the dashboard,
+  // falls back to ShiftOS red everywhere else (see :root in index.css).
+  accent:    'var(--color-accent, #DC2626)',
   textMuted: '#9AA1AD',
 };
 export const border = {

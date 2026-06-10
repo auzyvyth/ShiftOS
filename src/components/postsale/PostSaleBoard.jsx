@@ -97,7 +97,7 @@ export default function PostSaleBoard({ dealerId, salesmanId = null }) {
             {deals.filter((d) => progressMap[d.id] !== 100).length} in processing
           </p>
           {overdueCount > 0 && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#dc2626', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '3px 9px' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: 'var(--color-accent)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '3px 9px' }}>
               <AlertTriangle size={12} />{overdueCount} overdue
             </span>
           )}
@@ -119,7 +119,7 @@ export default function PostSaleBoard({ dealerId, salesmanId = null }) {
         const isOpen = open === d.id;
         const done = prog === 100;
         const age = daysSince(d.updated_at);
-        const slaColor = done ? '#059669' : age > SLA_BREACH_DAYS ? '#dc2626' : age >= SLA_WARN_DAYS ? '#d97706' : '#9ca3af';
+        const slaColor = done ? '#059669' : age > SLA_BREACH_DAYS ? 'var(--color-accent)' : age >= SLA_WARN_DAYS ? '#d97706' : '#9ca3af';
         const blocker = done ? null : nextBlocker(tasksMap[d.id]);
         return (
           <div key={d.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
@@ -154,7 +154,7 @@ export default function PostSaleBoard({ dealerId, salesmanId = null }) {
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, width: 90 }}>
                   <div style={{ flex: 1, height: 5, borderRadius: 99, background: '#e5e7eb', overflow: 'hidden' }}>
-                    <div style={{ width: `${prog < 0 ? 0 : prog}%`, height: '100%', background: '#dc2626' }} />
+                    <div style={{ width: `${prog < 0 ? 0 : prog}%`, height: '100%', background: 'var(--color-accent)' }} />
                   </div>
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', minWidth: 30, textAlign: 'right' }}>{prog < 0 ? '–' : `${prog}%`}</span>
                 </div>

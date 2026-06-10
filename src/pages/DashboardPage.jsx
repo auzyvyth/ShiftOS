@@ -54,8 +54,8 @@ function SubTabBar({ tabs, active, onChange }) {
           onClick={() => onChange(t.id)}
           style={{
             padding: '8px 12px', fontSize: 13, fontWeight: 500,
-            borderBottom: active === t.id ? '2px solid #DC2626' : '2px solid transparent',
-            color: active === t.id ? '#DC2626' : '#9AA1AD',
+            borderBottom: active === t.id ? '2px solid var(--color-accent)' : '2px solid transparent',
+            color: active === t.id ? 'var(--color-accent)' : '#9AA1AD',
             background: 'none', border: 'none',
             cursor: 'pointer', transition: 'color 0.15s', marginBottom: -1,
           }}
@@ -176,7 +176,7 @@ const STYLES = `
   /* ── Sidebar nav ── */
   .nav-item { border-left: 2px solid transparent; transition: all 0.15s; border-radius: 7px; }
   .nav-item:hover:not(.nav-active) { background: #EAECF0 !important; border-left-color: #D1D5DB; color: #0F172A !important; }
-  .nav-active { background: #FEF2F2 !important; border-left: 2px solid #DC2626 !important; color: #DC2626 !important; }
+  .nav-active { background: var(--color-accent-weak) !important; border-left: 2px solid var(--color-accent) !important; color: var(--color-accent) !important; }
 
   /* ── Cards ── */
   .dash-card { background: #FFFFFF; border: 1px solid #EAECF0; border-radius: 12px; box-shadow: 0 1px 4px rgba(15,23,42,0.06); }
@@ -185,7 +185,7 @@ const STYLES = `
 
   /* ── Table rows ── */
   .data-row { border-left: 2px solid transparent; transition: background 0.12s, border-left-color 0.12s; }
-  .data-row:hover { background: #F7F8FA !important; border-left-color: #DC2626; }
+  .data-row:hover { background: #F7F8FA !important; border-left-color: var(--color-accent); }
 
   /* ── Modals ── */
   .glass-modal, .modal-top { background: #FFFFFF; border: 1px solid #EAECF0; box-shadow: 0 20px 60px rgba(15,23,42,0.15); }
@@ -203,7 +203,7 @@ const STYLES = `
   .discount-chip { transition: box-shadow 0.15s; }
 
   /* ── Gradient text (keep for charts/badges) ── */
-  .grad-red    { background: linear-gradient(135deg,#dc2626,#f87171); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .grad-red    { background: linear-gradient(135deg,var(--color-accent),#f87171); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
   .grad-blue   { background: linear-gradient(135deg,#2563eb,#60a5fa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
   .grad-green  { background: linear-gradient(135deg,#16a34a,#4ade80); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
   .grad-gold   { background: linear-gradient(135deg,#d97706,#fbbf24); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
@@ -241,8 +241,8 @@ const T = {
   },
   divider: { borderBottom: '1px solid #EAECF0' },
   btnRed: {
-    background: '#DC2626',
-    boxShadow: '0 1px 4px rgba(220,38,38,0.3)',
+    background: 'var(--color-accent)',
+    boxShadow: '0 1px 4px color-mix(in srgb, var(--color-accent) 30%, transparent)',
     border: 'none',
   },
 };
@@ -539,7 +539,7 @@ function ProductsCatalogue({ dealerId, profile }) {
         className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/[0.025] transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)' }}>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 20%, transparent)' }}>
             <Tag className="w-4 h-4 text-red-400" />
           </div>
           <div className="text-left">
@@ -558,7 +558,7 @@ function ProductsCatalogue({ dealerId, profile }) {
             <button
               onClick={openAdd}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-red-600"
-              style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 2px 8px rgba(220,38,38,0.25)' }}
+              style={{ background: 'linear-gradient(135deg,var(--color-accent),#b91c1c)', boxShadow: '0 2px 8px color-mix(in srgb, var(--color-accent) 25%, transparent)' }}
             >
               <PlusCircle className="w-3 h-3" />Add Product
             </button>
@@ -677,7 +677,7 @@ function ProductsCatalogue({ dealerId, profile }) {
                 onClick={handleSave}
                 disabled={saving}
                 className="w-full py-2.5 rounded-lg text-sm font-semibold text-white mt-1"
-                style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', opacity: saving ? 0.7 : 1 }}
+                style={{ background: 'linear-gradient(135deg,var(--color-accent),#b91c1c)', opacity: saving ? 0.7 : 1 }}
               >
                 {saving ? 'Saving…' : editTarget ? 'Save Changes' : 'Add Product'}
               </button>
@@ -783,7 +783,7 @@ function PermissionsMatrix({ dealerId, actor }) {
             <div className="space-y-2">
               {caps.map(cap => (
                 <label key={cap.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={!!rows[value]?.[cap.key]} onChange={() => toggle(value, cap.key)} style={{ accentColor: '#dc2626', marginTop: 2 }} />
+                  <input type="checkbox" checked={!!rows[value]?.[cap.key]} onChange={() => toggle(value, cap.key)} style={{ accentColor: 'var(--color-accent)', marginTop: 2 }} />
                   <span>
                     <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>{cap.label}</span>
                     <span style={{ display: 'block', fontSize: 11, color: '#9ca3af' }}>{cap.description}</span>
@@ -1350,7 +1350,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '20px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div>
-              <p style={{ fontSize: 11, letterSpacing: 2, color: '#dc2626', fontWeight: 600, marginBottom: 4 }}>CURRENT PLAN</p>
+              <p style={{ fontSize: 11, letterSpacing: 2, color: 'var(--color-accent)', fontWeight: 600, marginBottom: 4 }}>CURRENT PLAN</p>
               <p style={{ fontSize: 20, fontWeight: 700, color: '#111827' }}>{planCfg.label}</p>
             </div>
             <div style={{ textAlign: 'right' }}>
@@ -1361,7 +1361,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: nextPlanCfg ? 16 : 0 }}>
             <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 16px' }}>
               <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>LISTINGS</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: planUsage.listing_cap && planUsage.active_listings >= planUsage.listing_cap ? '#dc2626' : '#111827' }}>
+              <p style={{ fontSize: 18, fontWeight: 700, color: planUsage.listing_cap && planUsage.active_listings >= planUsage.listing_cap ? 'var(--color-accent)' : '#111827' }}>
                 {planUsage.active_listings ?? 0}
                 <span style={{ fontSize: 13, color: '#6b7280', fontWeight: 400 }}>
                   {planUsage.listing_cap ? ` / ${planUsage.listing_cap}` : ' / unlimited'}
@@ -1369,13 +1369,13 @@ function SettingsTab({ profile, onProfileUpdate }) {
               </p>
               {planUsage.listing_cap && (
                 <div style={{ marginTop: 8, height: 4, background: '#e5e7eb', borderRadius: 2 }}>
-                  <div style={{ height: '100%', borderRadius: 2, background: planUsage.active_listings >= planUsage.listing_cap ? '#dc2626' : '#2563eb', width: `${Math.min(100, (planUsage.active_listings / planUsage.listing_cap) * 100)}%`, transition: 'width 0.4s' }} />
+                  <div style={{ height: '100%', borderRadius: 2, background: planUsage.active_listings >= planUsage.listing_cap ? 'var(--color-accent)' : '#2563eb', width: `${Math.min(100, (planUsage.active_listings / planUsage.listing_cap) * 100)}%`, transition: 'width 0.4s' }} />
                 </div>
               )}
             </div>
             <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 16px' }}>
               <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>TEAM SEATS</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: planUsage.seat_cap && planUsage.seat_count >= planUsage.seat_cap ? '#dc2626' : '#111827' }}>
+              <p style={{ fontSize: 18, fontWeight: 700, color: planUsage.seat_cap && planUsage.seat_count >= planUsage.seat_cap ? 'var(--color-accent)' : '#111827' }}>
                 {planUsage.seat_count ?? 0}
                 <span style={{ fontSize: 13, color: '#6b7280', fontWeight: 400 }}>
                   {planUsage.seat_cap ? ` / ${planUsage.seat_cap}` : ' / unlimited'}
@@ -1383,7 +1383,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
               </p>
               {planUsage.seat_cap && (
                 <div style={{ marginTop: 8, height: 4, background: '#e5e7eb', borderRadius: 2 }}>
-                  <div style={{ height: '100%', borderRadius: 2, background: planUsage.seat_count >= planUsage.seat_cap ? '#dc2626' : '#2563eb', width: `${Math.min(100, (planUsage.seat_count / planUsage.seat_cap) * 100)}%`, transition: 'width 0.4s' }} />
+                  <div style={{ height: '100%', borderRadius: 2, background: planUsage.seat_count >= planUsage.seat_cap ? 'var(--color-accent)' : '#2563eb', width: `${Math.min(100, (planUsage.seat_count / planUsage.seat_cap) * 100)}%`, transition: 'width 0.4s' }} />
                 </div>
               )}
             </div>
@@ -1395,8 +1395,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
             )}
           </div>
           {nextPlanCfg && (
-            <a href="mailto:support@xdrive.my?subject=Upgrade to Plan" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, textDecoration: 'none' }}>
-              <span style={{ fontSize: 13, color: '#dc2626', fontWeight: 600 }}>Upgrade to {nextPlanCfg.label}</span>
+            <a href="mailto:support@xdrive.my?subject=Upgrade to Plan" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-accent-weak)', border: '1px solid var(--color-accent-border)', borderRadius: 8, textDecoration: 'none' }}>
+              <span style={{ fontSize: 13, color: 'var(--color-accent)', fontWeight: 600 }}>Upgrade to {nextPlanCfg.label}</span>
               <span style={{ fontSize: 13, color: '#6b7280' }}>RM {nextPlanCfg.price.toLocaleString()}/mo →</span>
             </a>
           )}
@@ -1494,7 +1494,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
 
         <SettingsField
           label="Brand Accent Colour"
-          hint="Used on your public site"
+          hint="Themes your public site and this dashboard"
         >
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -1714,7 +1714,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
               onClick={() => setHeroVideoEnabled(p => !p)}
               style={{
                 width: 44, height: 24, borderRadius: 12, flexShrink: 0, cursor: 'pointer', border: 'none',
-                background: heroVideoEnabled ? '#dc2626' : '#d1d5db',
+                background: heroVideoEnabled ? 'var(--color-accent)' : '#d1d5db',
                 position: 'relative', transition: 'background 0.2s',
               }}
             >
@@ -1818,7 +1818,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
                 <div key={f.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "10px 14px", marginBottom: 8 }}>
                   <span style={{ fontSize: 13, color: "#e5e7eb" }}>{f.friendly_name || "Authenticator app"}</span>
                   <button onClick={() => removeMfaFactor(f.id)} disabled={mfaBusy}
-                    style={{ fontSize: 12, color: "#f87171", background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 6, padding: "5px 12px", cursor: "pointer", opacity: mfaBusy ? 0.6 : 1 }}>
+                    style={{ fontSize: 12, color: "#f87171", background: "color-mix(in srgb, var(--color-accent) 10%, transparent)", border: "1px solid color-mix(in srgb, var(--color-accent) 25%, transparent)", borderRadius: 6, padding: "5px 12px", cursor: "pointer", opacity: mfaBusy ? 0.6 : 1 }}>
                     Disable
                   </button>
                 </div>
@@ -1850,7 +1850,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
                   Cancel
                 </button>
                 <button onClick={verifyMfaEnroll} disabled={mfaBusy || mfaCode.length < 6}
-                  style={{ fontSize: 13, fontWeight: 600, color: "#fff", background: "#dc2626", border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", opacity: (mfaBusy || mfaCode.length < 6) ? 0.5 : 1 }}>
+                  style={{ fontSize: 13, fontWeight: 600, color: "#fff", background: "var(--color-accent)", border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", opacity: (mfaBusy || mfaCode.length < 6) ? 0.5 : 1 }}>
                   {mfaBusy ? "Verifying…" : "Verify & Enable"}
                 </button>
               </div>
@@ -1875,7 +1875,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
             </p>
           </div>
           <button onClick={logoutAllDevices} disabled={logoutBusy}
-            style={{ fontSize: 13, fontWeight: 600, color: "#f87171", background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 8, padding: "9px 16px", cursor: "pointer", whiteSpace: "nowrap", opacity: logoutBusy ? 0.6 : 1 }}>
+            style={{ fontSize: 13, fontWeight: 600, color: "#f87171", background: "color-mix(in srgb, var(--color-accent) 10%, transparent)", border: "1px solid color-mix(in srgb, var(--color-accent) 25%, transparent)", borderRadius: 8, padding: "9px 16px", cursor: "pointer", whiteSpace: "nowrap", opacity: logoutBusy ? 0.6 : 1 }}>
             {logoutBusy ? "Signing out…" : "Log out all devices"}
           </button>
         </div>
@@ -2246,8 +2246,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
                       display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '7px 10px',
                       borderRadius: 7, border: 'none', cursor: 'pointer', textAlign: 'left', marginBottom: 1,
                       background: active ? '#f9fafb' : 'transparent',
-                      color: active ? '#dc2626' : '#4b5563',
-                      borderLeft: active ? '2px solid #dc2626' : '2px solid transparent',
+                      color: active ? 'var(--color-accent)' : '#4b5563',
+                      borderLeft: active ? '2px solid var(--color-accent)' : '2px solid transparent',
                       fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: active ? 600 : 400,
                       transition: 'all 0.12s',
                     }}
@@ -3697,7 +3697,7 @@ function MarketplaceAnalyticsTab({ profile }) {
                     contentStyle={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: 12 }}
                     labelStyle={{ color: "#6b7280" }}
                   />
-                  <Line type="monotone" dataKey="visits" stroke="#dc2626" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="visits" stroke="var(--color-accent)" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -4319,7 +4319,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                               <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{s.full_name}</span>
                               <span style={{ fontSize: 12, fontWeight: 700, color: s.sold > 0 ? '#16a34a' : '#9ca3af', minWidth: 16, textAlign: 'right' }}>{s.sold}</span>
                               <span style={{ fontSize: 10, color: '#9ca3af', marginRight: 4 }}>sold</span>
-                              <span style={{ fontSize: 12, fontWeight: 700, color: s.gross > 0 ? '#16a34a' : s.gross < 0 ? '#dc2626' : '#9ca3af', width: 54, textAlign: 'right' }}>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: s.gross > 0 ? '#16a34a' : s.gross < 0 ? 'var(--color-accent)' : '#9ca3af', width: 54, textAlign: 'right' }}>
                                 {s.gross ? `RM ${Math.round(s.gross).toLocaleString()}` : '—'}
                               </span>
                               <span className="lb-comm-val" style={{ fontSize: 12, fontWeight: 600, color: '#374151', width: 72, textAlign: 'right' }}>
@@ -4979,7 +4979,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                   {addError && (
                     <div
                       className="rounded-xl px-3 py-2.5 text-red-600 text-xs"
-                      style={{ background: "#fef2f2", border: "1px solid #fecaca" }}
+                      style={{ background: "var(--color-accent-weak)", border: "1px solid var(--color-accent-border)" }}
                     >
                       ⚠ {addError}
                     </div>
@@ -5417,7 +5417,7 @@ function ListingDetailDrawer({
                         </button>
                       )}
                       {salesmen.map(s => (
-                        <button key={s.id} onClick={() => { handleAssign(listing.id, s.id, s.full_name); setShowAssign(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: listing.assigned_to === s.id ? 'rgba(220,38,38,0.06)' : 'none', border: 'none', color: listing.assigned_to === s.id ? '#DC2626' : '#374151', fontSize: 12, cursor: 'pointer' }}>
+                        <button key={s.id} onClick={() => { handleAssign(listing.id, s.id, s.full_name); setShowAssign(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: listing.assigned_to === s.id ? 'color-mix(in srgb, var(--color-accent) 6%, transparent)' : 'none', border: 'none', color: listing.assigned_to === s.id ? 'var(--color-accent)' : '#374151', fontSize: 12, cursor: 'pointer' }}>
                           <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{(s.full_name || 'S')[0].toUpperCase()}</div>
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.full_name || 'Unknown'}</span>
                           {listing.assigned_to === s.id && <Check style={{ width: 11, height: 11, marginLeft: 'auto', flexShrink: 0 }} />}
@@ -6108,7 +6108,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
           <div style={{ display: 'flex', gap: 8 }}>
             <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvFile} />
             <button onClick={() => { setShowVendors(true); fetchVendors(); }} className="flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-lg" style={{ background: 'rgba(107,114,128,0.08)', border: '1px solid rgba(107,114,128,0.2)', color: '#6b7280' }}><Wrench className="w-3.5 h-3.5" />Vendors</button>
-            <button onClick={() => { setShowCsvImport(true); setCsvRows([]); setCsvError(''); }} className="flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-lg" style={{ background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.3)', color: '#f87171' }}><Upload className="w-3.5 h-3.5" />Import CSV</button>
+            <button onClick={() => { setShowCsvImport(true); setCsvRows([]); setCsvError(''); }} className="flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-lg" style={{ background: 'color-mix(in srgb, var(--color-accent) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)', color: '#f87171' }}><Upload className="w-3.5 h-3.5" />Import CSV</button>
             <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><PlusCircle className="w-3.5 h-3.5" />Add Stock</button>
           </div>
         </div>
@@ -6183,7 +6183,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                     const carYear = car?.year ? Number(car.year) : null;
                     const carAge = carYear ? currentYear - carYear : null;
                     return (
-                      <tr key={u.id} title={isAging ? '60+ days in stock' : undefined} style={{ borderBottom: '1px solid #f3f4f6', background: isAging ? 'rgba(220,38,38,0.05)' : 'transparent' }} onMouseEnter={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.08)' : '#f9fafb'} onMouseLeave={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.05)' : 'transparent'}>
+                      <tr key={u.id} title={isAging ? '60+ days in stock' : undefined} style={{ borderBottom: '1px solid #f3f4f6', background: isAging ? 'color-mix(in srgb, var(--color-accent) 5%, transparent)' : 'transparent' }} onMouseEnter={e => e.currentTarget.style.background = isAging ? 'color-mix(in srgb, var(--color-accent) 8%, transparent)' : '#f9fafb'} onMouseLeave={e => e.currentTarget.style.background = isAging ? 'color-mix(in srgb, var(--color-accent) 5%, transparent)' : 'transparent'}>
                         <td style={{ padding: '12px 14px', minWidth: 140 }}>
                           {car ? (
                             <>
@@ -6729,10 +6729,10 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
             <div className="overflow-y-auto flex-1 p-5">
               {csvRows.length === 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '24px 0' }}>
-                  <button onClick={() => csvInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: '#fef2f2', border: '2px dashed #fca5a5', borderRadius: 10, color: '#dc2626', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  <button onClick={() => csvInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: 'var(--color-accent-weak)', border: '2px dashed #fca5a5', borderRadius: 10, color: 'var(--color-accent)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                     <Upload style={{ width: 16, height: 16 }} />Choose CSV File
                   </button>
-                  {csvError && <p style={{ fontSize: 12, color: '#dc2626', textAlign: 'center' }}>{csvError}</p>}
+                  {csvError && <p style={{ fontSize: 12, color: 'var(--color-accent)', textAlign: 'center' }}>{csvError}</p>}
                   <p style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', maxWidth: 360 }}>
                     First row must be a header. Recognised columns: brand, make, model, year, plate, reg, purchase_price, cost, recon_cost, asking_price, selling_price.
                   </p>
@@ -6774,7 +6774,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
             {csvRows.length > 0 && (
               <div className="p-5 border-t border-gray-100 flex gap-3">
                 <button onClick={() => { setShowCsvImport(false); setCsvRows([]); }} style={{ flex: 1, padding: '9px', borderRadius: 8, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
-                <button onClick={handleCsvImport} disabled={csvSaving} style={{ flex: 2, padding: '9px', borderRadius: 8, background: '#dc2626', border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: csvSaving ? 0.6 : 1 }}>
+                <button onClick={handleCsvImport} disabled={csvSaving} style={{ flex: 2, padding: '9px', borderRadius: 8, background: 'var(--color-accent)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: csvSaving ? 0.6 : 1 }}>
                   {csvSaving ? 'Importing…' : `Import ${csvRows.length} Units`}
                 </button>
               </div>
@@ -7504,7 +7504,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                           </button>
                         )}
                         {doc.doc_status !== 'issued' && (
-                          <button onClick={() => setDeleteId(doc.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d1d5db', padding: 4, display: 'flex', borderRadius: 5 }} onMouseEnter={e => e.currentTarget.style.color = '#dc2626'} onMouseLeave={e => e.currentTarget.style.color = '#d1d5db'}><Trash2 style={{ width: 13, height: 13 }} /></button>
+                          <button onClick={() => setDeleteId(doc.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d1d5db', padding: 4, display: 'flex', borderRadius: 5 }} onMouseEnter={e => e.currentTarget.style.color = 'var(--color-accent)'} onMouseLeave={e => e.currentTarget.style.color = '#d1d5db'}><Trash2 style={{ width: 13, height: 13 }} /></button>
                         )}
                       </div>
                     </td>
@@ -7577,7 +7577,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                             <div style={{ padding: '12px 14px', fontSize: 13, color: '#9ca3af' }}>No listings match</div>
                           ) : filteredListings.map(l => (
                             <button key={l.id} type="button" onClick={() => handleListingSelect(l)}
-                              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: genForm.listing_id === l.id ? 'rgba(220,38,38,0.07)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: "'DM Sans', sans-serif" }}
+                              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: genForm.listing_id === l.id ? 'color-mix(in srgb, var(--color-accent) 7%, transparent)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: "'DM Sans', sans-serif" }}
                               onMouseEnter={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = '#f9fafb'; }}
                               onMouseLeave={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = 'transparent'; }}>
                               {l.images?.[0] ? (
@@ -7611,12 +7611,12 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                 <div>
                   <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">
                     Buyer IC
-                    {['Sales Agreement','Deposit Receipt'].includes(genForm.doc_type) && <span style={{ color: '#dc2626', marginLeft: 2 }}>*</span>}
+                    {['Sales Agreement','Deposit Receipt'].includes(genForm.doc_type) && <span style={{ color: 'var(--color-accent)', marginLeft: 2 }}>*</span>}
                   </label>
                   <input value={genForm.buyer_ic} onChange={e => setGenForm(p => ({ ...p, buyer_ic: e.target.value }))} placeholder="XXXXXX-XX-XXXX" className={iCls}
                     style={['Sales Agreement','Deposit Receipt'].includes(genForm.doc_type) && !genForm.buyer_ic.trim() ? { borderColor: '#fca5a5' } : {}} />
                   {['Sales Agreement','Deposit Receipt'].includes(genForm.doc_type) && !genForm.buyer_ic.trim() && (
-                    <p style={{ fontSize: 10, color: '#dc2626', marginTop: 3 }}>Required for {genForm.doc_type}</p>
+                    <p style={{ fontSize: 10, color: 'var(--color-accent)', marginTop: 3 }}>Required for {genForm.doc_type}</p>
                   )}
                 </div>
               </div>
@@ -7680,7 +7680,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                     {genForm.handover_items.map((item, idx) => (
                       <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f9fafb', borderRadius: 7, border: '1px solid #e5e7eb' }}>
                         <span style={{ flex: 1, fontSize: 13, color: '#374151' }}>{item}</span>
-                        <button onClick={() => setGenForm(p => ({ ...p, handover_items: p.handover_items.filter((_, i) => i !== idx) }))} style={{ color: '#d1d5db', background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', flexShrink: 0 }} onMouseEnter={e => e.currentTarget.style.color='#dc2626'} onMouseLeave={e => e.currentTarget.style.color='#d1d5db'}><X className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => setGenForm(p => ({ ...p, handover_items: p.handover_items.filter((_, i) => i !== idx) }))} style={{ color: '#d1d5db', background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', flexShrink: 0 }} onMouseEnter={e => e.currentTarget.style.color='var(--color-accent)'} onMouseLeave={e => e.currentTarget.style.color='#d1d5db'}><X className="w-3.5 h-3.5" /></button>
                       </div>
                     ))}
                   </div>
@@ -7721,7 +7721,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
               {genForm.doc_type === 'Sales Agreement' && (
                 <div style={{ paddingTop: 4, borderTop: '1px solid #e5e7eb' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: genForm.include_financing ? 12 : 0 }}>
-                    <input type="checkbox" checked={genForm.include_financing} onChange={e => setGenForm(p => ({ ...p, include_financing: e.target.checked }))} style={{ width: 15, height: 15, accentColor: '#dc2626' }} />
+                    <input type="checkbox" checked={genForm.include_financing} onChange={e => setGenForm(p => ({ ...p, include_financing: e.target.checked }))} style={{ width: 15, height: 15, accentColor: 'var(--color-accent)' }} />
                     <span style={{ fontSize: 13, color: '#374151', fontFamily: "'DM Sans', sans-serif" }}>Include Financing Details</span>
                   </label>
                   {genForm.include_financing && (
@@ -7748,9 +7748,9 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
               return (
                 <div className="p-5 border-t border-gray-100 space-y-3">
                   {encBlocked && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 10 }}>
-                      <AlertTriangle style={{ width: 14, height: 14, color: '#dc2626', flexShrink: 0 }} />
-                      <span style={{ fontSize: 12, color: '#dc2626', fontFamily: "'DM Sans',sans-serif" }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'color-mix(in srgb, var(--color-accent) 7%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 25%, transparent)', borderRadius: 10 }}>
+                      <AlertTriangle style={{ width: 14, height: 14, color: 'var(--color-accent)', flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, color: 'var(--color-accent)', fontFamily: "'DM Sans',sans-serif" }}>
                         This vehicle is marked <strong>Under HP</strong> in stock. Clear the encumbrance before issuing a Handover Checklist.
                       </span>
                     </div>
@@ -7817,7 +7817,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
             <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 20px' }}>This cannot be undone.</p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => setDeleteId(null)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid #e5e7eb', background: '#fff', color: '#6b7280', fontWeight: 500, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
-              <button onClick={() => handleDelete(deleteId)} style={{ flex: 1, padding: '10px', borderRadius: 10, background: '#dc2626', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: 13, border: 'none' }}>Delete</button>
+              <button onClick={() => handleDelete(deleteId)} style={{ flex: 1, padding: '10px', borderRadius: 10, background: 'var(--color-accent)', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: 13, border: 'none' }}>Delete</button>
             </div>
           </div>
         </div>
@@ -8334,7 +8334,7 @@ function CustomersTab({ dealerId }) {
       {/* Stats — the two expiry cards are clickable and filter the table below. */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
         {[
-          { label: "Total Customers", val: customers.length, color: "#dc2626", filter: null, sub: null },
+          { label: "Total Customers", val: customers.length, color: "var(--color-accent)", filter: null, sub: null },
           { label: "This Month", val: thisMonthCount, color: "#4ade80", filter: null, sub: null },
           { label: "Road Tax Due", val: rtDue, color: "#fbbf24", filter: "rt", sub: rtExpired > 0 ? `${rtExpired} expired` : null },
           { label: "Insurance Due", val: insDue, color: "#c084fc", filter: "ins", sub: insExpired > 0 ? `${insExpired} expired` : null },
@@ -8351,7 +8351,7 @@ function CustomersTab({ dealerId }) {
               <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">{label}</p>
               <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 32, color, lineHeight: 1, margin: 0 }}>{val}</p>
               {sub
-                ? <p className="text-[10px] font-bold mt-1 m-0" style={{ color: "#dc2626" }}>{sub}</p>
+                ? <p className="text-[10px] font-bold mt-1 m-0" style={{ color: "var(--color-accent)" }}>{sub}</p>
                 : filter ? <p className="text-[10px] text-gray-400 mt-1 m-0">{active ? "Showing — clear" : "Click to filter"}</p> : null}
             </button>
           );
@@ -8360,8 +8360,8 @@ function CustomersTab({ dealerId }) {
 
       {/* Expiry action banner — surfaces overdue/soon policies with a one-tap filter */}
       {(insExpired > 0 || rtExpired > 0) && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-lg mb-4" style={{ background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.18)" }}>
-          <AlertTriangle style={{ width: 15, height: 15, color: "#dc2626", flexShrink: 0 }} />
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg mb-4" style={{ background: "color-mix(in srgb, var(--color-accent) 6%, transparent)", border: "1px solid color-mix(in srgb, var(--color-accent) 18%, transparent)" }}>
+          <AlertTriangle style={{ width: 15, height: 15, color: "var(--color-accent)", flexShrink: 0 }} />
           <span className="text-[13px] flex-1" style={{ color: "#374151", lineHeight: 1.5 }}>
             {[insExpired > 0 ? `${insExpired} insurance` : null, rtExpired > 0 ? `${rtExpired} road tax` : null].filter(Boolean).join(" and ")} {insExpired + rtExpired > 1 ? "policies have" : "policy has"} expired — renew to keep customers covered.
           </span>
@@ -8369,7 +8369,7 @@ function CustomersTab({ dealerId }) {
             type="button"
             onClick={() => setExpiryFilter(insExpired > 0 ? "ins" : "rt")}
             className="text-xs font-bold whitespace-nowrap"
-            style={{ color: "#dc2626" }}
+            style={{ color: "var(--color-accent)" }}
           >
             Review →
           </button>
@@ -8698,6 +8698,21 @@ export default function DashboardPage() {
     const name = profile?.site_name || profile?.dealership || "XDrive";
     document.title = `${name} — Admin`;
   }, [profile]);
+
+  // Theme the whole dashboard with the dealer's brand colour. The tints
+  // (--color-accent-*) derive from this via color-mix in index.css, so one
+  // override repaints every accent surface. Reset on unmount so other routes
+  // (public marketplace) keep the default ShiftOS red.
+  useEffect(() => {
+    const root = document.documentElement;
+    const c = profile?.brand_color;
+    if (c && /^#[0-9a-fA-F]{3,8}$/.test(c)) {
+      root.style.setProperty("--color-accent", c);
+    } else {
+      root.style.removeProperty("--color-accent");
+    }
+    return () => root.style.removeProperty("--color-accent");
+  }, [profile?.brand_color]);
 
   useEffect(() => {
     if (sidebarOpen) {
@@ -9436,7 +9451,7 @@ export default function DashboardPage() {
     <div style={{ background: '#F7F8FA', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", gap: 16 }}>
       <p style={{ color: '#111827', fontSize: 22, fontWeight: 600 }}>Your trial has ended</p>
       <p style={{ color: '#6b7280', fontSize: 14 }}>Contact us to activate your ShiftOS subscription.</p>
-      <a href="https://wa.me/60174155191" style={{ background: '#DC2626', color: '#ffffff', padding: '12px 28px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Upgrade Now</a>
+      <a href="https://wa.me/60174155191" style={{ background: 'var(--color-accent)', color: '#ffffff', padding: '12px 28px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Upgrade Now</a>
     </div>
   );
 
@@ -9471,7 +9486,7 @@ export default function DashboardPage() {
         <div className="flex-shrink-0 px-4 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid #EAECF0' }}>
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm text-white flex-shrink-0"
-            style={{ background: '#DC2626', boxShadow: '0 2px 8px rgba(220,38,38,0.3)' }}
+            style={{ background: 'var(--color-accent)', boxShadow: '0 2px 8px color-mix(in srgb, var(--color-accent) 30%, transparent)' }}
           >
             S
           </div>
@@ -9485,9 +9500,9 @@ export default function DashboardPage() {
               const rect = sidebarBellRef.current?.getBoundingClientRect() ?? null;
               setSidebarBellRect(notifOpen ? null : rect);
               setNotifOpen(p => !p);
-            }} style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', color: notifCount > 0 ? '#DC2626' : color.textMuted, padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            }} style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', color: notifCount > 0 ? 'var(--color-accent)' : color.textMuted, padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Bell className="w-4 h-4" />
-              {notifCount > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#DC2626', color: '#fff', fontSize: 8, fontWeight: 800, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{notifCount > 9 ? '9+' : notifCount}</span>}
+              {notifCount > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: 'var(--color-accent)', color: '#fff', fontSize: 8, fontWeight: 800, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{notifCount > 9 ? '9+' : notifCount}</span>}
             </button>
           </div>
           <ReportBugButton variant="inline" context="Dealer Dashboard" userLabel={profile?.full_name || profile?.email || ""} />
@@ -9508,7 +9523,7 @@ export default function DashboardPage() {
                   key={group.id}
                   onClick={() => handleTabChange(group.id)}
                   className={`nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === group.id ? "nav-active" : ""}`}
-                  style={{ color: activeTab === group.id ? '#DC2626' : color.textMuted }}
+                  style={{ color: activeTab === group.id ? 'var(--color-accent)' : color.textMuted }}
                 >
                   <group.Icon className="w-4 h-4 flex-shrink-0" />
                   {group.label}
@@ -9522,12 +9537,12 @@ export default function DashboardPage() {
                 <button
                   onClick={() => toggleGroup(group.id)}
                   className="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
-                  style={{ color: hasActive ? '#DC2626' : color.textMuted }}
+                  style={{ color: hasActive ? 'var(--color-accent)' : color.textMuted }}
                 >
                   <group.Icon className="w-4 h-4 flex-shrink-0" />
                   <span style={{ flex: 1, textAlign: 'left' }}>{group.label}</span>
                   {hasActive && !isOpen && (
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#DC2626', flexShrink: 0 }} />
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-accent)', flexShrink: 0 }} />
                   )}
                   <ChevronRight
                     className="w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200"
@@ -9541,14 +9556,14 @@ export default function DashboardPage() {
                         key={id}
                         onClick={() => handleTabChange(id)}
                         className={`nav-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === id ? "nav-active" : ""}`}
-                        style={{ color: activeTab === id ? '#DC2626' : color.textMuted }}
+                        style={{ color: activeTab === id ? 'var(--color-accent)' : color.textMuted }}
                       >
                         <Icon className="w-3.5 h-3.5 flex-shrink-0" />
                         {label}
                         {badge !== undefined && (
                           <span
                             className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold tabular-nums"
-                            style={{ background: activeTab === id ? '#FEE2E2' : '#F1F3F5', color: activeTab === id ? '#DC2626' : color.textMuted }}
+                            style={{ background: activeTab === id ? 'var(--color-accent-soft)' : '#F1F3F5', color: activeTab === id ? 'var(--color-accent)' : color.textMuted }}
                           >
                             {badge}
                           </span>
@@ -9599,15 +9614,15 @@ export default function DashboardPage() {
               title="Open your public storefront"
               className="flex items-center gap-2 rounded-lg px-3 py-2 mx-1 group"
               style={{ background: '#F7F8FA', border: '1px solid #EAECF0', textDecoration: 'none', transition: 'background 0.15s, border-color 0.15s' }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.borderColor = 'rgba(220,38,38,0.25)'; }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-accent-weak)'; e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--color-accent) 25%, transparent)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = '#F7F8FA'; e.currentTarget.style.borderColor = '#EAECF0'; }}
             >
-              <Building2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#DC2626' }} />
+              <Building2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--color-accent)' }} />
               <div className="flex-1 min-w-0">
                 <p style={{ fontSize: 12, fontWeight: 600, color: color.ink }} className="truncate">
                   {profile.dealership}
                 </p>
-                <p style={{ fontSize: 10, color: '#DC2626', marginTop: 1 }} className="truncate">
+                <p style={{ fontSize: 10, color: 'var(--color-accent)', marginTop: 1 }} className="truncate">
                   {profile.subdomain
                     ? (window.location.hostname.endsWith('.vercel.app') || window.location.hostname === 'localhost'
                         ? `preview: ?tenant=${profile.subdomain}`
@@ -9615,7 +9630,7 @@ export default function DashboardPage() {
                     : 'xdrive.my'}
                 </p>
               </div>
-              <ExternalLink className="w-3 h-3 flex-shrink-0" style={{ color: '#DC2626', opacity: 0.6 }} />
+              <ExternalLink className="w-3 h-3 flex-shrink-0" style={{ color: 'var(--color-accent)', opacity: 0.6 }} />
             </a>
           )}
 
@@ -9624,18 +9639,18 @@ export default function DashboardPage() {
             <div style={{ background: '#F7F8FA', border: '1px solid #EAECF0', borderRadius: 8, padding: '8px 10px', margin: '0 4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
                 <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: color.textMuted, textTransform: 'uppercase' }}>Plan</span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#DC2626', background: '#FEE2E2', borderRadius: 4, padding: '1px 5px' }}>{planCfg.label}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-accent)', background: 'var(--color-accent-soft)', borderRadius: 4, padding: '1px 5px' }}>{planCfg.label}</span>
               </div>
               {planUsage && planCfg.listingCap != null && (
                 <div style={{ marginBottom: 4 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
                     <span style={{ fontSize: 10, color: color.textMuted }}>Listings</span>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: planUsage.active_listings >= planCfg.listingCap ? '#DC2626' : color.ink }}>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: planUsage.active_listings >= planCfg.listingCap ? 'var(--color-accent)' : color.ink }}>
                       {planUsage.active_listings ?? 0}/{planCfg.listingCap}
                     </span>
                   </div>
                   <div style={{ height: 3, borderRadius: 2, background: '#EAECF0', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', borderRadius: 2, background: planUsage.active_listings >= planCfg.listingCap ? '#DC2626' : '#2563EB', width: `${Math.min(100, ((planUsage.active_listings ?? 0) / planCfg.listingCap) * 100)}%`, transition: 'width 0.4s' }} />
+                    <div style={{ height: '100%', borderRadius: 2, background: planUsage.active_listings >= planCfg.listingCap ? 'var(--color-accent)' : '#2563EB', width: `${Math.min(100, ((planUsage.active_listings ?? 0) / planCfg.listingCap) * 100)}%`, transition: 'width 0.4s' }} />
                   </div>
                 </div>
               )}
@@ -9643,17 +9658,17 @@ export default function DashboardPage() {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
                     <span style={{ fontSize: 10, color: color.textMuted }}>Seats</span>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: planUsage.seat_count >= planCfg.seatCap ? '#DC2626' : color.ink }}>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: planUsage.seat_count >= planCfg.seatCap ? 'var(--color-accent)' : color.ink }}>
                       {planUsage.seat_count ?? 0}/{planCfg.seatCap}
                     </span>
                   </div>
                   <div style={{ height: 3, borderRadius: 2, background: '#EAECF0', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', borderRadius: 2, background: planUsage.seat_count >= planCfg.seatCap ? '#DC2626' : '#2563EB', width: `${Math.min(100, ((planUsage.seat_count ?? 0) / planCfg.seatCap) * 100)}%`, transition: 'width 0.4s' }} />
+                    <div style={{ height: '100%', borderRadius: 2, background: planUsage.seat_count >= planCfg.seatCap ? 'var(--color-accent)' : '#2563EB', width: `${Math.min(100, ((planUsage.seat_count ?? 0) / planCfg.seatCap) * 100)}%`, transition: 'width 0.4s' }} />
                   </div>
                 </div>
               )}
               {nextPlanCfg && (
-                <a href="mailto:support@xdrive.my?subject=Upgrade Plan" style={{ display: 'block', textAlign: 'center', marginTop: 6, fontSize: 10, fontWeight: 600, color: '#DC2626', textDecoration: 'none' }}>
+                <a href="mailto:support@xdrive.my?subject=Upgrade Plan" style={{ display: 'block', textAlign: 'center', marginTop: 6, fontSize: 10, fontWeight: 600, color: 'var(--color-accent)', textDecoration: 'none' }}>
                   Upgrade to {nextPlanCfg.label}
                 </a>
               )}
@@ -9664,7 +9679,7 @@ export default function DashboardPage() {
           <button
             onClick={() => handleTabChange("settings")}
             className="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
-            style={{ color: activeTab === "settings" ? '#DC2626' : color.textMuted }}
+            style={{ color: activeTab === "settings" ? 'var(--color-accent)' : color.textMuted }}
           >
             <Settings className="w-4 h-4 flex-shrink-0" />
             Settings
@@ -9698,7 +9713,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <div
               className="w-5 h-5 rounded flex items-center justify-center font-black text-xs text-white"
-              style={{ background: '#DC2626' }}
+              style={{ background: 'var(--color-accent)' }}
             >
               S
             </div>
@@ -9714,7 +9729,7 @@ export default function DashboardPage() {
               style={{
                 position: 'relative', background: 'transparent',
                 border: 'none', borderRadius: 8, padding: 6,
-                cursor: 'pointer', color: notifCount > 0 ? '#DC2626' : color.textMuted,
+                cursor: 'pointer', color: notifCount > 0 ? 'var(--color-accent)' : color.textMuted,
                 display: 'flex',
               }}
             >
@@ -9722,7 +9737,7 @@ export default function DashboardPage() {
               {notifCount > 0 && (
                 <span style={{
                   position: 'absolute', top: -3, right: -3,
-                  background: '#DC2626', color: '#fff',
+                  background: 'var(--color-accent)', color: '#fff',
                   fontSize: 8, fontWeight: 800, borderRadius: '50%',
                   width: 14, height: 14,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -9742,9 +9757,9 @@ export default function DashboardPage() {
                   {notifications.length === 0 ? (
                     <p style={{ fontSize: 13, color: color.textMuted, padding: '20px 16px', textAlign: 'center' }}>No notifications</p>
                   ) : notifications.slice(0, 10).map(n => (
-                    <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); setNotifOpen(false); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid #EAECF0', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : '#FEF2F2', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = '#F7F8FA'} onMouseLeave={e => e.currentTarget.style.background = n.is_read ? 'transparent' : '#FEF2F2'}>
+                    <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); setNotifOpen(false); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid #EAECF0', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : 'var(--color-accent-weak)', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = '#F7F8FA'} onMouseLeave={e => e.currentTarget.style.background = n.is_read ? 'transparent' : 'var(--color-accent-weak)'}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                        {!n.is_read && <div style={{ width: 6, height: 6, background: '#DC2626', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
+                        {!n.is_read && <div style={{ width: 6, height: 6, background: 'var(--color-accent)', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p style={{ fontSize: 13, fontWeight: 600, color: color.ink, margin: '0 0 2px', lineHeight: 1.3 }}>{n.title || 'Notification'}</p>
                           {n.body && <p style={{ fontSize: 12, color: color.textMuted, margin: '0 0 4px', lineHeight: 1.4 }}>{n.body}</p>}
@@ -9927,15 +9942,15 @@ export default function DashboardPage() {
                       </button>
                       <button
                         onClick={() => setShowFastModal(true)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#dc2626', border: 'none', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'var(--color-accent)', border: 'none', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
                       >
                         ⚡ Fast
                       </button>
                       <button
                         onClick={() => handleTabChange("add")}
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.28)', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 600, color: '#f87171', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.18)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(220,38,38,0.1)'}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 28%, transparent)', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 600, color: '#f87171', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'color-mix(in srgb, var(--color-accent) 18%, transparent)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'color-mix(in srgb, var(--color-accent) 10%, transparent)'}
                       >
                         <PlusCircle style={{ width: 14, height: 14 }} />
                         Full Form
@@ -9988,7 +10003,7 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       {activeFilterCount > 0 && (
-                        <button onClick={clearFilters} style={{ marginTop: 10, fontSize: 11, fontWeight: 600, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', fontFamily: "'DM Sans',sans-serif" }}>
+                        <button onClick={clearFilters} style={{ marginTop: 10, fontSize: 11, fontWeight: 600, color: 'var(--color-accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', fontFamily: "'DM Sans',sans-serif" }}>
                           Clear all filters ({activeFilterCount})
                         </button>
                       )}
@@ -10012,7 +10027,7 @@ export default function DashboardPage() {
                           fontWeight: statusFilter === key ? 600 : 400,
                           fontFamily: "'DM Sans', sans-serif",
                           color: statusFilter === key ? '#111827' : '#4b5563',
-                          borderBottom: statusFilter === key ? '2px solid #dc2626' : '2px solid transparent',
+                          borderBottom: statusFilter === key ? '2px solid var(--color-accent)' : '2px solid transparent',
                           marginBottom: -1,
                           display: 'flex', alignItems: 'center', gap: 7,
                           transition: 'color 0.15s',
@@ -10021,7 +10036,7 @@ export default function DashboardPage() {
                         {label}
                         <span style={{
                           fontSize: 11, fontWeight: 700, padding: '1px 7px', borderRadius: 4, lineHeight: 1.6,
-                          background: statusFilter === key ? 'rgba(220,38,38,0.12)' : '#f9fafb',
+                          background: statusFilter === key ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)' : '#f9fafb',
                           color: statusFilter === key ? '#f87171' : '#374151',
                         }}>
                           {count}
@@ -10034,14 +10049,14 @@ export default function DashboardPage() {
                   <div style={{ padding: 52, textAlign: 'center', color: '#4b5563', fontSize: 13 }}>Loading…</div>
                 ) : filteredListings.length === 0 ? (
                   <div style={{ padding: 52, textAlign: 'center' }}>
-                    <div style={{ width: 52, height: 52, borderRadius: 12, background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-                      <Car style={{ width: 22, height: 22, color: 'rgba(220,38,38,0.45)' }} />
+                    <div style={{ width: 52, height: 52, borderRadius: 12, background: 'color-mix(in srgb, var(--color-accent) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 14%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                      <Car style={{ width: 22, height: 22, color: 'color-mix(in srgb, var(--color-accent) 45%, transparent)' }} />
                     </div>
                     <p style={{ color: '#4b5563', fontSize: 13, marginBottom: listings.length === 0 ? 16 : 0 }}>
                       {listings.length === 0 ? 'No listings yet' : `No ${statusFilter} listings`}
                     </p>
                     {listings.length === 0 && (
-                      <button onClick={() => handleTabChange("add")} style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.22)', borderRadius: 8, padding: '8px 20px', color: '#f87171', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                      <button onClick={() => handleTabChange("add")} style={{ background: 'color-mix(in srgb, var(--color-accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 22%, transparent)', borderRadius: 8, padding: '8px 20px', color: '#f87171', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                         Add your first car
                       </button>
                     )}
@@ -10110,7 +10125,7 @@ export default function DashboardPage() {
                                 <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                                   {l.purchase_price ? (() => {
                                     const gross = sp - Number(l.purchase_price) - Number(l.recon_cost || 0);
-                                    return <span style={{ fontSize: 13, fontWeight: 700, color: gross >= 0 ? '#16a34a' : '#dc2626' }}>RM {gross.toLocaleString()}</span>;
+                                    return <span style={{ fontSize: 13, fontWeight: 700, color: gross >= 0 ? '#16a34a' : 'var(--color-accent)' }}>RM {gross.toLocaleString()}</span>;
                                   })() : <span style={{ color: '#9ca3af', fontSize: 12 }}>—</span>}
                                 </td>
                                 {/* Year / Km */}
@@ -10160,7 +10175,7 @@ export default function DashboardPage() {
                                     <button
                                       onClick={e => { e.stopPropagation(); handlePublishListing(l); }}
                                       disabled={publishingId === l.id}
-                                      style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, fontSize: 10, fontWeight: 700, color: '#fff', background: '#dc2626', border: 'none', borderRadius: 5, padding: '4px 9px', cursor: publishingId === l.id ? 'default' : 'pointer', whiteSpace: 'nowrap', opacity: publishingId === l.id ? 0.6 : 1 }}
+                                      style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, fontSize: 10, fontWeight: 700, color: '#fff', background: 'var(--color-accent)', border: 'none', borderRadius: 5, padding: '4px 9px', cursor: publishingId === l.id ? 'default' : 'pointer', whiteSpace: 'nowrap', opacity: publishingId === l.id ? 0.6 : 1 }}
                                     >
                                       <Globe style={{ width: 10, height: 10 }} />
                                       {publishingId === l.id ? 'Publishing…' : 'Publish'}
@@ -10265,7 +10280,7 @@ export default function DashboardPage() {
                                 <button
                                   onClick={e => { e.stopPropagation(); handlePublishListing(l); }}
                                   disabled={publishingId === l.id}
-                                  style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 700, color: '#fff', background: '#dc2626', border: 'none', borderRadius: 4, padding: '3px 9px', cursor: publishingId === l.id ? 'default' : 'pointer', opacity: publishingId === l.id ? 0.6 : 1 }}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 700, color: '#fff', background: 'var(--color-accent)', border: 'none', borderRadius: 4, padding: '3px 9px', cursor: publishingId === l.id ? 'default' : 'pointer', opacity: publishingId === l.id ? 0.6 : 1 }}
                                 >
                                   <Globe style={{ width: 9, height: 9 }} />
                                   {publishingId === l.id ? 'Publishing…' : 'Publish'}
@@ -10444,7 +10459,7 @@ export default function DashboardPage() {
             ) : notifications.slice(0, 10).map(n => (
               <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); closeNotif(); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : '#f9fafb' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  {!n.is_read && <div style={{ width: 6, height: 6, background: '#dc2626', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
+                  {!n.is_read && <div style={{ width: 6, height: 6, background: 'var(--color-accent)', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>{n.title || 'Notification'}</p>
                     {n.body && <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 4px' }}>{n.body}</p>}
@@ -10517,7 +10532,7 @@ export default function DashboardPage() {
       {/* ── Fast List modal ── */}
       {showFastModal && (
         <div onClick={() => setShowFastModal(false)} className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#0d1117', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto', overscrollBehavior: 'contain', fontFamily: "'DM Sans',sans-serif" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#0d1117', border: '1px solid color-mix(in srgb, var(--color-accent) 20%, transparent)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto', overscrollBehavior: 'contain', fontFamily: "'DM Sans',sans-serif" }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
               <div>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#fff' }}>⚡ Fast List</p>

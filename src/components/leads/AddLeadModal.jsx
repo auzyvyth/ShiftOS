@@ -109,7 +109,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom: '1px solid #f3f4f6' }}>
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'var(--color-accent-weak)', border: '1px solid var(--color-accent-border)' }}>
               <UserPlus className="w-4 h-4 text-red-600" />
             </div>
             <div>
@@ -306,7 +306,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
             onClick={handleSubmit}
             disabled={saving}
             className="flex-1 px-4 py-2.5 rounded-lg text-sm text-white font-semibold disabled:opacity-50 transition-all"
-            style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 2px 10px rgba(220,38,38,0.28)' }}
+            style={{ background: 'linear-gradient(135deg,var(--color-accent),#b91c1c)', boxShadow: '0 2px 10px color-mix(in srgb, var(--color-accent) 28%, transparent)' }}
           >
             {saving ? 'Adding…' : 'Add Lead'}
           </button>

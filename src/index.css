@@ -25,6 +25,14 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221 83% 33%;
     --radius: 0.5rem;
+
+    /* Dealer dashboard accent — themeable per dealer via profiles.brand_color.
+       Defaults to ShiftOS red. DashboardPage overrides --color-accent on
+       document.documentElement at runtime; the tints derive automatically. */
+    --color-accent: #DC2626;
+    --color-accent-weak: color-mix(in srgb, var(--color-accent) 6%, #ffffff);
+    --color-accent-soft: color-mix(in srgb, var(--color-accent) 14%, #ffffff);
+    --color-accent-border: color-mix(in srgb, var(--color-accent) 28%, #ffffff);
   }
 
   .dark {
