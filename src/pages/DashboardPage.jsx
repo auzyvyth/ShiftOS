@@ -872,6 +872,32 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const [brandColor, setBrandColor] = useState(
     profile?.brand_color || "#c9a84c",
   );
+
+  // Live theme preview: repaint the dashboard the instant the dealer drags the
+  // brand-colour picker, without writing to the DB. savedAccentRef tracks the
+  // committed colour (updated on save via onProfileUpdate → profile change) so
+  // that leaving Settings without saving reverts the unsaved preview.
+  const savedAccentRef = useRef(profile?.brand_color);
+  useEffect(() => {
+    savedAccentRef.current = profile?.brand_color;
+  }, [profile?.brand_color]);
+  useEffect(() => {
+    return () => {
+      const root = document.documentElement;
+      const saved = savedAccentRef.current;
+      if (saved && /^#[0-9a-fA-F]{3,8}$/.test(saved)) {
+        root.style.setProperty("--color-accent", saved);
+      } else {
+        root.style.removeProperty("--color-accent");
+      }
+    };
+  }, []);
+  const previewAccent = (hex) => {
+    setBrandColor(hex);
+    if (/^#[0-9a-fA-F]{3,8}$/.test(hex)) {
+      document.documentElement.style.setProperty("--color-accent", hex);
+    }
+  };
   const [whatsapp, setWhatsapp] = useState(profile?.whatsapp_number || "");
   const [contactEmail, setContactEmail] = useState(profile?.email || "");
   const [contactPhone, setContactPhone] = useState(profile?.phone || "+60");
@@ -1501,13 +1527,13 @@ function SettingsTab({ profile, onProfileUpdate }) {
               <input
                 type="color"
                 value={brandColor}
-                onChange={(e) => setBrandColor(e.target.value)}
+                onChange={(e) => previewAccent(e.target.value)}
                 className="w-10 h-10 rounded-lg cursor-pointer border-0 p-0.5 bg-white/5"
               />
             </div>
             <input
               value={brandColor}
-              onChange={(e) => setBrandColor(e.target.value)}
+              onChange={(e) => previewAccent(e.target.value)}
               placeholder="#c9a84c"
               className="flex-1 bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-red-400 transition-all font-mono"
             />
