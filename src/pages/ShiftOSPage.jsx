@@ -5,6 +5,7 @@ import {
   Wallet, Users, Bot, Globe, MessageCircle, ArrowRight, Check,
   ClipboardCheck, Landmark, BellRing, LineChart, ShieldCheck,
   Receipt, UserCheck, Calculator, Briefcase, ChevronRight, Car,
+  Building2, ChevronDown,
 } from "lucide-react";
 import { PLAN_CONFIG } from "../utils/planConfig";
 
@@ -27,31 +28,40 @@ const STYLES = `
   .sos-bg{
     position:fixed;inset:0;z-index:0;pointer-events:none;
     background:
-      radial-gradient(ellipse 1100px 700px at 10% -10%, rgba(220,38,38,0.18) 0%, transparent 65%),
-      radial-gradient(ellipse 900px 600px at 90% 5%,  rgba(37,99,235,0.11)  0%, transparent 60%),
-      radial-gradient(ellipse 600px 400px at 50% 90%, rgba(220,38,38,0.06)  0%, transparent 55%),
+      radial-gradient(ellipse 1100px 700px at 10% -10%, rgba(220,38,38,0.16) 0%, transparent 65%),
+      radial-gradient(ellipse 900px 600px at 90% 5%,  rgba(37,99,235,0.10)  0%, transparent 60%),
+      radial-gradient(ellipse 600px 400px at 50% 90%, rgba(220,38,38,0.05)  0%, transparent 55%),
       #06080F;
   }
   .sos-grid{
     position:fixed;inset:-1px;z-index:0;pointer-events:none;
     background-image:
-      linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px);
+      linear-gradient(rgba(255,255,255,0.024) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.024) 1px, transparent 1px);
     background-size:52px 52px;
     -webkit-mask-image:radial-gradient(ellipse 80% 60% at 50% 0%, #000 0%, transparent 100%);
     mask-image:radial-gradient(ellipse 80% 60% at 50% 0%, #000 0%, transparent 100%);
-    animation:sos-grid-drift 32s linear infinite;
   }
-  @keyframes sos-grid-drift{from{background-position:0 0;}to{background-position:52px 52px;}}
-  @media(prefers-reduced-motion:reduce){.sos-grid{animation:none;}}
 
   .sos-content{position:relative;z-index:1;}
   .sos-wrap{max-width:1160px;margin:0 auto;padding:0 24px;}
 
+  /* ── Scroll progress bar ── */
+  .sos-progress{
+    position:fixed;top:0;left:0;right:0;height:2px;z-index:200;pointer-events:none;
+    background:transparent;
+  }
+  .sos-progress > div{
+    height:100%;width:100%;
+    background:linear-gradient(90deg,#dc2626,#fb7185);
+    transform-origin:0 50%;transform:scaleX(0);
+    box-shadow:0 0 12px rgba(220,38,38,0.55);
+  }
+
   /* ── Nav ── */
   .sos-nav{
     position:sticky;top:0;z-index:100;
-    background:rgba(6,8,15,0.75);
+    background:rgba(6,8,15,0.78);
     backdrop-filter:blur(24px) saturate(1.6);
     -webkit-backdrop-filter:blur(24px) saturate(1.6);
     border-bottom:1px solid rgba(255,255,255,0.07);
@@ -63,10 +73,16 @@ const STYLES = `
     background:linear-gradient(135deg,#fb7185,#dc2626 60%);
     -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
   }
-  .sos-gold{
-    background:linear-gradient(135deg,#fbbf24,#d97706);
-    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  .sos-kicker{
+    display:flex;align-items:center;justify-content:center;gap:14px;
+    font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#64748b;
   }
+  .sos-kicker::before,.sos-kicker::after{
+    content:'';height:1px;width:42px;
+    background:linear-gradient(90deg,transparent,rgba(220,38,38,0.5));
+  }
+  .sos-kicker::after{background:linear-gradient(90deg,rgba(220,38,38,0.5),transparent);}
+  .sos-kicker b{color:#ef4444;font-weight:800;}
 
   /* ── Buttons ── */
   .sos-btn-primary{
@@ -78,6 +94,7 @@ const STYLES = `
     transition:transform .15s,box-shadow .15s;letter-spacing:.01em;
   }
   .sos-btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 32px rgba(220,38,38,0.52),inset 0 1px 0 rgba(255,255,255,0.14);}
+  .sos-btn-primary:focus-visible{outline:2px solid #fb7185;outline-offset:3px;}
   .sos-btn-outline{
     background:rgba(255,255,255,0.04);color:#e2e8f0;
     border:1px solid rgba(255,255,255,0.16);border-radius:11px;
@@ -87,6 +104,7 @@ const STYLES = `
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.07);
   }
   .sos-btn-outline:hover{background:rgba(255,255,255,0.09);border-color:rgba(255,255,255,0.28);transform:translateY(-1px);}
+  .sos-btn-outline:focus-visible{outline:2px solid rgba(255,255,255,0.5);outline-offset:3px;}
 
   /* ── Glass card ── */
   .sos-glass{
@@ -116,6 +134,46 @@ const STYLES = `
     background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.25);color:#fca5a5;
   }
 
+  /* ── Hero chart (self-drawing SVG) ── */
+  .sos-hero-chart{display:block;width:100%;max-width:760px;margin:0 auto;}
+  .sos-hero-chart .line{
+    stroke-dasharray:1200;stroke-dashoffset:1200;
+    animation:sos-draw 2.2s cubic-bezier(.5,0,.2,1) .5s forwards;
+  }
+  .sos-hero-chart .area{opacity:0;animation:sos-fadein 1.2s ease 1.6s forwards;}
+  .sos-hero-chart .tip{opacity:0;animation:sos-fadein .5s ease 2.5s forwards;}
+  .sos-hero-chart .tip-pulse{
+    transform-origin:center;transform-box:fill-box;
+    animation:sos-pulse 2.2s ease-out 2.7s infinite;
+  }
+  @keyframes sos-draw{to{stroke-dashoffset:0;}}
+  @keyframes sos-fadein{to{opacity:1;}}
+  @keyframes sos-pulse{
+    0%{transform:scale(0.5);opacity:.8;}
+    70%{transform:scale(2.4);opacity:0;}
+    100%{transform:scale(2.4);opacity:0;}
+  }
+
+  /* ── Flow connector (walks the eye between sections) ── */
+  .sos-flow{display:flex;flex-direction:column;align-items:center;padding:8px 0 40px;}
+  .sos-flow svg{display:block;overflow:visible;}
+  .sos-flow .stem{
+    stroke-dasharray:88;stroke-dashoffset:88;
+    transition:stroke-dashoffset 1s cubic-bezier(.5,0,.2,1) .15s;
+  }
+  .sos-reveal.in .sos-flow .stem,.sos-flow.in .stem{stroke-dashoffset:0;}
+  .sos-flow .rider{opacity:0;transition:opacity .4s ease 1s;}
+  .sos-reveal.in .sos-flow .rider,.sos-flow.in .rider{opacity:1;}
+  .sos-flow-label{
+    margin-top:14px;display:inline-flex;align-items:center;gap:8px;
+    font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#64748b;
+  }
+  .sos-flow-label.hot{
+    color:#fca5a5;background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);
+    padding:7px 18px;border-radius:99px;
+    box-shadow:0 0 24px rgba(220,38,38,0.18);
+  }
+
   /* ── Pain / Solution split ── */
   .sos-ps{display:grid;grid-template-columns:1fr 1.4fr;overflow:hidden;}
   .sos-ps-l{
@@ -140,9 +198,31 @@ const STYLES = `
   /* ── Scroll reveal ── */
   .sos-reveal{opacity:0;transform:translateY(22px);transition:opacity .65s ease,transform .65s ease;}
   .sos-reveal.in{opacity:1;transform:none;}
-  @media(prefers-reduced-motion:reduce){.sos-reveal{opacity:1;transform:none;}}
 
-  /* ── Segment control ── */
+  /* ── Path chooser (CTA cards) ── */
+  .sos-path-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:760px;margin:0 auto 44px;}
+  .sos-path{
+    position:relative;text-align:left;cursor:pointer;border-radius:18px;padding:26px 26px 24px;
+    background:linear-gradient(160deg,rgba(255,255,255,0.05) 0%,rgba(255,255,255,0.02) 100%);
+    border:1px solid rgba(255,255,255,0.1);
+    font-family:inherit;color:#fff;width:100%;
+    transition:border-color .25s,background .25s,transform .2s,box-shadow .25s;
+  }
+  .sos-path:hover{transform:translateY(-3px);border-color:rgba(220,38,38,0.4);}
+  .sos-path:focus-visible{outline:2px solid #fb7185;outline-offset:3px;}
+  .sos-path.on{
+    border-color:rgba(220,38,38,0.65);
+    background:linear-gradient(160deg,rgba(220,38,38,0.13) 0%,rgba(255,255,255,0.03) 100%);
+    box-shadow:0 12px 44px rgba(220,38,38,0.22),inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  .sos-path .tick{
+    position:absolute;top:16px;right:16px;width:22px;height:22px;border-radius:50%;
+    border:1.5px solid rgba(255,255,255,0.22);display:flex;align-items:center;justify-content:center;
+    transition:all .2s;color:transparent;
+  }
+  .sos-path.on .tick{background:#dc2626;border-color:#dc2626;color:#fff;}
+
+  /* ── Segment control (kept for a11y fallback in pricing nav) ── */
   .sos-seg{
     display:inline-flex;padding:5px;border-radius:14px;gap:4px;
     background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);
@@ -205,6 +285,16 @@ const STYLES = `
   /* ── Team roles grid ── */
   .sos-roles{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;}
 
+  @media(prefers-reduced-motion:reduce){
+    .sos-reveal{opacity:1;transform:none;}
+    .sos-hero-chart .line{animation:none;stroke-dashoffset:0;}
+    .sos-hero-chart .area,.sos-hero-chart .tip{animation:none;opacity:1;}
+    .sos-hero-chart .tip-pulse{animation:none;opacity:0;}
+    .sos-flow .stem{transition:none;stroke-dashoffset:0;}
+    .sos-flow .rider{transition:none;opacity:1;}
+    .sos-flow .rider animate,.sos-flow animate{display:none;}
+  }
+
   @media(max-width:860px){
     .sos-nav-links{display:none!important;}
     /* Compact nav CTA on mobile so the longer BM label ("Mula Percuma") fits
@@ -217,6 +307,7 @@ const STYLES = `
     .sos-feat-grid{grid-template-columns:1fr;}
     .sos-stats-grid{grid-template-columns:1fr 1fr;}
     .sos-roles{grid-template-columns:1fr 1fr;}
+    .sos-path-grid{grid-template-columns:1fr;}
     .sos-cta-btns{flex-direction:column;align-items:stretch!important;}
     .sos-cta-btns a,.sos-cta-btns button{justify-content:center!important;}
     .sos-footer-inner{flex-direction:column!important;gap:28px!important;}
@@ -268,6 +359,28 @@ const SALESMAN_PLANS = ["salesman_lite"];
 const DEALER_PLANS   = ["dealer_starter", "dealer_growth", "dealer_pro"];
 const WA = "https://wa.me/60174155191?text=Hi%2C%20I%27m%20interested%20in%20ShiftOS%20for%20my%20dealership";
 
+// ─── Scroll progress bar ──────────────────────────────────────────────────────
+function ScrollProgress() {
+  const barRef = useRef(null);
+  useEffect(() => {
+    let raf = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const el = barRef.current;
+        if (!el) return;
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        const p = max > 0 ? Math.min(1, window.scrollY / max) : 0;
+        el.style.transform = `scaleX(${p})`;
+      });
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => { window.removeEventListener("scroll", onScroll); cancelAnimationFrame(raf); };
+  }, []);
+  return <div className="sos-progress" aria-hidden="true"><div ref={barRef} /></div>;
+}
+
 // ─── Scroll reveal ────────────────────────────────────────────────────────────
 function Reveal({ children, delay = 0, style }) {
   const ref = useRef(null);
@@ -282,6 +395,82 @@ function Reveal({ children, delay = 0, style }) {
     return () => io.disconnect();
   }, [delay]);
   return <div ref={ref} className="sos-reveal" style={style}>{children}</div>;
+}
+
+// ─── Hero chart — a gross-profit curve that draws itself on load ─────────────
+function HeroChart() {
+  return (
+    <svg className="sos-hero-chart" viewBox="0 0 760 150" fill="none" aria-hidden="true" style={{ marginTop: 8 }}>
+      <defs>
+        <linearGradient id="sos-area-g" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#dc2626" stopOpacity="0.22" />
+          <stop offset="100%" stopColor="#dc2626" stopOpacity="0" />
+        </linearGradient>
+        <linearGradient id="sos-line-g" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="rgba(248,113,113,0.25)" />
+          <stop offset="55%" stopColor="#ef4444" />
+          <stop offset="100%" stopColor="#fb7185" />
+        </linearGradient>
+        <filter id="sos-glow" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="5" result="b" />
+          <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      {/* baseline grid hints */}
+      {[36, 75, 114].map((y) => (
+        <line key={y} x1="0" y1={y} x2="760" y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+      ))}
+      <path
+        className="area"
+        d="M0,128 C70,122 110,116 170,108 C230,100 260,88 330,82 C400,76 430,64 500,52 C570,40 620,34 700,22 L724,19 L724,150 L0,150 Z"
+        fill="url(#sos-area-g)"
+      />
+      <path
+        className="line"
+        d="M0,128 C70,122 110,116 170,108 C230,100 260,88 330,82 C400,76 430,64 500,52 C570,40 620,34 700,22 L724,19"
+        stroke="url(#sos-line-g)"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        filter="url(#sos-glow)"
+      />
+      <g className="tip">
+        <circle className="tip-pulse" cx="724" cy="19" r="6" fill="rgba(251,113,133,0.5)" />
+        <circle cx="724" cy="19" r="4" fill="#fb7185" stroke="#06080F" strokeWidth="1.5" />
+      </g>
+    </svg>
+  );
+}
+
+// ─── Flow connector — animated SVG line that walks the eye to the next stop ──
+function FlowConnector({ label, hot = false }) {
+  return (
+    <Reveal>
+      <div className="sos-flow" aria-hidden="true">
+        <svg width="24" height="96" viewBox="0 0 24 96">
+          <defs>
+            <linearGradient id="sos-flow-g" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="rgba(220,38,38,0.0)" />
+              <stop offset="30%" stopColor="rgba(220,38,38,0.55)" />
+              <stop offset="100%" stopColor="rgba(251,113,133,0.9)" />
+            </linearGradient>
+          </defs>
+          <line className="stem" x1="12" y1="2" x2="12" y2="78" stroke="url(#sos-flow-g)" strokeWidth="2" strokeLinecap="round" />
+          {/* rider dot drifting down the stem — pure SVG (SMIL), no JS */}
+          <circle className="rider" r="3" cx="12" cy="2" fill="#fb7185" opacity="0">
+            <animate attributeName="cy" values="6;74" dur="2.6s" repeatCount="indefinite" begin="1s" />
+            <animate attributeName="opacity" values="0;0.9;0.9;0" keyTimes="0;0.15;0.8;1" dur="2.6s" repeatCount="indefinite" begin="1s" />
+          </circle>
+          <path className="rider" d="M6 80 L12 88 L18 80" stroke="#fb7185" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        {label && (
+          <span className={`sos-flow-label${hot ? " hot" : ""}`}>
+            {label}
+            {hot && <ChevronDown size={13} />}
+          </span>
+        )}
+      </div>
+    </Reveal>
+  );
 }
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
@@ -397,7 +586,7 @@ function PricingSection({ track }) {
 
   return (
     <>
-      <div className="sos-price-track" ref={trackRef} onScroll={onScroll}>
+      <div className="sos-price-track" ref={trackRef} onScroll={onScroll} style={track === "dealer" ? { gridTemplateColumns: "repeat(3, 1fr)" } : undefined}>
         {plans.map((k) => (
           <div key={k} className="sos-price-card-wrap">
             <PriceCard planKey={k} />
@@ -410,6 +599,32 @@ function PricingSection({ track }) {
         ))}
       </div>
     </>
+  );
+}
+
+// ─── Path chooser — the CTA the page walks toward ────────────────────────────
+function PathChooser({ track, setTrack }) {
+  const { t } = useTranslation();
+  const paths = [
+    { id: "dealer",   Icon: Building2, title: t("shiftos.pricing.pathDealer.title"),   desc: t("shiftos.pricing.pathDealer.desc") },
+    { id: "salesman", Icon: UserCheck, title: t("shiftos.pricing.pathSalesman.title"), desc: t("shiftos.pricing.pathSalesman.desc") },
+  ];
+  return (
+    <div className="sos-path-grid" role="radiogroup" aria-label={t("shiftos.pricing.choosePath")}>
+      {paths.map(({ id, Icon, title, desc }) => {
+        const on = track === id;
+        return (
+          <button key={id} role="radio" aria-checked={on} className={`sos-path${on ? " on" : ""}`} onClick={() => setTrack(id)}>
+            <span className="tick"><Check size={13} /></span>
+            <div className="sos-icon" style={{ marginBottom: 16, ...(on ? {} : { background: "rgba(255,255,255,0.05)", borderColor: "rgba(255,255,255,0.12)" }) }}>
+              <Icon size={20} color={on ? "#ef4444" : "#94a3b8"} />
+            </div>
+            <p style={{ fontSize: 17, fontWeight: 700, color: on ? "#fff" : "#e2e8f0", marginBottom: 7 }}>{title}</p>
+            <p style={{ fontSize: 13, color: on ? "#cbd5e1" : "#6b7280", lineHeight: 1.6 }}>{desc}</p>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -459,6 +674,7 @@ export default function ShiftOSPage() {
     <div className="sos">
       <div className="sos-bg" />
       <div className="sos-grid" />
+      <ScrollProgress />
       <div className="sos-content">
 
         {/* ── Nav ── */}
@@ -491,7 +707,7 @@ export default function ShiftOSPage() {
         </nav>
 
         {/* ── Hero ── */}
-        <section className="sos-wrap" style={{ padding: "100px 24px 80px", textAlign: "center" }}>
+        <section className="sos-wrap" style={{ padding: "92px 24px 12px", textAlign: "center" }}>
           <Reveal>
             <div className="sos-eyebrow" style={{ marginBottom: 28 }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", boxShadow: "0 0 8px #ef4444" }} />
@@ -499,17 +715,17 @@ export default function ShiftOSPage() {
             </div>
           </Reveal>
           <Reveal delay={80}>
-            <h1 className="sos-h sos-hero-h1" style={{ fontSize: 80, color: "#fff", margin: "0 auto 24px", maxWidth: 980, lineHeight: 1.02 }}>
+            <h1 className="sos-h sos-hero-h1" style={{ fontSize: 78, color: "#fff", margin: "0 auto 22px", maxWidth: 980, lineHeight: 1.02 }}>
               {t("shiftos.hero.title1")}<br />{t("shiftos.hero.title2lead")} <span className="sos-red">{t("shiftos.hero.title2accent")}</span>
             </h1>
           </Reveal>
           <Reveal delay={160}>
-            <p className="sos-hero-sub" style={{ fontSize: 18, fontWeight: 400, color: "#94a3b8", maxWidth: 620, margin: "0 auto 42px", lineHeight: 1.65 }}>
+            <p className="sos-hero-sub" style={{ fontSize: 18, fontWeight: 400, color: "#94a3b8", maxWidth: 620, margin: "0 auto 38px", lineHeight: 1.65 }}>
               {t("shiftos.hero.subtitle")}
             </p>
           </Reveal>
           <Reveal delay={220}>
-            <div className="sos-cta-btns" style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 28 }}>
+            <div className="sos-cta-btns" style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 22 }}>
               <button onClick={() => scrollTo(pricingRef)} className="sos-btn-primary" style={{ fontSize: 15, padding: "14px 30px", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
                 {t("shiftos.hero.startFree")} <ArrowRight size={16} />
               </button>
@@ -521,10 +737,12 @@ export default function ShiftOSPage() {
               {t("shiftos.hero.trust")}
             </p>
           </Reveal>
+          {/* Gross-profit curve drawing itself upward — the promise of the product */}
+          <HeroChart />
         </section>
 
         {/* ── Stats strip ── */}
-        <section className="sos-wrap" style={{ paddingBottom: 88 }}>
+        <section className="sos-wrap" style={{ paddingBottom: 16 }}>
           <Reveal>
             <div className="sos-glass sos-stats-grid" style={{ overflow: "hidden" }}>
               {[
@@ -542,11 +760,13 @@ export default function ShiftOSPage() {
           </Reveal>
         </section>
 
+        <FlowConnector label={t("shiftos.journey.step1")} />
+
         {/* ── Pain → Solution ── */}
-        <section className="sos-wrap" style={{ paddingBottom: 96 }}>
+        <section className="sos-wrap" style={{ paddingBottom: 16 }}>
           <Reveal>
             <div style={{ textAlign: "center", marginBottom: 52 }}>
-              <div className="sos-eyebrow" style={{ marginBottom: 18 }}>{t("shiftos.pain.eyebrow")}</div>
+              <p className="sos-kicker" style={{ marginBottom: 18 }}><b>01</b> {t("shiftos.pain.eyebrow")}</p>
               <h2 className="sos-h" style={{ fontSize: 50, color: "#fff", marginBottom: 12 }}>{t("shiftos.pain.title")}</h2>
               <p style={{ fontSize: 15, color: "#6b7280", maxWidth: 540, margin: "0 auto", lineHeight: 1.65 }}>
                 {t("shiftos.pain.subtitle")}
@@ -575,11 +795,13 @@ export default function ShiftOSPage() {
           </div>
         </section>
 
+        <FlowConnector label={t("shiftos.journey.step2")} />
+
         {/* ── Features ── */}
-        <section id="features" ref={featRef} className="sos-wrap" style={{ paddingBottom: 96 }}>
+        <section id="features" ref={featRef} className="sos-wrap" style={{ paddingBottom: 16 }}>
           <Reveal>
             <div style={{ textAlign: "center", marginBottom: 52 }}>
-              <div className="sos-eyebrow" style={{ marginBottom: 18 }}>{t("shiftos.features.eyebrow")}</div>
+              <p className="sos-kicker" style={{ marginBottom: 18 }}><b>02</b> {t("shiftos.features.eyebrow")}</p>
               <h2 className="sos-h" style={{ fontSize: 50, color: "#fff", marginBottom: 12 }}>{t("shiftos.features.title")}</h2>
               <p style={{ fontSize: 15, color: "#6b7280", maxWidth: 540, margin: "0 auto", lineHeight: 1.65 }}>
                 {t("shiftos.features.subtitle")}
@@ -599,10 +821,13 @@ export default function ShiftOSPage() {
           </div>
         </section>
 
+        <FlowConnector label={t("shiftos.journey.step3")} />
+
         {/* ── Team roles ── */}
-        <section className="sos-wrap" style={{ paddingBottom: 96 }}>
+        <section className="sos-wrap" style={{ paddingBottom: 16 }}>
           <Reveal>
             <div className="sos-glass" style={{ padding: "52px 40px", textAlign: "center" }}>
+              <p className="sos-kicker" style={{ marginBottom: 18 }}><b>03</b> {t("shiftos.team.title")}</p>
               <h2 className="sos-h" style={{ fontSize: 46, color: "#fff", marginBottom: 12 }}>{t("shiftos.team.title")}</h2>
               <p style={{ fontSize: 15, color: "#6b7280", maxWidth: 580, margin: "0 auto 40px", lineHeight: 1.65 }}>
                 {t("shiftos.team.subtitle")}
@@ -622,22 +847,25 @@ export default function ShiftOSPage() {
           </Reveal>
         </section>
 
-        {/* ── Pricing ── */}
+        <FlowConnector label={t("shiftos.journey.toPricing")} hot />
+
+        {/* ── Pricing — the destination CTA ── */}
         <section id="pricing" ref={pricingRef} className="sos-wrap" style={{ paddingBottom: 96 }}>
           <Reveal>
-            <div style={{ textAlign: "center", marginBottom: 40 }}>
-              <div className="sos-eyebrow" style={{ marginBottom: 18 }}>{t("shiftos.pricing.eyebrow")}</div>
+            <div style={{ textAlign: "center", marginBottom: 36 }}>
+              <p className="sos-kicker" style={{ marginBottom: 18 }}><b>04</b> {t("shiftos.pricing.eyebrow")}</p>
               <h2 className="sos-h" style={{ fontSize: 50, color: "#fff", marginBottom: 12 }}>{t("shiftos.pricing.title")}</h2>
-              <p style={{ fontSize: 15, color: "#6b7280", maxWidth: 480, margin: "0 auto 32px", lineHeight: 1.65 }}>
+              <p style={{ fontSize: 15, color: "#6b7280", maxWidth: 480, margin: "0 auto 10px", lineHeight: 1.65 }}>
                 {t("shiftos.pricing.subtitle")}
               </p>
-              <div style={{ display: "flex", justifyContent: "center" }}>
-                <div className="sos-seg">
-                  <button className={track === "dealer" ? "on" : ""} onClick={() => setTrack("dealer")}>{t("shiftos.pricing.forDealers")}</button>
-                  <button className={track === "salesman" ? "on" : ""} onClick={() => setTrack("salesman")}>{t("shiftos.pricing.forSalesmen")}</button>
-                </div>
-              </div>
+              <p style={{ fontSize: 13, fontWeight: 700, color: "#94a3b8", letterSpacing: ".02em", marginTop: 22 }}>
+                {t("shiftos.pricing.choosePath")}
+              </p>
             </div>
+          </Reveal>
+
+          <Reveal delay={60}>
+            <PathChooser track={track} setTrack={setTrack} />
           </Reveal>
 
           <div style={{ maxWidth: track === "salesman" ? 680 : "100%", margin: "0 auto" }}>

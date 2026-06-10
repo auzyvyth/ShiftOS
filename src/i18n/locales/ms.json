@@ -561,6 +561,15 @@
             "Onboarding & sokongan keutamaan"
           ]
         }
+      },
+      "choosePath": "Anda yang mana satu?",
+      "pathDealer": {
+        "title": "Saya menjalankan dealership",
+        "desc": "Inventori, akses pasukan, P&L masa nyata, F&I dan enjin handover penuh."
+      },
+      "pathSalesman": {
+        "title": "Saya seorang salesman",
+        "desc": "Storefront, pipeline dan jejak komisen anda sendiri. Mula percuma."
       }
     },
     "testimonial": {
@@ -580,6 +589,12 @@
       "login": "Log masuk",
       "copyright": "ShiftOS. Dibina untuk pengedar Malaysia.",
       "poweredBy": "Dikuasakan oleh"
+    },
+    "journey": {
+      "step1": "Masalahnya",
+      "step2": "Platformnya",
+      "step3": "Pasukan anda",
+      "toPricing": "Pilih pelan anda"
     }
   }
 }

@@ -561,6 +561,15 @@
             "Priority onboarding & support"
           ]
         }
+      },
+      "choosePath": "Which one are you?",
+      "pathDealer": {
+        "title": "I run a dealership",
+        "desc": "Inventory, team seats, live P&L, F&I and the full handover engine."
+      },
+      "pathSalesman": {
+        "title": "I'm a salesman",
+        "desc": "Your own storefront, pipeline and commission tracking. Start free."
       }
     },
     "testimonial": {
@@ -580,6 +589,12 @@
       "login": "Log in",
       "copyright": "ShiftOS. Built for Malaysian dealers.",
       "poweredBy": "Powered by"
+    },
+    "journey": {
+      "step1": "The problems",
+      "step2": "The platform",
+      "step3": "Your team",
+      "toPricing": "Pick your plan"
     }
   }
 }
