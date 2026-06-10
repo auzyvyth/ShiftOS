@@ -10066,6 +10066,7 @@ export default function DashboardPage() {
                       { key: 'available', label: 'Available', count: listings.filter(l => (l.status || 'available') === 'available').length },
                       { key: 'reserved', label: 'Reserved', count: listings.filter(l => l.status === 'reserved').length },
                       { key: 'sold',     label: 'Sold',     count: listings.filter(l => l.status === 'sold').length },
+                      { key: 'unpublished', label: 'Unpublished', count: listings.filter(l => l.status === 'unpublished').length },
                     ].map(({ key, label, count }) => (
                       <button
                         key={key}
