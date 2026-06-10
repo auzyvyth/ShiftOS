@@ -76,6 +76,7 @@ const HeroSlidesPage   = React.lazy(() => import("./xdrive/HeroSlidesPage"));
 const RevOpsPage       = React.lazy(() => import("./RevOpsPage"));
 const ServicesPage     = React.lazy(() => import("./ServicesPage"));
 const AISalesManager   = React.lazy(() => import("../components/AISalesManager"));
+const PerformanceTab   = React.lazy(() => import("../components/PerformanceTab"));
 const HPBoard          = React.lazy(() => import("../components/HPBoard"));
 const OversightTab     = React.lazy(() => import("../components/OversightTab"));
 const OverviewTab      = React.lazy(() => import("../components/OverviewTab"));
@@ -8647,7 +8648,7 @@ export default function DashboardPage() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(tabParam || "overview");
-  const [analyticsSub, setAnalyticsSub] = useState("revenue"); // revenue | listings | marketplace
+  const [analyticsSub, setAnalyticsSub] = useState("revenue"); // revenue | performance
   const [storefrontSub, setStorefrontSub] = useState("hero");   // hero | services
   const [showFastModal, setShowFastModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
@@ -8944,8 +8945,8 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!tabParam) return;
     const ALIAS = {
-      revops:      { tab: "analytics",  sub: ["analytics", "revenue"] },
-      marketplace: { tab: "analytics",  sub: ["analytics", "marketplace"] },
+      revops:      { tab: "analytics",    sub: ["analytics", "revenue"] },
+      marketplace: { tab: "analytics",    sub: ["analytics", "performance"] },
       services:    { tab: "storefront", sub: ["storefront", "services"] },
       hero:        { tab: "storefront", sub: ["storefront", "hero"] },
       ai_manager:  { tab: "ai_manager", sub: [] },
@@ -9313,10 +9314,9 @@ export default function DashboardPage() {
     {
       id: "g_reports", Icon: BarChart2, label: "Reports",
       items: [
-        { id: "overview",  Icon: Gauge,      label: "Overview" },
-        { id: "analytics", sub: "revenue",     Icon: DollarSign, label: "Revenue" },
-        { id: "analytics", sub: "listings",    Icon: BarChart2,  label: "Performance" },
-        { id: "analytics", sub: "marketplace", Icon: Globe,      label: "Website" },
+        { id: "overview",  Icon: Gauge,       label: "Overview" },
+        { id: "analytics", sub: "revenue",    Icon: DollarSign, label: "Revenue" },
+        { id: "analytics", sub: "performance", Icon: TrendingUp, label: "Performance" },
         { id: "oversight", Icon: Shield,      label: "GM Oversight" },
       ],
     },
@@ -10363,25 +10363,16 @@ export default function DashboardPage() {
                 onChange={setAnalyticsSub}
                 tabs={[
                   { id: "revenue",     label: "Revenue" },
-                  { id: "listings",    label: "Performance" },
-                  { id: "marketplace", label: "Website" },
+                  { id: "performance", label: "Performance" },
                 ]}
               />
-              {analyticsSub === "listings" && (
-                <AnalyticsTab
-                  listings={listings}
-                  profile={profile}
-                  salesmen={salesmen}
-                  onEditListing={setEditListing}
-                  onStaleAdjusted={handleStaleAdjusted}
-                  adjustedStaleIds={adjustedStaleIds}
-                />
-              )}
               {analyticsSub === "revenue" && userId && (
                 <RevOpsPage userId={userId} onNavigateToStock={() => handleTabChange("stock")} onNavigateToLeads={() => handleTabChange("leads")} />
               )}
-              {analyticsSub === "marketplace" && (
-                <MarketplaceAnalyticsTab profile={profile} />
+              {analyticsSub === "performance" && userId && (
+                <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>Loading…</div>}>
+                  <PerformanceTab dealerId={getDealerIdFromProfile(profile)} listings={listings} />
+                </Suspense>
               )}
             </>
           )}
