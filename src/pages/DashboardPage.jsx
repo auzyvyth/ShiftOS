@@ -5618,6 +5618,23 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
   const [editPriceUnit, setEditPriceUnit] = useState(null);
   const [editPriceForm, setEditPriceForm] = useState({ purchase_price: '', recon_cost: '', asking_price: '' });
   const [editPriceSaving, setEditPriceSaving] = useState(false);
+  const [publishingStockId, setPublishingStockId] = useState(null);
+
+  const handlePublishFromStock = async (u) => {
+    if (!u.listing_id || publishingStockId) return;
+    setPublishingStockId(u.id);
+    const { error } = await supabase
+      .from('car_listings')
+      .update({ status: 'available' })
+      .eq('id', u.listing_id)
+      .eq('dealer_id', userId);
+    if (!error) {
+      setUnits(p => p.map(x => x.id === u.id
+        ? { ...x, car_listings: { ...x.car_listings, status: 'available' } }
+        : x));
+    }
+    setPublishingStockId(null);
+  };
 
   // Reset pagination when switching between available/sold
   useEffect(() => { setVisibleCount(30); }, [stockView]);
@@ -6288,6 +6305,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                               <button onClick={() => fetchReconJobs(u)} style={{ fontSize: 11, color: '#f59e0b', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Recon</button>
                               {can('view_cost') && <button onClick={() => openAdSpend(u)} style={{ fontSize: 11, color: '#ec4899', background: 'rgba(236,72,153,0.08)', border: '1px solid rgba(236,72,153,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Ads</button>}
                               {can('view_cost') && <button onClick={() => { setEditPriceUnit(u); setEditPriceForm({ purchase_price: String(u.purchase_price||''), recon_cost: String(u.recon_cost||''), asking_price: String(u.asking_price||'') }); }} style={{ fontSize: 11, color: '#a78bfa', background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Edit Prices</button>}
+                              {u.car_listings?.status === 'unpublished' && <button onClick={() => handlePublishFromStock(u)} disabled={publishingStockId === u.id} style={{ fontSize: 11, color: '#fff', background: 'var(--color-accent)', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: publishingStockId === u.id ? 'default' : 'pointer', whiteSpace: 'nowrap', opacity: publishingStockId === u.id ? 0.6 : 1, fontWeight: 700 }}>{publishingStockId === u.id ? 'Publishing…' : 'Publish'}</button>}
                             </div>
                           </td>
                         ) : (
