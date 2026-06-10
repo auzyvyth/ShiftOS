@@ -830,6 +830,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
   const [step, setStep] = useState(1);
   const [draftBanner, setDraftBanner] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [saveAsInternal, setSaveAsInternal] = useState(false);
   const [previews, setPreviews] = useState([]);
   const [copied, setCopied] = useState(false);
   const [draggingIndex, setDraggingIndex] = useState(null);
@@ -1586,7 +1587,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           setUploading(false);
           return;
         }
-        const publishStatus = needsApproval ? "pending_approval" : "available";
+        const publishStatus = needsApproval ? "pending_approval" : (saveAsInternal ? "unpublished" : "available");
         let savedListing;
         if (draftId) {
           const { data, error } = await supabase
@@ -2936,6 +2937,23 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         </div>
       )}
 
+      {/* Internal-only toggle — new listings only, non-salesman */}
+      {step === STEPS.length && !listing && profile?.role !== 'salesman' && (
+        <button
+          type="button"
+          onClick={() => setSaveAsInternal(v => !v)}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16, width: '100%', background: saveAsInternal ? 'rgba(245,158,11,0.08)' : 'transparent', border: saveAsInternal ? '1px solid rgba(245,158,11,0.3)' : '1px solid #e5e7eb', borderRadius: 10, padding: '11px 14px', cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s' }}
+        >
+          <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${saveAsInternal ? '#f59e0b' : '#d1d5db'}`, background: saveAsInternal ? '#f59e0b' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
+            {saveAsInternal && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+          </div>
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 600, color: saveAsInternal ? '#92400e' : '#374151', margin: 0 }}>Keep off marketplace (internal only)</p>
+            <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>This car won't appear on the public storefront. You can publish it from the Stock or Listings tab later.</p>
+          </div>
+        </button>
+      )}
+
       {/* Wizard navigation */}
       <div className="mt-5 flex items-center gap-3">
         {step > 1 && (
@@ -2967,7 +2985,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             {uploading ? (
               <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Uploading…</>
             ) : (
-              <><Check className="w-4 h-4" />{listing ? "Save Changes" : "Publish Listing"}</>
+              <><Check className="w-4 h-4" />{listing ? "Save Changes" : saveAsInternal ? "Save Internal" : "Publish Listing"}</>
             )}
           </button>
         )}
