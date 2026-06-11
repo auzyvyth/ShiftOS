@@ -7,7 +7,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, R
 import { Helmet } from "react-helmet";
 import { toast } from "sonner";
 import { useDebouncedCallback } from 'use-debounce';
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
@@ -8641,6 +8641,7 @@ function Avatar({ size = "md", profile }) {
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { tab: tabParam } = useParams();
+  const location = useLocation();
   const { t } = useTranslation();
   const redirectByRole = useRoleRedirect(["dealer", "superadmin", "owner", "manager", "admin"]);
   const { status, loading: subLoading } = useSubscription();
@@ -8648,7 +8649,7 @@ export default function DashboardPage() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(tabParam || "overview");
-  const [analyticsSub, setAnalyticsSub] = useState("revenue"); // revenue | performance
+  const [analyticsSub, setAnalyticsSub] = useState(() => new URLSearchParams(window.location.search).get('sub') || 'revenue'); // revenue | performance
   const [storefrontSub, setStorefrontSub] = useState("hero");   // hero | services
   const [showFastModal, setShowFastModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
@@ -8936,7 +8937,7 @@ export default function DashboardPage() {
     startTransition(() => {
       setActiveTab(tab);
       setSidebarOpen(false);
-      navigate(`/dashboard/${tab}`, { replace: true });
+      navigate(`/dashboard/${tab}`);
     });
   }, [navigate]);
 
@@ -8960,6 +8961,14 @@ export default function DashboardPage() {
     }
     if (tabParam !== activeTab) setActiveTab(tabParam);
   }, [tabParam]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync analyticsSub when the user navigates back/forward through sub-tab history entries
+  useEffect(() => {
+    if (tabParam !== 'analytics') return;
+    const sub = new URLSearchParams(location.search).get('sub');
+    if (sub && sub !== analyticsSub) setAnalyticsSub(sub);
+  }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleDelete = async (id) => {
     const { error } = await supabase
       .from("car_listings")
@@ -9572,7 +9581,15 @@ export default function DashboardPage() {
                       return (
                         <button
                           key={sub ? `${id}_${sub}` : id}
-                          onClick={() => { if (sub) setAnalyticsSub(sub); handleTabChange(id); }}
+                          onClick={() => {
+                          if (sub) {
+                            setAnalyticsSub(sub);
+                            setSidebarOpen(false);
+                            startTransition(() => navigate(`/dashboard/${id}?sub=${sub}`));
+                          } else {
+                            handleTabChange(id);
+                          }
+                        }}
                           className={`nav-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${isActive ? "nav-active" : ""}`}
                           style={{ color: isActive ? '#DC2626' : color.textMuted }}
                         >
@@ -10360,7 +10377,10 @@ export default function DashboardPage() {
             <>
               <SubTabBar
                 active={analyticsSub}
-                onChange={setAnalyticsSub}
+                onChange={(sub) => {
+                  setAnalyticsSub(sub);
+                  navigate(`/dashboard/analytics?sub=${sub}`);
+                }}
                 tabs={[
                   { id: "revenue",     label: "Revenue" },
                   { id: "performance", label: "Performance" },
