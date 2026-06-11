@@ -8659,6 +8659,7 @@ export default function DashboardPage() {
   const [markSoldListing, setMarkSoldListing] = useState(null);
   const [markSoldLoading, setMarkSoldLoading] = useState(false);
   const [profile, setProfile] = useState(null);
+  const [dealerSubdomain, setDealerSubdomain] = useState(null); // parent dealer's subdomain (used for manager/admin roles)
   const [updatingStatus, setUpdatingStatus] = useState(null);
   const [editListing, setEditListing] = useState(null);
   const [adjustedStaleIds, setAdjustedStaleIds] = useState(new Set());
@@ -8713,10 +8714,9 @@ export default function DashboardPage() {
   }, [profile?.id]);
 
   const getStorefrontUrl = () => {
-    if (!profile?.subdomain || profile?.role === 'superadmin') {
-      return 'https://xdrive.my';
-    }
-    return `https://${profile.subdomain}.xdrive.my`;
+    const sub = dealerSubdomain || profile?.subdomain;
+    if (!sub || profile?.role === 'superadmin') return 'https://xdrive.my';
+    return `https://${sub}.xdrive.my`;
   };
 
   useEffect(() => {
@@ -8790,6 +8790,13 @@ export default function DashboardPage() {
         setProfile(p);
         const dealerId = getDealerIdFromProfile(p);
         setUserId(dealerId);
+        // For manager/admin, subdomain lives on the parent dealer's profile row
+        if ((p.role === 'manager' || p.role === 'admin') && p.dealer_id) {
+          supabase.from('profiles').select('subdomain').eq('id', p.dealer_id).maybeSingle()
+            .then(({ data }) => { if (data?.subdomain) setDealerSubdomain(data.subdomain); });
+        } else {
+          setDealerSubdomain(p.subdomain || null);
+        }
       } else {
         navigate("/login");
         return;
@@ -9659,7 +9666,7 @@ export default function DashboardPage() {
                   {profile.dealership}
                 </p>
                 <p style={{ fontSize: 10, color: '#DC2626', marginTop: 1 }} className="truncate">
-                  {profile.subdomain ? `${profile.subdomain}.xdrive.my` : 'xdrive.my'}
+                  {(dealerSubdomain || profile.subdomain) ? `${dealerSubdomain || profile.subdomain}.xdrive.my` : 'xdrive.my'}
                 </p>
               </div>
               <ExternalLink className="w-3 h-3 flex-shrink-0" style={{ color: '#DC2626', opacity: 0.6 }} />
