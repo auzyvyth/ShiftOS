@@ -1458,11 +1458,10 @@ function SettingsTab({ profile, onProfileUpdate }) {
         {profile?.role !== 'superadmin' && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Subdomain <span className="text-gray-500 text-xs">(your Drevo storefront URL)</span>
+              Subdomain <span className="text-gray-500 text-xs">(your storefront URL)</span>
             </label>
             <div className="flex items-center gap-2 flex-1">
               <div className="flex items-center bg-white border border-gray-200 rounded-lg overflow-hidden flex-1">
-                <span className="px-3 text-gray-500 text-sm select-none border-r border-gray-200 py-2 bg-gray-50">xdrive.my/</span>
                 <input
                   type="text"
                   value={subdomain}
@@ -1474,14 +1473,23 @@ function SettingsTab({ profile, onProfileUpdate }) {
                   placeholder="your-dealership"
                   className="flex-1 bg-transparent py-2 px-3 text-gray-900 text-sm outline-none"
                 />
+                <span className="px-3 text-gray-500 text-sm select-none border-l border-gray-200 py-2 bg-gray-50">.xdrive.my</span>
               </div>
               {subdomainStatus === 'checking' && <span className="text-xs text-gray-500 whitespace-nowrap">Checking...</span>}
               {subdomainStatus === 'taken' && <span className="text-xs text-blue-400 whitespace-nowrap">⚠ Already taken</span>}
               {subdomainStatus === 'available' && <span className="text-xs text-green-400 whitespace-nowrap">✓ Available</span>}
             </div>
+            {profile?.subdomain && (
+              <p className="text-xs text-gray-500 mt-1">
+                Your site:&nbsp;
+                <a href={`https://${profile.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer" style={{ color: '#DC2626', textDecoration: 'none', fontWeight: 500 }}>
+                  {profile.subdomain}.xdrive.my
+                </a>
+              </p>
+            )}
             {subdomain !== profile?.subdomain && profile?.subdomain && (
-              <p className="text-xs text-yellow-400 mt-1">
-                ⚠ Changing your subdomain will break existing links shared as <code className="text-yellow-300">xdrive.my/{profile.subdomain}</code>
+              <p className="text-xs text-yellow-600 mt-1">
+                ⚠ Changing your subdomain will break existing links at <code className="font-mono">{profile.subdomain}.xdrive.my</code>
               </p>
             )}
           </div>
@@ -8659,6 +8667,7 @@ export default function DashboardPage() {
   const [markSoldListing, setMarkSoldListing] = useState(null);
   const [markSoldLoading, setMarkSoldLoading] = useState(false);
   const [profile, setProfile] = useState(null);
+  const [dealerSubdomain, setDealerSubdomain] = useState(null); // parent dealer's subdomain (used for manager/admin roles)
   const [updatingStatus, setUpdatingStatus] = useState(null);
   const [editListing, setEditListing] = useState(null);
   const [adjustedStaleIds, setAdjustedStaleIds] = useState(new Set());
@@ -8713,10 +8722,9 @@ export default function DashboardPage() {
   }, [profile?.id]);
 
   const getStorefrontUrl = () => {
-    if (!profile?.subdomain || profile?.role === 'superadmin') {
-      return 'https://xdrive.my';
-    }
-    return `https://${profile.subdomain}.xdrive.my`;
+    const sub = dealerSubdomain || profile?.subdomain;
+    if (!sub || profile?.role === 'superadmin') return 'https://xdrive.my';
+    return `https://${sub}.xdrive.my`;
   };
 
   useEffect(() => {
@@ -8790,6 +8798,13 @@ export default function DashboardPage() {
         setProfile(p);
         const dealerId = getDealerIdFromProfile(p);
         setUserId(dealerId);
+        // For manager/admin, subdomain lives on the parent dealer's profile row
+        if ((p.role === 'manager' || p.role === 'admin') && p.dealer_id) {
+          supabase.from('profiles').select('subdomain').eq('id', p.dealer_id).maybeSingle()
+            .then(({ data }) => { if (data?.subdomain) setDealerSubdomain(data.subdomain); });
+        } else {
+          setDealerSubdomain(p.subdomain || null);
+        }
       } else {
         navigate("/login");
         return;
@@ -9659,7 +9674,7 @@ export default function DashboardPage() {
                   {profile.dealership}
                 </p>
                 <p style={{ fontSize: 10, color: '#DC2626', marginTop: 1 }} className="truncate">
-                  {profile.subdomain ? `${profile.subdomain}.xdrive.my` : 'xdrive.my'}
+                  {(dealerSubdomain || profile.subdomain) ? `${dealerSubdomain || profile.subdomain}.xdrive.my` : 'xdrive.my'}
                 </p>
               </div>
               <ExternalLink className="w-3 h-3 flex-shrink-0" style={{ color: '#DC2626', opacity: 0.6 }} />
