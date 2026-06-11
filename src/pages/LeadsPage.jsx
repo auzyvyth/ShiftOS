@@ -6,6 +6,7 @@ import { useLeads } from '../hooks/useLeads';
 import LeadGridCard from '../components/leads/LeadGridCard';
 import LeadDrawer from '../components/leads/LeadDrawer';
 import AddLeadModal from '../components/leads/AddLeadModal';
+import { useModalHistory } from '../hooks/useModalHistory';
 import {
   STAGE_ORDER, STAGE_CONFIG, SOURCE_CONFIG, canonicalStage,
 } from '../lib/leadsHelpers';
@@ -180,6 +181,11 @@ export default function LeadsPage() {
   const [filterAssigned, setFilterAssigned] = useState('');
   const [activeStage, setActiveStage]       = useState('all');
   const [teamMembers, setTeamMembers]       = useState([]);
+
+  // Back gesture / swipe-left closes the open drawer or modal instead of leaving the page
+  useModalHistory(!!openLead,  () => setOpenLead(null));
+  useModalHistory(showAdd,     () => setShowAdd(false));
+  useModalHistory(!!openStage, () => setOpenStage(null));
 
   useEffect(() => {
     async function load() {

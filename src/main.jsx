@@ -2,10 +2,22 @@ import './instrument';
 import React, { Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import * as Sentry from '@sentry/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './i18n/config';
 import App from '@/App';
 import { Toaster } from '@/components/ui/toaster';
 import '@/index.css';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 2 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 // After a new deployment, an old tab may reference lazy chunk hashes that no
 // longer exist on the server (the request then returns index.html → a "Failed
@@ -53,9 +65,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       if (isChunkLoadError(error?.message)) reloadOnceForChunk();
     }}
   >
-    <Suspense fallback={null}>
-      <App />
-      <Toaster />
-    </Suspense>
+    <QueryClientProvider client={queryClient}>
+      <Suspense fallback={null}>
+        <App />
+        <Toaster />
+      </Suspense>
+    </QueryClientProvider>
   </Sentry.ErrorBoundary>
 );

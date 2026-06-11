@@ -264,15 +264,22 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     if (!lead?.id || !lead?.dealer_id) return;
     const fetch = async () => {
       setAddonsLoading(true);
-      const [catRes, dealRes, hpRes, carRes] = await Promise.all([
+      const [catRes, dealRes, hpRes, carRes, dealerRes] = await Promise.all([
         supabase.from('dealer_products').select('id, name, category, selling_price').eq('dealer_id', lead.dealer_id).eq('is_active', true).order('name'),
         supabase.from('deal_products').select('id, sold_price, notes, product_id, dealer_products(name, category)').eq('lead_id', lead.id),
         supabase.from('deal_financing').select('*').eq('lead_id', lead.id).order('submitted_at', { ascending: false }),
         lead?.car_listing?.id
           ? supabase.from('car_listings').select('engine_cc').eq('id', lead.car_listing.id).maybeSingle()
           : Promise.resolve({ data: null }),
+        supabase.from('profiles').select('handles_roadtax_insurance').eq('id', lead.dealer_id).maybeSingle(),
       ]);
-      setCatalogueProducts(catRes.data || []);
+      // Dealers that outsource road tax & insurance don't sell them as add-ons —
+      // hide those categories from the picker. Already-attached rows still show.
+      const handlesRti = dealerRes.data?.handles_roadtax_insurance !== false;
+      const catalogue = handlesRti
+        ? (catRes.data || [])
+        : (catRes.data || []).filter((p) => p.category !== 'road_tax' && p.category !== 'insurance');
+      setCatalogueProducts(catalogue);
       setDealAddons(dealRes.data || []);
       setHpRows(hpRes.data || []);
       if (carRes.data?.engine_cc) {

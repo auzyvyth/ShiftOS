@@ -829,6 +829,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
   const [form, setForm] = useState(initialListing);
   const [step, setStep] = useState(1);
   const [draftBanner, setDraftBanner] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [previews, setPreviews] = useState([]);
   const [copied, setCopied] = useState(false);
@@ -869,9 +870,23 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
     // Do not auto-save while the banner is visible — the user hasn't decided
     // yet, and saving now would overwrite the real draft with the empty form.
     if (!profile?.id || listing || draftBanner) return;
-    const t = setTimeout(() => cfSaveDraft(profile.id, form, step), 800);
+    const t = setTimeout(() => {
+      cfSaveDraft(profile.id, form, step);
+      setDraftSavedAt(Date.now());
+    }, 800);
     return () => clearTimeout(t);
   }, [form, step, profile?.id, listing, draftBanner]);
+
+  // Force-save immediately when the page is closed/refreshed so the debounce
+  // window never causes a loss of the last few keystrokes.
+  useEffect(() => {
+    if (!profile?.id || listing) return;
+    const handleUnload = () => {
+      if (!draftBanner) cfSaveDraft(profile.id, form, step);
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => window.removeEventListener('beforeunload', handleUnload);
+  }, [profile?.id, listing, draftBanner, form, step]);
 
   // Load saved section order from profile
   useEffect(() => {
@@ -926,13 +941,17 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
   const [catalogueLoaded, setCatalogueLoaded] = useState(false);
   const [serviceSearch, setServiceSearch] = useState("");
   const [commissionConfig, setCommissionConfig] = useState(null); // SET-4
+  const [handlesRti, setHandlesRti] = useState(true); // profiles.handles_roadtax_insurance
   const navigate = useNavigate();
 
   // SET-4: load dealer commission rule for the suggested-commission helper
   useEffect(() => {
     if (!dealerId) return;
-    supabase.from("profiles").select("commission_config").eq("id", dealerId).maybeSingle()
-      .then(({ data }) => setCommissionConfig(data?.commission_config || null));
+    supabase.from("profiles").select("commission_config, handles_roadtax_insurance").eq("id", dealerId).maybeSingle()
+      .then(({ data }) => {
+        setCommissionConfig(data?.commission_config || null);
+        setHandlesRti(data?.handles_roadtax_insurance !== false);
+      });
   }, [dealerId]);
 
   useEffect(() => {
@@ -2741,6 +2760,9 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                               .includes(serviceSearch.toLowerCase()),
                         )
                         .filter((p) => p.is_active !== false)
+                        // Dealers that outsource road tax & insurance don't bundle
+                        // them as included services — hide those categories.
+                        .filter((p) => handlesRti || (p.category !== "road_tax" && p.category !== "insurance"))
                         .map((p) => {
                           const cfg = getCategoryCfg(p.category);
                           const CatIcon = cfg.icon;
@@ -2840,7 +2862,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
       {/* Draft resume banner */}
       {draftBanner && !listing && (
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, padding: "10px 14px", borderRadius: 9, background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.25)", fontFamily: "'DM Sans',sans-serif" }}>
-          <p style={{ margin: 0, fontSize: 12, color: "#93c5fd", flex: 1 }}>You have an unsaved draft.</p>
+          <p style={{ margin: 0, fontSize: 12, color: "#93c5fd", flex: 1 }}>You have a saved draft from a previous session.</p>
           <button onClick={() => {
             const d = cfLoadDraft(profile?.id);
             if (d) {
@@ -2854,6 +2876,13 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             setDraftBanner(false);
           }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "#2563eb", border: "none", color: "#fff", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>Resume</button>
           <button onClick={() => { cfClearDraft(profile?.id); setDraftBanner(false); }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Discard</button>
+        </div>
+      )}
+      {/* Draft auto-save indicator */}
+      {!draftBanner && !listing && draftSavedAt && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, fontFamily: "'DM Sans',sans-serif" }}>
+          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", flexShrink: 0 }} />
+          <span style={{ fontSize: 11, color: "#6b7280" }}>Draft saved</span>
         </div>
       )}
 

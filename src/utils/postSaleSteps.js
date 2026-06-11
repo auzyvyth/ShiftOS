@@ -92,16 +92,20 @@ export const STATUS_CONFIG = {
 // opts.encumbranceClear — true when the car was bought outright / has no outstanding
 // hire-purchase (stock_units.encumbrance_status = 'clear'), so the loan-settlement
 // step is auto-marked N/A (nothing to settle).
+// opts.handlesRoadtaxInsurance — false when the dealer outsources road tax and
+// insurance entirely (profiles.handles_roadtax_insurance), so those steps are
+// auto-marked N/A and never show as overdue work for the dealership.
 export function defaultTasksFor(lead, opts = {}) {
   // Match the DB trigger's IS NOT NULL check (auto_create_customer_on_won) so the
   // lazy-seed path can't disagree on edge values like loan_amount = 0 or loan_status = ''.
   const financed = lead?.loan_bank != null || lead?.loan_amount != null || lead?.loan_status != null;
-  const { encumbranceClear = false } = opts;
+  const { encumbranceClear = false, handlesRoadtaxInsurance = true } = opts;
   return POST_SALE_STEPS.map((s, i) => ({
     step_key: s.key,
     status:
       (s.key === 'puspakom_b7' && !financed) ||
-      (s.key === 'loan_settlement' && encumbranceClear)
+      (s.key === 'loan_settlement' && encumbranceClear) ||
+      ((s.key === 'road_tax' || s.key === 'insurance') && !handlesRoadtaxInsurance)
         ? 'na'
         : 'pending',
     owner_role: s.owner,
