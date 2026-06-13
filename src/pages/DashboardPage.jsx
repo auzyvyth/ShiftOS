@@ -5285,7 +5285,7 @@ function ListingDetailDrawer({
   const tabs = ['specs', 'features', 'options', ...(listing.is_recon ? ['recon'] : [])];
   const tabLabel = { specs: 'Specifications', features: 'Features', options: 'Options', recon: 'Recon' };
 
-  const btnBase = { width: '100%', background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderRadius: 6, padding: '11px 14px', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.2s', border: '1px solid rgba(255,255,255,0.1)', fontFamily: "'DM Sans', sans-serif", color: '#e5e7eb' };
+  const btnBase = { width: '100%', background: '#ffffff', borderRadius: 6, padding: '11px 14px', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.2s, border-color 0.2s', border: '1px solid #e5e7eb', fontFamily: "'DM Sans', sans-serif", color: '#374151' };
 
   const specRows = [
     { k: 'Year',              v: listing.year || '—' },
@@ -5336,7 +5336,7 @@ function ListingDetailDrawer({
                   ))}
                 </div>
                 {/* Main image */}
-                <div style={{ flex: 1, position: 'relative', background: '#F3F4F6', borderRadius: 6, overflow: 'hidden', height: isMobile ? 200 : 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ flex: 1, position: 'relative', background: '#0f1117', borderRadius: 6, overflow: 'hidden', height: isMobile ? 200 : 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <img
                     src={images[imgIdx]}
                     alt=""
@@ -5490,38 +5490,38 @@ function ListingDetailDrawer({
             </div>
 
             {/* RIGHT — dark premium sidebar */}
-            <div style={{ flex: isMobile ? 'none' : '0 0 200px', width: isMobile ? '100%' : undefined, padding: isMobile ? '12px 16px 24px' : 20, display: 'flex', flexDirection: 'column', gap: 0, borderTop: isMobile ? '1px solid #e5e7eb' : 'none', background: isMobile ? '#fff' : '#111827' }}>
+            <div style={{ flex: isMobile ? 'none' : '0 0 210px', width: isMobile ? '100%' : undefined, padding: isMobile ? '12px 16px 24px' : 20, display: 'flex', flexDirection: 'column', gap: 0, borderTop: isMobile ? '1px solid #e5e7eb' : 'none', borderLeft: isMobile ? 'none' : '1px solid #e5e7eb', background: '#fff' }}>
               <div style={{ background: 'transparent', borderRadius: 8, padding: isMobile ? 18 : '18px 0', display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr', gap: 8 }}>
                 <p style={{ fontSize: 10, color: isMobile ? '#6b7280' : '#6b7280', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>Actions</p>
 
                 {/* Edit */}
-                <button onClick={() => { setEditListing(listing); }} style={{ ...btnBase, border: '1px solid rgba(56,189,248,0.25)', color: '#64b4ff' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
+                <button onClick={() => { setEditListing(listing); }} style={{ ...btnBase, border: '1px solid rgba(37,99,235,0.3)', color: '#2563eb' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
                   <Pencil style={{ width: 14, height: 14, flexShrink: 0 }} />Edit Listing
                 </button>
 
                 {/* Price — hidden on sold listings */}
                 {!isSold && (
-                  <button onClick={() => setPriceEditListing(listing)} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.3)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
+                  <button onClick={() => setPriceEditListing(listing)} style={{ ...btnBase, border: '1px solid rgba(220,38,38,0.3)', color: '#dc2626' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
                     <Tag style={{ width: 14, height: 14, flexShrink: 0 }} />Change Price
                   </button>
                 )}
 
                 {/* Copy */}
-                <button onClick={() => copyListing(listing)} style={{ ...btnBase, border: '1px solid rgba(139,195,74,0.25)', color: copiedListingId === listing.id ? '#4ade80' : '#8bc34a' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
+                <button onClick={() => copyListing(listing)} style={{ ...btnBase, border: '1px solid rgba(22,163,74,0.3)', color: copiedListingId === listing.id ? '#15803d' : '#16a34a' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
                   {copiedListingId === listing.id ? <Check style={{ width: 14, height: 14, flexShrink: 0 }} /> : <Clipboard style={{ width: 14, height: 14, flexShrink: 0 }} />}
                   {copiedListingId === listing.id ? 'Copied!' : 'Copy Writing'}
                 </button>
 
                 {/* Financing Calculator — hidden on sold listings */}
                 {!isSold && (
-                  <button onClick={() => setCalcOpen(true)} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.25)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
+                  <button onClick={() => setCalcOpen(true)} style={{ ...btnBase, border: '1px solid rgba(220,38,38,0.3)', color: '#dc2626' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
                     <Calculator style={{ width: 14, height: 14, flexShrink: 0 }} />Financing Calc
                   </button>
                 )}
 
                 {/* Assign */}
                 <div style={{ position: 'relative', gridColumn: isMobile ? '1 / -1' : undefined }}>
-                  <button onClick={() => setShowAssign(v => !v)} style={{ ...btnBase, border: '1px solid rgba(100,180,255,0.25)', color: '#64b4ff' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
+                  <button onClick={() => setShowAssign(v => !v)} style={{ ...btnBase, border: '1px solid rgba(37,99,235,0.3)', color: '#2563eb' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
                     <UserPlus style={{ width: 14, height: 14, flexShrink: 0 }} />Assign Salesman
                   </button>
                   {showAssign && (
@@ -5544,22 +5544,22 @@ function ListingDetailDrawer({
 
                 {/* Mark Sold */}
                 {!isSold && (
-                  <button onClick={() => setMarkSoldListing(listing)} style={{ ...btnBase, border: '1px solid rgba(52,211,153,0.25)', color: '#34d399' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
+                  <button onClick={() => setMarkSoldListing(listing)} style={{ ...btnBase, border: '1px solid rgba(5,150,105,0.3)', color: '#059669' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
                     <CheckCircle2 style={{ width: 14, height: 14, flexShrink: 0 }} />Mark as Sold
                   </button>
                 )}
 
                 {/* Delete */}
-                <button onClick={() => { setDeleteId(listing.id); onClose(); }} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.25)', color: '#93c5fd' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
+                <button onClick={() => { setDeleteId(listing.id); }} style={{ ...btnBase, border: '1px solid rgba(220,38,38,0.3)', color: '#dc2626' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
                   <Trash2 style={{ width: 14, height: 14, flexShrink: 0 }} />Delete Listing
                 </button>
 
                 {/* Metadata */}
-                <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: 12, marginTop: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>
-                  <p style={{ fontSize: 11, color: '#9ca3af', margin: '0 0 6px' }}>Listed {age === 0 ? 'today' : `${age} day${age !== 1 ? 's' : ''} ago`}</p>
+                <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: 12, marginTop: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>
+                  <p style={{ fontSize: 11, color: '#6b7280', margin: '0 0 6px' }}>Listed {age === 0 ? 'today' : `${age} day${age !== 1 ? 's' : ''} ago`}</p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ width: 7, height: 7, borderRadius: '50%', background: sCfg.dot, display: 'inline-block', flexShrink: 0 }} />
-                    <span style={{ fontSize: 11, color: '#e5e7eb', textTransform: 'capitalize' }}>{listing.status || 'available'}</span>
+                    <span style={{ fontSize: 11, color: '#374151', textTransform: 'capitalize' }}>{listing.status || 'available'}</span>
                   </div>
                 </div>
               </div>
@@ -5624,7 +5624,7 @@ function ListingDetailDrawer({
           <div style={{ width: '100%', maxWidth: 860, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <div>
-                <p style={{ color: 'white', fontWeight: 600, fontSize: 14, margin: '0 0 2px' }}>Financing &amp; Cost Calculator</p>
+                <p style={{ color: '#111827', fontWeight: 600, fontSize: 14, margin: '0 0 2px' }}>Financing &amp; Cost Calculator</p>
                 <p style={{ color: '#6b7280', fontSize: 12, margin: 0 }}>{listing.brand} {listing.model}{listing.variant ? ` ${listing.variant}` : ''}</p>
               </div>
               <button onClick={() => setCalcOpen(false)} style={{ background: '#fff', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#9ca3af' }}>
@@ -5639,7 +5639,7 @@ function ListingDetailDrawer({
                 carName={`${listing.brand} ${listing.model}${listing.variant ? ` ${listing.variant}` : ''}`}
                 carYear={listing.year ? String(listing.year) : ''}
                 carColor={listing.colour || ''}
-                flat
+                light
               />
             </div>
           </div>
@@ -11304,7 +11304,7 @@ export default function DashboardPage() {
           style={{ background: "rgba(0,0,0,0.82)" }}
         >
           <div
-            className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-2xl max-h-[92vh] flex flex-col"
+            className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col"
             style={undefined}
           >
             <div
