@@ -2553,11 +2553,11 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           </Field>
           {form.basePrice && form.sellingPrice && (
             <div
-              className={`px-4 py-3 rounded-xl text-sm font-medium border ${parseFloat(form.sellingPrice) >= parseFloat(form.basePrice) ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"}`}
+              className={`px-4 py-3 rounded-xl text-sm font-medium border ${parseFloat(form.sellingPrice) >= parseFloat(form.basePrice) ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-red-500/10 text-red-600 border-red-500/20"}`}
             >
               {parseFloat(form.sellingPrice) >= parseFloat(form.basePrice)
-                ? `Margin: +RM ${(parseFloat(form.sellingPrice) - parseFloat(form.basePrice)).toLocaleString()}`
-                : `⚠ Selling below base price by RM ${(parseFloat(form.basePrice) - parseFloat(form.sellingPrice)).toLocaleString()}`}
+                ? `Profit margin: +RM ${(parseFloat(form.sellingPrice) - parseFloat(form.basePrice)).toLocaleString()} above your cost`
+                : `⚠ Selling price is RM ${(parseFloat(form.basePrice) - parseFloat(form.sellingPrice)).toLocaleString()} below your cost (base price) — you'd sell this at a loss`}
             </div>
           )}
           <Field
