@@ -759,7 +759,7 @@ export default function MarketplacePage() {
                 FIND YOUR NEXT<br/><span style={{ color:'#dc2626' }}>CAR IN MALAYSIA</span>
               </h1>
 
-              <p style={{ fontSize:'clamp(13px,3.5vw,15px)', color:'rgba(255,255,255,0.45)', margin:'0 0 24px', lineHeight:'1.7', fontFamily:"'Outfit',sans-serif", maxWidth:'420px' }}>
+              <p style={{ fontSize:'clamp(13px,3.5vw,15px)', color:'rgba(255,255,255,0.6)', margin:'0 0 24px', lineHeight:'1.7', fontFamily:"'Outfit',sans-serif", maxWidth:'420px' }}>
                 New &middot; Used &middot; Recon &mdash; Verified Dealers, Full Docs, Zero Phantom Listings.
               </p>
 
@@ -844,19 +844,19 @@ export default function MarketplacePage() {
               <h2 style={{ margin:'0 0 16px', fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(26px,3vw,44px)', color:'#ffffff', letterSpacing:'0.02em', lineHeight:1 }}>BROWSE BY BUDGET</h2>
               <div className="mp-budget-grid">
                 {[
-                  { label:'Under RM 30k',  value:'30000',  iconColor:'#6b7280', bg:'rgba(107,114,128,0.10)' },
-                  { label:'Under RM 50k',  value:'50000',  iconColor:'#94a3b8', bg:'rgba(148,163,184,0.10)' },
-                  { label:'Under RM 80k',  value:'80000',  iconColor:'#cbd5e1', bg:'rgba(203,213,225,0.10)' },
-                  { label:'Under RM 120k', value:'120000', iconColor:'#f87171', bg:'rgba(220,38,38,0.12)'   },
-                  { label:'Under RM 200k', value:'200000', iconColor:'#ef4444', bg:'rgba(220,38,38,0.18)'   },
-                  { label:'Open Budget',   value:'',       iconColor:'#ffffff', bg:'rgba(255,255,255,0.10)' },
-                ].map(({ label, value, iconColor, bg }) => (
-                  <Link key={label} to={value ? `/showroom?max_price=${value}` : '/showroom'} className="mp-budget-item">
+                  { big:'RM 30K',  sub:'& under', value:'30000',  color:'#9ca3af', bg:'rgba(148,163,184,0.08)' },
+                  { big:'RM 50K',  sub:'& under', value:'50000',  color:'#cbd5e1', bg:'rgba(203,213,225,0.08)' },
+                  { big:'RM 80K',  sub:'& under', value:'80000',  color:'#e2e8f0', bg:'rgba(226,232,240,0.08)' },
+                  { big:'RM 120K', sub:'& under', value:'120000', color:'#fca5a5', bg:'rgba(220,38,38,0.10)'   },
+                  { big:'RM 200K', sub:'& under', value:'200000', color:'#f87171', bg:'rgba(220,38,38,0.16)'   },
+                  { big:'ALL',     sub:'Any price', value:'',     color:'#ffffff', bg:'rgba(255,255,255,0.08)' },
+                ].map(({ big, sub, value, color, bg }) => (
+                  <Link key={big} to={value ? `/showroom?max_price=${value}` : '/showroom'} className="mp-budget-item">
                     <div className="mp-budget-icon" style={{ background: bg }}>
-                      <Car size={28} color={iconColor} strokeWidth={1.25} />
+                      <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(18px,2.4vw,26px)', lineHeight:1, letterSpacing:'0.02em', color }}>{big}</span>
                     </div>
-                    <div style={{ padding:'5px 8px 7px' }}>
-                      <span style={{ fontSize:'11px', fontWeight:'700', color:'rgba(255,255,255,0.9)', fontFamily:"'Outfit',sans-serif" }}>{label}</span>
+                    <div style={{ padding:'6px 8px 8px' }}>
+                      <span style={{ fontSize:'10px', fontWeight:'600', color:'rgba(255,255,255,0.5)', fontFamily:"'Outfit',sans-serif", textTransform:'uppercase', letterSpacing:'0.06em' }}>{sub}</span>
                     </div>
                   </Link>
                 ))}
