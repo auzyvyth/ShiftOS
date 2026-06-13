@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useMemo, useCallback, startTransiti
 import DOMPurify from "dompurify";
 import SuspendedBanner from "../components/SuspendedBanner";
 import ReportBugButton from "../components/ReportBugButton";
+import SharePackSheet from "../components/SharePackSheet";
 import { createPortal } from 'react-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
 import { Helmet } from "react-helmet";
@@ -5246,9 +5247,10 @@ function ListingDetailDrawer({
   listing, salesmen, salesmenById, onClose, onUpdate, onDelete,
   setEditListing, setPriceEditListing, setMarkSoldListing,
   setDeleteId, copyListing, copiedListingId, handleAssign, handleUnassign,
-  handleStatus, updatingStatus, getListingAge,
+  handleStatus, updatingStatus, getListingAge, dealer,
 }) {
   const [imgIdx, setImgIdx]       = useState(0);
+  const [sharePackOpen, setSharePackOpen] = useState(false);
   const [lbOpen, setLbOpen]       = useState(false);
   const [drawerTab, setDrawerTab] = useState('specs');
   const [showAssign, setShowAssign] = useState(false);
@@ -5512,6 +5514,11 @@ function ListingDetailDrawer({
                   {copiedListingId === listing.id ? 'Copied!' : 'Copy Writing'}
                 </button>
 
+                {/* Share Pack — paste-ready copy per platform */}
+                <button onClick={() => setSharePackOpen(true)} style={{ ...btnBase, border: '1px solid rgba(124,58,237,0.3)', color: '#7c3aed' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                  <Send style={{ width: 14, height: 14, flexShrink: 0 }} />Share Pack
+                </button>
+
                 {/* Financing Calculator — hidden on sold listings */}
                 {!isSold && (
                   <button onClick={() => setCalcOpen(true)} style={{ ...btnBase, border: '1px solid rgba(220,38,38,0.3)', color: '#dc2626' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
@@ -5644,6 +5651,9 @@ function ListingDetailDrawer({
             </div>
           </div>
         </div>
+      )}
+      {sharePackOpen && (
+        <SharePackSheet listing={listing} dealer={dealer} onClose={() => setSharePackOpen(false)} />
       )}
     </>
   );
@@ -11097,6 +11107,13 @@ export default function DashboardPage() {
           handleStatus={handleStatus}
           updatingStatus={updatingStatus}
           getListingAge={getListingAge}
+          dealer={{
+            site_name: profile?.site_name,
+            dealership: profile?.dealership,
+            whatsapp_number: profile?.whatsapp_number,
+            subdomain: dealerSubdomain || profile?.subdomain,
+            slug: profile?.slug,
+          }}
         />
       )}
 
