@@ -91,7 +91,18 @@ export default function HeroSlideCard({ slide, onEdit, onDelete, onToggle }) {
           )}
         </div>
 
-        {badge && badgeStyle && (
+        {slide.car_listings?.status === 'sold' && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center',
+            background: '#fef2f2', border: '1px solid #fca5a5',
+            color: '#dc2626', borderRadius: 20, fontSize: 11,
+            fontWeight: 700, padding: '2px 8px', marginBottom: 5,
+            letterSpacing: '0.04em',
+          }}>
+            SOLD — hidden from carousel
+          </span>
+        )}
+        {badge && badgeStyle && slide.car_listings?.status !== 'sold' && (
           <span style={{
             display: 'inline-flex', alignItems: 'center',
             background: badgeStyle.bg, border: `1px solid ${badgeStyle.border}`,

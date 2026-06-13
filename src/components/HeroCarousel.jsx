@@ -671,11 +671,15 @@ export default function HeroCarousel({ siteName, waNumber }) {
         }
         const { data, error } = await supabase
           .from("hero_carousel_slides")
-          .select("*, car_listings(slug)")
+          .select("*, car_listings(slug, status)")
           .eq("active", true)
           .eq("dealer_id", dealerId)
           .order("sort_order", { ascending: true });
-        setSlides(!error && data ? data : []);
+        // Drop slides whose linked car has been sold — sold cars have no detail page
+        const live = !error && data
+          ? data.filter(s => !s.car_listing_id || s.car_listings?.status !== 'sold')
+          : [];
+        setSlides(live);
       } catch {
         setSlides([]);
       } finally {

@@ -183,9 +183,11 @@ export default function LeadsPage() {
   const [teamMembers, setTeamMembers]       = useState([]);
 
   // Back gesture / swipe-left closes the open drawer or modal instead of leaving the page
-  useModalHistory(!!openLead,  () => setOpenLead(null));
-  useModalHistory(showAdd,     () => setShowAdd(false));
-  useModalHistory(!!openStage, () => setOpenStage(null));
+  useModalHistory(!!openLead, () => setOpenLead(null));
+  useModalHistory(showAdd,    () => setShowAdd(false));
+  // NOTE: openStage deliberately excluded — its history.back() cleanup fires popstate and
+  // immediately closes the LeadDrawer that was just opened when transitioning from the
+  // stage popup to a lead detail.
 
   useEffect(() => {
     async function load() {

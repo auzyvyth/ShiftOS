@@ -12,11 +12,10 @@ import "./i18n/config";
 
 // Eager — only true above-the-fold entry points
 import HomePage from "./pages/HomePage";
-import ShowroomPage from "./pages/ShowroomPage";
+import CarListingPage from "./pages/CarListingPage";
 
 // Lazy — navigated to, not landed on directly
 const MarketplacePage = lazy(() => import("./pages/MarketplacePage"));
-const CarsPage        = lazy(() => import("./pages/CarsPage"));
 const CarDetailPage   = lazy(() => import("./pages/CarDetailPage"));
 
 // Lazy — everything else
@@ -52,6 +51,10 @@ const TermsPage          = lazy(() => import("./pages/TermsPage"));
 const PrivacyPage        = lazy(() => import("./pages/PrivacyPage"));
 const DealPage           = lazy(() => import("./pages/DealPage"));
 const StyleGuidePage     = lazy(() => import("./pages/StyleGuidePage"));
+const ArticlesIndexPage  = lazy(() => import("./pages/ArticlesIndexPage"));
+const PuspakomB5B7Article = lazy(() => import("./pages/articles/PuspakomB5B7Article"));
+const MySikapArticle     = lazy(() => import("./pages/articles/MySikapArticle"));
+const ReconArticle       = lazy(() => import("./pages/articles/ReconArticle"));
 
 const COMPARE_PATHS = ["/", "/cars", "/marketplace", "/showroom", "/compare", "/saved"];
 
@@ -84,15 +87,19 @@ function App() {
           {/* Public — XDrive */}
           <Route path="/" element={<HomePage />} />
           <Route path="/marketplace" element={<MarketplacePage />} />
-          <Route path="/showroom" element={<ShowroomPage />} />
+          <Route path="/showroom" element={<CarListingPage />} />
           <Route path="/showroom/:slug" element={<CarDetailPage />} />
-          <Route path="/cars" element={<CarsPage />} />
+          <Route path="/cars" element={<CarListingPage />} />
           <Route path="/cars/:slug" element={<CarDetailPage />} />
           <Route path="/calculator" element={<CalculatorPage />} />
           <Route path="/compare" element={<ComparePage />} />
           <Route path="/saved" element={<SavedCarsPage />} />
           <Route path="/guides/:slug" element={<GuidesPage />} />
           <Route path="/guides" element={<GuidesPage />} />
+          <Route path="/articles" element={<ArticlesIndexPage />} />
+          <Route path="/articles/apa-itu-puspakom-b5-b7" element={<PuspakomB5B7Article />} />
+          <Route path="/articles/cara-pindah-milik-kereta-mysikap" element={<MySikapArticle />} />
+          <Route path="/articles/beza-kereta-recon-dan-terpakai" element={<ReconArticle />} />
 
           {/* Auth */}
           <Route path="/style-guide" element={<StyleGuidePage />} />

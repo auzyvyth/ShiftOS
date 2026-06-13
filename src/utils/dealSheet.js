@@ -42,7 +42,7 @@ export function computeFinancing(price, { dpPct = DEFAULT_DP_PCT, tenureYears = 
  * @param {object} [args.financing] override financing assumptions
  * @param {number} [args.expiryMins] link lifetime in minutes (default 1440 = 24h)
  */
-export async function generateDealSheet({ lead, car, dealer, salesman = null, addons = [], financing = {}, expiryMins = 1440 }) {
+export async function generateDealSheet({ lead, car, dealer, salesman = null, addons = [], financing = {}, fees: rawFees = {}, note = null, expiryMins = 1440 }) {
   if (!lead?.id) throw new Error('Missing lead');
   if (!car) throw new Error('Missing car');
 
@@ -57,7 +57,12 @@ export async function generateDealSheet({ lead, car, dealer, salesman = null, ad
     price: Number(a.price ?? a.sold_price ?? 0),
   }));
   const addonsTotal = addonsList.reduce((s, a) => s + a.price, 0);
-  const feesTotal = 0;
+  const fees = {
+    road_tax: Number(rawFees.road_tax) || 0,
+    insurance: Number(rawFees.insurance) || 0,
+    puspakom: Number(rawFees.puspakom) || 0,
+  };
+  const feesTotal = fees.road_tax + fees.insurance + fees.puspakom;
 
   const snapshot = {
     car: {
@@ -80,11 +85,12 @@ export async function generateDealSheet({ lead, car, dealer, salesman = null, ad
       whatsapp: salesman.whatsapp_number || null,
     } : null,
     buyer_name: lead.buyer_name || null,
+    note: note || null,
     addons: addonsList,
     financing_calc: computeFinancing(carPrice, {
       dpPct: financing.dpPct, tenureYears: financing.tenureYears, flatRate: financing.flatRate,
     }),
-    fees: {},
+    fees,
     car_price: carPrice,
     addons_total: addonsTotal,
     fees_total: feesTotal,

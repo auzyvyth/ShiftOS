@@ -34,6 +34,15 @@ export default function MarketplaceFooter() {
       ],
     },
     {
+      heading: 'Panduan & Artikel',
+      links: [
+        { label: 'Semua Panduan',              to: '/articles' },
+        { label: 'Apa Itu Puspakom B5 & B7?',  to: '/articles/apa-itu-puspakom-b5-b7' },
+        { label: 'Cara Pindah Milik MySikap',  to: '/articles/cara-pindah-milik-kereta-mysikap' },
+        { label: 'Kereta Recon vs Terpakai',   to: '/articles/beza-kereta-recon-dan-terpakai' },
+      ],
+    },
+    {
       heading: 'Help & Legal',
       links: [
         { label: 'How It Works',     to: '/guides/how-it-works' },
@@ -114,7 +123,7 @@ export default function MarketplaceFooter() {
       </div>
 
       {/* ── Main link grid ───────────────────────────────────────────── */}
-      <div className="max-w-6xl mx-auto px-5 py-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+      <div className="max-w-6xl mx-auto px-5 py-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10">
 
         {/* Brand column */}
         <div>

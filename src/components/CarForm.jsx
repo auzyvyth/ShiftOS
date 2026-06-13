@@ -822,11 +822,13 @@ const cfSaveDraft = (uid, form, step) => { try { localStorage.setItem(cfDraftKey
 const cfLoadDraft = (uid) => { try { const r = localStorage.getItem(cfDraftKey(uid)); if (!r) return null; const d = JSON.parse(r); if (Date.now() - d.savedAt > DRAFT_TTL_MS) { localStorage.removeItem(cfDraftKey(uid)); return null; } return d; } catch (_) { return null; } };
 const cfClearDraft = (uid) => { try { localStorage.removeItem(cfDraftKey(uid)); } catch (_) {} };
 
-export default function CarForm({ onCreate, listing, onUpdate }) {
+export default function CarForm({ onCreate, listing, onUpdate, defaultValues, onBack }) {
   const { profile } = useProfile();
   const dealerId = getDealerIdFromProfile(profile);
 
-  const [form, setForm] = useState(initialListing);
+  // In create mode, pre-fill state/city (and any other defaults) from the caller.
+  // In edit mode, initialListing is unused — the pre-fill effect below populates from `listing`.
+  const [form, setForm] = useState(() => listing ? initialListing : { ...initialListing, ...(defaultValues || {}) });
   const [step, setStep] = useState(1);
   const [draftBanner, setDraftBanner] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState(null);
@@ -989,8 +991,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         registrationDate: listing.registration_date || "",
         plate_number: listing.plate_number || "",
         vin_number: listing.vin_number || "",
-        state: listing.state || "",
-        city: listing.city || "",
+        state: listing.state || defaultValues?.state || "",
+        city: listing.city || defaultValues?.city || "",
         basePrice: listing.base_price ? String(listing.base_price) : "",
         sellingPrice: listing.selling_price
           ? String(listing.selling_price)
@@ -2886,36 +2888,33 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         </div>
       )}
 
-      {/* Step progress indicator — click a step to jump to it */}
-      <div className="mb-5 bg-white border border-gray-200 rounded-2xl px-3 sm:px-4 py-4">
-        <div className="flex items-start">
+      {/* Step progress indicator — compact circle strip, optional Back button left */}
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginBottom: 20 }}>
+        {onBack && (
+          <button type="button" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, color: "#6b7280", background: "none", border: "none", cursor: "pointer", padding: 0, flexShrink: 0, marginBottom: 11 }}>
+            <ChevronLeft className="w-4 h-4" /> Back
+          </button>
+        )}
+        <div style={{ flex: 1, display: "flex", alignItems: "flex-end" }}>
           {STEPS.map((s, i) => {
             const complete = isSectionComplete(s.id);
             const isCurrent = step === s.id;
             const isLast = i === STEPS.length - 1;
             return (
               <React.Fragment key={s.id}>
-                <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setStep(s.id)}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all border-2 ${
-                      isCurrent
-                        ? "bg-white border-red-600 text-red-600 ring-2 ring-red-100"
-                        : complete
-                        ? "bg-red-600 border-red-600 text-white"
-                        : "bg-white border-gray-300 text-gray-400"
-                    }`}
-                  >
-                    {complete && !isCurrent ? <Check className="w-4 h-4" /> : <span>{s.id}</span>}
-                  </button>
-                  <span className={`text-[10px] font-medium whitespace-nowrap ${isCurrent ? "text-red-600" : complete ? "text-gray-600" : "text-gray-400"}`}>
-                    {s.label}
-                  </span>
-                </div>
-                {!isLast && (
-                  <div className={`flex-1 h-0.5 mx-1 mt-4 rounded-full transition-all ${complete ? "bg-red-600" : "bg-gray-200"}`} />
-                )}
+                <button type="button" onClick={() => setStep(s.id)}
+                  style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", padding: 0, cursor: "pointer", flexShrink: 0 }}>
+                  <div style={{
+                    width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                    background: isCurrent ? "#dc2626" : complete ? "#dc2626" : "#fff",
+                    border: `2px solid ${isCurrent || complete ? "#dc2626" : "#d1d5db"}`,
+                    boxShadow: isCurrent ? "0 0 0 3px rgba(220,38,38,0.15)" : "none",
+                  }}>
+                    {complete && !isCurrent ? <Check className="w-3 h-3" style={{ color: "#fff" }} /> : <span style={{ fontSize: 9, fontWeight: 800, color: isCurrent ? "#fff" : "#9ca3af" }}>{s.id}</span>}
+                  </div>
+                  <span style={{ fontSize: 9, fontWeight: 600, whiteSpace: "nowrap", color: isCurrent ? "#dc2626" : complete ? "#374151" : "#9ca3af" }}>{s.label}</span>
+                </button>
+                {!isLast && <div style={{ flex: 1, height: 2, background: complete ? "#dc2626" : "#e5e7eb", margin: "0 3px 11px", minWidth: 6 }} />}
               </React.Fragment>
             );
           })}

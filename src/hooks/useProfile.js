@@ -28,13 +28,18 @@ export function useProfile() {
 
 /**
  * Derives the correct dealer_id from a profile object.
- * - manager / admin  → profile.dealer_id  (they belong to a dealer)
- * - superadmin / dealer / owner → profile.id  (they ARE the dealer)
+ * MUST stay in lockstep with the DB function get_my_dealer_id() — any drift
+ * means the frontend scopes queries to a different id than RLS expects, which
+ * silently empties reads and rejects writes. The DB rule is:
+ *   - dealer / superadmin / owner          → id        (they ARE the dealer)
+ *   - salesman with NO dealer (Lite)        → id        (owns itself)
+ *   - everyone else (linked salesman,
+ *     manager, admin)                       → dealer_id (they belong to a dealer)
  */
 export function getDealerIdFromProfile(profile) {
   if (!profile) return null;
-  if (profile.role === 'manager' || profile.role === 'admin') {
-    return profile.dealer_id;
-  }
-  return profile.id;
+  if (['dealer', 'superadmin', 'owner'].includes(profile.role)) return profile.id;
+  // Linked salesman / manager / admin belong to a dealer; an unlinked salesman
+  // (Salesman Lite) has dealer_id = null and owns itself.
+  return profile.dealer_id || profile.id;
 }

@@ -88,22 +88,15 @@ export default function AISalesManager({ snapshot, dealerName }) {
     setLoading(true);
 
     try {
-      const AI_PROXY = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/ai/messages` : '/api/ai-messages';
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(AI_PROXY, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('ai-proxy', {
+        body: {
           feature: 'sales_manager',
           system: buildSystemPrompt(snapshot, dealerName),
           messages: next,
-        }),
+        },
       });
-      const data = await res.json();
-      const reply = data?.content?.[0]?.text || 'No response.';
+      if (error) throw error;
+      const reply = data?.content?.[0]?.text || data?.completion || 'No response from AI.';
       setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
     } catch {
       setMessages(prev => [

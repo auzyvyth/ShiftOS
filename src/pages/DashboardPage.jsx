@@ -901,6 +901,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
     monthly_overhead: "", avg_fleet_size: "", floor_plan_rate: "",
     runner_fee: "", admin_fee: "", warranty_reserve_pct: "",
   });
+  const [dealerState, setDealerState] = useState(profile?.state || '');
+  const [dealerCity, setDealerCity]   = useState(profile?.city  || '');
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -1000,6 +1002,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setCommType(profile.commission_config?.type || "percent_gross");
     setCommValue(profile.commission_config?.value != null ? String(profile.commission_config.value) : "10");
     setHandlesRti(profile.handles_roadtax_insurance !== false);
+    setDealerState(profile.state || '');
+    setDealerCity(profile.city || '');
     setTgToken(""); // SEC-5: write-only — never load the stored token back into the form
     setTgChannel(profile.telegram_channel_id || "");
     setTgAutoPost(profile.telegram_auto_post || false);
@@ -1121,6 +1125,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
       social_tiktok: tiktok.trim(),
       social_instagram: instagram.trim(),
       social_facebook: facebook.trim(),
+      state: dealerState.trim(),
+      city:  dealerCity.trim(),
     });
 
   const saveTelegram = () =>
@@ -1593,6 +1599,25 @@ function SettingsTab({ profile, onProfileUpdate }) {
                 className="flex-1 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5"
               />
             </div>
+          </SettingsField>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <SettingsField label="State" hint="Pre-fills new listing location">
+            <select value={dealerState} onChange={e => { setDealerState(e.target.value); setDealerCity(''); }} className={iCls}>
+              <option value="">— select state —</option>
+              {["Kuala Lumpur","Selangor","Penang","Johor","Perak","Melaka","Negeri Sembilan","Kedah","Kelantan","Terengganu","Pahang","Sabah","Sarawak"].map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </SettingsField>
+          <SettingsField label="City / Area" hint="Pre-fills new listing location">
+            <input
+              value={dealerCity}
+              onChange={e => setDealerCity(e.target.value)}
+              placeholder="e.g. Petaling Jaya"
+              className={iCls}
+            />
           </SettingsField>
         </div>
 
@@ -2740,23 +2765,14 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
         ...messages.map((m) => ({ role: m.role, content: m.content })),
         { role: "user", content: msg },
       ];
-      const { data: { session } } = await supabase.auth.getSession();
-      const AI_PROXY = import.meta.env.VITE_API_URL
-        ? `${import.meta.env.VITE_API_URL}/ai/messages`
-        : "/api/ai-messages";
-      const res = await fetch(AI_PROXY, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke("ai-proxy", {
+        body: {
           feature: "sales_manager",
           system: ctx(),
           messages: history,
-        }),
+        },
       });
-      const data = await res.json();
+      if (error) throw error;
       let reply = "Could not generate a response.";
       if (Array.isArray(data?.content))
         reply = data.content.find((b) => b.type === "text")?.text || reply;
@@ -3859,6 +3875,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const [analyticsMap, setAnalyticsMap] = useState({});
   const [soldMap, setSoldMap] = useState({});
   const [lastActivityMap, setLastActivityMap] = useState({});
+  const [activityCountMap, setActivityCountMap] = useState({});
   const [commissionApproveTarget, setCommissionApproveTarget] = useState(null); // salesman id
   const [commissionPayTarget, setCommissionPayTarget] = useState(null);
   const [commissionWorking, setCommissionWorking] = useState(false);
@@ -3908,16 +3925,21 @@ function TeamTab({ managerDealership, dealerId, profile }) {
     if (!dealerId) return;
     const { data } = await supabase
       .from('activity_log')
-      .select('actor_id, created_at')
+      .select('actor_id, action, created_at')
       .eq('dealer_id', dealerId)
       .not('actor_id', 'is', null)
       .order('created_at', { ascending: false });
     if (!data) return;
     const map = {};
+    const counts = {};            // actor_id -> actions in last 30 days
+    const cutoff = Date.now() - 30 * 86400000;
     data.forEach(({ actor_id, created_at }) => {
-      if (actor_id && !map[actor_id]) map[actor_id] = created_at;
+      if (!actor_id) return;
+      if (!map[actor_id]) map[actor_id] = created_at;
+      if (new Date(created_at).getTime() >= cutoff) counts[actor_id] = (counts[actor_id] || 0) + 1;
     });
     setLastActivityMap(map);
+    setActivityCountMap(counts);
   };
 
   const handleApproveCommission = async (salesmanId) => {
@@ -3961,7 +3983,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
     fetchAnalytics();
     fetchSoldPerSalesman();
     fetchLastActivity();
-  }, [managerDealership]);
+  }, [managerDealership, dealerId]); // dealerId must be here — fetchSold* guard on it
 
   useEffect(() => {
     if (!managerDealership || !dealerId) return;
@@ -4427,71 +4449,117 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                         </>
                       )}
                     </div>
-                    {s.slug ? (
-                      <div className="flex items-center gap-2 mb-3">
-                        <div
-                          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-gray-500"
-                          style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}
-                        >
-                          <Link className="w-3 h-3 text-gray-400" />
-                          /cars?ref=
-                          <span className="text-gray-900 font-medium">
-                            {s.slug}
-                          </span>
+                    {/* Salesmen sell via a referral link, so they get the storefront
+                        performance grid (clicks / WhatsApp / sales). Every other role
+                        has no referral link and no sales — showing them that grid was
+                        meaningless (all zeros). They get a role-appropriate block:
+                        what they're responsible for + their activity footprint. */}
+                    {s.role === 'salesman' ? (
+                      <>
+                        {s.slug ? (
+                          <div className="flex items-center gap-2 mb-3">
+                            <div
+                              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-gray-500"
+                              style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}
+                            >
+                              <Link className="w-3 h-3 text-gray-400" />
+                              /cars?ref=
+                              <span className="text-gray-900 font-medium">
+                                {s.slug}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => copyLink(s)}
+                              className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 rounded-lg px-2 py-1.5 transition-all"
+                              style={{ border: "1px solid #e5e7eb" }}
+                            >
+                              {copiedId === s.id ? (
+                                <>
+                                  <Check className="w-3 h-3 text-emerald-400" />
+                                  <span className="text-emerald-400">Copied</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3 h-3" />
+                                  Copy
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="mb-3">
+                            <span
+                              className="text-xs text-amber-500/70 px-2.5 py-1.5 rounded-lg"
+                              style={{
+                                background: "rgba(251,191,36,0.06)",
+                                border: "1px solid rgba(251,191,36,0.12)",
+                              }}
+                            >
+                              ⚠ No slug — referral link unavailable
+                            </span>
+                          </div>
+                        )}
+                        <div className="grid grid-cols-3 gap-2 max-w-xs">
+                          {[
+                            [String(analyticsMap[s.slug]?.clicks || 0), "Clicks"],
+                            [String(analyticsMap[s.slug]?.whatsapp || 0), "WhatsApp"],
+                            [String(soldMap[s.id]?.sold || 0), "Sales"],
+                          ].map(([v, lbl]) => (
+                            <div
+                              key={lbl}
+                              className="rounded-lg px-2.5 py-2"
+                              style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}
+                            >
+                              <p
+                                className={`text-sm font-bold ${(lbl === "Sales" || lbl === "WhatsApp") && Number(v) > 0 ? "grad-green" : "text-gray-900"}`}
+                              >
+                                {v}
+                              </p>
+                              <p className="text-[10px] text-gray-500 mt-0.5">
+                                {lbl}
+                              </p>
+                            </div>
+                          ))}
                         </div>
-                        <button
-                          onClick={() => copyLink(s)}
-                          className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 rounded-lg px-2 py-1.5 transition-all"
-                          style={{ border: "1px solid #e5e7eb" }}
-                        >
-                          {copiedId === s.id ? (
-                            <>
-                              <Check className="w-3 h-3 text-emerald-400" />
-                              <span className="text-emerald-400">Copied</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3 h-3" />
-                              Copy
-                            </>
-                          )}
-                        </button>
-                      </div>
+                      </>
                     ) : (
-                      <div className="mb-3">
-                        <span
-                          className="text-xs text-amber-500/70 px-2.5 py-1.5 rounded-lg"
-                          style={{
-                            background: "rgba(251,191,36,0.06)",
-                            border: "1px solid rgba(251,191,36,0.12)",
-                          }}
-                        >
-                          ⚠ No slug — referral link unavailable
-                        </span>
-                      </div>
+                      (() => {
+                        const ROLE_META = {
+                          manager:    { desc: 'Oversees the team, approves deals & commissions' },
+                          admin:      { desc: 'Listings, documents & day-to-day operations' },
+                          accountant: { desc: 'Payroll, commission payouts & financials' },
+                          fi_officer: { desc: 'Hire-purchase submissions & bank approvals' },
+                        };
+                        const meta = ROLE_META[s.role] || { desc: 'Team member' };
+                        const last = lastActivityMap[s.id];
+                        const lastTxt = last
+                          ? (() => {
+                              const d = Math.floor((Date.now() - new Date(last)) / 86400000);
+                              if (d <= 0) return 'Today';
+                              if (d === 1) return 'Yesterday';
+                              if (d < 30) return `${d}d ago`;
+                              return '30d+ ago';
+                            })()
+                          : 'No activity';
+                        return (
+                          <>
+                            <p className="text-xs text-gray-500 mb-3">{meta.desc}</p>
+                            <div className="grid grid-cols-2 gap-2 max-w-xs">
+                              <div className="rounded-lg px-2.5 py-2" style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}>
+                                <p className={`text-sm font-bold ${(activityCountMap[s.id] || 0) > 0 ? "text-gray-900" : "text-gray-400"}`}>
+                                  {activityCountMap[s.id] || 0}
+                                </p>
+                                <p className="text-[10px] text-gray-500 mt-0.5">Actions · 30d</p>
+                              </div>
+                              <div className="rounded-lg px-2.5 py-2" style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}>
+                                <p className="text-sm font-bold text-gray-900">{lastTxt}</p>
+                                <p className="text-[10px] text-gray-500 mt-0.5">Last active</p>
+                              </div>
+                            </div>
+                          </>
+                        );
+                      })()
                     )}
-                    <div className="grid grid-cols-3 gap-2 max-w-xs">
-                      {[
-                        [String(analyticsMap[s.slug]?.clicks || 0), "Clicks"],
-                        [String(analyticsMap[s.slug]?.whatsapp || 0), "WhatsApp"],
-                        [String(soldMap[s.id]?.sold || 0), "Sales"],
-                      ].map(([v, lbl]) => (
-                        <div
-                          key={lbl}
-                          className="rounded-lg px-2.5 py-2"
-                          style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}
-                        >
-                          <p
-                            className={`text-sm font-bold ${(lbl === "Sales" || lbl === "WhatsApp") && Number(v) > 0 ? "grad-green" : "text-gray-900"}`}
-                          >
-                            {v}
-                          </p>
-                          <p className="text-[10px] text-gray-500 mt-0.5">
-                            {lbl}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
                     {/* Commission payout section */}
                     {s.role === 'salesman' && (soldMap[s.id]?.commission > 0) && (
                       <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 10, background: '#f9fafb', border: '1px solid #e5e7eb' }}>
@@ -5431,10 +5499,12 @@ function ListingDetailDrawer({
                   <Pencil style={{ width: 14, height: 14, flexShrink: 0 }} />Edit Listing
                 </button>
 
-                {/* Price */}
-                <button onClick={() => setPriceEditListing(listing)} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.3)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
-                  <Tag style={{ width: 14, height: 14, flexShrink: 0 }} />Change Price
-                </button>
+                {/* Price — hidden on sold listings */}
+                {!isSold && (
+                  <button onClick={() => setPriceEditListing(listing)} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.3)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
+                    <Tag style={{ width: 14, height: 14, flexShrink: 0 }} />Change Price
+                  </button>
+                )}
 
                 {/* Copy */}
                 <button onClick={() => copyListing(listing)} style={{ ...btnBase, border: '1px solid rgba(139,195,74,0.25)', color: copiedListingId === listing.id ? '#4ade80' : '#8bc34a' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
@@ -5442,10 +5512,12 @@ function ListingDetailDrawer({
                   {copiedListingId === listing.id ? 'Copied!' : 'Copy Writing'}
                 </button>
 
-                {/* Financing Calculator */}
-                <button onClick={() => setCalcOpen(true)} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.25)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
-                  <Calculator style={{ width: 14, height: 14, flexShrink: 0 }} />Financing Calc
-                </button>
+                {/* Financing Calculator — hidden on sold listings */}
+                {!isSold && (
+                  <button onClick={() => setCalcOpen(true)} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.25)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
+                    <Calculator style={{ width: 14, height: 14, flexShrink: 0 }} />Financing Calc
+                  </button>
+                )}
 
                 {/* Assign */}
                 <div style={{ position: 'relative', gridColumn: isMobile ? '1 / -1' : undefined }}>
@@ -5578,7 +5650,29 @@ function ListingDetailDrawer({
 }
 
 // ─── StockTab ─────────────────────────────────────────────────────────────────
-const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
+// Quick-filter chips for the stock list (keys map to stockFilterFns predicates)
+const STOCK_FILTER_CHIPS = [
+  { key: 'missing_b7',  label: 'Missing B7' },
+  { key: 'missing_b5',  label: 'Missing B5' },
+  { key: 'no_plate',    label: 'No plate' },
+  { key: 'no_vin',      label: 'No VIN' },
+  { key: 'unpublished', label: 'Unpublished' },
+  { key: 'under_hp',    label: 'Under HP' },
+  { key: 'enc_unknown', label: 'Enc. unknown' },
+  { key: 'aging',       label: 'Aging 60d+' },
+  { key: 'loss',        label: 'In loss' },
+];
+const STOCK_SORT_OPTIONS = [
+  { value: 'recent',      label: 'Newest' },
+  { value: 'price_desc',  label: 'Price high→low' },
+  { value: 'price_asc',   label: 'Price low→high' },
+  { value: 'year_desc',   label: 'Year newest' },
+  { value: 'year_asc',    label: 'Year oldest' },
+  { value: 'profit_desc', label: 'Profit high→low' },
+  { value: 'profit_asc',  label: 'Profit low→high' },
+  { value: 'days_desc',   label: 'Longest in stock' },
+];
+const StockTab = React.memo(function StockTab({ userId, listings, profile, onPublishComplete }) {
   const navigate = useNavigate();
   const { can } = usePermissions(profile);
   const [units, setUnits] = useState([]);
@@ -5626,14 +5720,83 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
   const [editPriceForm, setEditPriceForm] = useState({ purchase_price: '', recon_cost: '', asking_price: '' });
   const [editPriceSaving, setEditPriceSaving] = useState(false);
 
-  // Reset pagination when switching between available/sold
-  useEffect(() => { setVisibleCount(30); }, [stockView]);
+  const [publishingStockId, setPublishingStockId] = useState(null);
+  const [detailUnit, setDetailUnit] = useState(null);
+  const [stockPublishListing, setStockPublishListing] = useState(null);
+  // Search + filter + sort for the stock list
+  const [stockSearch, setStockSearch] = useState('');
+  const [stockFilters, setStockFilters] = useState(() => new Set());
+  const [stockSort, setStockSort] = useState('recent');
+  const toggleStockFilter = (k) => setStockFilters(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; });
+  // Lock body scroll while detail drawer or publish form is open
+  useEffect(() => {
+    if (!detailUnit && !stockPublishListing) return;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, [detailUnit, stockPublishListing]);
+
+  const handlePublishFromStock = async (u) => {
+    if (publishingStockId) return;
+    setPublishingStockId(u.id);
+    try {
+      let listing = null;
+      if (!u.listing_id) {
+        // No listing yet — create a minimal unpublished one from stock unit data
+        const { data: newListing, error } = await supabase.from('car_listings').insert({
+          dealer_id: userId,
+          brand: u.brand || '',
+          model: u.model || '',
+          year: u.year || null,
+          plate_number: u.registration_number || null,
+          selling_price: u.asking_price || null,
+          status: 'unpublished',
+        }).select().single();
+        if (error) {
+          if (error.message?.includes('listing_cap_exceeded')) toast.error('Listing cap reached. Upgrade your plan to publish more cars.');
+          else toast.error('Could not create listing: ' + error.message);
+          return;
+        }
+        await supabase.from('stock_units').update({ listing_id: newListing.id }).eq('id', u.id).eq('dealer_id', userId);
+        listing = newListing;
+      } else {
+        // Fetch the full listing row (joined car_listings select doesn't include id)
+        const { data, error } = await supabase.from('car_listings').select('*').eq('id', u.listing_id).single();
+        if (error || !data) { toast.error('Could not load listing details.'); return; }
+        listing = data;
+      }
+      // Open CarForm so user can add photos, location, and other details before publishing
+      setStockPublishListing(listing);
+    } catch (e) {
+      console.error('[handlePublishFromStock]', e);
+      toast.error('Something went wrong.');
+    } finally {
+      setPublishingStockId(null);
+    }
+  };
+
+  // Called by CarForm after saving details in the stock-publish flow
+  const handleStockPublishSave = async (savedListing) => {
+    const { error } = await supabase
+      .from('car_listings')
+      .update({ status: 'available' })
+      .eq('id', savedListing.id);
+    if (error) { toast.error('Could not publish: ' + error.message); return; }
+    setStockPublishListing(null);
+    setDetailUnit(null);
+    fetchUnits();
+    onPublishComplete?.({ ...savedListing, status: 'available' });
+    logActivity({ dealerId: userId, actor: profile, tableName: 'car_listings', recordId: savedListing.id, action: 'published', summary: `Published from stock — ${savedListing.brand || ''} ${savedListing.model || ''} ${savedListing.year || ''}`.trim() });
+    toast.success('Published to marketplace');
+  };
+
+  // Reset pagination when switching views or changing search/filters/sort
+  useEffect(() => { setVisibleCount(30); }, [stockView, stockSearch, stockFilters, stockSort]);
 
   const fetchUnits = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('stock_units')
-      .select('*, car_listings(brand, model, year, plate_number, base_price, selling_price, purchase_price, recon_cost, gross_profit, days_in_stock, sold_price, sold_date, status)')
+      .select('*, car_listings(brand, model, variant, year, plate_number, base_price, selling_price, purchase_price, recon_cost, gross_profit, days_in_stock, sold_price, sold_date, status, images, mileage, transmission, fuel_type, body_type, colour, engine_cc, condition, vin_number, registration_date, previous_owners, road_tax_expiry, warranty_months, is_recon, auction_grade, interior_grade, import_country, commission_amount)')
       .eq('dealer_id', userId)
       .order('created_at', { ascending: false });
     if (error) console.error('[StockTab] fetchUnits error:', error.message, error);
@@ -5673,6 +5836,51 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
     const revenue = Number(u.asking_price) || Number(u.car_listings?.selling_price) || 0;
     if (revenue === 0 && cost === 0) return null;
     return revenue - cost - (Number(u.recon_cost) || 0);
+  };
+
+  // Predicates for the quick-filter chips (each returns true = unit matches the filter)
+  const stockFilterFns = {
+    missing_b7:  u => !u.puspakom_b7_date,
+    missing_b5:  u => !u.puspakom_b5_date,
+    no_plate:    u => !(u.car_listings?.plate_number || u.registration_number),
+    no_vin:      u => !(u.car_listings?.vin_number),
+    unpublished: u => !u.listing_id || u.car_listings?.status === 'unpublished',
+    under_hp:    u => (u.encumbrance_status || 'unknown') === 'under_hp',
+    enc_unknown: u => (u.encumbrance_status || 'unknown') === 'unknown',
+    aging:       u => u.status === 'in_stock' && typeof daysInStock(u) === 'number' && daysInStock(u) > 60,
+    loss:        u => { const g = grossProfit(u); return g != null && g < 0; },
+  };
+  // Apply text search + active chip filters + sort to a list of units
+  const applyStockFilters = (list) => {
+    let out = list;
+    const q = stockSearch.trim().toLowerCase();
+    if (q) {
+      out = out.filter(u => {
+        const c = u.car_listings || {};
+        const hay = [c.brand, c.model, c.variant, c.plate_number || u.registration_number, c.vin_number, u.brand, u.model]
+          .filter(Boolean).join(' ').toLowerCase();
+        return hay.includes(q);
+      });
+    }
+    if (stockFilters.size) {
+      out = out.filter(u => [...stockFilters].every(k => stockFilterFns[k]?.(u)));
+    }
+    if (stockSort !== 'recent') {
+      const priceOf = u => stockView === 'sold' ? (Number(u.sold_price) || 0) : (Number(u.asking_price) || Number(u.car_listings?.selling_price) || 0);
+      const yearOf  = u => Number(u.car_listings?.year || u.year) || 0;
+      const daysOf  = u => { const d = daysInStock(u); return typeof d === 'number' ? d : 0; };
+      const sorters = {
+        price_desc:  (a, b) => priceOf(b) - priceOf(a),
+        price_asc:   (a, b) => priceOf(a) - priceOf(b),
+        year_desc:   (a, b) => yearOf(b) - yearOf(a),
+        year_asc:    (a, b) => yearOf(a) - yearOf(b),
+        profit_desc: (a, b) => (grossProfit(b) || 0) - (grossProfit(a) || 0),
+        profit_asc:  (a, b) => (grossProfit(a) || 0) - (grossProfit(b) || 0),
+        days_desc:   (a, b) => daysOf(b) - daysOf(a),
+      };
+      if (sorters[stockSort]) out = [...out].sort(sorters[stockSort]);
+    }
+    return out;
   };
 
   const now = new Date();
@@ -6125,6 +6333,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
   ];
 
   return (
+    <>
     <div className="space-y-6">
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
         {summaryCards.map(({ label, val, Icon: Ic, glow, grad, spark, sparkColor }) => (
@@ -6192,141 +6401,332 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
             </button>
           ))}
         </div>
-        <div className="table-wrap">
+        {/* Search + filter + sort bar */}
+        {units.length > 0 && (
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6', display: 'flex', flexDirection: 'column', gap: 9 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+                <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: '#9ca3af', pointerEvents: 'none' }} />
+                <input value={stockSearch} onChange={e => setStockSearch(e.target.value)} placeholder="Search brand, model, plate, VIN…"
+                  style={{ width: '100%', padding: '8px 28px 8px 32px', fontSize: 13, borderRadius: 8, border: '1px solid #e5e7eb', outline: 'none', background: '#fff', color: '#111827', fontFamily: "'DM Sans',sans-serif" }} />
+                {stockSearch && (
+                  <button onClick={() => setStockSearch('')} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', width: 18, height: 18, borderRadius: '50%', border: 'none', background: '#f3f4f6', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}><X style={{ width: 11, height: 11 }} /></button>
+                )}
+              </div>
+              <select value={stockSort} onChange={e => setStockSort(e.target.value)}
+                style={{ flexShrink: 0, padding: '8px 10px', fontSize: 12, fontWeight: 600, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#374151', cursor: 'pointer', outline: 'none', fontFamily: "'DM Sans',sans-serif", maxWidth: 150 }}>
+                {STOCK_SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2, scrollbarWidth: 'thin' }}>
+              {STOCK_FILTER_CHIPS.map(c => {
+                const active = stockFilters.has(c.key);
+                return (
+                  <button key={c.key} onClick={() => toggleStockFilter(c.key)}
+                    style={{ flexShrink: 0, fontSize: 11, fontWeight: 600, padding: '5px 11px', borderRadius: 14, cursor: 'pointer', border: `1px solid ${active ? '#dc2626' : '#e5e7eb'}`, background: active ? '#FEF2F2' : '#fff', color: active ? '#dc2626' : '#6b7280', whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif" }}>
+                    {c.label}
+                  </button>
+                );
+              })}
+              {(stockFilters.size > 0 || stockSearch) && (
+                <button onClick={() => { setStockFilters(new Set()); setStockSearch(''); }}
+                  style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '5px 11px', borderRadius: 14, cursor: 'pointer', border: '1px solid #e5e7eb', background: '#f9fafb', color: '#6b7280', whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif" }}>
+                  Clear all
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+        <div>
           {loading ? (
-            <p className="text-gray-500 text-sm p-6">Loading...</p>
+            <p style={{ color: '#9ca3af', fontSize: 13, padding: '24px 20px' }}>Loading…</p>
           ) : units.length === 0 ? (
-            <p className="text-gray-600 text-sm p-6">No stock units yet.</p>
+            <p style={{ color: '#6b7280', fontSize: 13, padding: '24px 20px' }}>No stock units yet.</p>
           ) : (() => {
-            const displayUnits = stockView === 'available' ? activeUnits : soldUnits;
+            const baseUnits = stockView === 'available' ? activeUnits : soldUnits;
+            const displayUnits = applyStockFilters(baseUnits);
             const visibleUnits = displayUnits.slice(0, visibleCount);
             const hasMore = displayUnits.length > visibleCount;
-            const thStyle = { padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' };
             const currentYear = new Date().getFullYear();
+            const filtersActive = stockFilters.size > 0 || stockSearch.trim();
             return (
               <>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                    {stockView === 'available'
-                      ? ['Car', 'Age', can('view_cost') ? 'Purchase Price' : null, can('view_cost') ? 'Recon' : null, 'Asking', 'Days', can('view_gross') ? 'Gross Profit' : null, 'Status', ''].filter(Boolean).map(h => <th key={h} style={thStyle}>{h}</th>)
-                      : ['Car', 'Age', can('view_cost') ? 'Purchase Price' : null, can('view_cost') ? 'Recon' : null, 'Days in Stock', can('view_gross') ? 'Gross Profit' : null, 'Status', 'Sold Price', 'Sold Date'].filter(Boolean).map(h => <th key={h} style={thStyle}>{h}</th>)
-                    }
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayUnits.length === 0 ? (
-                    <tr><td colSpan={9} style={{ padding: '24px 14px', color: '#4b5563', fontSize: 13 }}>No units in this view.</td></tr>
-                  ) : visibleUnits.map(u => {
-                    const car = u.car_listings || { brand: u.brand, model: u.model, year: u.year, plate_number: u.registration_number };
-                    const gp = grossProfit(u);
-                    const days = daysInStock(u);
-                    const daysNum = typeof days === 'number' ? days : 0;
-                    const isAging = u.status === 'in_stock' && daysNum > 60;
-                    const carYear = car?.year ? Number(car.year) : null;
-                    const carAge = carYear ? currentYear - carYear : null;
-                    return (
-                      <tr key={u.id} title={isAging ? '60+ days in stock' : undefined} style={{ borderBottom: '1px solid #f3f4f6', background: isAging ? 'rgba(220,38,38,0.05)' : 'transparent' }} onMouseEnter={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.08)' : '#f9fafb'} onMouseLeave={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.05)' : 'transparent'}>
-                        <td style={{ padding: '12px 14px', minWidth: 140 }}>
-                          {car ? (
-                            <>
-                              <p style={{ fontSize: 13, color: '#111827', fontWeight: 500, margin: 0 }}>{car.brand} {car.model}</p>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                                <span style={{ fontSize: 11, color: '#6b7280' }}>{car.year}</span>
-                                {(car.plate_number || u.registration_number) ? (
-                                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.07em', color: '#374151', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 4, padding: '1px 6px' }}>
-                                    {(car.plate_number || u.registration_number).toUpperCase()}
-                                  </span>
-                                ) : (
-                                  <span style={{ fontSize: 10, fontWeight: 600, color: '#9ca3af', background: '#fafafa', border: '1px dashed #d1d5db', borderRadius: 4, padding: '1px 6px' }}>
-                                    no plate
-                                  </span>
-                                )}
-                              </div>
-                              {u.status === 'in_stock' && (() => {
-                                const ps  = puspakomStatus(u.puspakom_b7_date);
-                                const b5  = b5Status(u.puspakom_b5_date);
-                                const enc = ENCUMBRANCE_CFG[u.encumbrance_status || 'unknown'];
-                                return (
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 5 }}>
-                                    <button onClick={() => handleUpdatePuspakom(u)} title="Click to update PUSPAKOM B7 date"
-                                      style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 4, background: `${ps.color}15`, border: `1px solid ${ps.color}30`, color: ps.color, cursor: 'pointer' }}>
-                                      {ps.label}
-                                    </button>
-                                    <button onClick={() => handleUpdateB5(u)} title="Click to update PUSPAKOM B5 date"
-                                      style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 4, background: `${b5.color}15`, border: `1px solid ${b5.color}30`, color: b5.color, cursor: 'pointer' }}>
-                                      {b5.label}
-                                    </button>
-                                    <button onClick={() => handleUpdateEncumbrance(u)} title="Click to toggle encumbrance status"
-                                      style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 4, background: `${enc.color}15`, border: `1px solid ${enc.color}30`, color: enc.color, cursor: 'pointer' }}>
-                                      {enc.label}
-                                    </button>
-                                  </div>
-                                );
-                              })()}
-                            </>
-                          ) : <span style={{ color: '#6b7280', fontSize: 12 }}>—</span>}
-                        </td>
-                        <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>
-                          {carAge != null
-                            ? <span style={{ color: carAge >= 10 ? '#f87171' : carAge >= 5 ? '#fbbf24' : '#34d399', fontWeight: 600 }}>{carAge}yr</span>
-                            : <span style={{ color: '#4b5563' }}>—</span>}
-                        </td>
-                        {can('view_cost') && <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>{(() => { const cb = costBasis(u); return cb > 0 ? <span style={{ color: '#111827' }}>RM {cb.toLocaleString()}</span> : <span style={{ color: '#9ca3af' }}>—</span>; })()}</td>}
-                        {can('view_cost') && <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>{Number(u.recon_cost) > 0 ? <span style={{ color: '#374151' }}>RM {Number(u.recon_cost).toLocaleString()}</span> : <span style={{ color: '#9ca3af' }}>—</span>}</td>}
-                        {stockView === 'available' && (
-                          <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(Number(u.asking_price)||0).toLocaleString()}</td>
-                        )}
-                        <td style={{ padding: '12px 14px', fontSize: 13 }}>
-                          {isAging
-                            ? <span style={{ color: '#93c5fd', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}><AlertTriangle style={{ width: 11, height: 11 }} />{daysNum}d</span>
-                            : <span style={{ color: '#9ca3af' }}>{days !== '—' ? `${days}d` : '—'}</span>}
-                        </td>
-                        {can('view_gross') && <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>
-                          {gp != null ? <span style={{ color: gp >= 0 ? '#34d399' : '#93c5fd', fontWeight: 600 }}>RM {gp.toLocaleString()}</span> : '—'}
-                        </td>}
-                        <td style={{ padding: '12px 14px' }}>{statusBadge(u.status)}</td>
-                        {stockView === 'available' ? (
-                          <td style={{ padding: '12px 14px' }}>
-                            <div style={{ display: 'flex', gap: 6, flexDirection: 'column' }}>
-                              <button onClick={() => { setSoldTarget(u); setSoldForm({ sold_price: u.asking_price ? String(u.asking_price) : '', sold_date: new Date().toISOString().slice(0, 10) }); }} style={{ fontSize: 11, color: '#93c5fd', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Mark Sold</button>
-                              <button onClick={() => fetchHistory(u)} style={{ fontSize: 11, color: '#9ca3af', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>History</button>
-                              <button onClick={() => fetchPnl(u)} style={{ fontSize: 11, color: '#34d399', background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>P&L</button>
-                              <button onClick={() => fetchReconJobs(u)} style={{ fontSize: 11, color: '#f59e0b', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Recon</button>
-                              {can('view_cost') && <button onClick={() => openAdSpend(u)} style={{ fontSize: 11, color: '#ec4899', background: 'rgba(236,72,153,0.08)', border: '1px solid rgba(236,72,153,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Ads</button>}
-                              {can('view_cost') && <button onClick={() => { setEditPriceUnit(u); setEditPriceForm({ purchase_price: String(u.purchase_price||''), recon_cost: String(u.recon_cost||''), asking_price: String(u.asking_price||'') }); }} style={{ fontSize: 11, color: '#a78bfa', background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Edit Prices</button>}
-                            </div>
-                          </td>
+                {filtersActive && displayUnits.length > 0 && (
+                  <p style={{ color: '#9ca3af', fontSize: 11, fontWeight: 600, padding: '8px 16px 0' }}>
+                    {displayUnits.length} of {baseUnits.length} {baseUnits.length === 1 ? 'unit' : 'units'}
+                  </p>
+                )}
+                {displayUnits.length === 0 ? (
+                  <p style={{ color: '#6b7280', fontSize: 13, padding: '24px 20px' }}>{filtersActive ? 'No units match your search or filters.' : 'No units in this view.'}</p>
+                ) : visibleUnits.map(u => {
+                  const car = u.car_listings || { brand: u.brand, model: u.model, year: u.year, plate_number: u.registration_number };
+                  const thumb = u.car_listings?.images?.[0] || null;
+                  const gp = grossProfit(u);
+                  const days = daysInStock(u);
+                  const daysNum = typeof days === 'number' ? days : 0;
+                  const isAging = u.status === 'in_stock' && daysNum > 60;
+                  const carYear = car?.year ? Number(car.year) : null;
+                  const carAge = carYear ? currentYear - carYear : null;
+                  const plate = car.plate_number || u.registration_number;
+                  const ps = puspakomStatus(u.puspakom_b7_date);
+                  const b5 = b5Status(u.puspakom_b5_date);
+                  const enc = ENCUMBRANCE_CFG[u.encumbrance_status || 'unknown'];
+                  const isUnpublished = !u.listing_id || u.car_listings?.status === 'unpublished';
+                  return (
+                    <div
+                      key={u.id}
+                      onClick={() => setDetailUnit(u)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px',
+                        borderBottom: '1px solid #f3f4f6', cursor: 'pointer',
+                        background: isAging ? 'rgba(248,113,113,0.03)' : 'transparent',
+                        transition: 'background 0.1s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = isAging ? 'rgba(248,113,113,0.07)' : '#f9fafb'}
+                      onMouseLeave={e => e.currentTarget.style.background = isAging ? 'rgba(248,113,113,0.03)' : 'transparent'}
+                    >
+                      {/* Thumbnail */}
+                      <div style={{ width: 68, height: 50, borderRadius: 8, overflow: 'hidden', flexShrink: 0, background: '#f3f4f6', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {thumb ? (
+                          <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { e.target.style.display = 'none'; }} />
                         ) : (
-                          <>
-                            <td style={{ padding: '12px 14px', color: '#34d399', fontSize: 13, whiteSpace: 'nowrap', fontWeight: 600 }}>
-                              RM {Number(u.sold_price || 0).toLocaleString()}
-                            </td>
-                            <td style={{ padding: '12px 14px', color: '#6b7280', fontSize: 12 }}>
-                              {u.sold_date ? new Date(u.sold_date).toLocaleDateString('en-MY') : '—'}
-                            </td>
-                          </>
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round">
+                            <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/>
+                            <circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/>
+                          </svg>
                         )}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {hasMore && (
-                <div style={{ padding: '16px', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
-                  <button
-                    onClick={() => setVisibleCount(c => c + 30)}
-                    style={{ fontSize: 13, fontWeight: 600, color: '#93c5fd', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 8, padding: '8px 24px', cursor: 'pointer' }}
-                  >
-                    Load More ({displayUnits.length - visibleCount} remaining)
-                  </button>
-                </div>
-              )}
+                      </div>
+
+                      {/* Info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 5 }}>
+                          <div style={{ minWidth: 0 }}>
+                            <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {car.brand} {car.model}
+                            </p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2, flexWrap: 'wrap' }}>
+                              {carAge != null && (
+                                <span style={{ fontSize: 10, fontWeight: 700, color: carAge >= 10 ? '#f87171' : carAge >= 5 ? '#fbbf24' : '#34d399' }}>{carAge}yr</span>
+                              )}
+                              {plate ? (
+                                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', color: '#374151', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 3, padding: '0 5px' }}>{plate.toUpperCase()}</span>
+                              ) : (
+                                <span style={{ fontSize: 9, color: '#9ca3af', border: '1px dashed #d1d5db', borderRadius: 3, padding: '0 5px' }}>no plate</span>
+                              )}
+                              {isAging && <span style={{ fontSize: 9, fontWeight: 700, color: '#f87171', background: 'rgba(248,113,113,0.1)', borderRadius: 3, padding: '0 4px' }}>60d+</span>}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            {stockView === 'available' ? (
+                              <>
+                                <p style={{ fontSize: 13, fontWeight: 700, color: '#111827', margin: 0 }}>RM {(Number(u.asking_price)||0).toLocaleString()}</p>
+                                <p style={{ fontSize: 10, color: isAging ? '#f87171' : '#9ca3af', margin: '1px 0 0' }}>{days !== '—' ? `${days}d` : '—'}</p>
+                              </>
+                            ) : (
+                              <>
+                                <p style={{ fontSize: 13, fontWeight: 700, color: '#34d399', margin: 0 }}>RM {(Number(u.sold_price)||0).toLocaleString()}</p>
+                                <p style={{ fontSize: 10, color: '#9ca3af', margin: '1px 0 0' }}>{u.sold_date ? new Date(u.sold_date).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' }) : '—'}</p>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        {/* Status badges */}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                          {u.status === 'in_stock' && <>
+                            <span title="PUSPAKOM B7 roadworthiness cert — tap the card to update" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${ps.color}15`, border: `1px solid ${ps.color}30`, color: ps.color }}>{ps.label}</span>
+                            <span title="PUSPAKOM B5 ownership transfer cert" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${b5.color}15`, border: `1px solid ${b5.color}30`, color: b5.color }}>{b5.label}</span>
+                            <span title="Hire-purchase / loan encumbrance" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${enc.color}15`, border: `1px solid ${enc.color}30`, color: enc.color }}>{enc.label}</span>
+                            {isUnpublished && <span title="Not visible on the public marketplace" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: '#fffbeb', border: '1px solid #fde68a', color: '#b45309' }}>Not published</span>}
+                          </>}
+                          {can('view_gross') && gp != null && (
+                            <span title="Estimated gross profit" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: gp >= 0 ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.1)', border: `1px solid ${gp >= 0 ? '#6ee7b7' : '#fca5a5'}`, color: gp >= 0 ? '#059669' : '#dc2626' }}>
+                              GP {gp >= 0 ? '+' : '−'}RM {Math.abs(gp).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <ChevronRight style={{ width: 14, height: 14, color: '#d1d5db', flexShrink: 0 }} />
+                    </div>
+                  );
+                })}
+                {hasMore && (
+                  <div style={{ padding: '14px', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
+                    <button
+                      onClick={() => setVisibleCount(c => c + 30)}
+                      style={{ fontSize: 13, fontWeight: 600, color: '#3b82f6', background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.18)', borderRadius: 8, padding: '8px 24px', cursor: 'pointer' }}
+                    >
+                      Load {Math.min(30, displayUnits.length - visibleCount)} more
+                    </button>
+                  </div>
+                )}
               </>
             );
           })()}
         </div>
       </div>
+
+      {/* ── Stock Unit Detail Drawer ── */}
+      {detailUnit && createPortal((() => {
+        const u = detailUnit;
+        const car = u.car_listings || { brand: u.brand, model: u.model, year: u.year, plate_number: u.registration_number };
+        const thumb = u.car_listings?.images?.[0] || null;
+        const plate = car.plate_number || u.registration_number;
+        const gp = grossProfit(u);
+        const days = daysInStock(u);
+        const daysNum = typeof days === 'number' ? days : 0;
+        const isAging = u.status === 'in_stock' && daysNum > 60;
+        const ps  = puspakomStatus(u.puspakom_b7_date);
+        const b5  = b5Status(u.puspakom_b5_date);
+        const enc = ENCUMBRANCE_CFG[u.encumbrance_status || 'unknown'];
+        const isUnpublished = !u.listing_id || u.car_listings?.status === 'unpublished';
+        const currentYear = new Date().getFullYear();
+        const carYear = car?.year ? Number(car.year) : null;
+        const carAge = carYear ? currentYear - carYear : null;
+
+        const ACTION_BTN = (label, desc, color, bg, border, onClick) => (
+          <button onClick={onClick}
+            style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', background: bg, border: `1px solid ${border}`, borderRadius: 10, cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: "'DM Sans',sans-serif", transition: 'opacity 0.15s' }}
+            onMouseEnter={e => e.currentTarget.style.opacity = '0.8'} onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color, margin: 0 }}>{label}</p>
+              <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>{desc}</p>
+            </div>
+            <ChevronRight style={{ width: 14, height: 14, color: '#d1d5db', flexShrink: 0, marginTop: 2 }} />
+          </button>
+        );
+
+        // Only show spec rows that have values
+        const SPEC_ROWS = [
+          { label: 'Variant',        val: car.variant || null },
+          { label: 'Mileage',        val: car.mileage ? `${Number(car.mileage).toLocaleString()} km` : null },
+          { label: 'Transmission',   val: car.transmission || null },
+          { label: 'Fuel Type',      val: car.fuel_type || null },
+          { label: 'Body Type',      val: car.body_type || null },
+          { label: 'Colour',         val: car.colour || null },
+          { label: 'Engine',         val: car.engine_cc ? `${car.engine_cc} cc` : null },
+          { label: 'Condition',      val: car.condition || null },
+          { label: 'VIN',            val: car.vin_number || null },
+          { label: 'Reg Date',       val: car.registration_date ? new Date(car.registration_date).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' }) : null },
+          { label: 'Prev. Owners',   val: car.previous_owners != null ? String(car.previous_owners) : null },
+          { label: 'Road Tax Exp.',  val: car.road_tax_expiry ? new Date(car.road_tax_expiry).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' }) : null },
+          { label: 'Warranty',       val: car.warranty_months ? `${car.warranty_months} months` : null },
+          { label: 'Auction Grade',  val: car.is_recon && car.auction_grade ? car.auction_grade : null },
+          { label: 'Interior Grade', val: car.is_recon && car.interior_grade ? car.interior_grade : null },
+          { label: 'Import',         val: car.import_country || null },
+        ].filter(s => s.val);
+
+        return (
+          <div
+            onClick={() => setDetailUnit(null)}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', overscrollBehavior: 'contain' }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: '#fff', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 540,
+                maxHeight: '92vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+                overscrollBehavior: 'contain',
+                boxShadow: '0 -16px 64px rgba(0,0,0,0.25)',
+                paddingBottom: 'env(safe-area-inset-bottom, 20px)',
+                fontFamily: "'DM Sans',sans-serif",
+              }}
+            >
+              {/* Drag handle pill */}
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 2px' }}>
+                <div style={{ width: 36, height: 4, borderRadius: 2, background: '#e5e7eb' }} />
+              </div>
+
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px 14px', borderBottom: '1px solid #f3f4f6' }}>
+                <div style={{ width: 72, height: 52, borderRadius: 10, overflow: 'hidden', flexShrink: 0, background: '#f3f4f6', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {thumb ? (
+                    <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { e.target.style.display = 'none'; }} />
+                  ) : (
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round"><path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/></svg>
+                  )}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 16, fontWeight: 700, color: '#111827', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {car.brand} {car.model}
+                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3, flexWrap: 'wrap' }}>
+                    {car.year && <span style={{ fontSize: 12, color: '#6b7280' }}>{car.year}</span>}
+                    {carAge != null && <span style={{ fontSize: 11, fontWeight: 700, color: carAge >= 10 ? '#f87171' : carAge >= 5 ? '#fbbf24' : '#34d399' }}>{carAge}yr</span>}
+                    {plate ? (
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: '#374151', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 4, padding: '1px 6px' }}>{plate.toUpperCase()}</span>
+                    ) : (
+                      <span style={{ fontSize: 10, color: '#9ca3af', border: '1px dashed #d1d5db', borderRadius: 4, padding: '1px 6px' }}>no plate</span>
+                    )}
+                    {isAging && <span style={{ fontSize: 10, fontWeight: 700, color: '#f87171' }}>{daysNum}d in stock</span>}
+                  </div>
+                </div>
+                <button onClick={() => setDetailUnit(null)} style={{ width: 30, height: 30, borderRadius: '50%', background: '#f3f4f6', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', flexShrink: 0 }}>
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Financial stats strip */}
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${[1, can('view_cost') ? 1 : 0, can('view_gross') ? 1 : 0].reduce((a, b) => a + b)}, 1fr)`, gap: 1, background: '#f3f4f6', borderBottom: '1px solid #f3f4f6' }}>
+                {[
+                  { label: 'Asking',   val: u.asking_price ? `RM ${Number(u.asking_price).toLocaleString()}` : '—', color: '#111827' },
+                  can('view_cost')  ? { label: 'Cost',    val: costBasis(u) > 0 ? `RM ${costBasis(u).toLocaleString()}` : '—', color: '#374151' } : null,
+                  can('view_gross') ? { label: 'Est. GP', val: gp != null ? `${gp >= 0 ? '+' : '−'}RM ${Math.abs(gp).toLocaleString()}` : '—', color: gp == null ? '#9ca3af' : gp >= 0 ? '#059669' : '#dc2626' } : null,
+                ].filter(Boolean).map((s, i) => (
+                  <div key={i} style={{ background: '#fff', padding: '10px 14px', textAlign: 'center' }}>
+                    <p style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, margin: '0 0 2px' }}>{s.label}</p>
+                    <p style={{ fontSize: 14, fontWeight: 700, color: s.color, margin: 0 }}>{s.val}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Car details spec grid — all fields from car_listings */}
+              {SPEC_ROWS.length > 0 && (
+                <div style={{ padding: '14px 16px', borderBottom: '1px solid #f3f4f6' }}>
+                  <p style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, margin: '0 0 10px' }}>Car Details</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px 20px' }}>
+                    {SPEC_ROWS.map((s, i) => (
+                      <div key={i}>
+                        <p style={{ fontSize: 10, color: '#9ca3af', fontWeight: 600, margin: '0 0 1px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</p>
+                        <p style={{ fontSize: 12, color: '#111827', fontWeight: 500, margin: 0 }}>{s.val}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Certifications & status — clickable to update inline */}
+              {u.status === 'in_stock' && (
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6' }}>
+                  <p style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, margin: '0 0 8px' }}>Certifications &amp; Status</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    <button onClick={() => handleUpdatePuspakom(u)} title="Tap to update PUSPAKOM B7 roadworthiness cert" style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: `${ps.color}15`, border: `1px solid ${ps.color}30`, color: ps.color, cursor: 'pointer' }}>B7 · {ps.label.replace('B7 ', '')}</button>
+                    <button onClick={() => handleUpdateB5(u)} title="Tap to update PUSPAKOM B5 ownership transfer cert" style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: `${b5.color}15`, border: `1px solid ${b5.color}30`, color: b5.color, cursor: 'pointer' }}>B5 · {b5.label.replace('B5 ', '')}</button>
+                    <button onClick={() => handleUpdateEncumbrance(u)} title="Tap to cycle: clear → under HP → unknown" style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: `${enc.color}15`, border: `1px solid ${enc.color}30`, color: enc.color, cursor: 'pointer' }}>{enc.label}</button>
+                    {isUnpublished && (
+                      <button onClick={() => handlePublishFromStock(u)} disabled={publishingStockId === u.id}
+                        style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 6, background: '#fffbeb', border: '1px solid #fde68a', color: '#b45309', cursor: publishingStockId === u.id ? 'default' : 'pointer', opacity: publishingStockId === u.id ? 0.6 : 1 }}>
+                        {publishingStockId === u.id ? 'Publishing…' : 'Not published — tap to publish'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions — child modals open ON TOP of this drawer (z-10000 > z-9999) */}
+              <div style={{ padding: '12px 16px 4px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <p style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, margin: '0 0 2px' }}>Actions</p>
+                {ACTION_BTN('View P&L',         'Full profit breakdown — cost, recon, commission, holding, add-ons', '#059669', 'rgba(5,150,105,0.06)', '#6ee7b7', () => fetchPnl(u))}
+                {ACTION_BTN('Recon Jobs',        'Log and track all reconditioning work and costs', '#d97706', 'rgba(245,158,11,0.06)', '#fde68a', () => fetchReconJobs(u))}
+                {can('view_cost') && ACTION_BTN('Ad Spend',   'Track advertising spend (Mudah, Carsome, Facebook, etc.)', '#db2777', 'rgba(236,72,153,0.06)', '#fbcfe8', () => openAdSpend(u))}
+                {can('view_cost') && ACTION_BTN('Edit Prices','Update purchase price, recon cost, and asking price', '#7c3aed', 'rgba(124,58,237,0.06)', '#ddd6fe', () => { setEditPriceUnit(u); setEditPriceForm({ purchase_price: String(u.purchase_price||''), recon_cost: String(u.recon_cost||''), asking_price: String(u.asking_price||'') }); })}
+                {ACTION_BTN('Activity History',  'See all edits, updates, and status changes for this unit', '#6b7280', '#f9fafb', '#e5e7eb', () => fetchHistory(u))}
+                {u.status === 'in_stock' && ACTION_BTN('Mark as Sold', 'Record the final sale price and close out this unit', '#2563eb', 'rgba(37,99,235,0.06)', '#bfdbfe', () => { setSoldTarget(u); setSoldForm({ sold_price: u.asking_price ? String(u.asking_price) : '', sold_date: new Date().toISOString().slice(0, 10) }); })}
+              </div>
+              <div style={{ height: 16 }} />
+            </div>
+          </div>
+        );
+      })(), document.body)}
 
       {/* Add Stock Modal */}
       {showAdd && (
@@ -6415,8 +6815,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
       )}
 
       {/* Mark Sold Modal */}
-      {soldTarget && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+      {soldTarget && createPortal(
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)', zIndex: 10000 }}>
           <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-sm" style={undefined}>
             <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
               <h3 className="font-semibold text-gray-900">Mark as Sold</h3>
@@ -6432,11 +6832,11 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* Stock Movement History Modal */}
-      {historyUnit && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+      {historyUnit && createPortal(
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)', zIndex: 10000 }}>
           <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg flex flex-col" style={{ maxHeight: '80vh' }}>
             <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
               <div>
@@ -6469,11 +6869,11 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* Edit Prices Modal */}
-      {editPriceUnit && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+      {editPriceUnit && createPortal(
+        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.78)', zIndex: 10000 }}>
           <div className="modal-top rounded-2xl w-full max-w-sm" style={{ background: '#fff' }}>
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <div>
@@ -6503,11 +6903,11 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* P&L Modal */}
-      {pnlUnit && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+      {pnlUnit && createPortal(
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)', zIndex: 10000 }}>
           <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-md flex flex-col" style={{ maxHeight: '80vh', background: '#fff' }}>
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <div>
@@ -6605,11 +7005,11 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* Advertising Spend Modal (DMS-6) */}
-      {adUnit && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+      {adUnit && createPortal(
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)', zIndex: 10000 }}>
           <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg flex flex-col" style={{ maxHeight: '88vh', background: '#fff' }}>
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <div>
@@ -6661,11 +7061,11 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* Recon Job Card Modal */}
-      {reconUnit && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+      {reconUnit && createPortal(
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)', zIndex: 10000 }}>
           <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg flex flex-col" style={{ maxHeight: '88vh', background: '#fff' }}>
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <div>
@@ -6756,7 +7156,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* CSV Import Modal */}
       {showCsvImport && (
@@ -6896,6 +7296,32 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
         </div>
       )}
     </div>
+
+      {/* Stock Publish — CarForm overlay (z-11000, above detail drawer z-9999 + child modals z-10000) */}
+      {stockPublishListing && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 11000, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '20px 16px', overflowY: 'auto' }}>
+          <div style={{ width: '100%', maxWidth: 920, background: '#fff', borderRadius: 18, boxShadow: '0 24px 80px rgba(0,0,0,0.35)', minHeight: 'min-content', marginBottom: 20 }}>
+            <div style={{ padding: '18px 20px 12px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button onClick={() => setStockPublishListing(null)} style={{ padding: '6px 10px', borderRadius: 8, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#374151', fontSize: 13, cursor: 'pointer' }}>← Back</button>
+              <div>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#111827' }}>Complete listing — {stockPublishListing.brand} {stockPublishListing.model} {stockPublishListing.year}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6b7280' }}>Add photos, location, and details. Saving will publish this car to your marketplace.</p>
+              </div>
+            </div>
+            <div style={{ padding: '16px 20px 24px' }}>
+              <React.Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: '#9ca3af' }}>Loading form…</div>}>
+                <CarForm
+                  listing={stockPublishListing}
+                  defaultValues={{ state: profile?.state || '', city: profile?.city || '' }}
+                  onBack={() => setStockPublishListing(null)}
+                  onUpdate={handleStockPublishSave}
+                />
+              </React.Suspense>
+            </div>
+          </div>
+        </div>
+      , document.body)}
+    </>
   );
 });
 
@@ -8662,7 +9088,18 @@ export default function DashboardPage() {
   const [showFastModal, setShowFastModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [openGroups, setOpenGroups] = useState(new Set());
+  const [openGroups, setOpenGroups] = useState(() => {
+    const TAB_GROUP_MAP = {
+      overview: "g_reports", analytics: "g_reports", oversight: "g_reports",
+      crm: "g_sales", hp: "g_sales",
+      listings: "g_inventory", add: "g_inventory", stock: "g_inventory",
+      handover: "g_operations", customers: "g_operations", documents: "g_operations",
+      outreach: "g_growth", storefront: "g_growth", ai_manager: "g_growth",
+      team: "g_admin",
+    };
+    const gid = TAB_GROUP_MAP[tabParam || "overview"];
+    return gid ? new Set([gid]) : new Set();
+  });
   const [priceEditListing, setPriceEditListing] = useState(null);
   const [markSoldListing, setMarkSoldListing] = useState(null);
   const [markSoldLoading, setMarkSoldLoading] = useState(false);
@@ -8941,18 +9378,47 @@ export default function DashboardPage() {
     // Dedup: the realtime car_listings INSERT subscription may race ahead and add
     // this same row, so guard against a duplicate render of the freshly-added car.
     setListings((p) => (p.some((x) => x.id === l.id) ? p : [l, ...p]));
+    setAddMode(null);
     handleTabChange("listings");
     toast.success("Car added and published to your marketplace.");
   };
+
+  // Phase 2 of the marketplace add flow: CarForm has saved all the details;
+  // flip the listing to 'available' to publish it.
+  const handleMarketplacePublish = async (savedListing) => {
+    const { error } = await supabase
+      .from('car_listings')
+      .update({ status: 'available' })
+      .eq('id', savedListing.id);
+    if (error) { toast.error('Could not publish: ' + error.message); return; }
+    setMarketplaceDraftListing(null);
+    handleAddCarPublished({ ...savedListing, status: 'available' });
+  };
+
   const handleAddCarStocked = () => {
+    setAddMode(null);
     handleTabChange("stock");
     toast.success("Car added to your inventory.");
   };
+  const [addMode, setAddMode] = useState(null); // null | 'marketplace' | 'internal'
+  const [marketplaceDraftListing, setMarketplaceDraftListing] = useState(null); // listing created by AddCarForm, awaiting CarForm continuation
   const handleTabChange = useCallback((tab) => {
     startTransition(() => {
       setActiveTab(tab);
       setSidebarOpen(false);
+      if (tab !== 'add') { setAddMode(null); setMarketplaceDraftListing(null); }
       navigate(`/dashboard/${tab}`);
+      // Keep the group containing this tab open in the sidebar
+      const TAB_GROUP_MAP = {
+        overview: "g_reports", analytics: "g_reports", oversight: "g_reports",
+        crm: "g_sales", hp: "g_sales",
+        listings: "g_inventory", add: "g_inventory", stock: "g_inventory",
+        handover: "g_operations", customers: "g_operations", documents: "g_operations",
+        outreach: "g_growth", storefront: "g_growth", ai_manager: "g_growth",
+        team: "g_admin",
+      };
+      const gid = TAB_GROUP_MAP[tab];
+      if (gid) setOpenGroups(prev => new Set([...prev, gid]));
     });
   }, [navigate]);
 
@@ -9002,6 +9468,12 @@ export default function DashboardPage() {
   const handleAssign = async (listingId, salesmanId, name) => {
     setAssignDropdownId(null);
     await supabase.from("car_listings").update({ assigned_to: salesmanId }).eq("id", listingId);
+    // Assignment is exclusive: evict any other salesmen who had featured this car
+    // so it leaves their listings and the shared feature pool. The assignee keeps
+    // it via assigned_to. (Salesman Lite rows have salesman_id = their own id too,
+    // but those are scoped by dealer_id elsewhere — this only touches THIS dealer.)
+    await supabase.from("salesman_listings").delete()
+      .eq("listing_id", listingId).neq("salesman_id", salesmanId);
     setListings((prev) =>
       prev.map((l) => (l.id === listingId ? { ...l, assigned_to: salesmanId } : l))
     );
@@ -9086,11 +9558,20 @@ export default function DashboardPage() {
         .update({ status: "available" })
         .eq("id", l.id)
         .select();
-      if (error) throw error;
+      if (error) {
+        if (error.message?.includes('listing_cap_exceeded')) {
+          toast.error("Listing cap reached. Upgrade your plan to publish more cars.");
+        } else {
+          toast.error("Could not publish listing. Try again.");
+        }
+        throw error;
+      }
       const updated = data?.[0] ?? { ...l, status: "available" };
       logActivity({ dealerId: userId, actor: profile, tableName: 'car_listings', recordId: l.id, action: 'published', summary: `Published to marketplace — ${l.brand} ${l.model} ${l.year}` });
       setListings((p) => p.map((x) => (x.id === updated.id ? updated : x)));
       if (detailListing?.id === updated.id) setDetailListing(updated);
+      toast.success(`${l.brand} ${l.model} ${l.year} is now live on your marketplace.`);
+      setStatusFilter("available");
     } catch (e) {
       console.error('[handlePublishListing]', e);
     }
@@ -10385,7 +10866,118 @@ export default function DashboardPage() {
           <React.Suspense fallback={<div className="flex items-center justify-center h-64 text-gray-600 text-sm">Loading…</div>}>
           {activeTab === "add" && (
             <div className="card-top rounded-xl p-4 sm:p-6" style={T.cardDark}>
-              <AddCarForm onPublished={handleAddCarPublished} onStocked={handleAddCarStocked} />
+              {/* Centered form container — capped at 860px so it looks like a focused form on desktop */}
+              <div style={{ maxWidth: 860, margin: '0 auto' }}>
+              {!addMode ? (
+                /* ── Picker ── */
+                (() => {
+                  const DRAFT_TTL = 7 * 24 * 60 * 60 * 1000;
+                  let savedDraft = null;
+                  try {
+                    const raw = userId && localStorage.getItem(`addcarform_draft_${userId}`);
+                    if (raw) { const d = JSON.parse(raw); if (Date.now() - d.savedAt < DRAFT_TTL) savedDraft = d; }
+                  } catch (_) {}
+                  const draftLabel = savedDraft?.mode === 'marketplace' ? 'Marketplace' : savedDraft?.mode === 'internal' ? 'Internal Stock' : 'previous';
+                  return (
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Add a car</p>
+                    <h2 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: '0 0 24px' }}>What would you like to do?</h2>
+
+                    {savedDraft && (
+                      <button onClick={() => setAddMode(savedDraft.mode || 'internal')}
+                        style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 12, border: '2px solid #fde68a', background: '#fffbeb', cursor: 'pointer', marginBottom: 16 }}>
+                        <div style={{ width: 34, height: 34, borderRadius: 8, background: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#92400e' }}>Resume {draftLabel} draft</p>
+                          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#b45309' }}>
+                            Saved {savedDraft.savedAt ? new Date(savedDraft.savedAt).toLocaleString('en-MY', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''} · Step {savedDraft.step || 1} of 4
+                          </p>
+                        </div>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                      </button>
+                    )}
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      <button onClick={() => setAddMode('marketplace')}
+                        style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 10, padding: '20px 18px', borderRadius: 14, border: '2px solid #FECACA', background: '#FEF2F2', cursor: 'pointer', transition: 'box-shadow 0.12s' }}
+                        onMouseEnter={e => e.currentTarget.style.boxShadow='0 4px 16px rgba(220,38,38,0.15)'}
+                        onMouseLeave={e => e.currentTarget.style.boxShadow='none'}>
+                        <div style={{ width: 38, height: 38, borderRadius: 10, background: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        </div>
+                        <div>
+                          <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#111827' }}>Publish to Marketplace</p>
+                          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>Stock details + full listing with photos. Goes live on your storefront and xdrive.my.</p>
+                          <p style={{ margin: '8px 0 0', fontSize: 11, fontWeight: 600, color: '#dc2626' }}>2 phases: Core info → Listing details</p>
+                        </div>
+                      </button>
+                      <button onClick={() => setAddMode('internal')}
+                        style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 10, padding: '20px 18px', borderRadius: 14, border: '2px solid #e5e7eb', background: '#f9fafb', cursor: 'pointer', transition: 'box-shadow 0.12s' }}
+                        onMouseEnter={e => e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.08)'}
+                        onMouseLeave={e => e.currentTarget.style.boxShadow='none'}>
+                        <div style={{ width: 38, height: 38, borderRadius: 10, background: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </div>
+                        <div>
+                          <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#111827' }}>Internal Stock Only</p>
+                          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>Key procurement details. Tracked in P&L, visible to your team. Publish anytime later.</p>
+                          <p style={{ margin: '8px 0 0', fontSize: 11, fontWeight: 600, color: '#6b7280' }}>1 phase: Core info only</p>
+                        </div>
+                      </button>
+                    </div>
+                    <style>{`@media(max-width:480px){.add-picker-grid{grid-template-columns:1fr!important;}}`}</style>
+                  </div>
+                  );
+                })()
+              ) : addMode === 'marketplace' ? (
+                <>
+                  {/* Phase strip — shows the 2-phase flow and current position */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 24, background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: !marketplaceDraftListing ? '#FEF2F2' : '#f9fafb', borderRight: '1px solid #e5e7eb' }}>
+                      <div style={{ width: 26, height: 26, borderRadius: '50%', background: !marketplaceDraftListing ? '#dc2626' : '#d1fae5', border: `2px solid ${!marketplaceDraftListing ? '#dc2626' : '#10b981'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {marketplaceDraftListing
+                          ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                          : <span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>1</span>}
+                      </div>
+                      <div>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: !marketplaceDraftListing ? '#dc2626' : '#6b7280' }}>Core Details</p>
+                        <p style={{ margin: 0, fontSize: 11, color: '#9ca3af' }}>Identity · Procurement · Pricing</p>
+                      </div>
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: marketplaceDraftListing ? '#FEF2F2' : '#f9fafb' }}>
+                      <div style={{ width: 26, height: 26, borderRadius: '50%', background: marketplaceDraftListing ? '#dc2626' : '#e5e7eb', border: `2px solid ${marketplaceDraftListing ? '#dc2626' : '#e5e7eb'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: marketplaceDraftListing ? '#fff' : '#9ca3af' }}>2</span>
+                      </div>
+                      <div>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: marketplaceDraftListing ? '#dc2626' : '#9ca3af' }}>Listing Details</p>
+                        <p style={{ margin: 0, fontSize: 11, color: '#9ca3af' }}>Photos · Location · Features</p>
+                      </div>
+                    </div>
+                  </div>
+                  {!marketplaceDraftListing ? (
+                    <AddCarForm
+                      mode="marketplace"
+                      onContinueToCarForm={(l) => setMarketplaceDraftListing(l)}
+                      onBack={() => setAddMode(null)}
+                      onPublished={handleAddCarPublished}
+                      onStocked={handleAddCarStocked}
+                    />
+                  ) : (
+                    <CarForm
+                      listing={marketplaceDraftListing}
+                      defaultValues={{ state: profile?.state || '', city: profile?.city || '' }}
+                      onBack={() => setMarketplaceDraftListing(null)}
+                      onUpdate={handleMarketplacePublish}
+                    />
+                  )}
+                </>
+              ) : (
+                /* ── Internal stock: procurement-focused AddCarForm only ── */
+                <AddCarForm mode="internal" onBack={() => setAddMode(null)} onPublished={handleAddCarPublished} onStocked={handleAddCarStocked} />
+              )}
+              </div>
             </div>
           )}
           {activeTab === "analytics" && (
@@ -10447,7 +11039,9 @@ export default function DashboardPage() {
             </>
           )}
           {activeTab === "stock" && userId && (
-            <StockTab userId={userId} listings={listings} profile={profile} />
+            <StockTab userId={userId} listings={listings} profile={profile}
+              onPublishComplete={(l) => setListings(p => p.some(x => x.id === l.id) ? p.map(x => x.id === l.id ? { ...x, ...l } : x) : [l, ...p])}
+            />
           )}
           {activeTab === "documents" && (
             <DocumentsTab userId={userId} listings={listings} prefillDocData={prefillDocData} onClearPrefill={() => setPrefillDocData(null)} profile={profile} />
