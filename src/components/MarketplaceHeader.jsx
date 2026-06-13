@@ -17,7 +17,7 @@ export default function MarketplaceHeader() {
   const { pathname, search } = useLocation();
   const sp = new URLSearchParams(search);
 
-  const isShowroom  = (pathname === '/showroom' || pathname === '/marketplace') && !sp.get('hot_deals') && !sp.get('condition');
+  const isShowroom  = pathname === '/showroom' && !sp.get('hot_deals') && !sp.get('condition');
   const isHotDeals  = sp.get('hot_deals') === 'true';
   const isCondition = !!sp.get('condition');
 
@@ -80,6 +80,7 @@ export default function MarketplaceHeader() {
         .mh-mobile-cta { margin-top:10px; display:flex; align-items:center; justify-content:center; gap:7px; background:#dc2626; color:#fff; font-size:15px; font-weight:700; padding:13px; border-radius:10px; text-decoration:none; font-family:'Outfit',sans-serif; }
         @media (max-width:720px) {
           .mh-desktop-nav { display:none!important; }
+          .mh-desktop-cta { display:none!important; }
           .mh-hamburger { display:flex!important; }
           .mh-mobile-nav.open { display:flex!important; }
         }
@@ -139,8 +140,8 @@ export default function MarketplaceHeader() {
             <a href={`tel:+${settings.support_whatsapp}`} className="mh-desktop-nav" style={{ display:'flex', alignItems:'center', gap:'6px', color:'#6b7280', fontSize:'13px', fontWeight:'500', textDecoration:'none', fontFamily:"'Outfit',sans-serif" }}>
               <Phone size={13} /> {settings.support_phone}
             </a>
-            <a href="/login" className="mh-signin">Sign In</a>
-            <div className="mh-dropdown">
+            <a href="/login" className="mh-signin mh-desktop-cta">Sign In</a>
+            <div className="mh-dropdown mh-desktop-cta">
               <button className="mh-cta" aria-haspopup="true">
                 Get Started <span className="mh-cta-chevron">▾</span>
               </button>

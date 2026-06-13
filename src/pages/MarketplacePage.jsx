@@ -755,10 +755,6 @@ export default function MarketplacePage() {
 
             {/* LEFT: headline + subtitle + tabs + search */}
             <div className="mp-hero-left">
-              <div style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'40px', padding:'6px 14px', marginBottom:'18px', backdropFilter:'blur(8px)' }}>
-                <span className="mp-pulse-dot" />
-                <span style={{ fontSize:'11px', fontWeight:'700', letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.7)', fontFamily:"'Outfit',sans-serif" }}>Malaysia's Trusted Car Marketplace</span>
-              </div>
               <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 14px', lineHeight:'0.92', letterSpacing:'-0.01em', fontSize:'clamp(38px,10vw,96px)', color:'#ffffff' }}>
                 FIND YOUR NEXT<br/><span style={{ color:'#dc2626' }}>CAR IN MALAYSIA</span>
               </h1>
