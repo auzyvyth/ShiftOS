@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useMemo, useCallback, startTransiti
 import DOMPurify from "dompurify";
 import SuspendedBanner from "../components/SuspendedBanner";
 import ReportBugButton from "../components/ReportBugButton";
-import SharePackSheet from "../components/SharePackSheet";
+import { buildCaption } from "../utils/sharePack";
 import { createPortal } from 'react-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
 import { Helmet } from "react-helmet";
@@ -5247,10 +5247,9 @@ function ListingDetailDrawer({
   listing, salesmen, salesmenById, onClose, onUpdate, onDelete,
   setEditListing, setPriceEditListing, setMarkSoldListing,
   setDeleteId, copyListing, copiedListingId, handleAssign, handleUnassign,
-  handleStatus, updatingStatus, getListingAge, dealer,
+  handleStatus, updatingStatus, getListingAge,
 }) {
   const [imgIdx, setImgIdx]       = useState(0);
-  const [sharePackOpen, setSharePackOpen] = useState(false);
   const [lbOpen, setLbOpen]       = useState(false);
   const [drawerTab, setDrawerTab] = useState('specs');
   const [showAssign, setShowAssign] = useState(false);
@@ -5514,11 +5513,6 @@ function ListingDetailDrawer({
                   {copiedListingId === listing.id ? 'Copied!' : 'Copy Writing'}
                 </button>
 
-                {/* Share Pack — paste-ready copy per platform */}
-                <button onClick={() => setSharePackOpen(true)} style={{ ...btnBase, border: '1px solid rgba(124,58,237,0.3)', color: '#7c3aed' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
-                  <Send style={{ width: 14, height: 14, flexShrink: 0 }} />Share Pack
-                </button>
-
                 {/* Financing Calculator — hidden on sold listings */}
                 {!isSold && (
                   <button onClick={() => setCalcOpen(true)} style={{ ...btnBase, border: '1px solid rgba(220,38,38,0.3)', color: '#dc2626' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
@@ -5651,9 +5645,6 @@ function ListingDetailDrawer({
             </div>
           </div>
         </div>
-      )}
-      {sharePackOpen && (
-        <SharePackSheet listing={listing} dealer={dealer} onClose={() => setSharePackOpen(false)} />
       )}
     </>
   );
@@ -9633,48 +9624,15 @@ export default function DashboardPage() {
   const salesmenById = Object.fromEntries(salesmen.map((s) => [s.id, s]));
 
   const copyListing = (l) => {
-    const lines = [
-      `🚗 ${l.year} ${l.brand} ${l.model}${l.variant ? " " + l.variant : ""}`,
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-      ``,
-      `📋 DETAILS`,
-      l.mileage ? `• Mileage: ${Number(l.mileage).toLocaleString()} km` : null,
-      l.engine_cc
-        ? `• Engine: ${Number(l.engine_cc).toLocaleString()} cc`
-        : null,
-      l.transmission ? `• Transmission: ${l.transmission}` : null,
-      l.colour ? `• Colour: ${l.colour}` : null,
-      l.condition
-        ? `• Condition: ${l.condition.charAt(0).toUpperCase() + l.condition.slice(1)}`
-        : null,
-      l.city || l.state
-        ? `• Location: ${[l.city, l.state].filter(Boolean).join(", ")}`
-        : null,
-      l.vin_number ? `• VIN: ${l.vin_number}` : null,
-      ``,
-      `💰 PRICE: RM ${(l.selling_price || 0).toLocaleString()}`,
-      l.original_price && l.original_price > l.selling_price
-        ? `(Was: RM ${l.original_price.toLocaleString()} | Save RM ${(l.original_price - l.selling_price).toLocaleString()})`
-        : null,
-    ];
-    if (l.features) lines.push(``, `✨ FEATURES`, l.features);
-    if (l.specs) lines.push(``, `🔧 SPECS`, l.specs);
-    if (l.options) lines.push(``, `📝 ABOUT`, l.options);
-    const tags = [
-      l.brand,
-      l.model,
-      l.condition,
-      l.state,
-      "UsedCars",
-      "Malaysia",
-      "CarForSale",
-    ]
-      .filter(Boolean)
-      .map((t) => `#${t.replace(/\s+/g, "")}`)
-      .join(" ");
-    lines.push(``, tags);
+    const dealer = {
+      site_name: profile?.site_name,
+      dealership: profile?.dealership,
+      whatsapp_number: profile?.whatsapp_number,
+      subdomain: dealerSubdomain || profile?.subdomain,
+      slug: profile?.slug,
+    };
     navigator.clipboard
-      .writeText(lines.filter((x) => x !== null).join("\n"))
+      .writeText(buildCaption(l, dealer, "whatsapp").text)
       .then(() => {
         setCopiedListingId(l.id);
         setTimeout(() => setCopiedListingId(null), 2000);
@@ -11107,13 +11065,6 @@ export default function DashboardPage() {
           handleStatus={handleStatus}
           updatingStatus={updatingStatus}
           getListingAge={getListingAge}
-          dealer={{
-            site_name: profile?.site_name,
-            dealership: profile?.dealership,
-            whatsapp_number: profile?.whatsapp_number,
-            subdomain: dealerSubdomain || profile?.subdomain,
-            slug: profile?.slug,
-          }}
         />
       )}
 
