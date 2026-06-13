@@ -553,7 +553,7 @@ export default function OversightTab({ dealerId, onNavigate }) {
   return (
     <div style={{ background: '#fafafa', minHeight: '100vh', margin: '-24px', padding: '32px 36px', fontFamily: "'DM Sans', sans-serif", color: '#111827' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 28, paddingBottom: 18, borderBottom: '1px solid #e5e7eb' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28, paddingBottom: 18, borderBottom: '1px solid #e5e7eb' }}>
         <div>
           <p style={{ fontSize: 11, color: '#6b7280', letterSpacing: '0.12em', fontWeight: 600, textTransform: 'uppercase', margin: 0 }}>Command Center</p>
           <h1 style={{ fontSize: 26, fontWeight: 700, color: '#111827', margin: '4px 0 0', letterSpacing: '-0.02em' }}>GM Oversight</h1>
@@ -567,9 +567,26 @@ export default function OversightTab({ dealerId, onNavigate }) {
       <Section title="Live Performance" subtitle="Real-time view of the dealership pulse">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
           <HeroKPI label="Revenue (MTD)"   value={pnl.mtd.revenue}      prev={pnl.lmtd.revenue}      sparkline={pnl.sparkline} />
-          <HeroKPI label="Gross Profit"    value={pnl.mtd.gross_profit} prev={pnl.lmtd.gross_profit} hint={`${pnl.mtd.avg_margin}% margin`} />
+          <HeroKPI
+            label="Gross Profit"
+            value={pnl.mtd.gross_profit}
+            prev={pnl.lmtd.gross_profit}
+            hint={
+              pnl.mtd.units_costed != null && pnl.mtd.units_costed < pnl.mtd.units
+                ? `${pnl.mtd.avg_margin}% margin · ${pnl.mtd.units - pnl.mtd.units_costed} of ${pnl.mtd.units} sold need cost`
+                : `${pnl.mtd.avg_margin}% margin`
+            }
+          />
           <HeroKPI label="Units Sold"      value={pnl.mtd.units}        prev={pnl.lmtd.units}        format={(v) => v.toString()} />
-          <HeroKPI label="Capital Tied"    value={pnl.inventory.capital_tied} hint={`${pnl.inventory.in_stock} units · ${pnl.inventory.aged_60} aged 60d+`} />
+          <HeroKPI
+            label="Capital Tied"
+            value={pnl.inventory.capital_tied}
+            hint={
+              pnl.inventory.missing_cost > 0
+                ? `${pnl.inventory.in_stock} units · ${pnl.inventory.missing_cost} need cost`
+                : `${pnl.inventory.in_stock} units · ${pnl.inventory.aged_60} aged 60d+`
+            }
+          />
         </div>
       </Section>
 

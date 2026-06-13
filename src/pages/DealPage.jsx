@@ -85,6 +85,7 @@ export default function DealPage() {
   const {
     car, dealer, salesman = null, buyer_name = null,
     addons = [], fees = {}, financing_calc = null,
+    note = null,
     car_price, addons_total, fees_total = 0, grand_total,
     generated_at, expires_at,
   } = deal;
@@ -287,6 +288,14 @@ export default function DealPage() {
                 <p style={{ fontSize: 10, color: '#9ca3af', lineHeight: 1.5 }}>
                   *Estimate only. Subject to bank approval and final loan terms.
                 </p>
+              </div>
+            )}
+
+            {/* Note from salesman */}
+            {note && (
+              <div style={{ marginBottom: 20, padding: '16px 18px', background: '#fefce8', borderRadius: 12, border: '1px solid #fde68a' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Note from your salesman</p>
+                <p style={{ fontSize: 13, color: '#78350f', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{note}</p>
               </div>
             )}
 

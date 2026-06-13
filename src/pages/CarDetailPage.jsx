@@ -1566,7 +1566,7 @@ export default function CarDetailPage() {
                 <span style={{ display:'inline-flex', alignItems:'center', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20, background:cfg.bg, color:cfg.color, border:`1px solid ${cfg.border}` }}>
                   {cfg.label}
                 </span>
-                <span style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>
+                <span style={{ fontSize:11, color: th.textMuted }}>
                   Market avg: RM {Number(avg).toLocaleString('en-MY')}
                   {car.market_sample_count > 0 && ` · ${car.market_sample_count} similar`}
                 </span>
@@ -2353,7 +2353,7 @@ export default function CarDetailPage() {
                               : "none",
                           border: "none",
                           borderBottom: `2px solid ${detailTab === t.key ? "#dc2626" : "transparent"}`,
-                          color: detailTab === t.key ? "white" : "#334155",
+                          color: detailTab === t.key ? "#dc2626" : th.textSec,
                           padding: "10px 24px 12px",
                           marginBottom: -1,
                           fontSize: "13px",

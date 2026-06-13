@@ -14,6 +14,21 @@ import { color } from "../theme/tokens";
 const JPJ_GOVT_FEE = 100;
 const PUSPAKOM_B5 = 30;
 
+// Draft persistence — 7-day TTL, keyed by dealer id so multi-user machines don't bleed
+const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const acfDraftKey   = (did) => `addcarform_draft_${did}`;
+export const acfLoadDraft  = (did) => {
+  try {
+    const raw = localStorage.getItem(acfDraftKey(did));
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (Date.now() - d.savedAt > DRAFT_TTL_MS) { localStorage.removeItem(acfDraftKey(did)); return null; }
+    return d;
+  } catch (_) { return null; }
+};
+const acfSaveDraft  = (did, form, step, mode) => { try { localStorage.setItem(acfDraftKey(did), JSON.stringify({ form, step, mode, savedAt: Date.now() })); } catch (_) {} };
+const acfClearDraft = (did) => { try { localStorage.removeItem(acfDraftKey(did)); } catch (_) {} };
+
 const MAKES = [
   "Perodua", "Proton", "Honda", "Toyota", "Nissan", "Mazda", "Mitsubishi",
   "Hyundai", "Kia", "BMW", "Mercedes-Benz", "Audi", "Volkswagen", "Lexus",
@@ -79,11 +94,16 @@ function FSelect({ k, options }) {
   return <select style={INP} value={form[k]} onChange={(e) => setVal(k, e.target.value)}>{options.map((o) => <option key={o} value={o}>{o}</option>)}</select>;
 }
 
-export default function AddCarForm({ onPublished, onStocked }) {
+// mode: 'marketplace' | 'internal' | undefined
+// When provided, the publish choice is locked and the chooser in step 4 is hidden.
+// onBack: optional callback — renders a "← Back" button to the left of the progress circles.
+// onContinueToCarForm: called with the newly-created listing when mode='marketplace'.
+//   Caller should then open CarForm in edit mode on that listing to complete the full listing.
+export default function AddCarForm({ onPublished, onStocked, mode, onBack, onContinueToCarForm }) {
   const { profile } = useProfile();
   const dealerId = getDealerIdFromProfile(profile);
 
-  const [form, setForm] = useState(blankForm);
+  const [form, setForm] = useState(() => ({ ...blankForm, publish: mode === 'marketplace' }));
   const [step, setStep] = useState(1);
   const [settings, setSettings] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -92,6 +112,8 @@ export default function AddCarForm({ onPublished, onStocked }) {
   const [decoded, setDecoded] = useState(false);
   const [decodingVin, setDecodingVin] = useState(false);
   const [vinResult, setVinResult] = useState(null); // "hit" | "miss" | null
+  const [draftBanner, setDraftBanner] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState(null);
   const photosRef = useRef(null);
   const rootRef = useRef(null);
 
@@ -170,6 +192,29 @@ export default function AddCarForm({ onPublished, onStocked }) {
       .maybeSingle()
       .then(({ data }) => setSettings(data || {}));
   }, [dealerId]);
+
+  // ── Draft: restore on mount ────────────────────────────────────────────────
+  // Only restore when the saved mode matches the current mode (or no mode set),
+  // so a 'marketplace' draft never bleeds into an 'internal' session.
+  useEffect(() => {
+    if (!dealerId) return;
+    const d = acfLoadDraft(dealerId);
+    if (!d) return;
+    if (mode && d.mode && d.mode !== mode) return;
+    setForm({ ...blankForm, publish: mode === 'marketplace', ...d.form, publish: mode ? mode === 'marketplace' : d.form.publish });
+    setStep(d.step || 1);
+    setDraftSavedAt(d.savedAt);
+    setDraftBanner(true);
+  }, [dealerId]); // eslint-disable-line
+
+  // ── Draft: auto-save on every form/step change ────────────────────────────
+  // Guard: don't overwrite a just-loaded draft before the user decides to resume/discard.
+  useEffect(() => {
+    if (!dealerId || draftBanner) return;
+    // Don't persist an untouched blank form
+    if (!form.brand && !form.model && !form.plate_number && !form.purchase_price) return;
+    acfSaveDraft(dealerId, form, step, mode);
+  }, [form, step, dealerId, draftBanner, mode]); // eslint-disable-line
 
   // Pre-fill commission suggestion from dealer commission_config
   useEffect(() => {
@@ -308,7 +353,8 @@ export default function AddCarForm({ onPublished, onStocked }) {
           included_services_cost: servicesCost,
           images: form.images,
           description: form.description || null,
-          status: form.publish ? "available" : "unpublished",
+          // marketplace path always starts as unpublished; CarForm continuation publishes it
+          status: mode === 'marketplace' ? "unpublished" : (form.publish ? "available" : "unpublished"),
         })
         .select()
         .single();
@@ -321,7 +367,9 @@ export default function AddCarForm({ onPublished, onStocked }) {
         .eq("listing_id", listing.id);
       if (sErr) throw sErr;
 
-      if (form.publish) onPublished?.(listing);
+      acfClearDraft(dealerId);
+      if (mode === 'marketplace') onContinueToCarForm?.(listing);
+      else if (form.publish) onPublished?.(listing);
       else onStocked?.();
     } catch (err) {
       setError(err.message || "Could not save. Please try again.");
@@ -332,32 +380,56 @@ export default function AddCarForm({ onPublished, onStocked }) {
   return (
     <FormCtx.Provider value={{ form, setVal }}>
     <div ref={rootRef} onKeyDown={handleKeyDown} style={{ fontFamily: "'DM Sans',sans-serif" }}>
-      {/* Step indicator */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
-        {STEPS.map((s) => {
-          const done = s.id < step;
-          const active = s.id === step;
-          return (
-            <button key={s.id} onClick={() => s.id < step && setStep(s.id)}
-              style={{
-                display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 8,
-                border: active ? `1px solid ${color.accent}` : "1px solid #EAECF0",
-                background: active ? "#FEF2F2" : done ? "#F0FDF4" : "#fff",
-                cursor: s.id < step ? "pointer" : "default", flex: "1 1 auto", minWidth: 0,
-              }}>
-              <div style={{
-                width: 22, height: 22, borderRadius: "50%", flexShrink: 0, display: "flex",
-                alignItems: "center", justifyContent: "center",
-                background: active ? color.accent : done ? "#10B981" : "#F1F3F5",
-                color: active || done ? "#fff" : color.textMuted,
-              }}>
-                {done ? <Check className="w-3 h-3" /> : <s.Icon className="w-3 h-3" />}
-              </div>
-              <span style={{ fontSize: 12, fontWeight: 600, color: active ? color.accent : done ? "#065F46" : color.textMuted, whiteSpace: "nowrap" }}>{s.label}</span>
-            </button>
-          );
-        })}
+      {/* Header: Back button (left) + circle progress strip (right) */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+        {onBack && (
+          <button onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, color: "#6b7280", background: "none", border: "none", cursor: "pointer", padding: 0, flexShrink: 0 }}>
+            <ArrowLeft className="w-4 h-4" /> Back
+          </button>
+        )}
+        <div style={{ flex: 1, display: "flex", alignItems: "flex-end" }}>
+          {STEPS.map((s, i) => {
+            const done = s.id < step;
+            const active = s.id === step;
+            return (
+              <React.Fragment key={s.id}>
+                {i > 0 && <div style={{ flex: 1, height: 2, background: done ? color.accent : "#e5e7eb", margin: "0 3px 11px", minWidth: 6 }} />}
+                <button onClick={() => done && setStep(s.id)}
+                  style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", padding: 0, cursor: done ? "pointer" : "default" }}>
+                  <div style={{
+                    width: 24, height: 24, borderRadius: "50%", flexShrink: 0, display: "flex",
+                    alignItems: "center", justifyContent: "center",
+                    background: active ? color.accent : done ? color.accent : "#fff",
+                    border: `2px solid ${active || done ? color.accent : "#d1d5db"}`,
+                  }}>
+                    {done ? <Check className="w-3 h-3" style={{ color: "#fff" }} /> : <span style={{ fontSize: 9, fontWeight: 800, color: active ? "#fff" : "#9ca3af" }}>{s.id}</span>}
+                  </div>
+                  <span style={{ fontSize: 9, fontWeight: 600, color: active ? color.accent : done ? "#374151" : "#9ca3af", whiteSpace: "nowrap" }}>{s.label}</span>
+                </button>
+              </React.Fragment>
+            );
+          })}
+        </div>
       </div>
+
+      {draftBanner && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, background: "#fffbeb", border: "1px solid #fde68a", marginBottom: 16, flexWrap: "wrap" }}>
+          <Info className="w-4 h-4" style={{ color: "#d97706", flexShrink: 0 }} />
+          <span style={{ fontSize: 13, color: "#92400e", flex: 1 }}>
+            Draft saved {draftSavedAt ? new Date(draftSavedAt).toLocaleString('en-MY', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''} — resume where you left off?
+          </span>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => setDraftBanner(false)}
+              style={{ padding: "5px 12px", borderRadius: 6, border: "none", background: "#d97706", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              Resume
+            </button>
+            <button onClick={() => { acfClearDraft(dealerId); setForm({ ...blankForm, publish: mode === 'marketplace' }); setStep(1); setDraftBanner(false); }}
+              style={{ padding: "5px 12px", borderRadius: 6, border: "1px solid #fde68a", background: "#fff", color: "#92400e", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+              Start fresh
+            </button>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 8, background: "#FEF2F2", border: "1px solid #FECACA", marginBottom: 16 }}>
@@ -489,6 +561,7 @@ export default function AddCarForm({ onPublished, onStocked }) {
       {/* ── Step 4: Photos & Publish ── */}
       {step === 4 && (
         <div style={{ display: "grid", gap: 20 }}>
+          {!mode && (
           <div>
             <label style={LBL}>Where should this car go?</label>
             <div className="addcar-publish" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -524,6 +597,7 @@ export default function AddCarForm({ onPublished, onStocked }) {
               </button>
             </div>
           </div>
+          )}
 
           <div>
             <label style={LBL}>Photos {form.publish && <span style={{ color: color.accent }}>* (min 1 to publish)</span>}</label>
@@ -581,7 +655,7 @@ export default function AddCarForm({ onPublished, onStocked }) {
         ) : (
           <button onClick={submit} disabled={saving || !canSubmit}
             style={{ display: "flex", alignItems: "center", gap: 6, padding: "11px 24px", borderRadius: 8, border: "none", background: canSubmit && !saving ? color.accent : "#FCA5A5", color: "#fff", fontSize: 14, fontWeight: 700, cursor: canSubmit && !saving ? "pointer" : "default" }}>
-            {saving ? "Saving…" : form.publish ? "Add & Publish" : "Add to Inventory"} <Check className="w-4 h-4" />
+            {saving ? "Saving…" : mode === 'marketplace' ? "Save & Continue →" : form.publish ? "Add & Publish" : "Add to Inventory"} {!saving && mode !== 'marketplace' && <Check className="w-4 h-4" />}
           </button>
         )}
       </div>

@@ -61,8 +61,38 @@ listings, add, leads, analytics, team, hero, stock, enquiries, bookings, documen
 Dealer dashboard NAV (DashboardPage.jsx NAV array): overview, crm, listings, add, stock, hp, handover, analytics, team, customers, outreach, ai_manager, documents, storefront, oversight
   ↳ handover = post-sale lifecycle board (PostSaleBoard). Salesman panel also has a "handover" tab scoped to their own won deals.
 
+## Won = sold: one trigger does everything (DO NOT split this brain again)
+A lead reaching `won`/`closed_won` is the SINGLE source of truth for a closed deal.
+The DB trigger `auto_create_customer_on_won` (on leads) is what fans it out — it must
+do ALL of: (a) flip the linked `car_listings` row to `status='sold'` + stamp `sold_at`
++ set `assigned_to` to the salesman, (b) create the `customers` row, (c) seed the 8-step
+`post_sale_tasks` handover checklist. Because it lives in the DB it fires no matter which
+client moves the lead (salesman panel `advanceLeadStage`, dealer `LeadDrawer`, kanban drag).
+- NEVER add a "won" code path on the frontend that only writes `leads.stage` and assumes
+  something else marks the car sold — that orphans the win (car stays "available/Earn",
+  sold-count/commission/analytics read `car_listings.status='sold'` so they ignore it,
+  handover board stays empty). This split-brain has now bitten twice. The fix is always
+  in the trigger, not a per-client patch.
+- Sold-count, commission breakdown, RevOps and Overview all key off `car_listings.status='sold'`
+  + `sold_at` + `commission_amount` (+ `assigned_to` for per-salesman). If a won deal isn't
+  showing there, the car didn't get flipped — check the trigger, not the UI.
+- Frontend `advanceLeadStage` (Salesmanpanel) also optimistically flips the car in local
+  `myListings` state on win so the card updates without a reload; the DB trigger is the
+  real persistence.
+
+## getDealerIdFromProfile MUST mirror DB get_my_dealer_id() (never drift)
+`src/hooks/useProfile.js getDealerIdFromProfile(profile)` and the SQL SECURITY DEFINER
+`get_my_dealer_id()` MUST return the same id for the same user, or the frontend scopes
+queries/writes to a different id than RLS expects → reads come back empty and writes are
+silently rejected (no error). Canonical rule (both sides):
+  - dealer / superadmin / owner → profile.id (they ARE the dealer)
+  - salesman with dealer_id = NULL (Salesman Lite) → profile.id (owns itself)
+  - linked salesman / manager / admin → profile.dealer_id
+Prior bug: the JS helper had no `salesman` branch, so a linked salesman resolved to their
+OWN id — handover board empty, salesman-logged calls/appointments silently RLS-rejected.
+
 ## Post-sale handover (Module A)
-- Won deal (lead.stage = won/closed_won) → DB trigger `auto_create_customer_on_won` fires immediately: creates customers row (name/phone/IC/email/car/plate/price) AND pre-seeds 8-step post_sale_tasks checklist (B7 auto-NA if not financed). Idempotent — safe to re-trigger.
+- Won deal (lead.stage = won/closed_won) → DB trigger `auto_create_customer_on_won` fires immediately: flips the linked car to `status='sold'` (sold_at + assigned_to), creates the customers row (name/phone/IC/email/car/plate/price) AND pre-seeds 8-step post_sale_tasks checklist (B7 auto-NA if not financed). Idempotent — safe to re-trigger.
 - src/components/postsale/{PostSaleBoard,PostSaleChecklist}.jsx + src/hooks/usePostSaleTasks.js + src/utils/postSaleSteps.js
 - Malaysian sequence (fees are official rates, editable): loan settlement → buyer insurance → Puspakom B5 (RM30) → B7 (RM60, financed only, auto-NA if not financed) → JPJ pindah milik (RM100, biometric both parties, buyer within 7 days) → road tax → geran collection → handover
 - Handover processing costs (sum of non-NA step costs) are deducted from per-unit gross in StockTab P&L modal
@@ -79,6 +109,21 @@ leads (dealer_id, salesman_id, stage, source, buyer_name, phone, buyer_email, bu
 dealer_products (dealer_id, name, category, cost_price, selling_price, is_active)
 deal_products (dealer_id, lead_id, listing_id, product_id, sold_price)
 salesman_listings (dealer_id, salesman_id, listing_id) — many-to-many; a salesman features a dealer car on their own listings WITHOUT creating a lead. Pipeline = real buyers only.
+
+## Car ownership model — assignment is an EXCLUSIVITY lock
+Two ways a salesman ends up selling a car, reconciled by one rule:
+- `car_listings.assigned_to = NULL` → OPEN: any salesman can feature it (salesman_listings)
+  and sell it; whoever wins the lead earns it (trigger sets assigned_to to the closer).
+- `car_listings.assigned_to = <rep>` → EXCLUSIVE: the dealer has locked it to one rep (e.g.
+  high-value units). It DROPS OUT of every other salesman's Available Inventory feature pool
+  and only that rep can sell it. So the assigned rep is always the closer → no commission
+  ambiguity, and the won-trigger's `COALESCE(assigned_to, closer)` stays correct.
+Enforcement points (keep in sync):
+  - Salesman panel Available Inventory query filters `.is('assigned_to', null)`; addCarToMyDeals
+    guards against featuring an assigned car (race safety).
+  - Dealer dash handleAssign() evicts other salesmen's salesman_listings rows for that car on
+    assign, so exclusivity is retroactive (already-featured reps lose it).
+  - Never reintroduce a path that lets a non-assignee feature/sell an assigned car.
 post_sale_tasks (dealer_id, lead_id, listing_id, salesman_id, step_key, status[pending|in_progress|done|na], owner_role, due_date, cost, notes, sort_order) — handover checklist per won deal. Steps in src/utils/postSaleSteps.js. Auto-seeded by DB trigger on won + lazy-seeded on first board open. UNIQUE(lead_id, step_key).
 customers (dealer_id, lead_id, listing_id, name, phone, email, ic_number, purchase_date, car_brand, car_model, car_year, car_plate, selling_price, payment_type, road_tax_expiry, insurance_expiry, notes) — auto-created by trigger on won. UNIQUE(lead_id).
 service_packages (dealer_id, customer_id, lead_id, listing_id, package_name, total_visits, used_visits, valid_months, sold_price, sold_at, expires_at[generated]) — prepaid service bundles per customer. Managed in CustomersTab.
@@ -180,6 +225,13 @@ Both displayed in separate labelled sections in the P&L modal.
 - Sidebar/panel layouts: use `hidden md:block` for desktop sidebar, horizontal scrolling pill nav for mobile
 - Fixed pixel widths on layout containers are banned — use flex/grid with minWidth: 0 on flex children
 - Match the text color to the surface (see Theme section above) — never light text on a light card
+
+## Overlay / modal rules (non-negotiable — these bugs have bitten twice)
+1. **Always use `createPortal(jsx, document.body)`** for any bottom-sheet, drawer, or full-screen overlay. Without it, parent stacking contexts (overflow:hidden, transform, z-index) clip the blur and allow the parent to still scroll.
+2. **Always lock body scroll**: `document.body.style.overflow = 'hidden'` when the overlay opens; restore to `''` in the cleanup. Do this in a `useEffect` keyed on the open boolean, NOT inline.
+3. **`closeAndRun` pattern for nested actions**: when an action button inside an overlay should open a second modal, ALWAYS close the first overlay before opening the second. Pattern: `const closeAndRun = (fn) => () => { setDetailUnit(null); fn(); };`. Never open two overlays in parallel unless explicitly designed for it.
+4. **SELECT queries for detail drawers must be complete**: never use a partial select for a view that shows all spec fields. Expand the `select()` call to include every column needed before building the detail UI — patching it afterwards requires re-reading the file every time.
+5. **`useModalHistory` race condition**: the hook's `history.back()` cleanup fires `popstate` asynchronously. If you call `setModalA(null)` and `setModalB(open)` in the same tick, the cleanup for A fires `history.back()` which the just-registered B handler catches → B closes immediately. **Do NOT register `useModalHistory` for lightweight popups that have their own × / overlay-click close controls.** Only register it for primary drawers (LeadDrawer, main detail panels).
 
 ## Prompt discipline
 - Never write more than 80 lines of instructions per prompt

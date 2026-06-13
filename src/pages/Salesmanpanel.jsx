@@ -9,6 +9,7 @@ import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { usePermissions } from "../hooks/usePermissions";
 import { usePresence } from "../hooks/usePresence";
 import PostSaleBoard from "../components/postsale/PostSaleBoard";
+import SalesmanPanelHelp from "../components/SalesmanPanelHelp";
 import { toast } from "sonner";
 import { generateDealSheet } from "../utils/dealSheet";
 import {
@@ -60,6 +61,7 @@ import {
  Calendar,
  BarChart2,
  MessageCircle,
+ BookOpen,
 } from "lucide-react";
 
 import { callClaude } from "../lib/callClaude";
@@ -90,6 +92,7 @@ function StatusBadge({ status }) {
    pending: "bg-blue-500/15 text-blue-400 border-blue-500/30",
    pending_approval: "bg-amber-500/15 text-amber-400 border-amber-500/30",
    rejected: "bg-red-500/15 text-red-400 border-red-500/30",
+   sold: "bg-purple-500/15 text-purple-400 border-purple-500/30",
  };
  const labels = {
    pending_approval: "Pending Approval",
@@ -229,6 +232,8 @@ export default function SalesmanPanel() {
  const [drawerLeadId, setDrawerLeadId] = useState(null);
  const [dealSheetBusyId, setDealSheetBusyId] = useState(null);
  const [dealSheetLink, setDealSheetLink] = useState(null);
+ const [dealSheetConfigLead, setDealSheetConfigLead] = useState(null);
+ const [dsConfig, setDsConfig] = useState({ dpPct: 10, tenureYears: 7, flatRate: 2.45, roadTax: '', insurance: '', puspakom: '', note: '' });
  const [deletingLeadId, setDeletingLeadId] = useState(null);
  const [lostSavingId, setLostSavingId] = useState(null);
  const [stageSavingId, setStageSavingId] = useState(null);
@@ -248,6 +253,7 @@ export default function SalesmanPanel() {
  const [followUpSaving, setFollowUpSaving] = useState(false);
  const [testDriveConfirm, setTestDriveConfirm] = useState(null);
  const [linkCarLeadId, setLinkCarLeadId] = useState(null);
+ const [linkCarSearch, setLinkCarSearch] = useState("");
  const [batchWALeads, setBatchWALeads] = useState(null);
  const [batchWAIdx, setBatchWAIdx] = useState(0);
  const [mobileLeadStage, setMobileLeadStage] = useState("new");
@@ -311,7 +317,9 @@ export default function SalesmanPanel() {
  const [profileSettings, setProfileSettings] = useState({
  full_name: '', job_title: '', whatsapp_number: '',
  city: '', state: '', about_text: '',
+ monthly_target: 5,
  bio: '', response_time: '', specializations: [],
+ telegram_chat_id: '',
  });
  const [settingsSaving, setSettingsSaving] = useState(false);
  const [settingsSaved, setSettingsSaved] = useState(false);
@@ -348,6 +356,8 @@ export default function SalesmanPanel() {
  bio: profile.bio || '',
  response_time: profile.response_time || '',
  specializations: profile.specializations || [],
+ telegram_chat_id: profile.telegram_chat_id || '',
+ monthly_target: profile.monthly_target || 5,
  });
  }, [profile?.id]);
 
@@ -428,6 +438,7 @@ export default function SalesmanPanel() {
  views:     Number(row.views)     || 0,
  enquiries: Number(row.enquiries) || 0,
  daily:     [row.d0, row.d1, row.d2, row.d3, row.d4, row.d5, row.d6],
+ waDaily:   [row.w0, row.w1, row.w2, row.w3, row.w4, row.w5, row.w6],
  };
  });
  setCarStatsMap(map);
@@ -466,14 +477,13 @@ export default function SalesmanPanel() {
  // Active listings: assigned to me OR self-featured via salesman_listings.
  // Featuring a car (Add to my listings) does NOT create a pipeline lead —
  // only real buyers belong in the pipeline.
- const CAR_FIELDS = "id, slug, year, brand, model, variant, selling_price, status, images, colour, mileage, transmission, fuel_type, body_type, specs, features, options, city, condition, commission_amount";
+ const CAR_FIELDS = "id, slug, year, brand, model, variant, selling_price, status, images, colour, mileage, transmission, fuel_type, body_type, specs, features, options, city, condition, commission_amount, sold_at, assigned_to, assigned_seller:assigned_to(full_name)";
  const fetchMyListings = async () => {
  const [{ data: assigned }, { data: featuredRows }] = await Promise.all([
    supabase
      .from("car_listings")
      .select(CAR_FIELDS)
      .eq("assigned_to", userId)
-     .neq("status", "sold")
      .order("created_at", { ascending: false }),
    supabase
      .from("salesman_listings")
@@ -486,7 +496,7 @@ export default function SalesmanPanel() {
  const merged = [...assignedList];
  for (const row of featuredRows || []) {
    const c = row.car_listings;
-   if (c && c.status !== "sold" && !seen.has(c.id)) {
+   if (c && !seen.has(c.id)) {
      seen.add(c.id);
      merged.push(c);
    }
@@ -582,7 +592,7 @@ export default function SalesmanPanel() {
  (() => {
  let q = supabase
  .from("leads")
- .select("*, car_listings(brand, model, year, selling_price)")
+ .select("*, car_listings(brand, model, year, selling_price, commission_amount)")
  .eq("dealer_id", profile?.dealer_id)
  .eq("is_deleted", false);
  if (!canPerm("view_all_leads")) q = q.eq("salesman_id", userId);
@@ -752,6 +762,10 @@ Rules:
  .select("id, slug, year, brand, model, variant, selling_price, images, mileage, transmission, fuel_type, body_type, colour, commission_amount, assigned_to, status")
  .eq("dealer_id", profile.dealer_id)
  .eq("status", "available")
+ // Exclusivity: a car the dealer has assigned to a specific rep is closed to
+ // everyone else — it drops out of the shared feature pool. The assigned rep
+ // still sees it under My Listings (assigned_to path).
+ .is("assigned_to", null)
  .order("created_at", { ascending: false })
  .then(({ data }) => {
  setAvailableCars(data || []);
@@ -778,6 +792,13 @@ Rules:
  // Does NOT create a pipeline lead — pipeline is for real buyers only.
  const addCarToMyDeals = async (car) => {
  const carTitle = [car.year, car.brand, car.model].filter(Boolean).join(" ");
+ // Exclusivity guard: never let a salesman feature a car the dealer assigned to
+ // someone else (covers the race where it gets assigned after the list loaded).
+ if (car.assigned_to && car.assigned_to !== userId) {
+ toast.error(`${carTitle} is assigned to another salesman`);
+ setAvailableCars((p) => p.filter((c) => c.id !== car.id));
+ return;
+ }
  // Optimistic: surface immediately, mark featured so the inventory button flips.
  setMyListings((p) => p.some((c) => c.id === car.id) ? p : [car, ...p]);
  setFeaturedIds((p) => (p.includes(car.id) ? p : [...p, car.id]));
@@ -882,7 +903,10 @@ Rules:
  const viewCounts = Array.from({ length: 7 }, (_, i) =>
  allStats.reduce((s, v) => s + ((v.daily && v.daily[i]) || 0), 0)
  );
- const enqCounts = Array(7).fill(0);
+ // WA taps per day, aggregated from the RPC's w0..w6 buckets (Enquiries line)
+ const enqCounts = Array.from({ length: 7 }, (_, i) =>
+ allStats.reduce((s, v) => s + ((v.waDaily && v.waDaily[i]) || 0), 0)
+ );
 
  const tickStyle = { color: "rgba(255,255,255,0.25)", font: { size: 10 } };
  const gridStyle = { color: "rgba(255,255,255,0.05)" };
@@ -1383,9 +1407,22 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const oldStage = lead.stage;
  const leadId = lead.id;
  const buyerName = lead.buyer_name || "Lead";
+ const isWin = ["won", "closed_won"].includes(newStage);
+ const carId = lead.car_listing_id || lead.car_listings?.id;
  // Persist immediately so a refresh never loses the move. Undo writes the old stage back.
  setLeads((p) => p.map((l) => (l.id === leadId? { ...l, stage: newStage } : l)));
  updateLeadStage(leadId, newStage);
+ // Winning a lead flips its car to sold server-side (auto_create_customer_on_won
+ // trigger). Mirror that locally so the Listings card + commission reflect it
+ // without a reload — the single source of truth is the DB, this is just UI sync.
+ if (isWin && carId) {
+ const soldAt = new Date().toISOString();
+ // Mirror the DB trigger: status->sold, stamp sold_at, and claim the sale for
+ // this salesman only if the car wasn't already assigned (COALESCE semantics).
+ setMyListings((p) => p.map((c) => (c.id === carId && c.status!== "sold"
+   ? { ...c, status: "sold", sold_at: soldAt, assigned_to: c.assigned_to || userId }
+   : c)));
+ }
  toast(`${buyerName} → ${newStage.replace(/_/g, " ")}`, {
  action: {
  label: "Undo",
@@ -1416,20 +1453,27 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  setEditingNoteId(null);
  };
 
- const handleGenerateDealSheet = async (lead) => {
+ const handleGenerateDealSheet = async (lead, cfg = {}) => {
  const car = lead.car_listings;
  if (!car) { toast.error("Link a car to this lead first"); return; }
  setDealSheetBusyId(lead.id);
  setDealSheetLink(null);
  try {
-  // Pull any add-on products already attached to this deal
   const { data: dp } = await supabase
    .from("deal_products")
    .select("sold_price, dealer_products(name, category)")
    .eq("lead_id", lead.id);
+  const fees = {
+   road_tax: Number(cfg.roadTax) || 0,
+   insurance: Number(cfg.insurance) || 0,
+   puspakom: Number(cfg.puspakom) || 0,
+  };
   const { url } = await generateDealSheet({
    lead, car, dealer: dealerProfile, salesman: profile,
    addons: (dp || []).map(d => ({ name: d.dealer_products?.name, category: d.dealer_products?.category, price: d.sold_price })),
+   financing: { dpPct: cfg.dpPct, tenureYears: cfg.tenureYears, flatRate: cfg.flatRate },
+   fees,
+   note: cfg.note || null,
   });
   setDealSheetLink(url);
   try { await navigator.clipboard.writeText(url); toast.success("Deal sheet ready — link copied"); }
@@ -1508,7 +1552,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  setLeads((p) => p.map((l) =>
  l.id === leadId
 ? { ...l, car_listing_id: carId, car_listings: car
-? { brand: car.brand, model: car.model, year: car.year, selling_price: car.selling_price }
+? { brand: car.brand, model: car.model, year: car.year, selling_price: car.selling_price, commission_amount: car.commission_amount || null }
  : l.car_listings }
  : l
  ));
@@ -1544,11 +1588,16 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  };
 
  const handleAddLead = async () => {
+ if (!addLeadForm.buyer_name?.trim()) { toast.error("Buyer name is required"); return; }
+ // dealer_id must match the fetch filter (profile.dealer_id) or the new lead
+ // silently vanishes on the next refetch. Guard against a half-loaded profile.
+ const dealerId = profile?.dealer_id || getDealerIdFromProfile(profile);
+ if (!dealerId) { toast.error("Profile still loading — try again in a moment"); return; }
  setAddLeadSaving(true);
- const { data } = await supabase
+ const { data, error } = await supabase
  .from("leads")
  .insert({
- dealer_id: profile?.dealer_id,
+ dealer_id: dealerId,
  salesman_id: userId,
  assigned_to: userId,
  buyer_name: addLeadForm.buyer_name,
@@ -1560,10 +1609,17 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  lead_source: "manual",
  is_deleted: false,
  })
- .select()
+ .select("*, car_listings(brand, model, year, selling_price, commission_amount)")
  .single();
- if (data) setLeads((p) => [data, ...p]);
  setAddLeadSaving(false);
+ // Never close the form on failure — surface it so the lead isn't silently lost.
+ if (error || !data) {
+ console.error("handleAddLead:", error);
+ toast.error(error?.message ? `Couldn't add lead: ${error.message}` : "Couldn't add lead — please try again");
+ return;
+ }
+ setLeads((p) => [data, ...p]);
+ toast.success("Lead added");
  setShowAddLead(false);
  setAddLeadForm({
  buyer_name: "",
@@ -3519,12 +3575,19 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const activeCount = myListings.filter(
  (c) => c.status === "available",
  ).length;
+ // Header count must match what the default ("all") grid renders, which hides
+ // sold cars (they live in the Sold filter tab) — otherwise the badge reads one
+ // higher than the visible rows.
+ const nonSoldCount = myListings.filter((c) => c.status !== "sold").length;
+ const soldCount = myListings.length - nonSoldCount;
 
- // filter
+ // filter — "all" shows active (non-sold); "sold" shows sold only
  const filtered =
- filterStatus === "all"
-? enriched
- : enriched.filter((e) => e.car.status === filterStatus);
+ filterStatus === "sold"
+   ? enriched.filter((e) => e.car.status === "sold")
+   : filterStatus === "all"
+   ? enriched.filter((e) => e.car.status !== "sold")
+   : enriched.filter((e) => e.car.status === filterStatus);
 
  // sort
  const sorted = [...filtered].sort((a, b) => {
@@ -3551,7 +3614,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
 
  const viewToggle = (
  <div style={{ display: "flex", gap: 4, marginBottom: 16, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 4, width: "fit-content" }}>
- {[["mine", `My Listings (${myListings.length})`], ["inventory", "Available Inventory"]].map(([key, label]) => (
+ {[["mine", `My Listings (${nonSoldCount})`], ["inventory", "Available Inventory"]].map(([key, label]) => (
  <button
  key={key}
  onClick={() => setListingsView(key)}
@@ -3585,7 +3648,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  fontWeight: 600,
  color: "#f1f5f9",
  }}
- >My Listings ({myListings.length})
+ >My Listings ({nonSoldCount}){soldCount > 0 ? <span style={{ color: "#6b7280", fontWeight: 400, fontSize: 13 }}> · {soldCount} sold</span> : null}
  </p>
 
  {myListings.length > 0 && (
@@ -3660,13 +3723,13 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <span style={{ flex: 1 }} />
  <span style={{ fontSize: 11, color: "#4b5563", marginRight: 2 }}>Status:
  </span>
- {["all", "available", "reserved", "pending"].map((s) => (
+ {["all", "available", "reserved", "pending", "sold"].map((s) => (
  <button
  key={s}
  style={SEL_STYLE(filterStatus === s)}
  onClick={() => setFilterStatus(s)}
  >
- {s === "all"? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+ {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
  </button>
  ))}
  </div>
@@ -3847,6 +3910,35 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  >
  {price}
  </p>
+ {(() => {
+   const comm = carCommission(car);
+   const isSold = car.status === "sold";
+   // A car can be featured by several salesmen but only the assigned seller
+   // earns it. For everyone else the unit is gone — show "Sold by <name>",
+   // never an "Earned" badge they didn't earn.
+   const isSeller = !car.assigned_to || car.assigned_to === userId;
+   const sellerName = car.assigned_seller?.full_name?.split(" ")[0] || null;
+   if (!comm && !isSold) return null;
+   return (
+     <div style={{ display: "flex", gap: 12, margin: "0 0 8px", flexWrap: "wrap", alignItems: "center" }}>
+       {comm > 0 && (!isSold || isSeller) && (
+         <span style={{ fontSize: 11, fontWeight: 700, color: isSold ? "#4ade80" : "#fbbf24", background: isSold ? "rgba(74,222,128,0.1)" : "rgba(251,191,36,0.1)", padding: "2px 8px", borderRadius: 5 }}>
+           {isSold ? "Earned " : "Earn "}RM {Number(comm).toLocaleString("en-MY")}
+         </span>
+       )}
+       {isSold && !isSeller && (
+         <span style={{ fontSize: 11, fontWeight: 700, color: "#a78bfa", background: "rgba(167,139,250,0.1)", padding: "2px 8px", borderRadius: 5 }}>
+           {sellerName ? `Sold by ${sellerName}` : "Sold"}
+         </span>
+       )}
+       {isSold && car.sold_at && (
+         <span style={{ fontSize: 11, color: "#6b7280" }}>
+           Sold {new Date(car.sold_at).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" })}
+         </span>
+       )}
+     </div>
+   );
+ })()}
  <p
  style={{
  margin: "0 0 8px",
@@ -4155,6 +4247,129 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </div>
  );
 
+ const INP = { width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "9px 12px", outline: "none", fontFamily: "inherit", boxSizing: "border-box" };
+ const renderDealSheetModal = () => {
+   if (!dealSheetConfigLead) return null;
+   const lead = dealSheetConfigLead;
+   const busy = dealSheetBusyId === lead.id;
+   const carName = lead.car_listings ? [lead.car_listings.year, lead.car_listings.brand, lead.car_listings.model].filter(Boolean).join(" ") : null;
+   return (
+     <div onClick={() => !busy && setDealSheetConfigLead(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+       <div onClick={(e) => e.stopPropagation()} style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px 16px 0 0", padding: "20px 20px 32px", width: "100%", maxWidth: 480, maxHeight: "85vh", overflowY: "auto" }}>
+         <p style={{ margin: "0 0 2px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Customise Deal Sheet</p>
+         {carName && <p style={{ margin: "0 0 16px", fontSize: 12, color: "#4b5563" }}>{carName} · {lead.buyer_name || "—"}</p>}
+
+         <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>HP Financing</p>
+         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
+           <div>
+             <p style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}>Down payment %</p>
+             <input type="number" min="0" max="50" value={dsConfig.dpPct} onChange={e => setDsConfig(p => ({ ...p, dpPct: Number(e.target.value) }))} style={INP} />
+           </div>
+           <div>
+             <p style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}>Tenure (years)</p>
+             <select value={dsConfig.tenureYears} onChange={e => setDsConfig(p => ({ ...p, tenureYears: Number(e.target.value) }))} style={{ ...INP, cursor: "pointer" }}>
+               {[3, 5, 7, 9].map(y => <option key={y} value={y}>{y} yr</option>)}
+             </select>
+           </div>
+           <div>
+             <p style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}>Rate (% flat)</p>
+             <input type="number" step="0.05" min="0" max="10" value={dsConfig.flatRate} onChange={e => setDsConfig(p => ({ ...p, flatRate: Number(e.target.value) }))} style={INP} />
+           </div>
+         </div>
+
+         <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>Fees &amp; Registration (optional)</p>
+         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
+           <div>
+             <p style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}>Road Tax (RM)</p>
+             <input type="number" min="0" value={dsConfig.roadTax} placeholder="0" onChange={e => setDsConfig(p => ({ ...p, roadTax: e.target.value }))} style={INP} />
+           </div>
+           <div>
+             <p style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}>Insurance (RM)</p>
+             <input type="number" min="0" value={dsConfig.insurance} placeholder="0" onChange={e => setDsConfig(p => ({ ...p, insurance: e.target.value }))} style={INP} />
+           </div>
+           <div>
+             <p style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}>Puspakom (RM)</p>
+             <input type="number" min="0" value={dsConfig.puspakom} placeholder="0" onChange={e => setDsConfig(p => ({ ...p, puspakom: e.target.value }))} style={INP} />
+           </div>
+         </div>
+
+         <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>Note to Buyer (optional)</p>
+         <textarea value={dsConfig.note} onChange={e => setDsConfig(p => ({ ...p, note: e.target.value }))} placeholder="e.g. Offer valid this weekend only. Free first service included." rows={3} style={{ ...INP, resize: "vertical", lineHeight: 1.55, marginBottom: 16 }} />
+
+         <div style={{ display: "flex", gap: 8 }}>
+           <button onClick={() => setDealSheetConfigLead(null)} disabled={busy} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+           <button onClick={async () => { await handleGenerateDealSheet(lead, dsConfig); setDealSheetConfigLead(null); }} disabled={busy} style={{ flex: 2, padding: "11px 0", borderRadius: 10, background: "#dc2626", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.6 : 1 }}>
+             {busy ? "Generating…" : "Generate Deal Sheet"}
+           </button>
+         </div>
+       </div>
+     </div>
+   );
+ };
+
+ const renderLinkCarModal = () => {
+   if (!linkCarLeadId) return null;
+   const pool = myListings.filter((c) => c.status !== "sold");
+   const q = linkCarSearch.toLowerCase();
+   const results = q
+     ? pool.filter((c) => `${c.brand} ${c.model} ${c.year} ${c.variant || ""}`.toLowerCase().includes(q))
+     : pool;
+   return (
+     <div onClick={() => { setLinkCarLeadId(null); setLinkCarSearch(""); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+       <div onClick={(e) => e.stopPropagation()} style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px 16px 0 0", padding: "20px 20px 32px", width: "100%", maxWidth: 480, maxHeight: "70vh", display: "flex", flexDirection: "column" }}>
+         <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Select a Car</p>
+         <p style={{ margin: "0 0 14px", fontSize: 12, color: "#4b5563" }}>Link a car from your listings to this lead.</p>
+         <input
+           autoFocus
+           value={linkCarSearch}
+           onChange={(e) => setLinkCarSearch(e.target.value)}
+           placeholder="Search brand, model…"
+           style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 9, color: "#e5e7eb", fontSize: 13, padding: "9px 12px", outline: "none", fontFamily: "inherit", boxSizing: "border-box", marginBottom: 12 }}
+         />
+         <div style={{ overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+           {results.length === 0 ? (
+             <p style={{ fontSize: 13, color: "#4b5563", textAlign: "center", padding: "20px 0" }}>No cars match.</p>
+           ) : results.map((c) => {
+             const img = c.images?.[0];
+             const name = [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
+             const price = c.selling_price ? `RM ${Number(c.selling_price).toLocaleString("en-MY")}` : "—";
+             return (
+               <button key={c.id} onClick={() => { handleLinkCar(linkCarLeadId, c.id); setLinkCarSearch(""); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 9, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", cursor: "pointer", textAlign: "left" }}>
+                 {img ? <img src={img} alt={name} style={{ width: 52, height: 36, objectFit: "cover", borderRadius: 5, flexShrink: 0 }} /> : <div style={{ width: 52, height: 36, borderRadius: 5, background: "rgba(255,255,255,0.05)", flexShrink: 0 }} />}
+                 <div style={{ flex: 1, minWidth: 0 }}>
+                   <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</p>
+                   <p style={{ margin: 0, fontSize: 12, color: "#60a5fa", fontWeight: 700 }}>{price}</p>
+                 </div>
+               </button>
+             );
+           })}
+         </div>
+         <button onClick={() => { setLinkCarLeadId(null); setLinkCarSearch(""); }} style={{ marginTop: 12, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer", width: "100%" }}>Cancel</button>
+       </div>
+     </div>
+   );
+ };
+
+ const renderTestDriveConfirmModal = () => testDriveConfirm && (
+ <div onClick={() => setTestDriveConfirm(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+   <div onClick={(e) => e.stopPropagation()} style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px 16px 0 0", padding: "20px 20px 32px", width: "100%", maxWidth: 480 }}>
+     <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Confirm Test Drive</p>
+     <p style={{ margin: "0 0 16px", fontSize: 12, color: "#4b5563" }}>
+       {testDriveConfirm.lead.buyer_name || "Lead"} — did the test drive happen?
+     </p>
+     <p style={{ margin: "0 0 16px", fontSize: 13, color: "#9ca3af", lineHeight: 1.6 }}>
+       This will move the lead to <strong style={{ color: "#e5e7eb" }}>{testDriveConfirm.nextStage.replace(/_/g, " ")}</strong>. Only confirm if the test drive has been completed.
+     </p>
+     <div style={{ display: "flex", gap: 8 }}>
+       <button onClick={() => setTestDriveConfirm(null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+       <button onClick={() => { advanceLeadStage(testDriveConfirm.lead, testDriveConfirm.nextStage, true); setTestDriveConfirm(null); }} style={{ flex: 2, padding: "11px 0", borderRadius: 10, background: "#dc2626", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+         Yes, test drive done
+       </button>
+     </div>
+   </div>
+ </div>
+ );
+
  const renderWAModal = () =>
  waModalLead && (
  <div
@@ -4360,9 +4575,14 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </span>
  </div>
  {(carName || carPrice) && (
- <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 2, gap: 8 }}>
- {carName && <p style={{ margin: 0, fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carName}</p>}
- {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#60a5fa", flexShrink: 0 }}>{carPrice}</p>}
+ <div style={{ marginTop: 2 }}>
+   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+     {carName && <p style={{ margin: 0, fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carName}</p>}
+     {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#60a5fa", flexShrink: 0 }}>{carPrice}</p>}
+   </div>
+   {car?.commission_amount > 0 && (
+     <p style={{ margin: "2px 0 0", fontSize: 10, fontWeight: 700, color: "#fbbf24" }}>Commission: RM {Number(car.commission_amount).toLocaleString("en-MY")}</p>
+   )}
  </div>
  )}
  {lead.updated_at && (
@@ -4807,9 +5027,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 12 }}>
  <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>Deal Sheet</p>
  {!dealSheetLink || dealSheetBusyId === pl.id ? (
- <button onClick={() => handleGenerateDealSheet(pl)} disabled={dealSheetBusyId === pl.id || !plCar} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 600, padding: "9px 14px", borderRadius: 8, background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd", cursor: plCar ? "pointer" : "not-allowed", opacity: (dealSheetBusyId === pl.id || !plCar) ? 0.55 : 1, fontFamily: "inherit" }}>
+ <button onClick={() => { if (plCar) { setDsConfig({ dpPct: 10, tenureYears: 7, flatRate: 2.45, roadTax: '', insurance: '', puspakom: '', note: '' }); setDealSheetConfigLead(pl); } }} disabled={dealSheetBusyId === pl.id || !plCar} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 600, padding: "9px 14px", borderRadius: 8, background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd", cursor: plCar ? "pointer" : "not-allowed", opacity: (dealSheetBusyId === pl.id || !plCar) ? 0.55 : 1, fontFamily: "inherit" }}>
  <FileText size={13} />
- {dealSheetBusyId === pl.id ? "Generating…" : plCar ? "Generate Deal Sheet" : "Link a car first"}
+ {dealSheetBusyId === pl.id ? "Generating…" : plCar ? "Customise & Generate" : "Link a car first"}
  </button>
  ) : (
  <div>
@@ -5243,7 +5463,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
   const viewsD = Array.from({ length: 7 }, (_, i) =>
    allStats.reduce((s, v) => s + ((v.daily && v.daily[i]) || 0), 0)
   );
-  const waD = Array(7).fill(0);
+  const waD = Array.from({ length: 7 }, (_, i) =>
+   allStats.reduce((s, v) => s + ((v.waDaily && v.waDaily[i]) || 0), 0)
+  );
   const enqD = bucketArr7(enquiries);
   const totalViews = myClicks;
   const totalWA = myEnquiries;
@@ -5937,6 +6159,8 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  bio: profileSettings.bio || null,
  response_time: profileSettings.response_time || null,
  specializations: profileSettings.specializations.length > 0? profileSettings.specializations : null,
+ telegram_chat_id: profileSettings.telegram_chat_id || null,
+ monthly_target: Number(profileSettings.monthly_target) || 5,
  }).eq('id', profile.id);
  setSettingsSaving(false);
  if (error) {
@@ -5984,6 +6208,13 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  onChange={e => setProfileSettings(p => ({ ...p, job_title: e.target.value }))}
  placeholder="e.g. Senior Sales Consultant" style={inputStyle} />
  </div>
+ <div>
+ <label style={labelStyle}>Monthly Sales Target (cars)</label>
+ <input type="number" min="1" max="999" value={profileSettings.monthly_target}
+ onChange={e => setProfileSettings(p => ({ ...p, monthly_target: e.target.value }))}
+ placeholder="5" style={{ ...inputStyle, width: 100 }} />
+ <p style={{ margin: '5px 0 0', fontSize: 11, color: '#374151' }}>Shown as a progress bar on your Dashboard and Analytics.</p>
+ </div>
  </div>
  </div>
 
@@ -5995,6 +6226,20 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <input type="text" value={profileSettings.whatsapp_number}
  onChange={e => setProfileSettings(p => ({ ...p, whatsapp_number: e.target.value }))}
  placeholder="e.g. 60123456789" style={inputStyle} />
+ </div>
+ <div>
+ <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+ <label style={{ ...labelStyle, marginBottom: 0 }}>Telegram Chat ID</label>
+ {profileSettings.telegram_chat_id
+ ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#4ade80' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ade80', display: 'inline-block' }} />Connected</span>
+ : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#64748b' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#64748b', display: 'inline-block' }} />Not set</span>}
+ </div>
+ <input type="text" value={profileSettings.telegram_chat_id}
+ onChange={e => setProfileSettings(p => ({ ...p, telegram_chat_id: e.target.value }))}
+ placeholder="e.g. 123456789" style={inputStyle} />
+ <p style={{ margin: '5px 0 0', fontSize: 10, color: '#64748b', lineHeight: 1.6 }}>
+ Get appointment + handover reminders on Telegram. Open Telegram, search <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd', textDecoration: 'none' }}>@userinfobot</a>, send /start, copy the Id number.
+ </p>
  </div>
  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
  <div>
@@ -6165,7 +6410,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  tab: "listings",
  label: "Listings",
  icon: <Car size={18} />,
- badge: myListings.length || null,
+ badge: myListings.filter((c) => c.status !== "sold").length || null,
  },
  {
  tab: "leads",
@@ -6207,6 +6452,12 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  tab: "settings",
  label: "Settings",
  icon: <Settings size={18} />,
+ badge: null,
+ },
+ {
+ tab: "help",
+ label: "Manual",
+ icon: <BookOpen size={18} />,
  badge: null,
  },
  ].map(({ tab, label, icon, badge }) => {
@@ -6365,7 +6616,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  tab: "listings",
  label: "Listings",
  icon: <Car style={{ width: 14, height: 14, flexShrink: 0 }} />,
- badge: myListings.length || null,
+ badge: myListings.filter((c) => c.status !== "sold").length || null,
  },
  ].map(({ tab, label, icon, badge }) => (
  <button
@@ -6575,6 +6826,11 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  tab: "settings",
  label: "Settings",
  icon: <Settings style={{ width: 14, height: 14, flexShrink: 0 }} />,
+ },
+ {
+ tab: "help",
+ label: "Manual",
+ icon: <BookOpen style={{ width: 14, height: 14, flexShrink: 0 }} />,
  },
  ].map(({ tab, label, icon }) => (
  <button
@@ -6959,6 +7215,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  {activeTab === "handover" && renderHandover()}
  {activeTab === "team" && renderTeam()}
  {activeTab === "settings" && renderSettings()}
+ {activeTab === "help" && <SalesmanPanelHelp />}
  </div>
  </div>
 
@@ -7732,6 +7989,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </div>
  )}
 
+ {renderDealSheetModal()}
+ {renderLinkCarModal()}
+ {renderTestDriveConfirmModal()}
  {renderWAModal()}
  {renderLogCallModal()}
  {renderFollowUpModal()}

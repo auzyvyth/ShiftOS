@@ -95,6 +95,26 @@ export const STATUS_CONFIG = {
 // opts.handlesRoadtaxInsurance — false when the dealer outsources road tax and
 // insurance entirely (profiles.handles_roadtax_insurance), so those steps are
 // auto-marked N/A and never show as overdue work for the dealership.
+// Per-step SLA in days from the won date. Must stay in sync with the DB trigger
+// auto_create_customer_on_won so the lazy-seed and trigger agree on deadlines.
+// expiry-reminders relies on due_date to detect overdue handover steps.
+export const DUE_OFFSET_DAYS = {
+  loan_settlement: 5,
+  insurance: 7,
+  puspakom_b5: 10,
+  puspakom_b7: 10,
+  jpj_transfer: 14,
+  road_tax: 17,
+  geran_collection: 21,
+  handover: 21,
+};
+
+function dueDateFor(stepKey, from = new Date()) {
+  const d = new Date(from);
+  d.setDate(d.getDate() + (DUE_OFFSET_DAYS[stepKey] ?? 14));
+  return d.toISOString().slice(0, 10);
+}
+
 export function defaultTasksFor(lead, opts = {}) {
   // Match the DB trigger's IS NOT NULL check (auto_create_customer_on_won) so the
   // lazy-seed path can't disagree on edge values like loan_amount = 0 or loan_status = ''.
@@ -111,6 +131,7 @@ export function defaultTasksFor(lead, opts = {}) {
     owner_role: s.owner,
     cost: s.cost,
     sort_order: i,
+    due_date: dueDateFor(s.key),
   }));
 }
 

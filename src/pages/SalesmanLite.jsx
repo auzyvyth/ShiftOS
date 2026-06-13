@@ -75,6 +75,15 @@ function useWindowSize() {
   return w;
 }
 
+// Canonical Malaysian phone form (digits, leading 60) — matches the app's own
+// wa.me/tel link normalization. Used so auto-converted leads dedup reliably
+// regardless of whether the enquiry stored "0112…", "+60112…" or "60112…".
+const normalizePhone = (p) => {
+  const s = (p || "").replace(/\D/g, "");
+  if (!s) return "";
+  return s.startsWith("6") ? s : "6" + s;
+};
+
 const timeAgo = (iso) => {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -206,6 +215,15 @@ export default function SalesmanLite() {
 
   function switchTab(tab) {
     if (tab === "enquiries") setNewBookingsCount(0);
+    const GATED = ["leads", "enquiries", "performance"];
+    if (GATED.includes(tab) && myListings.length === 0 && !loading) {
+      toast("Add your first listing to unlock this tab", {
+        description: "Publish a car first — leads and performance data flow from your listings.",
+      });
+      setShowAddForm(true);
+      setActiveTab("listings");
+      return;
+    }
     setActiveTab(tab);
   }
 
@@ -289,9 +307,9 @@ export default function SalesmanLite() {
     website: "",
   });
   const [settingsSaving, setSettingsSaving] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState(
-    () => localStorage.getItem("salesman_lite_avatar") || ""
-  );
+  // Avatar cache is keyed by user id (set once profile loads) so it never
+  // bleeds across salesmen sharing a device. Profile fetch repopulates it.
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef(null);
   const broadcastCancelRef = useRef(false);
@@ -502,7 +520,7 @@ export default function SalesmanLite() {
       });
       const av = profile.avatar_url || "";
       setAvatarUrl(av);
-      if (av) localStorage.setItem("salesman_lite_avatar", av);
+      if (av && profile.id) localStorage.setItem(`salesman_lite_avatar_${profile.id}`, av);
       setSettingsForm((p) => ({ ...p, telegram_chat_id: profile.telegram_chat_id || "" }));
     }
   }, [profile]);
@@ -668,6 +686,7 @@ export default function SalesmanLite() {
               views:    Number(row.views)     || 0,
               enquiries: Number(row.enquiries) || 0,
               daily:    [row.d0, row.d1, row.d2, row.d3, row.d4, row.d5, row.d6],
+              waDaily:  [row.w0, row.w1, row.w2, row.w3, row.w4, row.w5, row.w6],
             };
           });
           setCarStatsMap(map);
@@ -705,7 +724,7 @@ export default function SalesmanLite() {
               // Deduplicate within the batch first (phone+listing key) before any DB call
               const batchSeen = new Set();
               const dedupedPending = pending.filter((e) => {
-                const key = `${e.buyer_phone || ""}::${e.listing_id || ""}`;
+                const key = `${normalizePhone(e.buyer_phone)}::${e.listing_id || ""}`;
                 if (batchSeen.has(key)) return false;
                 batchSeen.add(key);
                 return true;
@@ -713,17 +732,19 @@ export default function SalesmanLite() {
               // Run conversions sequentially to avoid concurrent duplicate-check races
               const newLeads = [];
               for (const e of dedupedPending) {
-                if (!e.buyer_phone && !e.listing_id) continue;
-                if (e.listing_id && e.buyer_phone) {
+                const enqPhone = normalizePhone(e.buyer_phone);
+                if (!enqPhone && !e.listing_id) continue;
+                if (enqPhone) {
+                  // Dedup on normalized phone alone (a buyer is one lead per
+                  // salesman regardless of which car they first enquired on).
                   const { data: existing, error: existingErr } = await supabase
                     .from("leads")
                     .select("id")
                     .eq("salesman_id", uid)
-                    .eq("car_listing_id", e.listing_id)
-                    .eq("phone", e.buyer_phone)
-                    .maybeSingle();
+                    .eq("phone", enqPhone)
+                    .limit(1);
                   if (existingErr) console.error("checkExistingLead:", existingErr);
-                  if (existing) continue;
+                  if (existing && existing.length) continue;
                 }
                 const { data, error: insertLeadErr } = await supabase
                   .from("leads")
@@ -731,7 +752,7 @@ export default function SalesmanLite() {
                     salesman_id: uid,
                     dealer_id: null,
                     buyer_name: e.buyer_name || "Unknown",
-                    phone: e.buyer_phone || "",
+                    phone: enqPhone,
                     notes: e.buyer_message || null,
                     car_listing_id: e.listing_id || null,
                     stage: "new",
@@ -760,13 +781,13 @@ export default function SalesmanLite() {
             setEnquiries((p) => p.find((e) => e.id === row.id) ? p : [row, ...p]);
             toast("New enquiry!", { description: row.buyer_name || "Someone enquired" });
             if (!row.buyer_phone && !row.listing_id) return;
-            const phone = (row.buyer_phone || "").replace(/\D/g, "");
+            const phone = normalizePhone(row.buyer_phone);
             if (phone) {
-              const { data: dupLead } = await supabase.from("leads").select("id").eq("salesman_id", uid).is("dealer_id", null).eq("phone", phone).maybeSingle();
-              if (!dupLead) {
+              const { data: dupLead } = await supabase.from("leads").select("id").eq("salesman_id", uid).is("dealer_id", null).eq("phone", phone).limit(1);
+              if (!dupLead || !dupLead.length) {
                 const { data: newLead, error: rtInsertErr } = await supabase.from("leads").insert({
                   salesman_id: uid, dealer_id: null,
-                  buyer_name: row.buyer_name || null, phone: row.buyer_phone || null,
+                  buyer_name: row.buyer_name || null, phone,
                   notes: row.buyer_message || null, car_listing_id: row.listing_id || null,
                   stage: "new", lead_source: "enquiry", is_deleted: false,
                 }).select().single();
@@ -826,13 +847,13 @@ export default function SalesmanLite() {
                   setAppointments((p) => [payload.new, ...p]);
                   setNewBookingsCount((c) => c + 1);
                   toast("New booking!", { description: payload.new.buyer_name || "New appointment" });
-                  const phone = (payload.new.buyer_phone || "").replace(/\D/g, "");
+                  const phone = normalizePhone(payload.new.buyer_phone);
                   if (phone) {
-                    const { data: existing } = await supabase.from("leads").select("id").eq("salesman_id", uid).is("dealer_id", null).eq("phone", phone).maybeSingle();
-                    if (!existing) {
+                    const { data: existing } = await supabase.from("leads").select("id").eq("salesman_id", uid).is("dealer_id", null).eq("phone", phone).limit(1);
+                    if (!existing || !existing.length) {
                       const { data: newLead } = await supabase.from("leads").insert({
                         salesman_id: uid, dealer_id: null,
-                        buyer_name: payload.new.buyer_name || null, phone: payload.new.buyer_phone || null,
+                        buyer_name: payload.new.buyer_name || null, phone,
                         car_listing_id: payload.new.car_listing_id || null,
                         stage: "new", lead_source: "manual", is_deleted: false,
                       }).select().single();
@@ -1062,7 +1083,8 @@ export default function SalesmanLite() {
       dealer_id: lead?.dealer_id ?? null,
     });
     if (error) { console.error("logCall:", error); toast.error("Failed to log call"); setCallSaving(false); return; }
-    await supabase.from("leads").update({ updated_at: new Date().toISOString(), last_call_outcome: callOutcome }).eq("id", logCallLeadId);
+    const { error: leadUpdErr } = await supabase.from("leads").update({ updated_at: new Date().toISOString(), last_call_outcome: callOutcome }).eq("id", logCallLeadId);
+    if (leadUpdErr) console.error("logCall lead update:", leadUpdErr);
     setLeads((p) => p.map((l) => l.id === logCallLeadId ? { ...l, updated_at: new Date().toISOString(), last_call_outcome: callOutcome } : l));
     setLeadActivities((p) => { const n = { ...p }; delete n[logCallLeadId]; return n; });
     toast.success("Call logged");
@@ -1303,15 +1325,17 @@ export default function SalesmanLite() {
   const scheduleAptReminder = async (apt) => {
     if (!apt.appointment_date) return;
     const remindAt = new Date(new Date(apt.appointment_date).getTime() - 60 * 60 * 1000).toISOString();
-    await supabase.from("appointments").update({ remind_at: remindAt, remind_sent: false }).eq("id", apt.id);
+    const { error } = await supabase.from("appointments").update({ remind_at: remindAt, remind_sent: false }).eq("id", apt.id);
+    if (error) { console.error("scheduleAptReminder:", error); toast.error("Couldn't set the reminder. Try again."); return; }
     setAppointments((p) => p.map((a) => a.id === apt.id ? { ...a, remind_at: remindAt, remind_sent: false } : a));
   };
 
   const autoUpsertLeadFromAppt = async (apt) => {
-    const phone = (apt.buyer_phone || "").replace(/\D/g, "");
+    const phone = normalizePhone(apt.buyer_phone);
     if (!phone) return;
-    const { data: existing } = await supabase
-      .from("leads").select("id, stage").eq("salesman_id", userId).is("dealer_id", null).eq("phone", phone).maybeSingle();
+    const { data: existingRows } = await supabase
+      .from("leads").select("id, stage").eq("salesman_id", userId).is("dealer_id", null).eq("phone", phone).limit(1);
+    const existing = existingRows && existingRows[0];
     if (existing) {
       const curIdx = LEAD_STAGES.indexOf(existing.stage);
       const viewIdx = LEAD_STAGES.indexOf("viewing_booked");
@@ -1323,7 +1347,7 @@ export default function SalesmanLite() {
     } else {
       const { data: newLead } = await supabase.from("leads").insert({
         salesman_id: userId, dealer_id: null,
-        buyer_name: apt.buyer_name || "Unknown", phone: apt.buyer_phone || "",
+        buyer_name: apt.buyer_name || "Unknown", phone,
         car_listing_id: apt.car_listing_id || null,
         stage: "viewing_booked", lead_source: "manual", is_deleted: false,
       }).select().single();
@@ -1332,14 +1356,14 @@ export default function SalesmanLite() {
   };
 
   const autoCreateLeadFromEnq = async (enq) => {
-    const phone = (enq.buyer_phone || "").replace(/\D/g, "");
+    const phone = normalizePhone(enq.buyer_phone);
     if (!phone) return;
-    const { data: existing } = await supabase
-      .from("leads").select("id").eq("salesman_id", userId).is("dealer_id", null).eq("phone", phone).maybeSingle();
-    if (!existing) {
+    const { data: existingRows } = await supabase
+      .from("leads").select("id").eq("salesman_id", userId).is("dealer_id", null).eq("phone", phone).limit(1);
+    if (!existingRows || !existingRows.length) {
       const { data: newLead } = await supabase.from("leads").insert({
         salesman_id: userId, dealer_id: null,
-        buyer_name: enq.buyer_name || "Unknown", phone: enq.buyer_phone || "",
+        buyer_name: enq.buyer_name || "Unknown", phone,
         notes: enq.buyer_message || null, car_listing_id: enq.listing_id || null,
         stage: "new", lead_source: "enquiry", is_deleted: false,
       }).select().single();
@@ -1356,7 +1380,7 @@ export default function SalesmanLite() {
         salesman_id: userId,
         assigned_to: userId,
         buyer_name: addLeadForm.buyer_name,
-        phone: addLeadForm.phone,
+        phone: normalizePhone(addLeadForm.phone),
         notes: addLeadForm.notes,
         car_listing_id: addLeadForm.car_listing_id || null,
         stage: "new",
@@ -1428,7 +1452,7 @@ export default function SalesmanLite() {
       `slite_enquiries_${profile.id}`,
       `slite_appts_${profile.id}`,
       `slite_last_seen_enq_${profile.id}`,
-      "salesman_lite_avatar",
+      `salesman_lite_avatar_${profile.id}`,
     ];
     keysToDelete.forEach(k => localStorage.removeItem(k));
     setMyListings([]);
@@ -2775,6 +2799,19 @@ export default function SalesmanLite() {
                 setMyListings((p) => [car, ...p]);
                 setShowAddForm(false);
                 toast.success("Listing published!");
+                if (profile?.telegram_chat_id) {
+                  const carName = [car.year, car.brand, car.model].filter(Boolean).join(" ");
+                  supabase.auth.getSession().then(({ data: { session } }) => {
+                    supabase.functions.invoke("send-telegram", {
+                      body: {
+                        dealer_id: userId,
+                        channel_id: profile.telegram_chat_id,
+                        message: `Your listing is now live on XDrive!\n\n${carName}${car.selling_price ? `\nRM ${Number(car.selling_price).toLocaleString("en-MY")}` : ""}`,
+                      },
+                      headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+                    }).catch(() => {});
+                  });
+                }
               }}
             />
           </div>
@@ -5584,7 +5621,7 @@ export default function SalesmanLite() {
       const { error: avatarProfileErr } = await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", userId);
       if (avatarProfileErr) console.error("handleAvatarUpload profile update:", avatarProfileErr);
       setAvatarUrl(bustedUrl);
-      localStorage.setItem("salesman_lite_avatar", bustedUrl);
+      if (userId) localStorage.setItem(`salesman_lite_avatar_${userId}`, bustedUrl);
       setProfile((p) => ({ ...p, avatar_url: bustedUrl }));
       setAvatarUploading(false);
       toast.success("Profile photo updated");
@@ -5608,7 +5645,12 @@ export default function SalesmanLite() {
           website: settingsForm.website || null,
         })
         .eq("id", userId);
-      if (saveProfileErr) console.error("handleSave:", saveProfileErr);
+      setSettingsSaving(false);
+      if (saveProfileErr) {
+        console.error("handleSave:", saveProfileErr);
+        toast.error("Couldn't save your profile. Check your connection and try again.");
+        return;
+      }
       setProfile((p) => ({
         ...p,
         full_name: settingsForm.full_name,
@@ -5623,7 +5665,6 @@ export default function SalesmanLite() {
         website: settingsForm.website || null,
       }));
       setSettingsForm((p) => ({ ...p, whatsapp_number: phone }));
-      setSettingsSaving(false);
       toast.success("Profile updated");
     };
 

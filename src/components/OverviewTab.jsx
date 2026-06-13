@@ -37,7 +37,18 @@ const ACT_CFG = {
   stage_changed:  { label: 'Stage',    icon: ArrowRightLeft,  color: '#3B82F6', bg: '#EFF6FF' },
   note_added:     { label: 'Note',     icon: FileText,        color: '#6B7280', bg: '#F9FAFB' },
   created:        { label: 'New lead', icon: UserPlus,        color: '#8B5CF6', bg: '#F5F3FF' },
+  won:            { label: 'Sold',     icon: CheckCircle2,    color: '#16A34A', bg: '#F0FDF4' },
+  lost:           { label: 'Lost',     icon: TrendingDown,    color: '#DC2626', bg: '#FEF2F2' },
 };
+const WON_STAGES  = ['won', 'closed_won'];
+const LOST_STAGES = ['lost', 'closed_lost'];
+// A stage change INTO won/lost is the most important event in the feed — surface
+// it as its own styled "Sold"/"Lost" entry instead of a generic stage change.
+function effectiveActType(a) {
+  if (a.activity_type === 'stage_changed' && WON_STAGES.includes(a.to_stage)) return 'won';
+  if (a.activity_type === 'stage_changed' && LOST_STAGES.includes(a.to_stage)) return 'lost';
+  return a.activity_type;
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(n) {
@@ -527,7 +538,8 @@ export default function OverviewTab({ dealerId, onNavigate }) {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               {snapshot.recentActivities.map((a, i) => {
-                const cfg  = ACT_CFG[a.activity_type] || ACT_CFG.note_added;
+                const actType = effectiveActType(a);
+                const cfg  = ACT_CFG[actType] || ACT_CFG.note_added;
                 const Icon = cfg.icon;
                 const who  = a.creator?.full_name || 'Salesman';
                 const cust = a.lead?.buyer_name || 'Unknown';
@@ -542,11 +554,13 @@ export default function OverviewTab({ dealerId, onNavigate }) {
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: '#111827' }}>{cust}</span>
                         <span style={{ fontSize: 11, color: '#6B7280' }}>
+                          {actType === 'won' && 'deal won'}
+                          {actType === 'lost' && 'deal lost'}
                           {a.activity_type === 'whatsapp_sent' && 'WhatsApp sent'}
-                          {a.activity_type === 'stage_changed' && (stage ? `→ ${stage}` : 'stage changed')}
+                          {actType === 'stage_changed' && (stage ? `→ ${stage}` : 'stage changed')}
                           {a.activity_type === 'note_added' && (note || 'note added')}
                           {a.activity_type === 'created' && 'lead created'}
-                          {!ACT_CFG[a.activity_type] && (note || a.activity_type.replace(/_/g, ' '))}
+                          {!ACT_CFG[a.activity_type] && actType === a.activity_type && (note || a.activity_type.replace(/_/g, ' '))}
                         </span>
                       </div>
                       <p style={{ fontSize: 11, color: '#9CA3AF', margin: '1px 0 0' }}>{who} · {timeAgo(a.created_at)}</p>

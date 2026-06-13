@@ -46,7 +46,7 @@ export default function HeroSlidesPage({ userId, profile }) {
     if (!userId) return;
     const { data } = await supabase
       .from('hero_carousel_slides')
-      .select('*')
+      .select('*, car_listings(status, brand, model)')
       .eq('dealer_id', userId)
       .order('sort_order', { ascending: true });
     setSlides(data || []);
