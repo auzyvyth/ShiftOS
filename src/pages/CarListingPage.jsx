@@ -656,6 +656,7 @@ export default function CarListingPage() {
                 value={searchInput}
                 onChange={setSearchInput}
                 placeholder="Search brand, model, variant…"
+                wrapClassName="cl-topbar-search"
                 wrapStyle={{ flex:1, minWidth:'160px' }}
                 navigateTo={basePath}
                 onSubmit={val=>{

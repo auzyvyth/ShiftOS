@@ -12,6 +12,7 @@ export default function SearchAutocomplete({
   placeholder = 'Search brand, model, variant…',
   inputStyle = {},
   wrapStyle = {},
+  wrapClassName = '',
   dark = false,
   anchorRef = null,
 }) {
@@ -75,10 +76,14 @@ export default function SearchAutocomplete({
     setOpen(false);
     setSuggestions([]);
     onChange?.('');
-    const p = new URLSearchParams();
-    if (s.brand)   p.set('brand', s.brand);
-    if (s.model)   p.set('model', s.model);
-    if (s.variant) p.set('variant', s.variant);
+    // Preserve any filters already in the URL (price, state, etc) instead of
+    // wiping them — the picked suggestion only sets the structured make/model.
+    const p = new URLSearchParams(window.location.search);
+    p.delete('q');
+    p.delete('page');
+    s.brand   ? p.set('brand', s.brand)     : p.delete('brand');
+    s.model   ? p.set('model', s.model)     : p.delete('model');
+    s.variant ? p.set('variant', s.variant) : p.delete('variant');
     navigate(`${navigateTo}${p.toString() ? `?${p}` : ''}`);
   };
 
@@ -159,7 +164,7 @@ export default function SearchAutocomplete({
   );
 
   return (
-    <div ref={wrapRef} style={{ position: 'relative', ...wrapStyle }}>
+    <div ref={wrapRef} className={wrapClassName} style={{ position: 'relative', ...wrapStyle }}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', alignItems: 'center', background: bg, border, borderRadius: '10px', overflow: 'hidden' }}>
         <Search size={13} style={{ flexShrink: 0, margin: '0 0 0 13px', color: iconCol, pointerEvents: 'none' }} />
         <input
