@@ -32,6 +32,9 @@ import {
   Download,
   Share2,
   Link as LinkIcon,
+  TrendingDown,
+  TrendingUp,
+  Minus,
 } from "lucide-react";
 import HeartButton from "../components/HeartButton";
 import { useCompare } from "../hooks/useCompare";
@@ -52,6 +55,46 @@ import { toast } from "sonner";
 /* ─── helpers ─── */
 const fmt = (n) => Number(n).toLocaleString("en-MY");
 const fmtPrice = (n) => `RM ${fmt(n)}`;
+
+/* Market-price position indicator — a meter (not a pill): the marker dot
+   encodes where this car's asking price sits on the cheap→expensive spectrum
+   relative to the market average for similar cars. */
+const MarketPriceTag = ({ car, isXdrive, th }) => {
+  if (!car?.market_avg_price || !(car.selling_price > 0)) return null;
+  const avg = Number(car.market_avg_price);
+  const price = Number(car.selling_price);
+  const ratio = price / avg;
+  const band = ratio <= 0.93 ? "below" : ratio >= 1.07 ? "above" : "fair";
+  const cfg = {
+    below: { color: isXdrive ? "#15803d" : "#4ade80", Icon: TrendingDown, label: "Below market" },
+    fair:  { color: isXdrive ? "#1d4ed8" : "#93c5fd", Icon: Minus,        label: "Fair price"   },
+    above: { color: isXdrive ? "#b45309" : "#fbbf24", Icon: TrendingUp,   label: "Above market" },
+  }[band];
+  const diff = Math.round(Math.abs(price - avg));
+  // map ratio across a 0.85–1.15 window onto the track
+  const pos = Math.max(4, Math.min(96, ((ratio - 0.85) / 0.3) * 100));
+  const ringBg = isXdrive ? "#ffffff" : "#0d1117";
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: cfg.color, letterSpacing: "0.01em" }}>
+          <cfg.Icon size={15} strokeWidth={2.5} />
+          {cfg.label}
+        </span>
+        <span style={{ fontSize: 12, color: th.textMuted }}>
+          {band === "fair" ? "At market avg" : `RM ${diff.toLocaleString("en-MY")} ${band === "below" ? "under" : "over"} avg`}
+        </span>
+      </div>
+      <div style={{ position: "relative", height: 4, borderRadius: 4, background: "linear-gradient(to right, rgba(34,197,94,0.55) 0%, rgba(59,130,246,0.55) 50%, rgba(245,158,11,0.55) 100%)" }}>
+        <div style={{ position: "absolute", top: "50%", left: `${pos}%`, transform: "translate(-50%,-50%)", width: 13, height: 13, borderRadius: "50%", background: cfg.color, border: `2px solid ${ringBg}`, boxShadow: "0 1px 3px rgba(0,0,0,0.25)" }} />
+      </div>
+      <p style={{ fontSize: 11, color: th.textMuted, marginTop: 8, margin: "8px 0 0" }}>
+        Market avg RM {avg.toLocaleString("en-MY")}
+        {car.market_sample_count > 0 ? ` · ${car.market_sample_count} similar` : ""}
+      </p>
+    </div>
+  );
+};
 const fmtFinancing = (car) => {
   const pt = car.payment_type || car.financing_type;
   if (pt === "cash") return "Cash Only";
@@ -1552,27 +1595,7 @@ export default function CarDetailPage() {
               </span>
             )}
           </div>
-          {car.market_avg_price && car.selling_price > 0 && (() => {
-            const avg  = car.market_avg_price;
-            const band = car.selling_price <= avg * 0.93 ? 'below'
-                       : car.selling_price >= avg * 1.07 ? 'above' : 'fair';
-            const cfg = {
-              below: { bg: 'rgba(34,197,94,0.12)',  color: isXdrive ? '#15803d' : '#4ade80', border: 'rgba(34,197,94,0.3)',  label: '▼ Below Market' },
-              fair:  { bg: 'rgba(59,130,246,0.12)', color: isXdrive ? '#1d4ed8' : '#93c5fd', border: 'rgba(59,130,246,0.3)', label: '● Fair Price'   },
-              above: { bg: 'rgba(245,158,11,0.12)', color: isXdrive ? '#b45309' : '#fbbf24', border: 'rgba(245,158,11,0.3)', label: '▲ Above Market' },
-            }[band];
-            return (
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
-                <span style={{ display:'inline-flex', alignItems:'center', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20, background:cfg.bg, color:cfg.color, border:`1px solid ${cfg.border}` }}>
-                  {cfg.label}
-                </span>
-                <span style={{ fontSize:11, color: th.textMuted }}>
-                  Market avg: RM {Number(avg).toLocaleString('en-MY')}
-                  {car.market_sample_count > 0 && ` · ${car.market_sample_count} similar`}
-                </span>
-              </div>
-            );
-          })()}
+          <MarketPriceTag car={car} isXdrive={isXdrive} th={th} />
           {isHot && (
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
               <span style={{ fontSize:13, color:'#1e293b', textDecoration:'line-through' }}>{fmtPrice(car.original_price)}</span>
@@ -1650,8 +1673,8 @@ export default function CarDetailPage() {
               onMouseLeave={e => { e.currentTarget.style.background='rgba(220,38,38,0.06)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.22)'; }}>
               <Calculator size={14} /> Financing Calculator
             </button>
-            {dealer?.subdomain && !isSubdomain() && (
-              <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer"
+            {(dealer?.subdomain || dealer?.slug) && !isSubdomain() && (
+              <a href={dealer.subdomain ? `https://${dealer.subdomain}.xdrive.my` : `https://xdrive.my/s/${dealer.slug}`} target="_blank" rel="noopener noreferrer"
                 style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, width:'100%', marginTop:8, background: th.card2, border:`1px solid ${th.border}`, color: th.textSec, borderRadius:10, padding:'10px', fontSize:12, letterSpacing:'0.05em', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", textDecoration:'none', boxSizing:'border-box' }}>
                 <ExternalLink size={13} /> Visit Dealer's Page
               </a>
@@ -3008,6 +3031,9 @@ export default function CarDetailPage() {
                 </div>
               )}
             </div>
+            <div style={{ marginTop: 16 }}>
+              <MarketPriceTag car={car} isXdrive={isXdrive} th={th} />
+            </div>
             <div style={{ height: 1, background: 'linear-gradient(to right, rgba(220,38,38,0.35), transparent)', margin: '14px 0 16px' }} />
 
             {/* TRUST BADGES */}
@@ -3054,8 +3080,8 @@ export default function CarDetailPage() {
               onMouseLeave={e => { e.currentTarget.style.background='rgba(220,38,38,0.06)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.22)'; }}>
               <Calculator size={14} /> Financing Calculator
             </button>
-            {dealer?.subdomain && !isSubdomain() && (
-              <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer"
+            {(dealer?.subdomain || dealer?.slug) && !isSubdomain() && (
+              <a href={dealer.subdomain ? `https://${dealer.subdomain}.xdrive.my` : `https://xdrive.my/s/${dealer.slug}`} target="_blank" rel="noopener noreferrer"
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', marginTop: 8, background: th.inputBg, border: `1px solid ${th.border}`, color: th.textSec, borderRadius: 10, padding: 10, fontSize: 12, letterSpacing: '0.05em', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", textDecoration: 'none', boxSizing: 'border-box', transition: 'all .2s' }}>
                 <ExternalLink size={13} /> Visit Dealer's Page
               </a>
