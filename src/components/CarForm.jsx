@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
 import {
   Check,
@@ -1433,10 +1434,10 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         next.select();
       next.scrollIntoView({ behavior: "smooth", block: "center" });
     } else {
-      // Last field — advance step or submit
-      if (canNext() && step < STEPS.length) {
-        setStep((s) => s + 1);
-      } else if (canNext() && step === STEPS.length) {
+      // Last field — advance step (with reason if blocked) or submit
+      if (step < STEPS.length) {
+        goNext();
+      } else {
         handleSubmit();
       }
     }
@@ -1449,6 +1450,26 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     if (step === 4) return form.state && form.city;
     if (step === 5) return form.basePrice && form.sellingPrice;
     return true;
+  };
+
+  // Which required fields are still empty on the current step (for the toast).
+  const missingFields = () => {
+    if (step === 1) return form.images.length > 0 ? [] : ["at least 1 photo"];
+    if (step === 2) return [
+      [!form.brand, "Brand"], [!form.model, "Model"], [!form.year, "Year"],
+      [!form.mileage, "Mileage"], [!form.colour, "Colour"], [!form.condition, "Condition"],
+    ].filter(([m]) => m).map(([, l]) => l);
+    if (step === 3) return [[!form.bodyType, "Body type"], [!form.fuelType, "Fuel type"]].filter(([m]) => m).map(([, l]) => l);
+    if (step === 4) return [[!form.state, "State"], [!form.city, "City"]].filter(([m]) => m).map(([, l]) => l);
+    if (step === 5) return [[!form.basePrice, "Base price"], [!form.sellingPrice, "Selling price"]].filter(([m]) => m).map(([, l]) => l);
+    return [];
+  };
+
+  // Advance a step, or explain (via toast) exactly what's missing.
+  const goNext = () => {
+    const miss = missingFields();
+    if (miss.length) { toast.error(`Please fill in: ${miss.join(", ")}`); return; }
+    setStep((s) => Math.min(STEPS.length, s + 1));
   };
 
   const uploadImages = async () => {
@@ -1472,7 +1493,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
 
   const handleSubmit = async () => {
     if (!form.images.length) {
-      alert("Please select at least 1 image");
+      toast.error("Please add at least 1 photo");
       return;
     }
     const mileage = parseInt(form.mileage);
@@ -1485,23 +1506,23 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     const engineCc = form.engineCc ? parseInt(form.engineCc) : null;
 
     if (isNaN(mileage) || mileage < 0) {
-      alert("Invalid mileage");
+      toast.error("Invalid mileage");
       return;
     }
     if (isNaN(basePrice) || basePrice < 0) {
-      alert("Invalid base price");
+      toast.error("Invalid base price");
       return;
     }
     if (isNaN(sellingPrice) || sellingPrice < 0) {
-      alert("Invalid selling price");
+      toast.error("Invalid selling price");
       return;
     }
     if (isNaN(year) || year < 1900) {
-      alert("Invalid year");
+      toast.error("Invalid year");
       return;
     }
     if (originalPrice !== null && originalPrice <= sellingPrice) {
-      alert("Original price must be higher than selling price");
+      toast.error("Original price must be higher than the selling price");
       return;
     }
 
@@ -2935,13 +2956,26 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                   <p className="text-xs text-gray-500">{sec?.desc}</p>
                 </div>
                 {listing && (
-                  <button
-                    type="button"
-                    onClick={handleCopy}
-                    className={`ml-auto flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border ${copied ? "bg-emerald-50 border-emerald-200 text-emerald-600" : "bg-white border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300"}`}
-                  >
-                    {copied ? <><ClipboardCheck className="w-3.5 h-3.5" />Copied</> : <><Clipboard className="w-3.5 h-3.5" />Copy</>}
-                  </button>
+                  <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+                    {step === STEPS.length && (
+                      <button
+                        type="button"
+                        onClick={handleCopy}
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border ${copied ? "bg-emerald-50 border-emerald-200 text-emerald-600" : "bg-white border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300"}`}
+                      >
+                        {copied ? <><ClipboardCheck className="w-3.5 h-3.5" />Copied</> : <><Clipboard className="w-3.5 h-3.5" />Copy</>}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleSubmit}
+                      disabled={uploading}
+                      title="Save changes (any step)"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600 text-white hover:bg-red-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {uploading ? <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving…</> : <><Check className="w-3.5 h-3.5" />Save</>}
+                    </button>
+                  </div>
                 )}
               </>
             );
@@ -2979,9 +3013,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         {step < STEPS.length ? (
           <button
             type="button"
-            onClick={() => canNext() && setStep((s) => Math.min(STEPS.length, s + 1))}
-            disabled={!canNext()}
-            className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            onClick={goNext}
+            className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-all"
           >
             Continue<ChevronRight className="w-4 h-4" />
           </button>
