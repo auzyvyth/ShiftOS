@@ -86,7 +86,7 @@ export default function MarketplaceHeader() {
       `}</style>
 
       <header className={`mh-root${scrolled ? ' scrolled' : ''}`} style={{ background:'transparent', borderBottom:'1px solid transparent' }} ref={menuRef}>
-        <div style={{ maxWidth:'1360px', margin:'0 auto', padding:'0 20px', height:'64px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'24px' }}>
+        <div style={{ maxWidth:'1360px', margin:'0 auto', padding:'0 clamp(20px, 4vw, 48px)', height:'64px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'24px' }}>
           <Link to="/" style={{ textDecoration:'none', display:'flex', alignItems:'center', gap:'2px', flexShrink:0 }}>
             <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'26px', letterSpacing:'0.04em', lineHeight:1 }}>
               <span style={{ color:'#dc2626' }}>X</span><span style={{ color:'#ffffff' }}>DRIVE</span>

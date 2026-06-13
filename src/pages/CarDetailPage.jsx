@@ -1557,9 +1557,9 @@ export default function CarDetailPage() {
             const band = car.selling_price <= avg * 0.93 ? 'below'
                        : car.selling_price >= avg * 1.07 ? 'above' : 'fair';
             const cfg = {
-              below: { bg: 'rgba(34,197,94,0.12)',  color: '#4ade80', border: 'rgba(34,197,94,0.3)',  label: '▼ Below Market' },
-              fair:  { bg: 'rgba(59,130,246,0.12)', color: '#93c5fd', border: 'rgba(59,130,246,0.3)', label: '● Fair Price'   },
-              above: { bg: 'rgba(245,158,11,0.12)', color: '#fbbf24', border: 'rgba(245,158,11,0.3)', label: '▲ Above Market' },
+              below: { bg: 'rgba(34,197,94,0.12)',  color: isXdrive ? '#15803d' : '#4ade80', border: 'rgba(34,197,94,0.3)',  label: '▼ Below Market' },
+              fair:  { bg: 'rgba(59,130,246,0.12)', color: isXdrive ? '#1d4ed8' : '#93c5fd', border: 'rgba(59,130,246,0.3)', label: '● Fair Price'   },
+              above: { bg: 'rgba(245,158,11,0.12)', color: isXdrive ? '#b45309' : '#fbbf24', border: 'rgba(245,158,11,0.3)', label: '▲ Above Market' },
             }[band];
             return (
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
@@ -2087,7 +2087,7 @@ export default function CarDetailPage() {
                   </Link>
                 )}
                 {dealer?.subdomain && !isSubdomain() && (
-                  <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer" style={{ display:'block', textAlign:'center', marginTop:6, fontSize:12, color:'#94a3b8', textDecoration:'none' }}>
+                  <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer" style={{ display:'block', textAlign:'center', marginTop:6, fontSize:12, color: th.textSec, textDecoration:'none' }}>
                     Go to dealer's page →
                   </a>
                 )}

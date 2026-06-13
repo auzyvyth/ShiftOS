@@ -351,7 +351,7 @@ export default function MarketplacePage() {
     wrap: {
       maxWidth: '1360px',
       margin: '0 auto',
-      padding: '0 20px',
+      padding: '0 clamp(20px, 4vw, 48px)',
     },
     brandRow: {
       padding: '24px 0',
@@ -483,15 +483,17 @@ export default function MarketplacePage() {
       color: '#111827',
     },
     carsGrid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+      display: 'flex',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
       gap: '20px',
       paddingBottom: '40px',
     },
     emptyState: {
       textAlign: 'center',
       padding: '80px 20px',
-      gridColumn: '1 / -1',
+      flexBasis: '100%',
+      maxWidth: '100%',
     },
     paginationWrap: {
       padding: '12px 0 60px',
@@ -622,6 +624,11 @@ export default function MarketplacePage() {
         .mp-adv-modal::-webkit-scrollbar { width:4px }
         .mp-adv-modal::-webkit-scrollbar-thumb { background:rgba(255,255,255,.15);border-radius:2px }
 
+        /* Cars grid — flex-wrap centered so sparse rows / few results stay centered
+           instead of hugging the left (auto-fill reserved empty tracks). Cards
+           fill full rows (grow) but stay bounded so they never balloon. */
+        .mp-cars-grid > * { flex: 1 1 280px; max-width: 340px; min-width: 0; }
+
         /* ── Featured cards ── */
         .mp-feat-card { transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease }
         .mp-feat-card:hover { transform:translateY(-5px);border-color:rgba(220,38,38,.4) !important;box-shadow:0 16px 40px rgba(0,0,0,.14) }
@@ -672,8 +679,8 @@ export default function MarketplacePage() {
         .mp-hero-tabs::-webkit-scrollbar { display: none }
 
         /* Trust strip */
-        .mp-trust-strip { padding: 10px 16px; border-top: 1px solid rgba(255,255,255,.07); flex-shrink: 0; position: relative; z-index: 1; }
-        .mp-trust-grid  { max-width: 1360px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; }
+        .mp-trust-strip { padding: 10px 0; border-top: 1px solid rgba(255,255,255,.07); flex-shrink: 0; position: relative; z-index: 1; }
+        .mp-trust-grid  { max-width: 1360px; margin: 0 auto; padding: 0 16px; display: grid; grid-template-columns: 1fr 1fr; }
         .mp-trust-item  { padding: 4px 10px; }
 
         /* Budget cards */
@@ -696,12 +703,12 @@ export default function MarketplacePage() {
         /* ── Desktop ≥900px ── */
         @media(min-width:900px) {
           .mp-hero-section  { height: calc(100vh - 64px); min-height: 0; overflow: hidden; }
-          .mp-hero-main     { flex-direction: row; align-items: center; gap: clamp(32px,4vw,72px); max-width: 1360px; margin: 0 auto; padding: 0 clamp(24px,5vw,60px); }
+          .mp-hero-main     { flex-direction: row; align-items: center; gap: clamp(32px,4vw,72px); max-width: 1360px; margin: 0 auto; padding: 0 clamp(20px,4vw,48px); }
           .mp-hero-left     { flex: 1; min-width: 0; width: auto; }
           .mp-hero-right    { flex: 1; min-width: 0; margin-top: 0; }
           .mp-hero-tabs     { width: fit-content; overflow-x: visible; }
-          .mp-trust-strip   { padding: 14px 24px; }
-          .mp-trust-grid    { grid-template-columns: repeat(4,1fr); }
+          .mp-trust-strip   { padding: 16px 0; }
+          .mp-trust-grid    { grid-template-columns: repeat(4,1fr); padding: 0 clamp(20px,4vw,48px); }
           .mp-trust-item    { padding: 0 28px; }
           .mp-budget-grid   { gap: 10px; }
           .mp-budget-icon   { height: 80px; }
@@ -748,6 +755,10 @@ export default function MarketplacePage() {
 
             {/* LEFT: headline + subtitle + tabs + search */}
             <div className="mp-hero-left">
+              <div style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'40px', padding:'6px 14px', marginBottom:'18px', backdropFilter:'blur(8px)' }}>
+                <span className="mp-pulse-dot" />
+                <span style={{ fontSize:'11px', fontWeight:'700', letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.7)', fontFamily:"'Outfit',sans-serif" }}>Malaysia's Trusted Car Marketplace</span>
+              </div>
               <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 14px', lineHeight:'0.92', letterSpacing:'-0.01em', fontSize:'clamp(38px,10vw,96px)', color:'#ffffff' }}>
                 FIND YOUR NEXT<br/><span style={{ color:'#dc2626' }}>CAR IN MALAYSIA</span>
               </h1>
@@ -877,8 +888,8 @@ export default function MarketplacePage() {
         </section>
 
         {/* ── Quick-filter strip ── */}
-        <section style={{ background: '#F7F6F2', padding: '16px 16px 16px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div style={{ maxWidth: '1360px', margin: '0 auto' }}>
+        <section style={{ background: '#F7F6F2', padding: '16px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+          <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '0 clamp(20px, 4vw, 48px)' }}>
             <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', paddingBottom: '2px' }}>
               {[
                 { groupLabel: 'Condition', pills: [
@@ -934,7 +945,7 @@ export default function MarketplacePage() {
               .btc-inner { padding: 0 8px !important; }
             }
           `}</style>
-          <div className="btc-inner" style={{ maxWidth: 1360, margin: '0 auto', padding: '0 36px' }}>
+          <div className="btc-inner" style={{ maxWidth: 1360, margin: '0 auto', padding: '0 clamp(20px, 4vw, 48px)' }}>
             <div style={{ marginBottom: 24 }}>
               <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#DC2626', fontFamily: "'Outfit',sans-serif" }}>Browse by Category</p>
               <h2 style={{ margin: 0, fontSize: 'clamp(22px,3vw,32px)', fontWeight: 700, color: '#111827', fontFamily: "'Bebas Neue',sans-serif", letterSpacing: '0.02em' }}>Shop by Body Type</h2>
@@ -952,7 +963,7 @@ export default function MarketplacePage() {
 
         {/* ── Brand strip ── */}
         <section style={{ background: '#F7F6F2', padding: '28px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '0 20px' }}>
+          <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '0 clamp(20px, 4vw, 48px)' }}>
             <div className="mp-brand-grid">
               {[
                 { label: 'All',        brandVal: '',              initials: 'ALL',  color: '#DC2626' },
@@ -1051,7 +1062,7 @@ export default function MarketplacePage() {
 
               {/* Cars grid */}
               {!error && (
-                <div style={S.carsGrid}>
+                <div className="mp-cars-grid" style={S.carsGrid}>
                   {loading
                     ? Array.from({ length: PER_PAGE }).map((_, i) => <SkeletonCard key={i} variant="light" />)
                     : cars.length === 0
