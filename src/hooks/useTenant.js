@@ -21,7 +21,25 @@ function isDevHost(hostname) {
 export function getSubdomain() {
   const hostname = window.location.hostname;
   const params = new URLSearchParams(window.location.search);
-  if (isDevHost(hostname) && params.get("tenant")) return params.get("tenant");
+  if (isDevHost(hostname)) {
+    const q = params.get("tenant");
+    if (q) {
+      try { sessionStorage.setItem("previewTenant", q); } catch {}
+      return q;
+    }
+    // In-app navigation (Browse Cars, card clicks) drops the ?tenant= query, so
+    // persist it for the session to keep storefront scoping on preview deploys.
+    // Storefront routes only — never the dashboard/app/auth routes.
+    const isAppRoute = /^\/(dashboard|admin|manager|accountant|fi|salesman|login|register|onboarding|reset-password|auth)/.test(
+      window.location.pathname,
+    );
+    if (!isAppRoute) {
+      try {
+        const stored = sessionStorage.getItem("previewTenant");
+        if (stored) return stored;
+      } catch {}
+    }
+  }
   // Root domains and local dev → no subdomain, show public marketplace
   if (
     hostname === "localhost" ||
