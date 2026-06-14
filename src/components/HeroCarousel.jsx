@@ -565,7 +565,11 @@ const HC_CSS = `
   .hc-compact .hc-content-wrap { padding: clamp(96px,14vh,128px) 48px clamp(36px,6vh,64px) !important; gap: clamp(18px,3vh,30px) !important; }
   .hc-compact .hc-glass-card { max-height: clamp(220px,30vh,320px); }
   .hc-compact .hc-card-spacer { min-height: clamp(200px,28vh,300px); max-height: clamp(220px,30vh,320px); }
-  .hc-compact .hc-counter, .hc-compact .hc-dots { bottom: 18px; }
+  .hc-compact .hc-dots { bottom: 18px; }
+  /* declutter the compact hero: drop the progress bar (was crossing the price)
+     and the numeric counter — the dots already indicate position */
+  .hc-compact .hc-progress { display: none; }
+  .hc-compact .hc-counter { display: none; }
   @media (max-width:768px) {
     .hc-compact { min-height: clamp(400px, 64svh, 520px) !important; }
     .hc-compact .hc-content-wrap { padding: 96px 20px 64px !important; }
@@ -919,6 +923,13 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
 
   const s = slides[idx];
   const badge = s.badge && s.badge !== "None" ? s.badge : null;
+  // Slide car_name often already includes the year (e.g. "2025 Toyota Harrier"),
+  // which doubled the year in the headline. Strip a leading year so the gold
+  // year accent + name don't repeat.
+  const yearStr = s.year ? String(s.year) : "";
+  const nameClean = yearStr && String(s.car_name || "").trim().startsWith(yearStr)
+    ? s.car_name.trim().slice(yearStr.length).trim()
+    : s.car_name;
   const stats = Array.isArray(s.stats) ? s.stats.filter((x) => x.value) : [];
   const priceRaw = stats.find(
     (x) => (x.key || x.type)?.toLowerCase() === "price",
@@ -940,7 +951,7 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
       icon: getMetaIcon(st.type),
       label: `${st.value}${st.unit ? " " + st.unit : ""}`,
     })),
-  ].filter(Boolean);
+  ].filter(Boolean).slice(0, 3);
 
   return (
     <>
@@ -1012,7 +1023,7 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
                   </div>
                   <h2 className="hc-car-name hc-syne">
                     {s.year && <span className="hc-year-accent">{s.year} </span>}
-                    {s.car_name}
+                    {nameClean}
                   </h2>
                   {/* Desktop: meta/price/ctas inline */}
                   <MetaBlock metaItems={metaItems} priceVal={priceVal} waHref={waHref} s={s} tenant={tenant} />
