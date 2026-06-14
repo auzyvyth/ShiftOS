@@ -614,14 +614,11 @@ export default function CarDetailPage() {
             return services;
           })(),
 
-          // Dealer profile
+          // Dealer profile — via SECURITY DEFINER RPC so anonymous marketplace
+          // visitors get it (the public_dealer_profiles view is RLS-blocked for anon)
           carData.dealer_id
             ? supabase
-                .from("public_dealer_profiles")
-                .select(
-                  "dealership,site_name,whatsapp_number,avatar_url,site_logo_url,slug,subdomain",
-                )
-                .eq("id", carData.dealer_id)
+                .rpc("get_dealer_profile_by_id", { p_dealer_id: carData.dealer_id })
                 .maybeSingle()
                 .then((r) => r.data)
             : Promise.resolve(null),
