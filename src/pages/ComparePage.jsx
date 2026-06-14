@@ -127,7 +127,9 @@ export default function ComparePage() {
   const HeaderC = sub ? Header : MarketplaceHeader;
   const carsHref = sub ? '/cars' : '/showroom';
   const detailBase = sub ? '/cars/' : '/showroom/';
-  const pageBg = sub ? '#08090f' : '#F7F6F2';
+  // Light page bg (matches the white compare cards/table) on both surfaces; the
+  // dealer header still keeps the subdomain's identity.
+  const pageBg = '#F7F6F2';
   const [searchParams, setSearchParams] = useSearchParams();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -287,7 +289,7 @@ export default function ComparePage() {
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '14px 16px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div>
             <p style={{ fontSize: 10, color: '#dc2626', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 3px' }}>Side by Side</p>
-            <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(26px,5vw,38px)', letterSpacing: 2, lineHeight: 1, color: sub ? '#f3f4f6' : '#111827', margin: 0 }}>
+            <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(26px,5vw,38px)', letterSpacing: 2, lineHeight: 1, color: '#111827', margin: 0 }}>
               Compare Cars
             </h1>
           </div>

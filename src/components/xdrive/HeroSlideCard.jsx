@@ -32,6 +32,7 @@ export default function HeroSlideCard({ slide, onEdit, onDelete, onToggle }) {
     padding: '14px 16px',
     display: 'flex',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 14,
     fontFamily: "'DM Sans',sans-serif",
     zIndex: isDragging ? 10 : 'auto',
@@ -120,7 +121,7 @@ export default function HeroSlideCard({ slide, onEdit, onDelete, onToggle }) {
       </div>
 
       {/* ── Right controls ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end', marginLeft: 'auto' }}>
 
         {/* Active dot + toggle */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
@@ -202,7 +203,8 @@ export default function HeroSlideCard({ slide, onEdit, onDelete, onToggle }) {
         {/* Delete / inline confirm */}
         {confirmDelete ? (
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 7,
+            display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap',
+            justifyContent: 'flex-end', maxWidth: '100%',
             background: '#fef2f2', border: '1px solid #fecaca',
             borderRadius: 9, padding: '5px 10px',
           }}>

@@ -32,6 +32,17 @@ export default function SearchAutocomplete({
         onSubmit={handleSubmit}
         style={{ display: 'flex', alignItems: 'center', background: bg, border, borderRadius: '10px', overflow: 'hidden' }}
       >
+        <button
+          type="submit"
+          aria-label="Search"
+          style={{
+            flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            padding: '0 6px 0 13px', height: '100%', color: iconCol,
+          }}
+        >
+          <Search size={15} />
+        </button>
         <input
           type="text"
           autoComplete="off"
@@ -40,23 +51,12 @@ export default function SearchAutocomplete({
           placeholder={placeholder}
           style={{
             flex: 1, border: 'none', outline: 'none',
-            padding: '10px 12px', fontSize: '13px',
+            padding: '10px 14px 10px 4px', fontSize: '13px',
             color: textCol, background: 'transparent',
             fontFamily: "'Outfit',sans-serif",
             ...inputStyle,
           }}
         />
-        <button
-          type="submit"
-          aria-label="Search"
-          style={{
-            flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'transparent', border: 'none', cursor: 'pointer',
-            padding: '0 13px', height: '100%', color: iconCol,
-          }}
-        >
-          <Search size={15} />
-        </button>
       </form>
     </div>
   );

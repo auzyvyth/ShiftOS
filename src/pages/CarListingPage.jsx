@@ -872,15 +872,6 @@ export default function CarListingPage() {
       </main>
 
       {/* Mobile FAB — bottom-right; raised above the WhatsApp button on dealer subdomains */}
-      <div className="cl-fab" style={{ position:'fixed', bottom: isMarketplace ? '24px' : '92px', right:'16px', zIndex:30 }}>
-        <button
-          onClick={()=>setDrawerOpen(true)}
-          style={{ display:'flex', alignItems:'center', gap:'8px', background:'linear-gradient(135deg,#dc2626,#b91c1c)', border:'none', color:'#fff', fontSize:'13px', fontWeight:'700', padding:'13px 28px', borderRadius:'50px', cursor:'pointer', boxShadow:'0 8px 28px rgba(220,38,38,0.4)', whiteSpace:'nowrap', fontFamily:"'Outfit',sans-serif" }}
-        >
-          <SlidersHorizontal size={14}/> Filters {activeChips.length>0&&`(${activeChips.length})`}
-        </button>
-      </div>
-
       <MarketplaceFooter />
       {!isMarketplace && <StickyWhatsAppButton />}
     </>

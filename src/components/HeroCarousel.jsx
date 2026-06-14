@@ -562,19 +562,19 @@ const HC_CSS = `
      fold on first land. Overrides the tall 100vh defaults without touching them.
   ════════════════ */
   .hc-compact { min-height: clamp(440px, 62vh, 600px) !important; }
-  .hc-compact .hc-content-wrap { padding: clamp(96px,14vh,128px) 48px clamp(36px,6vh,64px) !important; gap: clamp(18px,3vh,30px) !important; }
+  .hc-compact .hc-content-wrap { padding: clamp(96px,14vh,128px) 48px clamp(40px,6vh,64px) !important; gap: clamp(18px,3vh,30px) !important; }
   .hc-compact .hc-glass-card { max-height: clamp(220px,30vh,320px); }
   .hc-compact .hc-card-spacer { min-height: clamp(200px,28vh,300px); max-height: clamp(220px,30vh,320px); }
-  .hc-compact .hc-dots { bottom: 18px; }
-  /* declutter the compact hero: drop the progress bar (was crossing the price)
-     and the numeric counter — the dots already indicate position */
-  .hc-compact .hc-progress { display: none; }
-  .hc-compact .hc-counter { display: none; }
+  /* No counter / dots / progress in the compact hero (user request). */
+  .hc-compact .hc-progress, .hc-compact .hc-counter, .hc-compact .hc-dots { display: none !important; }
   @media (max-width:768px) {
-    .hc-compact { min-height: clamp(400px, 64svh, 520px) !important; }
-    .hc-compact .hc-content-wrap { padding: 96px 20px 64px !important; }
-    .hc-compact .hc-glass-card { max-height: 200px; }
-    .hc-compact .hc-card-spacer { min-height: 175px; max-height: 200px; }
+    /* Let the content define the height so the price is never clipped; add
+       breathing room between the title / image / meta / price. */
+    .hc-compact { min-height: clamp(420px, 60svh, 560px) !important; }
+    .hc-compact .hc-content { position: relative; }
+    .hc-compact .hc-content-wrap { padding: 92px 20px 44px !important; gap: 16px !important; }
+    .hc-compact .hc-glass-card { max-height: 190px; }
+    .hc-compact .hc-card-spacer { min-height: 165px; max-height: 190px; }
   }
 
   /* ════════════════
