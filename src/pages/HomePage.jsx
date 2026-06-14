@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Helmet } from "react-helmet";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import {
   MessageCircle,
   Shield,
@@ -23,7 +23,7 @@ import SciFiLoader from "../components/SciFiLoader";
 import Footer from "@/components/Footer";
 import StickyWhatsAppButton from "@/components/StickyWhatsAppButton";
 import CarCard from "@/components/CarCard";
-import HeroCarousel from "@/components/HeroCarousel";
+import SearchAutocomplete from "@/components/SearchAutocomplete";
 import { supabase } from "../supabaseClient";
 import { useSiteProfile } from "../hooks/useSiteProfile";
 import useTenant, { isSubdomain } from "../hooks/useTenant";
@@ -197,6 +197,8 @@ const HomePage = () => {
   const [brand, setBrand] = useState("");
   const [bodyType, setBodyType] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
+  const [heroQ, setHeroQ] = useState("");
+  const navigate = useNavigate();
   // Capture ref slug from URL into sessionStorage on mount
   useEffect(() => {
     captureRef();
@@ -656,8 +658,84 @@ const HomePage = () => {
 
       <Header />
 
-      {/* ══════════ HERO ══════════ */}
-      <HeroCarousel siteName={siteName} stock={stock} />
+      {/* ══════════ HERO — search-forward, inventory-first ══════════ */}
+      {(() => {
+        const heroBg = featured[0]?.images?.[0] || hotDeals[0]?.images?.[0] || null;
+        const dealershipName = tenant?.dealership || siteName;
+        const chip = (active) => ({
+          flexShrink: 0, padding: "7px 15px", borderRadius: 50, textDecoration: "none",
+          fontSize: 13, fontWeight: 600, fontFamily: "'Outfit',sans-serif",
+          whiteSpace: "nowrap", transition: "all 0.15s",
+          border: `1px solid ${active ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.14)"}`,
+          background: active ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.04)",
+          color: active ? "#f87171" : "rgba(255,255,255,0.78)",
+        });
+        return (
+          <section style={{ position: "relative", overflow: "hidden", background: "#08090f" }}>
+            {heroBg && (
+              <>
+                <img src={heroBg} alt="" aria-hidden="true" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.22 }} />
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(8,9,15,0.72) 0%, rgba(8,9,15,0.88) 60%, #08090f 100%)" }} />
+              </>
+            )}
+            <div style={{ ...wrap, position: "relative", paddingTop: "clamp(110px,16vw,150px)", paddingBottom: "clamp(40px,7vw,64px)" }}>
+              <FadeIn>
+                <p className="sec-eyebrow">{dealershipName}</p>
+                <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(2.6rem,7vw,4.6rem)", color: "#fff", lineHeight: 0.98, letterSpacing: "0.01em", margin: "0 0 14px", maxWidth: 780 }}>
+                  {tenant?.hero_title || `Find your next car at ${siteName}`}
+                </h1>
+                <p style={{ fontSize: "clamp(14px,2.2vw,18px)", color: "rgba(255,255,255,0.6)", maxWidth: 580, margin: "0 0 26px", lineHeight: 1.6 }}>
+                  {tenant?.hero_subtitle || "Browse our latest inventory — quality cars, ready to drive."}
+                </p>
+
+                {/* Search — the hero's primary job */}
+                <div style={{ maxWidth: 620, marginBottom: 14 }}>
+                  <SearchAutocomplete
+                    dark
+                    value={heroQ}
+                    onChange={setHeroQ}
+                    placeholder="Search make, model or variant…"
+                    onSubmit={(val) => {
+                      const s = (val || "").trim();
+                      navigate(s ? `${carsBase}?q=${encodeURIComponent(s)}` : carsBase);
+                    }}
+                    inputStyle={{ padding: "14px 16px", fontSize: "15px" }}
+                  />
+                </div>
+
+                {/* Quick body-type browse */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 28 }}>
+                  <Link to={carsBase} style={chip(true)}>All cars</Link>
+                  {BODY_TYPES.map((bt) => (
+                    <Link key={bt} to={`${carsBase}?body_type=${encodeURIComponent(bt)}`} style={chip(false)}>{bt}</Link>
+                  ))}
+                </div>
+
+                {/* Real trust stats + primary CTA */}
+                <div style={{ display: "flex", alignItems: "center", gap: "clamp(16px,3vw,28px)", flexWrap: "wrap" }}>
+                  <Link to={carsBase} className="primary-btn" style={{ ...primaryBtn, textDecoration: "none" }}>
+                    {tenant?.hero_cta_text || `View all ${stock || ""} cars`.trim()} <ArrowRight size={15} />
+                  </Link>
+                  <div style={{ display: "flex", alignItems: "center", gap: "clamp(16px,3vw,28px)" }}>
+                    {stock > 0 && (
+                      <div>
+                        <p style={{ margin: 0, fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: "#fff", lineHeight: 1 }}>{stock}</p>
+                        <p style={{ margin: "2px 0 0", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", fontWeight: 700 }}>In stock</p>
+                      </div>
+                    )}
+                    {soldCount > 0 && (
+                      <div>
+                        <p style={{ margin: 0, fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: "#fff", lineHeight: 1 }}>{soldDisplay}</p>
+                        <p style={{ margin: "2px 0 0", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", fontWeight: 700 }}>Sold</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </FadeIn>
+            </div>
+          </section>
+        );
+      })()}
 
       {/* ══════════ HERO VIDEO ══════════ */}
       {tenant?.hero_video_enabled &&
