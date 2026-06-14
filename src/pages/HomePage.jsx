@@ -18,7 +18,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import MarketplaceHeader from "@/components/MarketplaceHeader";
+import Header from "@/components/Header";
 import SciFiLoader from "../components/SciFiLoader";
 import Footer from "@/components/Footer";
 import StickyWhatsAppButton from "@/components/StickyWhatsAppButton";
@@ -654,7 +654,7 @@ const HomePage = () => {
         )}
       </Helmet>
 
-      <MarketplaceHeader />
+      <Header />
 
       {/* ══════════ HERO ══════════ */}
       <HeroCarousel siteName={siteName} stock={stock} />
