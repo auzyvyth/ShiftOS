@@ -43,6 +43,19 @@ export function isSubdomain() {
   return !!getSubdomain();
 }
 
+// Build the URL to a dealer's storefront. On production this is the real
+// subdomain (<sub>.xdrive.my); on a Vercel preview / localhost — where wildcard
+// subdomains don't resolve — fall back to the ?tenant= override on the current
+// origin, which getSubdomain() honors on dev hosts. Keeps the dashboard
+// "view storefront" links working on preview deploys.
+export function getStorefrontUrl(subdomain) {
+  if (!subdomain) return `https://${MARKETPLACE_DOMAIN}`;
+  if (typeof window !== "undefined" && isDevHost(window.location.hostname)) {
+    return `${window.location.origin}/?tenant=${encodeURIComponent(subdomain)}`;
+  }
+  return `https://${subdomain}.${MARKETPLACE_DOMAIN}`;
+}
+
 export default function useTenant() {
   const [tenant, setTenant] = useState(undefined); // undefined = loading
   const [loading, setLoading] = useState(true);
