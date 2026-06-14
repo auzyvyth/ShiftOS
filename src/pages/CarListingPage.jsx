@@ -808,7 +808,7 @@ export default function CarListingPage() {
                   )}
                   <div className="cl-grid" style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:'14px', opacity:fetching?0.5:1, transition:'opacity 0.18s' }}>
                     {loading
-                      ? Array.from({ length: PER_PAGE }).map((_,i) => <ShowroomCardSkeleton key={i}/>)
+                      ? Array.from({ length: PER_PAGE }).map((_,i) => <ShowroomCardSkeleton key={i} dark={dark}/>)
                       : cars.length === 0
                         ? (
                           <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'80px 20px' }}>
@@ -825,7 +825,7 @@ export default function CarListingPage() {
                             const compareFull = compareIds.length >= 4 && !inCompare;
                             return (
                               <ShowroomCard
-                                key={car.id} car={car} ctaContext={ctaCtx}
+                                key={car.id} car={car} ctaContext={ctaCtx} dark={dark}
                                 inCompare={inCompare} compareFull={compareFull}
                                 onCompare={()=>{ inCompare ? removeFromCompare(car.id) : addToCompare(car.id); }}
                                 priority={i===0}
