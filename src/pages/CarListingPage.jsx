@@ -19,6 +19,7 @@ import SearchAutocomplete from '../components/SearchAutocomplete';
 import PriceAlertButton from '../components/PriceAlertButton';
 import ShowroomCard, { ShowroomCardSkeleton } from '../components/ShowroomCard';
 import Pagination from '../components/ui/Pagination';
+import { storefront as SF } from '../theme/tokens';
 
 /* ── Constants ──────────────────────────────────────────────────── */
 const PER_PAGE = 15;
@@ -209,9 +210,10 @@ function PricePopover({ minPrice, maxPrice, onApply }) {
 
 /* ── Filter section wrapper ─────────────────────────────────────── */
 function FG({ title, children }) {
+  // colors inherit from --fp-* vars set on the FiltersPanel root (theme-aware)
   return (
-    <div style={{ marginBottom:'16px', paddingBottom:'16px', borderBottom:'1px solid #f3f4f6' }}>
-      <p style={{ fontSize:'10px', fontWeight:'700', color:'#9ca3af', letterSpacing:'0.1em', textTransform:'uppercase', margin:'0 0 10px' }}>{title}</p>
+    <div style={{ marginBottom:'16px', paddingBottom:'16px', borderBottom:'1px solid var(--fp-line, #f3f4f6)' }}>
+      <p style={{ fontSize:'10px', fontWeight:'700', color:'var(--fp-muted, #9ca3af)', letterSpacing:'0.1em', textTransform:'uppercase', margin:'0 0 10px' }}>{title}</p>
       {children}
     </div>
   );
@@ -219,17 +221,27 @@ function FG({ title, children }) {
 
 /* ── Filter panel (sidebar + drawer content) ────────────────────── */
 function FiltersPanel({ isMarketplace, setParam, searchParams, setSearchParams, hotDeals, brand, model, variantInput, setVariantInput, minPrice, maxPrice, state, yearFrom, yearTo, bodyType, transmission, condition, mileageMax, financing, fuelType, colour, sellerType }) {
+  const dark = !isMarketplace;
+  // Theme vars — inherited by FG and nested controls so the whole drawer themes
+  // from one place (dark on the dealer subdomain, light on the marketplace).
+  const fpVars = dark ? {
+    '--fp-input': SF.surface2, '--fp-border': SF.border,
+    '--fp-text': SF.text, '--fp-muted': SF.textMuted, '--fp-line': SF.line,
+  } : {
+    '--fp-input': '#fff', '--fp-border': '#e5e7eb',
+    '--fp-text': '#111827', '--fp-muted': '#9ca3af', '--fp-line': '#f3f4f6',
+  };
   const pill = active => ({
     padding:'6px 13px', borderRadius:'50px',
-    border:`1px solid ${active ? '#dc2626' : '#e5e7eb'}`,
-    background: active ? 'rgba(220,38,38,0.06)' : '#fff',
-    color: active ? '#dc2626' : '#374151',
+    border:`1px solid ${active ? '#dc2626' : 'var(--fp-border)'}`,
+    background: active ? 'rgba(220,38,38,0.06)' : 'var(--fp-input)',
+    color: active ? '#dc2626' : 'var(--fp-text)',
     fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'all 0.12s',
     lineHeight:'1.4',
   });
   const sel = {
-    width:'100%', background:'#fff', border:'1px solid #e5e7eb', borderRadius:'8px',
-    padding:'9px 30px 9px 12px', color:'#111827', fontSize:'13px',
+    width:'100%', background:'var(--fp-input)', border:'1px solid var(--fp-border)', borderRadius:'8px',
+    padding:'9px 30px 9px 12px', color:'var(--fp-text)', fontSize:'13px',
     appearance:'none', cursor:'pointer', outline:'none', boxSizing:'border-box',
     backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
     backgroundRepeat:'no-repeat', backgroundPosition:'right 10px center',
@@ -238,10 +250,10 @@ function FiltersPanel({ isMarketplace, setParam, searchParams, setSearchParams, 
   const modelOptions = CAR_DATA[brand] || [];
 
   return (
-    <div>
+    <div style={fpVars}>
       <FG title="Hot Deals">
         <button
-          style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', background: hotDeals?'rgba(251,146,60,0.06)':'#fff', border:`1px solid ${hotDeals?'rgba(251,146,60,0.35)':'#e5e7eb'}`, borderRadius:'10px', padding:'10px 14px', cursor:'pointer', color:hotDeals?'#d97706':'#374151', fontSize:'13px', fontWeight:'700', transition:'all 0.12s' }}
+          style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', background: hotDeals?'rgba(251,146,60,0.06)':'var(--fp-input)', border:`1px solid ${hotDeals?'rgba(251,146,60,0.35)':'var(--fp-border)'}`, borderRadius:'10px', padding:'10px 14px', cursor:'pointer', color:hotDeals?'#d97706':'var(--fp-text)', fontSize:'13px', fontWeight:'700', transition:'all 0.12s' }}
           onClick={()=>setParam('hot_deals', hotDeals?'':'true')}
         >
           <span style={{ display:'flex', alignItems:'center', gap:'7px' }}><Flame size={13}/> Hot Deals Only</span>
@@ -632,7 +644,7 @@ export default function CarListingPage() {
       <div style={{
         position:'fixed', top:0, right:0, bottom:0, zIndex:1110,
         width:'300px', maxWidth:'92vw',
-        background:'#fff', borderLeft:'1px solid #e5e7eb',
+        background: dark ? SF.surface : '#fff', borderLeft:`1px solid ${dark ? SF.border : '#e5e7eb'}`,
         transform: drawerOpen ? 'translateX(0)' : 'translateX(100%)',
         transition:'transform 0.28s cubic-bezier(0.22,1,0.36,1)',
         display:'flex', flexDirection:'column',
@@ -640,14 +652,14 @@ export default function CarListingPage() {
         boxShadow: drawerOpen ? '-12px 0 40px rgba(0,0,0,0.12)' : 'none',
       }}>
         {/* Drawer header */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 20px', borderBottom:'1px solid #f3f4f6' }}>
-          <h2 style={{ margin:0, fontSize:'15px', fontWeight:'800', color:'#111827', display:'flex', alignItems:'center', gap:'8px', fontFamily:"'Outfit',sans-serif" }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 20px', borderBottom:`1px solid ${dark ? SF.line : '#f3f4f6'}` }}>
+          <h2 style={{ margin:0, fontSize:'15px', fontWeight:'800', color: dark ? SF.text : '#111827', display:'flex', alignItems:'center', gap:'8px', fontFamily:"'Outfit',sans-serif" }}>
             <SlidersHorizontal size={15} style={{ color:'#dc2626' }}/> Filters
             {activeChips.length > 0 && (
               <span style={{ background:'#dc2626', color:'#fff', fontSize:'10px', fontWeight:'800', padding:'2px 7px', borderRadius:'20px' }}>{activeChips.length}</span>
             )}
           </h2>
-          <button onClick={()=>setDrawerOpen(false)} style={{ background:'rgba(0,0,0,0.04)', border:'none', cursor:'pointer', color:'#6b7280', borderRadius:'8px', padding:'6px', display:'flex', alignItems:'center' }}>
+          <button onClick={()=>setDrawerOpen(false)} style={{ background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', border:'none', cursor:'pointer', color: dark ? SF.textSec : '#6b7280', borderRadius:'8px', padding:'6px', display:'flex', alignItems:'center' }}>
             <X size={16}/>
           </button>
         </div>
@@ -656,8 +668,8 @@ export default function CarListingPage() {
           <FiltersPanel {...filtersProps}/>
         </div>
         {/* Drawer footer */}
-        <div style={{ padding:'14px 20px', borderTop:'1px solid #f3f4f6', display:'flex', gap:'10px' }}>
-          <button onClick={resetAll} style={{ flex:1, background:'rgba(0,0,0,0.04)', border:'1px solid #e5e7eb', color:'#6b7280', fontSize:'13px', fontWeight:'600', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
+        <div style={{ padding:'14px 20px', borderTop:`1px solid ${dark ? SF.line : '#f3f4f6'}`, display:'flex', gap:'10px' }}>
+          <button onClick={resetAll} style={{ flex:1, background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', border:`1px solid ${dark ? SF.border : '#e5e7eb'}`, color: dark ? SF.textSec : '#6b7280', fontSize:'13px', fontWeight:'600', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
             Reset
           </button>
           <button onClick={()=>setDrawerOpen(false)} style={{ flex:2, background:'linear-gradient(135deg,#dc2626,#b91c1c)', border:'none', color:'#fff', fontSize:'13px', fontWeight:'700', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>

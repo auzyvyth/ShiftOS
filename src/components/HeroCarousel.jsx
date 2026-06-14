@@ -8,7 +8,6 @@ import {
   Gauge,
   Sparkles,
   ArrowRight,
-  CheckCircle,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import useTenant, { isSubdomain } from "../hooks/useTenant";
@@ -563,8 +562,8 @@ const HC_CSS = `
   ════════════════ */
   .hc-compact { min-height: clamp(440px, 62vh, 600px) !important; }
   .hc-compact .hc-content-wrap { padding: clamp(96px,14vh,128px) 48px clamp(40px,6vh,64px) !important; gap: clamp(18px,3vh,30px) !important; }
-  .hc-compact .hc-glass-card { max-height: clamp(220px,30vh,320px); }
-  .hc-compact .hc-card-spacer { min-height: clamp(200px,28vh,300px); max-height: clamp(220px,30vh,320px); }
+  .hc-compact .hc-glass-card { max-height: clamp(320px,44vh,460px); }
+  .hc-compact .hc-card-spacer { min-height: clamp(300px,40vh,440px); max-height: clamp(320px,44vh,460px); }
   /* No counter / dots / progress in the compact hero (user request). */
   .hc-compact .hc-progress, .hc-compact .hc-counter, .hc-compact .hc-dots { display: none !important; }
   @media (max-width:768px) {
@@ -1052,18 +1051,6 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
                     />
                   ) : null;
                 })}
-                <div className="hc-trust-badge">
-                  <div className="hc-trust-dot" />
-                  <span className="hc-trust-text">Verified · No Hidden Fees</span>
-                  <CheckCircle
-                    size={11}
-                    style={{
-                      color: "#22c55e",
-                      marginLeft: "auto",
-                      flexShrink: 0,
-                    }}
-                  />
-                </div>
               </div>
 
               {/* 3. Mobile only: meta + price + CTAs below image */}
