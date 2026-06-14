@@ -5,6 +5,8 @@ import { X, Share2, Check, ExternalLink, Flame, Trophy, Plus } from 'lucide-reac
 import { supabase } from '../supabaseClient';
 import HeartButton from '../components/HeartButton';
 import MarketplaceHeader from '../components/MarketplaceHeader';
+import Header from '../components/Header';
+import { isSubdomain } from '../hooks/useTenant';
 import MarketplaceFooter from '../components/MarketplaceFooter';
 import { calcMonthly } from '../utils/financing';
 
@@ -119,6 +121,13 @@ const PARAM_KEYS = ['a', 'b', 'c', 'd'];
 
 export default function ComparePage() {
   useMarketplaceTracking();
+  // On a dealer subdomain, keep the dealer's identity (dark theme + dealer header)
+  // and route "back"/detail links to the dealer's own pages, not the marketplace.
+  const sub = isSubdomain();
+  const HeaderC = sub ? Header : MarketplaceHeader;
+  const carsHref = sub ? '/cars' : '/showroom';
+  const detailBase = sub ? '/cars/' : '/showroom/';
+  const pageBg = sub ? '#08090f' : '#F7F6F2';
   const [searchParams, setSearchParams] = useSearchParams();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -210,8 +219,8 @@ export default function ComparePage() {
   if (loading) {
     return (
       <>
-        <MarketplaceHeader />
-        <div style={{ minHeight: '100vh', background: '#F7F6F2', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 72 }}>
+        <HeaderC />
+        <div style={{ minHeight: '100vh', background: pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 72 }}>
           <div style={{ width: 28, height: 28, border: '2px solid #e5e7eb', borderTopColor: '#dc2626', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
           <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
         </div>
@@ -222,10 +231,10 @@ export default function ComparePage() {
   if (!n) {
     return (
       <>
-        <MarketplaceHeader />
-        <div style={{ minHeight: '100vh', background: '#F7F6F2', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, fontFamily: "'DM Sans',sans-serif", paddingTop: 72 }}>
+        <HeaderC />
+        <div style={{ minHeight: '100vh', background: pageBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, fontFamily: "'DM Sans',sans-serif", paddingTop: 72 }}>
           <p style={{ fontSize: 16, color: '#6b7280' }}>No cars selected to compare.</p>
-          <Link to="/showroom" style={{ color: '#dc2626', fontSize: 14, fontWeight: 600 }}>Browse cars →</Link>
+          <Link to={carsHref} style={{ color: '#dc2626', fontSize: 14, fontWeight: 600 }}>Browse cars →</Link>
         </div>
       </>
     );
@@ -270,20 +279,20 @@ export default function ComparePage() {
         }
       `}</style>
 
-      <MarketplaceHeader />
+      <HeaderC />
 
-      <div style={{ minHeight: '100vh', background: '#F7F6F2', fontFamily: "'DM Sans',sans-serif", paddingTop: 72, paddingBottom: 64 }}>
+      <div style={{ minHeight: '100vh', background: pageBg, fontFamily: "'DM Sans',sans-serif", paddingTop: 72, paddingBottom: 64 }}>
 
         {/* ── Page title ── */}
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '14px 16px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div>
             <p style={{ fontSize: 10, color: '#dc2626', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 3px' }}>Side by Side</p>
-            <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(26px,5vw,38px)', letterSpacing: 2, lineHeight: 1, color: '#111827', margin: 0 }}>
+            <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(26px,5vw,38px)', letterSpacing: 2, lineHeight: 1, color: sub ? '#f3f4f6' : '#111827', margin: 0 }}>
               Compare Cars
             </h1>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <Link to="/showroom" style={{ fontSize: 12, color: '#9ca3af', textDecoration: 'none', fontWeight: 500 }}>← All Cars</Link>
+            <Link to={carsHref} style={{ fontSize: 12, color: '#9ca3af', textDecoration: 'none', fontWeight: 500 }}>← All Cars</Link>
             <button
               onClick={handleShare}
               style={{
@@ -302,7 +311,7 @@ export default function ComparePage() {
 
         {/* ── Sticky car strip ── */}
         <div style={{
-          position: 'sticky', top: 64, zIndex: 40,
+          position: 'sticky', top: sub ? 80 : 64, zIndex: 40,
           background: 'white', borderBottom: '2px solid #e5e7eb',
           boxShadow: scrolled ? '0 3px 14px rgba(0,0,0,0.1)' : '0 2px 6px rgba(0,0,0,0.05)',
           transition: 'box-shadow 0.3s',
@@ -361,7 +370,7 @@ export default function ComparePage() {
                     <p style={{ fontSize: 'clamp(11px,1.8vw,13px)', fontWeight: 700, color: pct ? '#dc2626' : '#111827', margin: 0 }}>{fmtRM(car.selling_price)}</p>
                     {monthly && <p style={{ fontSize: 9, color: '#9ca3af', margin: '1px 0 3px' }}>~RM {monthly.toLocaleString()}/mo</p>}
                     {car.slug && (
-                      <Link to={`/showroom/${car.slug}`} style={{ fontSize: 9, color: '#dc2626', textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                      <Link to={`${detailBase}${car.slug}`} style={{ fontSize: 9, color: '#dc2626', textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 2 }}>
                         View <ExternalLink size={8} />
                       </Link>
                     )}
@@ -371,7 +380,7 @@ export default function ComparePage() {
               {n < 4 && (
                 <Link
                   className="cp-add-slot"
-                  to="/showroom"
+                  to={carsHref}
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                     aspectRatio: '1/1', maxHeight: 110, border: '1.5px dashed #d1d5db',
@@ -576,7 +585,7 @@ export default function ComparePage() {
                 {cars.map(car => car.slug && (
                   <Link
                     key={car.id}
-                    to={`/showroom/${car.slug}`}
+                    to={`${detailBase}${car.slug}`}
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: 5,
                       padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
@@ -597,7 +606,7 @@ export default function ComparePage() {
         </div>
       </div>
 
-      <MarketplaceFooter />
+      {!sub && <MarketplaceFooter />}
     </>
   );
 }
