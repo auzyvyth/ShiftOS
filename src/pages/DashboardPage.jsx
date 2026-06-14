@@ -9162,8 +9162,9 @@ export default function DashboardPage() {
 
   const getStorefrontUrl = () => {
     const sub = dealerSubdomain || profile?.subdomain;
-    if (!sub || profile?.role === 'superadmin') return 'https://xdrive.my';
-    // env-aware: real subdomain in prod, ?tenant= override on vercel preview/localhost
+    if (!sub) return 'https://xdrive.my';
+    // env-aware: real subdomain in prod, ?tenant= override on vercel preview/localhost.
+    // (Superadmin with a subdomain still previews their own storefront.)
     return buildStorefrontUrl(sub);
   };
 
