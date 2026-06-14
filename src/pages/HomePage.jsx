@@ -814,9 +814,9 @@ const HomePage = () => {
         <div style={wrap}>
           <div className="stats-flex">
             {[
+              { v: stock != null ? String(stock) : "—", l: "In Stock" },
               { v: soldDisplay, l: "Cars Sold" },
-              { v: "4.9★", l: "Customer Rating" },
-              { v: "RM 0", l: "Consultation Fee" },
+              { v: "RM 0", l: "Free Consultation" },
             ].map((s, i, arr) => (
               <FadeIn key={i} delay={i * 0.08} style={{ flex: 1 }}>
                 <div
@@ -860,6 +860,32 @@ const HomePage = () => {
           </div>
         </div>
       </section>
+
+      {/* ══════════ ABOUT (storefront only — dealer's editable about_text) ══════════ */}
+      {isSubdomain() && tenant?.about_text && (
+        <section className="sec-pad" style={secA}>
+          <div style={wrap}>
+            <FadeIn>
+              <div style={{ marginBottom: "24px" }}>
+                <p className="sec-eyebrow">About {siteName}</p>
+                <h2 className="sec-title">Get to know us</h2>
+              </div>
+              <p
+                style={{
+                  color: "#9CA3AF",
+                  fontSize: "15px",
+                  lineHeight: "1.9",
+                  maxWidth: "760px",
+                  margin: 0,
+                  whiteSpace: "pre-line",
+                }}
+              >
+                {tenant.about_text}
+              </p>
+            </FadeIn>
+          </div>
+        </section>
+      )}
 
       {/* ══════════ WHY ══════════ */}
       <section className="sec-pad" style={secA}>
@@ -1242,7 +1268,8 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* ══════════ FOR DEALERS ══════════ */}
+      {/* ══════════ FOR DEALERS (marketplace only — never on a dealer's own storefront) ══════════ */}
+      {!isSubdomain() && (
       <section
         className="sec-pad"
         style={{ ...secA, borderTop: "1px solid rgba(255,255,255,0.04)" }}
@@ -1346,6 +1373,7 @@ const HomePage = () => {
           </FadeIn>
         </div>
       </section>
+      )}
 
       {/* ══════════ FINAL CTA ══════════ */}
       <section
