@@ -299,7 +299,7 @@ export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
-  const { siteName, siteInitial, waUrl } = useSiteProfile();
+  const { siteName, siteInitial, siteLogoUrl, waUrl } = useSiteProfile();
 
   const isDashboard =
     location.pathname.startsWith("/dashboard") ||
@@ -423,7 +423,16 @@ export default function Header() {
 
           {/* Logo */}
           <Link to="/" className="hdr-logo">
-            <div className="hdr-mark">{siteInitial}</div>
+            {siteLogoUrl ? (
+              <img
+                src={siteLogoUrl}
+                alt={siteName}
+                className="hdr-mark"
+                style={{ objectFit: "cover", padding: 0 }}
+              />
+            ) : (
+              <div className="hdr-mark">{siteInitial}</div>
+            )}
             <div className="hdr-logo-text">
               <span className="hdr-logo-name">
                 {siteName}<span style={{ color: "#DC2626" }}>.</span>

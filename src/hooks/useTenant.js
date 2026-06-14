@@ -21,7 +21,25 @@ function isDevHost(hostname) {
 export function getSubdomain() {
   const hostname = window.location.hostname;
   const params = new URLSearchParams(window.location.search);
-  if (isDevHost(hostname) && params.get("tenant")) return params.get("tenant");
+  if (isDevHost(hostname)) {
+    const q = params.get("tenant");
+    if (q) {
+      try { sessionStorage.setItem("previewTenant", q); } catch {}
+      return q;
+    }
+    // In-app navigation (Browse Cars, card clicks) drops the ?tenant= query, so
+    // persist it for the session to keep storefront scoping on preview deploys.
+    // Storefront routes only — never the dashboard/app/auth routes.
+    const isAppRoute = /^\/(dashboard|admin|manager|accountant|fi|salesman|login|register|onboarding|reset-password|auth)/.test(
+      window.location.pathname,
+    );
+    if (!isAppRoute) {
+      try {
+        const stored = sessionStorage.getItem("previewTenant");
+        if (stored) return stored;
+      } catch {}
+    }
+  }
   // Root domains and local dev → no subdomain, show public marketplace
   if (
     hostname === "localhost" ||
@@ -41,6 +59,19 @@ export function getSubdomain() {
 
 export function isSubdomain() {
   return !!getSubdomain();
+}
+
+// Build the URL to a dealer's storefront. On production this is the real
+// subdomain (<sub>.xdrive.my); on a Vercel preview / localhost — where wildcard
+// subdomains don't resolve — fall back to the ?tenant= override on the current
+// origin, which getSubdomain() honors on dev hosts. Keeps the dashboard
+// "view storefront" links working on preview deploys.
+export function getStorefrontUrl(subdomain) {
+  if (!subdomain) return `https://${MARKETPLACE_DOMAIN}`;
+  if (typeof window !== "undefined" && isDevHost(window.location.hostname)) {
+    return `${window.location.origin}/?tenant=${encodeURIComponent(subdomain)}`;
+  }
+  return `https://${subdomain}.${MARKETPLACE_DOMAIN}`;
 }
 
 export default function useTenant() {

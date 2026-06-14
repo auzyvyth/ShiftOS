@@ -5,6 +5,22 @@ export const color = {
   accent:    '#DC2626',
   textMuted: '#9AA1AD',
 };
+
+// Public storefront (dealer subdomain) dark theme — single source for the dark
+// surfaces so storefront components don't hardcode hexes. Mirrors DESIGN.md.
+export const storefront = {
+  pageBg:       '#08090f',
+  surface:      '#0d1117',
+  surface2:     'rgba(255,255,255,0.04)',
+  text:         '#f3f4f6',
+  textSec:      'rgba(255,255,255,0.60)',
+  textMuted:    'rgba(255,255,255,0.40)',
+  border:       'rgba(255,255,255,0.08)',
+  borderStrong: 'rgba(255,255,255,0.14)',
+  line:         'rgba(255,255,255,0.06)',
+  accent:       '#dc2626',
+  win:          '#4ade80',
+};
 export const border = {
   default: '1px solid #EAECF0',
   strong:  '1px solid #D1D5DB',

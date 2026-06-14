@@ -1,190 +1,63 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import React from 'react';
 import { Search } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
 
+// Submit-only search box. Previously this fired a `search_listing_terms` RPC on
+// every keystroke (live autocomplete), which hurt performance. The search now
+// runs ONLY when the user presses Enter or clicks the search button — onSubmit
+// receives the current value. Props kept backwards-compatible with callers
+// (navigateTo / anchorRef are accepted but unused now).
 export default function SearchAutocomplete({
   value = '',
   onChange,
   onSubmit,
-  navigateTo = '/showroom',
   placeholder = 'Search brand, model, variant…',
   inputStyle = {},
   wrapStyle = {},
   wrapClassName = '',
   dark = false,
-  anchorRef = null,
 }) {
-  const navigate                       = useNavigate();
-  const [suggestions, setSuggestions]  = useState([]);
-  const [open, setOpen]                = useState(false);
-  const [cursor, setCursor]            = useState(-1);
-  const [dropPos, setDropPos]          = useState({ top: 0, left: 0, width: 0 });
-  const debounce                       = useRef(null);
-  const wrapRef                        = useRef(null);
-
-  const updatePos = useCallback(() => {
-    const el = (anchorRef?.current) || wrapRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    setDropPos({ top: r.bottom + 5, left: r.left, width: r.width });
-  }, [anchorRef]);
-
-  // Query RPC with 300 ms debounce
-  const query = useCallback((text) => {
-    clearTimeout(debounce.current);
-    if (text.trim().length < 2) { setSuggestions([]); setOpen(false); return; }
-    debounce.current = setTimeout(async () => {
-      const { data, error } = await supabase.rpc('search_listing_terms', {
-        search_text: text.trim(),
-        max_results: 12,
-      });
-      if (!error && data?.length) {
-        setSuggestions(data);
-        setOpen(true);
-        setCursor(-1);
-        updatePos();
-      } else {
-        setSuggestions([]);
-        setOpen(false);
-      }
-    }, 300);
-  }, [updatePos]);
-
-  useEffect(() => { query(value); }, [value, query]);
-
-  // Reposition on scroll / resize while open
-  useEffect(() => {
-    if (!open) return;
-    window.addEventListener('scroll', updatePos, true);
-    window.addEventListener('resize', updatePos);
-    return () => {
-      window.removeEventListener('scroll', updatePos, true);
-      window.removeEventListener('resize', updatePos);
-    };
-  }, [open, updatePos]);
-
-  // Close on outside click
-  useEffect(() => {
-    const handler = e => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const pick = (s) => {
-    setOpen(false);
-    setSuggestions([]);
-    onChange?.('');
-    // Preserve any filters already in the URL (price, state, etc) instead of
-    // wiping them — the picked suggestion only sets the structured make/model.
-    const p = new URLSearchParams(window.location.search);
-    p.delete('q');
-    p.delete('page');
-    s.brand   ? p.set('brand', s.brand)     : p.delete('brand');
-    s.model   ? p.set('model', s.model)     : p.delete('model');
-    s.variant ? p.set('variant', s.variant) : p.delete('variant');
-    navigate(`${navigateTo}${p.toString() ? `?${p}` : ''}`);
-  };
-
-  const handleKey = (e) => {
-    if (!open || !suggestions.length) return;
-    if (e.key === 'ArrowDown')                  { e.preventDefault(); setCursor(c => Math.min(c + 1, suggestions.length - 1)); }
-    else if (e.key === 'ArrowUp')               { e.preventDefault(); setCursor(c => Math.max(c - 1, -1)); }
-    else if (e.key === 'Enter' && cursor >= 0)  { e.preventDefault(); pick(suggestions[cursor]); }
-    else if (e.key === 'Escape')                { setOpen(false); setCursor(-1); }
-  };
+  const bg      = dark ? 'rgba(255,255,255,0.06)' : '#ffffff';
+  const border  = dark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.1)';
+  const textCol = dark ? '#ffffff' : '#111827';
+  const iconCol = dark ? 'rgba(255,255,255,0.5)' : '#9ca3af';
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setOpen(false);
     onSubmit?.(value);
   };
 
-  const bg      = dark ? 'rgba(255,255,255,0.06)' : '#ffffff';
-  const border  = dark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)';
-  const textCol = dark ? '#ffffff' : '#111827';
-  const iconCol = dark ? 'rgba(255,255,255,0.32)' : '#9ca3af';
-  const hoverBg = 'rgba(220,38,38,0.05)';
-  const activeBg = 'rgba(220,38,38,0.09)';
-
-  const dropdown = open && suggestions.length > 0 && createPortal(
-    <div style={{
-      position: 'fixed',
-      top: dropPos.top,
-      left: dropPos.left,
-      width: dropPos.width,
-      background: '#ffffff',
-      border: '1px solid rgba(0,0,0,0.09)',
-      borderRadius: '12px',
-      boxShadow: '0 12px 40px rgba(0,0,0,0.18)',
-      zIndex: 99999,
-      overflow: 'hidden',
-      maxHeight: '60vh',
-      overflowY: 'auto',
-    }}>
-      {suggestions.map((s, i) => {
-        const parts = [s.brand, s.model, s.variant].filter(Boolean);
-        const isActive = i === cursor;
-        return (
-          <div
-            key={`${s.brand}-${s.model}-${s.variant}-${i}`}
-            onMouseDown={() => pick(s)}
-            onMouseEnter={() => setCursor(i)}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '10px 14px', cursor: 'pointer',
-              background: isActive ? activeBg : 'transparent',
-              borderBottom: i < suggestions.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none',
-            }}
-            onMouseOver={e => { if (!isActive) e.currentTarget.style.background = hoverBg; }}
-            onMouseOut={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, overflow: 'hidden' }}>
-              {parts.map((p, pi) => (
-                <React.Fragment key={pi}>
-                  {pi > 0 && <span style={{ color: '#d1d5db', fontSize: '11px', flexShrink: 0 }}>·</span>}
-                  <span style={{
-                    fontSize: '13px', fontFamily: "'Outfit',sans-serif",
-                    fontWeight: pi === 0 ? 700 : pi === 1 ? 600 : 400,
-                    color: pi === 0 ? '#111827' : pi === 1 ? '#374151' : '#6b7280',
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}>{p}</span>
-                </React.Fragment>
-              ))}
-            </div>
-            <span style={{ fontSize: '11px', color: '#dc2626', fontWeight: 700, fontFamily: "'Outfit',sans-serif", flexShrink: 0, marginLeft: '10px' }}>
-              {s.listing_count} {s.listing_count === 1 ? 'car' : 'cars'}
-            </span>
-          </div>
-        );
-      })}
-    </div>,
-    document.body
-  );
-
   return (
-    <div ref={wrapRef} className={wrapClassName} style={{ position: 'relative', ...wrapStyle }}>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', alignItems: 'center', background: bg, border, borderRadius: '10px', overflow: 'hidden' }}>
-        <Search size={13} style={{ flexShrink: 0, margin: '0 0 0 13px', color: iconCol, pointerEvents: 'none' }} />
+    <div className={wrapClassName} style={{ position: 'relative', ...wrapStyle }}>
+      <form
+        onSubmit={handleSubmit}
+        style={{ display: 'flex', alignItems: 'center', background: bg, border, borderRadius: '10px', overflow: 'hidden' }}
+      >
+        <button
+          type="submit"
+          aria-label="Search"
+          style={{
+            flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            padding: '0 6px 0 13px', height: '100%', color: iconCol,
+          }}
+        >
+          <Search size={15} />
+        </button>
         <input
           type="text"
           autoComplete="off"
           value={value}
           onChange={e => onChange?.(e.target.value)}
-          onKeyDown={handleKey}
-          onFocus={() => { if (suggestions.length) { setOpen(true); updatePos(); } }}
           placeholder={placeholder}
           style={{
             flex: 1, border: 'none', outline: 'none',
-            padding: '10px 12px', fontSize: '13px',
+            padding: '10px 14px 10px 4px', fontSize: '13px',
             color: textCol, background: 'transparent',
             fontFamily: "'Outfit',sans-serif",
             ...inputStyle,
           }}
         />
       </form>
-      {dropdown}
     </div>
   );
 }

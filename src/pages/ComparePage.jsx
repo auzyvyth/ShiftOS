@@ -5,8 +5,11 @@ import { X, Share2, Check, ExternalLink, Flame, Trophy, Plus } from 'lucide-reac
 import { supabase } from '../supabaseClient';
 import HeartButton from '../components/HeartButton';
 import MarketplaceHeader from '../components/MarketplaceHeader';
+import Header from '../components/Header';
+import { isSubdomain } from '../hooks/useTenant';
 import MarketplaceFooter from '../components/MarketplaceFooter';
 import { calcMonthly } from '../utils/financing';
+import { storefront as SF } from '../theme/tokens';
 
 const SELECT_COLS = [
   'id','slug','year','brand','model','variant',
@@ -78,14 +81,14 @@ function Sec({ label }) {
     <div style={{
       padding: '9px 14px 7px', fontSize: 10, fontWeight: 700,
       color: '#dc2626', letterSpacing: '0.12em', textTransform: 'uppercase',
-      background: '#fafafa', borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb',
+      background: 'var(--cp-sechead,#fafafa)', borderTop: '1px solid var(--cp-border,#e5e7eb)', borderBottom: '1px solid var(--cp-border,#e5e7eb)',
     }}>{label}</div>
   );
 }
 
 function Row({ label, values, highlight, renderCell }) {
   return (
-    <div className="cp-row" style={{ display: 'grid', gridTemplateColumns: 'var(--cp-cols)', borderBottom: '1px solid #f1f5f9' }}>
+    <div className="cp-row" style={{ display: 'grid', gridTemplateColumns: 'var(--cp-cols)', borderBottom: '1px solid var(--cp-line,#f1f5f9)' }}>
       <div className="cp-lbl">{label}</div>
       {values.map((val, i) => {
         const win = highlight?.[i] === 'win';
@@ -98,10 +101,10 @@ function Row({ label, values, highlight, renderCell }) {
             style={{
               padding: 'clamp(8px,1.5vw,10px) clamp(8px,1.5vw,12px)',
               fontSize: 'clamp(11px,1.6vw,13px)',
-              color: win && !empty ? '#16a34a' : empty ? '#d1d5db' : '#374151',
+              color: win && !empty ? 'var(--cp-win,#16a34a)' : empty ? 'var(--cp-muted,#d1d5db)' : 'var(--cp-text,#374151)',
               fontWeight: win && !empty ? 600 : 400,
-              background: win && !empty ? 'rgba(22,163,74,0.04)' : 'transparent',
-              borderLeft: '1px solid #f1f5f9',
+              background: win && !empty ? 'var(--cp-winbg,rgba(22,163,74,0.04))' : 'transparent',
+              borderLeft: '1px solid var(--cp-line,#f1f5f9)',
               display: 'flex', alignItems: 'center', minWidth: 0, overflow: 'hidden',
             }}
           >
@@ -119,6 +122,27 @@ const PARAM_KEYS = ['a', 'b', 'c', 'd'];
 
 export default function ComparePage() {
   useMarketplaceTracking();
+  // On a dealer subdomain, keep the dealer's identity (dark theme + dealer header)
+  // and route "back"/detail links to the dealer's own pages, not the marketplace.
+  const sub = isSubdomain();
+  const HeaderC = sub ? Header : MarketplaceHeader;
+  const carsHref = sub ? '/cars' : '/showroom';
+  const detailBase = sub ? '/cars/' : '/showroom/';
+  // Subdomain = dark storefront theme (from tokens); marketplace = light. Driven
+  // by CSS vars (cpVars) set on the page wrapper so the table/cards/rows theme
+  // from one place instead of hardcoded hexes.
+  const pageBg = sub ? SF.pageBg : '#F7F6F2';
+  const cpVars = sub ? {
+    '--cp-surface': SF.surface, '--cp-border': SF.border, '--cp-line': SF.line,
+    '--cp-text': SF.text, '--cp-muted': SF.textMuted, '--cp-sechead': 'rgba(255,255,255,0.03)',
+    '--cp-imgbg': '#0e0e14', '--cp-win': SF.win, '--cp-winbg': 'rgba(74,222,128,0.08)',
+    '--cp-hover': 'rgba(255,255,255,0.03)',
+  } : {
+    '--cp-surface': '#fff', '--cp-border': '#DDE3EC', '--cp-line': '#f1f5f9',
+    '--cp-text': '#111827', '--cp-muted': '#6b7280', '--cp-sechead': '#fafafa',
+    '--cp-imgbg': '#f3f4f6', '--cp-win': '#16a34a', '--cp-winbg': 'rgba(22,163,74,0.04)',
+    '--cp-hover': '#f9fafb',
+  };
   const [searchParams, setSearchParams] = useSearchParams();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -210,9 +234,9 @@ export default function ComparePage() {
   if (loading) {
     return (
       <>
-        <MarketplaceHeader />
-        <div style={{ minHeight: '100vh', background: '#F7F6F2', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 72 }}>
-          <div style={{ width: 28, height: 28, border: '2px solid #e5e7eb', borderTopColor: '#dc2626', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <HeaderC />
+        <div style={{ minHeight: '100vh', background: pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 72 }}>
+          <div style={{ width: 28, height: 28, border: '2px solid var(--cp-border,#e5e7eb)', borderTopColor: '#dc2626', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
           <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
         </div>
       </>
@@ -222,10 +246,10 @@ export default function ComparePage() {
   if (!n) {
     return (
       <>
-        <MarketplaceHeader />
-        <div style={{ minHeight: '100vh', background: '#F7F6F2', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, fontFamily: "'DM Sans',sans-serif", paddingTop: 72 }}>
-          <p style={{ fontSize: 16, color: '#6b7280' }}>No cars selected to compare.</p>
-          <Link to="/showroom" style={{ color: '#dc2626', fontSize: 14, fontWeight: 600 }}>Browse cars →</Link>
+        <HeaderC />
+        <div style={{ minHeight: '100vh', background: pageBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, fontFamily: "'DM Sans',sans-serif", paddingTop: 72 }}>
+          <p style={{ fontSize: 16, color: 'var(--cp-muted,#6b7280)' }}>No cars selected to compare.</p>
+          <Link to={carsHref} style={{ color: '#dc2626', fontSize: 14, fontWeight: 600 }}>Browse cars →</Link>
         </div>
       </>
     );
@@ -240,10 +264,10 @@ export default function ComparePage() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap');
         *, *::before, *::after { box-sizing: border-box; }
-        .cp-row:hover .cp-val { background: #f9fafb !important; }
+        .cp-row:hover .cp-val { background: var(--cp-hover, #f9fafb) !important; }
         .cp-lbl {
           padding: clamp(8px,1.5vw,10px) clamp(8px,1.5vw,14px);
-          font-size: 11px; color: #9ca3af; font-weight: 500;
+          font-size: 11px; color: var(--cp-muted, #9ca3af); font-weight: 500;
           display: flex; align-items: center;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
@@ -270,27 +294,27 @@ export default function ComparePage() {
         }
       `}</style>
 
-      <MarketplaceHeader />
+      <HeaderC />
 
-      <div style={{ minHeight: '100vh', background: '#F7F6F2', fontFamily: "'DM Sans',sans-serif", paddingTop: 72, paddingBottom: 64 }}>
+      <div style={{ minHeight: '100vh', background: pageBg, fontFamily: "'DM Sans',sans-serif", paddingTop: 72, paddingBottom: 64, ...cpVars }}>
 
         {/* ── Page title ── */}
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '14px 16px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div>
             <p style={{ fontSize: 10, color: '#dc2626', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 3px' }}>Side by Side</p>
-            <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(26px,5vw,38px)', letterSpacing: 2, lineHeight: 1, color: '#111827', margin: 0 }}>
+            <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(26px,5vw,38px)', letterSpacing: 2, lineHeight: 1, color: sub ? SF.text : '#111827', margin: 0 }}>
               Compare Cars
             </h1>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <Link to="/showroom" style={{ fontSize: 12, color: '#9ca3af', textDecoration: 'none', fontWeight: 500 }}>← All Cars</Link>
+            <Link to={carsHref} style={{ fontSize: 12, color: 'var(--cp-muted,#9ca3af)', textDecoration: 'none', fontWeight: 500 }}>← All Cars</Link>
             <button
               onClick={handleShare}
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '7px 13px', borderRadius: 8, fontSize: 12, fontWeight: 600,
                 background: copied ? 'rgba(22,163,74,0.08)' : 'white',
-                border: `1px solid ${copied ? 'rgba(22,163,74,0.3)' : '#DDE3EC'}`,
+                border: `1px solid ${copied ? 'rgba(22,163,74,0.3)' : 'var(--cp-border,#DDE3EC)'}`,
                 color: copied ? '#16a34a' : '#6b7280', cursor: 'pointer', transition: 'all 0.2s',
               }}
             >
@@ -302,8 +326,8 @@ export default function ComparePage() {
 
         {/* ── Sticky car strip ── */}
         <div style={{
-          position: 'sticky', top: 64, zIndex: 40,
-          background: 'white', borderBottom: '2px solid #e5e7eb',
+          position: 'sticky', top: sub ? 80 : 64, zIndex: 40,
+          background: 'var(--cp-surface,#fff)', borderBottom: '2px solid var(--cp-border,#e5e7eb)',
           boxShadow: scrolled ? '0 3px 14px rgba(0,0,0,0.1)' : '0 2px 6px rgba(0,0,0,0.05)',
           transition: 'box-shadow 0.3s',
         }}>
@@ -327,8 +351,8 @@ export default function ComparePage() {
                   <div key={car.id} style={{ minWidth: 0 }}>
                     <div style={{
                       position: 'relative', aspectRatio: '16/9', borderRadius: 8,
-                      overflow: 'hidden', background: '#f3f4f6', marginBottom: 6,
-                      border: isVerdict ? '2px solid rgba(220,38,38,0.5)' : '1px solid #e5e7eb',
+                      overflow: 'hidden', background: 'var(--cp-imgbg,#f3f4f6)', marginBottom: 6,
+                      border: isVerdict ? '2px solid rgba(220,38,38,0.5)' : '1px solid var(--cp-border,#e5e7eb)',
                     }}>
                       {img
                         ? <img src={img} alt={car.model} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
@@ -348,20 +372,20 @@ export default function ComparePage() {
                       )}
                       <div style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 3 }}>
                         <HeartButton listingId={car.id} size={11} style={{ background: 'rgba(255,255,255,0.9)', borderRadius: 5, padding: '3px 5px', backdropFilter: 'blur(4px)' }} />
-                        <button onClick={() => removeCar(car.id)} style={{ background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: 5, color: '#6b7280', cursor: 'pointer', padding: '3px 5px', display: 'flex', backdropFilter: 'blur(4px)' }}>
+                        <button onClick={() => removeCar(car.id)} style={{ background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: 5, color: 'var(--cp-muted,#6b7280)', cursor: 'pointer', padding: '3px 5px', display: 'flex', backdropFilter: 'blur(4px)' }}>
                           <X size={10} />
                         </button>
                       </div>
                     </div>
                     <p style={{ fontSize: 9, color: '#dc2626', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{car.brand}</p>
-                    <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(12px,2.2vw,17px)', color: '#111827', letterSpacing: 1, lineHeight: 1.1, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(12px,2.2vw,17px)', color: 'var(--cp-text,#111827)', letterSpacing: 1, lineHeight: 1.1, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {car.year} {car.model}
                     </p>
-                    {pct && <p style={{ fontSize: 9, color: '#9ca3af', textDecoration: 'line-through', margin: '0 0 1px' }}>{fmtRM(car.original_price)}</p>}
+                    {pct && <p style={{ fontSize: 9, color: 'var(--cp-muted,#9ca3af)', textDecoration: 'line-through', margin: '0 0 1px' }}>{fmtRM(car.original_price)}</p>}
                     <p style={{ fontSize: 'clamp(11px,1.8vw,13px)', fontWeight: 700, color: pct ? '#dc2626' : '#111827', margin: 0 }}>{fmtRM(car.selling_price)}</p>
-                    {monthly && <p style={{ fontSize: 9, color: '#9ca3af', margin: '1px 0 3px' }}>~RM {monthly.toLocaleString()}/mo</p>}
+                    {monthly && <p style={{ fontSize: 9, color: 'var(--cp-muted,#9ca3af)', margin: '1px 0 3px' }}>~RM {monthly.toLocaleString()}/mo</p>}
                     {car.slug && (
-                      <Link to={`/showroom/${car.slug}`} style={{ fontSize: 9, color: '#dc2626', textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                      <Link to={`${detailBase}${car.slug}`} style={{ fontSize: 9, color: '#dc2626', textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 2 }}>
                         View <ExternalLink size={8} />
                       </Link>
                     )}
@@ -371,11 +395,11 @@ export default function ComparePage() {
               {n < 4 && (
                 <Link
                   className="cp-add-slot"
-                  to="/showroom"
+                  to={carsHref}
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                     aspectRatio: '1/1', maxHeight: 110, border: '1.5px dashed #d1d5db',
-                    borderRadius: 10, color: '#9ca3af', textDecoration: 'none', gap: 5,
+                    borderRadius: 10, color: 'var(--cp-muted,#9ca3af)', textDecoration: 'none', gap: 5,
                     transition: 'border-color 0.15s, color 0.15s',
                   }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = '#dc2626'; e.currentTarget.style.color = '#dc2626'; }}
@@ -405,8 +429,8 @@ export default function ComparePage() {
                   <div key={car.id} style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
                     <div style={{
                       width: 48, height: 34, borderRadius: 5, overflow: 'hidden', flexShrink: 0,
-                      background: '#f3f4f6',
-                      border: isVerdict ? '2px solid rgba(220,38,38,0.45)' : '1px solid #e5e7eb',
+                      background: 'var(--cp-imgbg,#f3f4f6)',
+                      border: isVerdict ? '2px solid rgba(220,38,38,0.45)' : '1px solid var(--cp-border,#e5e7eb)',
                     }}>
                       {img
                         ? <img src={img} alt={car.model} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
@@ -414,7 +438,7 @@ export default function ComparePage() {
                       }
                     </div>
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <p style={{ margin: 0, fontSize: 'clamp(9px,1.4vw,11px)', fontWeight: 700, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>
+                      <p style={{ margin: 0, fontSize: 'clamp(9px,1.4vw,11px)', fontWeight: 700, color: 'var(--cp-text,#111827)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>
                         {car.year} {car.model}
                       </p>
                       <p style={{ margin: 0, fontSize: 'clamp(9px,1.3vw,11px)', color: isVerdict ? '#dc2626' : '#6b7280', fontWeight: 600 }}>
@@ -437,7 +461,7 @@ export default function ComparePage() {
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '12px 16px 0' }}>
           <div
             className="cp-rows"
-            style={{ '--cp-cols': `75px repeat(${n}, 1fr)`, background: 'white', borderRadius: 12, border: '1px solid #DDE3EC', overflow: 'hidden' }}
+            style={{ '--cp-cols': `75px repeat(${n}, 1fr)`, background: 'var(--cp-surface,#fff)', borderRadius: 12, border: '1px solid #DDE3EC', overflow: 'hidden' }}
           >
 
             <Sec label="Pricing" />
@@ -519,7 +543,7 @@ export default function ComparePage() {
                 return (
                   <div style={{ width: '100%', minWidth: 0 }}>
                     <span style={{ fontSize: 'clamp(10px,1.6vw,12px)', fontWeight: win ? 700 : 400, color: win ? '#dc2626' : '#374151' }}>{score}</span>
-                    <div style={{ height: 3, background: '#f1f5f9', borderRadius: 2, marginTop: 3 }}>
+                    <div style={{ height: 3, background: 'var(--cp-line,#f1f5f9)', borderRadius: 2, marginTop: 3 }}>
                       <div style={{ height: '100%', width: `${score}%`, background: win ? '#dc2626' : '#d1d5db', borderRadius: 2, transition: 'width 0.4s' }} />
                     </div>
                   </div>
@@ -551,7 +575,7 @@ export default function ComparePage() {
                 return (
                   <div style={{ width: '100%', minWidth: 0 }}>
                     <span style={{ fontSize: 'clamp(10px,1.6vw,12px)', fontWeight: win ? 600 : 400 }}>{Math.round(pct)}%</span>
-                    <div style={{ height: 3, background: '#f1f5f9', borderRadius: 2, marginTop: 3 }}>
+                    <div style={{ height: 3, background: 'var(--cp-line,#f1f5f9)', borderRadius: 2, marginTop: 3 }}>
                       <div style={{ height: '100%', width: `${pct}%`, background: win ? '#16a34a' : '#d1d5db', borderRadius: 2, transition: 'width 0.4s' }} />
                     </div>
                   </div>
@@ -563,25 +587,25 @@ export default function ComparePage() {
 
           {/* ── Verdict ── */}
           {verdict && (
-            <div style={{ marginTop: 14, background: 'white', border: '1px solid #DDE3EC', borderLeft: '3px solid #dc2626', borderRadius: 12, padding: 'clamp(14px,3vw,22px)' }}>
+            <div style={{ marginTop: 14, background: 'var(--cp-surface,#fff)', border: '1px solid #DDE3EC', borderLeft: '3px solid #dc2626', borderRadius: 12, padding: 'clamp(14px,3vw,22px)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                 <Trophy size={13} color="#dc2626" />
                 <p style={{ fontSize: 10, color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 700, margin: 0 }}>Our Verdict</p>
               </div>
               <p style={{ fontSize: 'clamp(13px,2vw,15px)', color: '#374151', lineHeight: 1.65, margin: '0 0 14px' }}>
-                <strong style={{ color: '#111827' }}>{[verdict.car.year, verdict.car.brand, verdict.car.model].filter(Boolean).join(' ')}</strong>
+                <strong style={{ color: 'var(--cp-text,#111827)' }}>{[verdict.car.year, verdict.car.brand, verdict.car.model].filter(Boolean).join(' ')}</strong>
                 {' '}offers the best overall value — {verdictReasons} compared to the alternatives.
               </p>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {cars.map(car => car.slug && (
                   <Link
                     key={car.id}
-                    to={`/showroom/${car.slug}`}
+                    to={`${detailBase}${car.slug}`}
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: 5,
                       padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
                       background: car.id === verdict.car.id ? 'rgba(220,38,38,0.06)' : '#f3f4f6',
-                      border: `1px solid ${car.id === verdict.car.id ? 'rgba(220,38,38,0.25)' : '#e5e7eb'}`,
+                      border: `1px solid ${car.id === verdict.car.id ? 'rgba(220,38,38,0.25)' : 'var(--cp-border,#e5e7eb)'}`,
                       color: car.id === verdict.car.id ? '#dc2626' : '#6b7280',
                       textDecoration: 'none',
                     }}
@@ -597,7 +621,7 @@ export default function ComparePage() {
         </div>
       </div>
 
-      <MarketplaceFooter />
+      {!sub && <MarketplaceFooter />}
     </>
   );
 }

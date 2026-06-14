@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Helmet } from "react-helmet";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import {
   MessageCircle,
   Shield,
@@ -24,6 +24,7 @@ import Footer from "@/components/Footer";
 import StickyWhatsAppButton from "@/components/StickyWhatsAppButton";
 import CarCard from "@/components/CarCard";
 import HeroCarousel from "@/components/HeroCarousel";
+import SearchAutocomplete from "@/components/SearchAutocomplete";
 import { supabase } from "../supabaseClient";
 import { useSiteProfile } from "../hooks/useSiteProfile";
 import useTenant, { isSubdomain } from "../hooks/useTenant";
@@ -197,6 +198,8 @@ const HomePage = () => {
   const [brand, setBrand] = useState("");
   const [bodyType, setBodyType] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
+  const [heroQ, setHeroQ] = useState("");
+  const navigate = useNavigate();
   // Capture ref slug from URL into sessionStorage on mount
   useEffect(() => {
     captureRef();
@@ -656,8 +659,45 @@ const HomePage = () => {
 
       <Header />
 
-      {/* ══════════ HERO ══════════ */}
-      <HeroCarousel siteName={siteName} stock={stock} />
+      {/* ══════════ HERO (carousel) — compact so the search below stays above the fold ══════════ */}
+      <HeroCarousel compact siteName={siteName} />
+
+      {/* ══════════ SEARCH + QUICK BROWSE — below the hero, above the fold ══════════ */}
+      {(() => {
+        const chip = (active) => ({
+          flexShrink: 0, padding: "7px 15px", borderRadius: 50, textDecoration: "none",
+          fontSize: 13, fontWeight: 600, fontFamily: "'Outfit',sans-serif",
+          whiteSpace: "nowrap", transition: "all 0.15s",
+          border: `1px solid ${active ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.14)"}`,
+          background: active ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.04)",
+          color: active ? "#f87171" : "rgba(255,255,255,0.78)",
+        });
+        return (
+          <section style={{ background: "#0C0C0E", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+            <div style={{ ...wrap, padding: "20px 20px 22px" }}>
+              <div style={{ maxWidth: 720, margin: "0 auto" }}>
+                <SearchAutocomplete
+                  dark
+                  value={heroQ}
+                  onChange={setHeroQ}
+                  placeholder="Search make, model or variant…"
+                  onSubmit={(val) => {
+                    const s = (val || "").trim();
+                    navigate(s ? `${carsBase}?q=${encodeURIComponent(s)}` : carsBase);
+                  }}
+                  inputStyle={{ padding: "14px 16px", fontSize: "15px" }}
+                />
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12, justifyContent: "center" }}>
+                  <Link to={carsBase} style={chip(true)}>All cars</Link>
+                  {BODY_TYPES.map((bt) => (
+                    <Link key={bt} to={`${carsBase}?body_type=${encodeURIComponent(bt)}`} style={chip(false)}>{bt}</Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        );
+      })()}
 
       {/* ══════════ HERO VIDEO ══════════ */}
       {tenant?.hero_video_enabled &&
@@ -814,9 +854,9 @@ const HomePage = () => {
         <div style={wrap}>
           <div className="stats-flex">
             {[
+              { v: stock != null ? String(stock) : "—", l: "In Stock" },
               { v: soldDisplay, l: "Cars Sold" },
-              { v: "4.9★", l: "Customer Rating" },
-              { v: "RM 0", l: "Consultation Fee" },
+              { v: "RM 0", l: "Free Consultation" },
             ].map((s, i, arr) => (
               <FadeIn key={i} delay={i * 0.08} style={{ flex: 1 }}>
                 <div
@@ -860,6 +900,32 @@ const HomePage = () => {
           </div>
         </div>
       </section>
+
+      {/* ══════════ ABOUT (storefront only — dealer's editable about_text) ══════════ */}
+      {isSubdomain() && tenant?.about_text && (
+        <section className="sec-pad" style={secA}>
+          <div style={wrap}>
+            <FadeIn>
+              <div style={{ marginBottom: "24px" }}>
+                <p className="sec-eyebrow">About {siteName}</p>
+                <h2 className="sec-title">Get to know us</h2>
+              </div>
+              <p
+                style={{
+                  color: "#9CA3AF",
+                  fontSize: "15px",
+                  lineHeight: "1.9",
+                  maxWidth: "760px",
+                  margin: 0,
+                  whiteSpace: "pre-line",
+                }}
+              >
+                {tenant.about_text}
+              </p>
+            </FadeIn>
+          </div>
+        </section>
+      )}
 
       {/* ══════════ WHY ══════════ */}
       <section className="sec-pad" style={secA}>
@@ -1242,7 +1308,8 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* ══════════ FOR DEALERS ══════════ */}
+      {/* ══════════ FOR DEALERS (marketplace only — never on a dealer's own storefront) ══════════ */}
+      {!isSubdomain() && (
       <section
         className="sec-pad"
         style={{ ...secA, borderTop: "1px solid rgba(255,255,255,0.04)" }}
@@ -1346,6 +1413,7 @@ const HomePage = () => {
           </FadeIn>
         </div>
       </section>
+      )}
 
       {/* ══════════ FINAL CTA ══════════ */}
       <section

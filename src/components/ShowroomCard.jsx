@@ -36,11 +36,30 @@ const toThumb = (url) => {
   return url + (url.includes('?') ? '&' : '?') + 'width=520&quality=75&format=webp';
 };
 
-export default function ShowroomCard({ car, ctaContext, inCompare = false, compareFull = false, onCompare, priority = false }) {
+export default function ShowroomCard({ car, ctaContext, inCompare = false, compareFull = false, onCompare, priority = false, dark = false }) {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
   const { isSaved, toggleSave } = useSavedCars();
+
+  // Theme — dark on the dealer subdomain (matches the storefront), light on the
+  // public marketplace. Passed explicitly by the parent page so it always agrees
+  // with the page context (don't re-derive isSubdomain() per card).
+  const c = dark ? {
+    cardBg:'#0d1117', cardBorder:'rgba(255,255,255,0.08)',
+    imgBg:'#0e0e14', title:'#f3f4f6', spec:'#9ca3af',
+    yearBg:'rgba(255,255,255,0.06)', yearText:'#d1d5db', yearBorder:'rgba(255,255,255,0.1)',
+    usedPill:{ background:'rgba(255,255,255,0.06)', color:'#d1d5db', border:'1px solid rgba(255,255,255,0.12)' },
+    cmpBg:'rgba(255,255,255,0.06)', cmpBorder:'rgba(255,255,255,0.14)', cmpText:'#d1d5db',
+    saveBg:'rgba(255,255,255,0.05)', saveBorder:'rgba(255,255,255,0.12)', saveIcon:'#9ca3af',
+  } : {
+    cardBg:'#ffffff', cardBorder:'rgba(0,0,0,0.08)',
+    imgBg:'#f3f4f6', title:'#111827', spec:'#4b5563',
+    yearBg:'rgba(0,0,0,0.05)', yearText:'#374151', yearBorder:'rgba(0,0,0,0.09)',
+    usedPill:{ background:'rgba(0,0,0,0.05)', color:'#374151', border:'1px solid rgba(0,0,0,0.1)' },
+    cmpBg:'rgba(0,0,0,0.05)', cmpBorder:'rgba(0,0,0,0.12)', cmpText:'#374151',
+    saveBg:'rgba(0,0,0,0.03)', saveBorder:'rgba(0,0,0,0.1)', saveIcon:'#9ca3af',
+  };
 
   const brand        = car.brand || 'Unknown';
   const model        = car.model || '';
@@ -75,7 +94,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
     ? { background: 'rgba(139,92,246,0.1)', color: '#7c3aed', border: '1px solid rgba(139,92,246,0.22)' }
     : car.condition === 'new'
     ? { background: 'rgba(5,150,105,0.09)', color: '#059669', border: '1px solid rgba(5,150,105,0.22)' }
-    : { background: 'rgba(0,0,0,0.05)', color: '#374151', border: '1px solid rgba(0,0,0,0.1)' };
+    : c.usedPill;
 
   return (
     <div
@@ -83,12 +102,12 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
       onClick={() => {
         if (isSold || !(car.slug || car.id)) return;
         trackEvent(supabase, 'card_click', { car_id: car.id, car_name: `${year} ${brand} ${model}`, dealer_id: car.dealer_id || null, metadata: { source: 'showroom_card' } });
-        navigate('/showroom/' + (car.slug || car.id));
+        navigate((dark ? '/cars/' : '/showroom/') + (car.slug || car.id));
       }}
-      style={{ display: 'flex', flexDirection: 'row', background: '#ffffff', border: isHot ? '1px solid rgba(220,38,38,0.3)' : '1px solid rgba(0,0,0,0.08)', borderRadius: '12px', overflow: 'hidden', cursor: isSold ? 'default' : 'pointer', fontFamily: "'Outfit',sans-serif", height: '190px', minWidth: 0 }}
+      style={{ display: 'flex', flexDirection: 'row', background: c.cardBg, border: isHot ? '1px solid rgba(220,38,38,0.3)' : `1px solid ${c.cardBorder}`, borderRadius: '12px', overflow: 'hidden', cursor: isSold ? 'default' : 'pointer', fontFamily: "'Outfit',sans-serif", minHeight: '190px', minWidth: 0 }}
     >
       {/* Image column */}
-      <div className="sc-img-col" style={{ width: '38%', maxWidth: '210px', flexShrink: 0, position: 'relative', background: '#f3f4f6', overflow: 'hidden' }}>
+      <div className="sc-img-col" style={{ width: '38%', maxWidth: '210px', flexShrink: 0, position: 'relative', background: c.imgBg, overflow: 'hidden' }}>
         {image ? (
           <>
             {!imgLoaded && <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg,#e5e7eb 25%,#d1d5db 50%,#e5e7eb 75%)', backgroundSize: '200% 100%', animation: 'sc-shimmer 1.5s infinite' }} />}
@@ -152,7 +171,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
             </span>
           )}
           {year && (
-            <span style={{ fontSize: '10px', fontWeight: '600', color: '#374151', padding: '2px 7px', borderRadius: '20px', background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.09)', flexShrink: 0 }}>{year}</span>
+            <span style={{ fontSize: '10px', fontWeight: '600', color: c.yearText, padding: '2px 7px', borderRadius: '20px', background: c.yearBg, border: `1px solid ${c.yearBorder}`, flexShrink: 0 }}>{year}</span>
           )}
           {isHot && (
             <span style={{ fontSize: '10px', fontWeight: '700', color: '#fb923c', marginLeft: 'auto', flexShrink: 0 }}>
@@ -162,12 +181,12 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
         </div>
 
         {/* Row 2: car name */}
-        <h3 style={{ color: '#111827', fontSize: '14px', fontWeight: '700', margin: '0 0 4px', lineHeight: '1.25', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+        <h3 style={{ color: c.title, fontSize: '14px', fontWeight: '700', margin: '0 0 4px', lineHeight: '1.25', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
           {[brand, model, variant].filter(Boolean).join(' ')}
         </h3>
 
         {/* Row 3: specs */}
-        <p className="sc-spec-line" style={{ fontSize: '11px', color: '#4b5563', margin: '0 0 6px', lineHeight: '1.5', whiteSpace: 'normal', wordBreak: 'break-word', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+        <p className="sc-spec-line" style={{ fontSize: '11px', color: c.spec, margin: '0 0 6px', lineHeight: '1.5', whiteSpace: 'normal', wordBreak: 'break-word', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
           {specParts.join('  •  ')}
         </p>
 
@@ -179,7 +198,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
               if (compareFull) { toast.error('Compare full — remove a car first (max 4)', { duration: 2500 }); return; }
               onCompare && onCompare();
             }}
-            style={{ display: 'flex', alignItems: 'center', gap: '4px', background: inCompare ? '#dc2626' : 'rgba(0,0,0,0.05)', border: `1px solid ${inCompare ? '#dc2626' : 'rgba(0,0,0,0.12)'}`, borderRadius: '7px', padding: '4px 9px', color: inCompare ? '#fff' : '#374151', fontSize: '11px', fontWeight: '700', cursor: 'pointer', fontFamily: "'Outfit',sans-serif", transition: 'all 0.15s', flexShrink: 0 }}
+            style={{ display: 'flex', alignItems: 'center', gap: '4px', background: inCompare ? '#dc2626' : c.cmpBg, border: `1px solid ${inCompare ? '#dc2626' : c.cmpBorder}`, borderRadius: '7px', padding: '4px 9px', color: inCompare ? '#fff' : c.cmpText, fontSize: '11px', fontWeight: '700', cursor: 'pointer', fontFamily: "'Outfit',sans-serif", transition: 'all 0.15s', flexShrink: 0 }}
           >
             <ArrowLeftRight size={10} />{inCompare ? 'Added' : 'Compare'}
           </button>
@@ -190,8 +209,8 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
 
         {/* Row 5: monthly estimate */}
         {monthly && (
-          <p style={{ fontSize: '10px', color: '#4b5563', margin: '0 0 6px', lineHeight: 1 }}>
-            est. <span style={{ color: '#4b5563', fontWeight: '600' }}>RM {monthly.toLocaleString('en-MY')}/mo</span>
+          <p style={{ fontSize: '10px', color: c.spec, margin: '0 0 6px', lineHeight: 1 }}>
+            est. <span style={{ color: c.spec, fontWeight: '600' }}>RM {monthly.toLocaleString('en-MY')}/mo</span>
           </p>
         )}
 
@@ -214,7 +233,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
             <button
               onClick={e => { e.stopPropagation(); toggleSave(car.id); }}
               title={isSaved(car.id) ? 'Remove from saved' : 'Save this car'}
-              style={{ width: '36px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', border: isSaved(car.id) ? '1px solid rgba(220,38,38,0.35)' : '1px solid rgba(0,0,0,0.1)', background: isSaved(car.id) ? 'rgba(220,38,38,0.08)' : 'rgba(0,0,0,0.03)', cursor: 'pointer', transition: 'all 0.15s', color: isSaved(car.id) ? '#dc2626' : '#9ca3af' }}
+              style={{ width: '36px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', border: isSaved(car.id) ? '1px solid rgba(220,38,38,0.35)' : `1px solid ${c.saveBorder}`, background: isSaved(car.id) ? 'rgba(220,38,38,0.08)' : c.saveBg, cursor: 'pointer', transition: 'all 0.15s', color: isSaved(car.id) ? '#dc2626' : c.saveIcon }}
             >
               <Heart size={14} fill={isSaved(car.id) ? '#dc2626' : 'none'} stroke="currentColor" strokeWidth={2} />
             </button>
@@ -226,13 +245,15 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
 }
 
 // Horizontal skeleton — mirrors ShowroomCard's exact row structure.
-export function ShowroomCardSkeleton() {
-  const g   = 'linear-gradient(90deg,#e5e7eb 25%,#d1d5db 50%,#e5e7eb 75%)';
+export function ShowroomCardSkeleton({ dark = false }) {
+  const g   = dark
+    ? 'linear-gradient(90deg,#0f1623 25%,#182030 50%,#0f1623 75%)'
+    : 'linear-gradient(90deg,#e5e7eb 25%,#d1d5db 50%,#e5e7eb 75%)';
   const gsz = '200% 100%';
   const s   = 'sc-shimmer 1.5s infinite';
   const bar = (extra) => ({ background: g, backgroundSize: gsz, animation: s, ...extra });
   return (
-    <div className="sc-root" style={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px', overflow: 'hidden', display: 'flex', height: '190px', pointerEvents: 'none' }}>
+    <div className="sc-root" style={{ background: dark ? '#0d1117' : '#ffffff', border: dark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.07)', borderRadius: '12px', overflow: 'hidden', display: 'flex', height: '190px', pointerEvents: 'none' }}>
       {/* Image column — sc-img-col class picks up mobile media queries from ShowroomPage */}
       <div className="sc-img-col" style={{ width: '38%', maxWidth: '210px', flexShrink: 0, background: g, backgroundSize: gsz, animation: s }} />
       {/* Content column */}

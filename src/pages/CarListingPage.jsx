@@ -19,6 +19,7 @@ import SearchAutocomplete from '../components/SearchAutocomplete';
 import PriceAlertButton from '../components/PriceAlertButton';
 import ShowroomCard, { ShowroomCardSkeleton } from '../components/ShowroomCard';
 import Pagination from '../components/ui/Pagination';
+import { storefront as SF } from '../theme/tokens';
 
 /* ── Constants ──────────────────────────────────────────────────── */
 const PER_PAGE = 15;
@@ -209,9 +210,10 @@ function PricePopover({ minPrice, maxPrice, onApply }) {
 
 /* ── Filter section wrapper ─────────────────────────────────────── */
 function FG({ title, children }) {
+  // colors inherit from --fp-* vars set on the FiltersPanel root (theme-aware)
   return (
-    <div style={{ marginBottom:'16px', paddingBottom:'16px', borderBottom:'1px solid #f3f4f6' }}>
-      <p style={{ fontSize:'10px', fontWeight:'700', color:'#9ca3af', letterSpacing:'0.1em', textTransform:'uppercase', margin:'0 0 10px' }}>{title}</p>
+    <div style={{ marginBottom:'16px', paddingBottom:'16px', borderBottom:'1px solid var(--fp-line, #f3f4f6)' }}>
+      <p style={{ fontSize:'10px', fontWeight:'700', color:'var(--fp-muted, #9ca3af)', letterSpacing:'0.1em', textTransform:'uppercase', margin:'0 0 10px' }}>{title}</p>
       {children}
     </div>
   );
@@ -219,17 +221,27 @@ function FG({ title, children }) {
 
 /* ── Filter panel (sidebar + drawer content) ────────────────────── */
 function FiltersPanel({ isMarketplace, setParam, searchParams, setSearchParams, hotDeals, brand, model, variantInput, setVariantInput, minPrice, maxPrice, state, yearFrom, yearTo, bodyType, transmission, condition, mileageMax, financing, fuelType, colour, sellerType }) {
+  const dark = !isMarketplace;
+  // Theme vars — inherited by FG and nested controls so the whole drawer themes
+  // from one place (dark on the dealer subdomain, light on the marketplace).
+  const fpVars = dark ? {
+    '--fp-input': SF.surface2, '--fp-border': SF.border,
+    '--fp-text': SF.text, '--fp-muted': SF.textMuted, '--fp-line': SF.line,
+  } : {
+    '--fp-input': '#fff', '--fp-border': '#e5e7eb',
+    '--fp-text': '#111827', '--fp-muted': '#9ca3af', '--fp-line': '#f3f4f6',
+  };
   const pill = active => ({
     padding:'6px 13px', borderRadius:'50px',
-    border:`1px solid ${active ? '#dc2626' : '#e5e7eb'}`,
-    background: active ? 'rgba(220,38,38,0.06)' : '#fff',
-    color: active ? '#dc2626' : '#374151',
+    border:`1px solid ${active ? '#dc2626' : 'var(--fp-border)'}`,
+    background: active ? 'rgba(220,38,38,0.06)' : 'var(--fp-input)',
+    color: active ? '#dc2626' : 'var(--fp-text)',
     fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'all 0.12s',
     lineHeight:'1.4',
   });
   const sel = {
-    width:'100%', background:'#fff', border:'1px solid #e5e7eb', borderRadius:'8px',
-    padding:'9px 30px 9px 12px', color:'#111827', fontSize:'13px',
+    width:'100%', background:'var(--fp-input)', border:'1px solid var(--fp-border)', borderRadius:'8px',
+    padding:'9px 30px 9px 12px', color:'var(--fp-text)', fontSize:'13px',
     appearance:'none', cursor:'pointer', outline:'none', boxSizing:'border-box',
     backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
     backgroundRepeat:'no-repeat', backgroundPosition:'right 10px center',
@@ -238,10 +250,10 @@ function FiltersPanel({ isMarketplace, setParam, searchParams, setSearchParams, 
   const modelOptions = CAR_DATA[brand] || [];
 
   return (
-    <div>
+    <div style={fpVars}>
       <FG title="Hot Deals">
         <button
-          style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', background: hotDeals?'rgba(251,146,60,0.06)':'#fff', border:`1px solid ${hotDeals?'rgba(251,146,60,0.35)':'#e5e7eb'}`, borderRadius:'10px', padding:'10px 14px', cursor:'pointer', color:hotDeals?'#d97706':'#374151', fontSize:'13px', fontWeight:'700', transition:'all 0.12s' }}
+          style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', background: hotDeals?'rgba(251,146,60,0.06)':'var(--fp-input)', border:`1px solid ${hotDeals?'rgba(251,146,60,0.35)':'var(--fp-border)'}`, borderRadius:'10px', padding:'10px 14px', cursor:'pointer', color:hotDeals?'#d97706':'var(--fp-text)', fontSize:'13px', fontWeight:'700', transition:'all 0.12s' }}
           onClick={()=>setParam('hot_deals', hotDeals?'':'true')}
         >
           <span style={{ display:'flex', alignItems:'center', gap:'7px' }}><Flame size={13}/> Hot Deals Only</span>
@@ -368,9 +380,30 @@ export default function CarListingPage() {
   const { tenant, loading: tenantLoading } = useTenant();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  // Keep marketplace routes off a dealer subdomain: /showroom is the all-dealer
+  // search, so on a subdomain redirect it to the tenant-scoped /cars (preserving
+  // any query). Defensive — the component already scopes by isSubdomain().
+  useEffect(() => {
+    if (!isMarketplace && window.location.pathname.startsWith('/showroom')) {
+      navigate('/cars' + window.location.search, { replace: true });
+    }
+  }, [isMarketplace, navigate]);
   const { addToCompare, removeFromCompare, isInCompare, compareIds } = useCompare();
   const ctaCtx = useCTAContext();
   const basePath = isMarketplace ? '/showroom' : '/cars';
+
+  // Subdomain storefront = dark theme (matches the rest of the dealer page);
+  // marketplace = light. Drives the page surfaces below.
+  const dark = !isMarketplace;
+  const T = dark
+    ? { pageBg:'#08090f', barBg:'rgba(13,17,23,0.97)', barBorder:'rgba(255,255,255,0.08)',
+        ctrlBg:'rgba(255,255,255,0.06)', ctrlBorder:'rgba(255,255,255,0.12)',
+        text:'#f3f4f6', textMuted:'#9ca3af', chipBg:'rgba(255,255,255,0.04)',
+        chipBorder:'rgba(255,255,255,0.12)', chipText:'#d1d5db', overlay:'rgba(8,9,15,0.55)' }
+    : { pageBg:'#F7F6F2', barBg:'rgba(247,246,242,0.96)', barBorder:'rgba(0,0,0,0.07)',
+        ctrlBg:'#fff', ctrlBorder:'#e5e7eb',
+        text:'#111827', textMuted:'#6b7280', chipBg:'#fff',
+        chipBorder:'#e5e7eb', chipText:'#374151', overlay:'rgba(247,246,242,0.55)' };
 
   /* ── Parse URL params ── */
   const brand       = san.brand(searchParams.get('brand')||'');
@@ -611,7 +644,7 @@ export default function CarListingPage() {
       <div style={{
         position:'fixed', top:0, right:0, bottom:0, zIndex:1110,
         width:'300px', maxWidth:'92vw',
-        background:'#fff', borderLeft:'1px solid #e5e7eb',
+        background: dark ? SF.surface : '#fff', borderLeft:`1px solid ${dark ? SF.border : '#e5e7eb'}`,
         transform: drawerOpen ? 'translateX(0)' : 'translateX(100%)',
         transition:'transform 0.28s cubic-bezier(0.22,1,0.36,1)',
         display:'flex', flexDirection:'column',
@@ -619,14 +652,14 @@ export default function CarListingPage() {
         boxShadow: drawerOpen ? '-12px 0 40px rgba(0,0,0,0.12)' : 'none',
       }}>
         {/* Drawer header */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 20px', borderBottom:'1px solid #f3f4f6' }}>
-          <h2 style={{ margin:0, fontSize:'15px', fontWeight:'800', color:'#111827', display:'flex', alignItems:'center', gap:'8px', fontFamily:"'Outfit',sans-serif" }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 20px', borderBottom:`1px solid ${dark ? SF.line : '#f3f4f6'}` }}>
+          <h2 style={{ margin:0, fontSize:'15px', fontWeight:'800', color: dark ? SF.text : '#111827', display:'flex', alignItems:'center', gap:'8px', fontFamily:"'Outfit',sans-serif" }}>
             <SlidersHorizontal size={15} style={{ color:'#dc2626' }}/> Filters
             {activeChips.length > 0 && (
               <span style={{ background:'#dc2626', color:'#fff', fontSize:'10px', fontWeight:'800', padding:'2px 7px', borderRadius:'20px' }}>{activeChips.length}</span>
             )}
           </h2>
-          <button onClick={()=>setDrawerOpen(false)} style={{ background:'rgba(0,0,0,0.04)', border:'none', cursor:'pointer', color:'#6b7280', borderRadius:'8px', padding:'6px', display:'flex', alignItems:'center' }}>
+          <button onClick={()=>setDrawerOpen(false)} style={{ background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', border:'none', cursor:'pointer', color: dark ? SF.textSec : '#6b7280', borderRadius:'8px', padding:'6px', display:'flex', alignItems:'center' }}>
             <X size={16}/>
           </button>
         </div>
@@ -635,8 +668,8 @@ export default function CarListingPage() {
           <FiltersPanel {...filtersProps}/>
         </div>
         {/* Drawer footer */}
-        <div style={{ padding:'14px 20px', borderTop:'1px solid #f3f4f6', display:'flex', gap:'10px' }}>
-          <button onClick={resetAll} style={{ flex:1, background:'rgba(0,0,0,0.04)', border:'1px solid #e5e7eb', color:'#6b7280', fontSize:'13px', fontWeight:'600', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
+        <div style={{ padding:'14px 20px', borderTop:`1px solid ${dark ? SF.line : '#f3f4f6'}`, display:'flex', gap:'10px' }}>
+          <button onClick={resetAll} style={{ flex:1, background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', border:`1px solid ${dark ? SF.border : '#e5e7eb'}`, color: dark ? SF.textSec : '#6b7280', fontSize:'13px', fontWeight:'600', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
             Reset
           </button>
           <button onClick={()=>setDrawerOpen(false)} style={{ flex:2, background:'linear-gradient(135deg,#dc2626,#b91c1c)', border:'none', color:'#fff', fontSize:'13px', fontWeight:'700', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
@@ -645,16 +678,20 @@ export default function CarListingPage() {
         </div>
       </div>
 
-      <main style={{ background:'#F7F6F2', minHeight:'100vh', fontFamily:"'Outfit',sans-serif" }}>
+      <main style={{ background:T.pageBg, minHeight:'100vh', fontFamily:"'Outfit',sans-serif", paddingTop: dark ? '84px' : 0 }}>
 
-        {/* ── Sticky top bar ── */}
-        <div style={{ background:'rgba(247,246,242,0.96)', backdropFilter:'blur(12px)', borderBottom:'1px solid rgba(0,0,0,0.07)', padding:'10px 0', position:'sticky', top:'64px', zIndex:20 }}>
+        {/* ── Top bar ── On the subdomain the header is a floating fixed pill that
+             hides on scroll, so the bar is in-flow (scrolls away, never follows /
+             overlaps the header). On the marketplace it stays sticky below the
+             64px sticky header. */}
+        <div style={{ background:T.barBg, backdropFilter:'blur(12px)', borderBottom:`1px solid ${T.barBorder}`, padding:'10px 0', position: dark ? 'static' : 'sticky', top: dark ? 'auto' : '64px', zIndex:20 }}>
           <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'0 20px' }}>
             <div className="cl-topbar" style={{ display:'flex', gap:'8px', alignItems:'center' }}>
               {/* Search */}
               <SearchAutocomplete
                 value={searchInput}
                 onChange={setSearchInput}
+                dark={dark}
                 placeholder="Search brand, model, variant…"
                 wrapClassName="cl-topbar-search"
                 wrapStyle={{ flex:1, minWidth:'160px' }}
@@ -669,7 +706,7 @@ export default function CarListingPage() {
                 <select
                   value={sort}
                   onChange={e=>setParam('sort',e.target.value)}
-                  style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:'9px', padding:'8px 32px 8px 12px', color:'#111827', fontSize:'13px', fontWeight:'600', cursor:'pointer', appearance:'none', fontFamily:"'Outfit',sans-serif", outline:'none' }}
+                  style={{ background:T.ctrlBg, border:`1px solid ${T.ctrlBorder}`, borderRadius:'9px', padding:'8px 32px 8px 12px', color:T.text, fontSize:'13px', fontWeight:'600', cursor:'pointer', appearance:'none', fontFamily:"'Outfit',sans-serif", outline:'none' }}
                 >
                   {SORT_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
@@ -678,7 +715,7 @@ export default function CarListingPage() {
               {/* Filters button — always right-most */}
               <button
                 onClick={()=>setDrawerOpen(true)}
-                style={{ display:'flex', alignItems:'center', gap:'6px', flexShrink:0, background:activeChips.length>0?'rgba(220,38,38,0.07)':'#fff', border:`1px solid ${activeChips.length>0?'rgba(220,38,38,0.3)':'#e5e7eb'}`, borderRadius:'9px', padding:'8px 14px', color:activeChips.length>0?'#dc2626':'#6b7280', fontSize:'13px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.12s' }}
+                style={{ display:'flex', alignItems:'center', gap:'6px', flexShrink:0, background:activeChips.length>0?'rgba(220,38,38,0.07)':T.ctrlBg, border:`1px solid ${activeChips.length>0?'rgba(220,38,38,0.3)':T.ctrlBorder}`, borderRadius:'9px', padding:'8px 14px', color:activeChips.length>0?'#dc2626':T.textMuted, fontSize:'13px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.12s' }}
               >
                 <SlidersHorizontal size={13}/> Filters {activeChips.length>0&&`(${activeChips.length})`}
               </button>
@@ -687,18 +724,18 @@ export default function CarListingPage() {
         </div>
 
         {/* ── Quick-filter chip strip ── */}
-        <div style={{ background:'#F7F6F2', borderBottom:'1px solid rgba(0,0,0,0.06)', padding:'8px 0' }}>
+        <div style={{ background:T.pageBg, borderBottom:`1px solid ${T.barBorder}`, padding:'8px 0' }}>
           <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'0 20px' }}>
             <div className="cl-chips-scroll" style={{ display:'flex', gap:'7px', overflowX:'auto', paddingBottom:'2px', scrollbarWidth:'none' }}>
               <button
-                style={{ flexShrink:0, display:'flex', alignItems:'center', gap:'5px', padding:'5px 13px', borderRadius:'50px', border:`1px solid ${hotDeals?'rgba(251,146,60,0.35)':'#e5e7eb'}`, background:hotDeals?'rgba(251,146,60,0.07)':'#fff', color:hotDeals?'#d97706':'#374151', fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'all 0.12s', whiteSpace:'nowrap' }}
+                style={{ flexShrink:0, display:'flex', alignItems:'center', gap:'5px', padding:'5px 13px', borderRadius:'50px', border:`1px solid ${hotDeals?'rgba(251,146,60,0.35)':T.chipBorder}`, background:hotDeals?'rgba(251,146,60,0.07)':T.chipBg, color:hotDeals?'#d97706':T.chipText, fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'all 0.12s', whiteSpace:'nowrap' }}
                 onClick={()=>setParam('hot_deals',hotDeals?'':'true')}
               >
                 <Flame size={11}/> Hot Deals
               </button>
               {BODY_TYPES.map(bt=>(
                 <button key={bt}
-                  style={{ flexShrink:0, padding:'5px 13px', borderRadius:'50px', border:`1px solid ${bodyType===bt?'rgba(220,38,38,0.3)':'#e5e7eb'}`, background:bodyType===bt?'rgba(220,38,38,0.06)':'#fff', color:bodyType===bt?'#dc2626':'#374151', fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'all 0.12s', whiteSpace:'nowrap' }}
+                  style={{ flexShrink:0, padding:'5px 13px', borderRadius:'50px', border:`1px solid ${bodyType===bt?'rgba(220,38,38,0.3)':T.chipBorder}`, background:bodyType===bt?'rgba(220,38,38,0.06)':T.chipBg, color:bodyType===bt?'#dc2626':T.chipText, fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'all 0.12s', whiteSpace:'nowrap' }}
                   onClick={()=>setParam('body_type',bodyType===bt?'':bt)}
                 >
                   {bt}
@@ -740,8 +777,8 @@ export default function CarListingPage() {
           {/* Results row */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'8px', marginBottom:'16px' }}>
             <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', alignItems:'center' }}>
-              <span style={{ color:'#6b7280', fontSize:'13px' }}>
-                <span style={{ color:'#111827', fontWeight:'700' }}>{loading ? '…' : totalCount.toLocaleString()}</span> cars found
+              <span style={{ color:T.textMuted, fontSize:'13px' }}>
+                <span style={{ color:T.text, fontWeight:'700' }}>{loading ? '…' : totalCount.toLocaleString()}</span> cars found
               </span>
               {activeChips.map(chip=>(
                 <span key={chip.key} style={{ display:'inline-flex', alignItems:'center', gap:'4px', background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.2)', color:'#dc2626', fontSize:'12px', fontWeight:'600', padding:'4px 10px', borderRadius:'20px', fontFamily:"'Outfit',sans-serif" }}>
@@ -777,19 +814,19 @@ export default function CarListingPage() {
               {!error && (
                 <div style={{ position:'relative' }}>
                   {fetching && (
-                    <div style={{ position:'absolute', inset:0, zIndex:5, background:'rgba(247,246,242,0.55)', borderRadius:'12px', backdropFilter:'blur(2px)', display:'flex', alignItems:'flex-start', justifyContent:'flex-end', padding:'8px' }}>
+                    <div style={{ position:'absolute', inset:0, zIndex:5, background:T.overlay, borderRadius:'12px', backdropFilter:'blur(2px)', display:'flex', alignItems:'flex-start', justifyContent:'flex-end', padding:'8px' }}>
                       <span style={{ background:'rgba(220,38,38,0.9)', color:'#fff', fontSize:'11px', fontWeight:'700', padding:'4px 10px', borderRadius:'20px', fontFamily:"'Outfit',sans-serif" }}>Updating…</span>
                     </div>
                   )}
                   <div className="cl-grid" style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:'14px', opacity:fetching?0.5:1, transition:'opacity 0.18s' }}>
                     {loading
-                      ? Array.from({ length: PER_PAGE }).map((_,i) => <ShowroomCardSkeleton key={i}/>)
+                      ? Array.from({ length: PER_PAGE }).map((_,i) => <ShowroomCardSkeleton key={i} dark={dark}/>)
                       : cars.length === 0
                         ? (
                           <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'80px 20px' }}>
                             <Car size={48} color="#d1d5db" style={{ marginBottom:'16px' }}/>
-                            <p style={{ color:'#111827', fontSize:'18px', fontWeight:'700', margin:'0 0 8px', fontFamily:"'Outfit',sans-serif" }}>No cars match your filters</p>
-                            <p style={{ color:'#6b7280', fontSize:'14px', margin:'0 0 24px' }}>Try adjusting your search or clear some filters.</p>
+                            <p style={{ color:T.text, fontSize:'18px', fontWeight:'700', margin:'0 0 8px', fontFamily:"'Outfit',sans-serif" }}>No cars match your filters</p>
+                            <p style={{ color:T.textMuted, fontSize:'14px', margin:'0 0 24px' }}>Try adjusting your search or clear some filters.</p>
                             <button onClick={resetAll} style={{ display:'inline-flex', alignItems:'center', gap:'6px', background:'linear-gradient(135deg,#dc2626,#b91c1c)', border:'none', color:'#fff', fontSize:'13px', fontWeight:'700', padding:'11px 24px', borderRadius:'50px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
                               <RotateCcw size={13}/> Clear all filters
                             </button>
@@ -800,7 +837,7 @@ export default function CarListingPage() {
                             const compareFull = compareIds.length >= 4 && !inCompare;
                             return (
                               <ShowroomCard
-                                key={car.id} car={car} ctaContext={ctaCtx}
+                                key={car.id} car={car} ctaContext={ctaCtx} dark={dark}
                                 inCompare={inCompare} compareFull={compareFull}
                                 onCompare={()=>{ inCompare ? removeFromCompare(car.id) : addToCompare(car.id); }}
                                 priority={i===0}
@@ -847,15 +884,6 @@ export default function CarListingPage() {
       </main>
 
       {/* Mobile FAB — bottom-right; raised above the WhatsApp button on dealer subdomains */}
-      <div className="cl-fab" style={{ position:'fixed', bottom: isMarketplace ? '24px' : '92px', right:'16px', zIndex:30 }}>
-        <button
-          onClick={()=>setDrawerOpen(true)}
-          style={{ display:'flex', alignItems:'center', gap:'8px', background:'linear-gradient(135deg,#dc2626,#b91c1c)', border:'none', color:'#fff', fontSize:'13px', fontWeight:'700', padding:'13px 28px', borderRadius:'50px', cursor:'pointer', boxShadow:'0 8px 28px rgba(220,38,38,0.4)', whiteSpace:'nowrap', fontFamily:"'Outfit',sans-serif" }}
-        >
-          <SlidersHorizontal size={14}/> Filters {activeChips.length>0&&`(${activeChips.length})`}
-        </button>
-      </div>
-
       <MarketplaceFooter />
       {!isMarketplace && <StickyWhatsAppButton />}
     </>

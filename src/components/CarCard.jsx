@@ -57,6 +57,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
     : 'fair'
     : null;
   const isSold      = status === 'sold';
+  const isReserved  = status === 'reserved';
 
   const photoCount = Array.isArray(car.images) ? car.images.length : 0;
 
@@ -314,14 +315,35 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
                   <span style={badgePill('#DC2626', '#fff')}>HOT DEAL</span>
                 )}
                 {isNew && !isHot && (
-                  <span style={badgePill('#059669', '#fff')}>NEW</span>
+                  <span style={badgePill('#C4A265', '#1a1206')}>JUST ARRIVED</span>
                 )}
               </>
             )}
           </div>
 
+          {/* Bottom-left: RESERVED banner (dconcept-style) — real status, set by
+              the deposit_taken lead trigger */}
+          {isReserved && !isSold && (
+            <>
+              <div style={{
+                position: 'absolute', inset: 0, zIndex: 4,
+                background: 'linear-gradient(to top, rgba(185,28,28,0.32), transparent 55%)',
+                pointerEvents: 'none',
+              }} />
+              <div style={{
+                position: 'absolute', bottom: 0, left: 0, zIndex: 6,
+                background: 'linear-gradient(135deg, #dc2626, #b91c1c)',
+                color: '#fff', fontSize: 11, fontWeight: 800, letterSpacing: '0.12em',
+                padding: '6px 16px 6px 11px', borderTopRightRadius: 12,
+                boxShadow: '0 2px 10px rgba(0,0,0,0.35)', pointerEvents: 'none',
+              }}>
+                RESERVED
+              </div>
+            </>
+          )}
+
           {/* Bottom-left: photo count */}
-          {photoCount > 1 && (
+          {photoCount > 1 && !isReserved && (
             <div style={{
               position: 'absolute', bottom: 8, left: 8, zIndex: 5,
               display: 'flex', alignItems: 'center', gap: 4,

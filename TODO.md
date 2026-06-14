@@ -85,6 +85,36 @@
 - [ ] **PERF-4 (MEDIUM): Redundant per-row dealer join in listings query** — HomePage.jsx:255 joins dealer:profiles(...) onto all 30 rows even though every row is the same dealer (already in `tenant`). FIX: skip the join when tenant?.id is set; attach tenant as the dealer object client-side.
 - [ ] **PERF-5 (LOW): Sold-count stat delayed by flat 800ms timer** — HomePage.jsx:298 `setTimeout(fetchSoldCount, 800)` instead of firing in parallel with load(). FIX: Promise.all alongside load().
 
+### DEALER SUBDOMAIN STOREFRONT REDESIGN (2026-06-14) — ref: dconcept.my
+
+Audit summary: storefront is brochure-first not inventory-first; carries fake
+stats (hardcoded 4.9 star / RM0 consultation), default testimonials, and a
+ShiftOS "For Dealers" self-promo block rendered on the dealer's own customer
+site; About (about_text) and logo (site_logo_url) are stored but never rendered;
+no location/map/hours, no real reviews, no on-site finance/trade-in tools.
+
+- [ ] **SF-1: Car-card status banner** (marketplace + storefront cards) — diagonal
+  corner banner per dconcept.my: "JUST ARRIVED" (recent created_at, e.g. < 14 days)
+  and "RESERVED" (status='reserved', red gradient); neutral for normal in-stock.
+  Detail page can also show a status line ("Status: reserved / in stock").
+- [ ] **SF-2: Auto-reserve from lead lifecycle (public view)** — NOT BUILT today;
+  'reserved' is only a MANUAL status toggle in the dealer dash (no lead-driven
+  automation). Build: when a lead linked to a car advances to `deposit_taken`
+  (deposit = reserved; confirm vs `negotiating` with user — stage order is
+  new > contacted > viewing_booked > test_drive > negotiating > deposit_taken >
+  won > lost), auto-set the linked `car_listings.status='reserved'` so it shows in
+  the public Reserved section/badge. Put it in the DB trigger (same brain as
+  `auto_create_customer_on_won`), NOT a per-client patch. Must: revert
+  reserved->available if the lead goes lost; never clobber 'sold'; be idempotent.
+  `public_car_listings` already exposes 'reserved' rows.
+- [ ] **SF-3: Inventory-first storefront restructure** — demote hero carousel; add
+  on-page inventory search/filter; render About + dealer logo (site_logo_url) in
+  header; add a real contact/location block (address, hours, map, click-to-call);
+  REMOVE fake stats (4.9 star / RM0) and the ShiftOS "For Dealers" self-promo from
+  subdomain storefronts; drop default testimonials unless real/verified. Detail
+  page: adopt dconcept.my elements (framed gallery, status+code line, clean spec
+  grid) — user likes the reference detail page.
+
 ### DEALER DASHBOARD UX/BUG AUDIT (2026-06-07) — all DASH-1..9 shipped
 
 Note: send-telegram, invites, ai-proxy and create-salesman edge functions have

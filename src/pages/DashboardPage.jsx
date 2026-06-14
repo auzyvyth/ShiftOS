@@ -12,6 +12,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
+import { getStorefrontUrl as buildStorefrontUrl } from "../hooks/useTenant";
 import { usePermissions } from "../hooks/usePermissions";
 import { CONFIGURABLE_ROLES, capabilitiesForRole, resolvePermissions } from "../lib/permissions";
 import { DEFAULT_WA_TEMPLATES, WA_PLACEHOLDERS } from "../lib/leadsHelpers";
@@ -1489,7 +1490,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
             {profile?.subdomain && (
               <p className="text-xs text-gray-500 mt-1">
                 Your site:&nbsp;
-                <a href={`https://${profile.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer" style={{ color: '#DC2626', textDecoration: 'none', fontWeight: 500 }}>
+                <a href={buildStorefrontUrl(profile.subdomain)} target="_blank" rel="noopener noreferrer" style={{ color: '#DC2626', textDecoration: 'none', fontWeight: 500 }}>
                   {profile.subdomain}.xdrive.my
                 </a>
               </p>
@@ -9161,8 +9162,10 @@ export default function DashboardPage() {
 
   const getStorefrontUrl = () => {
     const sub = dealerSubdomain || profile?.subdomain;
-    if (!sub || profile?.role === 'superadmin') return 'https://xdrive.my';
-    return `https://${sub}.xdrive.my`;
+    if (!sub) return 'https://xdrive.my';
+    // env-aware: real subdomain in prod, ?tenant= override on vercel preview/localhost.
+    // (Superadmin with a subdomain still previews their own storefront.)
+    return buildStorefrontUrl(sub);
   };
 
   useEffect(() => {
