@@ -368,6 +368,14 @@ export default function CarListingPage() {
   const { tenant, loading: tenantLoading } = useTenant();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  // Keep marketplace routes off a dealer subdomain: /showroom is the all-dealer
+  // search, so on a subdomain redirect it to the tenant-scoped /cars (preserving
+  // any query). Defensive — the component already scopes by isSubdomain().
+  useEffect(() => {
+    if (!isMarketplace && window.location.pathname.startsWith('/showroom')) {
+      navigate('/cars' + window.location.search, { replace: true });
+    }
+  }, [isMarketplace, navigate]);
   const { addToCompare, removeFromCompare, isInCompare, compareIds } = useCompare();
   const ctaCtx = useCTAContext();
   const basePath = isMarketplace ? '/showroom' : '/cars';
