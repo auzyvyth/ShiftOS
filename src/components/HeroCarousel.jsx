@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
@@ -9,7 +9,6 @@ import {
   Sparkles,
   ArrowRight,
   CheckCircle,
-  Search,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import useTenant, { isSubdomain } from "../hooks/useTenant";
@@ -557,6 +556,28 @@ const HC_CSS = `
     .hc-search-btn { width: 30px; height: 30px; right: 6px; border-radius: 8px; }
     .hc-search-btn svg { width: 12px; height: 12px; }
   }
+
+  /* ════════════════
+     COMPACT variant — shorter banner so the search bar below it stays above the
+     fold on first land. Overrides the tall 100vh defaults without touching them.
+  ════════════════ */
+  .hc-compact { min-height: clamp(440px, 62vh, 600px) !important; }
+  .hc-compact .hc-content-wrap { padding: clamp(96px,14vh,128px) 48px clamp(36px,6vh,64px) !important; gap: clamp(18px,3vh,30px) !important; }
+  .hc-compact .hc-glass-card { max-height: clamp(220px,30vh,320px); }
+  .hc-compact .hc-card-spacer { min-height: clamp(200px,28vh,300px); max-height: clamp(220px,30vh,320px); }
+  .hc-compact .hc-counter, .hc-compact .hc-dots { bottom: 18px; }
+  @media (max-width:768px) {
+    .hc-compact { min-height: clamp(400px, 64svh, 520px) !important; }
+    .hc-compact .hc-content-wrap { padding: 96px 20px 64px !important; }
+    .hc-compact .hc-glass-card { max-height: 200px; }
+    .hc-compact .hc-card-spacer { min-height: 175px; max-height: 200px; }
+  }
+
+  /* ════════════════
+     TEXT-ONLY slide — no image card; headline spans wider on a brand gradient.
+  ════════════════ */
+  .hc-text-only .hc-text { max-width: 760px; }
+  .hc-text-only .hc-glass-card { display: none !important; }
 `;
 
 const INTERVAL_MS = 7000;
@@ -641,16 +662,14 @@ function formatPrice(val) {
   return `RM ${num.toLocaleString("en-MY")}`;
 }
 
-export default function HeroCarousel({ siteName, waNumber }) {
+export default function HeroCarousel({ siteName, waNumber, compact = false }) {
   const { tenant } = useTenant();
-  const navigate = useNavigate();
   const [slides, setSlides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [idx, setIdx] = useState(0);
   const [animKey, setAnimKey] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [imgLoaded, setImgLoaded] = useState({});
-  const [heroSearch, setHeroSearch] = useState(''); // track which images loaded
+  const [imgLoaded, setImgLoaded] = useState({}); // track which images loaded
 
   const hoverPaused = useRef(false);
   const manualPaused = useRef(false);
@@ -926,7 +945,10 @@ export default function HeroCarousel({ siteName, waNumber }) {
   return (
     <>
       <section
-        className="hc-wrap"
+        className={`hc-wrap${compact ? " hc-compact" : ""}`}
+        style={s.mode === "text"
+          ? { background: `linear-gradient(135deg, ${tenant?.brand_color || "#dc2626"}26 0%, #0C0C0E 58%)` }
+          : undefined}
         onMouseEnter={() => {
           hoverPaused.current = true;
         }}
@@ -948,7 +970,8 @@ export default function HeroCarousel({ siteName, waNumber }) {
           {slides.map((slide, i) => {
             const nextIdx = (idx + 1) % slides.length;
             if (i !== idx && i !== nextIdx) return null;
-            return slide.image_url ? (
+            // Text-only slides have no background image (brand gradient shows).
+            return slide.image_url && slide.mode !== "text" ? (
               <img
                 key={`bg-${i}`}
                 src={slide.image_url}
@@ -977,33 +1000,9 @@ export default function HeroCarousel({ siteName, waNumber }) {
         <div className="hc-content">
           <div className="hc-content-wrap">
             {/* Content row: title + card */}
-            <div className="hc-content-row">
+            <div className={`hc-content-row${s.mode === "text" ? " hc-text-only" : ""}`}>
               {/* 1. Title */}
               <div className="hc-text">
-                {/* Search bar — above eyebrow on desktop, absolute on mobile */}
-                <div className="hc-search-bar">
-                  <form
-                    className="hc-search-form"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const q = heroSearch.trim();
-                      if (q) navigate(`/showroom?q=${encodeURIComponent(q)}`);
-                    }}
-                  >
-                    <Search className="hc-search-icon" />
-                    <input
-                      className="hc-search-input"
-                      type="text"
-                      placeholder="Search brand or model…"
-                      aria-label="Search cars by brand or model"
-                      value={heroSearch}
-                      onChange={(e) => setHeroSearch(e.target.value)}
-                    />
-                    <button type="submit" className="hc-search-btn" aria-label="Search">
-                      <ArrowRight />
-                    </button>
-                  </form>
-                </div>
                 <div key={`c-${animKey}`} className="hc-anim">
                   <div className="hc-eyebrow">
                     <div className="hc-eyebrow-dot" />
