@@ -19,6 +19,7 @@ const CalculatorPage = () => {
   const [engineCcParam,  setEngineCcParam]  = useState(null);
   const [bodyTypeParam,  setBodyTypeParam]  = useState(null);
   const { t } = useTranslation();
+  const sub = isSubdomain(); // subdomain storefront = dark theme
 
   useEffect(() => {
     const priceParam = searchParams.get('carPrice');
@@ -36,9 +37,9 @@ const CalculatorPage = () => {
         <meta name="description" content={t('calculator.header.subtitle')} />
       </Helmet>
 
-      {isSubdomain() ? <Header /> : <MarketplaceHeader />}
+      {sub ? <Header /> : <MarketplaceHeader />}
 
-      <main style={{ paddingTop: isSubdomain() ? 82 : 72, background: '#F7F6F2', minHeight: '100vh', fontFamily: "'DM Sans',sans-serif" }}>
+      <main style={{ paddingTop: sub ? 82 : 72, background: sub ? '#08090f' : '#F7F6F2', minHeight: '100vh', fontFamily: "'DM Sans',sans-serif" }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 16px 48px' }}>
 
           {/* Page header */}
@@ -54,10 +55,10 @@ const CalculatorPage = () => {
                 Financing Tools
               </span>
             </div>
-            <h1 style={{ color: '#111827', fontSize: 'clamp(1.5rem,4vw,2rem)', fontWeight: 800, margin: '0 0 6px', lineHeight: 1.2 }}>
+            <h1 style={{ color: sub ? '#f3f4f6' : '#111827', fontSize: 'clamp(1.5rem,4vw,2rem)', fontWeight: 800, margin: '0 0 6px', lineHeight: 1.2 }}>
               {t('calculator.header.title')}
             </h1>
-            <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>
+            <p style={{ color: sub ? '#9ca3af' : '#6b7280', fontSize: 14, margin: 0 }}>
               {t('calculator.header.subtitle')}
             </p>
           </motion.div>
@@ -73,25 +74,27 @@ const CalculatorPage = () => {
               engineCc={engineCcParam}
               bodyType={bodyTypeParam}
               key={`${initialPrice}-${engineCcParam || ''}-${bodyTypeParam || ''}`}
-              light
+              light={!sub}
             />
           </motion.div>
 
-          {/* Info section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-100px' }}
-            transition={{ duration: 0.5 }}
-            style={{ marginTop: 40 }}
-          >
-            <CalculatorInfoSection />
-          </motion.div>
+          {/* Info section — light-only component; hidden on the dark storefront */}
+          {!sub && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-100px' }}
+              transition={{ duration: 0.5 }}
+              style={{ marginTop: 40 }}
+            >
+              <CalculatorInfoSection />
+            </motion.div>
+          )}
 
         </div>
       </main>
 
-      {!isSubdomain() && <MarketplaceFooter />}
+      {!sub && <MarketplaceFooter />}
       <StickyWhatsAppButton />
     </>
   );

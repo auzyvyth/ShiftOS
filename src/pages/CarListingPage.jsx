@@ -380,6 +380,19 @@ export default function CarListingPage() {
   const ctaCtx = useCTAContext();
   const basePath = isMarketplace ? '/showroom' : '/cars';
 
+  // Subdomain storefront = dark theme (matches the rest of the dealer page);
+  // marketplace = light. Drives the page surfaces below.
+  const dark = !isMarketplace;
+  const T = dark
+    ? { pageBg:'#08090f', barBg:'rgba(13,17,23,0.97)', barBorder:'rgba(255,255,255,0.08)',
+        ctrlBg:'rgba(255,255,255,0.06)', ctrlBorder:'rgba(255,255,255,0.12)',
+        text:'#f3f4f6', textMuted:'#9ca3af', chipBg:'rgba(255,255,255,0.04)',
+        chipBorder:'rgba(255,255,255,0.12)', chipText:'#d1d5db', overlay:'rgba(8,9,15,0.55)' }
+    : { pageBg:'#F7F6F2', barBg:'rgba(247,246,242,0.96)', barBorder:'rgba(0,0,0,0.07)',
+        ctrlBg:'#fff', ctrlBorder:'#e5e7eb',
+        text:'#111827', textMuted:'#6b7280', chipBg:'#fff',
+        chipBorder:'#e5e7eb', chipText:'#374151', overlay:'rgba(247,246,242,0.55)' };
+
   /* ── Parse URL params ── */
   const brand       = san.brand(searchParams.get('brand')||'');
   const bodyType    = san.bodyType(searchParams.get('body_type')||'');
@@ -653,16 +666,20 @@ export default function CarListingPage() {
         </div>
       </div>
 
-      <main style={{ background:'#F7F6F2', minHeight:'100vh', fontFamily:"'Outfit',sans-serif" }}>
+      <main style={{ background:T.pageBg, minHeight:'100vh', fontFamily:"'Outfit',sans-serif", paddingTop: dark ? '84px' : 0 }}>
 
-        {/* ── Sticky top bar ── */}
-        <div style={{ background:'rgba(247,246,242,0.96)', backdropFilter:'blur(12px)', borderBottom:'1px solid rgba(0,0,0,0.07)', padding:'10px 0', position:'sticky', top:'64px', zIndex:20 }}>
+        {/* ── Top bar ── On the subdomain the header is a floating fixed pill that
+             hides on scroll, so the bar is in-flow (scrolls away, never follows /
+             overlaps the header). On the marketplace it stays sticky below the
+             64px sticky header. */}
+        <div style={{ background:T.barBg, backdropFilter:'blur(12px)', borderBottom:`1px solid ${T.barBorder}`, padding:'10px 0', position: dark ? 'static' : 'sticky', top: dark ? 'auto' : '64px', zIndex:20 }}>
           <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'0 20px' }}>
             <div className="cl-topbar" style={{ display:'flex', gap:'8px', alignItems:'center' }}>
               {/* Search */}
               <SearchAutocomplete
                 value={searchInput}
                 onChange={setSearchInput}
+                dark={dark}
                 placeholder="Search brand, model, variant…"
                 wrapClassName="cl-topbar-search"
                 wrapStyle={{ flex:1, minWidth:'160px' }}
@@ -677,7 +694,7 @@ export default function CarListingPage() {
                 <select
                   value={sort}
                   onChange={e=>setParam('sort',e.target.value)}
-                  style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:'9px', padding:'8px 32px 8px 12px', color:'#111827', fontSize:'13px', fontWeight:'600', cursor:'pointer', appearance:'none', fontFamily:"'Outfit',sans-serif", outline:'none' }}
+                  style={{ background:T.ctrlBg, border:`1px solid ${T.ctrlBorder}`, borderRadius:'9px', padding:'8px 32px 8px 12px', color:T.text, fontSize:'13px', fontWeight:'600', cursor:'pointer', appearance:'none', fontFamily:"'Outfit',sans-serif", outline:'none' }}
                 >
                   {SORT_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
@@ -686,7 +703,7 @@ export default function CarListingPage() {
               {/* Filters button — always right-most */}
               <button
                 onClick={()=>setDrawerOpen(true)}
-                style={{ display:'flex', alignItems:'center', gap:'6px', flexShrink:0, background:activeChips.length>0?'rgba(220,38,38,0.07)':'#fff', border:`1px solid ${activeChips.length>0?'rgba(220,38,38,0.3)':'#e5e7eb'}`, borderRadius:'9px', padding:'8px 14px', color:activeChips.length>0?'#dc2626':'#6b7280', fontSize:'13px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.12s' }}
+                style={{ display:'flex', alignItems:'center', gap:'6px', flexShrink:0, background:activeChips.length>0?'rgba(220,38,38,0.07)':T.ctrlBg, border:`1px solid ${activeChips.length>0?'rgba(220,38,38,0.3)':T.ctrlBorder}`, borderRadius:'9px', padding:'8px 14px', color:activeChips.length>0?'#dc2626':T.textMuted, fontSize:'13px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.12s' }}
               >
                 <SlidersHorizontal size={13}/> Filters {activeChips.length>0&&`(${activeChips.length})`}
               </button>
@@ -695,18 +712,18 @@ export default function CarListingPage() {
         </div>
 
         {/* ── Quick-filter chip strip ── */}
-        <div style={{ background:'#F7F6F2', borderBottom:'1px solid rgba(0,0,0,0.06)', padding:'8px 0' }}>
+        <div style={{ background:T.pageBg, borderBottom:`1px solid ${T.barBorder}`, padding:'8px 0' }}>
           <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'0 20px' }}>
             <div className="cl-chips-scroll" style={{ display:'flex', gap:'7px', overflowX:'auto', paddingBottom:'2px', scrollbarWidth:'none' }}>
               <button
-                style={{ flexShrink:0, display:'flex', alignItems:'center', gap:'5px', padding:'5px 13px', borderRadius:'50px', border:`1px solid ${hotDeals?'rgba(251,146,60,0.35)':'#e5e7eb'}`, background:hotDeals?'rgba(251,146,60,0.07)':'#fff', color:hotDeals?'#d97706':'#374151', fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'all 0.12s', whiteSpace:'nowrap' }}
+                style={{ flexShrink:0, display:'flex', alignItems:'center', gap:'5px', padding:'5px 13px', borderRadius:'50px', border:`1px solid ${hotDeals?'rgba(251,146,60,0.35)':T.chipBorder}`, background:hotDeals?'rgba(251,146,60,0.07)':T.chipBg, color:hotDeals?'#d97706':T.chipText, fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'all 0.12s', whiteSpace:'nowrap' }}
                 onClick={()=>setParam('hot_deals',hotDeals?'':'true')}
               >
                 <Flame size={11}/> Hot Deals
               </button>
               {BODY_TYPES.map(bt=>(
                 <button key={bt}
-                  style={{ flexShrink:0, padding:'5px 13px', borderRadius:'50px', border:`1px solid ${bodyType===bt?'rgba(220,38,38,0.3)':'#e5e7eb'}`, background:bodyType===bt?'rgba(220,38,38,0.06)':'#fff', color:bodyType===bt?'#dc2626':'#374151', fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'all 0.12s', whiteSpace:'nowrap' }}
+                  style={{ flexShrink:0, padding:'5px 13px', borderRadius:'50px', border:`1px solid ${bodyType===bt?'rgba(220,38,38,0.3)':T.chipBorder}`, background:bodyType===bt?'rgba(220,38,38,0.06)':T.chipBg, color:bodyType===bt?'#dc2626':T.chipText, fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'all 0.12s', whiteSpace:'nowrap' }}
                   onClick={()=>setParam('body_type',bodyType===bt?'':bt)}
                 >
                   {bt}
@@ -748,8 +765,8 @@ export default function CarListingPage() {
           {/* Results row */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'8px', marginBottom:'16px' }}>
             <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', alignItems:'center' }}>
-              <span style={{ color:'#6b7280', fontSize:'13px' }}>
-                <span style={{ color:'#111827', fontWeight:'700' }}>{loading ? '…' : totalCount.toLocaleString()}</span> cars found
+              <span style={{ color:T.textMuted, fontSize:'13px' }}>
+                <span style={{ color:T.text, fontWeight:'700' }}>{loading ? '…' : totalCount.toLocaleString()}</span> cars found
               </span>
               {activeChips.map(chip=>(
                 <span key={chip.key} style={{ display:'inline-flex', alignItems:'center', gap:'4px', background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.2)', color:'#dc2626', fontSize:'12px', fontWeight:'600', padding:'4px 10px', borderRadius:'20px', fontFamily:"'Outfit',sans-serif" }}>
@@ -785,7 +802,7 @@ export default function CarListingPage() {
               {!error && (
                 <div style={{ position:'relative' }}>
                   {fetching && (
-                    <div style={{ position:'absolute', inset:0, zIndex:5, background:'rgba(247,246,242,0.55)', borderRadius:'12px', backdropFilter:'blur(2px)', display:'flex', alignItems:'flex-start', justifyContent:'flex-end', padding:'8px' }}>
+                    <div style={{ position:'absolute', inset:0, zIndex:5, background:T.overlay, borderRadius:'12px', backdropFilter:'blur(2px)', display:'flex', alignItems:'flex-start', justifyContent:'flex-end', padding:'8px' }}>
                       <span style={{ background:'rgba(220,38,38,0.9)', color:'#fff', fontSize:'11px', fontWeight:'700', padding:'4px 10px', borderRadius:'20px', fontFamily:"'Outfit',sans-serif" }}>Updating…</span>
                     </div>
                   )}
@@ -796,8 +813,8 @@ export default function CarListingPage() {
                         ? (
                           <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'80px 20px' }}>
                             <Car size={48} color="#d1d5db" style={{ marginBottom:'16px' }}/>
-                            <p style={{ color:'#111827', fontSize:'18px', fontWeight:'700', margin:'0 0 8px', fontFamily:"'Outfit',sans-serif" }}>No cars match your filters</p>
-                            <p style={{ color:'#6b7280', fontSize:'14px', margin:'0 0 24px' }}>Try adjusting your search or clear some filters.</p>
+                            <p style={{ color:T.text, fontSize:'18px', fontWeight:'700', margin:'0 0 8px', fontFamily:"'Outfit',sans-serif" }}>No cars match your filters</p>
+                            <p style={{ color:T.textMuted, fontSize:'14px', margin:'0 0 24px' }}>Try adjusting your search or clear some filters.</p>
                             <button onClick={resetAll} style={{ display:'inline-flex', alignItems:'center', gap:'6px', background:'linear-gradient(135deg,#dc2626,#b91c1c)', border:'none', color:'#fff', fontSize:'13px', fontWeight:'700', padding:'11px 24px', borderRadius:'50px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
                               <RotateCcw size={13}/> Clear all filters
                             </button>
