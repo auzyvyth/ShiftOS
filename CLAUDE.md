@@ -30,6 +30,7 @@ Project ID: lemdkdizdlcirhbzqlos
 - Accent: red-600 / #dc2626
 - Font: DM Sans (body), Bebas Neue (display)
 - Cards: bg-gray-900, border-gray-800
+- Public marketplace surfaces: read `DESIGN.md` (tokens, scales, grid, anti-slop rules) before any public-facing UI change.
 
 ## Key files
 - src/pages/HomePage.jsx — public XDrive marketplace

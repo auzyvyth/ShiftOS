@@ -351,7 +351,7 @@ export default function MarketplacePage() {
     wrap: {
       maxWidth: '1360px',
       margin: '0 auto',
-      padding: '0 20px',
+      padding: '0 clamp(20px, 4vw, 48px)',
     },
     brandRow: {
       padding: '24px 0',
@@ -483,15 +483,17 @@ export default function MarketplacePage() {
       color: '#111827',
     },
     carsGrid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+      display: 'flex',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
       gap: '20px',
       paddingBottom: '40px',
     },
     emptyState: {
       textAlign: 'center',
       padding: '80px 20px',
-      gridColumn: '1 / -1',
+      flexBasis: '100%',
+      maxWidth: '100%',
     },
     paginationWrap: {
       padding: '12px 0 60px',
@@ -622,6 +624,11 @@ export default function MarketplacePage() {
         .mp-adv-modal::-webkit-scrollbar { width:4px }
         .mp-adv-modal::-webkit-scrollbar-thumb { background:rgba(255,255,255,.15);border-radius:2px }
 
+        /* Cars grid — flex-wrap centered so sparse rows / few results stay centered
+           instead of hugging the left (auto-fill reserved empty tracks). Cards
+           fill full rows (grow) but stay bounded so they never balloon. */
+        .mp-cars-grid > * { flex: 1 1 280px; max-width: 340px; min-width: 0; }
+
         /* ── Featured cards ── */
         .mp-feat-card { transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease }
         .mp-feat-card:hover { transform:translateY(-5px);border-color:rgba(220,38,38,.4) !important;box-shadow:0 16px 40px rgba(0,0,0,.14) }
@@ -672,8 +679,8 @@ export default function MarketplacePage() {
         .mp-hero-tabs::-webkit-scrollbar { display: none }
 
         /* Trust strip */
-        .mp-trust-strip { padding: 10px 16px; border-top: 1px solid rgba(255,255,255,.07); flex-shrink: 0; position: relative; z-index: 1; }
-        .mp-trust-grid  { max-width: 1360px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; }
+        .mp-trust-strip { padding: 10px 0; border-top: 1px solid rgba(255,255,255,.07); flex-shrink: 0; position: relative; z-index: 1; }
+        .mp-trust-grid  { max-width: 1360px; margin: 0 auto; padding: 0 16px; display: grid; grid-template-columns: 1fr 1fr; }
         .mp-trust-item  { padding: 4px 10px; }
 
         /* Budget cards */
@@ -696,12 +703,12 @@ export default function MarketplacePage() {
         /* ── Desktop ≥900px ── */
         @media(min-width:900px) {
           .mp-hero-section  { height: calc(100vh - 64px); min-height: 0; overflow: hidden; }
-          .mp-hero-main     { flex-direction: row; align-items: center; gap: clamp(32px,4vw,72px); max-width: 1360px; margin: 0 auto; padding: 0 clamp(24px,5vw,60px); }
+          .mp-hero-main     { flex-direction: row; align-items: center; gap: clamp(32px,4vw,72px); max-width: 1360px; margin: 0 auto; padding: 0 clamp(20px,4vw,48px); }
           .mp-hero-left     { flex: 1; min-width: 0; width: auto; }
           .mp-hero-right    { flex: 1; min-width: 0; margin-top: 0; }
           .mp-hero-tabs     { width: fit-content; overflow-x: visible; }
-          .mp-trust-strip   { padding: 14px 24px; }
-          .mp-trust-grid    { grid-template-columns: repeat(4,1fr); }
+          .mp-trust-strip   { padding: 16px 0; }
+          .mp-trust-grid    { grid-template-columns: repeat(4,1fr); padding: 0 clamp(20px,4vw,48px); }
           .mp-trust-item    { padding: 0 28px; }
           .mp-budget-grid   { gap: 10px; }
           .mp-budget-icon   { height: 80px; }
@@ -752,7 +759,7 @@ export default function MarketplacePage() {
                 FIND YOUR NEXT<br/><span style={{ color:'#dc2626' }}>CAR IN MALAYSIA</span>
               </h1>
 
-              <p style={{ fontSize:'clamp(13px,3.5vw,15px)', color:'rgba(255,255,255,0.45)', margin:'0 0 24px', lineHeight:'1.7', fontFamily:"'Outfit',sans-serif", maxWidth:'420px' }}>
+              <p style={{ fontSize:'clamp(13px,3.5vw,15px)', color:'rgba(255,255,255,0.6)', margin:'0 0 24px', lineHeight:'1.7', fontFamily:"'Outfit',sans-serif", maxWidth:'420px' }}>
                 New &middot; Used &middot; Recon &mdash; Verified Dealers, Full Docs, Zero Phantom Listings.
               </p>
 
@@ -837,19 +844,19 @@ export default function MarketplacePage() {
               <h2 style={{ margin:'0 0 16px', fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(26px,3vw,44px)', color:'#ffffff', letterSpacing:'0.02em', lineHeight:1 }}>BROWSE BY BUDGET</h2>
               <div className="mp-budget-grid">
                 {[
-                  { label:'Under RM 30k',  value:'30000',  iconColor:'#6b7280', bg:'rgba(107,114,128,0.10)' },
-                  { label:'Under RM 50k',  value:'50000',  iconColor:'#94a3b8', bg:'rgba(148,163,184,0.10)' },
-                  { label:'Under RM 80k',  value:'80000',  iconColor:'#cbd5e1', bg:'rgba(203,213,225,0.10)' },
-                  { label:'Under RM 120k', value:'120000', iconColor:'#f87171', bg:'rgba(220,38,38,0.12)'   },
-                  { label:'Under RM 200k', value:'200000', iconColor:'#ef4444', bg:'rgba(220,38,38,0.18)'   },
-                  { label:'Open Budget',   value:'',       iconColor:'#ffffff', bg:'rgba(255,255,255,0.10)' },
-                ].map(({ label, value, iconColor, bg }) => (
-                  <Link key={label} to={value ? `/showroom?max_price=${value}` : '/showroom'} className="mp-budget-item">
+                  { big:'RM 30K',  sub:'& under', value:'30000',  color:'#9ca3af', bg:'rgba(148,163,184,0.08)' },
+                  { big:'RM 50K',  sub:'& under', value:'50000',  color:'#cbd5e1', bg:'rgba(203,213,225,0.08)' },
+                  { big:'RM 80K',  sub:'& under', value:'80000',  color:'#e2e8f0', bg:'rgba(226,232,240,0.08)' },
+                  { big:'RM 120K', sub:'& under', value:'120000', color:'#fca5a5', bg:'rgba(220,38,38,0.10)'   },
+                  { big:'RM 200K', sub:'& under', value:'200000', color:'#f87171', bg:'rgba(220,38,38,0.16)'   },
+                  { big:'ALL',     sub:'Any price', value:'',     color:'#ffffff', bg:'rgba(255,255,255,0.08)' },
+                ].map(({ big, sub, value, color, bg }) => (
+                  <Link key={big} to={value ? `/showroom?max_price=${value}` : '/showroom'} className="mp-budget-item">
                     <div className="mp-budget-icon" style={{ background: bg }}>
-                      <Car size={28} color={iconColor} strokeWidth={1.25} />
+                      <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(18px,2.4vw,26px)', lineHeight:1, letterSpacing:'0.02em', color }}>{big}</span>
                     </div>
-                    <div style={{ padding:'5px 8px 7px' }}>
-                      <span style={{ fontSize:'11px', fontWeight:'700', color:'rgba(255,255,255,0.9)', fontFamily:"'Outfit',sans-serif" }}>{label}</span>
+                    <div style={{ padding:'6px 8px 8px' }}>
+                      <span style={{ fontSize:'10px', fontWeight:'600', color:'rgba(255,255,255,0.5)', fontFamily:"'Outfit',sans-serif", textTransform:'uppercase', letterSpacing:'0.06em' }}>{sub}</span>
                     </div>
                   </Link>
                 ))}
@@ -877,8 +884,8 @@ export default function MarketplacePage() {
         </section>
 
         {/* ── Quick-filter strip ── */}
-        <section style={{ background: '#F7F6F2', padding: '16px 16px 16px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div style={{ maxWidth: '1360px', margin: '0 auto' }}>
+        <section style={{ background: '#F7F6F2', padding: '16px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+          <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '0 clamp(20px, 4vw, 48px)' }}>
             <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', paddingBottom: '2px' }}>
               {[
                 { groupLabel: 'Condition', pills: [
@@ -934,7 +941,7 @@ export default function MarketplacePage() {
               .btc-inner { padding: 0 8px !important; }
             }
           `}</style>
-          <div className="btc-inner" style={{ maxWidth: 1360, margin: '0 auto', padding: '0 36px' }}>
+          <div className="btc-inner" style={{ maxWidth: 1360, margin: '0 auto', padding: '0 clamp(20px, 4vw, 48px)' }}>
             <div style={{ marginBottom: 24 }}>
               <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#DC2626', fontFamily: "'Outfit',sans-serif" }}>Browse by Category</p>
               <h2 style={{ margin: 0, fontSize: 'clamp(22px,3vw,32px)', fontWeight: 700, color: '#111827', fontFamily: "'Bebas Neue',sans-serif", letterSpacing: '0.02em' }}>Shop by Body Type</h2>
@@ -952,7 +959,7 @@ export default function MarketplacePage() {
 
         {/* ── Brand strip ── */}
         <section style={{ background: '#F7F6F2', padding: '28px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '0 20px' }}>
+          <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '0 clamp(20px, 4vw, 48px)' }}>
             <div className="mp-brand-grid">
               {[
                 { label: 'All',        brandVal: '',              initials: 'ALL',  color: '#DC2626' },
@@ -1051,7 +1058,7 @@ export default function MarketplacePage() {
 
               {/* Cars grid */}
               {!error && (
-                <div style={S.carsGrid}>
+                <div className="mp-cars-grid" style={S.carsGrid}>
                   {loading
                     ? Array.from({ length: PER_PAGE }).map((_, i) => <SkeletonCard key={i} variant="light" />)
                     : cars.length === 0
