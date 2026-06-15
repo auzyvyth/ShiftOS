@@ -97,16 +97,23 @@ no location/map/hours, no real reviews, no on-site finance/trade-in tools.
   corner banner per dconcept.my: "JUST ARRIVED" (recent created_at, e.g. < 14 days)
   and "RESERVED" (status='reserved', red gradient); neutral for normal in-stock.
   Detail page can also show a status line ("Status: reserved / in stock").
-- [ ] **SF-2: Auto-reserve from lead lifecycle (public view)** — NOT BUILT today;
-  'reserved' is only a MANUAL status toggle in the dealer dash (no lead-driven
-  automation). Build: when a lead linked to a car advances to `deposit_taken`
-  (deposit = reserved; confirm vs `negotiating` with user — stage order is
-  new > contacted > viewing_booked > test_drive > negotiating > deposit_taken >
-  won > lost), auto-set the linked `car_listings.status='reserved'` so it shows in
-  the public Reserved section/badge. Put it in the DB trigger (same brain as
-  `auto_create_customer_on_won`), NOT a per-client patch. Must: revert
-  reserved->available if the lead goes lost; never clobber 'sold'; be idempotent.
-  `public_car_listings` already exposes 'reserved' rows.
+- [x] **SF-2: Auto-reserve from lead lifecycle (public view)** — DONE. DB trigger
+  auto-sets `car_listings.status='reserved'` when a lead with a linked car advances
+  to `deposit_taken`; reverts to `available` on `lost`; never clobbers `sold`.
+- [ ] **SF-2b: Reserved-by attribution** — When deposit_taken fires the auto-reserve,
+  the car's "Reserved" badge shows no salesman name (dealer and salesman pipelines both
+  silent on who did it). Fix:
+  1. DB: add `reserved_by uuid REFERENCES profiles(id)` + `reserved_at timestamptz` to
+     `car_listings`; update the deposit_taken trigger to stamp `reserved_by =
+     NEW.salesman_id` and `reserved_at = now()`; clear both on revert-to-available.
+  2. Update `public_car_listings` VIEW to expose `reserved_by` + join the salesman's
+     `full_name` as `reserved_by_name`.
+  3. UI — show "Reserved by {salesman name}" in three places:
+     - Dealer lead pipeline (LeadsPage kanban card + LeadDrawer header when stage=deposit_taken)
+     - Salesman pipeline (Salesmanpanel lead card progress bar area)
+     - Listing card "Reserved" status badge tooltip/sub-label in dealer StockTab / listings grid
+  Constraint: only show the name to the dealer and the salesman themselves; never
+  expose salesman names to public storefront visitors.
 - [ ] **SF-3: Inventory-first storefront restructure** — demote hero carousel; add
   on-page inventory search/filter; render About + dealer logo (site_logo_url) in
   header; add a real contact/location block (address, hours, map, click-to-call);
