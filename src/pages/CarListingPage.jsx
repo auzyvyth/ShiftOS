@@ -818,7 +818,7 @@ export default function CarListingPage() {
           </div>
 
           {/* ── Layout: grid LEFT + sidebar RIGHT ── */}
-          <div className="cl-layout" style={{ display:'flex', gap:'24px', alignItems:'flex-start', flexDirection: isWide ? 'row' : 'column' }}>
+          <div className="cl-layout" style={{ display:'flex', gap:'24px', alignItems: isWide ? 'flex-start' : 'stretch', flexDirection: isWide ? 'row' : 'column' }}>
 
             {/* Car grid */}
             <div style={{ flex:1, minWidth:0 }}>

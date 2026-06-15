@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Car, Users, ArrowLeftRight, MessageCircle, Heart } from 'lucide-react';
 import { toast } from 'sonner';
@@ -40,6 +40,9 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgIdx, setImgIdx] = useState(0);
+  const dragX = useRef(null);
+  const suppressClick = useRef(false);
   const { isSaved, toggleSave } = useSavedCars();
 
   // Theme — dark on the dealer subdomain (matches the storefront), light on the
@@ -75,8 +78,39 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
   const discountPct  = hasDiscount ? Math.round(((origPrice - price) / origPrice) * 100) : null;
   const isHot        = hasDiscount && discountPct >= 3;
   const photoCount   = Array.isArray(car.images) ? car.images.length : 0;
+  const slides     = Array.isArray(car.images) ? car.images.filter(Boolean).slice(0, 8) : [];
+  const hasGallery = !isSold && slides.length > 1;
+  const safeIdx    = imgIdx < slides.length ? imgIdx : 0;
 
-  const image      = !imgError && toThumb(Array.isArray(car.images) && car.images[0] || null);
+  useEffect(() => { setImgLoaded(false); }, [safeIdx]);
+
+  const slideBy = (dx) => {
+    if (!hasGallery || Math.abs(dx) <= 36) return false;
+    setImgIdx(i => {
+      const cur = i < slides.length ? i : 0;
+      return (cur + (dx < 0 ? 1 : -1) + slides.length) % slides.length;
+    });
+    return true;
+  };
+  const onImgTouchStart = (e) => { dragX.current = e.touches[0].clientX; };
+  const onImgTouchEnd   = (e) => {
+    if (dragX.current == null) return;
+    if (slideBy(e.changedTouches[0].clientX - dragX.current)) suppressClick.current = true;
+    dragX.current = null;
+  };
+  const onImgMouseDown  = (e) => {
+    e.preventDefault();
+    dragX.current = e.clientX;
+    const onDocUp = (ev) => {
+      document.removeEventListener('mouseup', onDocUp);
+      if (dragX.current == null) return;
+      if (slideBy(ev.clientX - dragX.current)) suppressClick.current = true;
+      dragX.current = null;
+    };
+    document.addEventListener('mouseup', onDocUp);
+  };
+
+  const image      = !imgError && toThumb(slides[safeIdx] || (Array.isArray(car.images) && car.images[0]) || null);
   const normalTx   = ['Auto', 'Automatic', 'AT'].includes(transmission) ? 'Auto' : ['Manual', 'MT'].includes(transmission) ? 'Manual' : transmission || null;
   const waText     = `Hi, I'm interested in the ${year} ${brand} ${model}${variant ? ' ' + variant : ''}. Can you share more details?`;
   const ctxResolved = ctaContext?.type !== 'loading' ? ctaContext : null;
@@ -100,18 +134,26 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
     <div
       className={`sc-root${isHot ? ' hot' : ''}`}
       onClick={() => {
+        if (suppressClick.current) { suppressClick.current = false; return; }
         if (isSold || !(car.slug || car.id)) return;
         trackEvent(supabase, 'card_click', { car_id: car.id, car_name: `${year} ${brand} ${model}`, dealer_id: car.dealer_id || null, metadata: { source: 'showroom_card' } });
         navigate((dark ? '/cars/' : '/showroom/') + (car.slug || car.id));
       }}
       style={{ display: 'flex', flexDirection: 'row', background: c.cardBg, border: isHot ? '1px solid rgba(220,38,38,0.3)' : `1px solid ${c.cardBorder}`, borderRadius: '12px', overflow: 'hidden', cursor: isSold ? 'default' : 'pointer', fontFamily: "'Outfit',sans-serif", minHeight: '190px', minWidth: 0 }}
     >
-      {/* Image column */}
-      <div className="sc-img-col" style={{ width: '38%', maxWidth: '210px', flexShrink: 0, position: 'relative', background: c.imgBg, overflow: 'hidden' }}>
+      {/* Image column — swipe/drag to slide through gallery */}
+      <div
+        className="sc-img-col"
+        onTouchStart={onImgTouchStart}
+        onTouchEnd={onImgTouchEnd}
+        onMouseDown={onImgMouseDown}
+        style={{ width: '38%', maxWidth: '210px', flexShrink: 0, position: 'relative', background: c.imgBg, overflow: 'hidden', touchAction: 'pan-y', userSelect: 'none', WebkitUserSelect: 'none' }}
+      >
         {image ? (
           <>
             {!imgLoaded && <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg,#e5e7eb 25%,#d1d5db 50%,#e5e7eb 75%)', backgroundSize: '200% 100%', animation: 'sc-shimmer 1.5s infinite' }} />}
             <img
+              key={safeIdx}
               src={image}
               alt={`${year} ${brand} ${model}`}
               loading={priority ? 'eager' : 'lazy'}
@@ -151,7 +193,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
             {photoCount > 1 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'rgba(0,0,0,0.6)', borderRadius: '6px', padding: '2px 6px', backdropFilter: 'blur(4px)' }}>
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
-                <span style={{ fontSize: '9px', fontWeight: '700', color: 'rgba(255,255,255,0.75)' }}>{photoCount}</span>
+                <span style={{ fontSize: '9px', fontWeight: '700', color: 'rgba(255,255,255,0.75)' }}>{hasGallery ? `${safeIdx + 1}/${slides.length}` : photoCount}</span>
               </div>
             )}
             {isHot && discountPct && (
