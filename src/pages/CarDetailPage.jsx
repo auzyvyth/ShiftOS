@@ -89,8 +89,8 @@ const MarketPriceTag = ({ car, isXdrive, th }) => {
         <div style={{ position: "absolute", top: "50%", left: `${pos}%`, transform: "translate(-50%,-50%)", width: 13, height: 13, borderRadius: "50%", background: cfg.color, border: `2px solid ${ringBg}`, boxShadow: "0 1px 3px rgba(0,0,0,0.25)" }} />
       </div>
       <p style={{ fontSize: 11, color: th.textMuted, marginTop: 8, margin: "8px 0 0" }}>
-        Market avg RM {avg.toLocaleString("en-MY")}
-        {car.market_sample_count > 0 ? ` · ${car.market_sample_count} similar` : ""}
+        Market avg <strong style={{ color: th.textMuted }}>RM {avg.toLocaleString("en-MY")}</strong>
+        {car.market_sample_count > 0 ? ` · based on ${car.market_sample_count} similar listings` : ""}
       </p>
     </div>
   );
@@ -676,6 +676,24 @@ export default function CarDetailPage() {
       setSalesmanProfile(salesmanData);
       setSimilarCars(similarCarsData);
       setLoading(false);
+
+      // Fire the mileage-aware market avg in the background.
+      // The view already provides a rough bucket avg; this overwrites it
+      // with a precise result (year ±1, mileage ±35 000 km, condition-matched).
+      if (carData?.id) {
+        supabase
+          .rpc('compute_market_avg', { p_car_id: carData.id })
+          .then(({ data }) => {
+            const r = data?.[0];
+            if (r?.avg_price) {
+              setCar((prev) => prev ? {
+                ...prev,
+                market_avg_price: r.avg_price,
+                market_sample_count: r.sample_count,
+              } : prev);
+            }
+          });
+      }
     }
     load();
   }, [slug]);
