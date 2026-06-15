@@ -41,10 +41,26 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgIdx, setImgIdx] = useState(0);
+  const [inView, setInView] = useState(false);
+  const cardRef = useRef(null);
   const dragX = useRef(null);
   const suppressClick = useRef(false);
   const galleryPreloaded = useRef(false);
   const { isSaved, toggleSave } = useSavedCars();
+
+  // Load the first image when the card scrolls within 200px of the viewport.
+  // priority cards (hero/first fold) skip the observer and load immediately.
+  useEffect(() => {
+    if (priority) { setInView(true); return; }
+    const el = cardRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') { setInView(true); return; }
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setInView(true); obs.disconnect(); } },
+      { rootMargin: '200px' },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [priority]);
 
   // Theme — dark on the dealer subdomain (matches the storefront), light on the
   // public marketplace. Passed explicitly by the parent page so it always agrees
@@ -142,6 +158,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
 
   return (
     <div
+      ref={cardRef}
       className={`sc-root${isHot ? ' hot' : ''}`}
       onClick={() => {
         if (suppressClick.current) { suppressClick.current = false; return; }
@@ -161,17 +178,18 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
       >
         {image ? (
           <>
-            {!imgLoaded && <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg,#e5e7eb 25%,#d1d5db 50%,#e5e7eb 75%)', backgroundSize: '200% 100%', animation: 'sc-shimmer 1.5s infinite' }} />}
-            <img
-              key={safeIdx}
-              src={image}
-              alt={`${year} ${brand} ${model}`}
-              loading={priority ? 'eager' : 'lazy'}
-              fetchPriority={priority ? 'high' : 'auto'}
-              onError={() => setImgError(true)}
-              onLoad={() => setImgLoaded(true)}
-              style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s', filter: isSold ? 'grayscale(60%)' : 'none' }}
-            />
+            {(!imgLoaded || !inView) && <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg,#e5e7eb 25%,#d1d5db 50%,#e5e7eb 75%)', backgroundSize: '200% 100%', animation: 'sc-shimmer 1.5s infinite' }} />}
+            {inView && (
+              <img
+                key={safeIdx}
+                src={image}
+                alt={`${year} ${brand} ${model}`}
+                loading="eager"
+                onError={() => setImgError(true)}
+                onLoad={() => setImgLoaded(true)}
+                style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s', filter: isSold ? 'grayscale(60%)' : 'none' }}
+              />
+            )}
           </>
         ) : (
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
