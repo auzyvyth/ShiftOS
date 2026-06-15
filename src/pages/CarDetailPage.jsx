@@ -932,6 +932,7 @@ export default function CarDetailPage() {
     currentUserId === car.dealer_id || currentUserId === car.assigned_to
   );
   const isRecon = car.is_recon;
+  const isReserved = car.status === 'reserved';
   const isHot =
     car.original_price &&
     car.original_price > 0 &&
@@ -1571,8 +1572,9 @@ export default function CarDetailPage() {
 
         {/* M2 — Identity block */}
         <div className="cdp-mobile-only" style={{ padding:'20px 18px 0' }}>
-          {(isRecon || isHot || hasDocuments) && (
+          {(isRecon || isReserved || isHot || hasDocuments) && (
             <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:14 }}>
+              {isReserved && <span style={{ background:'rgba(245,158,11,0.12)', border:'1px solid rgba(245,158,11,0.3)', color:'#f59e0b', fontSize:'10px', padding:'3px 10px', borderRadius:'4px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 }}>Reserved</span>}
               {isRecon && <span style={{ background:'rgba(168,85,247,0.1)', border:'1px solid rgba(168,85,247,0.25)', color:'#c084fc', fontSize:'10px', padding:'3px 10px', borderRadius:'4px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 }}>Recon</span>}
               {isHot   && <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.28)', color:'#f87171', fontSize:'10px', padding:'3px 10px', borderRadius:'4px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 }}>Hot Deal</span>}
               {hasDocuments && <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.28)', color:'#4ade80', fontSize:'10px', padding:'3px 10px', borderRadius:'4px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 }}><BadgeCheck size={11} /> Verified Docs</span>}
@@ -1604,12 +1606,6 @@ export default function CarDetailPage() {
               </span>
             )}
           </div>
-          {car?.status === 'reserved' && (
-            <div style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(251,191,36,0.1)', border:'1px solid rgba(251,191,36,0.3)', borderRadius:6, padding:'4px 10px', marginBottom:8 }}>
-              <span style={{ width:6, height:6, borderRadius:'50%', background:'#fbbf24', display:'inline-block' }} />
-              <span style={{ fontSize:11, fontWeight:700, color:'#fbbf24', letterSpacing:'0.1em', fontFamily:"'DM Sans',sans-serif" }}>RESERVED</span>
-            </div>
-          )}
           <MarketPriceTag car={car} isXdrive={isXdrive} th={th} />
           {isHot && (
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
@@ -2186,7 +2182,7 @@ export default function CarDetailPage() {
                 .filter(Boolean)
                 .join("  ·  ")}
             </p>
-            {(isRecon || isHot || hasDocuments) && (
+            {(isRecon || isReserved || isHot || hasDocuments) && (
               <div
                 style={{
                   display: "flex",
@@ -2195,6 +2191,23 @@ export default function CarDetailPage() {
                   marginBottom: 24,
                 }}
               >
+                {isReserved && (
+                  <span
+                    style={{
+                      background: "rgba(245,158,11,0.12)",
+                      border: "1px solid rgba(245,158,11,0.3)",
+                      color: "#f59e0b",
+                      fontSize: "10px",
+                      padding: "3px 10px",
+                      borderRadius: "4px",
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Reserved
+                  </span>
+                )}
                 {isRecon && (
                   <span
                     style={{
@@ -3034,12 +3047,6 @@ export default function CarDetailPage() {
               {calcMonthly(car.selling_price) && (
                 <p style={{ fontSize: 12, color: th.textMuted, marginTop: 4 }}>~RM {fmt(calcMonthly(car.selling_price))}/mo</p>
               )}
-              {car?.status === 'reserved' && (
-                <div style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(251,191,36,0.1)', border:'1px solid rgba(251,191,36,0.3)', borderRadius:6, padding:'4px 10px', marginTop:8 }}>
-                  <span style={{ width:6, height:6, borderRadius:'50%', background:'#fbbf24', display:'inline-block' }} />
-                  <span style={{ fontSize:11, fontWeight:700, color:'#fbbf24', letterSpacing:'0.1em', fontFamily:"'DM Sans',sans-serif" }}>RESERVED</span>
-                </div>
-              )}
               {isHot && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
                   <span style={{ fontSize: 13, color: '#1e293b', textDecoration: 'line-through' }}>{fmtPrice(car.original_price)}</span>
@@ -3054,6 +3061,7 @@ export default function CarDetailPage() {
 
             {/* TRUST BADGES */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+              {isReserved && <span style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>Reserved</span>}
               {isRecon && <span style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.25)', color: '#c084fc', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>Recon</span>}
               {isHot && <span style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.28)', color: '#f87171', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>Hot Deal</span>}
               {hasDocuments && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.28)', color: '#4ade80', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}><BadgeCheck size={11} /> Verified Docs</span>}
