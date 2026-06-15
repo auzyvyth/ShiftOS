@@ -255,6 +255,10 @@ export default function SalesmanLite() {
   const [lostPromptId, setLostPromptId] = useState(null);
   const [lostSavingId, setLostSavingId] = useState(null);
   const [drawerLeadId, setDrawerLeadId] = useState(null);
+  // When the drawer opens, auto-expand the activity timeline for that lead.
+  useEffect(() => {
+    setExpandedActivityLeadId(drawerLeadId || null);
+  }, [drawerLeadId]);
   const [stageSavingId, setStageSavingId] = useState(null);
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [editNoteVal, setEditNoteVal] = useState("");
@@ -337,14 +341,16 @@ export default function SalesmanLite() {
   );
   const [batchWALeads, setBatchWALeads] = useState(null); // null = closed, array = queue
   const [batchWAIdx, setBatchWAIdx] = useState(0);
+  const [batchWAMsg, setBatchWAMsg] = useState("");
 
   // enquiry templates
   const [openTemplateId, setOpenTemplateId] = useState(null);
   const [templateToast, setTemplateToast] = useState(null);
 
-  // listings sort/filter
+  // listings sort/filter — reset to "available" whenever user navigates to the listings tab
   const [sortBy, setSortBy] = useState("newest");
   const [filterStatus, setFilterStatus] = useState("available");
+  useEffect(() => { if (activeTab === "listings") setFilterStatus("available"); }, [activeTab]);
 
   // per-listing analytics (carStatsMap)
   const [carStatsMap, setCarStatsMap] = useState({});
@@ -489,17 +495,28 @@ export default function SalesmanLite() {
     }).catch(() => {});
   };
 
-  // stale leads (48h no contact) + overdue follow-ups
+  // Hours-per-stage before a lead counts as needing follow-up.
+  // Indexed by lead.stage; falls back to 48h for unknown stages.
+  const FOLLOW_UP_HOURS = {
+    new: 5,
+    contacted: 24,
+    viewing_booked: 48,
+    test_drive: 24,
+    negotiating: 48,
+    deposit_taken: 72,
+  };
+
   useEffect(() => {
-    const cutoff = Date.now() - 48 * 60 * 60 * 1000;
     const now = Date.now();
     setStaleLeads(
       leads.filter((l) => {
         const closed = ["won","lost","closed_won","closed_lost"].includes(l.stage);
         if (closed) return false;
         const overdueFollowUp = l.follow_up_at && new Date(l.follow_up_at).getTime() <= now;
-        const stale48h = l.updated_at && new Date(l.updated_at).getTime() < cutoff;
-        return overdueFollowUp || stale48h;
+        const hours = FOLLOW_UP_HOURS[l.stage] ?? 48;
+        const cutoff = now - hours * 60 * 60 * 1000;
+        const stale = l.updated_at && new Date(l.updated_at).getTime() < cutoff;
+        return overdueFollowUp || stale;
       }),
     );
   }, [leads]);
@@ -1052,7 +1069,8 @@ export default function SalesmanLite() {
     const { error } = await supabase.from("leads").update({ notes: editNoteVal, updated_at: new Date().toISOString() }).eq("id", leadId);
     setNotesSavingId(null);
     if (error) { console.error("saveLeadNote:", error); toast.error("Failed to save note"); return; }
-    setLeads((p) => p.map((l) => l.id === leadId ? { ...l, notes: editNoteVal } : l));
+    const ts = new Date().toISOString();
+    setLeads((p) => p.map((l) => l.id === leadId ? { ...l, notes: editNoteVal, updated_at: ts } : l));
     setEditingNoteId(null);
   };
 
@@ -6210,6 +6228,22 @@ export default function SalesmanLite() {
 
   // ── BATCH WA MODAL ─────────────────────────────────────────────────────────
 
+  // Auto-populate the blast message when the current lead changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!batchWALeads) return;
+    const current = batchWALeads[batchWAIdx];
+    if (!current) return;
+    const car = current.car_listings;
+    const carName = car ? `${car.brand} ${car.model}` : 'kereta tu';
+    const hours = FOLLOW_UP_HOURS[current.stage] ?? 48;
+    const isStale = current.updated_at && Date.now() - new Date(current.updated_at).getTime() > hours * 3600 * 1000;
+    setBatchWAMsg(isStale
+      ? `Hi ${current.buyer_name || 'kawan'}! Ada orang lain tengah tanya pasal ${carName} ni — kalau you still interested, jom lock dulu sebelum terlambat 🔒`
+      : `Hi ${current.buyer_name || 'kawan'}! Macam mana, still interested dalam ${carName} tu? Jom kita discuss lagi 😊`
+    );
+  }, [batchWALeads, batchWAIdx]);
+
   const renderBatchWAModal = () => {
     if (!batchWALeads || batchWALeads.length === 0) return null;
     const current = batchWALeads[batchWAIdx];
@@ -6217,11 +6251,6 @@ export default function SalesmanLite() {
     const car = current.car_listings;
     const waPhone = (current.phone || '').replace(/\D/g, '');
     const waNum = waPhone.startsWith('6') ? waPhone : '6' + waPhone;
-    const carName = car ? `${car.brand} ${car.model}` : 'kereta tu';
-    const isStale = current.updated_at && Date.now() - new Date(current.updated_at).getTime() > 48 * 3600 * 1000;
-    const msg = isStale
-      ? `Hi ${current.buyer_name || 'kawan'}! Ada orang lain tengah tanya pasal ${carName} ni — kalau you still interested, jom lock dulu sebelum terlambat 🔒`
-      : `Hi ${current.buyer_name || 'kawan'}! Macam mana, still interested dalam ${carName} tu? Jom kita discuss lagi 😊`;
     const advance = () => {
       if (batchWAIdx < batchWALeads.length - 1) setBatchWAIdx(i => i + 1);
       else setBatchWALeads(null);
@@ -6245,12 +6274,16 @@ export default function SalesmanLite() {
               {car ? `${car.brand} ${car.model}` : "No car linked"} · Last contact {timeAgo(current.updated_at)}
             </p>
           </div>
-          <p style={{ margin: "0 0 14px", fontSize: 12, color: "#6b7280", lineHeight: 1.6, padding: "10px 12px", background: "rgba(255,255,255,0.02)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.05)" }}>
-            {msg}
-          </p>
+          {/* Editable message */}
+          <textarea
+            value={batchWAMsg}
+            onChange={e => setBatchWAMsg(e.target.value)}
+            rows={4}
+            style={{ width: "100%", boxSizing: "border-box", resize: "vertical", fontSize: 12, color: "#d1d5db", lineHeight: 1.6, padding: "10px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", outline: "none", fontFamily: "inherit", marginBottom: 14 }}
+          />
           <div style={{ display: "flex", gap: 8 }}>
             <button
-              onClick={() => { window.open(`https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`, "_blank"); advance(); }}
+              onClick={() => { window.open(`https://wa.me/${waNum}?text=${encodeURIComponent(batchWAMsg)}`, "_blank"); advance(); }}
               style={{ flex: 2, padding: "11px", borderRadius: 9, background: "#25D366", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
             >
               WA {current.buyer_name?.split(' ')[0] || 'Lead'} →
