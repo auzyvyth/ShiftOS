@@ -100,13 +100,15 @@ function carStrengths(car, cars) {
 
 // ── Primitives ──────────────────────────────────────────────────────────────
 
-function Sec({ label }) {
+function Sec({ label, note }) {
   return (
     <div style={{
-      padding: '9px 14px 7px', fontSize: 10, fontWeight: 700,
-      color: '#dc2626', letterSpacing: '0.12em', textTransform: 'uppercase',
+      padding: '9px 14px 7px', display: 'flex', alignItems: 'center', gap: 8,
       background: 'var(--cp-sechead,#fafafa)', borderTop: '1px solid var(--cp-border,#e5e7eb)', borderBottom: '1px solid var(--cp-border,#e5e7eb)',
-    }}>{label}</div>
+    }}>
+      <span style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{label}</span>
+      {note && <span style={{ fontSize: 9, color: 'var(--cp-muted,#9ca3af)', fontWeight: 500 }}>{note}</span>}
+    </div>
   );
 }
 
@@ -547,7 +549,7 @@ export default function ComparePage() {
                   },
                 },
 
-                { sec: 'Cost to Own', label: 'Road Tax / yr', get: c => calcRoadTaxEst(c.engine_cc), fmt: v => v ? fmtRM(v) : '—', dir: 'low' },
+                { sec: 'Cost to Own', secNote: 'estimates only', label: 'Road Tax / yr', get: c => calcRoadTaxEst(c.engine_cc), fmt: v => v ? fmtRM(v) : '—', dir: 'low' },
                 { sec: 'Cost to Own', label: 'Insurance / yr', get: c => calcInsuranceAnnual(c.selling_price), fmt: v => v ? `~${fmtRM(v)}` : '—', dir: 'low' },
                 { sec: 'Cost to Own', label: 'Fuel / yr', get: c => estAnnualFuel(c)?.rm ?? null, fmt: (v, c) => { const f = estAnnualFuel(c); return f ? `${f.estimated ? '~' : ''}${fmtRM(f.rm)}` : '—'; }, dir: 'low' },
                 {
@@ -627,7 +629,7 @@ export default function ComparePage() {
                 // Diff-only: drop rows where every car shows the same display value
                 if (diffOnly && new Set(disp).size <= 1) continue;
                 const highlight = d.hl ? d.hl : (d.dir ? smartHL(cars.map(d.hlGet || d.get), d.dir, n) : null);
-                if (d.sec !== lastSec) { out.push(<Sec key={`sec-${d.sec}`} label={d.sec} />); lastSec = d.sec; }
+                if (d.sec !== lastSec) { out.push(<Sec key={`sec-${d.sec}`} label={d.sec} note={d.secNote} />); lastSec = d.sec; }
                 const values = d.cell ? cars.map(d.get) : disp;
                 out.push(<Row key={`${d.sec}-${d.label}`} label={d.label} values={values} highlight={highlight} renderCell={d.cell} />);
               }

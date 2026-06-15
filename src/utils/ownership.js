@@ -3,10 +3,21 @@
 // tariff) so figures stay consistent across the app. Kept dependency-free so
 // the public ComparePage can use them without pulling extra weight.
 
+// Round raw CC to the nearest 100 before any calculation.
+// Manufacturers often declare 1998cc, 2494cc etc. for a "2.0L" or "2.5L" engine
+// — the difference is a production tolerance, not a meaningfully different car.
+// Without rounding, 1998cc and 2000cc yield different road-tax figures (RM478 vs
+// RM480) which confuses buyers comparing essentially identical models.
+function normaliseCC(cc) {
+  const raw = parseFloat(cc);
+  if (!raw || raw <= 0) return null;
+  return Math.round(raw / 100) * 100;
+}
+
 // ─── Road tax (JPJ, private saloon, Peninsular Malaysia) ─────────────────────
 export function calcRoadTaxEst(cc) {
-  const c = parseFloat(cc);
-  if (!c || c <= 0) return null;
+  const c = normaliseCC(cc);
+  if (!c) return null;
   if (c <= 1000) return 20;
   if (c <= 1200) return 55;
   if (c <= 1400) return 70;
@@ -42,20 +53,20 @@ export function calcInsuranceAnnual(sum) {
 
 // ─── Annual fuel cost ────────────────────────────────────────────────────────
 // Uses real fuel_consumption (L/100km) when present; otherwise estimates from
-// engine displacement. Assumes 15 000 km/year. Returns { rm, estimated }.
+// engine displacement (normalised to nearest 100cc). Assumes 15 000 km/year.
 const FUEL_PRICE = { petrol: 2.05, ron95: 2.05, ron97: 3.47, diesel: 2.15, hybrid: 2.05 };
 const ANNUAL_KM = 15000;
 
 export function estAnnualFuel(car) {
   const ft = String(car.fuel_type || '').toLowerCase();
-  if (ft.includes('electric') || ft === 'ev') return null; // not comparable to fuel
+  if (ft.includes('electric') || ft === 'ev') return null;
   const price = FUEL_PRICE[ft] || FUEL_PRICE.petrol;
   let l100 = parseFloat(car.fuel_consumption);
   let estimated = false;
   if (!l100 || l100 <= 0) {
-    const cc = parseFloat(car.engine_cc);
-    if (!cc || cc <= 0) return null;
-    l100 = cc / 180; // rough heuristic: ~7.2 L/100km for a 1300cc car
+    const c = normaliseCC(car.engine_cc);
+    if (!c) return null;
+    l100 = c / 180; // rough heuristic: ~7.2 L/100km for a 1300cc car
     estimated = true;
   }
   const rm = Math.round((l100 / 100) * ANNUAL_KM * price);
