@@ -1268,16 +1268,14 @@ export default function CarDetailPage() {
         <div ref={heroRef}>
           {/* Desktop 3-cell grid */}
           <div className="cdp-mosaic-grid cdp-desktop-only">
-            {/* Primary — spans both rows */}
+            {/* Primary — spans both rows, swipeable */}
             <div
               className="cdp-mosaic-cell cdp-mosaic-primary"
-              onClick={() => {
-                go(0, "next");
-                setLbOpen(true);
-              }}
+              onClick={() => setLbOpen(true)}
             >
               <img
-                src={images[0]}
+                key={slideKey}
+                src={images[activeIdx]}
                 alt={carTitle}
                 fetchPriority="high"
                 style={{
@@ -1294,78 +1292,45 @@ export default function CarDetailPage() {
                   e.target.src = "/placeholder-car.jpg";
                 }}
               />
-              {/* gradients */}
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background:
-                    "linear-gradient(to top, rgba(6,8,15,0.55), transparent 50%)",
-                  pointerEvents: "none",
-                  zIndex: 2,
-                }}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background:
-                    "linear-gradient(to right, rgba(6,8,15,0.2), transparent 30%)",
-                  pointerEvents: "none",
-                  zIndex: 2,
-                }}
-              />
-              {/* title overlay */}
-              <div
-                style={{
-                  position: "absolute",
-                  bottom: 20,
-                  left: 20,
-                  zIndex: 4,
-                }}
-              >
-                <p
-                  style={{
-                    fontSize: 10,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.24em",
-                    color: "rgba(255,255,255,0.6)",
-                    marginBottom: 4,
-                    fontWeight: 700,
-                  }}
-                >
-                  {car.brand}
-                </p>
-                <p
-                  style={{
-                    fontFamily: "'Bebas Neue',sans-serif",
-                    fontSize: "clamp(1.8rem,3vw,2.8rem)",
-                    color: "#ffffff",
-                    lineHeight: 1,
-                    letterSpacing: "0.04em",
-                    margin: 0,
-                    textShadow: "0 2px 12px rgba(0,0,0,0.4)",
-                  }}
-                >
-                  {car.model}
-                  {car.variant ? " " + car.variant : ""}
-                </p>
-              </div>
-              {/* scan line */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  right: 0,
-                  height: 2,
-                  background:
-                    "linear-gradient(to right,transparent,rgba(220,38,38,0.5),transparent)",
-                  animation: "cdp-scanLine 2s ease-out 0.3s 1 forwards",
-                  top: 0,
-                  pointerEvents: "none",
-                  zIndex: 5,
-                }}
-              />
+              {imgCount > 1 && (
+                <>
+                  <button
+                    className="cdp-arrow cdp-arrow-l"
+                    onClick={(e) => { e.stopPropagation(); go(prevIdx, "prev"); }}
+                    aria-label="Previous photo"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <button
+                    className="cdp-arrow cdp-arrow-r"
+                    onClick={(e) => { e.stopPropagation(); go(nextIdx, "next"); }}
+                    aria-label="Next photo"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 14,
+                      left: 14,
+                      zIndex: 4,
+                      background: "rgba(6,8,15,0.62)",
+                      backdropFilter: "blur(10px)",
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      borderRadius: 20,
+                      padding: "4px 12px",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: "rgba(255,255,255,0.9)",
+                      fontFamily: "'DM Sans',sans-serif",
+                      letterSpacing: "0.03em",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    {activeIdx + 1} / {imgCount}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Cell 2 — top right */}
