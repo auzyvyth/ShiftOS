@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useMarketplaceTracking } from '../hooks/useMarketplaceTracking';
 import { useSearchParams, Link } from 'react-router-dom';
-import { X, Share2, Check, ExternalLink, Flame, Trophy, Plus } from 'lucide-react';
+import { X, Share2, Check, ExternalLink, Flame, Trophy, Plus, SlidersHorizontal, Layers } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import HeartButton from '../components/HeartButton';
 import MarketplaceHeader from '../components/MarketplaceHeader';
@@ -9,6 +9,7 @@ import Header from '../components/Header';
 import { isSubdomain } from '../hooks/useTenant';
 import MarketplaceFooter from '../components/MarketplaceFooter';
 import { calcMonthly } from '../utils/financing';
+import { calcRoadTaxEst, calcInsuranceAnnual, estAnnualFuel, estRunningCost } from '../utils/ownership';
 import { storefront as SF } from '../theme/tokens';
 
 const SELECT_COLS = [
@@ -18,7 +19,7 @@ const SELECT_COLS = [
   'state','city','is_recon','auction_grade','interior_grade',
   'import_country','chassis_status','car_documents','warranty_months',
   'loan_eligible','previous_owners','created_at','images','status',
-  'market_avg_price',
+  'market_avg_price','fuel_consumption',
 ].join(', ');
 
 const fmtRM = n => n != null ? `RM ${Number(n).toLocaleString('en-MY')}` : '—';
@@ -72,6 +73,29 @@ function getVerdict(cars) {
   const scores = cars.map(c => getValueScore(c, cars));
   const max = Math.max(...scores);
   return { car: cars[scores.indexOf(max)], score: max, scores };
+}
+
+// Per-car "what it wins at" chips — only awarded when this car is the sole
+// outright winner of a metric across the compared set (no ties).
+function carStrengths(car, cars) {
+  if (cars.length < 2) return [];
+  const soleWinner = (sel, dir) => {
+    const vals = cars.map(sel).map(v => (v != null && !isNaN(Number(v))) ? Number(v) : null);
+    const valid = vals.filter(v => v != null);
+    if (valid.length < 2) return false;
+    const target = dir === 'low' ? Math.min(...valid) : Math.max(...valid);
+    const winners = vals.filter(v => v === target).length;
+    const mine = vals[cars.indexOf(car)];
+    return winners === 1 && mine === target;
+  };
+  const out = [];
+  if (soleWinner(c => c.selling_price, 'low'))               out.push('Cheapest');
+  if (soleWinner(c => c.mileage, 'low'))                     out.push('Lowest km');
+  if (soleWinner(c => c.year, 'high'))                       out.push('Newest');
+  if ((car.warranty_months || 0) > 0 && soleWinner(c => c.warranty_months || 0, 'high')) out.push('Best warranty');
+  if (soleWinner(c => calcRoadTaxEst(c.engine_cc), 'low'))   out.push('Lowest tax');
+  if (soleWinner(c => estRunningCost(c), 'low'))             out.push('Cheapest to run');
+  return out.slice(0, 3);
 }
 
 // ── Primitives ──────────────────────────────────────────────────────────────
@@ -148,6 +172,7 @@ export default function ComparePage() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [diffOnly, setDiffOnly] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 80);
@@ -384,6 +409,17 @@ export default function ComparePage() {
                     {pct && <p style={{ fontSize: 9, color: 'var(--cp-muted,#9ca3af)', textDecoration: 'line-through', margin: '0 0 1px' }}>{fmtRM(car.original_price)}</p>}
                     <p style={{ fontSize: 'clamp(11px,1.8vw,13px)', fontWeight: 700, color: pct ? '#dc2626' : '#111827', margin: 0 }}>{fmtRM(car.selling_price)}</p>
                     {monthly && <p style={{ fontSize: 9, color: 'var(--cp-muted,#9ca3af)', margin: '1px 0 3px' }}>~RM {monthly.toLocaleString()}/mo</p>}
+                    {(() => {
+                      const chips = carStrengths(car, cars);
+                      if (!chips.length) return null;
+                      return (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, margin: '0 0 4px' }}>
+                          {chips.map(t => (
+                            <span key={t} style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.02em', padding: '2px 5px', borderRadius: 4, background: 'rgba(22,163,74,0.1)', color: '#15803d', whiteSpace: 'nowrap' }}>{t}</span>
+                          ))}
+                        </div>
+                      );
+                    })()}
                     {car.slug && (
                       <Link to={`${detailBase}${car.slug}`} style={{ fontSize: 9, color: '#dc2626', textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 2 }}>
                         View <ExternalLink size={8} />
@@ -459,129 +495,147 @@ export default function ComparePage() {
 
         {/* ── Comparison rows ── */}
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '12px 16px 0' }}>
+          {n >= 2 && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+              <button
+                onClick={() => setDiffOnly(v => !v)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                  background: diffOnly ? '#dc2626' : 'var(--cp-surface,#fff)',
+                  border: `1px solid ${diffOnly ? '#dc2626' : 'var(--cp-border,#DDE3EC)'}`,
+                  color: diffOnly ? '#fff' : 'var(--cp-muted,#6b7280)',
+                  cursor: 'pointer', transition: 'all 0.2s',
+                }}
+              >
+                {diffOnly ? <Layers size={13} /> : <SlidersHorizontal size={13} />}
+                {diffOnly ? 'Showing differences' : 'Differences only'}
+              </button>
+            </div>
+          )}
           <div
             className="cp-rows"
             style={{ '--cp-cols': `75px repeat(${n}, 1fr)`, background: 'var(--cp-surface,#fff)', borderRadius: 12, border: '1px solid #DDE3EC', overflow: 'hidden' }}
           >
+            {(() => {
+              // ── Config-driven comparison table ──────────────────────────────
+              // get:   comparable scalar (for highlight + diff detection)
+              // fmt:   display string (defaults to the scalar)
+              // dir:   'low'|'high' → highlight the winner
+              // hlGet: numeric source for highlight when it differs from get
+              // hl:    precomputed highlight array (overrides dir)
+              // cell:  custom renderCell(val,i,win)
+              // show:  row-level gate independent of the diff toggle
+              const ROWS = [
+                { sec: 'Pricing', label: 'Asking Price', get: c => c.selling_price, fmt: v => fmtRM(v), dir: 'low' },
+                { sec: 'Pricing', label: 'Monthly Est.', get: c => calcMonthly(c.selling_price), fmt: m => m ? `RM ${m.toLocaleString()}` : '—' },
+                {
+                  sec: 'Pricing', label: 'Market Signal',
+                  show: () => cars.some(c => c.market_avg_price),
+                  get: c => (!c.market_avg_price || !c.selling_price) ? null
+                    : c.selling_price <= c.market_avg_price * 0.93 ? 'below'
+                    : c.selling_price >= c.market_avg_price * 1.07 ? 'above' : 'fair',
+                  fmt: v => v || '—',
+                  cell: val => {
+                    if (!val || val === '—') return <span style={{ color: '#d1d5db' }}>—</span>;
+                    const cfg = {
+                      below: { bg: 'rgba(22,163,74,0.1)',  color: '#15803d', label: '▼ Below Market' },
+                      fair:  { bg: 'rgba(37,99,235,0.08)', color: '#1d4ed8', label: '● Fair Price'   },
+                      above: { bg: 'rgba(217,119,6,0.1)',  color: '#b45309', label: '▲ Above Market' },
+                    }[val];
+                    return <span style={{ display:'inline-flex', fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:20, background:cfg.bg, color:cfg.color }}>{cfg.label}</span>;
+                  },
+                },
 
-            <Sec label="Pricing" />
-            <Row label="Asking Price" values={cars.map(c => fmtRM(c.selling_price))} highlight={smartHL(cars.map(c => c.selling_price), 'low', n)} />
-            <Row label="Monthly Est." values={cars.map(c => { const m = calcMonthly(c.selling_price); return m ? `RM ${m.toLocaleString()}` : '—'; })} />
-            {cars.some(c => c.market_avg_price) && (
-              <Row
-                label="Market Signal"
-                values={cars.map(c => {
-                  if (!c.market_avg_price || !c.selling_price) return '—';
-                  return c.selling_price <= c.market_avg_price * 0.93 ? 'below'
-                       : c.selling_price >= c.market_avg_price * 1.07 ? 'above' : 'fair';
-                })}
-                renderCell={val => {
-                  if (val === '—') return <span style={{ color: '#d1d5db' }}>—</span>;
-                  const cfg = {
-                    below: { bg: 'rgba(22,163,74,0.1)',  color: '#15803d', label: '▼ Below Market' },
-                    fair:  { bg: 'rgba(37,99,235,0.08)', color: '#1d4ed8', label: '● Fair Price'   },
-                    above: { bg: 'rgba(217,119,6,0.1)',  color: '#b45309', label: '▲ Above Market' },
-                  }[val];
-                  return (
-                    <span style={{ display:'inline-flex', fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:20, background:cfg.bg, color:cfg.color }}>
-                      {cfg.label}
-                    </span>
-                  );
-                }}
-              />
-            )}
+                { sec: 'Cost to Own', label: 'Road Tax / yr', get: c => calcRoadTaxEst(c.engine_cc), fmt: v => v ? fmtRM(v) : '—', dir: 'low' },
+                { sec: 'Cost to Own', label: 'Insurance / yr', get: c => calcInsuranceAnnual(c.selling_price), fmt: v => v ? `~${fmtRM(v)}` : '—', dir: 'low' },
+                { sec: 'Cost to Own', label: 'Fuel / yr', get: c => estAnnualFuel(c)?.rm ?? null, fmt: (v, c) => { const f = estAnnualFuel(c); return f ? `${f.estimated ? '~' : ''}${fmtRM(f.rm)}` : '—'; }, dir: 'low' },
+                {
+                  sec: 'Cost to Own', label: 'Running / yr', get: c => estRunningCost(c), fmt: v => v ? `~${fmtRM(v)}` : '—', dir: 'low',
+                  cell: (val, i, win) => {
+                    const rc = estRunningCost(cars[i]);
+                    return <span style={{ fontWeight: win ? 700 : 600, color: win ? 'var(--cp-win,#16a34a)' : 'var(--cp-text,#374151)' }}>{rc ? `~${fmtRM(rc)}` : '—'}</span>;
+                  },
+                },
 
-            <Sec label="Basics" />
-            <Row label="Year" values={cars.map(c => c.year || '—')} highlight={smartHL(cars.map(c => c.year), 'high', n)} />
-            <Row
-              label="Mileage"
-              values={cars.map(c => c.mileage ? `${Number(c.mileage).toLocaleString()} km` : '—')}
-              highlight={smartHL(cars.map(c => c.mileage), 'low', n)}
-            />
-            <Row label="Condition" values={cars.map(c => c.condition || '—')} />
-            <Row
-              label="Prev. Owners"
-              values={cars.map(c => c.previous_owners != null ? String(c.previous_owners) : '—')}
-              highlight={smartHL(cars.map(c => c.previous_owners), 'low', n)}
-            />
-            <Row label="Location" values={cars.map(c => [c.city, c.state].filter(Boolean).join(', ') || '—')} />
+                { sec: 'Basics', label: 'Year', get: c => c.year, fmt: v => v || '—', dir: 'high' },
+                { sec: 'Basics', label: 'Mileage', get: c => c.mileage, fmt: v => v ? `${Number(v).toLocaleString()} km` : '—', dir: 'low' },
+                { sec: 'Basics', label: 'Condition', get: c => c.condition, fmt: v => v || '—' },
+                { sec: 'Basics', label: 'Prev. Owners', get: c => c.previous_owners, fmt: v => v != null ? String(v) : '—', dir: 'low' },
+                { sec: 'Basics', label: 'Location', get: c => [c.city, c.state].filter(Boolean).join(', '), fmt: v => v || '—' },
 
-            <Sec label="Specs" />
-            <Row label="Engine CC" values={cars.map(c => c.engine_cc ? `${Number(c.engine_cc).toLocaleString()} cc` : '—')} />
-            <Row label="Transmission" values={cars.map(c => c.transmission || '—')} />
-            <Row label="Fuel Type" values={cars.map(c => c.fuel_type || '—')} />
-            <Row label="Colour" values={cars.map(c => c.colour || '—')} />
-            <Row label="Body Type" values={cars.map(c => c.body_type || '—')} />
+                { sec: 'Specs', label: 'Engine CC', get: c => c.engine_cc, fmt: v => v ? `${Number(v).toLocaleString()} cc` : '—' },
+                { sec: 'Specs', label: 'Transmission', get: c => c.transmission, fmt: v => v || '—' },
+                { sec: 'Specs', label: 'Fuel Type', get: c => c.fuel_type, fmt: v => v || '—' },
+                { sec: 'Specs', label: 'Colour', get: c => c.colour, fmt: v => v || '—' },
+                { sec: 'Specs', label: 'Body Type', get: c => c.body_type, fmt: v => v || '—' },
 
-            {hasRecon && (
-              <>
-                <Sec label="Recon / Import" />
-                <Row label="Recon" values={cars.map(c => c.is_recon ? 'Yes' : 'No')} />
-                <Row label="Country" values={cars.map(c => c.import_country || '—')} />
-                <Row label="Ext. Grade" values={cars.map(c => c.auction_grade || '—')} highlight={smartHL(cars.map(c => gradeNum(c.auction_grade)), 'high', n)} />
-                <Row label="Int. Grade" values={cars.map(c => c.interior_grade || '—')} highlight={smartHL(cars.map(c => gradeNum(c.interior_grade)), 'high', n)} />
-                <Row
-                  label="Chassis"
-                  values={cars.map(c => c.chassis_status || '—')}
-                  renderCell={val => (
+                { sec: 'Recon / Import', show: () => hasRecon, label: 'Recon', get: c => c.is_recon ? 'Yes' : 'No' },
+                { sec: 'Recon / Import', show: () => hasRecon, label: 'Country', get: c => c.import_country, fmt: v => v || '—' },
+                { sec: 'Recon / Import', show: () => hasRecon, label: 'Ext. Grade', get: c => c.auction_grade, fmt: v => v || '—', dir: 'high', hlGet: c => gradeNum(c.auction_grade) },
+                { sec: 'Recon / Import', show: () => hasRecon, label: 'Int. Grade', get: c => c.interior_grade, fmt: v => v || '—', dir: 'high', hlGet: c => gradeNum(c.interior_grade) },
+                {
+                  sec: 'Recon / Import', show: () => hasRecon, label: 'Chassis', get: c => c.chassis_status, fmt: v => v || '—',
+                  cell: val => (
                     <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, background: val === 'clean' ? '#22c55e' : val === 'repaired' ? '#eab308' : val === 'written_off' ? '#dc2626' : '#d1d5db' }} />
                       {val || '—'}
                     </span>
-                  )}
-                />
-              </>
-            )}
+                  ),
+                },
 
-            <Sec label="Trust & Value" />
-            <Row
-              label="Value Score"
-              values={cars.map(c => String(getValueScore(c, cars)))}
-              highlight={smartHL(cars.map(c => getValueScore(c, cars)), 'high', n)}
-              renderCell={(val, i, win) => {
-                const score = getValueScore(cars[i], cars);
-                return (
-                  <div style={{ width: '100%', minWidth: 0 }}>
-                    <span style={{ fontSize: 'clamp(10px,1.6vw,12px)', fontWeight: win ? 700 : 400, color: win ? '#dc2626' : '#374151' }}>{score}</span>
-                    <div style={{ height: 3, background: 'var(--cp-line,#f1f5f9)', borderRadius: 2, marginTop: 3 }}>
-                      <div style={{ height: '100%', width: `${score}%`, background: win ? '#dc2626' : '#d1d5db', borderRadius: 2, transition: 'width 0.4s' }} />
-                    </div>
-                  </div>
-                );
-              }}
-            />
-            <Row
-              label="Documents"
-              values={cars.map(c => { const cnt = Array.isArray(c.car_documents) ? c.car_documents.length : 0; return cnt > 0 ? `${cnt} doc${cnt !== 1 ? 's' : ''}` : 'None'; })}
-              highlight={smartHL(cars.map(c => Array.isArray(c.car_documents) ? c.car_documents.length : 0), 'high', n)}
-            />
-            <Row
-              label="Warranty"
-              values={cars.map(c => c.warranty_months > 0 ? `${c.warranty_months} mo` : 'None')}
-              highlight={smartHL(cars.map(c => c.warranty_months || 0), 'high', n)}
-            />
-            <Row label="Loan Eligible" values={cars.map(c => c.loan_eligible === false ? 'No' : 'Yes')} highlight={loanHL} />
-            <Row
-              label="Days Listed"
-              values={cars.map(c => ageDays(c.created_at) != null ? `${ageDays(c.created_at)}d` : '—')}
-              highlight={smartHL(cars.map(c => ageDays(c.created_at)), 'low', n)}
-            />
-            <Row
-              label="Listing Score"
-              values={cars.map(c => `${Math.round(completeness(c) / COMP_FIELDS * 100)}%`)}
-              highlight={smartHL(cars.map(c => completeness(c)), 'high', n)}
-              renderCell={(val, i, win) => {
-                const pct = completeness(cars[i]) / COMP_FIELDS * 100;
-                return (
-                  <div style={{ width: '100%', minWidth: 0 }}>
-                    <span style={{ fontSize: 'clamp(10px,1.6vw,12px)', fontWeight: win ? 600 : 400 }}>{Math.round(pct)}%</span>
-                    <div style={{ height: 3, background: 'var(--cp-line,#f1f5f9)', borderRadius: 2, marginTop: 3 }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: win ? '#16a34a' : '#d1d5db', borderRadius: 2, transition: 'width 0.4s' }} />
-                    </div>
-                  </div>
-                );
-              }}
-            />
+                {
+                  sec: 'Trust & Value', label: 'Value Score', get: c => getValueScore(c, cars), dir: 'high',
+                  cell: (val, i, win) => {
+                    const score = getValueScore(cars[i], cars);
+                    return (
+                      <div style={{ width: '100%', minWidth: 0 }}>
+                        <span style={{ fontSize: 'clamp(10px,1.6vw,12px)', fontWeight: win ? 700 : 400, color: win ? '#dc2626' : '#374151' }}>{score}</span>
+                        <div style={{ height: 3, background: 'var(--cp-line,#f1f5f9)', borderRadius: 2, marginTop: 3 }}>
+                          <div style={{ height: '100%', width: `${score}%`, background: win ? '#dc2626' : '#d1d5db', borderRadius: 2, transition: 'width 0.4s' }} />
+                        </div>
+                      </div>
+                    );
+                  },
+                },
+                { sec: 'Trust & Value', label: 'Documents', get: c => Array.isArray(c.car_documents) ? c.car_documents.length : 0, fmt: cnt => cnt > 0 ? `${cnt} doc${cnt !== 1 ? 's' : ''}` : 'None', dir: 'high' },
+                { sec: 'Trust & Value', label: 'Warranty', get: c => c.warranty_months || 0, fmt: v => v > 0 ? `${v} mo` : 'None', dir: 'high' },
+                { sec: 'Trust & Value', label: 'Loan Eligible', get: c => c.loan_eligible === false ? 'No' : 'Yes', hl: loanHL },
+                { sec: 'Trust & Value', label: 'Days Listed', get: c => ageDays(c.created_at), fmt: v => v != null ? `${v}d` : '—', dir: 'low' },
+                {
+                  sec: 'Trust & Value', label: 'Listing Score', get: c => completeness(c), dir: 'high',
+                  cell: (val, i, win) => {
+                    const pct = completeness(cars[i]) / COMP_FIELDS * 100;
+                    return (
+                      <div style={{ width: '100%', minWidth: 0 }}>
+                        <span style={{ fontSize: 'clamp(10px,1.6vw,12px)', fontWeight: win ? 600 : 400 }}>{Math.round(pct)}%</span>
+                        <div style={{ height: 3, background: 'var(--cp-line,#f1f5f9)', borderRadius: 2, marginTop: 3 }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: win ? '#16a34a' : '#d1d5db', borderRadius: 2, transition: 'width 0.4s' }} />
+                        </div>
+                      </div>
+                    );
+                  },
+                },
+              ];
+
+              const dispOf = (d, c) => d.fmt ? d.fmt(d.get(c), c) : (d.get(c) == null ? '—' : String(d.get(c)));
+              const out = [];
+              let lastSec = null;
+              for (const d of ROWS) {
+                if (d.show && !d.show()) continue;
+                const disp = cars.map(c => dispOf(d, c));
+                // Diff-only: drop rows where every car shows the same display value
+                if (diffOnly && new Set(disp).size <= 1) continue;
+                const highlight = d.hl ? d.hl : (d.dir ? smartHL(cars.map(d.hlGet || d.get), d.dir, n) : null);
+                if (d.sec !== lastSec) { out.push(<Sec key={`sec-${d.sec}`} label={d.sec} />); lastSec = d.sec; }
+                const values = d.cell ? cars.map(d.get) : disp;
+                out.push(<Row key={`${d.sec}-${d.label}`} label={d.label} values={values} highlight={highlight} renderCell={d.cell} />);
+              }
+              if (out.length === 0) {
+                out.push(<div key="nodiff" style={{ padding: '24px 14px', textAlign: 'center', fontSize: 13, color: 'var(--cp-muted,#9ca3af)' }}>These cars match on every field shown.</div>);
+              }
+              return out;
+            })()}
 
           </div>
 
