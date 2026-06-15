@@ -477,7 +477,7 @@ export default function CarListingPage() {
       let query = supabase
         .from('public_car_listings')
         .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, { count:'exact' })
-        .eq('status', 'available');
+        .in('status', ['available', 'reserved']);
 
       if (!isMarketplace && tenant?.id) query = query.eq('dealer_id', tenant.id);
 

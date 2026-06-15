@@ -646,7 +646,7 @@ export default function CarDetailPage() {
                 .select(simFields)
                 .eq("dealer_id", carData.dealer_id)
                 .eq("brand", carData.brand)
-                .eq("status", "available")
+                .in("status", ["available", "reserved"])
                 .neq("id", carData.id)
                 .order("created_at", { ascending: false })
                 .limit(6);
@@ -658,7 +658,7 @@ export default function CarDetailPage() {
                 .from("public_car_listings")
                 .select(simFields)
                 .eq("brand", carData.brand)
-                .eq("status", "available")
+                .in("status", ["available", "reserved"])
                 .neq("id", carData.id)
                 .order("created_at", { ascending: false })
                 .limit(9);

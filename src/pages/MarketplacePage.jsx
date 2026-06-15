@@ -104,10 +104,10 @@ export default function MarketplacePage() {
   useEffect(() => {
     async function fetchStats() {
       const [listingsRes, dealersRes, hotRes] = await Promise.all([
-        supabase.from('public_car_listings').select('*', { count: 'exact', head: true }).eq('status', 'available'),
-        supabase.from('public_car_listings').select('dealer_id', { count: 'exact', head: false }).eq('status', 'available').limit(2000),
+        supabase.from('public_car_listings').select('*', { count: 'exact', head: true }).in('status', ['available', 'reserved']),
+        supabase.from('public_car_listings').select('dealer_id', { count: 'exact', head: false }).in('status', ['available', 'reserved']).limit(2000),
         supabase.from('public_car_listings').select('*', { count: 'exact', head: true })
-          .eq('status', 'available')
+          .in('status', ['available', 'reserved'])
           .not('original_price', 'is', null)
           .gt('original_price', 0),
       ]);
@@ -135,7 +135,7 @@ export default function MarketplacePage() {
           supabase
             .from('public_car_listings')
             .select(CAR_FIELDS)
-            .eq('status', 'available')
+            .in('status', ['available', 'reserved'])
             .eq('body_type', type)
             .order('created_at', { ascending: false })
             .limit(10)
@@ -165,7 +165,7 @@ export default function MarketplacePage() {
       let query = supabase
         .from('public_car_listings')
         .select(CAR_FIELDS, { count: 'exact' })
-        .eq('status', 'available');
+        .in('status', ['available', 'reserved']);
 
       if (q) {
         const tokens = q.trim().split(/\s+/).filter(Boolean).slice(0, 6);

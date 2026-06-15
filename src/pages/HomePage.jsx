@@ -243,7 +243,7 @@ const HomePage = () => {
           `${CAR_FIELDS}, dealer:profiles!dealer_id(dealership, site_name, subdomain, whatsapp_number, site_logo_url, brand_color)`,
           { count: "exact" },
         )
-        .eq("status", "available")
+        .in("status", ["available", "reserved"])
         .order("created_at", { ascending: false })
         .limit(30);
 
