@@ -33,6 +33,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
   const [imgIdx, setImgIdx]       = useState(0);
   const dragX = useRef(null);
   const suppressClick = useRef(false);
+  const galleryPreloaded = useRef(false);
   const { isSaved, toggleSave }   = useSavedCars();
 
   const xdrive = !isSubdomain();
@@ -90,15 +91,21 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
     });
     return true;
   };
-  const onImgTouchStart = (e) => { dragX.current = e.touches[0].clientX; };
+  const preloadGallery = () => {
+    if (!hasGallery || galleryPreloaded.current) return;
+    galleryPreloaded.current = true;
+    slides.forEach((src, i) => { if (i !== safeIdx) { const img = new window.Image(); img.src = toThumb(src); } });
+  };
+
+  const onImgTouchStart = (e) => { preloadGallery(); dragX.current = e.touches[0].clientX; };
   const onImgTouchEnd = (e) => {
     if (dragX.current == null) return;
     if (slideBy(e.changedTouches[0].clientX - dragX.current)) suppressClick.current = true;
     dragX.current = null;
   };
-  // Desktop: mouseup fires on document so releasing outside the img still registers.
   const onImgMouseDown = (e) => {
     e.preventDefault();
+    preloadGallery();
     dragX.current = e.clientX;
     const onDocUp = (ev) => {
       document.removeEventListener('mouseup', onDocUp);

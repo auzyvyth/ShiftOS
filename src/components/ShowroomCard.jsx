@@ -43,6 +43,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
   const [imgIdx, setImgIdx] = useState(0);
   const dragX = useRef(null);
   const suppressClick = useRef(false);
+  const galleryPreloaded = useRef(false);
   const { isSaved, toggleSave } = useSavedCars();
 
   // Theme — dark on the dealer subdomain (matches the storefront), light on the
@@ -92,7 +93,15 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
     });
     return true;
   };
-  const onImgTouchStart = (e) => { dragX.current = e.touches[0].clientX; };
+  // Preload all gallery images for this card the moment the user first touches it.
+  // Uses Image() so no DOM elements are added — browser caches them for instant slide.
+  const preloadGallery = () => {
+    if (!hasGallery || galleryPreloaded.current) return;
+    galleryPreloaded.current = true;
+    slides.forEach((src, i) => { if (i !== safeIdx) { const img = new window.Image(); img.src = toThumb(src); } });
+  };
+
+  const onImgTouchStart = (e) => { preloadGallery(); dragX.current = e.touches[0].clientX; };
   const onImgTouchEnd   = (e) => {
     if (dragX.current == null) return;
     if (slideBy(e.changedTouches[0].clientX - dragX.current)) suppressClick.current = true;
@@ -100,6 +109,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
   };
   const onImgMouseDown  = (e) => {
     e.preventDefault();
+    preloadGallery();
     dragX.current = e.clientX;
     const onDocUp = (ev) => {
       document.removeEventListener('mouseup', onDocUp);
