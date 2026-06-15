@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Gauge, Settings2, MessageCircle, Fuel, Calendar, Heart, Images } from 'lucide-react';
 import GradeBadge from './GradeBadge';
@@ -31,7 +31,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
   const [imgError, setImgError]   = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgIdx, setImgIdx]       = useState(0);
-  const touchStartX = useRef(null);
+  const dragX = useRef(null);
   const suppressClick = useRef(false);
   const { isSaved, toggleSave }   = useSavedCars();
 
@@ -79,6 +79,9 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
   };
   const image = toThumb(rawImage);
 
+  // Reset shimmer whenever the visible slide changes.
+  useEffect(() => { setImgLoaded(false); }, [safeIdx]);
+
   const slideBy = (dx) => {
     if (!hasGallery || Math.abs(dx) <= 36) return false;
     setImgIdx((i) => {
@@ -87,19 +90,23 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
     });
     return true;
   };
-  const onImgTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
+  const onImgTouchStart = (e) => { dragX.current = e.touches[0].clientX; };
   const onImgTouchEnd = (e) => {
-    if (touchStartX.current == null) return;
-    slideBy(e.changedTouches[0].clientX - touchStartX.current);
-    touchStartX.current = null;
+    if (dragX.current == null) return;
+    if (slideBy(e.changedTouches[0].clientX - dragX.current)) suppressClick.current = true;
+    dragX.current = null;
   };
-  // Desktop: drag the image to slide. Suppress the card's navigation click
-  // when the pointer actually dragged (so a real click still opens detail).
-  const onImgMouseDown = (e) => { touchStartX.current = e.clientX; };
-  const onImgMouseUp = (e) => {
-    if (touchStartX.current == null) return;
-    if (slideBy(e.clientX - touchStartX.current)) suppressClick.current = true;
-    touchStartX.current = null;
+  // Desktop: mouseup fires on document so releasing outside the img still registers.
+  const onImgMouseDown = (e) => {
+    e.preventDefault();
+    dragX.current = e.clientX;
+    const onDocUp = (ev) => {
+      document.removeEventListener('mouseup', onDocUp);
+      if (dragX.current == null) return;
+      if (slideBy(ev.clientX - dragX.current)) suppressClick.current = true;
+      dragX.current = null;
+    };
+    document.addEventListener('mouseup', onDocUp);
   };
 
   const auctionGrade  = car.auction_grade || null;
@@ -230,7 +237,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
           border-color: rgba(37,211,102,0.5) !important;
         }
 
-        .cc-imgwrap { touch-action: pan-y; }
+        .cc-imgwrap { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
 
         @media (max-width: 520px) {
           .cc-body         { padding: 9px 10px 11px !important; }
@@ -284,7 +291,6 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
           onTouchStart={onImgTouchStart}
           onTouchEnd={onImgTouchEnd}
           onMouseDown={onImgMouseDown}
-          onMouseUp={onImgMouseUp}
           style={{
             position:   'relative',
             height:     170,
@@ -305,6 +311,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
                 }} />
               )}
               <img
+                key={safeIdx}
                 src={image}
                 alt={`${year} ${brand} ${model}`}
                 loading={priority ? 'eager' : 'lazy'}
@@ -326,22 +333,6 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
                 pointerEvents: 'none',
               }} />
 
-              {/* Swipe dots (no buttons — slide by dragging) */}
-              {hasGallery && (
-                <div style={{
-                  position: 'absolute', bottom: 8, left: 0, right: 0, zIndex: 6,
-                  display: 'flex', justifyContent: 'center', gap: 5,
-                  pointerEvents: 'none',
-                }}>
-                  {slides.map((_, i) => (
-                    <span key={i} style={{
-                      width: i === safeIdx ? 14 : 5, height: 5, borderRadius: 3,
-                      background: i === safeIdx ? '#fff' : 'rgba(255,255,255,0.55)',
-                      transition: 'width 0.2s ease, background 0.2s ease',
-                    }} />
-                  ))}
-                </div>
-              )}
             </>
           ) : (
             <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
@@ -399,7 +390,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
             </>
           )}
 
-          {/* Bottom-left: photo count */}
+          {/* Bottom-left: photo count / slide position */}
           {photoCount > 1 && !isReserved && (
             <div style={{
               position: 'absolute', bottom: 8, left: 8, zIndex: 5,
@@ -411,7 +402,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
               pointerEvents: 'none',
             }}>
               <Images size={10} />
-              <span>{photoCount}</span>
+              <span>{hasGallery ? `${safeIdx + 1}/${slides.length}` : photoCount}</span>
             </div>
           )}
 

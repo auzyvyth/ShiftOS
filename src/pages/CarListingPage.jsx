@@ -801,7 +801,7 @@ export default function CarListingPage() {
           </div>
 
           {/* ── Layout: grid LEFT + sidebar RIGHT ── */}
-          <div className="cl-layout" style={{ display:'flex', gap:'24px', alignItems:'flex-start' }}>
+          <div className="cl-layout" style={{ display:'flex', gap:'24px', alignItems:'flex-start', flexDirection: typeof window !== 'undefined' && window.innerWidth <= 1024 ? 'column' : 'row' }}>
 
             {/* Car grid */}
             <div style={{ flex:1, minWidth:0 }}>
@@ -861,7 +861,7 @@ export default function CarListingPage() {
             {/* ── Filter sidebar — RIGHT side ── */}
             <aside
               className="cl-sidebar-desktop cl-sidebar-scroll"
-              style={{ width:'260px', flexShrink:0, background:'#fff', border:'1px solid #e5e7eb', borderRadius:'16px', padding:'16px 18px', position:'sticky', top:'130px', maxHeight:'calc(100vh - 150px)', overflowY:'auto' }}
+              style={{ width:'260px', flexShrink:0, background:'#fff', border:'1px solid #e5e7eb', borderRadius:'16px', padding:'16px 18px', position:'sticky', top:'130px', maxHeight:'calc(100vh - 150px)', overflowY:'auto', display: typeof window !== 'undefined' && window.innerWidth <= 1024 ? 'none' : undefined }}
             >
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'14px', paddingBottom:'12px', borderBottom:'1px solid #f3f4f6' }}>
                 <h2 style={{ color:'#111827', fontSize:'13px', fontWeight:'800', margin:0, display:'flex', alignItems:'center', gap:'6px', fontFamily:"'Outfit',sans-serif" }}>
