@@ -30,8 +30,19 @@ export default defineConfig({
 			},
 			workbox: {
 				navigateFallback: '/index.html',
-				globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-				maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+				// Only precache critical public assets. Dealer-only JS chunks
+				// (Dashboard, Salesman, Import, PDF/XLSX/charts) are excluded so
+				// a public visitor's first load doesn't pull 5.6 MB of admin code.
+				globPatterns: ['**/*.{css,html,ico,png,svg}', '**/vendor-react*', '**/vendor-supabase*', '**/vendor-ui*', '**/index-*.js'],
+				globIgnores: [
+					'**/DashboardPage*', '**/Salesmanpanel*', '**/SalesmanLite*',
+					'**/SalesmanPremium*', '**/SalesmanOnboarding*', '**/ImportStockPage*',
+					'**/AccountantPanel*', '**/AdminPanel*', '**/AdminPage*',
+					'**/ManagerPanel*', '**/FIPanel*', '**/AccountsPanel*',
+					'**/LeadsPage*', '**/vendor-charts*', '**/vendor-pdf*',
+					'**/vendor-xlsx*', '**/html2canvas*', '**/pdf.worker*',
+				],
+				maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
 			},
 		}),
 	],
