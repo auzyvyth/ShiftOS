@@ -3307,6 +3307,15 @@ export default function CarDetailPage() {
                 </button>
               </div>
 
+              {car?.status === 'reserved' && (
+                <div style={{ margin:'16px 28px 0', padding:'10px 14px', background:'rgba(251,191,36,0.08)', border:'1px solid rgba(251,191,36,0.25)', borderRadius:8, display:'flex', alignItems:'center', gap:8 }}>
+                  <span style={{ fontSize:16 }}>⚠</span>
+                  <p style={{ fontSize:12, color:'#fbbf24', margin:0, fontFamily:"'DM Sans',sans-serif", lineHeight:1.4 }}>
+                    This car is currently under reservation. You can still register your interest and the dealer will contact you if it becomes available.
+                  </p>
+                </div>
+              )}
+
               {booked ? (
                 <div style={{ padding:'44px 28px 36px', textAlign:'center' }}>
                   <div style={{ width:60, height:60, borderRadius:'50%', background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.2)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>

@@ -419,18 +419,20 @@ export default function SalesmanPanel() {
    });
  }
 
- // Fetch assigned car IDs first, then scope analytics to those cars
- // (dealer-linked salesmen share dealer_id with others; salesman_slug is null on direct visits)
- const { data: assignedCars } = await supabase
-   .from("car_listings")
-   .select("id")
-   .eq("assigned_to", userId);
- const assignedCarIds = (assignedCars || []).map((c) => c.id);
+ // Fetch car IDs from both direct assignment and salesman_listings (featured cars)
+ const [{ data: assignedCars }, { data: featuredCars }] = await Promise.all([
+   supabase.from("car_listings").select("id").eq("assigned_to", userId),
+   supabase.from("salesman_listings").select("listing_id").eq("salesman_id", userId),
+ ]);
+ const myCarIds = [...new Set([
+   ...(assignedCars || []).map((c) => c.id),
+   ...(featuredCars || []).map((c) => c.listing_id),
+ ])];
 
- if (assignedCarIds.length > 0) {
+ if (myCarIds.length > 0) {
  // Analytics: server-side aggregation via RPC — one row per car
  const { data: analyticsRows, error: analyticsErr } = await supabase
- .rpc("get_car_analytics", { p_car_ids: assignedCarIds });
+ .rpc("get_car_analytics", { p_car_ids: myCarIds });
  if (analyticsErr) console.error("fetchAnalytics:", analyticsErr);
  const map = {};
  (analyticsRows || []).forEach(row => {
@@ -528,14 +530,29 @@ export default function SalesmanPanel() {
  setCommission(total);
  });
 
- // Upcoming appointments
- const fetchAppts = () =>
- supabase
- .from("appointments")
- .select("*, car_listings(brand, model, year, images)")
- .eq("salesman_id", userId)
- .order("created_at", { ascending: false })
- .then(({ data }) => setAppointments(data || []));
+ // Upcoming appointments — own salesman_id + unattributed bookings on featured cars
+ const fetchAppts = async () => {
+ const [{ data: ownAppts }, { data: featuredListings }] = await Promise.all([
+   supabase.from("appointments").select("*, car_listings(brand, model, year, images)")
+     .eq("salesman_id", userId).order("created_at", { ascending: false }),
+   supabase.from("salesman_listings").select("listing_id").eq("salesman_id", userId),
+ ]);
+ const featuredIds = (featuredListings || []).map((l) => l.listing_id);
+ let unattributed = [];
+ if (featuredIds.length > 0) {
+   const { data } = await supabase.from("appointments")
+     .select("*, car_listings(brand, model, year, images)")
+     .in("car_listing_id", featuredIds)
+     .is("salesman_id", null)
+     .order("created_at", { ascending: false });
+   unattributed = data || [];
+ }
+ const seen = new Set();
+ const merged = [...(ownAppts || []), ...unattributed]
+   .filter((a) => { if (seen.has(a.id)) return false; seen.add(a.id); return true; })
+   .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+ setAppointments(merged);
+ };
  fetchAppts();
 
  const apptCh = supabase
@@ -572,21 +589,30 @@ export default function SalesmanPanel() {
  .limit(10)
  .then(({ data }) => setManagerNotes(data || []));
 
- // Enquiries via ref slug
- if (profile?.slug) {
- supabase
- .from("whatsapp_enquiries")
- .select("*, car_listings(brand, model, year, images)")
- .eq("ref_slug", profile.slug)
- .order("created_at", { ascending: false })
- .limit(20)
- .then(({ data }) => {
- setEnquiries(data || []);
- setEnquiriesLoading(false);
+ // Enquiries: by ref_slug AND by direct salesman_id attribution, merged and deduped
+ (() => {
+ const bySlug = profile?.slug
+   ? supabase.from("whatsapp_enquiries")
+       .select("*, car_listings(brand, model, year, images)")
+       .eq("ref_slug", profile.slug)
+       .order("created_at", { ascending: false })
+       .limit(30)
+   : Promise.resolve({ data: [] });
+ const byId = supabase.from("whatsapp_enquiries")
+   .select("*, car_listings(brand, model, year, images)")
+   .eq("salesman_id", userId)
+   .order("created_at", { ascending: false })
+   .limit(30);
+ Promise.all([bySlug, byId]).then(([slugRes, idRes]) => {
+   const seen = new Set();
+   const merged = [...(slugRes.data || []), ...(idRes.data || [])]
+     .filter((e) => { if (seen.has(e.id)) return false; seen.add(e.id); return true; })
+     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+     .slice(0, 40);
+   setEnquiries(merged);
+   setEnquiriesLoading(false);
  });
- } else {
- setEnquiriesLoading(false);
- }
+ })();
 
  // Leads: own-assigned by default; all-dealer if granted view_all_leads
  (() => {

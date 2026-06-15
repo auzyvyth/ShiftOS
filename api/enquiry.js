@@ -38,9 +38,20 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: 'Listing not found' });
   }
 
+  // Resolve salesman from refSlug (mirrors api/booking.js behaviour)
+  let salesmanId = listing.assigned_to || null;
+  if (refSlug) {
+    const { data: sm } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('slug', refSlug)
+      .maybeSingle();
+    if (sm?.id) salesmanId = sm.id;
+  }
+
   const { error: enqErr } = await supabase.from('whatsapp_enquiries').insert({
     dealer_id: listing.dealer_id,
-    salesman_id: listing.assigned_to || null,
+    salesman_id: salesmanId,
     listing_id: carId,
     buyer_name: name.trim().substring(0, 100),
     buyer_phone: phoneClean,
@@ -59,7 +70,7 @@ export default async function handler(req, res) {
   // Non-fatal: create lead for heatmap / CRM
   await supabase.from('leads').insert({
     dealer_id: listing.dealer_id,
-    salesman_id: listing.assigned_to || null,
+    salesman_id: salesmanId,
     car_listing_id: carId,
     buyer_name: name.trim().substring(0, 100),
     phone: phoneClean,
