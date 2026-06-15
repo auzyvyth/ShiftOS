@@ -437,6 +437,23 @@ export default function CarListingPage() {
   const [drawerOpen, setDrawerOpen]     = useState(false);
   const initialLoad = useRef(true);
 
+  // Sidebar / grid-cols are driven by JS so the correct layout is set on the
+  // very first render — no FOUC from CSS class overrides loading after paint.
+  const [isWide, setIsWide] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth > 1024
+  );
+  const [isTwoCols, setIsTwoCols] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth > 640
+  );
+  useEffect(() => {
+    const update = () => {
+      setIsWide(window.innerWidth > 1024);
+      setIsTwoCols(window.innerWidth > 640);
+    };
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
   useEffect(() => setSearchInput(q), [q]);
   useEffect(() => setVariantInput(variant), [variant]);
 
@@ -801,7 +818,7 @@ export default function CarListingPage() {
           </div>
 
           {/* ── Layout: grid LEFT + sidebar RIGHT ── */}
-          <div className="cl-layout" style={{ display:'flex', gap:'24px', alignItems:'flex-start', flexDirection: typeof window !== 'undefined' && window.innerWidth <= 1024 ? 'column' : 'row' }}>
+          <div className="cl-layout" style={{ display:'flex', gap:'24px', alignItems:'flex-start', flexDirection: isWide ? 'row' : 'column' }}>
 
             {/* Car grid */}
             <div style={{ flex:1, minWidth:0 }}>
@@ -818,7 +835,7 @@ export default function CarListingPage() {
                       <span style={{ background:'rgba(220,38,38,0.9)', color:'#fff', fontSize:'11px', fontWeight:'700', padding:'4px 10px', borderRadius:'20px', fontFamily:"'Outfit',sans-serif" }}>Updating…</span>
                     </div>
                   )}
-                  <div className="cl-grid" style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:'14px', opacity:fetching?0.5:1, transition:'opacity 0.18s' }}>
+                  <div className="cl-grid" style={{ display:'grid', gridTemplateColumns: isTwoCols ? 'repeat(2,1fr)' : '1fr', gap: isTwoCols ? '14px' : '10px', opacity:fetching?0.5:1, transition:'opacity 0.18s' }}>
                     {loading
                       ? Array.from({ length: PER_PAGE }).map((_,i) => <ShowroomCardSkeleton key={i} dark={dark}/>)
                       : cars.length === 0
@@ -858,10 +875,10 @@ export default function CarListingPage() {
               )}
             </div>
 
-            {/* ── Filter sidebar — RIGHT side ── */}
-            <aside
+            {/* ── Filter sidebar — RIGHT side (desktop only) ── */}
+            {isWide && <aside
               className="cl-sidebar-desktop cl-sidebar-scroll"
-              style={{ width:'260px', flexShrink:0, background:'#fff', border:'1px solid #e5e7eb', borderRadius:'16px', padding:'16px 18px', position:'sticky', top:'130px', maxHeight:'calc(100vh - 150px)', overflowY:'auto', display: typeof window !== 'undefined' && window.innerWidth <= 1024 ? 'none' : undefined }}
+              style={{ width:'260px', flexShrink:0, background:'#fff', border:'1px solid #e5e7eb', borderRadius:'16px', padding:'16px 18px', position:'sticky', top:'130px', maxHeight:'calc(100vh - 150px)', overflowY:'auto' }}
             >
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'14px', paddingBottom:'12px', borderBottom:'1px solid #f3f4f6' }}>
                 <h2 style={{ color:'#111827', fontSize:'13px', fontWeight:'800', margin:0, display:'flex', alignItems:'center', gap:'6px', fontFamily:"'Outfit',sans-serif" }}>
@@ -877,7 +894,7 @@ export default function CarListingPage() {
                 )}
               </div>
               <FiltersPanel {...filtersProps}/>
-            </aside>
+            </aside>}
 
           </div>
         </div>
