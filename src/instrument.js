@@ -22,9 +22,14 @@ if (_dsn) {
         createRoutesFromChildren,
         matchRoutes,
       }),
-      Sentry.replayIntegration(),
+      // Replay is loaded lazily after the page is idle so it doesn't block
+      // the main thread during initial load (was causing ~35s TBT).
+      Sentry.lazyLoadIntegration('replayIntegration').then((integration) => {
+        Sentry.addIntegration(integration());
+      }).catch(() => {}),
     ],
-    tracesSampleRate: 1.0,
+    // 10% trace sampling — 100% was adding instrumentation overhead to every fetch.
+    tracesSampleRate: 0.1,
     tracePropagationTargets: [
       'localhost',
       /^https:\/\/lemdkdizdlcirhbzqlos\.supabase\.co/,
@@ -35,12 +40,7 @@ if (_dsn) {
     enableLogs: true,
     beforeSend(event, hint) {
       const err = hint?.originalException;
-      // Supabase gotrue-js uses Web Locks with steal:true for cross-tab auth
-      // coordination. The old tab gets AbortError — expected, not a real error.
       if (err?.name === 'AbortError' && err?.message?.includes('steal')) return null;
-      // Browser extensions (translate, grammar/spell checkers) mutate the DOM
-      // after React re-renders and call Range.selectNode on detached nodes.
-      // Not reproducible from our code — no createRange/selectNode anywhere in src.
       if (err?.message?.includes("selectNode") && err?.message?.includes("has no parent")) return null;
       return event;
     },

@@ -47,10 +47,10 @@ export default function SalesmanProfilePage() {
       const [ownedRes, assignedRes, soldOwnedRes, soldAssignedRes] = await Promise.all([
         supabase.from('public_car_listings')
           .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour')
-          .eq('dealer_id', p.id).eq('status', 'available').order('created_at', { ascending: false }),
+          .eq('dealer_id', p.id).in('status', ['available', 'reserved']).order('created_at', { ascending: false }),
         supabase.from('public_car_listings')
           .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour')
-          .eq('assigned_to', p.id).eq('status', 'available').order('created_at', { ascending: false }),
+          .eq('assigned_to', p.id).in('status', ['available', 'reserved']).order('created_at', { ascending: false }),
         supabase.from('public_car_listings').select('id', { count: 'exact', head: true }).eq('dealer_id', p.id).eq('status', 'sold'),
         supabase.from('public_car_listings').select('id', { count: 'exact', head: true }).eq('assigned_to', p.id).eq('status', 'sold'),
       ]);

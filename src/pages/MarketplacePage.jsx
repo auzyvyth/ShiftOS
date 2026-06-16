@@ -71,6 +71,17 @@ export default function MarketplacePage() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [heroTab, setHeroTab] = useState(0);
 
+  // Single nav path for every hero-search entry point (Enter, search icon,
+  // Find Cars button) — carries the typed query plus budget/state selects.
+  const runHeroSearch = (val) => {
+    const p = new URLSearchParams();
+    const s = (val || '').trim();
+    if (s)          p.set('q', s);
+    if (heroBudget) p.set('max_price', heroBudget);
+    if (heroState)  p.set('state', heroState);
+    navigate(`/showroom${p.toString() ? `?${p}` : ''}`);
+  };
+
   /* Data state */
   const [cars, setCars]           = useState([]);
   const [totalCount, setTotal]    = useState(0);
@@ -104,10 +115,10 @@ export default function MarketplacePage() {
   useEffect(() => {
     async function fetchStats() {
       const [listingsRes, dealersRes, hotRes] = await Promise.all([
-        supabase.from('public_car_listings').select('*', { count: 'exact', head: true }).eq('status', 'available'),
-        supabase.from('public_car_listings').select('dealer_id', { count: 'exact', head: false }).eq('status', 'available').limit(2000),
+        supabase.from('public_car_listings').select('*', { count: 'exact', head: true }).in('status', ['available', 'reserved']),
+        supabase.from('public_car_listings').select('dealer_id', { count: 'exact', head: false }).in('status', ['available', 'reserved']).limit(2000),
         supabase.from('public_car_listings').select('*', { count: 'exact', head: true })
-          .eq('status', 'available')
+          .in('status', ['available', 'reserved'])
           .not('original_price', 'is', null)
           .gt('original_price', 0),
       ]);
@@ -135,7 +146,7 @@ export default function MarketplacePage() {
           supabase
             .from('public_car_listings')
             .select(CAR_FIELDS)
-            .eq('status', 'available')
+            .in('status', ['available', 'reserved'])
             .eq('body_type', type)
             .order('created_at', { ascending: false })
             .limit(10)
@@ -165,7 +176,7 @@ export default function MarketplacePage() {
       let query = supabase
         .from('public_car_listings')
         .select(CAR_FIELDS, { count: 'exact' })
-        .eq('status', 'available');
+        .in('status', ['available', 'reserved']);
 
       if (q) {
         const tokens = q.trim().split(/\s+/).filter(Boolean).slice(0, 6);
@@ -784,15 +795,9 @@ export default function MarketplacePage() {
                 ))}
               </div>
 
-              {/* Search bar */}
-              <form onSubmit={e => {
-                e.preventDefault();
-                const p = new URLSearchParams();
-                if (heroQ)      p.set('q', heroQ);
-                if (heroBudget) p.set('max_price', heroBudget);
-                if (heroState)  p.set('state', heroState);
-                navigate(`/showroom${p.toString() ? `?${p}` : ''}`);
-              }}>
+              {/* Search bar — no wrapping <form> (SearchAutocomplete has its own;
+                  nested forms broke navigation). Each entry point navigates via runHeroSearch. */}
+              <div>
                 <div ref={heroSearchBarRef} style={{ display:'flex', alignItems:'stretch', gap:'5px', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'14px', padding:'5px', marginBottom:'10px' }}>
                   <div style={{ flex:1, minWidth:0 }}>
                     <SearchAutocomplete
@@ -801,12 +806,12 @@ export default function MarketplacePage() {
                       onChange={setHeroQ}
                       placeholder="Search make, model or variant…"
                       navigateTo="/showroom"
-                      onSubmit={val => setHeroQ(val)}
+                      onSubmit={val => runHeroSearch(val)}
                       inputStyle={{ padding:'11px 14px', fontSize:'14px' }}
                       anchorRef={heroSearchBarRef}
                     />
                   </div>
-                  <button type="submit"
+                  <button type="button" onClick={() => runHeroSearch(heroQ)}
                     style={{ flexShrink:0, background:'#dc2626', color:'#fff', border:'none', padding:'0 22px', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', gap:'6px', borderRadius:'10px' }}
                     onMouseEnter={e=>e.currentTarget.style.background='#b91c1c'}
                     onMouseLeave={e=>e.currentTarget.style.background='#dc2626'}
@@ -835,7 +840,7 @@ export default function MarketplacePage() {
                     <SlidersHorizontal size={11}/> More filters
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
 
             {/* RIGHT: Browse by Budget */}

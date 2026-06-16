@@ -27,7 +27,7 @@ import HeroCarousel from "@/components/HeroCarousel";
 import SearchAutocomplete from "@/components/SearchAutocomplete";
 import { supabase } from "../supabaseClient";
 import { useSiteProfile } from "../hooks/useSiteProfile";
-import useTenant, { isSubdomain } from "../hooks/useTenant";
+import useTenant, { isSubdomain, getSubdomain } from "../hooks/useTenant";
 import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 import { captureRef, getRef } from "../utils/refTracking";
 import {
@@ -190,6 +190,17 @@ const HomePage = () => {
   const { siteName, waUrl, profile } = useSiteProfile();
   const { tenant, loading: tenantLoading } = useTenant();
   const ctaCtx = useCTAContext();
+
+  // PERF-2: resolve dealer_id from URL subdomain immediately — no auth wait.
+  // Unblocks the listings + sold-count fetch before useTenant finishes its
+  // auth-session setup + full profile RPC.
+  const [fastDealerId, setFastDealerId] = useState(undefined);
+  useEffect(() => {
+    const sub = getSubdomain();
+    if (!sub) { setFastDealerId(null); return; }
+    supabase.rpc("get_dealer_id_by_subdomain", { p_subdomain: sub })
+      .then(({ data }) => setFastDealerId(data || null));
+  }, []);
   const [featured, setFeatured] = useState([]);
   const [hotDeals, setHotDeals] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -235,29 +246,38 @@ const HomePage = () => {
   }, [tenant?.id]);
 
   useEffect(() => {
-    if (tenant === undefined) return;
+    // PERF-2: gate on fastDealerId (resolves immediately from URL) not tenant
+    if (fastDealerId === undefined) return;
+    const dealerId = fastDealerId; // stable for this run
     const load = async () => {
+      // PERF-3/4: on subdomain where tenant is available, skip the per-row
+      // dealer join (all rows are the same dealer — already in tenant).
+      // On main marketplace (no dealerId), keep the join for mixed-dealer cards.
+      const useJoin = !dealerId || !tenant;
       let query = supabase
         .from("public_car_listings")
         .select(
-          `${CAR_FIELDS}, dealer:profiles!dealer_id(dealership, site_name, subdomain, whatsapp_number, site_logo_url, brand_color)`,
+          useJoin
+            ? `${CAR_FIELDS}, dealer:profiles!dealer_id(dealership, site_name, subdomain, whatsapp_number, site_logo_url, brand_color)`
+            : CAR_FIELDS,
           { count: "exact" },
         )
-        .eq("status", "available")
+        .in("status", ["available", "reserved"])
         .order("created_at", { ascending: false })
         .limit(30);
 
-      if (tenant?.id) {
-        query = query.eq("dealer_id", tenant.id);
-      }
-      // no dealer_id filter on root domain — show all dealers
+      if (dealerId) query = query.eq("dealer_id", dealerId);
 
       const { data, error, count } = await query;
       if (!error && data) {
-        setFeatured(data.slice(0, 6));
+        // Attach tenant as dealer object when join was skipped
+        const rows = (dealerId && tenant)
+          ? data.map((c) => ({ ...c, dealer: tenant }))
+          : data;
+        setFeatured(rows.slice(0, 6));
         setStock(count || data.length);
         setHotDeals(
-          data
+          rows
             .filter(isHotDeal)
             .sort(
               (a, b) =>
@@ -269,23 +289,18 @@ const HomePage = () => {
       }
       setLoading(false);
     };
+    // PERF-5: sold count runs in parallel — no 800ms artificial delay
     const fetchSoldCount = async () => {
-      let query = supabase
+      let q = supabase
         .from("public_car_listings")
         .select("id", { count: "exact", head: true })
         .eq("status", "sold");
-      if (tenant?.id) {
-        query = query.eq("dealer_id", tenant.id);
-      }
-      // no dealer_id filter on root domain — count all dealers
-      const { count } = await query;
+      if (dealerId) q = q.eq("dealer_id", dealerId);
+      const { count } = await q;
       setSoldCount(count || 0);
     };
-    load();
-    // sold count is below-fold — defer until after first paint
-    const soldCountTimer = setTimeout(fetchSoldCount, 800);
-    return () => clearTimeout(soldCountTimer);
-  }, [tenant]);
+    Promise.all([load(), fetchSoldCount()]);
+  }, [fastDealerId, tenant]);
 
   useEffect(() => {
     async function checkDealerRedirect() {
@@ -387,8 +402,10 @@ const HomePage = () => {
 
   const whyData = tenant?.storefront_why || HARDCODED_DEFAULT_WHY;
   const howData = tenant?.storefront_how || HARDCODED_DEFAULT_HOW;
+  // On a dealer storefront, never fabricate reviews — show real ones or nothing.
+  // The main XDrive marketplace keeps its default set.
   const testimonialsData =
-    tenant?.storefront_testimonials || HARDCODED_DEFAULT_TESTIMONIALS;
+    tenant?.storefront_testimonials || (isSubdomain() ? [] : HARDCODED_DEFAULT_TESTIMONIALS);
   const ctaData = tenant?.storefront_cta || HARDCODED_DEFAULT_CTA;
 
   const whyIcons = [TrendingDown, UserCheck, ShieldCheck, DollarSign];
@@ -856,7 +873,6 @@ const HomePage = () => {
             {[
               { v: stock != null ? String(stock) : "—", l: "In Stock" },
               { v: soldDisplay, l: "Cars Sold" },
-              { v: "RM 0", l: "Free Consultation" },
             ].map((s, i, arr) => (
               <FadeIn key={i} delay={i * 0.08} style={{ flex: 1 }}>
                 <div
@@ -1085,7 +1101,8 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* ══════════ TESTIMONIALS ══════════ */}
+      {/* ══════════ TESTIMONIALS — hidden when there are none (no fake fallback on storefronts) ══════════ */}
+      {testimonials.length > 0 && (
       <section className="sec-pad" style={secA}>
         <div style={wrap}>
           <FadeIn>
@@ -1202,6 +1219,7 @@ const HomePage = () => {
           </div>
         </div>
       </section>
+      )}
 
       {/* ══════════ CALCULATOR ══════════ */}
       <section className="sec-pad" style={secB}>

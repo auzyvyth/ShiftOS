@@ -89,8 +89,8 @@ const MarketPriceTag = ({ car, isXdrive, th }) => {
         <div style={{ position: "absolute", top: "50%", left: `${pos}%`, transform: "translate(-50%,-50%)", width: 13, height: 13, borderRadius: "50%", background: cfg.color, border: `2px solid ${ringBg}`, boxShadow: "0 1px 3px rgba(0,0,0,0.25)" }} />
       </div>
       <p style={{ fontSize: 11, color: th.textMuted, marginTop: 8, margin: "8px 0 0" }}>
-        Market avg RM {avg.toLocaleString("en-MY")}
-        {car.market_sample_count > 0 ? ` · ${car.market_sample_count} similar` : ""}
+        Market avg <strong style={{ color: th.textMuted }}>RM {avg.toLocaleString("en-MY")}</strong>
+        {car.market_sample_count > 0 ? ` · based on ${car.market_sample_count} similar listings` : ""}
       </p>
     </div>
   );
@@ -406,6 +406,7 @@ export default function CarDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [booked, setBooked] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [showReservedPopup, setShowReservedPopup] = useState(false);
   const [bookingConsent, setBookingConsent] = useState({ appear: true, whatsapp: true });
   const bookingRef = useRef(null);
 
@@ -645,7 +646,7 @@ export default function CarDetailPage() {
                 .select(simFields)
                 .eq("dealer_id", carData.dealer_id)
                 .eq("brand", carData.brand)
-                .eq("status", "available")
+                .in("status", ["available", "reserved"])
                 .neq("id", carData.id)
                 .order("created_at", { ascending: false })
                 .limit(6);
@@ -657,7 +658,7 @@ export default function CarDetailPage() {
                 .from("public_car_listings")
                 .select(simFields)
                 .eq("brand", carData.brand)
-                .eq("status", "available")
+                .in("status", ["available", "reserved"])
                 .neq("id", carData.id)
                 .order("created_at", { ascending: false })
                 .limit(9);
@@ -675,6 +676,24 @@ export default function CarDetailPage() {
       setSalesmanProfile(salesmanData);
       setSimilarCars(similarCarsData);
       setLoading(false);
+
+      // Fire the mileage-aware market avg in the background.
+      // The view already provides a rough bucket avg; this overwrites it
+      // with a precise result (year ±1, mileage ±35 000 km, condition-matched).
+      if (carData?.id) {
+        supabase
+          .rpc('compute_market_avg', { p_car_id: carData.id })
+          .then(({ data }) => {
+            const r = data?.[0];
+            if (r?.avg_price) {
+              setCar((prev) => prev ? {
+                ...prev,
+                market_avg_price: r.avg_price,
+                market_sample_count: r.sample_count,
+              } : prev);
+            }
+          });
+      }
     }
     load();
   }, [slug]);
@@ -776,6 +795,17 @@ export default function CarDetailPage() {
 
   function handleWhatsApp() {
     setShowEnquiryModal(true);
+  }
+
+  function handleBookingClick() {
+    if (car?.status === 'reserved') {
+      setShowReservedPopup(true);
+      return;
+    }
+    trackEvent(supabase, 'booking_click', { car_id: car.id, car_name: `${car.brand} ${car.model} ${car.year}`, dealer_id: car.dealer_id, metadata: { source: 'car_detail' } });
+    setBooked(false);
+    setBookingConsent({ appear: true, whatsapp: true });
+    setShowBookingModal(true);
   }
 
   function handleCall() {
@@ -920,6 +950,7 @@ export default function CarDetailPage() {
     currentUserId === car.dealer_id || currentUserId === car.assigned_to
   );
   const isRecon = car.is_recon;
+  const isReserved = car.status === 'reserved';
   const isHot =
     car.original_price &&
     car.original_price > 0 &&
@@ -1237,16 +1268,14 @@ export default function CarDetailPage() {
         <div ref={heroRef}>
           {/* Desktop 3-cell grid */}
           <div className="cdp-mosaic-grid cdp-desktop-only">
-            {/* Primary — spans both rows */}
+            {/* Primary — spans both rows, swipeable */}
             <div
               className="cdp-mosaic-cell cdp-mosaic-primary"
-              onClick={() => {
-                go(0, "next");
-                setLbOpen(true);
-              }}
+              onClick={() => setLbOpen(true)}
             >
               <img
-                src={images[0]}
+                key={slideKey}
+                src={images[activeIdx]}
                 alt={carTitle}
                 fetchPriority="high"
                 style={{
@@ -1263,78 +1292,45 @@ export default function CarDetailPage() {
                   e.target.src = "/placeholder-car.jpg";
                 }}
               />
-              {/* gradients */}
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background:
-                    "linear-gradient(to top, rgba(6,8,15,0.55), transparent 50%)",
-                  pointerEvents: "none",
-                  zIndex: 2,
-                }}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background:
-                    "linear-gradient(to right, rgba(6,8,15,0.2), transparent 30%)",
-                  pointerEvents: "none",
-                  zIndex: 2,
-                }}
-              />
-              {/* title overlay */}
-              <div
-                style={{
-                  position: "absolute",
-                  bottom: 20,
-                  left: 20,
-                  zIndex: 4,
-                }}
-              >
-                <p
-                  style={{
-                    fontSize: 10,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.24em",
-                    color: "rgba(255,255,255,0.6)",
-                    marginBottom: 4,
-                    fontWeight: 700,
-                  }}
-                >
-                  {car.brand}
-                </p>
-                <p
-                  style={{
-                    fontFamily: "'Bebas Neue',sans-serif",
-                    fontSize: "clamp(1.8rem,3vw,2.8rem)",
-                    color: "#ffffff",
-                    lineHeight: 1,
-                    letterSpacing: "0.04em",
-                    margin: 0,
-                    textShadow: "0 2px 12px rgba(0,0,0,0.4)",
-                  }}
-                >
-                  {car.model}
-                  {car.variant ? " " + car.variant : ""}
-                </p>
-              </div>
-              {/* scan line */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  right: 0,
-                  height: 2,
-                  background:
-                    "linear-gradient(to right,transparent,rgba(220,38,38,0.5),transparent)",
-                  animation: "cdp-scanLine 2s ease-out 0.3s 1 forwards",
-                  top: 0,
-                  pointerEvents: "none",
-                  zIndex: 5,
-                }}
-              />
+              {imgCount > 1 && (
+                <>
+                  <button
+                    className="cdp-arrow cdp-arrow-l"
+                    onClick={(e) => { e.stopPropagation(); go(prevIdx, "prev"); }}
+                    aria-label="Previous photo"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <button
+                    className="cdp-arrow cdp-arrow-r"
+                    onClick={(e) => { e.stopPropagation(); go(nextIdx, "next"); }}
+                    aria-label="Next photo"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 14,
+                      left: 14,
+                      zIndex: 4,
+                      background: "rgba(6,8,15,0.62)",
+                      backdropFilter: "blur(10px)",
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      borderRadius: 20,
+                      padding: "4px 12px",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: "rgba(255,255,255,0.9)",
+                      fontFamily: "'DM Sans',sans-serif",
+                      letterSpacing: "0.03em",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    {activeIdx + 1} / {imgCount}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Cell 2 — top right */}
@@ -1559,8 +1555,9 @@ export default function CarDetailPage() {
 
         {/* M2 — Identity block */}
         <div className="cdp-mobile-only" style={{ padding:'20px 18px 0' }}>
-          {(isRecon || isHot || hasDocuments) && (
+          {(isRecon || isReserved || isHot || hasDocuments) && (
             <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:14 }}>
+              {isReserved && <span style={{ background:'rgba(245,158,11,0.12)', border:'1px solid rgba(245,158,11,0.3)', color:'#f59e0b', fontSize:'10px', padding:'3px 10px', borderRadius:'4px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 }}>Reserved</span>}
               {isRecon && <span style={{ background:'rgba(168,85,247,0.1)', border:'1px solid rgba(168,85,247,0.25)', color:'#c084fc', fontSize:'10px', padding:'3px 10px', borderRadius:'4px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 }}>Recon</span>}
               {isHot   && <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.28)', color:'#f87171', fontSize:'10px', padding:'3px 10px', borderRadius:'4px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 }}>Hot Deal</span>}
               {hasDocuments && <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.28)', color:'#4ade80', fontSize:'10px', padding:'3px 10px', borderRadius:'4px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 }}><BadgeCheck size={11} /> Verified Docs</span>}
@@ -1633,12 +1630,7 @@ export default function CarDetailPage() {
           <div style={{ background: th.card, border:`1px solid ${th.border}`, borderRadius:14, padding:'20px' }}>
             {!isOwnListing && (
             <button
-              onClick={() => {
-                trackEvent(supabase, 'booking_click', { car_id: car.id, car_name: `${car.brand} ${car.model} ${car.year}`, dealer_id: car.dealer_id, metadata: { source: 'car_detail' } });
-                setBooked(false);
-                setBookingConsent({ appear: true, whatsapp: true });
-                setShowBookingModal(true);
-              }}
+              onClick={handleBookingClick}
               style={{ width:'100%', background:'#dc2626', color:'white', border:'none', borderTop:'2px solid #b91c1c', borderRadius:10, padding:'14px', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", boxShadow:'0 4px 20px rgba(220,38,38,0.25)', marginBottom:8, letterSpacing:'0.02em' }}>
               Book a Viewing
             </button>
@@ -2173,7 +2165,7 @@ export default function CarDetailPage() {
                 .filter(Boolean)
                 .join("  ·  ")}
             </p>
-            {(isRecon || isHot || hasDocuments) && (
+            {(isRecon || isReserved || isHot || hasDocuments) && (
               <div
                 style={{
                   display: "flex",
@@ -2182,6 +2174,23 @@ export default function CarDetailPage() {
                   marginBottom: 24,
                 }}
               >
+                {isReserved && (
+                  <span
+                    style={{
+                      background: "rgba(245,158,11,0.12)",
+                      border: "1px solid rgba(245,158,11,0.3)",
+                      color: "#f59e0b",
+                      fontSize: "10px",
+                      padding: "3px 10px",
+                      borderRadius: "4px",
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Reserved
+                  </span>
+                )}
                 {isRecon && (
                   <span
                     style={{
@@ -3035,6 +3044,7 @@ export default function CarDetailPage() {
 
             {/* TRUST BADGES */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+              {isReserved && <span style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>Reserved</span>}
               {isRecon && <span style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.25)', color: '#c084fc', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>Recon</span>}
               {isHot && <span style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.28)', color: '#f87171', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>Hot Deal</span>}
               {hasDocuments && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.28)', color: '#4ade80', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}><BadgeCheck size={11} /> Verified Docs</span>}
@@ -3047,12 +3057,7 @@ export default function CarDetailPage() {
             {/* CTA BUTTONS */}
             {!isOwnListing && (
             <button
-              onClick={() => {
-                trackEvent(supabase, 'booking_click', { car_id: car.id, car_name: `${car.brand} ${car.model} ${car.year}`, dealer_id: car.dealer_id, metadata: { source: 'car_detail' } });
-                setBooked(false);
-                setBookingConsent({ appear: true, whatsapp: true });
-                setShowBookingModal(true);
-              }}
+              onClick={handleBookingClick}
               style={{ width: '100%', background: '#dc2626', color: 'white', border: 'none', borderTop: '2px solid #b91c1c', borderRadius: 10, padding: 14, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.02em', boxShadow: '0 4px 24px rgba(220,38,38,0.25)', transition: 'transform .15s, box-shadow .2s' }}>
               Book a Viewing
             </button>
@@ -3205,13 +3210,39 @@ export default function CarDetailPage() {
         </button>
         <button className="cdp-mobile-bar-wa" onClick={handleWhatsApp}>WhatsApp</button>
         {!isOwnListing && (
-        <button className="cdp-mobile-bar-book" onClick={() => {
-          trackEvent(supabase, 'booking_click', { car_id: car.id, car_name: `${car.brand} ${car.model} ${car.year}`, dealer_id: car.dealer_id, metadata: { source: 'car_detail' } });
-          setBooked(false);
-          setShowBookingModal(true);
-        }}>Book a Viewing</button>
+        <button className="cdp-mobile-bar-book" onClick={handleBookingClick}>Book a Viewing</button>
         )}
       </div>
+
+      {/* ── reserved popup ── */}
+      {showReservedPopup && (
+        <div
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.78)', backdropFilter:'blur(10px)', WebkitBackdropFilter:'blur(10px)', zIndex:200, display:'flex', alignItems:'flex-end', justifyContent:'center' }}
+          onClick={e => { if (e.target === e.currentTarget) setShowReservedPopup(false); }}
+        >
+          <div style={{ background: th.card, width:'100%', maxWidth:480, borderRadius:'20px 20px 0 0', padding:'28px 28px 40px', boxShadow:'0 -12px 60px rgba(0,0,0,0.5)' }}>
+            <div style={{ height:3, background:'linear-gradient(to right,#fbbf24,#f59e0b)', borderRadius:'20px 20px 0 0', margin:'-28px -28px 24px' }} />
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
+              <div>
+                <p style={{ fontSize:10, letterSpacing:'0.18em', textTransform:'uppercase', color:'#fbbf24', fontWeight:700, margin:'0 0 4px', fontFamily:"'DM Sans',sans-serif" }}>Status Update</p>
+                <h2 style={{ fontSize:'1.8rem', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.06em', color: th.text, margin:0, lineHeight:1 }}>Car Reserved</h2>
+              </div>
+              <button onClick={() => setShowReservedPopup(false)} style={{ background:'none', border:'none', cursor:'pointer', color: th.textMuted, padding:4 }}>
+                <X size={20} />
+              </button>
+            </div>
+            <p style={{ fontSize:14, color: th.textSec, lineHeight:1.6, margin:'0 0 24px', fontFamily:"'DM Sans',sans-serif" }}>
+              This car is currently reserved. WhatsApp the seller for confirmation or to find out when it becomes available.
+            </p>
+            <button
+              onClick={() => { setShowReservedPopup(false); handleWhatsApp(); }}
+              style={{ width:'100%', background:'#16a34a', color:'#fff', border:'none', borderRadius:10, padding:'14px', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", letterSpacing:'0.02em' }}
+            >
+              WhatsApp Seller
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── enquiry modal ── */}
       {showEnquiryModal && (

@@ -10,7 +10,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
-import useTenant, { isSubdomain } from "../hooks/useTenant";
+import useTenant, { isSubdomain, getSubdomain } from "../hooks/useTenant";
 import { trackEvent, getSlugFromURL, getOrCreateSessionId } from "../utils/analytics";
 
 const HC_CSS = `
@@ -680,13 +680,22 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
   const touchStartX = useRef(null);
   const progressStart = useRef(null);
 
+  // PERF-2: resolve dealer_id immediately from URL subdomain — don't wait for
+  // useTenant's auth-session setup + full profile RPC before fetching slides.
+  const [fastDealerId, setFastDealerId] = useState(undefined);
   useEffect(() => {
-    if (tenant === undefined) return; // still loading
+    const sub = getSubdomain();
+    if (!sub) { setFastDealerId(null); return; }
+    supabase.rpc("get_dealer_id_by_subdomain", { p_subdomain: sub })
+      .then(({ data }) => setFastDealerId(data || null));
+  }, []);
+
+  useEffect(() => {
+    if (fastDealerId === undefined) return; // wait for fast ID only
     const fetchSlides = async () => {
       try {
-        // On root domain show the superadmin's (XDRIVE) carousel slides
         const XDRIVE_ID = import.meta.env.VITE_SUPERADMIN_ID || "1e7bf24e-5b71-4c64-8d03-b60db5e59316";
-        const dealerId = tenant?.id || XDRIVE_ID;
+        const dealerId = fastDealerId || tenant?.id || XDRIVE_ID;
         if (!dealerId) {
           setSlides([]);
           return;
@@ -697,7 +706,6 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
           .eq("active", true)
           .eq("dealer_id", dealerId)
           .order("sort_order", { ascending: true });
-        // Drop slides whose linked car has been sold — sold cars have no detail page
         const live = !error && data
           ? data.filter(s => !s.car_listing_id || s.car_listings?.status !== 'sold')
           : [];
@@ -709,7 +717,7 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
       }
     };
     fetchSlides();
-  }, [tenant]);
+  }, [fastDealerId]);
 
   // Preload only active + next slide to avoid bandwidth waste
   useEffect(() => {

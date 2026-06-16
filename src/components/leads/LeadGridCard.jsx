@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  getInitials, avatarGradient, getLeadAgeDays, ageTextColor,
+  getInitials, avatarGradient, getLeadAgeDays, ageTextColor, isLeadStale, canonicalStage,
 } from '../../lib/leadsHelpers';
 
 // Compact, info-only lead card for the pipeline grid.
@@ -16,6 +16,9 @@ export default function LeadGridCard({ lead, onOpen }) {
   const avatarBg   = avatarGradient(lead.lead_source);
   const days       = getLeadAgeDays(lead.created_at);
   const txtCls     = ageTextColor(days);
+  const needsPing  = isLeadStale(lead);
+  // SF-2b: a lead at deposit_taken has reserved its linked car. Surface who.
+  const isReserved = canonicalStage(lead.stage) === 'deposit_taken' && !!car;
   const created    = lead.created_at
     ? new Date(lead.created_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: '2-digit' })
     : null;
@@ -53,6 +56,18 @@ export default function LeadGridCard({ lead, onOpen }) {
         }}>
           {lead.buyer_name || 'Unnamed lead'}
         </span>
+        {needsPing && (
+          <span
+            title="Overdue for follow-up"
+            style={{
+              flexShrink: 0, fontSize: 9, fontWeight: 700, letterSpacing: '0.03em',
+              color: '#d97706', background: '#fffbeb', border: '1px solid #fde68a',
+              borderRadius: 20, padding: '1px 7px',
+            }}
+          >
+            Follow up
+          </span>
+        )}
       </div>
 
       {/* Row 2: car model */}
@@ -67,6 +82,18 @@ export default function LeadGridCard({ lead, onOpen }) {
       {carPrice && (
         <div style={{ fontSize: 12.5, fontWeight: 800, color: '#dc2626', marginBottom: 8 }}>
           {carPrice}
+        </div>
+      )}
+
+      {/* Reserved-by attribution (deposit_taken locks the car) */}
+      {isReserved && (
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          fontSize: 10, fontWeight: 700, color: '#0d9488',
+          background: '#f0fdfa', border: '1px solid #99f6e4',
+          borderRadius: 6, padding: '2px 7px', marginBottom: 8,
+        }}>
+          Reserved{ownerFirst ? ` by ${ownerFirst}` : ''}
         </div>
       )}
 

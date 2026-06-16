@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Gauge, Settings2, MessageCircle, Fuel, Calendar, Heart, Images } from 'lucide-react';
 import GradeBadge from './GradeBadge';
@@ -30,6 +30,10 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
   const navigate = useNavigate();
   const [imgError, setImgError]   = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgIdx, setImgIdx]       = useState(0);
+  const dragX = useRef(null);
+  const suppressClick = useRef(false);
+  const galleryPreloaded = useRef(false);
   const { isSaved, toggleSave }   = useSavedCars();
 
   const xdrive = !isSubdomain();
@@ -59,10 +63,15 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
   const isSold      = status === 'sold';
   const isReserved  = status === 'reserved';
 
-  const photoCount = Array.isArray(car.images) ? car.images.length : 0;
+  const galleryImages = (Array.isArray(car.images) ? car.images.filter(Boolean) : []);
+  const photoCount = galleryImages.length;
+  // Cap the in-card slider at 8 — full set is on the detail page.
+  const slides = galleryImages.slice(0, 8);
+  const hasGallery = !isSold && slides.length > 1;
+  const safeIdx = imgIdx < slides.length ? imgIdx : 0;
 
   const rawImage = !imgError && (
-    (Array.isArray(car.images) && car.images[0]) ||
+    slides[safeIdx] || galleryImages[0] ||
     car.image_url || car.photo_url || null
   );
   const toThumb = (url) => {
@@ -70,6 +79,42 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
     return url + (url.includes('?') ? '&' : '?') + 'width=520&quality=75&format=webp';
   };
   const image = toThumb(rawImage);
+
+  // Reset shimmer whenever the visible slide changes.
+  useEffect(() => { setImgLoaded(false); }, [safeIdx]);
+
+  const slideBy = (dx) => {
+    if (!hasGallery || Math.abs(dx) <= 36) return false;
+    setImgIdx((i) => {
+      const cur = i < slides.length ? i : 0;
+      return (cur + (dx < 0 ? 1 : -1) + slides.length) % slides.length;
+    });
+    return true;
+  };
+  const preloadGallery = () => {
+    if (!hasGallery || galleryPreloaded.current) return;
+    galleryPreloaded.current = true;
+    slides.forEach((src, i) => { if (i !== safeIdx) { const img = new window.Image(); img.src = toThumb(src); } });
+  };
+
+  const onImgTouchStart = (e) => { preloadGallery(); dragX.current = e.touches[0].clientX; };
+  const onImgTouchEnd = (e) => {
+    if (dragX.current == null) return;
+    if (slideBy(e.changedTouches[0].clientX - dragX.current)) suppressClick.current = true;
+    dragX.current = null;
+  };
+  const onImgMouseDown = (e) => {
+    e.preventDefault();
+    preloadGallery();
+    dragX.current = e.clientX;
+    const onDocUp = (ev) => {
+      document.removeEventListener('mouseup', onDocUp);
+      if (dragX.current == null) return;
+      if (slideBy(ev.clientX - dragX.current)) suppressClick.current = true;
+      dragX.current = null;
+    };
+    document.addEventListener('mouseup', onDocUp);
+  };
 
   const auctionGrade  = car.auction_grade || null;
   const interiorGrade = car.interior_grade || null;
@@ -199,6 +244,8 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
           border-color: rgba(37,211,102,0.5) !important;
         }
 
+        .cc-imgwrap { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+
         @media (max-width: 520px) {
           .cc-body         { padding: 9px 10px 11px !important; }
           .cc-name         { font-size: 12px !important; }
@@ -215,6 +262,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
         role="article"
         aria-label={`${year} ${brand} ${model}${isSold ? ' — Sold' : ''}`}
         onClick={() => {
+          if (suppressClick.current) { suppressClick.current = false; return; }
           if (isSold || !(car.slug || car.id)) return;
           trackEvent(supabase, 'card_click', {
             car_id:    car.id,
@@ -245,13 +293,18 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
       >
 
         {/* ── Image ── */}
-        <div style={{
-          position:   'relative',
-          height:     170,
-          flexShrink: 0,
-          overflow:   'hidden',
-          background: xd.imgBg,
-        }}>
+        <div
+          className="cc-imgwrap"
+          onTouchStart={onImgTouchStart}
+          onTouchEnd={onImgTouchEnd}
+          onMouseDown={onImgMouseDown}
+          style={{
+            position:   'relative',
+            height:     170,
+            flexShrink: 0,
+            overflow:   'hidden',
+            background: xd.imgBg,
+          }}>
           {image ? (
             <>
               {!imgLoaded && (
@@ -265,6 +318,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
                 }} />
               )}
               <img
+                key={safeIdx}
                 src={image}
                 alt={`${year} ${brand} ${model}`}
                 loading={priority ? 'eager' : 'lazy'}
@@ -285,6 +339,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
                 background:    'linear-gradient(to top, rgba(0,0,0,0.42), transparent)',
                 pointerEvents: 'none',
               }} />
+
             </>
           ) : (
             <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
@@ -342,7 +397,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
             </>
           )}
 
-          {/* Bottom-left: photo count */}
+          {/* Bottom-left: photo count / slide position */}
           {photoCount > 1 && !isReserved && (
             <div style={{
               position: 'absolute', bottom: 8, left: 8, zIndex: 5,
@@ -354,7 +409,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
               pointerEvents: 'none',
             }}>
               <Images size={10} />
-              <span>{photoCount}</span>
+              <span>{hasGallery ? `${safeIdx + 1}/${slides.length}` : photoCount}</span>
             </div>
           )}
 

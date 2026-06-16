@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { X, Flame, Menu, Phone, Heart, Car, Sparkles, RefreshCw } from 'lucide-react';
+import { X, Flame, Menu, Phone, Heart, Car, Sparkles, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useSavedCars } from '../hooks/useSavedCars';
 import SavedCarsPanel from './SavedCarsPanel';
 import AnnouncementBar from './AnnouncementBar';
@@ -38,46 +38,63 @@ export default function MarketplaceHeader() {
     <>
       <AnnouncementBar />
       <style>{`
-        .mh-root { position:sticky; top:0; z-index:100; transition:background 0.25s,box-shadow 0.25s; }
-        .mh-root.scrolled { background:rgba(12,12,14,0.9)!important; backdrop-filter:blur(16px) saturate(1.4); box-shadow:0 1px 0 rgba(255,255,255,0.06); }
-        .mh-nav-link { color:#9ca3af; font-size:14px; font-weight:500; text-decoration:none; padding:6px 2px; position:relative; transition:color 0.15s; font-family:'Outfit',sans-serif; white-space:nowrap; }
-        .mh-nav-link::after { content:''; position:absolute; bottom:0; left:0; right:0; height:1.5px; background:#dc2626; transform:scaleX(0); transition:transform 0.2s; transform-origin:left; border-radius:2px; }
-        .mh-nav-link:hover,.mh-nav-link.active { color:#fff; }
+        .mh-root { position:sticky; top:0; z-index:100; background:rgba(247,246,242,0.72); backdrop-filter:blur(12px) saturate(1.3); -webkit-backdrop-filter:blur(12px) saturate(1.3); border-bottom:1px solid rgba(0,0,0,0.06); transition:background 0.25s, box-shadow 0.25s, border-color 0.25s; }
+        .mh-root.scrolled { background:rgba(255,255,255,0.94)!important; box-shadow:0 1px 0 rgba(0,0,0,0.04), 0 6px 24px rgba(15,23,42,0.07); border-bottom-color:rgba(0,0,0,0.08); }
+
+        /* ── logo lockup ── */
+        .mh-tagline { display:flex; align-items:center; gap:7px; padding-left:12px; margin-left:11px; border-left:1px solid rgba(0,0,0,0.1); }
+        .mh-tagline-txt { font-family:'Outfit',sans-serif; font-size:10px; font-weight:700; letter-spacing:0.13em; text-transform:uppercase; color:#6b7280; line-height:1.25; }
+
+        /* ── nav links ── */
+        .mh-nav-link { color:#4b5563; font-size:14px; font-weight:500; text-decoration:none; padding:6px 2px; position:relative; transition:color 0.15s; font-family:'Outfit',sans-serif; white-space:nowrap; }
+        .mh-nav-link::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:#dc2626; transform:scaleX(0); transition:transform 0.2s; transform-origin:left; border-radius:2px; }
+        .mh-nav-link:hover,.mh-nav-link.active { color:#111827; }
         .mh-nav-link:hover::after,.mh-nav-link.active::after { transform:scaleX(1); }
-        .mh-hot-link { color:#fb923c!important; }
-        .mh-hot-link::after { background:#fb923c!important; }
-        .mh-hot-link:hover { color:#fdba74!important; }
+        .mh-hot-link { color:#ea580c!important; font-weight:600; }
+        .mh-hot-link::after { background:#ea580c!important; }
+        .mh-hot-link:hover { color:#c2410c!important; }
+
+        /* ── dropdown ── */
         .mh-dropdown { position:relative; }
-        .mh-dropdown-trigger { color:#9ca3af; font-size:14px; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:5px; font-family:'Outfit',sans-serif; white-space:nowrap; background:none; border:none; padding:6px 2px; position:relative; transition:color 0.15s; }
-        .mh-dropdown-trigger::after { content:''; position:absolute; bottom:0; left:0; right:0; height:1.5px; background:#dc2626; transform:scaleX(0); transition:transform 0.2s; transform-origin:left; border-radius:2px; }
-        .mh-dropdown:hover .mh-dropdown-trigger, .mh-dropdown-trigger:focus, .mh-dropdown-trigger.active { color:#fff; }
+        .mh-dropdown-trigger { color:#4b5563; font-size:14px; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:5px; font-family:'Outfit',sans-serif; white-space:nowrap; background:none; border:none; padding:6px 2px; position:relative; transition:color 0.15s; }
+        .mh-dropdown-trigger::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:#dc2626; transform:scaleX(0); transition:transform 0.2s; transform-origin:left; border-radius:2px; }
+        .mh-dropdown:hover .mh-dropdown-trigger, .mh-dropdown-trigger:focus, .mh-dropdown-trigger.active { color:#111827; }
         .mh-dropdown:hover .mh-dropdown-trigger::after, .mh-dropdown-trigger.active::after { transform:scaleX(1); }
         .mh-dropdown-chevron { transition:transform 0.2s; display:inline-block; }
         .mh-dropdown:hover .mh-dropdown-chevron { transform:rotate(180deg); }
-        .mh-dropdown-menu { position:absolute; top:calc(100% + 10px); left:50%; transform:translateX(-50%); min-width:170px; background:rgba(10,14,24,0.98); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:6px; display:none; flex-direction:column; gap:2px; backdrop-filter:blur(20px); box-shadow:0 12px 40px rgba(0,0,0,0.7); z-index:200; }
+        .mh-dropdown-menu { position:absolute; top:calc(100% + 10px); left:50%; transform:translateX(-50%); min-width:176px; background:#ffffff; border:1px solid rgba(0,0,0,0.08); border-radius:12px; padding:6px; display:none; flex-direction:column; gap:2px; box-shadow:0 12px 40px rgba(15,23,42,0.14); z-index:200; }
         .mh-dropdown:hover .mh-dropdown-menu { display:flex; }
-        /* Right-aligned variant for the CTA dropdown so it never overflows the viewport edge */
-        .mh-dropdown-menu.right { left:auto; right:0; transform:none; min-width:230px; }
-        .mh-dropdown-item { color:#9ca3af; font-size:13px; font-weight:500; text-decoration:none; padding:9px 12px; border-radius:8px; font-family:'Outfit',sans-serif; transition:background 0.12s,color 0.12s; white-space:nowrap; }
-        .mh-dropdown-item:hover { background:rgba(255,255,255,0.07); color:#fff; }
-        .mh-dropdown-item-title { color:#f3f4f6; font-size:13.5px; font-weight:700; }
+        .mh-dropdown-menu.right { left:auto; right:0; transform:none; min-width:236px; }
+        .mh-dropdown-item { color:#4b5563; font-size:13px; font-weight:500; text-decoration:none; padding:9px 12px; border-radius:8px; font-family:'Outfit',sans-serif; transition:background 0.12s,color 0.12s; white-space:nowrap; }
+        .mh-dropdown-item:hover { background:#f3f4f6; color:#111827; }
+        .mh-dropdown-item-title { color:#111827; font-size:13.5px; font-weight:700; }
         .mh-dropdown-item-sub { color:#6b7280; font-size:11.5px; font-weight:500; margin-top:1px; }
-        .mh-cta { display:flex; align-items:center; gap:7px; background:#dc2626; color:#fff; font-size:14px; font-weight:700; padding:9px 18px; border-radius:9px; text-decoration:none; font-family:'Outfit',sans-serif; transition:background 0.15s,transform 0.15s; white-space:nowrap; cursor:pointer; border:none; }
-        .mh-cta:hover { background:#b91c1c; transform:translateY(-1px); }
+
+        /* ── saved ── */
+        .mh-saved { display:flex; align-items:center; gap:6px; background:none; border:none; cursor:pointer; font-size:14px; font-weight:500; font-family:'Outfit',sans-serif; position:relative; padding:6px 2px; transition:color 0.15s; }
+
+        /* ── contact / auth ── */
+        .mh-phone { display:flex; align-items:center; gap:7px; color:#374151; font-size:13px; font-weight:600; text-decoration:none; font-family:'Outfit',sans-serif; padding:8px 13px; border:1px solid rgba(0,0,0,0.1); border-radius:9px; transition:border-color 0.15s, color 0.15s; white-space:nowrap; }
+        .mh-phone:hover { border-color:rgba(0,0,0,0.28); color:#111827; }
+        .mh-cta { display:flex; align-items:center; gap:7px; background:#dc2626; color:#fff; font-size:14px; font-weight:700; padding:9px 18px; border-radius:9px; text-decoration:none; font-family:'Outfit',sans-serif; transition:background 0.15s,transform 0.15s,box-shadow 0.15s; white-space:nowrap; cursor:pointer; border:none; box-shadow:0 1px 2px rgba(220,38,38,0.25); }
+        .mh-cta:hover { background:#b91c1c; transform:translateY(-1px); box-shadow:0 6px 18px rgba(220,38,38,0.28); }
         .mh-cta-chevron { transition:transform 0.2s; display:inline-block; font-size:11px; }
         .mh-dropdown:hover .mh-cta-chevron { transform:rotate(180deg); }
-        .mh-signin { display:flex; align-items:center; gap:7px; background:transparent; border:1px solid rgba(255,255,255,0.15); color:#d1d5db; font-size:14px; font-weight:600; padding:9px 16px; border-radius:9px; text-decoration:none; font-family:'Outfit',sans-serif; transition:border-color 0.15s,color 0.15s; white-space:nowrap; }
-        .mh-signin:hover { border-color:rgba(255,255,255,0.35); color:#fff; }
-        .mh-hamburger { display:none; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:8px; padding:8px; cursor:pointer; align-items:center; justify-content:center; transition:background 0.15s; }
-        .mh-hamburger:hover { background:rgba(255,255,255,0.1); }
-        .mh-mobile-nav { display:none; flex-direction:column; gap:2px; padding:12px 20px 16px; border-top:1px solid rgba(255,255,255,0.06); background:rgba(12,12,14,0.97); backdrop-filter:blur(16px); }
-        .mh-mobile-link { color:#9ca3af; font-size:15px; font-weight:500; text-decoration:none; padding:11px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-family:'Outfit',sans-serif; transition:color 0.15s; display:block; }
-        .mh-mobile-link:hover,.mh-mobile-link.active { color:#fff; }
+        .mh-signin { display:flex; align-items:center; gap:7px; background:transparent; border:1px solid rgba(0,0,0,0.12); color:#374151; font-size:14px; font-weight:600; padding:9px 16px; border-radius:9px; text-decoration:none; font-family:'Outfit',sans-serif; transition:border-color 0.15s,color 0.15s; white-space:nowrap; }
+        .mh-signin:hover { border-color:rgba(0,0,0,0.3); color:#111827; }
+
+        /* ── mobile ── */
+        .mh-hamburger { display:none; background:rgba(0,0,0,0.04); border:1px solid rgba(0,0,0,0.08); color:#111827; border-radius:9px; padding:8px; cursor:pointer; align-items:center; justify-content:center; transition:background 0.15s; }
+        .mh-hamburger:hover { background:rgba(0,0,0,0.07); }
+        .mh-mobile-nav { display:none; flex-direction:column; gap:2px; padding:12px 20px 16px; border-top:1px solid rgba(0,0,0,0.06); background:#ffffff; }
+        .mh-mobile-link { color:#4b5563; font-size:15px; font-weight:500; text-decoration:none; padding:12px 0; border-bottom:1px solid rgba(0,0,0,0.05); font-family:'Outfit',sans-serif; transition:color 0.15s; display:block; }
+        .mh-mobile-link:hover,.mh-mobile-link.active { color:#111827; }
         .mh-mobile-link.active { border-left:2px solid #dc2626; padding-left:10px; }
-        .mh-mobile-sub { padding:6px 0 6px 16px; display:flex; flex-direction:column; gap:0; border-bottom:1px solid rgba(255,255,255,0.05); }
-        .mh-mobile-sub-item { color:#6b7280; font-size:13px; font-weight:500; text-decoration:none; padding:8px 0; font-family:'Outfit',sans-serif; transition:color 0.12s; }
-        .mh-mobile-sub-item:hover { color:#fff; }
+        .mh-mobile-sub { padding:6px 0 6px 16px; display:flex; flex-direction:column; gap:0; border-bottom:1px solid rgba(0,0,0,0.05); }
+        .mh-mobile-sub-item { color:#6b7280; font-size:13px; font-weight:500; text-decoration:none; padding:9px 0; font-family:'Outfit',sans-serif; transition:color 0.12s; }
+        .mh-mobile-sub-item:hover { color:#111827; }
         .mh-mobile-cta { margin-top:10px; display:flex; align-items:center; justify-content:center; gap:7px; background:#dc2626; color:#fff; font-size:15px; font-weight:700; padding:13px; border-radius:10px; text-decoration:none; font-family:'Outfit',sans-serif; }
+        @media (max-width:840px) { .mh-tagline { display:none; } }
         @media (max-width:720px) {
           .mh-desktop-nav { display:none!important; }
           .mh-desktop-cta { display:none!important; }
@@ -86,14 +103,20 @@ export default function MarketplaceHeader() {
         }
       `}</style>
 
-      <header className={`mh-root${scrolled ? ' scrolled' : ''}`} style={{ background:'transparent', borderBottom:'1px solid transparent' }} ref={menuRef}>
+      <header className={`mh-root${scrolled ? ' scrolled' : ''}`} ref={menuRef}>
         <div style={{ maxWidth:'1360px', margin:'0 auto', padding:'0 clamp(20px, 4vw, 48px)', height:'64px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'24px' }}>
-          <Link to="/" style={{ textDecoration:'none', display:'flex', alignItems:'center', gap:'2px', flexShrink:0 }}>
-            <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'26px', letterSpacing:'0.04em', lineHeight:1 }}>
-              <span style={{ color:'#dc2626' }}>X</span><span style={{ color:'#ffffff' }}>DRIVE</span>
-            </span>
-            <span style={{ fontSize:'9px', fontWeight:'700', color:'#6b7280', letterSpacing:'0.1em', marginLeft:'4px', marginTop:'2px', fontFamily:"'Outfit',sans-serif" }}>.MY</span>
-          </Link>
+          <div style={{ display:'flex', alignItems:'center', flexShrink:0 }}>
+            <Link to="/" style={{ textDecoration:'none', display:'flex', alignItems:'center', gap:'2px' }}>
+              <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'26px', letterSpacing:'0.04em', lineHeight:1 }}>
+                <span style={{ color:'#dc2626' }}>X</span><span style={{ color:'#111827' }}>DRIVE</span>
+              </span>
+              <span style={{ fontSize:'9px', fontWeight:'700', color:'#9ca3af', letterSpacing:'0.1em', marginLeft:'4px', marginTop:'2px', fontFamily:"'Outfit',sans-serif" }}>.MY</span>
+            </Link>
+            <div className="mh-tagline">
+              <ShieldCheck size={14} style={{ color:'#dc2626', flexShrink:0 }} />
+              <span className="mh-tagline-txt">Malaysia's Trusted<br />Car Marketplace</span>
+            </div>
+          </div>
 
           <nav className="mh-desktop-nav" style={{ display:'flex', alignItems:'center', gap:'28px', flex:1, justifyContent:'center' }}>
             <Link to="/showroom" className={`mh-nav-link${isShowroom ? ' active' : ''}`}>Showroom</Link>
@@ -112,16 +135,10 @@ export default function MarketplaceHeader() {
             </div>
             <button
               onClick={() => setSavedOpen(true)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: savedIds.size > 0 ? '#f87171' : '#9ca3af',
-                fontSize: 14, fontWeight: 500,
-                fontFamily: "'Outfit',sans-serif", position: 'relative',
-                padding: '6px 2px', transition: 'color 0.15s',
-              }}
+              className="mh-saved"
+              style={{ color: savedIds.size > 0 ? '#dc2626' : '#4b5563' }}
             >
-              <Heart size={14} fill={savedIds.size > 0 ? '#f87171' : 'none'} stroke="currentColor" strokeWidth={2} />
+              <Heart size={14} fill={savedIds.size > 0 ? '#dc2626' : 'none'} stroke="currentColor" strokeWidth={2} />
               Saved
               {savedIds.size > 0 && (
                 <span style={{
@@ -137,8 +154,8 @@ export default function MarketplaceHeader() {
           </nav>
 
           <div style={{ display:'flex', alignItems:'center', gap:'12px', flexShrink:0 }}>
-            <a href={`tel:+${settings.support_whatsapp}`} className="mh-desktop-nav" style={{ display:'flex', alignItems:'center', gap:'6px', color:'#6b7280', fontSize:'13px', fontWeight:'500', textDecoration:'none', fontFamily:"'Outfit',sans-serif" }}>
-              <Phone size={13} /> {settings.support_phone}
+            <a href={`tel:+${settings.support_whatsapp}`} className="mh-phone mh-desktop-cta">
+              <Phone size={13} style={{ color:'#dc2626' }} /> {settings.support_phone}
             </a>
             <a href="/login" className="mh-signin mh-desktop-cta">Sign In</a>
             <div className="mh-dropdown mh-desktop-cta">
@@ -164,8 +181,8 @@ export default function MarketplaceHeader() {
 
         <div className={`mh-mobile-nav${menuOpen ? ' open' : ''}`}>
           <Link to="/showroom" className={`mh-mobile-link${isShowroom ? ' active' : ''}`} onClick={() => setMenuOpen(false)}>Showroom</Link>
-          <a href="/marketplace?hot_deals=true" className="mh-mobile-link" style={{ color:'#fb923c', display:'flex', alignItems:'center', gap:7 }} onClick={() => setMenuOpen(false)}><Flame size={14} /> Hot Deals</a>
-          <button className="mh-mobile-link" style={{ background:'none', border:'none', cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', padding:'11px 0', color:'#9ca3af', fontSize:'15px', fontWeight:'500', fontFamily:"'Outfit',sans-serif" }} onClick={() => setCondOpen(o => !o)}>
+          <a href="/marketplace?hot_deals=true" className="mh-mobile-link" style={{ color:'#ea580c', display:'flex', alignItems:'center', gap:7 }} onClick={() => setMenuOpen(false)}><Flame size={14} /> Hot Deals</a>
+          <button className="mh-mobile-link" style={{ background:'none', border:'none', cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', padding:'12px 0', color:'#4b5563', fontSize:'15px', fontWeight:'500', fontFamily:"'Outfit',sans-serif" }} onClick={() => setCondOpen(o => !o)}>
             Condition <span style={{ fontSize:12 }}>{conditionOpen ? '▲' : '▼'}</span>
           </button>
           {conditionOpen && (
@@ -177,16 +194,16 @@ export default function MarketplaceHeader() {
           )}
           <button
             className="mh-mobile-link"
-            style={{ background:'none', border:'none', cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', gap:8, width:'100%', padding:'11px 0', color: savedIds.size > 0 ? '#f87171' : '#9ca3af', fontSize:15, fontWeight:500, fontFamily:"'Outfit',sans-serif" }}
+            style={{ background:'none', border:'none', cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', gap:8, width:'100%', padding:'12px 0', color: savedIds.size > 0 ? '#dc2626' : '#4b5563', fontSize:15, fontWeight:500, fontFamily:"'Outfit',sans-serif" }}
             onClick={() => { setMenuOpen(false); setSavedOpen(true); }}
           >
-            <Heart size={15} fill={savedIds.size > 0 ? '#f87171' : 'none'} stroke="currentColor" />
+            <Heart size={15} fill={savedIds.size > 0 ? '#dc2626' : 'none'} stroke="currentColor" />
             Saved Cars {savedIds.size > 0 && `(${savedIds.size})`}
           </button>
-          <a href={`tel:+${settings.support_whatsapp}`} className="mh-mobile-link" style={{ display:'flex', alignItems:'center', gap:'8px' }}><Phone size={14} /> {settings.support_phone}</a>
-          <a href="/login" className="mh-mobile-link" style={{ color:'#9ca3af', borderBottom:'none' }} onClick={() => setMenuOpen(false)}>Sign In →</a>
+          <a href={`tel:+${settings.support_whatsapp}`} className="mh-mobile-link" style={{ display:'flex', alignItems:'center', gap:'8px', color:'#374151' }}><Phone size={14} style={{ color:'#dc2626' }} /> {settings.support_phone}</a>
+          <a href="/login" className="mh-mobile-link" style={{ color:'#4b5563', borderBottom:'none' }} onClick={() => setMenuOpen(false)}>Sign In →</a>
           <a href="/shiftos" className="mh-mobile-cta" onClick={() => setMenuOpen(false)}>Get Started — For Dealers</a>
-          <a href="/shiftos?for=salesman#pricing" className="mh-mobile-cta" style={{ marginTop:8, background:'transparent', border:'1px solid rgba(220,38,38,0.5)', color:'#f87171' }} onClick={() => setMenuOpen(false)}>Get Started — For Salesmen</a>
+          <a href="/shiftos?for=salesman#pricing" className="mh-mobile-cta" style={{ marginTop:8, background:'transparent', border:'1px solid rgba(220,38,38,0.5)', color:'#dc2626' }} onClick={() => setMenuOpen(false)}>Get Started — For Salesmen</a>
         </div>
       </header>
       <SavedCarsPanel open={savedOpen} onClose={() => setSavedOpen(false)} />

@@ -2606,6 +2606,13 @@ function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
 // ─── AnalyticsTab ─────────────────────────────────────────────────────────────
 function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStaleAdjusted, adjustedStaleIds }) {
   const { can } = usePermissions(profile);
+  // SF-2b: map reserved_by -> salesman first name for the Reserved badge sub-label
+  // (dealer-only surface; never exposed to public storefront visitors).
+  const salesmanFirstName = (id) => {
+    if (!id) return null;
+    const full = salesmen.find((s) => s.id === id)?.full_name;
+    return full ? full.split(' ')[0] : null;
+  };
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -3325,6 +3332,11 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                             <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${statusCls}`} style={{ letterSpacing:'0.04em', textTransform:'capitalize' }}>
                               {statusKey}
                             </span>
+                            {statusKey === 'reserved' && salesmanFirstName(l.reserved_by) && (
+                              <p style={{ fontSize:10, color:'#6b7280', margin:'3px 0 0' }}>
+                                by {salesmanFirstName(l.reserved_by)}
+                              </p>
+                            )}
                           </td>
                         </tr>
                       );
@@ -3373,6 +3385,9 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                               RM {l.selling_price?.toLocaleString() || '—'}
                             </span>
                             <AgeBadge createdAt={l.created_at} />
+                            {statusKey === 'reserved' && salesmanFirstName(l.reserved_by) && (
+                              <span style={{ fontSize:10, color:'#6b7280' }}>Reserved by {salesmanFirstName(l.reserved_by)}</span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -9255,7 +9270,7 @@ export default function DashboardPage() {
       const [{ data: cars, error: carsError }, { data: sm }] = await Promise.all([
         supabase
           .from("car_listings")
-          .select("id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,condition,images,status,created_at,dealer_id,assigned_to,commission_amount,sold_at,included_services,included_services_cost,auction_grade,interior_grade,is_recon,financing_type,engine_cc,previous_owners,plate_number,vin_number,engine_number,road_tax_expiry,warranty_months,deposit_amount")
+          .select("id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,condition,images,status,created_at,dealer_id,assigned_to,commission_amount,sold_at,included_services,included_services_cost,auction_grade,interior_grade,is_recon,financing_type,engine_cc,previous_owners,plate_number,vin_number,engine_number,road_tax_expiry,warranty_months,deposit_amount,reserved_by,reserved_at")
           .eq("dealer_id", dealerId)
           .order("created_at", { ascending: false }),
         supabase
