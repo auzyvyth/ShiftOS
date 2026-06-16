@@ -871,7 +871,6 @@ const HomePage = () => {
             {[
               { v: stock != null ? String(stock) : "—", l: "In Stock" },
               { v: soldDisplay, l: "Cars Sold" },
-              { v: "RM 0", l: "Free Consultation" },
             ].map((s, i, arr) => (
               <FadeIn key={i} delay={i * 0.08} style={{ flex: 1 }}>
                 <div

@@ -110,14 +110,13 @@ no location/map/hours, no real reviews, no on-site finance/trade-in tools.
   pipeline), Salesmanpanel lead card ("Reserved by you"). Trigger verified by test.
 - [ ] **SF-3: Inventory-first storefront restructure** — PARTIAL. Already done: About
   text renders on storefront (HomePage:919-938), "For Dealers" self-promo gated to
-  marketplace-only (:1326), 4.9-star fake stat removed. STILL OPEN:
-  1. Remove fake `"RM 0 / Free Consultation"` stat from the storefront stats strip
-     (HomePage:874) — replace with a real metric or drop the third cell.
-  2. Stop falling back to `HARDCODED_DEFAULT_TESTIMONIALS` (HomePage:379, 405) on
+  marketplace-only (:1326), 4.9-star fake stat removed, fake "RM 0 / Free Consultation"
+  stat removed (stats strip now 2 real cells: In Stock + Cars Sold). STILL OPEN:
+  1. Stop falling back to `HARDCODED_DEFAULT_TESTIMONIALS` (HomePage:379, 405) on
      subdomain storefronts — show nothing unless the dealer has real testimonials.
-  3. Add a real contact/location block (address, hours, map/click-to-call) — no
+  2. Add a real contact/location block (address, hours, map/click-to-call) — no
      such block exists today; render dealer logo (site_logo_url) in storefront header.
-  4. (Optional) demote hero carousel + add on-page inventory search/filter; detail
+  3. (Optional) demote hero carousel + add on-page inventory search/filter; detail
      page can adopt dconcept.my framed gallery + status+code line + clean spec grid.
 
 ### DEALER DASHBOARD UX/BUG AUDIT (2026-06-07) — all DASH-1..9 shipped
