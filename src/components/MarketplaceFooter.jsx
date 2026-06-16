@@ -1,13 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MessageCircle, Instagram, Facebook, Mail, Shield, Zap, BookOpen, Car, Users, BarChart3, ArrowUpRight } from 'lucide-react';
+import { MessageCircle, Instagram, Facebook, Mail, Shield, Zap, BookOpen, Car, Users, BarChart3, ArrowUpRight, ChevronDown } from 'lucide-react';
 import { isSubdomain } from '../hooks/useTenant';
 import useMarketplaceSettings from '../hooks/useMarketplaceSettings';
+import { PLAN_CONFIG } from '../utils/planConfig';
 
 const TRUST_ICONS = [Shield, BookOpen, Users, Car];
 
+// Footer pricing tiers — each renders as a click-to-expand dropdown. Prices/caps
+// come from planConfig (single source of truth) so footer copy never drifts.
+const FOOTER_TIERS = [
+  { key: 'dealer_starter',  href: '/shiftos#pricing' },
+  { key: 'dealer_growth',   href: '/shiftos#pricing' },
+  { key: 'dealer_pro',      href: '/shiftos#pricing' },
+  { key: 'salesman_lite',   href: '/shiftos?for=salesman#pricing' },
+  { key: 'salesman_full',   href: '/shiftos?for=salesman#pricing' },
+];
+const tierCaps = (k) => {
+  const c = PLAN_CONFIG[k];
+  return c.listingCap == null
+    ? 'Unlimited listings & team seats'
+    : `${c.listingCap} listings · ${c.seatCap} seat${c.seatCap > 1 ? 's' : ''}`;
+};
+
 export default function MarketplaceFooter() {
   const { settings, copyright } = useMarketplaceSettings();
+  const [openTier, setOpenTier] = useState(null);
 
   if (isSubdomain()) return null;
 
@@ -25,11 +43,14 @@ export default function MarketplaceFooter() {
       ],
     },
     {
-      heading: 'For Dealers',
+      heading: 'Product',
       links: [
-        { label: 'List Your Inventory', to: '/shiftos#features' },
-        { label: 'ShiftOS DMS',         to: '/shiftos' },
-        { label: 'Dealer Pricing',      to: '/shiftos#pricing' },
+        { label: 'ShiftOS DMS',        to: '/shiftos' },
+        { label: 'Smart Inventory',    to: '/shiftos#features' },
+        { label: 'Leads CRM',          to: '/shiftos#features' },
+        { label: 'Revenue Analytics',  to: '/shiftos#features' },
+        { label: 'F&I & Documents',    to: '/shiftos#features' },
+        { label: 'Post-Sale Handover', to: '/shiftos#features' },
         { label: 'Partner with XDrive', href: `https://wa.me/${settings.support_whatsapp}?text=${encodeURIComponent("Hi! I'm interested in partnering with XDrive / ShiftOS for my dealership. Can we discuss?")}` },
       ],
     },
@@ -123,7 +144,7 @@ export default function MarketplaceFooter() {
       </div>
 
       {/* ── Main link grid ───────────────────────────────────────────── */}
-      <div className="max-w-6xl mx-auto px-5 py-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10">
+      <div className="max-w-6xl mx-auto px-5 py-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-x-8 gap-y-10">
 
         {/* Brand column */}
         <div>
@@ -171,6 +192,45 @@ export default function MarketplaceFooter() {
             </ul>
           </div>
         ))}
+
+        {/* Pricing — one expandable dropdown per tier */}
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.13em] text-gray-400 mb-4">Pricing</p>
+          <ul className="space-y-1">
+            {FOOTER_TIERS.map(({ key, href }) => {
+              const cfg = PLAN_CONFIG[key];
+              const open = openTier === key;
+              return (
+                <li key={key} className="border-b border-gray-100 last:border-b-0">
+                  <button
+                    type="button"
+                    onClick={() => setOpenTier(open ? null : key)}
+                    aria-expanded={open}
+                    className="w-full flex items-center justify-between gap-2 py-2 text-left group"
+                  >
+                    <span className="text-[13px] font-semibold text-gray-700 group-hover:text-red-600 transition-colors">
+                      {cfg.label}
+                    </span>
+                    <span className="flex items-center gap-1 flex-shrink-0">
+                      <span className="text-[11px] font-bold text-gray-400">
+                        {cfg.price ? `RM${cfg.price}` : 'Free'}
+                      </span>
+                      <ChevronDown size={13} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+                    </span>
+                  </button>
+                  {open && (
+                    <div className="pb-3 pl-0.5">
+                      <p className="text-[12px] text-gray-500 leading-relaxed mb-2">{tierCaps(key)}</p>
+                      <Link to={href} className="inline-flex items-center gap-1 text-[12px] font-semibold text-red-600 hover:text-red-700 transition-colors">
+                        View plan <ArrowUpRight size={11} />
+                      </Link>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </div>
 
       {/* ── Bottom bar ───────────────────────────────────────────────── */}

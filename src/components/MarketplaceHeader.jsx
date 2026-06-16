@@ -1,10 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { X, Flame, Menu, Phone, Heart, Car, Sparkles, RefreshCw, ShieldCheck } from 'lucide-react';
+import { X, Flame, Menu, Phone, Heart, Car, Sparkles, RefreshCw, Building2, TrendingUp, Crown, User, Star } from 'lucide-react';
 import { useSavedCars } from '../hooks/useSavedCars';
 import SavedCarsPanel from './SavedCarsPanel';
 import AnnouncementBar from './AnnouncementBar';
 import useMarketplaceSettings from '../hooks/useMarketplaceSettings';
+import { PLAN_CONFIG } from '../utils/planConfig';
+
+// Tier sub-label from the single source of truth (planConfig) so header copy never drifts.
+const tierSub = (k) => {
+  const c = PLAN_CONFIG[k];
+  return c.listingCap == null
+    ? 'Unlimited listings & seats'
+    : `${c.listingCap} listings · ${c.seatCap} seat${c.seatCap > 1 ? 's' : ''}`;
+};
+const tierName = (k) => PLAN_CONFIG[k].label.replace('Dealer ', '').replace('Salesman ', '');
 
 export default function MarketplaceHeader() {
   const [scrolled, setScrolled]      = useState(false);
@@ -38,12 +48,8 @@ export default function MarketplaceHeader() {
     <>
       <AnnouncementBar />
       <style>{`
-        .mh-root { position:sticky; top:0; z-index:100; background:rgba(247,246,242,0.72); backdrop-filter:blur(12px) saturate(1.3); -webkit-backdrop-filter:blur(12px) saturate(1.3); border-bottom:1px solid rgba(0,0,0,0.06); transition:background 0.25s, box-shadow 0.25s, border-color 0.25s; }
-        .mh-root.scrolled { background:rgba(255,255,255,0.94)!important; box-shadow:0 1px 0 rgba(0,0,0,0.04), 0 6px 24px rgba(15,23,42,0.07); border-bottom-color:rgba(0,0,0,0.08); }
-
-        /* ── logo lockup ── */
-        .mh-tagline { display:flex; align-items:center; gap:7px; padding-left:12px; margin-left:11px; border-left:1px solid rgba(0,0,0,0.1); }
-        .mh-tagline-txt { font-family:'Outfit',sans-serif; font-size:10px; font-weight:700; letter-spacing:0.13em; text-transform:uppercase; color:#6b7280; line-height:1.25; }
+        .mh-root { position:sticky; top:0; z-index:100; background:#ffffff; border-bottom:1px solid #ECECEC; transition:box-shadow 0.25s, border-color 0.25s; }
+        .mh-root.scrolled { box-shadow:0 1px 0 rgba(0,0,0,0.03), 0 8px 28px rgba(15,23,42,0.08); border-bottom-color:#E5E7EB; }
 
         /* ── nav links ── */
         .mh-nav-link { color:#4b5563; font-size:14px; font-weight:500; text-decoration:none; padding:6px 2px; position:relative; transition:color 0.15s; font-family:'Outfit',sans-serif; white-space:nowrap; }
@@ -54,7 +60,7 @@ export default function MarketplaceHeader() {
         .mh-hot-link::after { background:#ea580c!important; }
         .mh-hot-link:hover { color:#c2410c!important; }
 
-        /* ── dropdown ── */
+        /* ── dropdown (mega) ── */
         .mh-dropdown { position:relative; }
         .mh-dropdown-trigger { color:#4b5563; font-size:14px; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:5px; font-family:'Outfit',sans-serif; white-space:nowrap; background:none; border:none; padding:6px 2px; position:relative; transition:color 0.15s; }
         .mh-dropdown-trigger::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:#dc2626; transform:scaleX(0); transition:transform 0.2s; transform-origin:left; border-radius:2px; }
@@ -62,13 +68,21 @@ export default function MarketplaceHeader() {
         .mh-dropdown:hover .mh-dropdown-trigger::after, .mh-dropdown-trigger.active::after { transform:scaleX(1); }
         .mh-dropdown-chevron { transition:transform 0.2s; display:inline-block; }
         .mh-dropdown:hover .mh-dropdown-chevron { transform:rotate(180deg); }
-        .mh-dropdown-menu { position:absolute; top:calc(100% + 10px); left:50%; transform:translateX(-50%); min-width:176px; background:#ffffff; border:1px solid rgba(0,0,0,0.08); border-radius:12px; padding:6px; display:none; flex-direction:column; gap:2px; box-shadow:0 12px 40px rgba(15,23,42,0.14); z-index:200; }
-        .mh-dropdown:hover .mh-dropdown-menu { display:flex; }
-        .mh-dropdown-menu.right { left:auto; right:0; transform:none; min-width:236px; }
-        .mh-dropdown-item { color:#4b5563; font-size:13px; font-weight:500; text-decoration:none; padding:9px 12px; border-radius:8px; font-family:'Outfit',sans-serif; transition:background 0.12s,color 0.12s; white-space:nowrap; }
-        .mh-dropdown-item:hover { background:#f3f4f6; color:#111827; }
-        .mh-dropdown-item-title { color:#111827; font-size:13.5px; font-weight:700; }
-        .mh-dropdown-item-sub { color:#6b7280; font-size:11.5px; font-weight:500; margin-top:1px; }
+
+        /* menu is a transparent positioning wrapper; padding-top is the hover-bridge
+           so moving the cursor from trigger to card never crosses a dead zone */
+        .mh-dropdown-menu { position:absolute; top:100%; left:50%; transform:translateX(-50%); padding-top:12px; display:none; z-index:200; }
+        .mh-dropdown:hover .mh-dropdown-menu { display:block; }
+        .mh-dropdown-menu.right { left:auto; right:0; transform:none; }
+        .mh-mega { background:#ffffff; border:1px solid #ECECEC; border-radius:16px; padding:10px; box-shadow:0 18px 50px rgba(15,23,42,0.16); animation:mhFade 0.16s ease; }
+        @keyframes mhFade { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+        .mh-mega-row { display:flex; align-items:flex-start; gap:13px; padding:11px 12px; border-radius:12px; text-decoration:none; transition:background 0.13s; }
+        .mh-mega-row:hover { background:#F7F6F2; }
+        .mh-mega-ico { width:38px; height:38px; border-radius:11px; background:#FEF2F2; color:#dc2626; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:background 0.13s; }
+        .mh-mega-row:hover .mh-mega-ico { background:#FEE2E2; }
+        .mh-mega-tt { color:#111827; font-size:14px; font-weight:700; font-family:'Outfit',sans-serif; line-height:1.2; }
+        .mh-mega-ds { color:#6b7280; font-size:12px; font-weight:500; font-family:'Outfit',sans-serif; margin-top:3px; line-height:1.35; }
+        .mh-mega-head { font-size:10.5px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#9ca3af; font-family:'Outfit',sans-serif; padding:8px 12px 4px; }
 
         /* ── saved ── */
         .mh-saved { display:flex; align-items:center; gap:6px; background:none; border:none; cursor:pointer; font-size:14px; font-weight:500; font-family:'Outfit',sans-serif; position:relative; padding:6px 2px; transition:color 0.15s; }
@@ -94,7 +108,6 @@ export default function MarketplaceHeader() {
         .mh-mobile-sub-item { color:#6b7280; font-size:13px; font-weight:500; text-decoration:none; padding:9px 0; font-family:'Outfit',sans-serif; transition:color 0.12s; }
         .mh-mobile-sub-item:hover { color:#111827; }
         .mh-mobile-cta { margin-top:10px; display:flex; align-items:center; justify-content:center; gap:7px; background:#dc2626; color:#fff; font-size:15px; font-weight:700; padding:13px; border-radius:10px; text-decoration:none; font-family:'Outfit',sans-serif; }
-        @media (max-width:840px) { .mh-tagline { display:none; } }
         @media (max-width:720px) {
           .mh-desktop-nav { display:none!important; }
           .mh-desktop-cta { display:none!important; }
@@ -112,10 +125,6 @@ export default function MarketplaceHeader() {
               </span>
               <span style={{ fontSize:'9px', fontWeight:'700', color:'#9ca3af', letterSpacing:'0.1em', marginLeft:'4px', marginTop:'2px', fontFamily:"'Outfit',sans-serif" }}>.MY</span>
             </Link>
-            <div className="mh-tagline">
-              <ShieldCheck size={14} style={{ color:'#dc2626', flexShrink:0 }} />
-              <span className="mh-tagline-txt">Malaysia's Trusted<br />Car Marketplace</span>
-            </div>
           </div>
 
           <nav className="mh-desktop-nav" style={{ display:'flex', alignItems:'center', gap:'28px', flex:1, justifyContent:'center' }}>
@@ -128,9 +137,20 @@ export default function MarketplaceHeader() {
                 Condition <span className="mh-dropdown-chevron">▾</span>
               </button>
               <div className="mh-dropdown-menu" role="menu">
-                <a href="/showroom?condition=used"  className="mh-dropdown-item" style={{ display:'flex', alignItems:'center', gap:7 }}><Car size={13} /> Used Cars</a>
-                <a href="/showroom?condition=new"   className="mh-dropdown-item" style={{ display:'flex', alignItems:'center', gap:7 }}><Sparkles size={13} /> New Cars</a>
-                <a href="/showroom?condition=recon" className="mh-dropdown-item" style={{ display:'flex', alignItems:'center', gap:7 }}><RefreshCw size={13} /> Recon / Import</a>
+                <div className="mh-mega" style={{ width:340 }}>
+                  <a href="/showroom?condition=used" className="mh-mega-row">
+                    <span className="mh-mega-ico"><Car size={18} /></span>
+                    <span><span className="mh-mega-tt">Used Cars</span><span className="mh-mega-ds" style={{ display:'block' }}>Inspected pre-owned cars from trusted dealers</span></span>
+                  </a>
+                  <a href="/showroom?condition=new" className="mh-mega-row">
+                    <span className="mh-mega-ico"><Sparkles size={18} /></span>
+                    <span><span className="mh-mega-tt">New Cars</span><span className="mh-mega-ds" style={{ display:'block' }}>Brand-new units straight from the showroom</span></span>
+                  </a>
+                  <a href="/showroom?condition=recon" className="mh-mega-row">
+                    <span className="mh-mega-ico"><RefreshCw size={18} /></span>
+                    <span><span className="mh-mega-tt">Recon / Import</span><span className="mh-mega-ds" style={{ display:'block' }}>Reconditioned imports, graded and verified</span></span>
+                  </a>
+                </div>
               </div>
             </div>
             <button
@@ -163,14 +183,25 @@ export default function MarketplaceHeader() {
                 Get Started <span className="mh-cta-chevron">▾</span>
               </button>
               <div className="mh-dropdown-menu right" role="menu">
-                <a href="/shiftos" className="mh-dropdown-item">
-                  <div className="mh-dropdown-item-title">For Dealers</div>
-                  <div className="mh-dropdown-item-sub">Run your dealership on ShiftOS</div>
-                </a>
-                <a href="/shiftos?for=salesman#pricing" className="mh-dropdown-item">
-                  <div className="mh-dropdown-item-title">For Salesmen</div>
-                  <div className="mh-dropdown-item-sub">Free plan — list cars, track leads</div>
-                </a>
+                <div className="mh-mega" style={{ width:316 }}>
+                  <div className="mh-mega-head">For Dealers</div>
+                  {[['dealer_starter', Building2], ['dealer_growth', TrendingUp], ['dealer_pro', Crown]].map(([k, Icon]) => (
+                    <a key={k} href="/shiftos#pricing" className="mh-mega-row">
+                      <span className="mh-mega-ico"><Icon size={18} /></span>
+                      <span><span className="mh-mega-tt">{tierName(k)} · RM{PLAN_CONFIG[k].price}/mo</span><span className="mh-mega-ds" style={{ display:'block' }}>{tierSub(k)}</span></span>
+                    </a>
+                  ))}
+                  <div style={{ height:1, background:'#F1F1F1', margin:'6px 10px' }} />
+                  <div className="mh-mega-head">For Salesmen</div>
+                  <a href="/shiftos?for=salesman#pricing" className="mh-mega-row">
+                    <span className="mh-mega-ico"><User size={18} /></span>
+                    <span><span className="mh-mega-tt">{tierName('salesman_lite')} · Free</span><span className="mh-mega-ds" style={{ display:'block' }}>List up to {PLAN_CONFIG.salesman_lite.listingCap} cars, track leads</span></span>
+                  </a>
+                  <a href="/shiftos?for=salesman#pricing" className="mh-mega-row">
+                    <span className="mh-mega-ico"><Star size={18} /></span>
+                    <span><span className="mh-mega-tt">{tierName('salesman_full')} · RM{PLAN_CONFIG.salesman_full.price}/mo</span><span className="mh-mega-ds" style={{ display:'block' }}>{PLAN_CONFIG.salesman_full.listingCap} cars + AI tools & deal sheets</span></span>
+                  </a>
+                </div>
               </div>
             </div>
             <button className="mh-hamburger" aria-label="Toggle menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}>
