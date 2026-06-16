@@ -99,20 +99,15 @@ no location/map/hours, no real reviews, no on-site finance/trade-in tools.
 - [x] **SF-2: Auto-reserve from lead lifecycle (public view)** — DONE. DB trigger
   auto-sets `car_listings.status='reserved'` when a lead with a linked car advances
   to `deposit_taken`; reverts to `available` on `lost`; never clobbers `sold`.
-- [ ] **SF-2b: Reserved-by attribution** — When deposit_taken fires the auto-reserve,
-  the car's "Reserved" badge shows no salesman name (dealer and salesman pipelines both
-  silent on who did it). Fix:
-  1. DB: add `reserved_by uuid REFERENCES profiles(id)` + `reserved_at timestamptz` to
-     `car_listings`; update the deposit_taken trigger to stamp `reserved_by =
-     NEW.salesman_id` and `reserved_at = now()`; clear both on revert-to-available.
-  2. Update `public_car_listings` VIEW to expose `reserved_by` + join the salesman's
-     `full_name` as `reserved_by_name`.
-  3. UI — show "Reserved by {salesman name}" in three places:
-     - Dealer lead pipeline (LeadsPage kanban card + LeadDrawer header when stage=deposit_taken)
-     - Salesman pipeline (Salesmanpanel lead card progress bar area)
-     - Listing card "Reserved" status badge tooltip/sub-label in dealer StockTab / listings grid
-  Constraint: only show the name to the dealer and the salesman themselves; never
-  expose salesman names to public storefront visitors.
+- [x] **SF-2b: Reserved-by attribution** — DONE. DB: `car_listings.reserved_by` (FK
+  profiles) + `reserved_at`; `sync_car_reservation_on_lead_stage` trigger stamps
+  `reserved_by=NEW.salesman_id` + `reserved_at=now()` on deposit_taken and clears both
+  on lost/closed_lost; existing reserved cars backfilled. The public_car_listings VIEW
+  was deliberately NOT changed — it is anon-readable, so exposing the name there would
+  leak staff names to public visitors (violates the constraint). Name is shown only on
+  authenticated surfaces: AnalyticsTab listings grid Reserved badge (desktop + mobile,
+  mapped via salesmen list), LeadGridCard chip + LeadDrawer Car-of-Interest tag (dealer
+  pipeline), Salesmanpanel lead card ("Reserved by you"). Trigger verified by test.
 - [ ] **SF-3: Inventory-first storefront restructure** — PARTIAL. Already done: About
   text renders on storefront (HomePage:919-938), "For Dealers" self-promo gated to
   marketplace-only (:1326), 4.9-star fake stat removed. STILL OPEN:
