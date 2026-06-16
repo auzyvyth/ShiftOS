@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  getInitials, avatarGradient, getLeadAgeDays, ageTextColor,
+  getInitials, avatarGradient, getLeadAgeDays, ageTextColor, isLeadStale,
 } from '../../lib/leadsHelpers';
 
 // Compact, info-only lead card for the pipeline grid.
@@ -16,6 +16,7 @@ export default function LeadGridCard({ lead, onOpen }) {
   const avatarBg   = avatarGradient(lead.lead_source);
   const days       = getLeadAgeDays(lead.created_at);
   const txtCls     = ageTextColor(days);
+  const needsPing  = isLeadStale(lead);
   const created    = lead.created_at
     ? new Date(lead.created_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: '2-digit' })
     : null;
@@ -53,6 +54,18 @@ export default function LeadGridCard({ lead, onOpen }) {
         }}>
           {lead.buyer_name || 'Unnamed lead'}
         </span>
+        {needsPing && (
+          <span
+            title="Overdue for follow-up"
+            style={{
+              flexShrink: 0, fontSize: 9, fontWeight: 700, letterSpacing: '0.03em',
+              color: '#d97706', background: '#fffbeb', border: '1px solid #fde68a',
+              borderRadius: 20, padding: '1px 7px',
+            }}
+          >
+            Follow up
+          </span>
+        )}
       </div>
 
       {/* Row 2: car model */}

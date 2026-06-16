@@ -180,6 +180,41 @@ export function ageTextColor(days) {
   return 'text-red-400';
 }
 
+// ─── Pipeline ping timing ───────────────────────────────────────────────────
+// Hours of inactivity (since lead.updated_at) before a lead in a given stage
+// counts as needing follow-up. Early stages go cold fast; later, committed
+// stages get more breathing room. Unknown stages fall back to 48h.
+// Single source of truth — used by the dealer pipeline board AND the salesman
+// panels so the "needs a ping" signal never drifts between surfaces.
+export const FOLLOW_UP_HOURS = {
+  new: 5,
+  contacted: 24,
+  viewing_booked: 48,
+  test_drive: 24,
+  negotiating: 48,
+  deposit_taken: 72,
+};
+
+/** Hours-since-activity threshold for a stage (canonicalised), default 48. */
+export function followUpHoursFor(stage) {
+  return FOLLOW_UP_HOURS[canonicalStage(stage)] ?? 48;
+}
+
+/**
+ * True when a lead needs a follow-up ping: either its manual follow_up_at
+ * reminder is overdue, OR it has had no activity for longer than its stage's
+ * threshold. Terminal (won/lost) leads never qualify.
+ */
+export function isLeadStale(lead, now = Date.now()) {
+  if (!lead) return false;
+  const stage = canonicalStage(lead.stage);
+  if (stage === 'won' || stage === 'lost') return false;
+  const overdueFollowUp = lead.follow_up_at && new Date(lead.follow_up_at).getTime() <= now;
+  const cutoff = now - followUpHoursFor(stage) * 3600 * 1000;
+  const inactive = lead.updated_at && new Date(lead.updated_at).getTime() < cutoff;
+  return Boolean(overdueFollowUp || inactive);
+}
+
 /** Extract 1-2 initials from a name */
 export function getInitials(name = '') {
   return name.trim().split(/\s+/).map(w => w[0]?.toUpperCase() || '').slice(0, 2).join('');

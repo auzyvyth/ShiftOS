@@ -65,6 +65,7 @@ import {
 } from "lucide-react";
 
 import { callClaude } from "../lib/callClaude";
+import { followUpHoursFor, isLeadStale } from "../lib/leadsHelpers";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import UpgradeBanner from "../components/ai/UpgradeBanner";
 import AiLoadingState from "../components/ai/AiLoadingState";
@@ -328,19 +329,12 @@ export default function SalesmanPanel() {
 
  const isPremium = profile?.plan === 'salesman_full';
 
- // stale leads (48h no contact, exclude won/lost/closed)
+ // stale leads — per-stage follow-up ping timing (FOLLOW_UP_HOURS), excludes
+ // won/lost/closed. Flagged when the manual reminder is overdue OR there's been
+ // no activity for longer than the lead's stage threshold (shared isLeadStale).
  useEffect(() => {
- const now = new Date();
- const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000);
- setStaleLeads(
- leads.filter((l) => {
- if (["won", "lost", "closed_won", "closed_lost"].includes(l.stage)) return false;
- // stale = overdue follow-up AND no activity in 48h (both must be true)
- const overdueFollowUp = l.follow_up_at && new Date(l.follow_up_at) <= now;
- const noRecentActivity = l.updated_at && new Date(l.updated_at) < cutoff;
- return overdueFollowUp && noRecentActivity;
- })
- );
+ const now = Date.now();
+ setStaleLeads(leads.filter((l) => isLeadStale(l, now)));
  }, [leads]);
 
  // sync profile → settings form
@@ -4189,7 +4183,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const waPhone = (current.phone || '').replace(/\D/g, '');
  const waNum = waPhone.startsWith('6')? waPhone : '6' + waPhone;
  const carName = car? `${car.brand} ${car.model}` : 'kereta tu';
- const isStale = current.updated_at && Date.now() - new Date(current.updated_at).getTime() > 48 * 3600 * 1000;
+ const isStale = current.updated_at && Date.now() - new Date(current.updated_at).getTime() > followUpHoursFor(current.stage) * 3600 * 1000;
  const msg = isStale
 ? `Hi ${current.buyer_name || 'kawan'}! Ada orang lain tengah tanya pasal ${carName} ni — kalau you still interested, jom lock dulu sebelum terlambat `
  : `Hi ${current.buyer_name || 'kawan'}! Macam mana, still interested dalam ${carName} tu? Jom kita discuss lagi `;
@@ -4612,7 +4606,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </div>
  )}
  {lead.updated_at && (
- <p style={{ margin: "2px 0 0", fontSize: 10, color: Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000? "#fb923c" : "#374151" }}>Last contact: {timeAgo(lead.updated_at)}
+ <p style={{ margin: "2px 0 0", fontSize: 10, color: Date.now() - new Date(lead.updated_at).getTime() > followUpHoursFor(lead.stage) * 3600 * 1000? "#fb923c" : "#374151" }}>Last contact: {timeAgo(lead.updated_at)}
  </p>
  )}
  {lead.last_call_outcome && (() => {
@@ -4669,7 +4663,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <button
  onClick={() => {
  const waCarName = car? `${car.brand} ${car.model}` : "kereta tu";
- const isStale = lead.updated_at && Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000;
+ const isStale = lead.updated_at && Date.now() - new Date(lead.updated_at).getTime() > followUpHoursFor(lead.stage) * 3600 * 1000;
  const msg = isStale
 ? `Hi ${lead.buyer_name || "kawan"}! Ada orang lain tengah tanya pasal ${waCarName} ni — kalau you still interested, jom lock dulu sebelum terlambat `
  : `Hi ${lead.buyer_name || "kawan"}! Macam mana, still interested dalam ${waCarName} tu? Jom kita discuss lagi `;
