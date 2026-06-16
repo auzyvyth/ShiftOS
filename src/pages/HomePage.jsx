@@ -402,8 +402,10 @@ const HomePage = () => {
 
   const whyData = tenant?.storefront_why || HARDCODED_DEFAULT_WHY;
   const howData = tenant?.storefront_how || HARDCODED_DEFAULT_HOW;
+  // On a dealer storefront, never fabricate reviews — show real ones or nothing.
+  // The main XDrive marketplace keeps its default set.
   const testimonialsData =
-    tenant?.storefront_testimonials || HARDCODED_DEFAULT_TESTIMONIALS;
+    tenant?.storefront_testimonials || (isSubdomain() ? [] : HARDCODED_DEFAULT_TESTIMONIALS);
   const ctaData = tenant?.storefront_cta || HARDCODED_DEFAULT_CTA;
 
   const whyIcons = [TrendingDown, UserCheck, ShieldCheck, DollarSign];
@@ -1099,7 +1101,8 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* ══════════ TESTIMONIALS ══════════ */}
+      {/* ══════════ TESTIMONIALS — hidden when there are none (no fake fallback on storefronts) ══════════ */}
+      {testimonials.length > 0 && (
       <section className="sec-pad" style={secA}>
         <div style={wrap}>
           <FadeIn>
@@ -1216,6 +1219,7 @@ const HomePage = () => {
           </div>
         </div>
       </section>
+      )}
 
       {/* ══════════ CALCULATOR ══════════ */}
       <section className="sec-pad" style={secB}>
