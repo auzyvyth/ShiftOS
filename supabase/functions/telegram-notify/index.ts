@@ -20,13 +20,41 @@ serve(async (req) => {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("telegram_bot_token, telegram_channel_id, telegram_auto_post, dealership, whatsapp_number")
+      .select("id, role, plan, dealer_id, full_name, telegram_bot_token, telegram_channel_id, telegram_auto_post, dealership, whatsapp_number")
       .eq("id", listing.dealer_id)
       .maybeSingle();
 
-    if (!profile?.telegram_auto_post) return new Response("auto-post off", { status: 200 });
-    if (!profile?.telegram_bot_token || !profile?.telegram_channel_id)
-      return new Response("missing creds", { status: 200 });
+    if (!profile) return new Response("no profile", { status: 200 });
+
+    // A listing's dealer_id only points to a *salesman* profile when that
+    // salesman owns themselves (Salesman Lite — no parent dealer). Linked
+    // salesmen's listings carry the parent dealer's id instead, so this flag
+    // cleanly identifies a Salesman Lite post.
+    const isSalesmanLite = profile.role === "salesman";
+
+    // Resolve the recipient channel + an oversight note:
+    //  - Salesman Lite -> ping the platform superadmin's channel.
+    //  - Everyone else -> their own configured channel (existing behaviour).
+    let recipient = profile;
+    let posterNote = "";
+    if (isSalesmanLite) {
+      const { data: superadmin } = await supabase
+        .from("profiles")
+        .select("telegram_bot_token, telegram_channel_id")
+        .eq("role", "superadmin")
+        .not("telegram_bot_token", "is", null)
+        .not("telegram_channel_id", "is", null)
+        .limit(1)
+        .maybeSingle();
+      if (!superadmin?.telegram_bot_token || !superadmin?.telegram_channel_id)
+        return new Response("no superadmin telegram", { status: 200 });
+      recipient = superadmin;
+      posterNote = `🆕 *New Salesman Lite listing* — by ${profile.full_name || "a salesman"}\n\n`;
+    } else {
+      if (!profile.telegram_auto_post) return new Response("auto-post off", { status: 200 });
+      if (!profile.telegram_bot_token || !profile.telegram_channel_id)
+        return new Response("missing creds", { status: 200 });
+    }
 
     const l = listing;
     const discount = l.original_price && l.selling_price && l.original_price > l.selling_price
@@ -63,12 +91,14 @@ serve(async (req) => {
         .join(" "),
     ].filter((x) => x !== null).join("\n");
 
+    const text = posterNote + lines;
+
     const hasPhoto = l.images && l.images.length > 0;
-    const telegramUrl = `https://api.telegram.org/bot${profile.telegram_bot_token}/${hasPhoto ? "sendPhoto" : "sendMessage"}`;
+    const telegramUrl = `https://api.telegram.org/bot${recipient.telegram_bot_token}/${hasPhoto ? "sendPhoto" : "sendMessage"}`;
 
     const body = hasPhoto
-      ? { chat_id: profile.telegram_channel_id, photo: l.images[0], caption: lines, parse_mode: "Markdown" }
-      : { chat_id: profile.telegram_channel_id, text: lines, parse_mode: "Markdown" };
+      ? { chat_id: recipient.telegram_channel_id, photo: l.images[0], caption: text, parse_mode: "Markdown" }
+      : { chat_id: recipient.telegram_channel_id, text: text, parse_mode: "Markdown" };
 
     const tgRes = await fetch(telegramUrl, {
       method: "POST",
