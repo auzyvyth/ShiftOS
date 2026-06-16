@@ -96,7 +96,7 @@ export default function MarketplaceFooter() {
                 ))}
               </div>
               <Link
-                to="/signup"
+                to="/shiftos"
                 className="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors"
               >
                 Start Free Trial <ArrowUpRight size={13} />
