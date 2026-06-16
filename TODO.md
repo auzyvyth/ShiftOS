@@ -80,10 +80,10 @@
 
 - [x] **CRIT-0 (CRITICAL, FOUND MID-AUDIT — FIXED): Anonymous visitors got "This dealer page doesn't exist" on every subdomain** — root cause of the "very slow" perception: migration `rebuild_views_security_invoker` (2026-05-27) rebuilt `public_dealer_profiles` with `security_invoker = true`, subjecting it to `profiles` RLS. No RLS policy grants anon read on dealer profile rows (only own-profile/team/superadmin), so `useTenant()` resolved `tenant: null` for every logged-out visitor and HomePage.jsx:436 rendered the "dealer not found" page — a real customer-facing outage on every `*.xdrive.my` storefront for ~11 days (you didn't see it because superadmin's SELECT policy grants read on ALL profiles). DONE: added `get_dealer_profile_by_subdomain()` SECURITY DEFINER RPC (migration `add_get_dealer_profile_by_subdomain_rpc`, mirrors the existing `get_salesman_by_slug`/`get_dealer_profile_by_id` "Option B" pattern — narrow lookup by exact key, no broad anon SELECT policy reopened); switched `useTenant.js` to call the RPC instead of querying the view directly. Verified returns correct row as `anon` role.
 - [x] **PERF-1 (CRITICAL): RLS policy bloat on car_listings/profiles** — DONE: RLS helper functions (`get_my_dealer_id`, `is_active_salesman`, `is_superadmin`, `is_platform_admin`, `get_my_role_and_dealership`) were `VOLATILE` despite being pure `auth.uid()`-keyed reads, preventing planner caching and forcing per-row re-evaluation. Migration `mark_rls_helper_functions_stable` marks them `STABLE` (confirmed remaining `VOLATILE`-named functions are real mutations and correctly left alone). Measured: dealer-scoped listings query went from ~70ms+ planning overhead to **2.88ms planning / 1.6ms execution**.
-- [ ] **PERF-2 (CRITICAL): Listings/hero queries wait on full tenant resolution** — HomePage.jsx:249-250 gates car-listings fetch on `tenant !== undefined`; HeroCarousel.jsx:662 has the same gate. useTenant does setSession + full profile fetch + realtime setup before resolving — a hard waterfall in front of the two most visible fetches. FIX ATTEMPTED & REVERTED: rewriting the listings query to use a `profiles!dealer_id!inner(...)` embedded-join filter on subdomain looked promising but has the **same RLS flaw as CRIT-0** — the join runs as the anon role and `profiles` RLS blocks it, so it would return **zero listings** for anonymous visitors (worse than today). Safe path forward: add a lightweight `get_dealer_id_by_subdomain(subdomain) returns uuid` SECURITY DEFINER RPC, fire it in parallel with `useTenant()` (don't wait for the full profile resolve), then filter `car_listings` by the resolved `dealer_id` exactly as today (`.eq('dealer_id', id)` — that table's anon SELECT policy is fine, only `profiles` is locked down).
-- [ ] **PERF-3 (HIGH): Triple-redundant dealer-profile fetch** — useTenant.js:81-85 (full PROFILE_SELECT incl. whatsapp_number), useCTAContext.js:53-57, and HomePage.jsx:205-212 (whatsapp_number again) all hit public_dealer_profiles for the same dealer. FIX: delete HomePage.jsx:203-213, use tenant.whatsapp_number directly.
-- [ ] **PERF-4 (MEDIUM): Redundant per-row dealer join in listings query** — HomePage.jsx:255 joins dealer:profiles(...) onto all 30 rows even though every row is the same dealer (already in `tenant`). FIX: skip the join when tenant?.id is set; attach tenant as the dealer object client-side.
-- [ ] **PERF-5 (LOW): Sold-count stat delayed by flat 800ms timer** — HomePage.jsx:298 `setTimeout(fetchSoldCount, 800)` instead of firing in parallel with load(). FIX: Promise.all alongside load().
+- [x] **PERF-2 (CRITICAL): Listings/hero queries wait on full tenant resolution** — DONE. Added `get_dealer_id_by_subdomain` SECURITY DEFINER RPC; HomePage fires it on mount into `fastDealerId` (HomePage:198-203) and the listings fetch gates on `fastDealerId` rather than the full tenant resolve (:250). HeroCarousel uses the same RPC.
+- [x] **PERF-3 (HIGH): Triple-redundant dealer-profile fetch** — DONE. HomePage no longer does its own profile fetch; uses `tenant?.whatsapp_number` directly (HomePage:1508).
+- [x] **PERF-4 (MEDIUM): Redundant per-row dealer join in listings query** — DONE. `useJoin = !dealerId || !tenant` skips the per-row dealer join on storefronts (every row is the same dealer, already in tenant) and only keeps it for the mixed-dealer marketplace (HomePage:256-262, :275 attaches tenant client-side).
+- [x] **PERF-5 (LOW): Sold-count stat delayed by flat 800ms timer** — DONE. `Promise.all([load(), fetchSoldCount()])` fires both in parallel (HomePage:302); the 800ms timer is gone.
 
 ### DEALER SUBDOMAIN STOREFRONT REDESIGN (2026-06-14) — ref: dconcept.my
 
@@ -93,10 +93,9 @@ ShiftOS "For Dealers" self-promo block rendered on the dealer's own customer
 site; About (about_text) and logo (site_logo_url) are stored but never rendered;
 no location/map/hours, no real reviews, no on-site finance/trade-in tools.
 
-- [ ] **SF-1: Car-card status banner** (marketplace + storefront cards) — diagonal
-  corner banner per dconcept.my: "JUST ARRIVED" (recent created_at, e.g. < 14 days)
-  and "RESERVED" (status='reserved', red gradient); neutral for normal in-stock.
-  Detail page can also show a status line ("Status: reserved / in stock").
+- [x] **SF-1: Car-card status banner** — DONE. `CarCard.jsx` (shared by marketplace +
+  storefront) shows a "JUST ARRIVED" pill and a "RESERVED" corner banner driven by
+  `status==='reserved'`. Detail-page status line not added (was optional).
 - [x] **SF-2: Auto-reserve from lead lifecycle (public view)** — DONE. DB trigger
   auto-sets `car_listings.status='reserved'` when a lead with a linked car advances
   to `deposit_taken`; reverts to `available` on `lost`; never clobbers `sold`.
@@ -114,13 +113,17 @@ no location/map/hours, no real reviews, no on-site finance/trade-in tools.
      - Listing card "Reserved" status badge tooltip/sub-label in dealer StockTab / listings grid
   Constraint: only show the name to the dealer and the salesman themselves; never
   expose salesman names to public storefront visitors.
-- [ ] **SF-3: Inventory-first storefront restructure** — demote hero carousel; add
-  on-page inventory search/filter; render About + dealer logo (site_logo_url) in
-  header; add a real contact/location block (address, hours, map, click-to-call);
-  REMOVE fake stats (4.9 star / RM0) and the ShiftOS "For Dealers" self-promo from
-  subdomain storefronts; drop default testimonials unless real/verified. Detail
-  page: adopt dconcept.my elements (framed gallery, status+code line, clean spec
-  grid) — user likes the reference detail page.
+- [ ] **SF-3: Inventory-first storefront restructure** — PARTIAL. Already done: About
+  text renders on storefront (HomePage:919-938), "For Dealers" self-promo gated to
+  marketplace-only (:1326), 4.9-star fake stat removed. STILL OPEN:
+  1. Remove fake `"RM 0 / Free Consultation"` stat from the storefront stats strip
+     (HomePage:874) — replace with a real metric or drop the third cell.
+  2. Stop falling back to `HARDCODED_DEFAULT_TESTIMONIALS` (HomePage:379, 405) on
+     subdomain storefronts — show nothing unless the dealer has real testimonials.
+  3. Add a real contact/location block (address, hours, map/click-to-call) — no
+     such block exists today; render dealer logo (site_logo_url) in storefront header.
+  4. (Optional) demote hero carousel + add on-page inventory search/filter; detail
+     page can adopt dconcept.my framed gallery + status+code line + clean spec grid.
 
 ### DEALER DASHBOARD UX/BUG AUDIT (2026-06-07) — all DASH-1..9 shipped
 
