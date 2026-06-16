@@ -4632,6 +4632,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>Stage: <span style={{ color: "#9ca3af", fontWeight: 600 }}>{(normalizedStage || "new").replace(/_/g, " ")}</span>
  {currentProgressIdx >= 0 && <span style={{ color: "#374151" }}> · {currentProgressIdx + 1}/{progressStages.length}</span>}
  </p>
+ {normalizedStage === "deposit_taken" && lead.car_listing_id && (
+ <span style={{ display: "inline-block", marginTop: 6, fontSize: 10, fontWeight: 700, color: "#5eead4", background: "rgba(13,148,136,0.15)", border: "1px solid rgba(45,212,191,0.3)", borderRadius: 6, padding: "2px 7px" }}>Reserved by you</span>
+ )}
  </div>
 
  {/* Follow-up warning */}

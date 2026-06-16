@@ -1106,6 +1106,11 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                     <p style={{ fontSize: 14, fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>{carLabel}</p>
                     {car.selling_price && <p style={{ fontSize: 13, fontWeight: 700, color: '#dc2626', margin: 0 }}>RM {Number(car.selling_price).toLocaleString()}</p>}
                     {instalment && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0' }}>Est. RM {instalment.toLocaleString()}/mo (flat rate)</p>}
+                    {(lead.stage === 'deposit_taken') && (
+                      <p style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, color: '#0d9488', background: '#f0fdfa', border: '1px solid #99f6e4', borderRadius: 6, padding: '2px 7px', margin: '5px 0 0' }}>
+                        Reserved{(lead.salesman_profile?.full_name || lead.assigned_profile?.full_name) ? ` by ${(lead.salesman_profile?.full_name || lead.assigned_profile?.full_name).split(' ')[0]}` : ''}
+                      </p>
+                    )}
                   </div>
                   {car.slug && <a href={`/cars/${car.slug}`} target="_blank" rel="noopener noreferrer" style={{ color: '#9ca3af', flexShrink: 0 }}><ExternalLink style={{ width: 14, height: 14 }} /></a>}
                 </div>
