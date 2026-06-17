@@ -5,7 +5,6 @@ import LegalContent from '../components/onboarding/LegalContent';
 
 // Same design system CSS as SalesmanOnboarding (eo- prefix)
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 .eo-root{display:flex;height:100vh;overflow:hidden;background:#070A12;font-family:'DM Sans',sans-serif;}
 .eo-left{width:380px;min-width:380px;background:#0C1120;border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;padding:40px 36px;overflow-y:auto;flex-shrink:0;}

@@ -14,7 +14,6 @@ import useTenant, { isSubdomain, getSubdomain } from "../hooks/useTenant";
 import { trackEvent, getSlugFromURL, getOrCreateSessionId } from "../utils/analytics";
 
 const HC_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
   /* System font fallbacks if Google Fonts unavailable (offline/slow) */
   .hc-wrap, .hc-wrap * {

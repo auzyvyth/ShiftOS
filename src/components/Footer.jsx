@@ -8,7 +8,6 @@ import { isSubdomain } from "../hooks/useTenant";
 const SUPERADMIN_ID = "1e7bf24e-5b71-4c64-8d03-b60db5e59316";
 
 const FOOTER_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
   .ftr-root {
     font-family: 'Outfit', sans-serif;
