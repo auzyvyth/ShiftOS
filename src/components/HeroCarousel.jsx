@@ -10,6 +10,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
+import { cdnImg, imgFallback } from "../utils/img";
 import useTenant, { isSubdomain, getSubdomain } from "../hooks/useTenant";
 import { trackEvent, getSlugFromURL, getOrCreateSessionId } from "../utils/analytics";
 
@@ -726,7 +727,7 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
       const s = slides[i];
       if (!s?.image_url || imgLoaded[i]) return;
       const img = new Image();
-      img.src = s.image_url;
+      img.src = cdnImg(s.image_url, 1600, 70);
       img.onload = () => setImgLoaded((prev) => ({ ...prev, [i]: true }));
     });
   }, [slides, idx]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -991,11 +992,13 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
             return slide.image_url && slide.mode !== "text" ? (
               <img
                 key={`bg-${i}`}
-                src={slide.image_url}
+                src={cdnImg(slide.image_url, 1600, 70)}
                 alt=""
                 className={`hc-bg-img${i === idx ? " active" : ""}`}
                 loading={i === 0 ? "eager" : "lazy"}
                 fetchPriority={i === 0 ? "high" : "auto"}
+                decoding="async"
+                onError={imgFallback(slide.image_url)}
               />
             ) : null;
           })}
@@ -1041,7 +1044,7 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
                 {/* spacer maintains card height */}
                 <img
                   className="hc-card-spacer"
-                  src={slides[0]?.image_url}
+                  src={cdnImg(slides[0]?.image_url, 800, 68)}
                   alt=""
                   style={{ visibility: "hidden", display: "block" }}
                 />
@@ -1051,10 +1054,12 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
                   return slide.image_url ? (
                     <img
                       key={`card-${i}`}
-                      src={slide.image_url}
+                      src={cdnImg(slide.image_url, 1280, 70)}
                       alt={i === idx ? `${slide.car_name} preview` : ""}
                       className={`hc-card-img${i === idx ? " active" : ""}`}
                       loading={i === 0 ? "eager" : "lazy"}
+                      decoding="async"
+                      onError={imgFallback(slide.image_url)}
                     />
                   ) : null;
                 })}
