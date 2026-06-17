@@ -163,8 +163,8 @@ export default function MarketplaceHeader() {
         /* search drawer */
         .mh-search-drawer { max-height:0; overflow:hidden; transition:max-height .28s ease; border-top:0 solid #ECEAE3; }
         .mh-search-drawer.open { max-height:90px; border-top:1px solid #ECEAE3; }
-        .mh-search-form { max-width:1400px; margin:0 auto; padding:14px clamp(16px,3.5vw,44px); display:flex; gap:10px; }
-        .mh-search-field { flex:1; display:flex; align-items:center; gap:10px; background:#F4F3EF; border:1.5px solid #E7E4DB; border-radius:13px; padding:0 14px; height:50px; transition:border-color .15s,box-shadow .15s,background .15s; }
+        .mh-search-form { max-width:1400px; margin:0 auto; padding:14px clamp(16px,3.5vw,44px); display:flex; gap:10px; box-sizing:border-box; width:100%; }
+        .mh-search-field { flex:1; min-width:0; box-sizing:border-box; display:flex; align-items:center; gap:10px; background:#F4F3EF; border:1.5px solid #E7E4DB; border-radius:13px; padding:0 14px; height:50px; transition:border-color .15s,box-shadow .15s,background .15s; }
         .mh-search-field:focus-within { background:#fff; border-color:#dc2626; box-shadow:0 0 0 4px rgba(220,38,38,.10); }
         .mh-search-field input { flex:1; min-width:0; border:none; background:none; outline:none; font-family:inherit; font-size:15px; color:#0f1115; }
         .mh-search-go { flex-shrink:0; background:#dc2626; color:#fff; border:none; border-radius:12px; padding:0 24px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; }
@@ -181,12 +181,16 @@ export default function MarketplaceHeader() {
         .mh-m-cta { margin-top:12px; display:flex; align-items:center; justify-content:center; gap:7px; background:#dc2626; color:#fff; font-size:15px; font-weight:700; padding:14px; border-radius:12px; text-decoration:none; }
         .mh-m-signin { margin-top:8px; text-align:center; color:#0f1115; font-weight:600; text-decoration:none; padding:12px; }
 
+        /* keep mega panels inside the viewport on mid-size screens */
+        @media (max-width:1240px) { .mh-mega-promo { display:none; } }
+        @media (max-width:1100px) { .mh-mega-grid { grid-template-columns:1fr; width:300px; } }
         @media (max-width:980px) {
           .mh-nav, .mh-vsep, .mh-signin, .mh-getstarted { display:none!important; }
           .mh-burger { display:flex!important; }
           .mh-mobile.open { display:flex!important; }
           .mh-bar { height:64px; }
         }
+        @media (max-width:420px) { .mh-search-go { padding:0 16px; } }
       `}</style>
 
       <header className={`mh-root${scrolled ? ' scrolled' : ''}`} ref={rootRef}>
