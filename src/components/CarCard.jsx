@@ -4,6 +4,7 @@ import { Gauge, Settings2, MessageCircle, Fuel, Calendar, Heart, Images } from '
 import GradeBadge from './GradeBadge';
 import { buildWaUrl } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
+import { cdnImg } from '../utils/img';
 import { trackEvent, getOrCreateSessionId } from '../utils/analytics';
 import { getRef } from '../utils/refTracking';
 import { isSubdomain } from '../hooks/useTenant';
@@ -74,11 +75,9 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
     slides[safeIdx] || galleryImages[0] ||
     car.image_url || car.photo_url || null
   );
-  const toThumb = (url) => {
-    if (!url || !url.includes('/storage/v1/object/public/')) return url;
-    return url + (url.includes('?') ? '&' : '?') + 'width=520&quality=75&format=webp';
-  };
-  const image = toThumb(rawImage);
+  // Resized WebP via weserv (the old ?width= params on /object/public/ were
+  // silently ignored by Supabase, so full-res images were being served).
+  const image = cdnImg(rawImage, 640, 72);
 
   // Reset shimmer whenever the visible slide changes.
   useEffect(() => { setImgLoaded(false); }, [safeIdx]);
@@ -324,7 +323,12 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
                 loading={priority ? 'eager' : 'lazy'}
                 fetchPriority={priority ? 'high' : 'auto'}
                 sizes="(max-width: 520px) calc(100vw - 32px), (max-width: 768px) calc(50vw - 24px), 380px"
-                onError={() => setImgError(true)}
+                onError={(e) => {
+                  if (rawImage && !e.currentTarget.dataset.fb && e.currentTarget.src !== rawImage) {
+                    e.currentTarget.dataset.fb = '1';
+                    e.currentTarget.src = rawImage;
+                  } else { setImgError(true); }
+                }}
                 onLoad={() => setImgLoaded(true)}
                 style={{
                   width: '100%', height: '100%', objectFit: 'cover',

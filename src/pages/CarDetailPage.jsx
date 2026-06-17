@@ -50,6 +50,7 @@ import { isSubdomain } from "../hooks/useTenant";
 import { trackEvent, getSlugFromURL } from "../utils/analytics";
 import { useMarketplaceTracking } from "../hooks/useMarketplaceTracking";
 import { calcMonthly } from "../utils/financing";
+import { cdnImg } from "../utils/img";
 import { toast } from "sonner";
 
 /* ─── helpers ─── */
@@ -944,6 +945,16 @@ export default function CarDetailPage() {
     );
 
   const images = car.images?.length ? car.images : ["/placeholder-car.jpg"];
+  // Resized WebP for the on-page gallery (full-res is kept for the lightbox zoom).
+  const disp = (u, w = 1280) => cdnImg(u, w, 72);
+  const onImgErr = (orig) => (e) => {
+    if (orig && !e.currentTarget.dataset.fb && e.currentTarget.src !== orig) {
+      e.currentTarget.dataset.fb = '1';
+      e.currentTarget.src = orig;
+    } else {
+      e.currentTarget.src = '/placeholder-car.jpg';
+    }
+  };
   const contactPhone =
     dealer?.whatsapp_number || salesmanProfile?.whatsapp_number || null;
   const isOwnListing = !!currentUserId && (
@@ -1275,9 +1286,10 @@ export default function CarDetailPage() {
             >
               <img
                 key={slideKey}
-                src={images[activeIdx]}
+                src={disp(images[activeIdx], 1600)}
                 alt={carTitle}
                 fetchPriority="high"
+                decoding="async"
                 style={{
                   width: "100%",
                   height: "100%",
@@ -1288,9 +1300,7 @@ export default function CarDetailPage() {
                 onLoad={(e) => {
                   e.currentTarget.style.transform = "scale(1)";
                 }}
-                onError={(e) => {
-                  e.target.src = "/placeholder-car.jpg";
-                }}
+                onError={onImgErr(images[activeIdx])}
               />
               {imgCount > 1 && (
                 <>
@@ -1343,12 +1353,11 @@ export default function CarDetailPage() {
               }}
             >
               <img
-                src={images[1] || images[0]}
+                src={disp(images[1] || images[0], 760)}
                 alt={`${carTitle} view 2`}
                 loading="lazy"
-                onError={(e) => {
-                  e.target.src = "/placeholder-car.jpg";
-                }}
+                decoding="async"
+                onError={onImgErr(images[1] || images[0])}
               />
             </div>
 
@@ -1362,12 +1371,11 @@ export default function CarDetailPage() {
               }}
             >
               <img
-                src={images[2] || images[0]}
+                src={disp(images[2] || images[0], 760)}
                 alt={`${carTitle} view 3`}
                 loading="lazy"
-                onError={(e) => {
-                  e.target.src = "/placeholder-car.jpg";
-                }}
+                decoding="async"
+                onError={onImgErr(images[2] || images[0])}
               />
               <button
                 onClick={(e) => {
@@ -1412,10 +1420,11 @@ export default function CarDetailPage() {
             <img
               key={slideKey}
               className={`cdp-main-img cdp-slide-${slideDir}`}
-              src={images[activeIdx]}
+              src={disp(images[activeIdx], 1280)}
               alt={carTitle}
               fetchPriority={activeIdx === 0 ? "high" : "auto"}
               loading={activeIdx === 0 ? "eager" : "lazy"}
+              decoding="async"
               style={{
                 opacity: 0,
                 transform: "scale(1.04)",
@@ -1428,7 +1437,12 @@ export default function CarDetailPage() {
                 e.currentTarget.style.transform = "scale(1)";
               }}
               onError={(e) => {
-                e.target.src = "/placeholder-car.jpg";
+                if (images[activeIdx] && !e.currentTarget.dataset.fb && e.currentTarget.src !== images[activeIdx]) {
+                  e.currentTarget.dataset.fb = '1';
+                  e.currentTarget.src = images[activeIdx];
+                } else {
+                  e.target.src = "/placeholder-car.jpg";
+                }
                 setImgLoaded(true);
               }}
             />
@@ -1517,10 +1531,15 @@ export default function CarDetailPage() {
           onTouchStart={galleryTouchStart} onTouchEnd={galleryTouchEnd}>
           {!imgLoaded && <div className="cdp-img-shimmer" />}
           <img key={slideKey} className={`cdp-main-img cdp-slide-${slideDir}`}
-            src={images[activeIdx]} alt={carTitle} fetchPriority="high"
+            src={disp(images[activeIdx], 1280)} alt={carTitle} fetchPriority="high" decoding="async"
             style={{ width:'100%', height:'100%', objectFit:'cover', opacity:0, transition:'opacity 0.8s ease' }}
             onLoad={e => { setImgLoaded(true); e.currentTarget.style.opacity = '1'; }}
-            onError={e => { e.target.src='/placeholder-car.jpg'; setImgLoaded(true); }}
+            onError={e => {
+              if (images[activeIdx] && !e.currentTarget.dataset.fb && e.currentTarget.src !== images[activeIdx]) {
+                e.currentTarget.dataset.fb = '1'; e.currentTarget.src = images[activeIdx];
+              } else { e.target.src='/placeholder-car.jpg'; }
+              setImgLoaded(true);
+            }}
           />
           <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'45%', background:'linear-gradient(to top, rgba(6,8,15,0.8), transparent)', pointerEvents:'none', zIndex:3 }} />
           <div style={{ position:'absolute', bottom:14, left:14, zIndex:5, background:'rgba(6,8,15,0.7)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:20, padding:'4px 12px', fontSize:11, color:'rgba(255,255,255,0.8)', fontFamily:"'DM Sans',sans-serif", fontWeight:500 }}>

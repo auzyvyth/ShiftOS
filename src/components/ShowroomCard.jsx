@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import GradeBadge from './GradeBadge';
 import { buildWaUrl } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
+import { cdnImg } from '../utils/img';
 import { trackEvent, getOrCreateSessionId } from '../utils/analytics';
 import { getRef } from '../utils/refTracking';
 import { useSavedCars } from '../hooks/useSavedCars';
@@ -31,10 +32,9 @@ const XDRIVE_WA = '60174155191';
 //   inCompare  — bool: whether this car is in the compare tray
 //   compareFull — bool: compare tray at max capacity
 //   onCompare  — callback to add/remove from compare
-const toThumb = (url) => {
-  if (!url || !url.includes('/storage/v1/object/public/')) return url;
-  return url + (url.includes('?') ? '&' : '?') + 'width=520&quality=75&format=webp';
-};
+// Resized WebP via weserv. (The old ?width= params on /object/public/ URLs were
+// silently ignored by Supabase, so full-res images were being served.)
+const toThumb = (url) => cdnImg(url, 640, 72);
 
 export default function ShowroomCard({ car, ctaContext, inCompare = false, compareFull = false, onCompare, priority = false, dark = false }) {
   const navigate = useNavigate();
@@ -136,7 +136,8 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
     document.addEventListener('mouseup', onDocUp);
   };
 
-  const image      = !imgError && toThumb(slides[safeIdx] || (Array.isArray(car.images) && car.images[0]) || null);
+  const rawImage   = slides[safeIdx] || (Array.isArray(car.images) && car.images[0]) || null;
+  const image      = !imgError && toThumb(rawImage);
   const normalTx   = ['Auto', 'Automatic', 'AT'].includes(transmission) ? 'Auto' : ['Manual', 'MT'].includes(transmission) ? 'Manual' : transmission || null;
   const waText     = `Hi, I'm interested in the ${year} ${brand} ${model}${variant ? ' ' + variant : ''}. Can you share more details?`;
   const ctxResolved = ctaContext?.type !== 'loading' ? ctaContext : null;
@@ -185,7 +186,13 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
                 src={image}
                 alt={`${year} ${brand} ${model}`}
                 loading="eager"
-                onError={() => setImgError(true)}
+                decoding="async"
+                onError={(e) => {
+                  if (rawImage && !e.currentTarget.dataset.fb && e.currentTarget.src !== rawImage) {
+                    e.currentTarget.dataset.fb = '1';
+                    e.currentTarget.src = rawImage;
+                  } else { setImgError(true); }
+                }}
                 onLoad={() => setImgLoaded(true)}
                 style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s', filter: isSold ? 'grayscale(60%)' : 'none' }}
               />
