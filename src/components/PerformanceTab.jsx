@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
-import { Users, Car, Globe, AlertTriangle, TrendingUp, Eye } from 'lucide-react';
+import { Users, Car, Globe, AlertTriangle, TrendingUp, Eye, Share2 } from 'lucide-react';
 
 const fmtRM = (n) =>
   `RM ${Number(n || 0).toLocaleString('en-MY', { maximumFractionDigits: 0 })}`;
@@ -121,7 +121,7 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
     since.setDate(since.getDate() - range);
     supabase
       .from('analytics_events')
-      .select('event_type, created_at, session_id, car_id, car_name')
+      .select('event_type, created_at, session_id, car_id, car_name, metadata')
       .eq('dealer_id', dealerId)
       .gte('created_at', since.toISOString())
       .then(({ data }) => { setTrafficEvents(data || []); setTrafficLoading(false); });
@@ -166,7 +166,20 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
       .sort((a, b) => b[1] - a[1]).slice(0, 8)
       .map(([name, count]) => ({ name, count }));
 
-    return { visits, carViews, waClicks, conversion, topCars };
+    // Share-channel breakdown: events that arrived via a ?src= tagged share link.
+    const chMap = {};
+    trafficEvents.forEach(e => {
+      const ch = e.metadata?.channel;
+      if (!ch) return;
+      if (!chMap[ch]) chMap[ch] = { clicks: 0, waClicks: 0 };
+      chMap[ch].clicks += 1;
+      if (e.event_type === 'whatsapp_click') chMap[ch].waClicks += 1;
+    });
+    const byChannel = Object.entries(chMap)
+      .map(([channel, v]) => ({ channel, ...v }))
+      .sort((a, b) => b.clicks - a.clicks);
+
+    return { visits, carViews, waClicks, conversion, topCars, byChannel };
   }, [trafficEvents]);
 
   const convColor = Number(traffic.conversion) >= 3 ? '#16a34a' : Number(traffic.conversion) >= 1 ? '#d97706' : '#dc2626';
@@ -377,6 +390,34 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
               </div>
             ) : (
               <EmptyState icon={TrendingUp} text={`No traffic recorded in the last ${range} days.`} />
+            )}
+            {traffic.byChannel.length > 0 && (
+              <div style={{ marginTop: 18, borderTop: '1px solid #f3f4f6', paddingTop: 14 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+                  <Share2 size={11} style={{ display: 'inline', marginRight: 4 }} />
+                  Clicks by Share Platform — Last {range}d
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {traffic.byChannel.map((c) => {
+                    const meta = {
+                      whatsapp: { label: 'WhatsApp', color: '#25D366' },
+                      facebook: { label: 'Facebook', color: '#1877F2' },
+                      tiktok:   { label: 'TikTok',   color: '#111827' },
+                      copy:     { label: 'Copied link', color: '#6b7280' },
+                    }[c.channel] || { label: c.channel, color: '#6b7280' };
+                    const total = traffic.byChannel.reduce((s, x) => s + x.clicks, 0) || 1;
+                    return (
+                      <div key={c.channel} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', background: '#fafafa', borderRadius: 8, border: '1px solid #f3f4f6' }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: meta.color, flexShrink: 0 }} />
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#111827', flex: 1 }}>{meta.label}</span>
+                        <span style={{ fontSize: 11, color: '#6b7280' }}>{Math.round((c.clicks / total) * 100)}%</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#111827', width: 64, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{c.clicks} click{c.clicks !== 1 ? 's' : ''}</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', width: 50, textAlign: 'right' }}>{c.waClicks} WA</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </>
         )}
