@@ -5262,7 +5262,7 @@ function ListingDetailDrawer({
   listing, salesmen, salesmenById, onClose, onUpdate, onDelete,
   setEditListing, setPriceEditListing, setMarkSoldListing,
   setDeleteId, copyListing, copiedListingId, handleAssign, handleUnassign,
-  handleStatus, updatingStatus, getListingAge,
+  handleStatus, updatingStatus, getListingAge, onViewCosts,
 }) {
   const [imgIdx, setImgIdx]       = useState(0);
   const [lbOpen, setLbOpen]       = useState(false);
@@ -5522,6 +5522,13 @@ function ListingDetailDrawer({
                   </button>
                 )}
 
+                {/* Costs & P&L — bridge to the financial / compliance detail */}
+                {onViewCosts && (
+                  <button onClick={() => onViewCosts(listing)} style={{ ...btnBase, border: '1px solid rgba(124,58,237,0.3)', color: '#7c3aed' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                    <DollarSign style={{ width: 14, height: 14, flexShrink: 0 }} />Costs &amp; P&amp;L
+                  </button>
+                )}
+
                 {/* Copy */}
                 <button onClick={() => copyListing(listing)} style={{ ...btnBase, border: '1px solid rgba(22,163,74,0.3)', color: copiedListingId === listing.id ? '#15803d' : '#16a34a' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
                   {copiedListingId === listing.id ? <Check style={{ width: 14, height: 14, flexShrink: 0 }} /> : <Clipboard style={{ width: 14, height: 14, flexShrink: 0 }} />}
@@ -5744,6 +5751,12 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
   const [stockFilters, setStockFilters] = useState(() => new Set());
   const [stockSort, setStockSort] = useState('recent');
   const toggleStockFilter = (k) => setStockFilters(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; });
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
   // Lock body scroll while detail drawer or publish form is open
   useEffect(() => {
     if (!detailUnit && !stockPublishListing) return;
@@ -5996,6 +6009,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     if (error) { toast.error('Update failed'); return; }
     logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: unit.id, action: 'b7_updated', summary: `Puspakom B7 date set to ${value || 'cleared'}`, fieldChanges: { puspakom_b7_date: { from: unit.puspakom_b7_date, to: value } } });
     setUnits(p => p.map(u => u.id === unit.id ? { ...u, puspakom_b7_date: value } : u));
+    setDetailUnit(prev => (prev && prev.id === unit.id) ? { ...prev, puspakom_b7_date: value } : prev);
     toast.success('PUSPAKOM B7 updated');
   };
 
@@ -6017,6 +6031,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     if (error) { toast.error('Update failed'); return; }
     logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: unit.id, action: 'b5_updated', summary: `Puspakom B5 date set to ${value || 'cleared'}`, fieldChanges: { puspakom_b5_date: { from: unit.puspakom_b5_date, to: value } } });
     setUnits(p => p.map(u => u.id === unit.id ? { ...u, puspakom_b5_date: value } : u));
+    setDetailUnit(prev => (prev && prev.id === unit.id) ? { ...prev, puspakom_b5_date: value } : prev);
     toast.success('PUSPAKOM B5 updated');
   };
 
@@ -6034,6 +6049,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     if (error) { toast.error('Update failed'); return; }
     logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: unit.id, action: 'encumbrance_updated', summary: `Encumbrance status ${unit.encumbrance_status || 'unknown'} → ${next}`, fieldChanges: { encumbrance_status: { from: unit.encumbrance_status, to: next } } });
     setUnits(p => p.map(u => u.id === unit.id ? { ...u, encumbrance_status: next } : u));
+    setDetailUnit(prev => (prev && prev.id === unit.id) ? { ...prev, encumbrance_status: next } : prev);
   };
 
   const fetchPnl = async (unit) => {
@@ -6333,6 +6349,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
         logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: editPriceUnit.id, action: 'prices_updated', summary: `Prices updated — ${changes.join('; ')}`, fieldChanges: fc });
       }
       setUnits(u => u.map(x => x.id === editPriceUnit.id ? { ...x, ...patch } : x));
+      setDetailUnit(prev => (prev && prev.id === editPriceUnit.id) ? { ...prev, ...patch } : prev);
       toast.success('Prices updated');
       setEditPriceUnit(null);
     } else {
@@ -6642,23 +6659,24 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
         return (
           <div
             onClick={() => setDetailUnit(null)}
-            style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', overscrollBehavior: 'contain' }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? 12 : 24, overscrollBehavior: 'contain' }}
           >
             <div
               onClick={e => e.stopPropagation()}
               style={{
-                background: '#fff', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 540,
-                maxHeight: '92vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+                background: '#fff', borderRadius: 16, width: '100%', maxWidth: isMobile ? 540 : 880,
+                maxHeight: isMobile ? '88vh' : '90vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
                 overscrollBehavior: 'contain',
-                boxShadow: '0 -16px 64px rgba(0,0,0,0.25)',
-                paddingBottom: 'env(safe-area-inset-bottom, 20px)',
+                boxShadow: '0 24px 80px rgba(0,0,0,0.28)',
                 fontFamily: "'DM Sans',sans-serif",
               }}
             >
-              {/* Drag handle pill */}
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 2px' }}>
-                <div style={{ width: 36, height: 4, borderRadius: 2, background: '#e5e7eb' }} />
-              </div>
+              {/* Drag handle pill — mobile only */}
+              {isMobile && (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 2px' }}>
+                  <div style={{ width: 36, height: 4, borderRadius: 2, background: '#e5e7eb' }} />
+                </div>
+              )}
 
               {/* Header */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px 14px', borderBottom: '1px solid #f3f4f6' }}>
@@ -6703,7 +6721,10 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                 ))}
               </div>
 
-              {/* Car details spec grid — all fields from car_listings */}
+              {/* Body — single column on mobile, two columns on desktop (wide, minimal scroll) */}
+              <div style={{ display: isMobile ? 'block' : 'grid', gridTemplateColumns: isMobile ? undefined : '1fr 1fr', alignItems: 'start' }}>
+              {/* LEFT column: Car details spec grid — all fields from car_listings */}
+              <div style={{ borderRight: isMobile ? 'none' : '1px solid #f3f4f6' }}>
               {SPEC_ROWS.length > 0 && (
                 <div style={{ padding: '14px 16px', borderBottom: '1px solid #f3f4f6' }}>
                   <p style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, margin: '0 0 10px' }}>Car Details</p>
@@ -6718,6 +6739,9 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                 </div>
               )}
 
+              </div>{/* /LEFT column */}
+              {/* RIGHT column: certifications + actions */}
+              <div>
               {/* Certifications & status — clickable to update inline */}
               {u.status === 'in_stock' && (
                 <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6' }}>
@@ -6746,6 +6770,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                 {ACTION_BTN('Activity History',  'See all edits, updates, and status changes for this unit', '#6b7280', '#f9fafb', '#e5e7eb', () => fetchHistory(u))}
                 {u.status === 'in_stock' && ACTION_BTN('Mark as Sold', 'Record the final sale price and close out this unit', '#2563eb', 'rgba(37,99,235,0.06)', '#bfdbfe', () => { setSoldTarget(u); setSoldForm({ sold_price: u.asking_price ? String(u.asking_price) : '', sold_date: new Date().toISOString().slice(0, 10) }); })}
               </div>
+              </div>{/* /RIGHT column */}
+              </div>{/* /body grid */}
               <div style={{ height: 16 }} />
             </div>
           </div>
@@ -6948,6 +6974,52 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                 <p className="text-gray-500 text-sm text-center py-8">Loading…</p>
               ) : pnlData && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {/* Plain-English verdict — tells the dealer what the number means and why */}
+                  {(() => {
+                    const v = pnlData;
+                    const marginPct = v.revenue > 0 ? (v.netPnl / v.revenue) * 100 : 0;
+                    const spread = v.revenue - v.purchasePrice;
+                    const spreadPct = v.purchasePrice > 0 ? (spread / v.purchasePrice) * 100 : 0;
+                    const loss = v.netPnl < 0;
+                    const thin = !loss && marginPct < 5;
+                    const reasons = [];
+                    if (v.holdingCost > 0 && (v.holdingDays > 60 || v.holdingCost >= Math.abs(v.netPnl) * 0.4))
+                      reasons.push(`RM ${v.holdingCost.toLocaleString()} carrying cost from ${v.holdingDays} days on the floor`);
+                    if (spread <= v.purchasePrice * 0.03)
+                      reasons.push(`only RM ${spread.toLocaleString()} markup over buy price (${spreadPct.toFixed(1)}%)`);
+                    if (v.reconActual > v.reconCost)
+                      reasons.push(`recon overran the estimate by RM ${(v.reconActual - v.reconCost).toLocaleString()}`);
+                    if (v.commission > 0 && v.commission >= Math.abs(v.netPnl) * 0.5)
+                      reasons.push(`RM ${v.commission.toLocaleString()} sales commission`);
+                    if (v.adSpend > 0 && v.adSpend >= Math.abs(v.netPnl) * 0.4)
+                      reasons.push(`RM ${v.adSpend.toLocaleString()} ad spend`);
+                    const tone = loss ? { bg: '#fef2f2', bd: '#fecaca', tx: '#b91c1c', ic: '#dc2626' }
+                               : thin ? { bg: '#fffbeb', bd: '#fde68a', tx: '#b45309', ic: '#d97706' }
+                                      : { bg: '#f0fdf4', bd: '#bbf7d0', tx: '#15803d', ic: '#16a34a' };
+                    const headline = loss
+                      ? `Losing RM ${Math.abs(v.netPnl).toLocaleString()} on this unit`
+                      : thin
+                        ? `Slim RM ${v.netPnl.toLocaleString()} profit · ${marginPct.toFixed(1)}% margin`
+                        : `Healthy RM ${v.netPnl.toLocaleString()} profit · ${marginPct.toFixed(1)}% margin`;
+                    const body = reasons.length
+                      ? (loss ? 'Driven by ' : 'Watch: ') + reasons.join('; ') + '.'
+                      : loss
+                        ? 'Costs have eaten through the asking price — reprice up or trim reconditioning.'
+                        : `RM ${spread.toLocaleString()} spread over buy price survives all costs.`;
+                    const aging = v.holdingDays > 60 && !v.isSold && v.dailyHold > 0;
+                    return (
+                      <div style={{ background: tone.bg, border: `1px solid ${tone.bd}`, borderRadius: 10, padding: '12px 14px', marginBottom: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {loss ? <AlertTriangle style={{ width: 16, height: 16, color: tone.ic, flexShrink: 0 }} />
+                                : <TrendingUp style={{ width: 16, height: 16, color: tone.ic, flexShrink: 0 }} />}
+                          <span style={{ fontSize: 13.5, fontWeight: 700, color: tone.tx }}>{headline}</span>
+                        </div>
+                        <p style={{ fontSize: 12, color: tone.tx, opacity: 0.92, margin: '6px 0 0', lineHeight: 1.45 }}>{body}</p>
+                        {aging && <p style={{ fontSize: 11, color: tone.tx, opacity: 0.82, margin: '5px 0 0', lineHeight: 1.4 }}>Aged {v.holdingDays} days — every extra day adds RM {Math.round(v.dailyHold).toLocaleString()}. Repricing to move it stops the bleed.</p>}
+                        {!v.isSold && <p style={{ fontSize: 10.5, color: '#9ca3af', margin: '6px 0 0' }}>Projection based on the current asking price.</p>}
+                      </div>
+                    );
+                  })()}
                   {/* Front end */}
                   <div style={{ padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
                     <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Front End (Vehicle)</p>
@@ -7022,7 +7094,6 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                         {pnlData.netPnl < 0 ? '− ' : ''}RM {Math.abs(pnlData.netPnl).toLocaleString()}
                       </span>
                     </div>
-                    {!pnlData.isSold && <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>Based on current asking price — updates when sold.</p>}
                   </div>
                 </div>
               )}
@@ -9828,9 +9899,9 @@ export default function DashboardPage() {
     {
       id: "g_inventory", Icon: Package, label: "Inventory",
       items: [
-        { id: "listings", Icon: Car,        label: "Listings", badge: listings.length },
+        { id: "listings", Icon: Car,        label: "Inventory", badge: listings.length },
         { id: "add",      Icon: PlusCircle, label: "Add Listing" },
-        { id: "stock",    Icon: Package,    label: "Stock" },
+        { id: "stock",    Icon: Package,    label: "Costs & P&L" },
       ],
     },
     {
@@ -11090,6 +11161,7 @@ export default function DashboardPage() {
           handleStatus={handleStatus}
           updatingStatus={updatingStatus}
           getListingAge={getListingAge}
+          onViewCosts={() => { setDetailListing(null); handleTabChange("stock"); }}
         />
       )}
 
