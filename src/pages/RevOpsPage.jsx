@@ -310,6 +310,7 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
         { count: waClicks },
         { count: linkVisits },
         { data: carViewEvents },
+        { data: channelRows },
       ] = await Promise.all([
         supabase
           .from("analytics_events")
@@ -341,7 +342,27 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
           .eq("dealer_id", userId)
           .eq("event_type", "car_view")
           .gte("created_at", since),
+        // Share-channel attribution: events that arrived via a tagged share link.
+        supabase
+          .from("analytics_events")
+          .select("event_type, metadata")
+          .eq("dealer_id", userId)
+          .gte("created_at", since)
+          .not("metadata->>channel", "is", null),
       ]);
+
+      // Group share-link arrivals by platform (whatsapp / facebook / tiktok / copy).
+      const channelMap = {};
+      (channelRows || []).forEach((e) => {
+        const ch = e.metadata?.channel;
+        if (!ch) return;
+        if (!channelMap[ch]) channelMap[ch] = { clicks: 0, waClicks: 0 };
+        channelMap[ch].clicks += 1;
+        if (e.event_type === "whatsapp_click") channelMap[ch].waClicks += 1;
+      });
+      const byChannel = Object.entries(channelMap)
+        .map(([channel, v]) => ({ channel, ...v }))
+        .sort((a, b) => b.clicks - a.clicks);
 
       const totalPageVisits = (storeVisits || 0) + (linkVisits || 0);
       const conversionRate =
@@ -385,6 +406,7 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
         waClicks: waClicks || 0,
         conversionRate,
         topCars,
+        byChannel,
       });
       setTrafficLoading(false);
     };
@@ -1136,7 +1158,35 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
             </div>
           </div>
         )}
-        {!trafficLoading && trafficData?.carViews === 0 && (
+        {/* Clicks by share platform — from ?src= tagged share links */}
+        {trafficData?.byChannel?.length > 0 && (
+          <div style={{ marginTop: 18 }}>
+            <p style={{ fontSize: 11, color: "#4b5563", textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.06em", marginBottom: 8 }}>
+              Clicks by Share Platform
+            </p>
+            <div className="space-y-1.5">
+              {trafficData.byChannel.map((c) => {
+                const meta = {
+                  whatsapp: { label: "WhatsApp", color: "#25D366" },
+                  facebook: { label: "Facebook", color: "#1877F2" },
+                  tiktok:   { label: "TikTok",   color: "#111827" },
+                  copy:     { label: "Copied link", color: "#6b7280" },
+                }[c.channel] || { label: c.channel, color: "#6b7280" };
+                const total = trafficData.byChannel.reduce((s, x) => s + x.clicks, 0) || 1;
+                return (
+                  <div key={c.channel} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: "1px solid #EAECF0" }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: meta.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, color: "#111827", flex: 1, fontWeight: 600 }}>{meta.label}</span>
+                    <span style={{ fontSize: 11, color: "#6b7280" }}>{Math.round((c.clicks / total) * 100)}%</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#111827", width: 64, textAlign: "right" }}>{c.clicks} click{c.clicks !== 1 ? "s" : ""}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#16a34a", width: 64, textAlign: "right" }}>{c.waClicks} WA</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {!trafficLoading && trafficData?.carViews === 0 && (!trafficData?.byChannel || trafficData.byChannel.length === 0) && (
           <p style={{ fontSize: 12, color: "#4b5563" }}>
             No car views recorded in the last 30 days.
           </p>

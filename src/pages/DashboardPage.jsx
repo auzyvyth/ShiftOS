@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useMemo, useCallback, startTransiti
 import DOMPurify from "dompurify";
 import SuspendedBanner from "../components/SuspendedBanner";
 import ReportBugButton from "../components/ReportBugButton";
+import ShareMenu from "../components/ShareMenu";
 import { buildCaption } from "../utils/sharePack";
 import { createPortal } from 'react-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
@@ -5261,7 +5262,7 @@ function DrawerDamageMap({ damageMap }) {
 function ListingDetailDrawer({
   listing, salesmen, salesmenById, onClose, onUpdate, onDelete,
   setEditListing, setPriceEditListing, setMarkSoldListing,
-  setDeleteId, copyListing, copiedListingId, handleAssign, handleUnassign,
+  setDeleteId, copyListing, copiedListingId, dealerSubdomain, dealerSlug, handleAssign, handleUnassign,
   handleStatus, updatingStatus, getListingAge,
 }) {
   const [imgIdx, setImgIdx]       = useState(0);
@@ -5527,6 +5528,20 @@ function ListingDetailDrawer({
                   {copiedListingId === listing.id ? <Check style={{ width: 14, height: 14, flexShrink: 0 }} /> : <Clipboard style={{ width: 14, height: 14, flexShrink: 0 }} />}
                   {copiedListingId === listing.id ? 'Copied!' : 'Copy Writing'}
                 </button>
+
+                {/* Share — per-platform tagged links */}
+                <ShareMenu
+                  label="Share Listing"
+                  baseUrl={`${dealerSubdomain ? `https://${dealerSubdomain}.xdrive.my` : 'https://xdrive.my'}/cars/${listing.slug}`}
+                  refSlug={dealerSlug || ''}
+                  style={{ ...btnBase, justifyContent: 'flex-start', width: '100%', border: '1px solid rgba(124,58,237,0.3)', color: '#7c3aed' }}
+                  waCaption={(link) => [
+                    `${listing.year} ${listing.brand} ${listing.model}${listing.variant ? ' ' + listing.variant : ''}`,
+                    `RM ${Number(listing.selling_price || 0).toLocaleString()}`,
+                    '',
+                    link,
+                  ].join('\n')}
+                />
 
                 {/* Financing Calculator — hidden on sold listings */}
                 {!isSold && (
@@ -11077,6 +11092,8 @@ export default function DashboardPage() {
           setDeleteId={setDeleteId}
           copyListing={copyListing}
           copiedListingId={copiedListingId}
+          dealerSubdomain={dealerSubdomain}
+          dealerSlug={profile?.slug}
           handleAssign={handleAssign}
           handleUnassign={handleUnassign}
           handleStatus={handleStatus}

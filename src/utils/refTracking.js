@@ -5,6 +5,23 @@ export function captureRef() {
     sessionStorage.setItem('ref_slug', ref);
     sessionStorage.setItem('ref_captured_at', Date.now());
   }
+  // Share-channel attribution: ?src=whatsapp|facebook|tiktok|copy from a tagged
+  // share link. Captured here on landing so every later in-app event can carry it.
+  const src = params.get('src');
+  if (src) {
+    sessionStorage.setItem('share_src', src.slice(0, 24));
+    sessionStorage.setItem('share_src_at', Date.now());
+  }
+}
+
+// The share channel the visitor arrived through (24h window), or null.
+export function getShareChannel() {
+  const src = sessionStorage.getItem('share_src');
+  const at = sessionStorage.getItem('share_src_at');
+  if (src && at && Date.now() - Number(at) < 86400000) return src;
+  sessionStorage.removeItem('share_src');
+  sessionStorage.removeItem('share_src_at');
+  return null;
 }
 
 export function getRef() {
