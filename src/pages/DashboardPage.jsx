@@ -9840,6 +9840,7 @@ export default function DashboardPage() {
         { id: "overview",  Icon: Gauge,       label: "Overview" },
         { id: "analytics", sub: "revenue",    Icon: DollarSign, label: "Revenue" },
         { id: "analytics", sub: "performance", Icon: TrendingUp, label: "Performance" },
+        { id: "analytics", sub: "listings",   Icon: Car, label: "Listings" },
         { id: "oversight", Icon: Shield,      label: "GM Oversight" },
       ],
     },
@@ -11009,6 +11010,7 @@ export default function DashboardPage() {
                 tabs={[
                   { id: "revenue",     label: "Revenue" },
                   { id: "performance", label: "Performance" },
+                  { id: "listings",    label: "Listings" },
                 ]}
               />
               {analyticsSub === "revenue" && userId && (
@@ -11018,6 +11020,16 @@ export default function DashboardPage() {
                 <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>Loading…</div>}>
                   <PerformanceTab dealerId={getDealerIdFromProfile(profile)} listings={listings} />
                 </Suspense>
+              )}
+              {analyticsSub === "listings" && userId && (
+                <AnalyticsTab
+                  listings={listings}
+                  profile={profile}
+                  salesmen={salesmen}
+                  onEditListing={setEditListing}
+                  onStaleAdjusted={handleStaleAdjusted}
+                  adjustedStaleIds={adjustedStaleIds}
+                />
               )}
             </>
           )}
