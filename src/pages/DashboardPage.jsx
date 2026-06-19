@@ -6092,8 +6092,10 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
       handoverTasks = pst || [];
     }
     const purchasePrice  = Number(unit.purchase_price) || 0;
-    const reconCost      = Number(unit.recon_cost) || 0;
+    const reconEst       = Number(unit.recon_cost) || 0;
     const reconActual    = reconJobsList.reduce((s, j) => s + (Number(j.cost) || 0), 0);
+    // Real money out: use actual logged recon jobs when any exist, else the booked estimate.
+    const reconCost      = reconJobsList.length > 0 ? reconActual : reconEst;
     const servicesCost   = Number(unit.car_listings?.included_services_cost) || 0;
     const commission     = Number(unit.car_listings?.commission_amount) || 0;
     const handoverCost   = handoverTasks.filter((t) => t.status !== 'na').reduce((s, t) => s + (Number(t.cost) || 0), 0);
@@ -6123,7 +6125,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     const backGross      = addonRevenue - addonCost;
     const totalCosts     = vehicleCosts + addonCost;
     const netPnl         = frontGross + backGross;
-    setPnlData({ purchasePrice, reconCost, reconActual, servicesCost, commission, handoverCost, holdingCost, holdingDays, dailyHold, adSpend, addonRevenue, addonCost, revenue, frontGross, backGross, totalCosts, netPnl, addons, isSold: unit.status === 'sold' });
+    setPnlData({ purchasePrice, reconCost, reconEst, reconActual, servicesCost, commission, handoverCost, holdingCost, holdingDays, dailyHold, adSpend, addonRevenue, addonCost, revenue, frontGross, backGross, totalCosts, netPnl, addons, isSold: unit.status === 'sold' });
     setPnlLoading(false);
   };
 
@@ -6995,8 +6997,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                       reasons.push(`RM ${v.holdingCost.toLocaleString()} carrying cost from ${v.holdingDays} days on the floor`);
                     if (spread <= v.purchasePrice * 0.03)
                       reasons.push(`only RM ${spread.toLocaleString()} markup over buy price (${spreadPct.toFixed(1)}%)`);
-                    if (v.reconActual > v.reconCost)
-                      reasons.push(`recon overran the estimate by RM ${(v.reconActual - v.reconCost).toLocaleString()}`);
+                    if (v.reconEst > 0 && v.reconActual > v.reconEst)
+                      reasons.push(`recon overran the estimate by RM ${(v.reconActual - v.reconEst).toLocaleString()}`);
                     if (v.commission > 0 && v.commission >= Math.abs(v.netPnl) * 0.5)
                       reasons.push(`RM ${v.commission.toLocaleString()} sales commission`);
                     if (v.adSpend > 0 && v.adSpend >= Math.abs(v.netPnl) * 0.4)
@@ -7049,12 +7051,12 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                         <span style={{ color: '#f87171' }}>− RM {Number(val).toLocaleString()}</span>
                       </div>
                     ))}
-                    {/* Recon estimate vs actual reconciliation (DMS-5) */}
-                    {pnlData.reconActual > 0 && pnlData.reconActual !== pnlData.reconCost && (
+                    {/* Recon estimate vs actual reconciliation (DMS-5) — only when an estimate was booked */}
+                    {pnlData.reconActual > 0 && pnlData.reconEst > 0 && pnlData.reconActual !== pnlData.reconEst && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 2, marginBottom: 3, paddingLeft: 8 }}>
-                        <span style={{ color: '#9ca3af' }}>↳ actual recon jobs</span>
-                        <span style={{ color: pnlData.reconActual > pnlData.reconCost ? '#f59e0b' : '#059669' }}>
-                          RM {pnlData.reconActual.toLocaleString()} {pnlData.reconActual > pnlData.reconCost ? `(+${(pnlData.reconActual - pnlData.reconCost).toLocaleString()} over)` : '(under est.)'}
+                        <span style={{ color: '#9ca3af' }}>↳ vs RM {pnlData.reconEst.toLocaleString()} estimate</span>
+                        <span style={{ color: pnlData.reconActual > pnlData.reconEst ? '#f59e0b' : '#059669' }}>
+                          {pnlData.reconActual > pnlData.reconEst ? `+${(pnlData.reconActual - pnlData.reconEst).toLocaleString()} over` : `${(pnlData.reconEst - pnlData.reconActual).toLocaleString()} under`}
                         </span>
                       </div>
                     )}

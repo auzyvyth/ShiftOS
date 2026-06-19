@@ -103,8 +103,10 @@ export default function OwnerCarPanel({ listing, userId, profile, salesmenById =
   const pnl = (() => {
     if (!unit) return null;
     const purchasePrice = Number(unit.purchase_price) || 0;
-    const reconCost = Number(unit.recon_cost) || 0;
+    const reconEst = Number(unit.recon_cost) || 0;
     const reconActual = recon.reduce((s, j) => s + (Number(j.cost) || 0), 0);
+    // Real money out: use actual logged recon jobs when any exist, else the booked estimate.
+    const reconCost = recon.length > 0 ? reconActual : reconEst;
     const servicesCost = Number(listing.included_services_cost) || 0;
     const commission = Number(listing.commission_amount) || 0;
     const handoverCost = tasks.filter((t) => t.status !== 'na').reduce((s, t) => s + (Number(t.cost) || 0), 0);
@@ -127,7 +129,7 @@ export default function OwnerCarPanel({ listing, userId, profile, salesmenById =
     const frontGross = revenue - (purchasePrice + reconCost + servicesCost + commission + handoverCost + holdingCost + adSpend);
     const backGross = addonRevenue - addonCost;
     const netPnl = frontGross + backGross;
-    return { purchasePrice, reconCost, reconActual, servicesCost, commission, handoverCost, adSpend, addonRevenue, addonCost, revenue, dailyHold, holdingDays, holdingCost, frontGross, backGross, netPnl, isSold };
+    return { purchasePrice, reconCost, reconEst, reconActual, servicesCost, commission, handoverCost, adSpend, addonRevenue, addonCost, revenue, dailyHold, holdingDays, holdingCost, frontGross, backGross, netPnl, isSold };
   })();
 
   // ---- actions ----
@@ -217,7 +219,7 @@ export default function OwnerCarPanel({ listing, userId, profile, salesmenById =
   const reasons = [];
   if (v.holdingCost > 0 && (v.holdingDays > 60 || v.holdingCost >= Math.abs(v.netPnl) * 0.4)) reasons.push(`${rm(v.holdingCost)} carrying cost from ${v.holdingDays} days on the floor`);
   if (spread <= v.purchasePrice * 0.03) reasons.push(`only ${rm(spread)} markup over buy price (${spreadPct.toFixed(1)}%)`);
-  if (v.reconActual > v.reconCost) reasons.push(`recon overran the estimate by ${rm(v.reconActual - v.reconCost)}`);
+  if (v.reconEst > 0 && v.reconActual > v.reconEst) reasons.push(`recon overran the estimate by ${rm(v.reconActual - v.reconEst)}`);
   if (v.commission > 0 && v.commission >= Math.abs(v.netPnl) * 0.5) reasons.push(`${rm(v.commission)} sales commission`);
   if (v.adSpend > 0 && v.adSpend >= Math.abs(v.netPnl) * 0.4) reasons.push(`${rm(v.adSpend)} ad spend`);
   const tone = loss ? { bg: '#fef2f2', bd: '#fecaca', tx: '#b91c1c', ic: '#dc2626' }
