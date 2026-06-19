@@ -251,6 +251,145 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
 
   // ── Analytics / Page Traffic ─────────────────────────────────────────────
   const [trafficData, setTrafficData] = useState(null);
+  const [trafficLoading, setTrafficLoading] = useState(true);
+  const [stockData, setStockData] = useState(null);
+  const [stockLoading, setStockLoading] = useState(true);
+
+  // ── Section 3: Stock Health ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!userId) return;
+    const fetch = async () => {
+      setStockLoading(true);
+      const { data: units, error: unitsErr } = await supabase
+        .from("stock_units")
+        .select(
+          "id, created_at, brand, model, year, asking_price, status, purchase_date",
+        )
+        .eq("dealer_id", userId)
+        .eq("status", "in_stock");
+      if (unitsErr) console.error("[RevOps] stock_units fetch error:", unitsErr.message);
+
+      const all = units || [];
+      const now = Date.now();
+
+      const withAge = all.map((u) => {
+        const ref = u.purchase_date || u.created_at;
+        const days = ref ? Math.floor((now - new Date(ref)) / 86400000) : null;
+        return { ...u, days };
+      });
+
+      const avgDays =
+        withAge.filter((u) => u.days != null).length > 0
+          ? Math.round(
+              withAge
+                .filter((u) => u.days != null)
+                .reduce((s, u) => s + u.days, 0) /
+                withAge.filter((u) => u.days != null).length,
+            )
+          : null;
+
+      const aged45 = withAge.filter((u) => u.days != null && u.days > 45);
+      const aged60 = withAge.filter((u) => u.days != null && u.days > 60);
+
+      setStockData({ total: all.length, avgDays, aged45, aged60 });
+      setStockLoading(false);
+    };
+    fetch();
+  }, [userId]);
+
+  // ── Section 4: Page Traffic ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!userId) return;
+    const fetch = async () => {
+      setTrafficLoading(true);
+      const since = thirtyDaysAgo();
+
+      const [
+        { count: storeVisits },
+        { count: carViews },
+        { count: waClicks },
+        { count: linkVisits },
+        { data: carViewEvents },
+      ] = await Promise.all([
+        supabase
+          .from("analytics_events")
+          .select("*", { count: "exact", head: true })
+          .eq("dealer_id", userId)
+          .eq("event_type", "store_visit")
+          .gte("created_at", since),
+        supabase
+          .from("analytics_events")
+          .select("*", { count: "exact", head: true })
+          .eq("dealer_id", userId)
+          .eq("event_type", "car_view")
+          .gte("created_at", since),
+        supabase
+          .from("analytics_events")
+          .select("*", { count: "exact", head: true })
+          .eq("dealer_id", userId)
+          .eq("event_type", "whatsapp_click")
+          .gte("created_at", since),
+        supabase
+          .from("analytics_events")
+          .select("*", { count: "exact", head: true })
+          .eq("dealer_id", userId)
+          .eq("event_type", "link_visit")
+          .gte("created_at", since),
+        supabase
+          .from("analytics_events")
+          .select("car_id, car_name")
+          .eq("dealer_id", userId)
+          .eq("event_type", "car_view")
+          .gte("created_at", since),
+      ]);
+
+      const totalPageVisits = (storeVisits || 0) + (linkVisits || 0);
+      const conversionRate =
+        totalPageVisits > 0
+          ? (((waClicks || 0) / totalPageVisits) * 100).toFixed(1)
+          : "0.0";
+
+      // Aggregate car views client-side
+      const carViewMap = {};
+      (carViewEvents || []).forEach((e) => {
+        if (!e.car_id) return;
+        carViewMap[e.car_id] = {
+          car_name: e.car_name || "Unknown",
+          views: (carViewMap[e.car_id]?.views || 0) + 1,
+        };
+      });
+      // Rank every viewed car, then keep only the ones still live on the
+      // marketplace (public_car_listings excludes sold cars), so a sold car
+      // drops off the list automatically. Show up to 10.
+      const ranked = Object.entries(carViewMap)
+        .map(([id, val]) => ({ car_id: id, ...val }))
+        .sort((a, b) => b.views - a.views);
+
+      let topCars = [];
+      if (ranked.length > 0) {
+        const { data: slugRows, error: slugErr } = await supabase
+          .from("public_car_listings")
+          .select("id, slug")
+          .in("id", ranked.map((c) => c.car_id));
+        if (slugErr) console.error("[RevOps] public_car_listings slug fetch error:", slugErr.message);
+        const slugById = Object.fromEntries((slugRows || []).map((r) => [r.id, r.slug]));
+        topCars = ranked
+          .filter((c) => slugById[c.car_id]) // still publicly listed (not sold)
+          .slice(0, 10)
+          .map((c) => ({ ...c, slug: slugById[c.car_id] }));
+      }
+
+      setTrafficData({
+        pageVisits: totalPageVisits,
+        carViews: carViews || 0,
+        waClicks: waClicks || 0,
+        conversionRate,
+        topCars,
+      });
+      setTrafficLoading(false);
+    };
+    fetch();
+  }, [userId]);
   // ── Alerts ───────────────────────────────────────────────────────────────
   const [alerts, setAlerts] = useState([]);
   const [dismissedAlerts, setDismissedAlerts] = useState(new Set());
@@ -813,6 +952,421 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
               })}
             </div>
           </div>
+        )}
+      </SectionCard>
+
+      {/* ── Section 4: Page Traffic (30d) ───────────────────────────────── */}
+      <SectionCard
+        title="Page Traffic (30d)"
+        loading={trafficLoading}
+        skeletonRows={3}
+      >
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <div className="flex flex-col gap-0.5">
+            <span
+              style={{
+                fontSize: 11,
+                color: "#6b7280",
+                textTransform: "uppercase",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+              }}
+            >
+              Store Visits
+            </span>
+            <span
+              style={{
+                fontFamily: "'Bebas Neue',cursive",
+                fontSize: 26,
+                color: "#111827",
+              }}
+            >
+              {trafficData?.pageVisits ?? "—"}
+            </span>
+            <span style={{ fontSize: 11, color: "#4b5563" }}>
+              organic + referral
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span
+              style={{
+                fontSize: 11,
+                color: "#6b7280",
+                textTransform: "uppercase",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+              }}
+            >
+              Car Views
+            </span>
+            <span
+              style={{
+                fontFamily: "'Bebas Neue',cursive",
+                fontSize: 26,
+                color: "#111827",
+              }}
+            >
+              {trafficData?.carViews ?? "—"}
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span
+              style={{
+                fontSize: 11,
+                color: "#6b7280",
+                textTransform: "uppercase",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+              }}
+            >
+              WA Clicks
+            </span>
+            <span
+              style={{
+                fontFamily: "'Bebas Neue',cursive",
+                fontSize: 26,
+                color: "#4ade80",
+              }}
+            >
+              {trafficData?.waClicks ?? "—"}
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span
+              style={{
+                fontSize: 11,
+                color: "#6b7280",
+                textTransform: "uppercase",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+              }}
+            >
+              Conversion
+            </span>
+            <span
+              style={{
+                fontFamily: "'Bebas Neue',cursive",
+                fontSize: 26,
+                color:
+                  Number(trafficData?.conversionRate) >= 3
+                    ? "#4ade80"
+                    : "#fbbf24",
+              }}
+            >
+              {trafficData ? `${trafficData.conversionRate}%` : "—"}
+            </span>
+            <span style={{ fontSize: 11, color: "#4b5563" }}>
+              WA / store visit
+            </span>
+          </div>
+        </div>
+
+        {/* Top cars by views */}
+        {trafficData?.topCars?.length > 0 && (
+          <div>
+            <p
+              style={{
+                fontSize: 11,
+                color: "#4b5563",
+                textTransform: "uppercase",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+                marginBottom: 8,
+              }}
+            >
+              Top Viewed Cars
+            </p>
+            <div className="space-y-1.5">
+              {trafficData.topCars.map((c, i) => {
+                const Row = c.slug ? "a" : "div";
+                const linkProps = c.slug
+                  ? { href: `/cars/${c.slug}`, target: "_blank", rel: "noopener noreferrer" }
+                  : {};
+                return (
+                <Row
+                  key={c.car_id}
+                  {...linkProps}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "6px 0",
+                    borderBottom: "1px solid #EAECF0",
+                    textDecoration: "none",
+                    cursor: c.slug ? "pointer" : "default",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: "#4b5563",
+                      width: 16,
+                      textAlign: "right",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {i + 1}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 13,
+                      color: c.slug ? "#2563eb" : "#111827",
+                      flex: 1,
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {c.car_name}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: "#93c5fd",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {c.views} view{c.views !== 1 ? "s" : ""}
+                  </span>
+                </Row>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {!trafficLoading && trafficData?.carViews === 0 && (
+          <p style={{ fontSize: 12, color: "#4b5563" }}>
+            No car views recorded in the last 30 days.
+          </p>
+        )}
+      </SectionCard>
+
+      {/* ── Section 3: Stock Health ───────────────────────────────────────── */}
+      <SectionCard title="Stock Health" loading={stockLoading} skeletonRows={4}>
+        {stockData && (
+          <>
+            {/* Summary stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+              <div className="flex flex-col gap-0.5">
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "#6b7280",
+                    textTransform: "uppercase",
+                    fontWeight: 600,
+                    letterSpacing: "0.06em",
+                  }}
+                >
+                  In Stock
+                </span>
+                <span
+                  style={{
+                    fontFamily: "'Bebas Neue',cursive",
+                    fontSize: 24,
+                    color: "#111827",
+                  }}
+                >
+                  {stockData.total}
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "#6b7280",
+                    textTransform: "uppercase",
+                    fontWeight: 600,
+                    letterSpacing: "0.06em",
+                  }}
+                >
+                  Avg Days
+                </span>
+                <span
+                  style={{
+                    fontFamily: "'Bebas Neue',cursive",
+                    fontSize: 24,
+                    color: "#111827",
+                  }}
+                >
+                  {stockData.avgDays != null ? stockData.avgDays : "—"}
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "#6b7280",
+                    textTransform: "uppercase",
+                    fontWeight: 600,
+                    letterSpacing: "0.06em",
+                  }}
+                >
+                  Aged &gt;45d
+                </span>
+                <span
+                  style={{
+                    fontFamily: "'Bebas Neue',cursive",
+                    fontSize: 24,
+                    color: stockData.aged45.length > 0 ? "#fbbf24" : "#111827",
+                  }}
+                >
+                  {stockData.aged45.length}
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "#6b7280",
+                    textTransform: "uppercase",
+                    fontWeight: 600,
+                    letterSpacing: "0.06em",
+                  }}
+                >
+                  Aged &gt;60d
+                </span>
+                <span
+                  className={
+                    stockData.aged60.length > 0 ? "flex items-center gap-1" : ""
+                  }
+                  style={{
+                    fontFamily: "'Bebas Neue',cursive",
+                    fontSize: 24,
+                    color: stockData.aged60.length > 0 ? "#f87171" : "#111827",
+                  }}
+                >
+                  {stockData.aged60.length > 0 && (
+                    <AlertCircle
+                      style={{
+                        width: 14,
+                        height: 14,
+                        color: "#f87171",
+                        flexShrink: 0,
+                      }}
+                    />
+                  )}
+                  {stockData.aged60.length}
+                </span>
+              </div>
+            </div>
+
+            {/* Aged units table */}
+            {stockData.aged45.length > 0 && (
+              <div>
+                <p
+                  style={{
+                    fontSize: 11,
+                    color: "#4b5563",
+                    textTransform: "uppercase",
+                    fontWeight: 600,
+                    letterSpacing: "0.06em",
+                    marginBottom: 8,
+                  }}
+                >
+                  Units Aged &gt;45 Days
+                </p>
+                <div
+                  className="rounded-lg overflow-hidden"
+                  style={{ border: "1px solid #EAECF0" }}
+                >
+                  {/* Table header */}
+                  <div
+                    className="grid gap-2 px-3 py-2 hidden sm:grid"
+                    style={{
+                      gridTemplateColumns: "1fr 1fr 60px 90px 100px",
+                      borderBottom: "1px solid #EAECF0",
+                      background: "#F7F8FA",
+                    }}
+                  >
+                    {["Brand", "Model", "Year", "Days", "Asking"].map((h) => (
+                      <span
+                        key={h}
+                        style={{
+                          fontSize: 10,
+                          color: "#4b5563",
+                          textTransform: "uppercase",
+                          fontWeight: 700,
+                          letterSpacing: "0.06em",
+                        }}
+                      >
+                        {h}
+                      </span>
+                    ))}
+                  </div>
+                  {stockData.aged45.map((u) => {
+                    const isOld60 = u.days > 60;
+                    const borderColor = isOld60 ? "#ef4444" : "#f59e0b";
+                    return (
+                      <div
+                        key={u.id}
+                        onClick={() => onNavigateToStock && onNavigateToStock()}
+                        className="grid gap-2 px-3 py-2.5 items-center"
+                        style={{
+                          gridTemplateColumns: "1fr 1fr 60px 90px 100px",
+                          borderLeft: `3px solid ${borderColor}`,
+                          borderBottom: "1px solid #EAECF0",
+                          background: "transparent",
+                          cursor: onNavigateToStock ? "pointer" : "default",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 13,
+                            color: "#111827",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {u.brand || "—"}
+                        </span>
+                        <span style={{ fontSize: 13, color: "#9ca3af" }}>
+                          {u.model || "—"}
+                        </span>
+                        <span style={{ fontSize: 13, color: "#9ca3af" }}>
+                          {u.year || "—"}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 13,
+                            color: isOld60 ? "#f87171" : "#fbbf24",
+                            fontWeight: 600,
+                          }}
+                        >
+                          <Clock
+                            style={{
+                              width: 11,
+                              height: 11,
+                              display: "inline",
+                              marginRight: 3,
+                              verticalAlign: "middle",
+                            }}
+                          />
+                          {u.days}d
+                        </span>
+                        <span style={{ fontSize: 12, color: "#6b7280" }}>
+                          {u.asking_price ? fmtRM(u.asking_price) : "—"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {stockData.aged45.length === 0 && (
+              <p
+                style={{
+                  fontSize: 13,
+                  color: "#4b5563",
+                  textAlign: "center",
+                  padding: "12px 0",
+                }}
+              >
+                No units aged over 45 days
+              </p>
+            )}
+          </>
         )}
       </SectionCard>
 
