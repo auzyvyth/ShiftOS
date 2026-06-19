@@ -3219,7 +3219,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
           <input
             value={lpSearch}
             onChange={e => { setLpSearch(e.target.value); setLpVisible(20); }}
-            placeholder="Search brand, model or variant…"
+            placeholder="Search brand, model, variant, VIN, price or date…"
             style={{ width:'100%', boxSizing:'border-box', paddingLeft:38, paddingRight:12, paddingTop:8, paddingBottom:8, border:'1px solid #e5e7eb', borderRadius:8, fontSize:13, color:'#111827', background:'#f9fafb', outline:'none', fontFamily:"'DM Sans',sans-serif" }}
           />
         </div>
@@ -3236,7 +3236,13 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
           });
           const lpQ = lpSearch.trim().toLowerCase();
           const filtered = lpQ
-            ? allSorted.filter(l => `${l.brand} ${l.model} ${l.variant || ''} ${l.year || ''}`.toLowerCase().includes(lpQ))
+            ? allSorted.filter(l => [
+                l.brand, l.model, l.variant, l.year,
+                l.vin_number, l.plate_number,
+                l.selling_price, l.selling_price != null ? Number(l.selling_price).toLocaleString() : '',
+                l.created_at ? new Date(l.created_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
+                l.created_at ? String(l.created_at).slice(0, 10) : '',
+              ].filter(Boolean).join(' ').toLowerCase().includes(lpQ))
             : allSorted;
           const sorted = filtered.slice(0, lpVisible);
           const hasMore = filtered.length > lpVisible;
