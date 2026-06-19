@@ -3,6 +3,7 @@ import DOMPurify from "dompurify";
 import SuspendedBanner from "../components/SuspendedBanner";
 import ReportBugButton from "../components/ReportBugButton";
 import ShareMenu from "../components/ShareMenu";
+import { cdnImg } from "../utils/img";
 import { buildCaption } from "../utils/sharePack";
 import { createPortal } from 'react-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
@@ -3255,7 +3256,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                     </tr>
                   </thead>
                   <tbody>
-                    {sorted.map((l) => {
+                    {sorted.map((l, i) => {
                       const stats  = carStatsMap[l.id] || {};
                       const views  = stats.views    || 0;
                       const wa     = stats.whatsapp  || 0;
@@ -3273,8 +3274,9 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                           {/* Vehicle */}
                           <td className="lp-td">
                             <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
+                              <span style={{ fontSize:12, fontWeight:700, color:'#9ca3af', width:18, textAlign:'right', flexShrink:0, fontVariantNumeric:'tabular-nums' }}>{i + 1}</span>
                               {l.images?.[0]
-                                ? <img src={l.images[0]} alt="" className="lp-vehicle-img" loading="lazy" decoding="async" />
+                                ? <img src={cdnImg(l.images[0], 96, 70)} alt="" className="lp-vehicle-img" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = l.images[0]; }} />
                                 : <div className="lp-vehicle-placeholder" />
                               }
                               <div style={{ minWidth:0 }}>
@@ -3284,6 +3286,11 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                                 <p style={{ fontSize:11, color:'#4b5563', margin:'2px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                                   {l.variant || l.year || '—'}
                                 </p>
+                                {(l.vin_number || l.plate_number) && (
+                                  <p style={{ fontSize:10, color:'#9ca3af', margin:'1px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontVariantNumeric:'tabular-nums', letterSpacing:'0.02em' }}>
+                                    {l.vin_number || l.plate_number}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -3347,7 +3354,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
 
               {/* ── mobile cards ── */}
               <div className="lp-cards">
-                {sorted.map((l) => {
+                {sorted.map((l, i) => {
                   const stats  = carStatsMap[l.id] || {};
                   const views  = stats.views    || 0;
                   const wa     = stats.whatsapp  || 0;
@@ -3363,18 +3370,23 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                       {/* top row */}
                       <div className="lp-card-top">
                         {l.images?.[0]
-                          ? <img src={l.images[0]} alt="" className="lp-card-img" loading="lazy" decoding="async" />
+                          ? <img src={cdnImg(l.images[0], 160, 70)} alt="" className="lp-card-img" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = l.images[0]; }} />
                           : <div className="lp-card-placeholder" />
                         }
                         <div style={{ flex:1, minWidth:0 }}>
                           <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:6 }}>
                             <div style={{ minWidth:0 }}>
                               <p style={{ fontSize:13, fontWeight:800, color:'#111827', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
-                                {l.brand} {l.model}
+                                <span style={{ color:'#9ca3af', fontWeight:700 }}>{i + 1}.</span> {l.brand} {l.model}
                               </p>
                               <p style={{ fontSize:11, color:'#4b5563', margin:'1px 0 0' }}>
                                 {l.variant || l.year || '—'}
                               </p>
+                              {(l.vin_number || l.plate_number) && (
+                                <p style={{ fontSize:10, color:'#9ca3af', margin:'1px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontVariantNumeric:'tabular-nums' }}>
+                                  {l.vin_number || l.plate_number}
+                                </p>
+                              )}
                             </div>
                             <span style={{ fontSize:10, fontWeight:700, color:statusColor, background:`${statusColor}18`, border:`1px solid ${statusColor}30`, borderRadius:20, padding:'2px 8px', flexShrink:0, letterSpacing:'0.06em', textTransform:'capitalize' }}>
                               {statusKey}
@@ -3413,12 +3425,18 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                 })}
               </div>
               {hasMore && (
-                <div style={{ padding:'14px 20px', textAlign:'center', borderTop:'1px solid #f3f4f6' }}>
+                <div style={{ padding:'14px 20px', textAlign:'center', borderTop:'1px solid #f3f4f6', display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
                   <button
-                    onClick={() => setLpVisible(v => v + 20)}
+                    onClick={() => setLpVisible(v => v + 40)}
                     style={{ padding:'8px 24px', borderRadius:8, background:'#f9fafb', border:'1px solid #e5e7eb', color:'#374151', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}
                   >
                     Load more ({filtered.length - lpVisible} remaining)
+                  </button>
+                  <button
+                    onClick={() => setLpVisible(filtered.length)}
+                    style={{ padding:'8px 24px', borderRadius:8, background:'#fff', border:'1px solid #e5e7eb', color:'#dc2626', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}
+                  >
+                    Show all {filtered.length}
                   </button>
                 </div>
               )}
