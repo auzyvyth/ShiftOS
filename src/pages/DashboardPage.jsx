@@ -87,6 +87,7 @@ import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
 import { getCategoryCfg, PRODUCT_CATEGORY_OPTIONS } from "../utils/serviceCategories";
+import OwnerCarPanel from "../components/inventory/OwnerCarPanel";
 import { getPlanConfig, nextDealerPlan } from "../utils/planConfig";
 import { color, border, radius, font } from "../theme/tokens";
 import { getEmbedUrl } from "../utils/videoEmbed";
@@ -5262,8 +5263,10 @@ function ListingDetailDrawer({
   listing, salesmen, salesmenById, onClose, onUpdate, onDelete,
   setEditListing, setPriceEditListing, setMarkSoldListing,
   setDeleteId, copyListing, copiedListingId, handleAssign, handleUnassign,
-  handleStatus, updatingStatus, getListingAge, onViewCosts,
+  handleStatus, updatingStatus, getListingAge, userId, profile,
 }) {
+  const { can } = usePermissions(profile);
+  const canViewCosts = can('view_cost');
   const [imgIdx, setImgIdx]       = useState(0);
   const [lbOpen, setLbOpen]       = useState(false);
   const [drawerTab, setDrawerTab] = useState('specs');
@@ -5298,8 +5301,8 @@ function ListingDetailDrawer({
     return () => window.removeEventListener('keydown', handler);
   }, [lbOpen, onClose]);
 
-  const tabs = ['specs', 'features', 'options', ...(listing.is_recon ? ['recon'] : [])];
-  const tabLabel = { specs: 'Specifications', features: 'Features', options: 'Options', recon: 'Recon' };
+  const tabs = ['specs', 'features', 'options', ...(listing.is_recon ? ['recon'] : []), ...(canViewCosts ? ['owner'] : [])];
+  const tabLabel = { specs: 'Specifications', features: 'Features', options: 'Options', recon: 'Recon', owner: 'Owner · P&L' };
 
   const btnBase = { width: '100%', background: '#ffffff', borderRadius: 6, padding: '11px 14px', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.2s, border-color 0.2s', border: '1px solid #e5e7eb', fontFamily: "'DM Sans', sans-serif", color: '#374151' };
 
@@ -5503,6 +5506,11 @@ function ListingDetailDrawer({
                   <DrawerDamageMap damageMap={damageMap} />
                 </div>
               )}
+
+              {/* Tab: Owner · P&L (owner-only full financial + compliance detail) */}
+              {drawerTab === 'owner' && canViewCosts && (
+                <OwnerCarPanel listing={listing} userId={userId} profile={profile} salesmenById={salesmenById} />
+              )}
             </div>
 
             {/* RIGHT — dark premium sidebar */}
@@ -5522,9 +5530,9 @@ function ListingDetailDrawer({
                   </button>
                 )}
 
-                {/* Costs & P&L — bridge to the financial / compliance detail */}
-                {onViewCosts && (
-                  <button onClick={() => onViewCosts(listing)} style={{ ...btnBase, border: '1px solid rgba(124,58,237,0.3)', color: '#7c3aed' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                {/* Costs & P&L — jump to the owner panel in this same detail page */}
+                {canViewCosts && (
+                  <button onClick={() => setDrawerTab('owner')} style={{ ...btnBase, border: '1px solid rgba(124,58,237,0.3)', color: drawerTab === 'owner' ? '#fff' : '#7c3aed', background: drawerTab === 'owner' ? '#7c3aed' : '#ffffff' }} onMouseEnter={e => { if (drawerTab !== 'owner') e.currentTarget.style.background='#f9fafb'; }} onMouseLeave={e => { if (drawerTab !== 'owner') e.currentTarget.style.background='#ffffff'; }}>
                     <DollarSign style={{ width: 14, height: 14, flexShrink: 0 }} />Costs &amp; P&amp;L
                   </button>
                 )}
@@ -11161,7 +11169,8 @@ export default function DashboardPage() {
           handleStatus={handleStatus}
           updatingStatus={updatingStatus}
           getListingAge={getListingAge}
-          onViewCosts={() => { setDetailListing(null); handleTabChange("stock"); }}
+          userId={userId}
+          profile={profile}
         />
       )}
 
