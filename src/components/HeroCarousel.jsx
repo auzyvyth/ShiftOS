@@ -303,11 +303,13 @@ const HC_CSS = `
   }
   .hc-trust-text { font-size:10px; font-weight:600; color:rgba(255,255,255,0.7); letter-spacing:0.04em; }
 
-  /* ── Progress bar ── */
+  /* ── Progress bar (CSS-animated, no per-frame JS) ── */
   .hc-progress {
-    position:absolute; bottom:0; left:0; height:2px;
-    background:rgba(220,38,38,0.65); z-index:5; transition:width 0.1s linear;
+    position:absolute; bottom:0; left:0; height:2px; width:0;
+    background:rgba(220,38,38,0.65); z-index:5;
+    animation-name:hc-progress-fill; animation-timing-function:linear; animation-fill-mode:forwards;
   }
+  @keyframes hc-progress-fill { from{width:0} to{width:100%} }
 
   /* ── Content animation ── */
   .hc-anim { animation:slideUp 0.65s cubic-bezier(0.2,0.9,0.4,1) forwards; }
@@ -564,8 +566,11 @@ const HC_CSS = `
   .hc-compact .hc-content-wrap { padding: clamp(96px,14vh,128px) 48px clamp(40px,6vh,64px) !important; gap: clamp(18px,3vh,30px) !important; }
   .hc-compact .hc-glass-card { max-height: clamp(320px,44vh,460px); }
   .hc-compact .hc-card-spacer { min-height: clamp(300px,40vh,440px); max-height: clamp(320px,44vh,460px); }
-  /* No counter / dots / progress in the compact hero (user request). */
-  .hc-compact .hc-progress, .hc-compact .hc-counter, .hc-compact .hc-dots { display: none !important; }
+  /* No counter / dots / progress in the compact hero (user request).
+     Keep .hc-progress in the layout (opacity:0, not display:none) so its CSS
+     animation still runs and onAnimationEnd keeps auto-advancing the slides. */
+  .hc-compact .hc-counter, .hc-compact .hc-dots { display: none !important; }
+  .hc-compact .hc-progress { opacity: 0 !important; }
   @media (max-width:768px) {
     /* Let the content define the height so the price is never clipped; add
        breathing room between the title / image / meta / price. */
@@ -671,14 +676,11 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
   const [loading, setLoading] = useState(true);
   const [idx, setIdx] = useState(0);
   const [animKey, setAnimKey] = useState(0);
-  const [progress, setProgress] = useState(0);
+  const [paused, setPaused] = useState(false);
   const [imgLoaded, setImgLoaded] = useState({}); // track which images loaded
 
-  const hoverPaused = useRef(false);
-  const manualPaused = useRef(false);
   const manualTimer = useRef(null);
   const touchStartX = useRef(null);
-  const progressStart = useRef(null);
 
   // PERF-2: resolve dealer_id immediately from URL subdomain — don't wait for
   // useTenant's auth-session setup + full profile RPC before fetching slides.
@@ -732,45 +734,20 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
     });
   }, [slides, idx]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Pause auto-advance briefly after a manual interaction.
   const triggerManualPause = useCallback(() => {
-    manualPaused.current = true;
+    setPaused(true);
     clearTimeout(manualTimer.current);
-    manualTimer.current = setTimeout(() => {
-      manualPaused.current = false;
-    }, TOUCH_PAUSE);
+    manualTimer.current = setTimeout(() => setPaused(false), TOUCH_PAUSE);
   }, []);
-
-  const isPaused = () => hoverPaused.current || manualPaused.current;
 
   const advance = useCallback((n) => {
     setIdx(n);
     setAnimKey((k) => k + 1);
-    setProgress(0);
-    progressStart.current = Date.now();
   }, []);
 
-  // Auto-slide every 4s
-  useEffect(() => {
-    if (slides.length <= 1) return;
-    progressStart.current = Date.now();
-    const tick = setInterval(() => {
-      if (!isPaused()) {
-        const elapsed = Date.now() - progressStart.current;
-        const pct = Math.min((elapsed / INTERVAL_MS) * 100, 100);
-        setProgress(pct);
-        if (pct >= 100) {
-          setIdx((i) => {
-            const n = (i + 1) % slides.length;
-            setAnimKey((k) => k + 1);
-            setProgress(0);
-            progressStart.current = Date.now();
-            return n;
-          });
-        }
-      }
-    }, 50);
-    return () => clearInterval(tick);
-  }, [slides.length]);
+  // Auto-advance is driven by the progress bar's CSS animationend (see render) —
+  // no per-frame setState. CSS animations also auto-throttle on hidden tabs.
 
   const onTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX;
@@ -786,8 +763,6 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
             ? (i + 1) % slides.length
             : (i - 1 + slides.length) % slides.length;
         setAnimKey((k) => k + 1);
-        setProgress(0);
-        progressStart.current = Date.now();
         return n;
       });
     }
@@ -967,21 +942,23 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
         style={s.mode === "text"
           ? { background: `linear-gradient(135deg, ${tenant?.brand_color || "#dc2626"}26 0%, #0C0C0E 58%)` }
           : undefined}
-        onMouseEnter={() => {
-          hoverPaused.current = true;
-        }}
-        onMouseLeave={() => {
-          hoverPaused.current = false;
-          progressStart.current = Date.now();
-          setProgress(0);
-        }}
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
         <style>{HC_CSS}</style>
 
-        {/* Progress bar */}
-        <div className="hc-progress" style={{ width: `${progress}%` }} />
+        {/* Progress bar — CSS-animated; advances the slide on animationend so
+            there is no per-frame setState (was ~20 re-renders/sec). */}
+        {slides.length > 1 && (
+          <div
+            key={animKey}
+            className="hc-progress"
+            style={{ animationDuration: `${INTERVAL_MS}ms`, animationPlayState: paused ? 'paused' : 'running' }}
+            onAnimationEnd={() => advance((idx + 1) % slides.length)}
+          />
+        )}
 
         {/* ── Background: only active + next image mounted ── */}
         <div className="hc-bg">
