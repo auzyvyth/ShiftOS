@@ -93,7 +93,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
   const preloadGallery = () => {
     if (!hasGallery || galleryPreloaded.current) return;
     galleryPreloaded.current = true;
-    slides.forEach((src, i) => { if (i !== safeIdx) { const img = new window.Image(); img.src = toThumb(src); } });
+    slides.forEach((src, i) => { if (i !== safeIdx) { const img = new window.Image(); img.src = cdnImg(src, 640, 72); } });
   };
 
   const onImgTouchStart = (e) => { preloadGallery(); dragX.current = e.touches[0].clientX; };

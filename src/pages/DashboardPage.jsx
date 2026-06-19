@@ -5988,6 +5988,10 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     const next = window.prompt('PUSPAKOM B7 inspection date (YYYY-MM-DD). Leave blank to clear.', current);
     if (next === null) return;
     const value = next.trim() || null;
+    if (value && (!/^\d{4}-\d{2}-\d{2}$/.test(value) || isNaN(Date.parse(value)))) {
+      toast.error('Enter a valid date as YYYY-MM-DD (e.g. 2026-03-15)');
+      return;
+    }
     const { error } = await supabase.from('stock_units').update({ puspakom_b7_date: value }).eq('id', unit.id).eq('dealer_id', userId);
     if (error) { toast.error('Update failed'); return; }
     logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: unit.id, action: 'b7_updated', summary: `Puspakom B7 date set to ${value || 'cleared'}`, fieldChanges: { puspakom_b7_date: { from: unit.puspakom_b7_date, to: value } } });
@@ -6005,6 +6009,10 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     const next = window.prompt('PUSPAKOM B5 inspection date (YYYY-MM-DD). Leave blank to clear.', current);
     if (next === null) return;
     const value = next.trim() || null;
+    if (value && (!/^\d{4}-\d{2}-\d{2}$/.test(value) || isNaN(Date.parse(value)))) {
+      toast.error('Enter a valid date as YYYY-MM-DD (e.g. 2026-03-15)');
+      return;
+    }
     const { error } = await supabase.from('stock_units').update({ puspakom_b5_date: value }).eq('id', unit.id).eq('dealer_id', userId);
     if (error) { toast.error('Update failed'); return; }
     logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: unit.id, action: 'b5_updated', summary: `Puspakom B5 date set to ${value || 'cleared'}`, fieldChanges: { puspakom_b5_date: { from: unit.puspakom_b5_date, to: value } } });
