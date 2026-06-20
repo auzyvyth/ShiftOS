@@ -5929,6 +5929,105 @@ const STOCK_SORT_OPTIONS = [
   { value: 'profit_asc',  label: 'Profit low→high' },
   { value: 'days_desc',   label: 'Longest in stock' },
 ];
+
+// Shared stock P&L math — used by StockTab.netProfit AND the compact stats strip on
+// the Listings tab, so both show the same figure as the per-unit P&L modal.
+function stockCostBasis(u) {
+  if (Number(u.purchase_price) > 0) return Number(u.purchase_price);
+  return Number(u.car_listings?.base_price) || 0;
+}
+function stockNetProfit(u, ctx = {}) {
+  const { cfg = {}, ads = {}, handover = {}, addRev = {}, addCost = {} } = ctx;
+  const cost = stockCostBasis(u);
+  const c = u.car_listings || {};
+  const isSold = u.status === 'sold';
+  const revenue = isSold ? (Number(u.sold_price) || 0) : (Number(u.asking_price) || Number(c.selling_price) || 0);
+  if (revenue === 0 && cost === 0) return null;
+  if (isSold && !u.sold_price && cost === 0) return null;
+  const recon = Number(u.recon_cost) || 0;
+  const services = Number(c.included_services_cost) || 0;
+  const commission = Number(c.commission_amount) || 0;
+  const adSpend = ads[u.id] || 0;
+  const hc = handover[u.listing_id] || 0;
+  const aR = addRev[u.listing_id] || 0;
+  const aC = addCost[u.listing_id] || 0;
+  let dailyHold = 0;
+  if (Number(cfg.floor_plan_rate) > 0 && cost > 0) dailyHold = cost * (Number(cfg.floor_plan_rate) / 100) / 365;
+  else if (Number(cfg.monthly_overhead) > 0) dailyHold = Number(cfg.monthly_overhead) / Math.max(1, Number(cfg.avg_fleet_size) || 20) / 30;
+  const start = u.purchase_date || u.created_at;
+  const end = isSold && u.sold_date ? new Date(u.sold_date) : new Date();
+  const days = start ? Math.max(0, Math.floor((end - new Date(start)) / 86400000)) : 0;
+  const holding = Math.round(dailyHold * days);
+  const front = revenue - (cost + recon + services + commission + holding + adSpend + hc);
+  return front + (aR - aC);
+}
+function stockDays(u) {
+  if (u.days_in_stock != null && u.days_in_stock > 0) return u.days_in_stock;
+  const date = u.purchase_date || u.created_at;
+  if (!date) return null;
+  return Math.floor((Date.now() - new Date(date)) / 86400000);
+}
+
+// Compact 6-stat strip surfaced atop the Listings tab (migrated from the Stock tab
+// header). Fetches stock_units + cost components once and reuses the shared P&L math.
+function StockStatsStrip({ dealerId }) {
+  const [s, setS] = useState(null);
+  useEffect(() => {
+    if (!dealerId) return;
+    let cancelled = false;
+    (async () => {
+      const [u, cfg, ads, tasks, dp] = await Promise.all([
+        supabase.from('stock_units').select('*, car_listings(selling_price, base_price, included_services_cost, commission_amount, sold_price, sold_date, status)').eq('dealer_id', dealerId),
+        supabase.from('dealer_cost_settings').select('*').eq('dealer_id', dealerId).maybeSingle(),
+        supabase.from('ad_spend').select('stock_unit_id, amount').eq('dealer_id', dealerId),
+        supabase.from('post_sale_tasks').select('listing_id, status, cost').eq('dealer_id', dealerId),
+        supabase.from('deal_products').select('listing_id, sold_price, dealer_products(cost_price)').eq('dealer_id', dealerId),
+      ]);
+      if (cancelled) return;
+      const units = u.data || [];
+      const a = {}; (ads.data || []).forEach(r => { if (r.stock_unit_id) a[r.stock_unit_id] = (a[r.stock_unit_id] || 0) + (Number(r.amount) || 0); });
+      const h = {}; (tasks.data || []).forEach(t => { if (t.status !== 'na' && t.listing_id) h[t.listing_id] = (h[t.listing_id] || 0) + (Number(t.cost) || 0); });
+      const ar = {}; const ac = {};
+      (dp.data || []).forEach(d => { if (d.listing_id) { ar[d.listing_id] = (ar[d.listing_id] || 0) + (Number(d.sold_price) || 0); ac[d.listing_id] = (ac[d.listing_id] || 0) + (Number(d.dealer_products?.cost_price) || 0); } });
+      const ctx = { cfg: cfg.data || {}, ads: a, handover: h, addRev: ar, addCost: ac };
+      const now = new Date();
+      const active = units.filter(x => x.status !== 'sold');
+      const sold = units.filter(x => x.status === 'sold');
+      const month = sold.filter(x => { if (!x.sold_date) return false; const d = new Date(x.sold_date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
+      const withDays = active.map(stockDays).filter(d => typeof d === 'number');
+      setS({
+        soldRevenue: sold.reduce((t, x) => t + (Number(x.sold_price) || Number(x.asking_price) || 0), 0),
+        stockValue: active.reduce((t, x) => t + (Number(x.asking_price) || 0), 0),
+        avgDays: withDays.length ? Math.round(withDays.reduce((t, d) => t + d, 0) / withDays.length) : 0,
+        gpMonth: month.reduce((t, x) => t + (stockNetProfit(x, ctx) || 0), 0),
+        soldMonth: month.length,
+        aging: active.filter(x => { const d = stockDays(x); return typeof d === 'number' && d > 60; }).length,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [dealerId]);
+
+  const rm = (n) => 'RM ' + Math.round(Number(n || 0)).toLocaleString('en-MY');
+  const items = s ? [
+    { label: 'Revenue (sold)', val: rm(s.soldRevenue) },
+    { label: 'Stock Value', val: rm(s.stockValue) },
+    { label: 'Avg Days', val: String(s.avgDays) },
+    { label: 'GP (month)', val: rm(s.gpMonth), color: s.gpMonth >= 0 ? '#16a34a' : '#dc2626' },
+    { label: 'Sold (month)', val: String(s.soldMonth) },
+    { label: 'Aging 60d+', val: String(s.aging), color: s.aging > 0 ? '#dc2626' : undefined },
+  ] : Array.from({ length: 6 }, () => ({}));
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))', gap: 8, marginBottom: 24 }}>
+      {items.map((it, i) => (
+        <div key={i} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }}>
+          <p style={{ fontSize: 9, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.label || ''}</p>
+          <p style={{ fontSize: 15, fontWeight: 700, color: it.color || '#111827', margin: '2px 0 0', whiteSpace: 'nowrap' }}>{it.val ?? '—'}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
 const StockTab = React.memo(function StockTab({ userId, listings, profile, onPublishComplete }) {
   const navigate = useNavigate();
   const { can } = usePermissions(profile);
@@ -6113,37 +6212,14 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     return Number(u.car_listings?.base_price) || 0;
   };
 
-  // True net P&L for the list view — mirrors the per-unit P&L modal: subtracts
-  // recon, included services, commission, handover, holding and ad spend, and adds
-  // F&I back-end. Drives the "In loss" filter and the row Net badge so a break-even
-  // sticker price that actually loses money once costs are counted is flagged.
-  const netProfit = (u) => {
-    const cost = costBasis(u);
-    const c = u.car_listings || {};
-    const isSold = u.status === 'sold';
-    const revenue = isSold
-      ? (Number(u.sold_price) || 0)
-      : (Number(u.asking_price) || Number(c.selling_price) || 0);
-    if (revenue === 0 && cost === 0) return null;
-    if (isSold && !u.sold_price && cost === 0) return null;
-    const recon = Number(u.recon_cost) || 0;
-    const services = Number(c.included_services_cost) || 0;
-    const commission = Number(c.commission_amount) || 0;
-    const adSpend = costExtras.ads[u.id] || 0;
-    const handover = costExtras.handover[u.listing_id] || 0;
-    const addRev = costExtras.addRev[u.listing_id] || 0;
-    const addCost = costExtras.addCost[u.listing_id] || 0;
-    const cc = costCfg || {};
-    let dailyHold = 0;
-    if (Number(cc.floor_plan_rate) > 0 && cost > 0) dailyHold = cost * (Number(cc.floor_plan_rate) / 100) / 365;
-    else if (Number(cc.monthly_overhead) > 0) dailyHold = Number(cc.monthly_overhead) / Math.max(1, Number(cc.avg_fleet_size) || 20) / 30;
-    const start = u.purchase_date || u.created_at;
-    const end = isSold && u.sold_date ? new Date(u.sold_date) : new Date();
-    const days = start ? Math.max(0, Math.floor((end - new Date(start)) / 86400000)) : 0;
-    const holding = Math.round(dailyHold * days);
-    const front = revenue - (cost + recon + services + commission + holding + adSpend + handover);
-    return front + (addRev - addCost);
-  };
+  // True net P&L for the list view — mirrors the per-unit P&L modal (recon, included
+  // services, commission, handover, holding, ad spend, F&I back-end). Drives the
+  // "In loss" filter, the row Net badge and the Listings stats strip via one shared
+  // helper so all three agree.
+  const netProfit = (u) => stockNetProfit(u, {
+    cfg: costCfg, ads: costExtras.ads, handover: costExtras.handover,
+    addRev: costExtras.addRev, addCost: costExtras.addCost,
+  });
 
   // Predicates for the quick-filter chips (each returns true = unit matches the filter)
   const stockFilterFns = {
@@ -10845,6 +10921,9 @@ export default function DashboardPage() {
                 ))}
               </div>
 
+              {/* Stock P&L stats (migrated from the Stock tab header) */}
+              <StockStatsStrip dealerId={getDealerIdFromProfile(profile)} />
+
               {/* ── Listings panel ── */}
               <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #EAECF0', background: '#FFFFFF', boxShadow: '0 1px 4px rgba(15,23,42,0.06)', fontFamily: "'DM Sans', sans-serif" }}>
                 <div>
@@ -11003,7 +11082,7 @@ export default function DashboardPage() {
                   <>
                     {/* Desktop table */}
                     <div className="hidden md:block" style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
+                      <table style={{ width: '100%', minWidth: 1180, borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
                         <thead>
                           <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                             {['', 'Vehicle', 'Price', 'Cost', 'Recon', 'Gross', 'Year / Km', 'Grade', 'Seller', 'Age', 'Status'].map((h, i) => (
