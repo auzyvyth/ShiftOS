@@ -3921,6 +3921,10 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const [commissionApproveTarget, setCommissionApproveTarget] = useState(null); // salesman id
   const [commissionPayTarget, setCommissionPayTarget] = useState(null);
   const [commissionWorking, setCommissionWorking] = useState(false);
+  const [assignedMap, setAssignedMap] = useState({}); // salesmanId -> [cars locked to them]
+  const [openCars, setOpenCars] = useState([]);        // unassigned, unsold cars (assignable pool)
+  const [assignPickerFor, setAssignPickerFor] = useState(null); // salesman id whose picker is open
+  const [assignWorking, setAssignWorking] = useState(null);     // listing id mid-mutation
 
   const fetchAnalytics = async () => {
     if (!dealerId) return;
@@ -3984,6 +3988,63 @@ function TeamTab({ managerDealership, dealerId, profile }) {
     setActivityCountMap(counts);
   };
 
+  // Assigned-cars (exclusivity lock) per salesman. Sold units keep assigned_to as
+  // the closer, but "responsibility" only means live inventory, so sold is excluded.
+  const fetchAssignedCars = async () => {
+    if (!dealerId) return;
+    const { data } = await supabase
+      .from("car_listings")
+      .select("id, brand, model, year, status, assigned_to")
+      .eq("dealer_id", dealerId)
+      .neq("status", "sold");
+    if (!data) return;
+    const map = {};
+    const open = [];
+    data.forEach((c) => {
+      if (c.assigned_to) (map[c.assigned_to] ||= []).push(c);
+      else open.push(c);
+    });
+    const byName = (a, b) =>
+      (a.brand || "").localeCompare(b.brand || "") || (a.model || "").localeCompare(b.model || "");
+    Object.values(map).forEach((arr) => arr.sort(byName));
+    open.sort(byName);
+    setAssignedMap(map);
+    setOpenCars(open);
+  };
+
+  // Mirror of the dealer-dash handleAssign exclusivity rule: locking a car to a rep
+  // evicts every OTHER salesman's salesman_listings feature of it (retroactive lock).
+  const handleAssignCar = async (listingId, salesmanId, name) => {
+    setAssignWorking(listingId);
+    const car = openCars.find((c) => c.id === listingId);
+    const { error } = await supabase
+      .from("car_listings")
+      .update({ assigned_to: salesmanId })
+      .eq("id", listingId);
+    if (!error) {
+      await supabase.from("salesman_listings").delete()
+        .eq("listing_id", listingId).neq("salesman_id", salesmanId);
+      logActivity({ dealerId, actor: profile, tableName: 'car_listings', recordId: listingId, action: 'assigned', summary: `Assigned to ${name} — ${car?.brand || ''} ${car?.model || ''} ${car?.year || ''}`.trim(), fieldChanges: { assigned_to: { to: name } } });
+      await fetchAssignedCars();
+    }
+    setAssignWorking(null);
+    setAssignPickerFor(null);
+  };
+
+  const handleUnassignCar = async (listingId) => {
+    setAssignWorking(listingId);
+    const car = Object.values(assignedMap).flat().find((c) => c.id === listingId);
+    const { error } = await supabase
+      .from("car_listings")
+      .update({ assigned_to: null })
+      .eq("id", listingId);
+    if (!error) {
+      logActivity({ dealerId, actor: profile, tableName: 'car_listings', recordId: listingId, action: 'unassigned', summary: `Unassigned — ${car?.brand || ''} ${car?.model || ''} ${car?.year || ''}`.trim() });
+      await fetchAssignedCars();
+    }
+    setAssignWorking(null);
+  };
+
   const handleApproveCommission = async (salesmanId) => {
     setCommissionWorking(true);
     const { error } = await supabase
@@ -4025,6 +4086,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
     fetchAnalytics();
     fetchSoldPerSalesman();
     fetchLastActivity();
+    fetchAssignedCars();
   }, [managerDealership, dealerId]); // dealerId must be here — fetchSold* guard on it
 
   useEffect(() => {
@@ -4043,7 +4105,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "car_listings", filter: `dealer_id=eq.${dealerId}` },
-        () => { fetchSold(); fetchSoldPerSalesman(); },
+        () => { fetchSold(); fetchSoldPerSalesman(); fetchAssignedCars(); },
       )
       .subscribe();
     return () => supabase.removeChannel(ch);
@@ -4400,6 +4462,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                 { bg: 'rgba(148,163,184,0.10)', color: '#94a3b8', border: 'rgba(148,163,184,0.18)' },
                 { bg: 'rgba(180,83,9,0.12)', color: '#f97316', border: 'rgba(180,83,9,0.20)' },
               ];
+              const canAssign = ['owner', 'dealer', 'superadmin', 'manager'].includes(profile?.role);
               return (
                 <>
                   {leaderboard && (
@@ -4562,6 +4625,73 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                               </p>
                             </div>
                           ))}
+                        </div>
+                        {/* Assigned cars — exclusivity lock. Shows which units this rep
+                            is solely responsible for (commission locked to them). */}
+                        <div style={{ marginTop: 10 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
+                            <p style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>
+                              Assigned cars ({(assignedMap[s.id] || []).length})
+                            </p>
+                            {canAssign && (
+                              <button
+                                onClick={() => setAssignPickerFor(assignPickerFor === s.id ? null : s.id)}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer' }}
+                              >
+                                <PlusCircle style={{ width: 13, height: 13 }} />
+                                {assignPickerFor === s.id ? 'Close' : 'Assign'}
+                              </button>
+                            )}
+                          </div>
+                          {(assignedMap[s.id] || []).length > 0 ? (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                              {(assignedMap[s.id] || []).map((c) => (
+                                <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600, color: '#374151', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '3px 8px' }}>
+                                  <Lock style={{ width: 10, height: 10, color: '#9ca3af', flexShrink: 0 }} />
+                                  <span>{c.brand} {c.model}{c.year ? ` · ${c.year}` : ''}</span>
+                                  {c.status === 'reserved' && (
+                                    <span style={{ fontSize: 9, fontWeight: 800, color: '#d97706', letterSpacing: '0.04em' }}>RESERVED</span>
+                                  )}
+                                  {canAssign && (
+                                    <button
+                                      onClick={() => handleUnassignCar(c.id)}
+                                      disabled={assignWorking === c.id}
+                                      title="Unassign"
+                                      style={{ display: 'inline-flex', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#9ca3af', opacity: assignWorking === c.id ? 0.4 : 1 }}
+                                    >
+                                      <X style={{ width: 11, height: 11 }} />
+                                    </button>
+                                  )}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p style={{ fontSize: 11, color: '#9ca3af', margin: 0 }}>No cars locked to this rep.</p>
+                          )}
+                          {canAssign && assignPickerFor === s.id && (
+                            <div style={{ marginTop: 8, border: '1px solid #e5e7eb', borderRadius: 8, maxHeight: 180, overflowY: 'auto', background: '#fff' }}>
+                              {openCars.length === 0 ? (
+                                <p style={{ fontSize: 11, color: '#9ca3af', padding: '10px 12px', margin: 0 }}>No open cars to assign.</p>
+                              ) : (
+                                openCars.map((c) => (
+                                  <button
+                                    key={c.id}
+                                    onClick={() => handleAssignCar(c.id, s.id, s.full_name)}
+                                    disabled={assignWorking === c.id}
+                                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'none', border: 'none', borderBottom: '1px solid #f3f4f6', color: '#374151', fontSize: 12, cursor: 'pointer', textAlign: 'left' }}
+                                  >
+                                    <Car style={{ width: 12, height: 12, color: '#9ca3af', flexShrink: 0 }} />
+                                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {c.brand} {c.model}{c.year ? ` · ${c.year}` : ''}
+                                    </span>
+                                    {c.status === 'reserved' && (
+                                      <span style={{ fontSize: 9, fontWeight: 800, color: '#d97706', flexShrink: 0 }}>RESERVED</span>
+                                    )}
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          )}
                         </div>
                       </>
                     ) : (
