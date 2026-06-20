@@ -124,11 +124,14 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
     if (tool === 'compliance') setCompForm({ puspakom_b5_date: unit.puspakom_b5_date || '', puspakom_b7_date: unit.puspakom_b7_date || '', encumbrance_status: unit.encumbrance_status || 'unknown' });
     if (tool === 'activity') {
       setActivity(null);
+      // Merge the stock_unit's and the linked car_listing's events so the timeline
+      // shows the full story (creation + price/status from the listing, cost/sold/
+      // compliance from the stock unit), not just half of it.
       supabase.from('activity_log').select('summary, actor_name, actor_role, action, created_at')
-        .eq('record_id', unit.id).order('created_at', { ascending: false }).limit(40)
+        .in('record_id', [unit.id, listing.id].filter(Boolean)).order('created_at', { ascending: false }).limit(40)
         .then(({ data }) => setActivity(data || []));
     }
-  }, [tool, unit]);
+  }, [tool, unit, listing.id]);
 
   const createUnit = async () => {
     setCreating(true);

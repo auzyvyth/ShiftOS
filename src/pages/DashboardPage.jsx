@@ -6605,11 +6605,14 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     setHistoryUnit(unit);
     setHistoryLogs([]);
     setHistoryLoading(true);
+    // A car's history is split across two record ids: the stock_unit (cost, sold,
+    // compliance) and the linked car_listing (creation, price, status). Pull both
+    // so the timeline is the full story, not half of it.
     const { data } = await supabase
       .from('activity_log')
       .select('actor_name, actor_role, action, summary, created_at')
       .eq('dealer_id', userId)
-      .eq('record_id', unit.id)
+      .in('record_id', [unit.id, unit.listing_id].filter(Boolean))
       .order('created_at', { ascending: false })
       .limit(50);
     setHistoryLogs(data || []);
