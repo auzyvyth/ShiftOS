@@ -176,7 +176,35 @@ function buildCarHtml(car, dealer, pathname) {
   <link rel="canonical" href="${esc(url)}" />
   <script type="application/ld+json">${JSON.stringify(schema)}</script>
 </head>
-<body></body>
+<body>
+  <main>
+    <h1>${esc(name)}</h1>
+    <p><strong>${esc(priceFormatted)}</strong></p>
+    ${image ? `<img src="${esc(image)}" alt="${esc(name)}" width="1200" height="630" />` : ""}
+    <p>${esc(description)}</p>
+    <ul>
+      ${[
+        ["Year", car.year],
+        ["Brand", car.brand],
+        ["Model", car.model],
+        ["Variant", car.variant],
+        ["Mileage", car.mileage ? `${Number(car.mileage).toLocaleString()} km` : null],
+        ["Transmission", car.transmission],
+        ["Fuel", car.fuel_type],
+        ["Body", car.body_type],
+        ["Colour", car.colour],
+        ["Engine", car.engine_cc ? `${Number(car.engine_cc).toLocaleString()} cc` : null],
+        ["Condition", car.is_recon ? `Recon${car.auction_grade ? ` (grade ${car.auction_grade})` : ""}` : "Used"],
+        ["Location", location],
+      ]
+        .filter(([, v]) => v)
+        .map(([k, v]) => `<li>${esc(k)}: ${esc(v)}</li>`)
+        .join("\n      ")}
+    </ul>
+    ${dealer?.dealership ? `<p>Sold by ${esc(dealer.dealership)}.</p>` : ""}
+    <p><a href="${SITE_URL}/showroom">Browse more used cars on xdrive.my</a></p>
+  </main>
+</body>
 </html>`;
 }
 
@@ -194,14 +222,33 @@ export default async function handler(req) {
 
   const carMatch = pathname.match(/^\/(?:cars|showroom)\/([^/]+)\/?$/);
   if (!carMatch) {
+    // Non-car path (home, showroom index, articles, storefronts). Serve real,
+    // crawlable content + internal links and a path-correct canonical — an empty
+    // body here is what makes Google flag these as Soft 404 / not indexed.
+    const canonical = `${SITE_URL}${pathname === "/" ? "" : pathname}`;
+    const desc = "Browse verified used cars for sale in Malaysia from trusted dealers on xdrive.my — best prices, easy financing, quality-checked listings.";
     return new Response(
       `<!DOCTYPE html><html lang="en"><head>
   <meta charset="utf-8" />
-  <title>XDrive — Used Cars in Malaysia</title>
-  <meta property="og:title" content="XDrive" />
-  <meta property="og:description" content="Browse verified used cars from trusted dealers across Malaysia." />
+  <title>XDrive — Quality Used Cars in Malaysia</title>
+  <meta name="description" content="${esc(desc)}" />
+  <link rel="canonical" href="${esc(canonical)}" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="xdrive.my" />
+  <meta property="og:url" content="${esc(canonical)}" />
+  <meta property="og:title" content="XDrive — Quality Used Cars in Malaysia" />
+  <meta property="og:description" content="${esc(desc)}" />
   <meta property="og:image" content="${SITE_URL}/og-default.jpg" />
-</head><body></body></html>`,
+</head><body>
+  <main>
+    <h1>Quality used cars in Malaysia</h1>
+    <p>${esc(desc)}</p>
+    <ul>
+      <li><a href="${SITE_URL}/showroom">Browse all used cars</a></li>
+      <li><a href="${SITE_URL}/calculator">Car loan calculator</a></li>
+    </ul>
+  </main>
+</body></html>`,
       {
         headers: {
           "Content-Type": "text/html; charset=utf-8",
