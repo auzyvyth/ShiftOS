@@ -6053,7 +6053,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     setLoading(true);
     const { data, error } = await supabase
       .from('stock_units')
-      .select('*, car_listings(brand, model, variant, year, plate_number, base_price, selling_price, purchase_price, recon_cost, gross_profit, days_in_stock, sold_price, sold_date, status, images, mileage, transmission, fuel_type, body_type, colour, engine_cc, condition, vin_number, registration_date, previous_owners, road_tax_expiry, warranty_months, is_recon, auction_grade, interior_grade, import_country, commission_amount)')
+      .select('*, car_listings(brand, model, variant, year, plate_number, base_price, selling_price, purchase_price, recon_cost, gross_profit, days_in_stock, sold_price, sold_date, status, images, mileage, transmission, fuel_type, body_type, colour, engine_cc, condition, vin_number, registration_date, previous_owners, road_tax_expiry, warranty_months, is_recon, auction_grade, interior_grade, import_country, commission_amount, included_services_cost)')
       .eq('dealer_id', userId)
       .order('created_at', { ascending: false });
     if (error) console.error('[StockTab] fetchUnits error:', error.message, error);
@@ -6069,6 +6069,30 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     if (!userId) return;
     supabase.from('dealer_cost_settings').select('*').eq('dealer_id', userId).maybeSingle()
       .then(({ data }) => setCostCfg(data || {}));
+  }, [userId]);
+
+  // Extra cost components so the list-level net P&L (loss flag + row badge) matches
+  // the full per-unit P&L modal: ad spend (per stock unit), handover processing
+  // (per listing), and F&I back-end (per listing). Without these the inline gross
+  // was rosy — a 0-margin car with recon/ads/holding never tripped the loss filter.
+  const [costExtras, setCostExtras] = useState({ ads: {}, handover: {}, addRev: {}, addCost: {} });
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      const [ads, tasks, dp] = await Promise.all([
+        supabase.from('ad_spend').select('stock_unit_id, amount').eq('dealer_id', userId),
+        supabase.from('post_sale_tasks').select('listing_id, status, cost').eq('dealer_id', userId),
+        supabase.from('deal_products').select('listing_id, sold_price, dealer_products(cost_price)').eq('dealer_id', userId),
+      ]);
+      if (cancelled) return;
+      const a = {}; (ads.data || []).forEach(r => { if (r.stock_unit_id) a[r.stock_unit_id] = (a[r.stock_unit_id] || 0) + (Number(r.amount) || 0); });
+      const h = {}; (tasks.data || []).forEach(t => { if (t.status !== 'na' && t.listing_id) h[t.listing_id] = (h[t.listing_id] || 0) + (Number(t.cost) || 0); });
+      const ar = {}; const ac = {};
+      (dp.data || []).forEach(d => { if (d.listing_id) { ar[d.listing_id] = (ar[d.listing_id] || 0) + (Number(d.sold_price) || 0); ac[d.listing_id] = (ac[d.listing_id] || 0) + (Number(d.dealer_products?.cost_price) || 0); } });
+      setCostExtras({ ads: a, handover: h, addRev: ar, addCost: ac });
+    })();
+    return () => { cancelled = true; };
   }, [userId]);
 
   const daysInStock = (u) => {
@@ -6095,6 +6119,38 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     return revenue - cost - (Number(u.recon_cost) || 0);
   };
 
+  // True net P&L for the list view — mirrors the per-unit P&L modal: subtracts
+  // recon, included services, commission, handover, holding and ad spend, and adds
+  // F&I back-end. Drives the "In loss" filter and the row Net badge so a break-even
+  // sticker price that actually loses money once costs are counted is flagged.
+  const netProfit = (u) => {
+    const cost = costBasis(u);
+    const c = u.car_listings || {};
+    const isSold = u.status === 'sold';
+    const revenue = isSold
+      ? (Number(u.sold_price) || 0)
+      : (Number(u.asking_price) || Number(c.selling_price) || 0);
+    if (revenue === 0 && cost === 0) return null;
+    if (isSold && !u.sold_price && cost === 0) return null;
+    const recon = Number(u.recon_cost) || 0;
+    const services = Number(c.included_services_cost) || 0;
+    const commission = Number(c.commission_amount) || 0;
+    const adSpend = costExtras.ads[u.id] || 0;
+    const handover = costExtras.handover[u.listing_id] || 0;
+    const addRev = costExtras.addRev[u.listing_id] || 0;
+    const addCost = costExtras.addCost[u.listing_id] || 0;
+    const cc = costCfg || {};
+    let dailyHold = 0;
+    if (Number(cc.floor_plan_rate) > 0 && cost > 0) dailyHold = cost * (Number(cc.floor_plan_rate) / 100) / 365;
+    else if (Number(cc.monthly_overhead) > 0) dailyHold = Number(cc.monthly_overhead) / Math.max(1, Number(cc.avg_fleet_size) || 20) / 30;
+    const start = u.purchase_date || u.created_at;
+    const end = isSold && u.sold_date ? new Date(u.sold_date) : new Date();
+    const days = start ? Math.max(0, Math.floor((end - new Date(start)) / 86400000)) : 0;
+    const holding = Math.round(dailyHold * days);
+    const front = revenue - (cost + recon + services + commission + holding + adSpend + handover);
+    return front + (addRev - addCost);
+  };
+
   // Predicates for the quick-filter chips (each returns true = unit matches the filter)
   const stockFilterFns = {
     missing_b7:  u => !u.puspakom_b7_date,
@@ -6105,7 +6161,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     under_hp:    u => (u.encumbrance_status || 'unknown') === 'under_hp',
     enc_unknown: u => (u.encumbrance_status || 'unknown') === 'unknown',
     aging:       u => u.status === 'in_stock' && typeof daysInStock(u) === 'number' && daysInStock(u) > 60,
-    loss:        u => { const g = grossProfit(u); return g != null && g < 0; },
+    loss:        u => { const g = netProfit(u); return g != null && g < 0; },
   };
   // Apply text search + active chip filters + sort to a list of units
   const applyStockFilters = (list) => {
@@ -6131,8 +6187,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
         price_asc:   (a, b) => priceOf(a) - priceOf(b),
         year_desc:   (a, b) => yearOf(b) - yearOf(a),
         year_asc:    (a, b) => yearOf(a) - yearOf(b),
-        profit_desc: (a, b) => (grossProfit(b) || 0) - (grossProfit(a) || 0),
-        profit_asc:  (a, b) => (grossProfit(a) || 0) - (grossProfit(b) || 0),
+        profit_desc: (a, b) => (netProfit(b) || 0) - (netProfit(a) || 0),
+        profit_asc:  (a, b) => (netProfit(a) || 0) - (netProfit(b) || 0),
         days_desc:   (a, b) => daysOf(b) - daysOf(a),
       };
       if (sorters[stockSort]) out = [...out].sort(sorters[stockSort]);
@@ -6150,7 +6206,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
 
-  const totalGP = thisMonth.reduce((s, u) => s + (grossProfit(u) || 0), 0);
+  const totalGP = thisMonth.reduce((s, u) => s + (netProfit(u) || 0), 0);
   const totalValue = activeUnits.reduce((s, u) => s + (Number(u.asking_price) || 0), 0);
   // Revenue = realised sale price across all sold units (fall back to asking if a
   // pipeline-close didn't stamp a sold_price).
@@ -6732,7 +6788,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                 ) : visibleUnits.map(u => {
                   const car = u.car_listings || { brand: u.brand, model: u.model, year: u.year, plate_number: u.registration_number };
                   const thumb = u.car_listings?.images?.[0] || null;
-                  const gp = grossProfit(u);
+                  const gp = netProfit(u);
                   const days = daysInStock(u);
                   const daysNum = typeof days === 'number' ? days : 0;
                   const isAging = u.status === 'in_stock' && daysNum > 60;
@@ -6810,8 +6866,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                             {isUnpublished && <span title="Not visible on the public marketplace" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: '#fffbeb', border: '1px solid #fde68a', color: '#b45309' }}>Not published</span>}
                           </>}
                           {can('view_gross') && gp != null && (
-                            <span title="Estimated gross profit" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: gp >= 0 ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.1)', border: `1px solid ${gp >= 0 ? '#6ee7b7' : '#fca5a5'}`, color: gp >= 0 ? '#059669' : '#dc2626' }}>
-                              GP {gp >= 0 ? '+' : '−'}RM {Math.abs(gp).toLocaleString()}
+                            <span title="Net profit after recon, services, commission, ad spend and holding" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: gp >= 0 ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.1)', border: `1px solid ${gp >= 0 ? '#6ee7b7' : '#fca5a5'}`, color: gp >= 0 ? '#059669' : '#dc2626' }}>
+                              Net {gp >= 0 ? '+' : '−'}RM {Math.abs(gp).toLocaleString()}
                             </span>
                           )}
                         </div>
@@ -6842,7 +6898,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
         const car = u.car_listings || { brand: u.brand, model: u.model, year: u.year, plate_number: u.registration_number };
         const thumb = u.car_listings?.images?.[0] || null;
         const plate = car.plate_number || u.registration_number;
-        const gp = grossProfit(u);
+        const gp = netProfit(u);
         const days = daysInStock(u);
         const daysNum = typeof days === 'number' ? days : 0;
         const isAging = u.status === 'in_stock' && daysNum > 60;
@@ -6942,7 +6998,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                 {[
                   { label: 'Asking',   val: u.asking_price ? `RM ${Number(u.asking_price).toLocaleString()}` : '—', color: '#111827' },
                   can('view_cost')  ? { label: 'Cost',    val: costBasis(u) > 0 ? `RM ${costBasis(u).toLocaleString()}` : '—', color: '#374151' } : null,
-                  can('view_gross') ? { label: 'Est. GP', val: gp != null ? `${gp >= 0 ? '+' : '−'}RM ${Math.abs(gp).toLocaleString()}` : '—', color: gp == null ? '#9ca3af' : gp >= 0 ? '#059669' : '#dc2626' } : null,
+                  can('view_gross') ? { label: 'Net P&L', val: gp != null ? `${gp >= 0 ? '+' : '−'}RM ${Math.abs(gp).toLocaleString()}` : '—', color: gp == null ? '#9ca3af' : gp >= 0 ? '#059669' : '#dc2626' } : null,
                 ].filter(Boolean).map((s, i) => (
                   <div key={i} style={{ background: '#fff', padding: '10px 14px', textAlign: 'center' }}>
                     <p style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, margin: '0 0 2px' }}>{s.label}</p>
@@ -9575,7 +9631,7 @@ export default function DashboardPage() {
       }
 
       const dealerId = getDealerIdFromProfile(p);
-      const [{ data: cars, error: carsError }, { data: sm }] = await Promise.all([
+      const [{ data: cars, error: carsError }, { data: sm }, { data: stockCost }] = await Promise.all([
         supabase
           .from("car_listings")
           .select("id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,condition,images,status,created_at,dealer_id,assigned_to,commission_amount,sold_at,included_services,included_services_cost,auction_grade,interior_grade,is_recon,financing_type,engine_cc,previous_owners,plate_number,vin_number,engine_number,road_tax_expiry,warranty_months,deposit_amount,reserved_by,reserved_at")
@@ -9586,9 +9642,22 @@ export default function DashboardPage() {
           .select("id, full_name, avatar_url")
           .eq("role", "salesman")
           .eq("dealer_id", dealerId),
+        // Cost basis lives on stock_units, not car_listings — merge it in so the
+        // Listings tab Cost / Recon / Gross columns actually show data.
+        supabase
+          .from("stock_units")
+          .select("listing_id, purchase_price, recon_cost")
+          .eq("dealer_id", dealerId)
+          .not("listing_id", "is", null),
       ]);
       if (active) {
-        setListings(carsError ? [] : cars || []);
+        const costBy = {};
+        (stockCost || []).forEach((s) => { if (s.listing_id) costBy[s.listing_id] = s; });
+        const merged = (cars || []).map((c) => {
+          const sc = costBy[c.id];
+          return sc ? { ...c, purchase_price: sc.purchase_price, recon_cost: sc.recon_cost } : c;
+        });
+        setListings(carsError ? [] : merged);
         setSalesmen(sm || []);
         setLoading(false);
       }
