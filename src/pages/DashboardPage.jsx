@@ -5388,6 +5388,7 @@ function ListingDetailDrawer({
                   tool={ownerTool} setTool={setOwnerTool}
                   onStatusChange={(s) => { handleStatus(listing.id, s); onUpdate({ ...listing, status: s }); }}
                   statusUpdating={updatingStatus === listing.id}
+                  onMarkSold={() => setMarkSoldListing(listing)}
                 />
               ) : (
               <>

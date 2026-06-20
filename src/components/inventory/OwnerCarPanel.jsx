@@ -54,7 +54,7 @@ function ToolModal({ title, onClose, children, footer }) {
   );
 }
 
-export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool, setTool, onStatusChange, statusUpdating }) {
+export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool, setTool, onStatusChange, statusUpdating, onMarkSold }) {
   const [loading, setLoading] = useState(true);
   const [unit, setUnit] = useState(null);
   const [recon, setRecon] = useState([]);
@@ -318,11 +318,11 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
       <Section icon={UserCheck} title="Status & Attribution" color="#2563eb">
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
           {onStatusChange ? (
-            <select value={status} onChange={(e) => onStatusChange(e.target.value)} disabled={statusUpdating}
+            <select value={status} onChange={(e) => { const val = e.target.value; if (val === 'sold') { onMarkSold && onMarkSold(); } else { onStatusChange(val); } }} disabled={statusUpdating}
               style={{ fontSize: 12, fontWeight: 700, padding: '4px 26px 4px 9px', borderRadius: 6, border: `1px solid ${statusCfg.c}40`, background: `${statusCfg.c}12`, color: statusCfg.c, cursor: statusUpdating ? 'wait' : 'pointer', appearance: 'none', backgroundImage: 'none', outline: 'none' }}>
               <option value="available">Available</option>
               <option value="reserved">Reserved</option>
-              <option value="sold">Sold</option>
+              <option value="sold">Sold — record sale…</option>
               <option value="unpublished">Unpublished</option>
             </select>
           ) : (
