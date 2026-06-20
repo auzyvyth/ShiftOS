@@ -6107,18 +6107,6 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     return Number(u.car_listings?.base_price) || 0;
   };
 
-  // Available units: potential GP at asking price. Sold units: actual GP at sold price.
-  const grossProfit = (u) => {
-    const cost = costBasis(u);
-    if (u.status === 'sold') {
-      if (!u.sold_price && cost === 0) return null;
-      return (Number(u.sold_price) || 0) - cost - (Number(u.recon_cost) || 0);
-    }
-    const revenue = Number(u.asking_price) || Number(u.car_listings?.selling_price) || 0;
-    if (revenue === 0 && cost === 0) return null;
-    return revenue - cost - (Number(u.recon_cost) || 0);
-  };
-
   // True net P&L for the list view — mirrors the per-unit P&L modal: subtracts
   // recon, included services, commission, handover, holding and ad spend, and adds
   // F&I back-end. Drives the "In loss" filter and the row Net badge so a break-even
@@ -9922,10 +9910,16 @@ export default function DashboardPage() {
       setUpdatingStatus(null);
     }
   };
-  const handlePriceSave = (u) =>
-    setListings((p) => p.map((l) => (l.id === u.id ? u : l)));
+  const handlePriceSave = (u) => {
+    setListings((p) => p.map((l) => (l.id === u.id ? { ...l, ...u } : l)));
+    setDetailListing((prev) => (prev?.id === u.id ? { ...prev, ...u } : prev));
+  };
   const handleUpdate = (u) => {
-    setListings((p) => p.map((l) => (l.id === u.id ? u : l)));
+    // Merge (not replace) so fields the edit form doesn't manage — e.g. the
+    // stock cost merged in at fetch — survive the save. Also sync the open detail
+    // panel so edits show instantly instead of only after a close/reopen.
+    setListings((p) => p.map((l) => (l.id === u.id ? { ...l, ...u } : l)));
+    setDetailListing((prev) => (prev?.id === u.id ? { ...prev, ...u } : prev));
     // Mark as adjusted only after a real save — not when the form is merely opened
     if (editListing && getListingAge(editListing.created_at) >= 30) {
       handleStaleAdjusted(u.id);
@@ -9946,7 +9940,8 @@ export default function DashboardPage() {
       if (error) throw error;
       const updated = data?.[0] ?? { ...markSoldListing, status: "sold" };
       logActivity({ dealerId: userId, actor: profile, tableName: 'car_listings', recordId: markSoldListing.id, action: 'marked_sold', summary: `Marked sold — ${markSoldListing.brand} ${markSoldListing.model} ${markSoldListing.year}` });
-      setListings((p) => p.map((l) => (l.id === updated.id ? updated : l)));
+      setListings((p) => p.map((l) => (l.id === updated.id ? { ...l, ...updated } : l)));
+      setDetailListing((prev) => (prev?.id === updated.id ? { ...prev, ...updated } : prev));
       setMarkSoldListing(null);
     } catch (e) {
       console.error(e);
