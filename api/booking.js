@@ -44,9 +44,11 @@ export default async function handler(req, res) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   // Verify the listing exists and get its real dealer_id from the DB
-  // (never trust caller-supplied dealerId — prevents fake bookings on competitor dealers)
+  // (never trust caller-supplied dealerId — prevents fake bookings on competitor dealers).
+  // Read via public_car_listings: the base car_listings table is not anon-readable
+  // (public reads go through this view), so anon must look it up here.
   const { data: listing } = await supabase
-    .from('car_listings')
+    .from('public_car_listings')
     .select('dealer_id, assigned_to')
     .eq('id', carId)
     .maybeSingle();
