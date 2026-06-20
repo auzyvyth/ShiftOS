@@ -9,6 +9,7 @@ import {
 
 const rm = (n) => 'RM ' + Math.round(Number(n) || 0).toLocaleString();
 const fmtD = (d) => { try { return new Date(d).toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' }); } catch { return '—'; } };
+const ago = (d) => { if (!d) return '—'; const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000); return days <= 0 ? 'today' : days === 1 ? '1d ago' : `${days}d ago`; };
 
 const AD_CHANNELS = [
   { v: 'mudah', l: 'Mudah' }, { v: 'carlist', l: 'Carlist' }, { v: 'facebook', l: 'Facebook' },
@@ -53,7 +54,7 @@ function ToolModal({ title, onClose, children, footer }) {
   );
 }
 
-export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool, setTool }) {
+export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool, setTool, onStatusChange, statusUpdating }) {
   const [loading, setLoading] = useState(true);
   const [unit, setUnit] = useState(null);
   const [recon, setRecon] = useState([]);
@@ -63,6 +64,9 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
   const [costCfg, setCostCfg] = useState(null);
   const [smCount, setSmCount] = useState(0);
   const [views, setViews] = useState(0);
+  const [enquiries, setEnquiries] = useState(0);
+  const [saves, setSaves] = useState(0);
+  const [lastViewed, setLastViewed] = useState(null);
   const [creating, setCreating] = useState(false);
 
   // tool form state
@@ -82,18 +86,24 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
       .eq('listing_id', listing.id).eq('dealer_id', userId)
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
     setUnit(u || null);
-    const [rcfg, dp, pst, sl, av] = await Promise.all([
+    const [rcfg, dp, pst, sl, av, enq, sv, lv] = await Promise.all([
       supabase.from('dealer_cost_settings').select('*').eq('dealer_id', userId).maybeSingle(),
       supabase.from('deal_products').select('sold_price, dealer_products(name, cost_price)').eq('listing_id', listing.id).eq('dealer_id', userId),
       supabase.from('post_sale_tasks').select('step_key, status, cost').eq('listing_id', listing.id).eq('dealer_id', userId),
       supabase.from('salesman_listings').select('id', { count: 'exact', head: true }).eq('listing_id', listing.id),
       supabase.from('analytics_events').select('id', { count: 'exact', head: true }).eq('car_id', listing.id).eq('event_type', 'car_view'),
+      supabase.from('leads').select('id', { count: 'exact', head: true }).eq('car_listing_id', listing.id).eq('dealer_id', userId),
+      supabase.rpc('count_listing_saves', { p_listing: listing.id }),
+      supabase.from('analytics_events').select('created_at').eq('car_id', listing.id).eq('event_type', 'car_view').order('created_at', { ascending: false }).limit(1).maybeSingle(),
     ]);
     setCostCfg(rcfg.data || null);
     setAddons(dp.data || []);
     setTasks(pst.data || []);
     setSmCount(sl.count || 0);
     setViews(av.count || 0);
+    setEnquiries(enq.count || 0);
+    setSaves(sv.data || 0);
+    setLastViewed(lv.data?.created_at || null);
     if (u) {
       const [rj, ad] = await Promise.all([
         supabase.from('recon_jobs').select('*').eq('stock_unit_id', u.id).order('created_at', { ascending: false }),
@@ -299,12 +309,25 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
         <Stat label="Asking" value={rm(unit.asking_price || listing.selling_price)} />
         <Stat label="Ad spend" value={rm(adTotal)} color={adTotal > 0 ? '#db2777' : '#111827'} />
         <Stat label="Car views" value={views.toLocaleString()} />
+        <Stat label="Enquiries" value={enquiries.toLocaleString()} color={enquiries > 0 ? '#2563eb' : '#111827'} />
+        <Stat label="Saves" value={saves.toLocaleString()} color={saves > 0 ? '#db2777' : '#111827'} />
+        <Stat label="Last viewed" value={ago(lastViewed)} />
       </div>
 
       {/* ---------- READ-ONLY VIEW ---------- */}
       <Section icon={UserCheck} title="Status & Attribution" color="#2563eb">
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: statusCfg.c, background: `${statusCfg.c}15`, border: `1px solid ${statusCfg.c}30`, borderRadius: 6, padding: '3px 10px' }}>{statusCfg.l}</span>
+          {onStatusChange ? (
+            <select value={status} onChange={(e) => onStatusChange(e.target.value)} disabled={statusUpdating}
+              style={{ fontSize: 12, fontWeight: 700, padding: '4px 26px 4px 9px', borderRadius: 6, border: `1px solid ${statusCfg.c}40`, background: `${statusCfg.c}12`, color: statusCfg.c, cursor: statusUpdating ? 'wait' : 'pointer', appearance: 'none', backgroundImage: 'none', outline: 'none' }}>
+              <option value="available">Available</option>
+              <option value="reserved">Reserved</option>
+              <option value="sold">Sold</option>
+              <option value="unpublished">Unpublished</option>
+            </select>
+          ) : (
+            <span style={{ fontSize: 12, fontWeight: 700, color: statusCfg.c, background: `${statusCfg.c}15`, border: `1px solid ${statusCfg.c}30`, borderRadius: 6, padding: '3px 10px' }}>{statusCfg.l}</span>
+          )}
           {status === 'sold' && (unit.sold_date || listing.sold_date) && <span style={{ fontSize: 12, color: '#6b7280' }}>on {fmtD(unit.sold_date || listing.sold_date)}</span>}
           {status === 'sold' && (unit.sold_price || listing.sold_price) > 0 && <span style={{ fontSize: 12, color: '#111827', fontWeight: 600 }}>{rm(unit.sold_price || listing.sold_price)}</span>}
         </div>

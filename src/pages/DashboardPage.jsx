@@ -5328,7 +5328,7 @@ function ListingDetailDrawer({
     return () => window.removeEventListener('keydown', handler);
   }, [lbOpen, onClose]);
 
-  const tabs = ['specs', 'features', 'options', ...(listing.is_recon ? ['recon'] : []), ...(canViewCosts ? ['owner'] : [])];
+  const tabs = ['specs', 'features', 'options', ...(listing.is_recon ? ['recon'] : [])];
   const tabLabel = { specs: 'Specifications', features: 'Features', options: 'Options', recon: 'Recon', owner: 'Owner · P&L' };
 
   const btnBase = { width: '100%', background: '#ffffff', borderRadius: 6, padding: '11px 14px', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.2s, border-color 0.2s', border: '1px solid #e5e7eb', fontFamily: "'DM Sans', sans-serif", color: '#374151' };
@@ -5367,6 +5367,30 @@ function ListingDetailDrawer({
             {/* LEFT */}
             <div style={{ flex: 1, minWidth: 0, padding: isMobile ? 16 : 24, borderRight: isMobile ? 'none' : '1px solid #e5e7eb', overflowY: isMobile ? 'visible' : 'auto' }}>
 
+              {/* Public ↔ Owner toggle (like the Sold/Available switch) */}
+              {canViewCosts && (
+                <div style={{ display: 'flex', gap: 6, background: '#f3f4f6', borderRadius: 10, padding: 4, marginBottom: 16 }}>
+                  {[['public', 'Public Details'], ['owner', 'Owner · P&L']].map(([key, label]) => {
+                    const on = key === 'owner' ? drawerTab === 'owner' : drawerTab !== 'owner';
+                    return (
+                      <button key={key} onClick={() => setDrawerTab(key === 'owner' ? 'owner' : 'specs')}
+                        style={{ flex: 1, padding: '8px 10px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: "'DM Sans',sans-serif", background: on ? '#fff' : 'transparent', color: on ? '#111827' : '#6b7280', boxShadow: on ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.15s' }}>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {drawerTab === 'owner' && canViewCosts ? (
+                <OwnerCarPanel
+                  listing={listing} userId={userId} salesmenById={salesmenById}
+                  tool={ownerTool} setTool={setOwnerTool}
+                  onStatusChange={(s) => { handleStatus(listing.id, s); onUpdate({ ...listing, status: s }); }}
+                  statusUpdating={updatingStatus === listing.id}
+                />
+              ) : (
+              <>
               {/* Gallery */}
               <div style={{ display: 'flex', gap: 8 }}>
                 {/* Thumb strip */}
@@ -5533,10 +5557,7 @@ function ListingDetailDrawer({
                   <DrawerDamageMap damageMap={damageMap} />
                 </div>
               )}
-
-              {/* Tab: Owner · P&L (owner-only full financial + compliance detail) */}
-              {drawerTab === 'owner' && canViewCosts && (
-                <OwnerCarPanel listing={listing} userId={userId} salesmenById={salesmenById} tool={ownerTool} setTool={setOwnerTool} />
+              </>
               )}
             </div>
 
