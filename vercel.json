@@ -1,7 +1,8 @@
 {
   "git": {
     "deploymentEnabled": {
-      "staging": true
+      "staging": true,
+      "claude/compassionate-fermi-uty3b2": false
     }
   },
   "functions": {
