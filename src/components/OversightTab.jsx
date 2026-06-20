@@ -402,6 +402,231 @@ function RevenueTrend({ sparkline }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Revenue Breakdown (drill-down: what drove the revenue) ────────────────────
+// Mirrors the per-unit P&L in OwnerCarPanel so "gross" here matches the listing
+// P&L modal exactly (purchase + recon + services + commission + handover +
+// holding + ad spend, plus F&I back-end). Assembled client-side from a handful of
+// dealer-scoped, grouped queries (no N+1) rather than a fragile SQL RPC.
+function unitGross(l, stock, cfg, adSpend, handover, addonRev, addonCost) {
+  const purchase = Number(stock?.purchase_price) || Number(l.purchase_price) || 0;
+  const recon = Number(stock?.recon_cost) || Number(l.recon_cost) || 0;
+  const services = Number(l.included_services_cost) || 0;
+  const commission = Number(l.commission_amount) || 0;
+  const revenue = Number(l.sold_price) || Number(l.selling_price) || 0;
+  let dailyHold = 0;
+  if (Number(cfg?.floor_plan_rate) > 0 && purchase > 0) dailyHold = purchase * (Number(cfg.floor_plan_rate) / 100) / 365;
+  else if (Number(cfg?.monthly_overhead) > 0) dailyHold = Number(cfg.monthly_overhead) / Math.max(1, Number(cfg.avg_fleet_size) || 20) / 30;
+  const start = stock?.purchase_date || stock?.created_at || l.created_at;
+  const end = l.sold_date ? new Date(l.sold_date) : (l.sold_at ? new Date(l.sold_at) : new Date());
+  const days = start ? Math.max(0, Math.floor((end - new Date(start)) / 86400000)) : null;
+  const holding = Math.round(dailyHold * (days || 0));
+  const front = revenue - (purchase + recon + services + commission + handover + holding + adSpend);
+  const gross = front + (addonRev - addonCost);
+  return { revenue, purchase, recon, services, commission, handover, holding, adSpend, addonRev, addonCost, gross, days };
+}
+
+const PERIODS = [
+  { key: 'mtd', label: 'This month' },
+  { key: '90d', label: 'Last 90 days' },
+  { key: 'all', label: 'All time' },
+];
+
+function RevenueBreakdown({ dealerId }) {
+  const [rows, setRows] = useState(null);
+  const [period, setPeriod] = useState('mtd');
+  const [expanded, setExpanded] = useState(null);
+
+  useEffect(() => {
+    if (!dealerId) return;
+    let cancelled = false;
+    setRows(null);
+    (async () => {
+      const [sold, stock, leads, ads, addons, tasks, cfg, team] = await Promise.all([
+        supabase.from('car_listings').select('id, brand, model, year, sold_date, sold_at, sold_price, selling_price, assigned_to, commission_amount, included_services_cost, purchase_price, recon_cost, created_at').eq('dealer_id', dealerId).eq('status', 'sold'),
+        supabase.from('stock_units').select('listing_id, purchase_price, recon_cost, purchase_date, created_at').eq('dealer_id', dealerId).not('listing_id', 'is', null),
+        supabase.from('leads').select('car_listing_id').eq('dealer_id', dealerId).not('car_listing_id', 'is', null),
+        supabase.from('ad_spend').select('listing_id, amount').eq('dealer_id', dealerId).not('listing_id', 'is', null),
+        supabase.from('deal_products').select('listing_id, sold_price, dealer_products(cost_price)').eq('dealer_id', dealerId),
+        supabase.from('post_sale_tasks').select('listing_id, status, cost').eq('dealer_id', dealerId),
+        supabase.from('dealer_cost_settings').select('*').eq('dealer_id', dealerId).maybeSingle(),
+        supabase.from('profiles').select('id, full_name').eq('dealer_id', dealerId),
+      ]);
+      if (cancelled) return;
+      const stockBy = {}; (stock.data || []).forEach((s) => { stockBy[s.listing_id] = s; });
+      const leadsBy = {}; (leads.data || []).forEach((x) => { leadsBy[x.car_listing_id] = (leadsBy[x.car_listing_id] || 0) + 1; });
+      const adsBy = {}; (ads.data || []).forEach((a) => { adsBy[a.listing_id] = (adsBy[a.listing_id] || 0) + (Number(a.amount) || 0); });
+      const handoverBy = {}; (tasks.data || []).forEach((t) => { if (t.status !== 'na') handoverBy[t.listing_id] = (handoverBy[t.listing_id] || 0) + (Number(t.cost) || 0); });
+      const addRevBy = {}; const addCostBy = {};
+      (addons.data || []).forEach((d) => { addRevBy[d.listing_id] = (addRevBy[d.listing_id] || 0) + (Number(d.sold_price) || 0); addCostBy[d.listing_id] = (addCostBy[d.listing_id] || 0) + (Number(d.dealer_products?.cost_price) || 0); });
+      const nameBy = {}; (team.data || []).forEach((p) => { nameBy[p.id] = p.full_name; });
+      const out = (sold.data || []).map((l) => {
+        const m = unitGross(l, stockBy[l.id], cfg.data, adsBy[l.id] || 0, handoverBy[l.id] || 0, addRevBy[l.id] || 0, addCostBy[l.id] || 0);
+        return {
+          ...l,
+          ...m,
+          salesman: nameBy[l.assigned_to] || 'Unassigned',
+          leadsCount: leadsBy[l.id] || 0,
+          when: l.sold_date || l.sold_at || l.created_at,
+        };
+      }).sort((a, b) => new Date(b.when || 0) - new Date(a.when || 0));
+      setRows(out);
+    })();
+    return () => { cancelled = true; };
+  }, [dealerId]);
+
+  const filtered = useMemo(() => {
+    if (!rows) return [];
+    if (period === 'all') return rows;
+    const now = new Date();
+    return rows.filter((r) => {
+      if (!r.when) return false;
+      const d = new Date(r.when);
+      if (period === 'mtd') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      return (now - d) / 86400000 <= 90;
+    });
+  }, [rows, period]);
+
+  const trends = useMemo(() => {
+    const byModel = {};
+    filtered.forEach((r) => {
+      const key = `${r.brand || '?'} ${r.model || ''}`.trim();
+      const g = byModel[key] || (byModel[key] = { key, brand: r.brand, units: 0, rev: 0, gross: 0, days: 0, daysN: 0 });
+      g.units += 1; g.rev += r.revenue || 0; g.gross += r.gross || 0;
+      if (r.days != null) { g.days += r.days; g.daysN += 1; }
+    });
+    return Object.values(byModel)
+      .map((g) => ({ ...g, avgPrice: g.units ? g.rev / g.units : 0, avgGross: g.units ? g.gross / g.units : 0, avgDays: g.daysN ? Math.round(g.days / g.daysN) : null }))
+      .sort((a, b) => b.units - a.units || b.gross - a.gross);
+  }, [filtered]);
+
+  if (rows === null) return <p style={{ color: '#9ca3af', fontSize: 13 }}>Loading breakdown…</p>;
+
+  const totalRev = filtered.reduce((s, r) => s + (r.revenue || 0), 0);
+  const totalGross = filtered.reduce((s, r) => s + (r.gross || 0), 0);
+  const th = { fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right', padding: '8px 10px', whiteSpace: 'nowrap' };
+  const td = { fontSize: 13, color: '#374151', textAlign: 'right', padding: '10px', whiteSpace: 'nowrap' };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Period toggle + totals */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {PERIODS.map((p) => (
+            <button key={p.key} onClick={() => setPeriod(p.key)} style={{ fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 8, cursor: 'pointer', border: '1px solid ' + (period === p.key ? '#111827' : '#e5e7eb'), background: period === p.key ? '#111827' : '#fff', color: period === p.key ? '#fff' : '#6b7280' }}>{p.label}</button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 18, fontSize: 12, color: '#6b7280' }}>
+          <span>{filtered.length} sold</span>
+          <span>Revenue <b style={{ color: '#111827' }}>{fmtRM(totalRev)}</b></span>
+          <span>Gross <b style={{ color: totalGross >= 0 ? '#16a34a' : '#dc2626' }}>{fmtRM(totalGross)}</b></span>
+        </div>
+      </div>
+
+      {/* Contributors table */}
+      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #e5e7eb', background: '#fafafa' }}>
+                <th style={{ ...th, textAlign: 'left' }}>Car</th>
+                <th style={{ ...th, textAlign: 'left' }}>Salesperson</th>
+                <th style={th}>Sold</th>
+                <th style={th}>Days</th>
+                <th style={th}>Leads</th>
+                <th style={th}>Ads</th>
+                <th style={th}>Gross</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && (
+                <tr><td colSpan={7} style={{ ...td, textAlign: 'center', color: '#9ca3af', padding: '24px' }}>No sales in this period.</td></tr>
+              )}
+              {filtered.map((r) => {
+                const open = expanded === r.id;
+                return (
+                  <React.Fragment key={r.id}>
+                    <tr onClick={() => setExpanded(open ? null : r.id)} style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: open ? '#fafafa' : '#fff' }}>
+                      <td style={{ ...td, textAlign: 'left' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <ChevronRight style={{ width: 13, height: 13, color: '#9ca3af', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }} />
+                          <span style={{ fontWeight: 600, color: '#111827' }}>{r.brand} {r.model}{r.year ? ` · ${r.year}` : ''}</span>
+                        </div>
+                      </td>
+                      <td style={{ ...td, textAlign: 'left', color: r.salesman === 'Unassigned' ? '#9ca3af' : '#374151' }}>{r.salesman}</td>
+                      <td style={td}>{fmtRMShort(r.revenue)}</td>
+                      <td style={td}>{r.days != null ? `${r.days}d` : '—'}</td>
+                      <td style={td}>{r.leadsCount}</td>
+                      <td style={td}>{r.adSpend ? fmtRMShort(r.adSpend) : '—'}</td>
+                      <td style={{ ...td, fontWeight: 700, color: r.gross >= 0 ? '#16a34a' : '#dc2626' }}>{r.gross < 0 ? '− ' : ''}{fmtRMShort(Math.abs(r.gross))}</td>
+                    </tr>
+                    {open && (
+                      <tr style={{ background: '#fafafa', borderBottom: '1px solid #f3f4f6' }}>
+                        <td colSpan={7} style={{ padding: '4px 16px 14px 32px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, maxWidth: 760 }}>
+                            {[
+                              ['Sale price', r.revenue, false],
+                              ['Purchase', r.purchase, true],
+                              ['Recon', r.recon, true],
+                              ['Incl. services', r.services, true],
+                              ['Commission', r.commission, true],
+                              ['Handover', r.handover, true],
+                              ['Holding', r.holding, true],
+                              ['Ad spend', r.adSpend, true],
+                              ['F&I add-ons', r.addonRev - r.addonCost, false],
+                            ].filter(([, v]) => v).map(([label, val, neg]) => (
+                              <div key={label}>
+                                <p style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em', margin: 0 }}>{label}</p>
+                                <p style={{ fontSize: 13, fontWeight: 600, color: neg ? '#dc2626' : '#111827', margin: '2px 0 0' }}>{neg ? '− ' : ''}{fmtRM(Math.abs(Number(val)))}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Trends by model */}
+      {trends.length > 0 && (
+        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: 0, padding: '16px 16px 10px' }}>What sells — by model</p>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #e5e7eb', background: '#fafafa' }}>
+                  <th style={{ ...th, textAlign: 'left' }}>Model</th>
+                  <th style={th}>Units</th>
+                  <th style={th}>Avg price</th>
+                  <th style={th}>Avg days</th>
+                  <th style={th}>Avg gross</th>
+                  <th style={th}>Total gross</th>
+                </tr>
+              </thead>
+              <tbody>
+                {trends.map((g) => (
+                  <tr key={g.key} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                    <td style={{ ...td, textAlign: 'left', fontWeight: 600, color: '#111827' }}>{g.key}</td>
+                    <td style={td}>{g.units}</td>
+                    <td style={td}>{fmtRMShort(g.avgPrice)}</td>
+                    <td style={td}>{g.avgDays != null ? `${g.avgDays}d` : '—'}</td>
+                    <td style={{ ...td, color: g.avgGross >= 0 ? '#16a34a' : '#dc2626' }}>{g.avgGross < 0 ? '− ' : ''}{fmtRMShort(Math.abs(g.avgGross))}</td>
+                    <td style={{ ...td, fontWeight: 700, color: g.gross >= 0 ? '#16a34a' : '#dc2626' }}>{g.gross < 0 ? '− ' : ''}{fmtRMShort(Math.abs(g.gross))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function OversightTab({ dealerId, onNavigate }) {
   const [pnl, setPnl] = useState(null);
   const [alerts, setAlerts] = useState(null);
@@ -498,6 +723,11 @@ export default function OversightTab({ dealerId, onNavigate }) {
       {/* Revenue trend */}
       <Section title="Revenue Trend" subtitle="Daily revenue over the past 30 days">
         <RevenueTrend sparkline={pnl.sparkline} />
+      </Section>
+
+      {/* Revenue breakdown — what drove it */}
+      <Section title="What Drove Revenue" subtitle="Every sale, who closed it, how long it took, and the true gross — plus what sells">
+        <RevenueBreakdown dealerId={dealerId} />
       </Section>
 
       {/* Exception Alerts */}
