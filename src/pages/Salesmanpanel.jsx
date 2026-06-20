@@ -10,6 +10,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import { usePresence } from "../hooks/usePresence";
 import PostSaleBoard from "../components/postsale/PostSaleBoard";
 import SalesmanPanelHelp from "../components/SalesmanPanelHelp";
+import ShareMenu from "../components/ShareMenu";
 import { toast } from "sonner";
 import { generateDealSheet } from "../utils/dealSheet";
 import {
@@ -3226,19 +3227,24 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  >Actions
  </p>
 
- {actionBtn(
- <>
- <Copy size={13} style={{ flexShrink: 0 }} />Copy Link
- </>,
- listingCopied[car.id] === "link"? "#4ade80" : "#9ca3af",
- listingCopied[car.id] === "link"
-? "rgba(34,197,94,0.08)"
- : "rgba(255,255,255,0.04)",
- listingCopied[car.id] === "link"
-? "rgba(34,197,94,0.3)"
- : "rgba(255,255,255,0.08)",
- () => handleListingCopy(car, "link"),
- )}
+ <ShareMenu
+ dark
+ label="Share Listing"
+ baseUrl={`${dealerSubdomain ? `https://${dealerSubdomain}.xdrive.my` : "https://xdrive.my"}/cars/${car.slug}`}
+ refSlug={profile?.slug || ""}
+ style={{ width: "100%", padding: "10px 12px", borderRadius: 6, fontSize: 12, fontWeight: 500 }}
+ waCaption={(link) => [
+ `${car.year} ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""}`,
+ `RM ${Number(car.selling_price || 0).toLocaleString()}`,
+ `${car.city || profile?.location || "Malaysia"}`,
+ `${car.mileage ? Number(car.mileage).toLocaleString() + " km" : "—"} · ${car.colour || "—"} · ${car.transmission || "—"}`,
+ ``,
+ `Condition: ${car.condition || "Good"}`,
+ ``,
+ `Berminat? Whatsapp saya sekarang`,
+ link,
+ ].join("\n")}
+ />
  {actionBtn(
  <>
  <MessageSquare size={13} style={{ flexShrink: 0 }} />WA

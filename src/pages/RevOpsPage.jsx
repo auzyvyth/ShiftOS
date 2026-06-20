@@ -6,9 +6,6 @@ import {
   Users,
   Package,
   X,
-  AlertCircle,
-  Clock,
-  ChevronRight,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 
@@ -249,8 +246,6 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
   const [addonData, setAddonData] = useState(null);
   const [addonLoading, setAddonLoading] = useState(true);
 
-  // ── Analytics / Page Traffic ─────────────────────────────────────────────
-  const [trafficData, setTrafficData] = useState(null);
   // ── Alerts ───────────────────────────────────────────────────────────────
   const [alerts, setAlerts] = useState([]);
   const [dismissedAlerts, setDismissedAlerts] = useState(new Set());
@@ -815,6 +810,8 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
           </div>
         )}
       </SectionCard>
+
+
 
       {/* ── Section 5: Add-on Revenue (MTD) ──────────────────────────────── */}
       <div>

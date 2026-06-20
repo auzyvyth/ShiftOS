@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef, useMemo, useCallback, startTransiti
 import DOMPurify from "dompurify";
 import SuspendedBanner from "../components/SuspendedBanner";
 import ReportBugButton from "../components/ReportBugButton";
+import ShareMenu from "../components/ShareMenu";
+import { cdnImg } from "../utils/img";
 import { buildCaption } from "../utils/sharePack";
 import { createPortal } from 'react-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
@@ -3218,7 +3220,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
           <input
             value={lpSearch}
             onChange={e => { setLpSearch(e.target.value); setLpVisible(20); }}
-            placeholder="Search brand, model or variant…"
+            placeholder="Search brand, model, variant, VIN, price or date…"
             style={{ width:'100%', boxSizing:'border-box', paddingLeft:38, paddingRight:12, paddingTop:8, paddingBottom:8, border:'1px solid #e5e7eb', borderRadius:8, fontSize:13, color:'#111827', background:'#f9fafb', outline:'none', fontFamily:"'DM Sans',sans-serif" }}
           />
         </div>
@@ -3235,7 +3237,13 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
           });
           const lpQ = lpSearch.trim().toLowerCase();
           const filtered = lpQ
-            ? allSorted.filter(l => `${l.brand} ${l.model} ${l.variant || ''} ${l.year || ''}`.toLowerCase().includes(lpQ))
+            ? allSorted.filter(l => [
+                l.brand, l.model, l.variant, l.year,
+                l.vin_number, l.plate_number,
+                l.selling_price, l.selling_price != null ? Number(l.selling_price).toLocaleString() : '',
+                l.created_at ? new Date(l.created_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
+                l.created_at ? String(l.created_at).slice(0, 10) : '',
+              ].filter(Boolean).join(' ').toLowerCase().includes(lpQ))
             : allSorted;
           const sorted = filtered.slice(0, lpVisible);
           const hasMore = filtered.length > lpVisible;
@@ -3255,7 +3263,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                     </tr>
                   </thead>
                   <tbody>
-                    {sorted.map((l) => {
+                    {sorted.map((l, i) => {
                       const stats  = carStatsMap[l.id] || {};
                       const views  = stats.views    || 0;
                       const wa     = stats.whatsapp  || 0;
@@ -3273,8 +3281,9 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                           {/* Vehicle */}
                           <td className="lp-td">
                             <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
+                              <span style={{ fontSize:12, fontWeight:700, color:'#9ca3af', width:18, textAlign:'right', flexShrink:0, fontVariantNumeric:'tabular-nums' }}>{i + 1}</span>
                               {l.images?.[0]
-                                ? <img src={l.images[0]} alt="" className="lp-vehicle-img" loading="lazy" decoding="async" />
+                                ? <img src={cdnImg(l.images[0], 96, 70)} alt="" className="lp-vehicle-img" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = l.images[0]; }} />
                                 : <div className="lp-vehicle-placeholder" />
                               }
                               <div style={{ minWidth:0 }}>
@@ -3284,6 +3293,11 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                                 <p style={{ fontSize:11, color:'#4b5563', margin:'2px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                                   {l.variant || l.year || '—'}
                                 </p>
+                                {(l.vin_number || l.plate_number) && (
+                                  <p style={{ fontSize:10, color:'#9ca3af', margin:'1px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontVariantNumeric:'tabular-nums', letterSpacing:'0.02em' }}>
+                                    {l.vin_number || l.plate_number}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -3347,7 +3361,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
 
               {/* ── mobile cards ── */}
               <div className="lp-cards">
-                {sorted.map((l) => {
+                {sorted.map((l, i) => {
                   const stats  = carStatsMap[l.id] || {};
                   const views  = stats.views    || 0;
                   const wa     = stats.whatsapp  || 0;
@@ -3363,18 +3377,23 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                       {/* top row */}
                       <div className="lp-card-top">
                         {l.images?.[0]
-                          ? <img src={l.images[0]} alt="" className="lp-card-img" loading="lazy" decoding="async" />
+                          ? <img src={cdnImg(l.images[0], 160, 70)} alt="" className="lp-card-img" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = l.images[0]; }} />
                           : <div className="lp-card-placeholder" />
                         }
                         <div style={{ flex:1, minWidth:0 }}>
                           <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:6 }}>
                             <div style={{ minWidth:0 }}>
                               <p style={{ fontSize:13, fontWeight:800, color:'#111827', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
-                                {l.brand} {l.model}
+                                <span style={{ color:'#9ca3af', fontWeight:700 }}>{i + 1}.</span> {l.brand} {l.model}
                               </p>
                               <p style={{ fontSize:11, color:'#4b5563', margin:'1px 0 0' }}>
                                 {l.variant || l.year || '—'}
                               </p>
+                              {(l.vin_number || l.plate_number) && (
+                                <p style={{ fontSize:10, color:'#9ca3af', margin:'1px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontVariantNumeric:'tabular-nums' }}>
+                                  {l.vin_number || l.plate_number}
+                                </p>
+                              )}
                             </div>
                             <span style={{ fontSize:10, fontWeight:700, color:statusColor, background:`${statusColor}18`, border:`1px solid ${statusColor}30`, borderRadius:20, padding:'2px 8px', flexShrink:0, letterSpacing:'0.06em', textTransform:'capitalize' }}>
                               {statusKey}
@@ -3413,12 +3432,18 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                 })}
               </div>
               {hasMore && (
-                <div style={{ padding:'14px 20px', textAlign:'center', borderTop:'1px solid #f3f4f6' }}>
+                <div style={{ padding:'14px 20px', textAlign:'center', borderTop:'1px solid #f3f4f6', display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
                   <button
-                    onClick={() => setLpVisible(v => v + 20)}
+                    onClick={() => setLpVisible(v => v + 40)}
                     style={{ padding:'8px 24px', borderRadius:8, background:'#f9fafb', border:'1px solid #e5e7eb', color:'#374151', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}
                   >
                     Load more ({filtered.length - lpVisible} remaining)
+                  </button>
+                  <button
+                    onClick={() => setLpVisible(filtered.length)}
+                    style={{ padding:'8px 24px', borderRadius:8, background:'#fff', border:'1px solid #e5e7eb', color:'#dc2626', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}
+                  >
+                    Show all {filtered.length}
                   </button>
                 </div>
               )}
@@ -5262,7 +5287,7 @@ function DrawerDamageMap({ damageMap }) {
 function ListingDetailDrawer({
   listing, salesmen, salesmenById, onClose, onUpdate, onDelete,
   setEditListing, setPriceEditListing, setMarkSoldListing,
-  setDeleteId, copyListing, copiedListingId, handleAssign, handleUnassign,
+  setDeleteId, copyListing, copiedListingId, dealerSubdomain, dealerSlug, handleAssign, handleUnassign,
   handleStatus, updatingStatus, getListingAge, userId, profile,
 }) {
   const { can } = usePermissions(profile);
@@ -5542,6 +5567,20 @@ function ListingDetailDrawer({
                   {copiedListingId === listing.id ? <Check style={{ width: 14, height: 14, flexShrink: 0 }} /> : <Clipboard style={{ width: 14, height: 14, flexShrink: 0 }} />}
                   {copiedListingId === listing.id ? 'Copied!' : 'Copy Writing'}
                 </button>
+
+                {/* Share — per-platform tagged links */}
+                <ShareMenu
+                  label="Share Listing"
+                  baseUrl={`${dealerSubdomain ? `https://${dealerSubdomain}.xdrive.my` : 'https://xdrive.my'}/cars/${listing.slug}`}
+                  refSlug={dealerSlug || ''}
+                  style={{ ...btnBase, justifyContent: 'flex-start', width: '100%', border: '1px solid rgba(124,58,237,0.3)', color: '#7c3aed' }}
+                  waCaption={(link) => [
+                    `${listing.year} ${listing.brand} ${listing.model}${listing.variant ? ' ' + listing.variant : ''}`,
+                    `RM ${Number(listing.selling_price || 0).toLocaleString()}`,
+                    '',
+                    link,
+                  ].join('\n')}
+                />
 
                 {/* Financing Calculator — hidden on sold listings */}
                 {!isSold && (
@@ -9896,6 +9935,7 @@ export default function DashboardPage() {
         { id: "overview",  Icon: Gauge,       label: "Overview" },
         { id: "analytics", sub: "revenue",    Icon: DollarSign, label: "Revenue" },
         { id: "analytics", sub: "performance", Icon: TrendingUp, label: "Performance" },
+        { id: "analytics", sub: "listings",   Icon: Car, label: "Listings" },
         { id: "oversight", Icon: Shield,      label: "GM Oversight" },
       ],
     },
@@ -11065,6 +11105,7 @@ export default function DashboardPage() {
                 tabs={[
                   { id: "revenue",     label: "Revenue" },
                   { id: "performance", label: "Performance" },
+                  { id: "listings",    label: "Listings" },
                 ]}
               />
               {analyticsSub === "revenue" && userId && (
@@ -11074,6 +11115,16 @@ export default function DashboardPage() {
                 <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>Loading…</div>}>
                   <PerformanceTab dealerId={getDealerIdFromProfile(profile)} listings={listings} />
                 </Suspense>
+              )}
+              {analyticsSub === "listings" && userId && (
+                <AnalyticsTab
+                  listings={listings}
+                  profile={profile}
+                  salesmen={salesmen}
+                  onEditListing={setEditListing}
+                  onStaleAdjusted={handleStaleAdjusted}
+                  adjustedStaleIds={adjustedStaleIds}
+                />
               )}
             </>
           )}
@@ -11166,6 +11217,8 @@ export default function DashboardPage() {
           setDeleteId={setDeleteId}
           copyListing={copyListing}
           copiedListingId={copiedListingId}
+          dealerSubdomain={dealerSubdomain}
+          dealerSlug={profile?.slug}
           handleAssign={handleAssign}
           handleUnassign={handleUnassign}
           handleStatus={handleStatus}

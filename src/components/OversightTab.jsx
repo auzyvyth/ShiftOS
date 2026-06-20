@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import {
-  TrendingUp, TrendingDown, AlertTriangle, Activity, Users,
-  Target, Clock, Award, Eye, ChevronRight, RefreshCw, Info,
+  TrendingUp, TrendingDown, AlertTriangle, Activity,
+  Target, Clock, Award, Eye, ChevronRight, RefreshCw,
 } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis } from 'recharts';
 
@@ -153,103 +153,6 @@ function ExceptionAlerts({ alerts, onNavigate, onFocusAnomalies }) {
   );
 }
 
-// ─── Info tooltip (hover on desktop, tap on mobile) ───────────────────────────
-function InfoTip({ children }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  useEffect(() => {
-    if (!open) return;
-    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [open]);
-  return (
-    <span ref={ref} style={{ position: 'relative', display: 'inline-flex', verticalAlign: 'middle' }}
-      onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
-      <button onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
-        style={{ display: 'inline-flex', padding: 0, marginLeft: 4, background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}>
-        <Info style={{ width: 12, height: 12 }} />
-      </button>
-      {open && (
-        <span style={{ position: 'absolute', top: '130%', right: 0, zIndex: 50, width: 230, background: '#111827', color: '#f9fafb', fontSize: 11, fontWeight: 400, lineHeight: 1.5, letterSpacing: 0, textTransform: 'none', textAlign: 'left', padding: '10px 12px', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
-          {children}
-        </span>
-      )}
-    </span>
-  );
-}
-
-const SCORE_TIP = (
-  <>
-    <strong style={{ color: '#fff' }}>Quality score (0–100)</strong>, 30-day rolling. Weighted blend:
-    <span style={{ display: 'block', marginTop: 6 }}>• Conversion (won/leads) — 40%</span>
-    <span style={{ display: 'block' }}>• Avg gross profit per sale — 25%</span>
-    <span style={{ display: 'block' }}>• First-response speed — 15%</span>
-    <span style={{ display: 'block' }}>• HP document completion — 10%</span>
-    <span style={{ display: 'block' }}>• Active with live leads — 10%</span>
-  </>
-);
-
-const DOCS_TIP = 'Share of this salesman’s financed deals with all 8 hire-purchase documents completed, last 30 days.';
-
-// ─── Salesman Scoreboard ──────────────────────────────────────────────────────
-function SalesmanScores({ scores }) {
-  if (!scores || scores.length === 0) {
-    return <p style={{ fontSize: 13, color: '#9ca3af', padding: '20px 0' }}>No salesman activity yet.</p>;
-  }
-  return (
-    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
-      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-      <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse', fontSize: 13 }}>
-        <thead>
-          <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-            {['#', 'Salesman', 'Score', 'Conv.', 'Response', 'Avg GP', 'Docs', 'Leads'].map((h, i) => (
-              <th key={h} style={{ padding: '11px 16px', fontSize: 10, color: '#6b7280', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', textAlign: i >= 2 ? 'right' : 'left', whiteSpace: 'nowrap' }}>
-                {h}
-                {h === 'Score' && <InfoTip>{SCORE_TIP}</InfoTip>}
-                {h === 'Docs' && <InfoTip>{DOCS_TIP}</InfoTip>}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {scores.map((s, i) => {
-            const scoreColor = s.score >= 75 ? '#16a34a' : s.score >= 50 ? '#d97706' : '#dc2626';
-            return (
-              <tr key={s.id} style={{ borderBottom: i === scores.length - 1 ? 'none' : '1px solid #f3f4f6' }}>
-                <td style={{ padding: '14px 16px', color: '#9ca3af', fontWeight: 600 }}>{i + 1}</td>
-                <td style={{ padding: '14px 16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    {s.avatar_url
-                      ? <img src={s.avatar_url} alt="" style={{ width: 28, height: 28, borderRadius: 14, objectFit: 'cover' }} />
-                      : <div style={{ width: 28, height: 28, borderRadius: 14, background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 11, fontWeight: 600 }}>{(s.name || '?').slice(0, 1)}</div>}
-                    <span style={{ color: '#111827', fontWeight: 500 }}>{s.name || '—'}</span>
-                  </div>
-                </td>
-                <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{ width: 36, height: 6, background: '#f3f4f6', borderRadius: 3 }}>
-                      <div style={{ width: `${s.score}%`, height: '100%', borderRadius: 3, background: scoreColor }} />
-                    </div>
-                    <span style={{ color: scoreColor, fontWeight: 700, fontSize: 13, minWidth: 24, textAlign: 'right' }}>{s.score}</span>
-                  </div>
-                </td>
-                <td style={{ padding: '14px 16px', textAlign: 'right', color: '#374151', fontWeight: 500 }}>{s.conv_rate}%</td>
-                <td style={{ padding: '14px 16px', textAlign: 'right', color: s.avg_response_min > 60 ? '#d97706' : '#374151' }}>
-                  {s.avg_response_min ? (s.avg_response_min >= 60 ? Math.round(s.avg_response_min / 60) + 'h' : s.avg_response_min + 'm') : '—'}
-                </td>
-                <td style={{ padding: '14px 16px', textAlign: 'right', color: '#374151', fontWeight: 500 }}>{fmtRMShort(s.avg_gp)}</td>
-                <td style={{ padding: '14px 16px', textAlign: 'right', color: '#374151' }}>{s.doc_rate_pct}%</td>
-                <td style={{ padding: '14px 16px', textAlign: 'right', color: '#374151' }}>{s.won_30d}/{s.leads_30d}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      </div>
-    </div>
-  );
-}
 
 // ─── Audit Trail ──────────────────────────────────────────────────────────────
 function AuditTrail({ dealerId, initialFilter = 'all' }) {
@@ -502,7 +405,6 @@ function RevenueTrend({ sparkline }) {
 export default function OversightTab({ dealerId, onNavigate }) {
   const [pnl, setPnl] = useState(null);
   const [alerts, setAlerts] = useState(null);
-  const [scores, setScores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [anomalyFilter, setAnomalyFilter] = useState(false);
@@ -530,13 +432,6 @@ export default function OversightTab({ dealerId, onNavigate }) {
         if (cancelled) return;
         if (error) console.error('[Oversight] gm_exception_alerts:', error.message);
         setAlerts(data || null);
-      });
-
-    supabase.rpc('gm_salesman_scores', { p_dealer_id: dealerId })
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) console.error('[Oversight] gm_salesman_scores:', error.message);
-        setScores(data || []);
       });
 
     return () => { cancelled = true; };
@@ -617,10 +512,7 @@ export default function OversightTab({ dealerId, onNavigate }) {
         />
       </Section>
 
-      {/* Salesman Scores */}
-      <Section title="Team Performance" subtitle="30-day rolling salesman quality scores">
-        <SalesmanScores scores={scores} />
-      </Section>
+      {/* Salesman quality scores now live in Analytics → Performance (single owner). */}
 
       {/* Audit Trail */}
       <div ref={activityRef}>
