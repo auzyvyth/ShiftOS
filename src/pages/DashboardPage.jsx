@@ -318,7 +318,7 @@ const AgeBadge = React.memo(function AgeBadge({ createdAt }) {
       </span>
     );
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-400/10 text-blue-400 border border-blue-400/20">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-600 border border-red-500/25">
       <Clock className="w-3 h-3" />
       {d}d
     </span>
@@ -1082,30 +1082,28 @@ function SettingsTab({ profile, onProfileUpdate }) {
   };
 
   const saveDealership = async () => {
-    if (dealershipLocked) return;
-    if (!dealership.trim()) {
-      setErrors((p) => ({
-        ...p,
-        identity: "Dealership name cannot be empty.",
-      }));
+    // The name-change limit locks ONLY the name — brand colour, site name and
+    // subdomain stay freely saveable. Never write the dealership column when the
+    // name is locked or unchanged (touching it can trip the limit trigger).
+    if (!dealershipLocked && !dealership.trim()) {
+      setErrors((p) => ({ ...p, identity: "Dealership name cannot be empty." }));
       return;
     }
-    const dealershipChanged = dealership.trim() !== profile?.dealership;
+    const dealershipChanged = !dealershipLocked && dealership.trim() !== (profile?.dealership || "");
     const payload = {
-      dealership: dealership.trim(),
-      site_name: siteName.trim() || dealership.trim(),
+      site_name: siteName.trim() || (profile?.dealership || dealership.trim() || ""),
       brand_color: brandColor,
       subdomain,
+      ...(dealershipChanged && {
+        dealership: dealership.trim(),
+        dealership_change_count: changeCount + 1,
+        dealership_name_changed_at: new Date().toISOString(),
+      }),
       ...(subdomain !== profile?.subdomain && {
         subdomain_changed_at: new Date().toISOString(),
         previous_subdomain: profile?.subdomain,
       }),
     };
-    // Only count toward the change limit if the dealership name itself changed
-    if (dealershipChanged) {
-      payload.dealership_change_count = changeCount + 1;
-      payload.dealership_name_changed_at = new Date().toISOString();
-    }
     const ok = await saveSection("identity", payload);
     if (ok) {
       const changes = [];
@@ -1120,6 +1118,14 @@ function SettingsTab({ profile, onProfileUpdate }) {
       }
     }
   };
+
+  // Save enables on ANY single change (name OR site name OR colour OR subdomain) —
+  // a colour-only edit is enough, and the name lock no longer gates the button.
+  const identityDirty =
+    (!dealershipLocked && dealership.trim() !== (profile?.dealership || "")) ||
+    (siteName.trim() || "") !== (profile?.site_name || "") ||
+    (brandColor || "").toLowerCase() !== (profile?.brand_color || "#c9a84c").toLowerCase() ||
+    subdomain !== (profile?.subdomain || "");
 
   const saveContact = () =>
     saveSection("contact", {
@@ -1551,7 +1557,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
           <SaveBtn
             sectionKey="identity"
             onClick={saveDealership}
-            disabled={dealershipLocked || subdomainStatus === 'taken' || subdomainStatus === 'checking'}
+            disabled={!identityDirty || subdomainStatus === 'taken' || subdomainStatus === 'checking'}
             saving={saving}
             saved={saved}
           />
