@@ -135,6 +135,16 @@ const CDP_DOC_TYPES = {
 
 const fmtCdpDate = (d) => { try { return new Date(d).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return ''; } };
 
+// Buying-intent qualifier on the viewing form — lets the dealer triage serious
+// buyers vs window-shoppers. Value stored on appointments.booking_type.
+const BUYING_INTENT = [
+  { v: 'ready', l: "I'm ready to buy now" },
+  { v: 'two_weeks', l: 'Looking to buy within 2 weeks' },
+  { v: 'one_month', l: 'Looking to buy within a month' },
+  { v: 'browsing', l: 'Just exploring for now' },
+];
+const intentLabel = (v) => BUYING_INTENT.find((o) => o.v === v)?.l || '';
+
 // Shown in the Puspakom row when the dealer logged B5/B7 inspection dates
 // (a verified trust signal) even if no certificate file was uploaded.
 function PuspakomDates({ b5, b7, color }) {
@@ -414,6 +424,7 @@ export default function CarDetailPage() {
     phone: "+60",
     date: "",
     time: "09:00",
+    timeline: "",
     notes: "",
     state: "",
   });
@@ -890,6 +901,7 @@ export default function CarDetailPage() {
           phone: form.phone,
           state: form.state || null,
           appointmentDate: dt.toISOString(),
+          bookingType: form.timeline || null,
           notes: form.notes || null,
           refSlug: getRef() || null,
         }),
@@ -919,7 +931,8 @@ export default function CarDetailPage() {
         const dateStr = dt.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" });
         const timeStr = dt.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" });
         const stateStr = form.state ? ` (${form.state})` : "";
-        const msg = `🗓️ New Booking!\n\n*${form.name}*${stateStr} booked a viewing for the *${car.brand} ${car.model} ${car.year}*\n\n📅 ${dateStr} · ${timeStr}\n📞 ${form.phone}${form.notes ? `\n💬 "${form.notes}"` : ""}`;
+        const intentStr = form.timeline ? `\n🎯 ${intentLabel(form.timeline)}` : "";
+        const msg = `🗓️ New Booking!\n\n*${form.name}*${stateStr} booked a viewing for the *${car.brand} ${car.model} ${car.year}*\n\n📅 ${dateStr} · ${timeStr}\n📞 ${form.phone}${intentStr}${form.notes ? `\n💬 "${form.notes}"` : ""}`;
         fetch(`https://api.telegram.org/bot${dp.telegram_bot_token}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -3429,6 +3442,15 @@ export default function CarDetailPage() {
                       ))}
                     </select>
                   </div>
+                  <select aria-label="When are you looking to buy?" required value={form.timeline}
+                    onChange={e => setForm(f => ({...f, timeline: e.target.value}))}
+                    onFocus={() => setFocused('bk_timeline')} onBlur={() => setFocused(null)}
+                    style={{ ...inputStyle(focusedField === 'bk_timeline', th), cursor:'pointer', width:'100%' }}>
+                    <option value="" style={{ background: th.card }}>When are you looking to buy?</option>
+                    {BUYING_INTENT.map(o => (
+                      <option key={o.v} value={o.v} style={{ background: th.card }}>{o.l}</option>
+                    ))}
+                  </select>
                   <select aria-label="Your state" value={form.state}
                     onChange={e => setForm(f => ({...f, state: e.target.value}))}
                     onFocus={() => setFocused('bk_state')} onBlur={() => setFocused(null)}

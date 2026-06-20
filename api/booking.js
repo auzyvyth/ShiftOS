@@ -12,8 +12,18 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { carId, dealerId, assignedTo, name, phone, state, appointmentDate, notes, refSlug } =
+  const { carId, dealerId, assignedTo, name, phone, state, appointmentDate, bookingType, notes, refSlug } =
     req.body || {};
+
+  // Buying-intent qualifier (window-shopper triage). Keep in sync with
+  // BUYING_INTENT in CarDetailPage.jsx.
+  const INTENT_LABELS = {
+    ready: "Ready to buy now",
+    two_weeks: "Buying within 2 weeks",
+    one_month: "Buying within a month",
+    browsing: "Just exploring",
+  };
+  const intentLabel = INTENT_LABELS[bookingType] || null;
 
   if (!carId || !dealerId || !name?.trim() || !phone?.trim() || !appointmentDate) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -56,6 +66,11 @@ export default async function handler(req, res) {
     if (sm?.id) salesmanId = sm.id;
   }
 
+  const cleanNotes = notes?.trim().substring(0, 500) || null;
+  const notesWithIntent = intentLabel
+    ? `Intent: ${intentLabel}${cleanNotes ? ` — ${cleanNotes}` : ''}`.substring(0, 560)
+    : cleanNotes;
+
   const { error: bookErr } = await supabase.from('appointments').insert({
     dealer_id: listing.dealer_id,
     salesman_id: salesmanId,
@@ -63,7 +78,8 @@ export default async function handler(req, res) {
     buyer_name: name.trim().substring(0, 100),
     buyer_phone: phoneClean,
     appointment_date: dt.toISOString(),
-    notes: notes?.trim().substring(0, 500) || null,
+    booking_type: 'viewing',
+    notes: notesWithIntent,
     status: 'confirmed',
   });
 
@@ -82,6 +98,7 @@ export default async function handler(req, res) {
     buyer_state: state || null,
     lead_source: 'enquiry',
     stage: 'new',
+    notes: notesWithIntent,
   });
 
   return res.status(200).json({ success: true });
