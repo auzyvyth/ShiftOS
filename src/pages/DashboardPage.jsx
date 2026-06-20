@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef, useMemo, useCallback, startTransiti
 import DOMPurify from "dompurify";
 import SuspendedBanner from "../components/SuspendedBanner";
 import ReportBugButton from "../components/ReportBugButton";
+import ShareMenu from "../components/ShareMenu";
+import { cdnImg } from "../utils/img";
 import { buildCaption } from "../utils/sharePack";
 import { createPortal } from 'react-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
@@ -87,6 +89,7 @@ import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
 import { getCategoryCfg, PRODUCT_CATEGORY_OPTIONS } from "../utils/serviceCategories";
+import OwnerCarPanel from "../components/inventory/OwnerCarPanel";
 import { getPlanConfig, nextDealerPlan } from "../utils/planConfig";
 import { color, border, radius, font } from "../theme/tokens";
 import { getEmbedUrl } from "../utils/videoEmbed";
@@ -3217,7 +3220,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
           <input
             value={lpSearch}
             onChange={e => { setLpSearch(e.target.value); setLpVisible(20); }}
-            placeholder="Search brand, model or variant…"
+            placeholder="Search brand, model, variant, VIN, price or date…"
             style={{ width:'100%', boxSizing:'border-box', paddingLeft:38, paddingRight:12, paddingTop:8, paddingBottom:8, border:'1px solid #e5e7eb', borderRadius:8, fontSize:13, color:'#111827', background:'#f9fafb', outline:'none', fontFamily:"'DM Sans',sans-serif" }}
           />
         </div>
@@ -3234,7 +3237,13 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
           });
           const lpQ = lpSearch.trim().toLowerCase();
           const filtered = lpQ
-            ? allSorted.filter(l => `${l.brand} ${l.model} ${l.variant || ''} ${l.year || ''}`.toLowerCase().includes(lpQ))
+            ? allSorted.filter(l => [
+                l.brand, l.model, l.variant, l.year,
+                l.vin_number, l.plate_number,
+                l.selling_price, l.selling_price != null ? Number(l.selling_price).toLocaleString() : '',
+                l.created_at ? new Date(l.created_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
+                l.created_at ? String(l.created_at).slice(0, 10) : '',
+              ].filter(Boolean).join(' ').toLowerCase().includes(lpQ))
             : allSorted;
           const sorted = filtered.slice(0, lpVisible);
           const hasMore = filtered.length > lpVisible;
@@ -3254,7 +3263,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                     </tr>
                   </thead>
                   <tbody>
-                    {sorted.map((l) => {
+                    {sorted.map((l, i) => {
                       const stats  = carStatsMap[l.id] || {};
                       const views  = stats.views    || 0;
                       const wa     = stats.whatsapp  || 0;
@@ -3272,8 +3281,9 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                           {/* Vehicle */}
                           <td className="lp-td">
                             <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
+                              <span style={{ fontSize:12, fontWeight:700, color:'#9ca3af', width:18, textAlign:'right', flexShrink:0, fontVariantNumeric:'tabular-nums' }}>{i + 1}</span>
                               {l.images?.[0]
-                                ? <img src={l.images[0]} alt="" className="lp-vehicle-img" loading="lazy" decoding="async" />
+                                ? <img src={cdnImg(l.images[0], 96, 70)} alt="" className="lp-vehicle-img" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = l.images[0]; }} />
                                 : <div className="lp-vehicle-placeholder" />
                               }
                               <div style={{ minWidth:0 }}>
@@ -3283,6 +3293,11 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                                 <p style={{ fontSize:11, color:'#4b5563', margin:'2px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                                   {l.variant || l.year || '—'}
                                 </p>
+                                {(l.vin_number || l.plate_number) && (
+                                  <p style={{ fontSize:10, color:'#9ca3af', margin:'1px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontVariantNumeric:'tabular-nums', letterSpacing:'0.02em' }}>
+                                    {l.vin_number || l.plate_number}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -3346,7 +3361,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
 
               {/* ── mobile cards ── */}
               <div className="lp-cards">
-                {sorted.map((l) => {
+                {sorted.map((l, i) => {
                   const stats  = carStatsMap[l.id] || {};
                   const views  = stats.views    || 0;
                   const wa     = stats.whatsapp  || 0;
@@ -3362,18 +3377,23 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                       {/* top row */}
                       <div className="lp-card-top">
                         {l.images?.[0]
-                          ? <img src={l.images[0]} alt="" className="lp-card-img" loading="lazy" decoding="async" />
+                          ? <img src={cdnImg(l.images[0], 160, 70)} alt="" className="lp-card-img" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = l.images[0]; }} />
                           : <div className="lp-card-placeholder" />
                         }
                         <div style={{ flex:1, minWidth:0 }}>
                           <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:6 }}>
                             <div style={{ minWidth:0 }}>
                               <p style={{ fontSize:13, fontWeight:800, color:'#111827', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
-                                {l.brand} {l.model}
+                                <span style={{ color:'#9ca3af', fontWeight:700 }}>{i + 1}.</span> {l.brand} {l.model}
                               </p>
                               <p style={{ fontSize:11, color:'#4b5563', margin:'1px 0 0' }}>
                                 {l.variant || l.year || '—'}
                               </p>
+                              {(l.vin_number || l.plate_number) && (
+                                <p style={{ fontSize:10, color:'#9ca3af', margin:'1px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontVariantNumeric:'tabular-nums' }}>
+                                  {l.vin_number || l.plate_number}
+                                </p>
+                              )}
                             </div>
                             <span style={{ fontSize:10, fontWeight:700, color:statusColor, background:`${statusColor}18`, border:`1px solid ${statusColor}30`, borderRadius:20, padding:'2px 8px', flexShrink:0, letterSpacing:'0.06em', textTransform:'capitalize' }}>
                               {statusKey}
@@ -3412,12 +3432,18 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                 })}
               </div>
               {hasMore && (
-                <div style={{ padding:'14px 20px', textAlign:'center', borderTop:'1px solid #f3f4f6' }}>
+                <div style={{ padding:'14px 20px', textAlign:'center', borderTop:'1px solid #f3f4f6', display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
                   <button
-                    onClick={() => setLpVisible(v => v + 20)}
+                    onClick={() => setLpVisible(v => v + 40)}
                     style={{ padding:'8px 24px', borderRadius:8, background:'#f9fafb', border:'1px solid #e5e7eb', color:'#374151', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}
                   >
                     Load more ({filtered.length - lpVisible} remaining)
+                  </button>
+                  <button
+                    onClick={() => setLpVisible(filtered.length)}
+                    style={{ padding:'8px 24px', borderRadius:8, background:'#fff', border:'1px solid #e5e7eb', color:'#dc2626', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}
+                  >
+                    Show all {filtered.length}
                   </button>
                 </div>
               )}
@@ -5261,12 +5287,16 @@ function DrawerDamageMap({ damageMap }) {
 function ListingDetailDrawer({
   listing, salesmen, salesmenById, onClose, onUpdate, onDelete,
   setEditListing, setPriceEditListing, setMarkSoldListing,
-  setDeleteId, copyListing, copiedListingId, handleAssign, handleUnassign,
-  handleStatus, updatingStatus, getListingAge,
+  setDeleteId, copyListing, copiedListingId, dealerSubdomain, dealerSlug, handleAssign, handleUnassign,
+  handleStatus, updatingStatus, getListingAge, userId, profile,
 }) {
+  const { can } = usePermissions(profile);
+  const canViewCosts = can('view_cost');
   const [imgIdx, setImgIdx]       = useState(0);
   const [lbOpen, setLbOpen]       = useState(false);
   const [drawerTab, setDrawerTab] = useState('specs');
+  const [ownerTool, setOwnerTool] = useState(null);
+  useEffect(() => { if (drawerTab !== 'owner') setOwnerTool(null); }, [drawerTab]);
   const [showAssign, setShowAssign] = useState(false);
   const [calcOpen,  setCalcOpen]  = useState(false);
   const [isMobile, setIsMobile]   = useState(() => window.innerWidth < 768);
@@ -5299,7 +5329,7 @@ function ListingDetailDrawer({
   }, [lbOpen, onClose]);
 
   const tabs = ['specs', 'features', 'options', ...(listing.is_recon ? ['recon'] : [])];
-  const tabLabel = { specs: 'Specifications', features: 'Features', options: 'Options', recon: 'Recon' };
+  const tabLabel = { specs: 'Specifications', features: 'Features', options: 'Options', recon: 'Recon', owner: 'Owner · P&L' };
 
   const btnBase = { width: '100%', background: '#ffffff', borderRadius: 6, padding: '11px 14px', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.2s, border-color 0.2s', border: '1px solid #e5e7eb', fontFamily: "'DM Sans', sans-serif", color: '#374151' };
 
@@ -5337,6 +5367,31 @@ function ListingDetailDrawer({
             {/* LEFT */}
             <div style={{ flex: 1, minWidth: 0, padding: isMobile ? 16 : 24, borderRight: isMobile ? 'none' : '1px solid #e5e7eb', overflowY: isMobile ? 'visible' : 'auto' }}>
 
+              {/* Public ↔ Owner toggle (like the Sold/Available switch) */}
+              {canViewCosts && (
+                <div style={{ display: 'flex', gap: 6, background: '#f3f4f6', borderRadius: 10, padding: 4, marginBottom: 16 }}>
+                  {[['public', 'Public Details'], ['owner', 'Owner · P&L']].map(([key, label]) => {
+                    const on = key === 'owner' ? drawerTab === 'owner' : drawerTab !== 'owner';
+                    return (
+                      <button key={key} onClick={() => setDrawerTab(key === 'owner' ? 'owner' : 'specs')}
+                        style={{ flex: 1, padding: '8px 10px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: "'DM Sans',sans-serif", background: on ? '#fff' : 'transparent', color: on ? '#111827' : '#6b7280', boxShadow: on ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.15s' }}>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {drawerTab === 'owner' && canViewCosts ? (
+                <OwnerCarPanel
+                  listing={listing} userId={userId} salesmenById={salesmenById}
+                  tool={ownerTool} setTool={setOwnerTool}
+                  onStatusChange={(s) => { handleStatus(listing.id, s); onUpdate({ ...listing, status: s }); }}
+                  statusUpdating={updatingStatus === listing.id}
+                  onMarkSold={() => setMarkSoldListing(listing)}
+                />
+              ) : (
+              <>
               {/* Gallery */}
               <div style={{ display: 'flex', gap: 8 }}>
                 {/* Thumb strip */}
@@ -5503,13 +5558,41 @@ function ListingDetailDrawer({
                   <DrawerDamageMap damageMap={damageMap} />
                 </div>
               )}
+              </>
+              )}
             </div>
 
             {/* RIGHT — dark premium sidebar */}
             <div style={{ flex: isMobile ? 'none' : '0 0 210px', width: isMobile ? '100%' : undefined, padding: isMobile ? '12px 16px 24px' : 20, display: 'flex', flexDirection: 'column', gap: 0, borderTop: isMobile ? '1px solid #e5e7eb' : 'none', borderLeft: isMobile ? 'none' : '1px solid #e5e7eb', background: '#fff' }}>
               <div style={{ background: 'transparent', borderRadius: 8, padding: isMobile ? 18 : '18px 0', display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr', gap: 8 }}>
-                <p style={{ fontSize: 10, color: isMobile ? '#6b7280' : '#6b7280', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>Actions</p>
+                <p style={{ fontSize: 10, color: isMobile ? '#6b7280' : '#6b7280', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>{drawerTab === 'owner' ? 'P&L Tools' : 'Actions'}</p>
 
+                {/* Owner-mode: the per-car tools — each opens an editor with an explicit Save */}
+                {drawerTab === 'owner' && canViewCosts && (
+                  <>
+                    {[
+                      ['Edit Prices', DollarSign, () => setOwnerTool('prices')],
+                      ['Recon Jobs', Wrench, () => setOwnerTool('recon')],
+                      ['Ad Spend', Megaphone, () => setOwnerTool('ad')],
+                      ['Compliance', Shield, () => setOwnerTool('compliance')],
+                      ['Activity', Clock, () => setOwnerTool('activity')],
+                    ].map(([label, Icon, onClick]) => (
+                      <button key={label} onClick={onClick} style={{ ...btnBase, border: '1px solid rgba(124,58,237,0.3)', color: '#7c3aed' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                        <Icon style={{ width: 14, height: 14, flexShrink: 0 }} />{label}
+                      </button>
+                    ))}
+                    {!isSold && (
+                      <button onClick={() => setMarkSoldListing(listing)} style={{ ...btnBase, border: '1px solid rgba(5,150,105,0.3)', color: '#059669' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                        <CheckCircle2 style={{ width: 14, height: 14, flexShrink: 0 }} />Mark as Sold
+                      </button>
+                    )}
+                    <button onClick={() => setDrawerTab('specs')} style={{ ...btnBase, border: '1px solid #e5e7eb', color: '#6b7280' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                      <ChevronLeft style={{ width: 14, height: 14, flexShrink: 0 }} />Public Details
+                    </button>
+                  </>
+                )}
+
+                {drawerTab !== 'owner' && (<>
                 {/* Edit */}
                 <button onClick={() => { setEditListing(listing); }} style={{ ...btnBase, border: '1px solid rgba(37,99,235,0.3)', color: '#2563eb' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
                   <Pencil style={{ width: 14, height: 14, flexShrink: 0 }} />Edit Listing
@@ -5522,11 +5605,32 @@ function ListingDetailDrawer({
                   </button>
                 )}
 
+                {/* Costs & P&L — jump to the owner panel in this same detail page */}
+                {canViewCosts && (
+                  <button onClick={() => setDrawerTab('owner')} style={{ ...btnBase, border: '1px solid rgba(124,58,237,0.3)', color: drawerTab === 'owner' ? '#fff' : '#7c3aed', background: drawerTab === 'owner' ? '#7c3aed' : '#ffffff' }} onMouseEnter={e => { if (drawerTab !== 'owner') e.currentTarget.style.background='#f9fafb'; }} onMouseLeave={e => { if (drawerTab !== 'owner') e.currentTarget.style.background='#ffffff'; }}>
+                    <DollarSign style={{ width: 14, height: 14, flexShrink: 0 }} />Costs &amp; P&amp;L
+                  </button>
+                )}
+
                 {/* Copy */}
                 <button onClick={() => copyListing(listing)} style={{ ...btnBase, border: '1px solid rgba(22,163,74,0.3)', color: copiedListingId === listing.id ? '#15803d' : '#16a34a' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
                   {copiedListingId === listing.id ? <Check style={{ width: 14, height: 14, flexShrink: 0 }} /> : <Clipboard style={{ width: 14, height: 14, flexShrink: 0 }} />}
                   {copiedListingId === listing.id ? 'Copied!' : 'Copy Writing'}
                 </button>
+
+                {/* Share — per-platform tagged links */}
+                <ShareMenu
+                  label="Share Listing"
+                  baseUrl={`${dealerSubdomain ? `https://${dealerSubdomain}.xdrive.my` : 'https://xdrive.my'}/cars/${listing.slug}`}
+                  refSlug={dealerSlug || ''}
+                  style={{ ...btnBase, justifyContent: 'flex-start', width: '100%', border: '1px solid rgba(124,58,237,0.3)', color: '#7c3aed' }}
+                  waCaption={(link) => [
+                    `${listing.year} ${listing.brand} ${listing.model}${listing.variant ? ' ' + listing.variant : ''}`,
+                    `RM ${Number(listing.selling_price || 0).toLocaleString()}`,
+                    '',
+                    link,
+                  ].join('\n')}
+                />
 
                 {/* Financing Calculator — hidden on sold listings */}
                 {!isSold && (
@@ -5569,6 +5673,7 @@ function ListingDetailDrawer({
                 <button onClick={() => { setDeleteId(listing.id); }} style={{ ...btnBase, border: '1px solid rgba(220,38,38,0.3)', color: '#dc2626' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
                   <Trash2 style={{ width: 14, height: 14, flexShrink: 0 }} />Delete Listing
                 </button>
+                </>)}
 
                 {/* Metadata */}
                 <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: 12, marginTop: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>
@@ -5744,6 +5849,12 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
   const [stockFilters, setStockFilters] = useState(() => new Set());
   const [stockSort, setStockSort] = useState('recent');
   const toggleStockFilter = (k) => setStockFilters(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; });
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
   // Lock body scroll while detail drawer or publish form is open
   useEffect(() => {
     if (!detailUnit && !stockPublishListing) return;
@@ -5988,10 +6099,15 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     const next = window.prompt('PUSPAKOM B7 inspection date (YYYY-MM-DD). Leave blank to clear.', current);
     if (next === null) return;
     const value = next.trim() || null;
+    if (value && (!/^\d{4}-\d{2}-\d{2}$/.test(value) || isNaN(Date.parse(value)))) {
+      toast.error('Enter a valid date as YYYY-MM-DD (e.g. 2026-03-15)');
+      return;
+    }
     const { error } = await supabase.from('stock_units').update({ puspakom_b7_date: value }).eq('id', unit.id).eq('dealer_id', userId);
     if (error) { toast.error('Update failed'); return; }
     logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: unit.id, action: 'b7_updated', summary: `Puspakom B7 date set to ${value || 'cleared'}`, fieldChanges: { puspakom_b7_date: { from: unit.puspakom_b7_date, to: value } } });
     setUnits(p => p.map(u => u.id === unit.id ? { ...u, puspakom_b7_date: value } : u));
+    setDetailUnit(prev => (prev && prev.id === unit.id) ? { ...prev, puspakom_b7_date: value } : prev);
     toast.success('PUSPAKOM B7 updated');
   };
 
@@ -6005,10 +6121,15 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     const next = window.prompt('PUSPAKOM B5 inspection date (YYYY-MM-DD). Leave blank to clear.', current);
     if (next === null) return;
     const value = next.trim() || null;
+    if (value && (!/^\d{4}-\d{2}-\d{2}$/.test(value) || isNaN(Date.parse(value)))) {
+      toast.error('Enter a valid date as YYYY-MM-DD (e.g. 2026-03-15)');
+      return;
+    }
     const { error } = await supabase.from('stock_units').update({ puspakom_b5_date: value }).eq('id', unit.id).eq('dealer_id', userId);
     if (error) { toast.error('Update failed'); return; }
     logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: unit.id, action: 'b5_updated', summary: `Puspakom B5 date set to ${value || 'cleared'}`, fieldChanges: { puspakom_b5_date: { from: unit.puspakom_b5_date, to: value } } });
     setUnits(p => p.map(u => u.id === unit.id ? { ...u, puspakom_b5_date: value } : u));
+    setDetailUnit(prev => (prev && prev.id === unit.id) ? { ...prev, puspakom_b5_date: value } : prev);
     toast.success('PUSPAKOM B5 updated');
   };
 
@@ -6026,6 +6147,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     if (error) { toast.error('Update failed'); return; }
     logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: unit.id, action: 'encumbrance_updated', summary: `Encumbrance status ${unit.encumbrance_status || 'unknown'} → ${next}`, fieldChanges: { encumbrance_status: { from: unit.encumbrance_status, to: next } } });
     setUnits(p => p.map(u => u.id === unit.id ? { ...u, encumbrance_status: next } : u));
+    setDetailUnit(prev => (prev && prev.id === unit.id) ? { ...prev, encumbrance_status: next } : prev);
   };
 
   const fetchPnl = async (unit) => {
@@ -6060,8 +6182,10 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
       handoverTasks = pst || [];
     }
     const purchasePrice  = Number(unit.purchase_price) || 0;
-    const reconCost      = Number(unit.recon_cost) || 0;
+    const reconEst       = Number(unit.recon_cost) || 0;
     const reconActual    = reconJobsList.reduce((s, j) => s + (Number(j.cost) || 0), 0);
+    // Real money out: use actual logged recon jobs when any exist, else the booked estimate.
+    const reconCost      = reconJobsList.length > 0 ? reconActual : reconEst;
     const servicesCost   = Number(unit.car_listings?.included_services_cost) || 0;
     const commission     = Number(unit.car_listings?.commission_amount) || 0;
     const handoverCost   = handoverTasks.filter((t) => t.status !== 'na').reduce((s, t) => s + (Number(t.cost) || 0), 0);
@@ -6091,7 +6215,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     const backGross      = addonRevenue - addonCost;
     const totalCosts     = vehicleCosts + addonCost;
     const netPnl         = frontGross + backGross;
-    setPnlData({ purchasePrice, reconCost, reconActual, servicesCost, commission, handoverCost, holdingCost, holdingDays, dailyHold, adSpend, addonRevenue, addonCost, revenue, frontGross, backGross, totalCosts, netPnl, addons, isSold: unit.status === 'sold' });
+    setPnlData({ purchasePrice, reconCost, reconEst, reconActual, servicesCost, commission, handoverCost, holdingCost, holdingDays, dailyHold, adSpend, addonRevenue, addonCost, revenue, frontGross, backGross, totalCosts, netPnl, addons, isSold: unit.status === 'sold' });
     setPnlLoading(false);
   };
 
@@ -6325,6 +6449,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
         logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: editPriceUnit.id, action: 'prices_updated', summary: `Prices updated — ${changes.join('; ')}`, fieldChanges: fc });
       }
       setUnits(u => u.map(x => x.id === editPriceUnit.id ? { ...x, ...patch } : x));
+      setDetailUnit(prev => (prev && prev.id === editPriceUnit.id) ? { ...prev, ...patch } : prev);
       toast.success('Prices updated');
       setEditPriceUnit(null);
     } else {
@@ -6634,23 +6759,24 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
         return (
           <div
             onClick={() => setDetailUnit(null)}
-            style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', overscrollBehavior: 'contain' }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? 12 : 24, overscrollBehavior: 'contain' }}
           >
             <div
               onClick={e => e.stopPropagation()}
               style={{
-                background: '#fff', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 540,
-                maxHeight: '92vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+                background: '#fff', borderRadius: 16, width: '100%', maxWidth: isMobile ? 540 : 880,
+                maxHeight: isMobile ? '88vh' : '90vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
                 overscrollBehavior: 'contain',
-                boxShadow: '0 -16px 64px rgba(0,0,0,0.25)',
-                paddingBottom: 'env(safe-area-inset-bottom, 20px)',
+                boxShadow: '0 24px 80px rgba(0,0,0,0.28)',
                 fontFamily: "'DM Sans',sans-serif",
               }}
             >
-              {/* Drag handle pill */}
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 2px' }}>
-                <div style={{ width: 36, height: 4, borderRadius: 2, background: '#e5e7eb' }} />
-              </div>
+              {/* Drag handle pill — mobile only */}
+              {isMobile && (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 2px' }}>
+                  <div style={{ width: 36, height: 4, borderRadius: 2, background: '#e5e7eb' }} />
+                </div>
+              )}
 
               {/* Header */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px 14px', borderBottom: '1px solid #f3f4f6' }}>
@@ -6695,7 +6821,10 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                 ))}
               </div>
 
-              {/* Car details spec grid — all fields from car_listings */}
+              {/* Body — single column on mobile, two columns on desktop (wide, minimal scroll) */}
+              <div style={{ display: isMobile ? 'block' : 'grid', gridTemplateColumns: isMobile ? undefined : '1fr 1fr', alignItems: 'start' }}>
+              {/* LEFT column: Car details spec grid — all fields from car_listings */}
+              <div style={{ borderRight: isMobile ? 'none' : '1px solid #f3f4f6' }}>
               {SPEC_ROWS.length > 0 && (
                 <div style={{ padding: '14px 16px', borderBottom: '1px solid #f3f4f6' }}>
                   <p style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, margin: '0 0 10px' }}>Car Details</p>
@@ -6710,6 +6839,9 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                 </div>
               )}
 
+              </div>{/* /LEFT column */}
+              {/* RIGHT column: certifications + actions */}
+              <div>
               {/* Certifications & status — clickable to update inline */}
               {u.status === 'in_stock' && (
                 <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6' }}>
@@ -6738,6 +6870,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                 {ACTION_BTN('Activity History',  'See all edits, updates, and status changes for this unit', '#6b7280', '#f9fafb', '#e5e7eb', () => fetchHistory(u))}
                 {u.status === 'in_stock' && ACTION_BTN('Mark as Sold', 'Record the final sale price and close out this unit', '#2563eb', 'rgba(37,99,235,0.06)', '#bfdbfe', () => { setSoldTarget(u); setSoldForm({ sold_price: u.asking_price ? String(u.asking_price) : '', sold_date: new Date().toISOString().slice(0, 10) }); })}
               </div>
+              </div>{/* /RIGHT column */}
+              </div>{/* /body grid */}
               <div style={{ height: 16 }} />
             </div>
           </div>
@@ -6940,6 +7074,52 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                 <p className="text-gray-500 text-sm text-center py-8">Loading…</p>
               ) : pnlData && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {/* Plain-English verdict — tells the dealer what the number means and why */}
+                  {(() => {
+                    const v = pnlData;
+                    const marginPct = v.revenue > 0 ? (v.netPnl / v.revenue) * 100 : 0;
+                    const spread = v.revenue - v.purchasePrice;
+                    const spreadPct = v.purchasePrice > 0 ? (spread / v.purchasePrice) * 100 : 0;
+                    const loss = v.netPnl < 0;
+                    const thin = !loss && marginPct < 5;
+                    const reasons = [];
+                    if (v.holdingCost > 0 && (v.holdingDays > 60 || v.holdingCost >= Math.abs(v.netPnl) * 0.4))
+                      reasons.push(`RM ${v.holdingCost.toLocaleString()} carrying cost from ${v.holdingDays} days on the floor`);
+                    if (spread <= v.purchasePrice * 0.03)
+                      reasons.push(`only RM ${spread.toLocaleString()} markup over buy price (${spreadPct.toFixed(1)}%)`);
+                    if (v.reconEst > 0 && v.reconActual > v.reconEst)
+                      reasons.push(`recon overran the estimate by RM ${(v.reconActual - v.reconEst).toLocaleString()}`);
+                    if (v.commission > 0 && v.commission >= Math.abs(v.netPnl) * 0.5)
+                      reasons.push(`RM ${v.commission.toLocaleString()} sales commission`);
+                    if (v.adSpend > 0 && v.adSpend >= Math.abs(v.netPnl) * 0.4)
+                      reasons.push(`RM ${v.adSpend.toLocaleString()} ad spend`);
+                    const tone = loss ? { bg: '#fef2f2', bd: '#fecaca', tx: '#b91c1c', ic: '#dc2626' }
+                               : thin ? { bg: '#fffbeb', bd: '#fde68a', tx: '#b45309', ic: '#d97706' }
+                                      : { bg: '#f0fdf4', bd: '#bbf7d0', tx: '#15803d', ic: '#16a34a' };
+                    const headline = loss
+                      ? `Losing RM ${Math.abs(v.netPnl).toLocaleString()} on this unit`
+                      : thin
+                        ? `Slim RM ${v.netPnl.toLocaleString()} profit · ${marginPct.toFixed(1)}% margin`
+                        : `Healthy RM ${v.netPnl.toLocaleString()} profit · ${marginPct.toFixed(1)}% margin`;
+                    const body = reasons.length
+                      ? (loss ? 'Driven by ' : 'Watch: ') + reasons.join('; ') + '.'
+                      : loss
+                        ? 'Costs have eaten through the asking price — reprice up or trim reconditioning.'
+                        : `RM ${spread.toLocaleString()} spread over buy price survives all costs.`;
+                    const aging = v.holdingDays > 60 && !v.isSold && v.dailyHold > 0;
+                    return (
+                      <div style={{ background: tone.bg, border: `1px solid ${tone.bd}`, borderRadius: 10, padding: '12px 14px', marginBottom: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {loss ? <AlertTriangle style={{ width: 16, height: 16, color: tone.ic, flexShrink: 0 }} />
+                                : <TrendingUp style={{ width: 16, height: 16, color: tone.ic, flexShrink: 0 }} />}
+                          <span style={{ fontSize: 13.5, fontWeight: 700, color: tone.tx }}>{headline}</span>
+                        </div>
+                        <p style={{ fontSize: 12, color: tone.tx, opacity: 0.92, margin: '6px 0 0', lineHeight: 1.45 }}>{body}</p>
+                        {aging && <p style={{ fontSize: 11, color: tone.tx, opacity: 0.82, margin: '5px 0 0', lineHeight: 1.4 }}>Aged {v.holdingDays} days — every extra day adds RM {Math.round(v.dailyHold).toLocaleString()}. Repricing to move it stops the bleed.</p>}
+                        {!v.isSold && <p style={{ fontSize: 10.5, color: '#9ca3af', margin: '6px 0 0' }}>Projection based on the current asking price.</p>}
+                      </div>
+                    );
+                  })()}
                   {/* Front end */}
                   <div style={{ padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
                     <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Front End (Vehicle)</p>
@@ -6961,12 +7141,12 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                         <span style={{ color: '#f87171' }}>− RM {Number(val).toLocaleString()}</span>
                       </div>
                     ))}
-                    {/* Recon estimate vs actual reconciliation (DMS-5) */}
-                    {pnlData.reconActual > 0 && pnlData.reconActual !== pnlData.reconCost && (
+                    {/* Recon estimate vs actual reconciliation (DMS-5) — only when an estimate was booked */}
+                    {pnlData.reconActual > 0 && pnlData.reconEst > 0 && pnlData.reconActual !== pnlData.reconEst && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 2, marginBottom: 3, paddingLeft: 8 }}>
-                        <span style={{ color: '#9ca3af' }}>↳ actual recon jobs</span>
-                        <span style={{ color: pnlData.reconActual > pnlData.reconCost ? '#f59e0b' : '#059669' }}>
-                          RM {pnlData.reconActual.toLocaleString()} {pnlData.reconActual > pnlData.reconCost ? `(+${(pnlData.reconActual - pnlData.reconCost).toLocaleString()} over)` : '(under est.)'}
+                        <span style={{ color: '#9ca3af' }}>↳ vs RM {pnlData.reconEst.toLocaleString()} estimate</span>
+                        <span style={{ color: pnlData.reconActual > pnlData.reconEst ? '#f59e0b' : '#059669' }}>
+                          {pnlData.reconActual > pnlData.reconEst ? `+${(pnlData.reconActual - pnlData.reconEst).toLocaleString()} over` : `${(pnlData.reconEst - pnlData.reconActual).toLocaleString()} under`}
                         </span>
                       </div>
                     )}
@@ -7014,7 +7194,6 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                         {pnlData.netPnl < 0 ? '− ' : ''}RM {Math.abs(pnlData.netPnl).toLocaleString()}
                       </span>
                     </div>
-                    {!pnlData.isSold && <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>Based on current asking price — updates when sold.</p>}
                   </div>
                 </div>
               )}
@@ -9807,6 +9986,7 @@ export default function DashboardPage() {
         { id: "overview",  Icon: Gauge,       label: "Overview" },
         { id: "analytics", sub: "revenue",    Icon: DollarSign, label: "Revenue" },
         { id: "analytics", sub: "performance", Icon: TrendingUp, label: "Performance" },
+        { id: "analytics", sub: "listings",   Icon: Car, label: "Listings" },
         { id: "oversight", Icon: Shield,      label: "GM Oversight" },
       ],
     },
@@ -9820,9 +10000,9 @@ export default function DashboardPage() {
     {
       id: "g_inventory", Icon: Package, label: "Inventory",
       items: [
-        { id: "listings", Icon: Car,        label: "Listings", badge: listings.length },
+        { id: "listings", Icon: Car,        label: "Inventory", badge: listings.length },
         { id: "add",      Icon: PlusCircle, label: "Add Listing" },
-        { id: "stock",    Icon: Package,    label: "Stock" },
+        { id: "stock",    Icon: Package,    label: "Costs & P&L" },
       ],
     },
     {
@@ -10976,6 +11156,7 @@ export default function DashboardPage() {
                 tabs={[
                   { id: "revenue",     label: "Revenue" },
                   { id: "performance", label: "Performance" },
+                  { id: "listings",    label: "Listings" },
                 ]}
               />
               {analyticsSub === "revenue" && userId && (
@@ -10985,6 +11166,16 @@ export default function DashboardPage() {
                 <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>Loading…</div>}>
                   <PerformanceTab dealerId={getDealerIdFromProfile(profile)} listings={listings} />
                 </Suspense>
+              )}
+              {analyticsSub === "listings" && userId && (
+                <AnalyticsTab
+                  listings={listings}
+                  profile={profile}
+                  salesmen={salesmen}
+                  onEditListing={setEditListing}
+                  onStaleAdjusted={handleStaleAdjusted}
+                  adjustedStaleIds={adjustedStaleIds}
+                />
               )}
             </>
           )}
@@ -11077,11 +11268,15 @@ export default function DashboardPage() {
           setDeleteId={setDeleteId}
           copyListing={copyListing}
           copiedListingId={copiedListingId}
+          dealerSubdomain={dealerSubdomain}
+          dealerSlug={profile?.slug}
           handleAssign={handleAssign}
           handleUnassign={handleUnassign}
           handleStatus={handleStatus}
           updatingStatus={updatingStatus}
           getListingAge={getListingAge}
+          userId={userId}
+          profile={profile}
         />
       )}
 

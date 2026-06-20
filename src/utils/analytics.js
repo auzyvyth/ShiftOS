@@ -1,3 +1,5 @@
+import { getShareChannel } from "./refTracking";
+
 const SESSION_KEY = "xdrive_session_id";
 
 export function getOrCreateSessionId() {
@@ -19,14 +21,19 @@ export function getSlugFromURL() {
  */
 export async function trackEvent(supabase, eventType, payload = {}) {
   try {
-    await supabase.from("analytics_events").insert({
+    const row = {
       event_type: eventType,
       session_id: getOrCreateSessionId(),
       page_path: window.location.pathname,
       referrer: document.referrer || null,
       salesman_slug: getSlugFromURL(),
       ...payload,
-    });
+    };
+    // Stamp the share channel (?src= captured on landing) into metadata so the
+    // analytics dashboard can break clicks down by platform.
+    const channel = getShareChannel();
+    if (channel) row.metadata = { ...(row.metadata || {}), channel };
+    await supabase.from("analytics_events").insert(row);
   } catch (e) {
     console.warn("Analytics error:", e);
   }

@@ -133,6 +133,30 @@ const CDP_DOC_TYPES = {
   other: { label: "Document", color: "#6b7280" },
 };
 
+const fmtCdpDate = (d) => { try { return new Date(d).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return ''; } };
+
+// Buying-intent qualifier on the viewing form — lets the dealer triage serious
+// buyers vs window-shoppers. Value stored on appointments.booking_type.
+const BUYING_INTENT = [
+  { v: 'ready', l: "I'm ready to buy now" },
+  { v: 'two_weeks', l: 'Looking to buy within 2 weeks' },
+  { v: 'one_month', l: 'Looking to buy within a month' },
+  { v: 'browsing', l: 'Just exploring for now' },
+];
+const intentLabel = (v) => BUYING_INTENT.find((o) => o.v === v)?.l || '';
+
+// Shown in the Puspakom row when the dealer logged B5/B7 inspection dates
+// (a verified trust signal) even if no certificate file was uploaded.
+function PuspakomDates({ b5, b7, color }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {b5 && <div style={{ fontSize: 12, color }}>PUSPAKOM B5 (chassis &amp; body) inspected {fmtCdpDate(b5)}</div>}
+      {b7 && <div style={{ fontSize: 12, color }}>PUSPAKOM B7 (roadworthiness) certified {fmtCdpDate(b7)}</div>}
+      <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>Inspection verified by the dealer.</p>
+    </div>
+  );
+}
+
 const inputStyle = (focused, th) => ({
   width: "100%",
   background: th?.inputBg ?? "rgba(255,255,255,0.03)",
@@ -400,6 +424,7 @@ export default function CarDetailPage() {
     phone: "+60",
     date: "",
     time: "09:00",
+    timeline: "",
     notes: "",
     state: "",
   });
@@ -556,7 +581,7 @@ export default function CarDetailPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const PUBLIC_FIELDS = "id,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,plate_number,video_url,salesman_slug,car_documents,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,included_services_cost,vin,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating,cylinders,market_avg_price,market_sample_count";
+      const PUBLIC_FIELDS = "id,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,plate_number,video_url,salesman_slug,car_documents,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,included_services_cost,vin,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating,cylinders,market_avg_price,market_sample_count,puspakom_b5_date,puspakom_b7_date";
       let { data: carData, error } = await supabase
         .from("public_car_listings")
         .select(PUBLIC_FIELDS)
@@ -876,6 +901,7 @@ export default function CarDetailPage() {
           phone: form.phone,
           state: form.state || null,
           appointmentDate: dt.toISOString(),
+          bookingType: form.timeline || null,
           notes: form.notes || null,
           refSlug: getRef() || null,
         }),
@@ -905,7 +931,8 @@ export default function CarDetailPage() {
         const dateStr = dt.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" });
         const timeStr = dt.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" });
         const stateStr = form.state ? ` (${form.state})` : "";
-        const msg = `🗓️ New Booking!\n\n*${form.name}*${stateStr} booked a viewing for the *${car.brand} ${car.model} ${car.year}*\n\n📅 ${dateStr} · ${timeStr}\n📞 ${form.phone}${form.notes ? `\n💬 "${form.notes}"` : ""}`;
+        const intentStr = form.timeline ? `\n🎯 ${intentLabel(form.timeline)}` : "";
+        const msg = `🗓️ New Booking!\n\n*${form.name}*${stateStr} booked a viewing for the *${car.brand} ${car.model} ${car.year}*\n\n📅 ${dateStr} · ${timeStr}\n📞 ${form.phone}${intentStr}${form.notes ? `\n💬 "${form.notes}"` : ""}`;
         fetch(`https://api.telegram.org/bot${dp.telegram_bot_token}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -969,7 +996,8 @@ export default function CarDetailPage() {
     car.selling_price <= car.original_price * 0.97;
   const saving = isHot ? car.original_price - car.selling_price : 0;
   const hasDocuments =
-    Array.isArray(car.car_documents) && car.car_documents.length > 0;
+    (Array.isArray(car.car_documents) && car.car_documents.length > 0) ||
+    !!(car.puspakom_b5_date || car.puspakom_b7_date);
   const carTitle = `${car.year} ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""}`;
   const dealerName =
     dealer?.site_name || dealer?.dealership || dealer?.full_name || "Dealer";
@@ -1844,27 +1872,32 @@ export default function CarDetailPage() {
                 { key:'ownership',      icon:<Eye size={13} />,        label:'Ownership Docs',       okColor:'#fbbf24', okBg:'rgba(251,191,36,0.1)',  okBorder:'rgba(251,191,36,0.3)'  },
               ].map(({ key, icon, label, okColor, okBg, okBorder }) => {
                 const doc = car.car_documents?.find(d => d.type === key);
+                const isPusp = key === 'puspakom';
+                const b5 = isPusp ? car.puspakom_b5_date : null;
+                const b7 = isPusp ? car.puspakom_b7_date : null;
+                const byDate = isPusp && (b5 || b7);
+                const available = !!doc || byDate;
                 const rk = `m-${key}`;
                 const isOpen = openDocKey === rk;
                 const asImage = isImageUrl(doc?.url);
                 return (
-                  <div key={key} style={{ background: th.card, border:`1px solid ${isOpen && doc ? okBorder : th.border}`, borderRadius:9, overflow:'hidden', transition:'border-color 0.2s' }}>
-                    <div onClick={() => doc && toggleDoc(rk)}
-                      style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', cursor: doc ? 'pointer' : 'default' }}>
+                  <div key={key} style={{ background: th.card, border:`1px solid ${isOpen && available ? okBorder : th.border}`, borderRadius:9, overflow:'hidden', transition:'border-color 0.2s' }}>
+                    <div onClick={() => available && toggleDoc(rk)}
+                      style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', cursor: available ? 'pointer' : 'default' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <span style={{ color: doc ? okColor : '#334155' }}>{icon}</span>
+                        <span style={{ color: available ? okColor : '#334155' }}>{icon}</span>
                         <p style={{ fontSize:12, color: th.text, fontWeight:500, margin:0 }}>{label}</p>
                       </div>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                        <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background: doc ? okBg : 'rgba(100,116,139,0.08)', border:`1px solid ${doc ? okBorder : 'rgba(100,116,139,0.15)'}`, color: doc ? okColor : '#475569', whiteSpace:'nowrap' }}>
-                          {doc ? '✓ Available' : 'Not Provided'}
+                        <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background: available ? okBg : 'rgba(100,116,139,0.08)', border:`1px solid ${available ? okBorder : 'rgba(100,116,139,0.15)'}`, color: available ? okColor : '#475569', whiteSpace:'nowrap' }}>
+                          {doc ? '✓ Available' : byDate ? '✓ Verified' : 'Not Provided'}
                         </span>
-                        {doc && <ChevronDown size={12} style={{ color:'#475569', transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform 0.2s', flexShrink:0 }} />}
+                        {available && <ChevronDown size={12} style={{ color: okColor, transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform 0.2s', flexShrink:0 }} />}
                       </div>
                     </div>
-                    {isOpen && doc && (
+                    {isOpen && available && (
                       <div style={{ borderTop:`1px solid ${okBorder}40`, padding:'12px 14px', background:`${okColor}08` }}>
-                        {asImage ? (
+                        {doc ? (asImage ? (
                           <>
                             <img src={doc.url} alt={doc.name || label} style={{ width:'100%', maxHeight:220, objectFit:'contain', borderRadius:7, marginBottom:10, display:'block' }} />
                             <a href={doc.url} target="_blank" rel="noopener noreferrer"
@@ -1877,6 +1910,8 @@ export default function CarDetailPage() {
                             style={{ display:'inline-flex', alignItems:'center', gap:6, background:okBg, border:`1px solid ${okBorder}`, borderRadius:7, padding:'8px 14px', fontSize:12, color:okColor, textDecoration:'none', fontWeight:600 }}>
                             <Download size={13} /> {doc.name || label}
                           </a>
+                        )) : (
+                          <PuspakomDates b5={b5} b7={b7} color={okColor} />
                         )}
                       </div>
                     )}
@@ -2706,29 +2741,34 @@ export default function CarDetailPage() {
                   { key: 'ownership', icon: <Eye size={15} />, label: 'Ownership Docs', sub: 'VOC / transfer documents', okColor: '#fbbf24', okBorder: 'rgba(251,191,36,0.3)' },
                 ].map(({ key, icon, label, sub, okColor, okBorder }) => {
                   const doc = car.car_documents?.find(d => d.type === key);
+                  const isPusp = key === 'puspakom';
+                  const b5 = isPusp ? car.puspakom_b5_date : null;
+                  const b7 = isPusp ? car.puspakom_b7_date : null;
+                  const byDate = isPusp && (b5 || b7);
+                  const available = !!doc || byDate;
                   const rk = `d-${key}`;
                   const isOpen = openDocKey === rk;
                   const asImage = doc && isImageUrl(doc.url);
                   return (
-                    <div key={key} style={{ background: th.card, border: `1px solid ${isOpen && doc ? okBorder : 'rgba(255,255,255,0.05)'}`, borderRadius: 10, overflow: 'hidden', transition: 'border-color 0.2s' }}>
-                      <div onClick={() => doc && toggleDoc(rk)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: doc ? 'pointer' : 'default' }}>
+                    <div key={key} style={{ background: th.card, border: `1px solid ${isOpen && available ? okBorder : 'rgba(255,255,255,0.05)'}`, borderRadius: 10, overflow: 'hidden', transition: 'border-color 0.2s' }}>
+                      <div onClick={() => available && toggleDoc(rk)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: available ? 'pointer' : 'default' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ color: doc ? okColor : '#334155' }}>{icon}</span>
+                          <span style={{ color: available ? okColor : '#334155' }}>{icon}</span>
                           <div>
                             <p style={{ fontSize: 13, color: th.textSec, fontWeight: 500, margin: 0 }}>{label}</p>
                             <p style={{ fontSize: 11, color: '#334155', margin: '2px 0 0' }}>{sub}</p>
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: doc ? `${okColor}15` : 'rgba(100,116,139,0.08)', border: `1px solid ${doc ? okBorder : 'rgba(100,116,139,0.15)'}`, color: doc ? okColor : '#475569', whiteSpace: 'nowrap' }}>
-                            {doc ? '✓ Available' : 'Not Provided'}
+                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: available ? `${okColor}15` : 'rgba(100,116,139,0.08)', border: `1px solid ${available ? okBorder : 'rgba(100,116,139,0.15)'}`, color: available ? okColor : '#475569', whiteSpace: 'nowrap' }}>
+                            {doc ? '✓ Available' : byDate ? '✓ Verified' : 'Not Provided'}
                           </span>
-                          {doc && <ChevronDown size={15} style={{ color: okColor, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', flexShrink: 0 }} />}
+                          {available && <ChevronDown size={15} style={{ color: okColor, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', flexShrink: 0 }} />}
                         </div>
                       </div>
-                      {isOpen && doc && (
+                      {isOpen && available && (
                         <div style={{ borderTop: `1px solid ${okBorder}40`, padding: '14px 16px', background: `${okColor}08` }}>
-                          {asImage ? (
+                          {doc ? (asImage ? (
                             <>
                               <img src={doc.url} alt={doc.name || label} style={{ width: '100%', maxHeight: 260, objectFit: 'contain', borderRadius: 8, marginBottom: 12 }} />
                               <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: okColor, textDecoration: 'none', background: `${okColor}15`, border: `1px solid ${okBorder}`, borderRadius: 6, padding: '5px 12px' }}>
@@ -2739,6 +2779,8 @@ export default function CarDetailPage() {
                             <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: okColor, textDecoration: 'none', background: `${okColor}15`, border: `1px solid ${okBorder}`, borderRadius: 6, padding: '5px 12px' }}>
                               <Download size={14} /> {doc.name || label}
                             </a>
+                          )) : (
+                            <PuspakomDates b5={b5} b7={b7} color={okColor} />
                           )}
                         </div>
                       )}
@@ -3400,6 +3442,15 @@ export default function CarDetailPage() {
                       ))}
                     </select>
                   </div>
+                  <select aria-label="When are you looking to buy?" required value={form.timeline}
+                    onChange={e => setForm(f => ({...f, timeline: e.target.value}))}
+                    onFocus={() => setFocused('bk_timeline')} onBlur={() => setFocused(null)}
+                    style={{ ...inputStyle(focusedField === 'bk_timeline', th), cursor:'pointer', width:'100%' }}>
+                    <option value="" style={{ background: th.card }}>When are you looking to buy?</option>
+                    {BUYING_INTENT.map(o => (
+                      <option key={o.v} value={o.v} style={{ background: th.card }}>{o.l}</option>
+                    ))}
+                  </select>
                   <select aria-label="Your state" value={form.state}
                     onChange={e => setForm(f => ({...f, state: e.target.value}))}
                     onFocus={() => setFocused('bk_state')} onBlur={() => setFocused(null)}

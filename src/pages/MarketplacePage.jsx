@@ -13,6 +13,7 @@ import { trackEvent } from '../utils/analytics';
 import { PRICE_STEPS } from '../components/PriceDrumPicker';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import BodyTypeCarousel from '../components/marketplace/BodyTypeCarousel';
+import BrandStrip from '../components/marketplace/BrandStrip';
 import AdvancedSearchModal from '../components/marketplace/AdvancedSearchModal';
 import SkeletonCard from '../components/ui/SkeletonCard';
 import {
@@ -601,22 +602,13 @@ export default function MarketplacePage() {
         /* Brand grid */
         .mp-brand-grid {
           display: flex;
-          gap: 12px;
+          gap: 10px;
           justify-content: center;
           flex-wrap: wrap;
-          padding: 10px 0;
+          padding: 8px 0;
         }
         @media (max-width: 640px) {
-          .mp-brand-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            justify-items: center;
-          }
-          .mp-brand-card {
-            width: 100% !important;
-            height: 58px !important;
-          }
+          .mp-brand-grid { gap: 8px; }
         }
         .mp-reset-btn:hover   { color:#111827 !important; border-color:rgba(0,0,0,.25) !important }
         .mp-chip-x:hover      { opacity:.7 }
@@ -963,56 +955,10 @@ export default function MarketplacePage() {
         </section>
 
         {/* ── Brand strip ── */}
-        <section style={{ background: '#F7F6F2', padding: '28px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '0 clamp(20px, 4vw, 48px)' }}>
-            <div className="mp-brand-grid">
-              {[
-                { label: 'All',        brandVal: '',              initials: 'ALL',  color: '#DC2626' },
-                { label: 'Perodua',    brandVal: 'Perodua',       logo: '/brands/perodua.svg' },
-                { label: 'Proton',     brandVal: 'Proton',        logo: '/brands/proton.svg' },
-                { label: 'Toyota',     brandVal: 'Toyota',        logo: '/brands/toyota.svg' },
-                { label: 'Honda',      brandVal: 'Honda',         logo: '/brands/honda.svg' },
-                { label: 'Nissan',     brandVal: 'Nissan',        logo: '/brands/nissan.svg' },
-                { label: 'Mazda',      brandVal: 'Mazda',         logo: '/brands/mazda.svg' },
-                { label: 'Mitsubishi', brandVal: 'Mitsubishi',    logo: '/brands/mitsubishi.svg' },
-                { label: 'BMW',        brandVal: 'BMW',           logo: '/brands/bmw.svg' },
-                { label: 'Mercedes',   brandVal: 'Mercedes-Benz', logo: '/brands/mercedes.svg' },
-                { label: 'Hyundai',    brandVal: 'Hyundai',       logo: '/brands/hyundai.svg' },
-                { label: 'Kia',        brandVal: 'Kia',           logo: '/brands/kia.svg' },
-                { label: 'Lexus',      brandVal: 'Lexus',         logo: '/brands/lexus.svg' },
-                { label: 'Subaru',     brandVal: 'Subaru',        logo: '/brands/subaru.svg' },
-                { label: 'VW',         brandVal: 'Volkswagen',    logo: '/brands/volkswagen.svg' },
-                { label: 'Audi',       brandVal: 'Audi',          logo: '/brands/audi.svg' },
-              ].map(({ label, brandVal, logo, initials, color }) => {
-                const isActive = brandVal ? searchParams.get('brand') === brandVal : !searchParams.get('brand');
-                return (
-                  <Link
-                    key={label}
-                    to={brandVal ? `/showroom?brand=${encodeURIComponent(brandVal)}` : '/showroom'}
-                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: 0, cursor: 'pointer', width: 'auto', textDecoration: 'none' }}
-                  >
-                    <div className="mp-brand-card" style={{
-                      width: '84px', height: '68px', borderRadius: '14px', padding: '10px',
-                      background: isActive ? 'rgba(220,38,38,0.08)' : '#ffffff',
-                      border: `1px solid ${isActive ? 'rgba(220,38,38,0.4)' : 'rgba(0,0,0,0.08)'}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'background 0.2s, border-color 0.2s, transform 0.15s',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,38,38,0.08)'; e.currentTarget.style.borderColor = 'rgba(220,38,38,0.4)'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = isActive ? 'rgba(220,38,38,0.08)' : '#ffffff'; e.currentTarget.style.borderColor = isActive ? 'rgba(220,38,38,0.4)' : 'rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; }}
-                    >
-                      {logo ? (
-                        <img src={logo} alt={label} style={{ width: '100%', height: '100%', objectFit: 'contain' }} onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex'; }} />
-                      ) : null}
-                      <span style={{ display: logo ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', borderRadius: '8px', background: color || 'rgba(0,0,0,0.08)', color: '#fff', fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', fontFamily: "'Outfit',sans-serif" }}>{initials}</span>
-                    </div>
-                    <span style={{ fontSize: '11px', color: isActive ? '#dc2626' : '#374151', fontFamily: "'Outfit',sans-serif", fontWeight: isActive ? '700' : '500', textAlign: 'center', maxWidth: '84px', lineHeight: 1.2 }}>{label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </section>
+        <BrandStrip
+          activeBrand={searchParams.get('brand') || ''}
+          hrefFor={(v) => (v ? `/showroom?brand=${encodeURIComponent(v)}` : '/showroom')}
+        />
 
         <div style={S.wrap}>
           {/* Two-column layout */}
