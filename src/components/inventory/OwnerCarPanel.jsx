@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../../supabaseClient';
 import { toast } from 'sonner';
 import {
   AlertTriangle, TrendingUp, Wrench, Megaphone, ShieldCheck,
-  Pencil, Check, X, Plus, Trash2, UserCheck,
+  Pencil, X, Plus, Trash2, UserCheck, Clock,
 } from 'lucide-react';
 
 const rm = (n) => 'RM ' + Math.round(Number(n) || 0).toLocaleString();
+const fmtD = (d) => { try { return new Date(d).toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' }); } catch { return '—'; } };
 
 const AD_CHANNELS = [
   { v: 'mudah', l: 'Mudah' }, { v: 'carlist', l: 'Carlist' }, { v: 'facebook', l: 'Facebook' },
@@ -15,8 +17,9 @@ const AD_CHANNELS = [
 const ENC_OPTS = [
   { v: 'clear', l: 'Clear title', c: '#16a34a' },
   { v: 'under_hp', l: 'Under HP', c: '#dc2626' },
-  { v: 'unknown', l: 'Unknown', c: '#d97706' },
+  { v: 'unknown', l: 'Not verified', c: '#d97706' },
 ];
+const encCfg = (v) => ENC_OPTS.find((o) => o.v === v) || ENC_OPTS[2];
 
 const Section = ({ icon: Icon, title, color, right, children }) => (
   <div style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 14, marginBottom: 12, background: '#fff' }}>
@@ -31,7 +34,26 @@ const Section = ({ icon: Icon, title, color, right, children }) => (
   </div>
 );
 
-export default function OwnerCarPanel({ listing, userId, profile, salesmenById = {} }) {
+const inp = { width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', color: '#111827' };
+
+// Tool editor modal — portals above the drawer; explicit Save (no real-time writes).
+function ToolModal({ title, onClose, children, footer }) {
+  return createPortal(
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 440, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px rgba(0,0,0,0.3)', fontFamily: "'DM Sans',sans-serif" }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid #f3f4f6', flexShrink: 0 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: '#111827', margin: 0 }}>{title}</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 2 }}><X style={{ width: 18, height: 18 }} /></button>
+        </div>
+        <div style={{ padding: 16, overflowY: 'auto' }}>{children}</div>
+        {footer && <div style={{ padding: '12px 16px', borderTop: '1px solid #f3f4f6', display: 'flex', gap: 8, flexShrink: 0 }}>{footer}</div>}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool, setTool }) {
   const [loading, setLoading] = useState(true);
   const [unit, setUnit] = useState(null);
   const [recon, setRecon] = useState([]);
@@ -41,24 +63,22 @@ export default function OwnerCarPanel({ listing, userId, profile, salesmenById =
   const [costCfg, setCostCfg] = useState(null);
   const [creating, setCreating] = useState(false);
 
-  // edit state
-  const [editingCost, setEditingCost] = useState(false);
+  // tool form state
   const [costForm, setCostForm] = useState({ purchase_price: '', recon_cost: '', asking_price: '' });
-  const [savingCost, setSavingCost] = useState(false);
+  const [compForm, setCompForm] = useState({ puspakom_b5_date: '', puspakom_b7_date: '', encumbrance_status: 'unknown' });
   const [reconForm, setReconForm] = useState({ title: '', cost: '' });
   const [adForm, setAdForm] = useState({ channel: 'mudah', amount: '' });
-  const [savingComp, setSavingComp] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [activity, setActivity] = useState(null);
+
+  const close = () => setTool && setTool(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     const { data: u } = await supabase
-      .from('stock_units')
-      .select('*')
-      .eq('listing_id', listing.id)
-      .eq('dealer_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .from('stock_units').select('*')
+      .eq('listing_id', listing.id).eq('dealer_id', userId)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
     setUnit(u || null);
     const [rcfg, dp, pst] = await Promise.all([
       supabase.from('dealer_cost_settings').select('*').eq('dealer_id', userId).maybeSingle(),
@@ -75,23 +95,31 @@ export default function OwnerCarPanel({ listing, userId, profile, salesmenById =
       ]);
       setRecon(rj.data || []);
       setAds(ad.data || []);
-    } else {
-      setRecon([]); setAds([]);
-    }
+    } else { setRecon([]); setAds([]); }
     setLoading(false);
   }, [listing.id, userId]);
 
   useEffect(() => { load(); }, [load]);
 
+  // Seed the relevant tool form whenever a tool opens.
+  useEffect(() => {
+    if (!unit) return;
+    if (tool === 'prices') setCostForm({ purchase_price: String(unit.purchase_price || ''), recon_cost: String(unit.recon_cost || ''), asking_price: String(unit.asking_price || '') });
+    if (tool === 'compliance') setCompForm({ puspakom_b5_date: unit.puspakom_b5_date || '', puspakom_b7_date: unit.puspakom_b7_date || '', encumbrance_status: unit.encumbrance_status || 'unknown' });
+    if (tool === 'activity') {
+      setActivity(null);
+      supabase.from('activity_log').select('summary, actor_name, actor_role, action, created_at')
+        .eq('record_id', unit.id).order('created_at', { ascending: false }).limit(40)
+        .then(({ data }) => setActivity(data || []));
+    }
+  }, [tool, unit]);
+
   const createUnit = async () => {
     setCreating(true);
     const { data, error } = await supabase.from('stock_units').insert({
-      dealer_id: userId,
-      listing_id: listing.id,
+      dealer_id: userId, listing_id: listing.id,
       status: listing.status === 'sold' ? 'sold' : 'in_stock',
-      purchase_price: 0,
-      asking_price: listing.selling_price || 0,
-      encumbrance_status: 'unknown',
+      purchase_price: 0, asking_price: listing.selling_price || 0, encumbrance_status: 'unknown',
     }).select().single();
     setCreating(false);
     if (error) { toast.error('Could not create cost record'); return; }
@@ -105,7 +133,6 @@ export default function OwnerCarPanel({ listing, userId, profile, salesmenById =
     const purchasePrice = Number(unit.purchase_price) || 0;
     const reconEst = Number(unit.recon_cost) || 0;
     const reconActual = recon.reduce((s, j) => s + (Number(j.cost) || 0), 0);
-    // Real money out: use actual logged recon jobs when any exist, else the booked estimate.
     const reconCost = recon.length > 0 ? reconActual : reconEst;
     const servicesCost = Number(listing.included_services_cost) || 0;
     const commission = Number(listing.commission_amount) || 0;
@@ -132,20 +159,29 @@ export default function OwnerCarPanel({ listing, userId, profile, salesmenById =
     return { purchasePrice, reconCost, reconEst, reconActual, servicesCost, commission, handoverCost, adSpend, addonRevenue, addonCost, revenue, dailyHold, holdingDays, holdingCost, frontGross, backGross, netPnl, isSold };
   })();
 
-  // ---- actions ----
+  // ---- tool actions ----
   const saveCost = async () => {
-    setSavingCost(true);
-    const patch = {
-      purchase_price: Number(costForm.purchase_price) || 0,
-      recon_cost: Number(costForm.recon_cost) || 0,
-      asking_price: Number(costForm.asking_price) || 0,
-    };
+    setSaving(true);
+    const patch = { purchase_price: Number(costForm.purchase_price) || 0, recon_cost: Number(costForm.recon_cost) || 0, asking_price: Number(costForm.asking_price) || 0 };
     const { error } = await supabase.from('stock_units').update(patch).eq('id', unit.id).eq('dealer_id', userId);
-    setSavingCost(false);
+    setSaving(false);
     if (error) { toast.error('Failed to save'); return; }
     setUnit((p) => ({ ...p, ...patch }));
-    setEditingCost(false);
-    toast.success('Cost updated');
+    toast.success('Cost updated'); close();
+  };
+
+  const saveComp = async () => {
+    setSaving(true);
+    const patch = {
+      puspakom_b5_date: compForm.puspakom_b5_date || null,
+      puspakom_b7_date: compForm.puspakom_b7_date || null,
+      encumbrance_status: compForm.encumbrance_status,
+    };
+    const { error } = await supabase.from('stock_units').update(patch).eq('id', unit.id).eq('dealer_id', userId);
+    setSaving(false);
+    if (error) { toast.error('Failed to save'); return; }
+    setUnit((p) => ({ ...p, ...patch }));
+    toast.success('Compliance updated'); close();
   };
 
   const addRecon = async () => {
@@ -155,15 +191,13 @@ export default function OwnerCarPanel({ listing, userId, profile, salesmenById =
       category: 'other', cost: reconForm.cost ? Number(reconForm.cost) : null, status: 'pending',
     }).select().single();
     if (error) { toast.error('Failed to add'); return; }
-    setRecon((p) => [data, ...p]);
-    setReconForm({ title: '', cost: '' });
+    setRecon((p) => [data, ...p]); setReconForm({ title: '', cost: '' });
   };
   const delRecon = async (id) => {
     const { error } = await supabase.from('recon_jobs').delete().eq('id', id);
     if (error) { toast.error('Failed to delete'); return; }
     setRecon((p) => p.filter((j) => j.id !== id));
   };
-
   const addAd = async () => {
     if (!adForm.amount || Number(adForm.amount) <= 0) { toast.error('Enter an amount'); return; }
     const { data, error } = await supabase.from('ad_spend').insert({
@@ -171,24 +205,13 @@ export default function OwnerCarPanel({ listing, userId, profile, salesmenById =
       channel: adForm.channel, amount: Number(adForm.amount), spent_at: new Date().toISOString().slice(0, 10),
     }).select().single();
     if (error) { toast.error('Failed to add'); return; }
-    setAds((p) => [data, ...p]);
-    setAdForm({ channel: 'mudah', amount: '' });
+    setAds((p) => [data, ...p]); setAdForm({ channel: 'mudah', amount: '' });
   };
   const delAd = async (id) => {
     const { error } = await supabase.from('ad_spend').delete().eq('id', id);
     if (error) { toast.error('Failed to delete'); return; }
     setAds((p) => p.filter((a) => a.id !== id));
   };
-
-  const saveComp = async (patch) => {
-    setSavingComp(true);
-    const { error } = await supabase.from('stock_units').update(patch).eq('id', unit.id).eq('dealer_id', userId);
-    setSavingComp(false);
-    if (error) { toast.error('Update failed'); return; }
-    setUnit((p) => ({ ...p, ...patch }));
-  };
-
-  const inp = { width: '100%', padding: '7px 9px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 6, outline: 'none', background: '#fff', boxSizing: 'border-box', color: '#111827' };
 
   if (loading) return <p style={{ fontSize: 13, color: '#6b7280', padding: '20px 0', textAlign: 'center' }}>Loading owner detail…</p>;
 
@@ -232,6 +255,7 @@ export default function OwnerCarPanel({ listing, userId, profile, salesmenById =
 
   const reconTotal = recon.reduce((s, j) => s + (Number(j.cost) || 0), 0);
   const adTotal = ads.reduce((s, a) => s + (Number(a.amount) || 0), 0);
+  const enc = encCfg(unit.encumbrance_status || 'unknown');
 
   const Row = ({ label, val, neg }) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
@@ -239,14 +263,17 @@ export default function OwnerCarPanel({ listing, userId, profile, salesmenById =
       <span style={{ color: neg ? '#f87171' : '#111827', fontWeight: neg ? 400 : 600 }}>{neg ? '− ' : ''}{rm(val)}</span>
     </div>
   );
+  const Badge = ({ ok, label, color }) => (
+    <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 6, background: ok ? `${color}15` : 'rgba(100,116,139,0.08)', border: `1px solid ${ok ? `${color}40` : 'rgba(100,116,139,0.18)'}`, color: ok ? color : '#94a3b8' }}>{label}</span>
+  );
 
   return (
     <div>
-      {/* Status & attribution */}
+      {/* ---------- READ-ONLY VIEW ---------- */}
       <Section icon={UserCheck} title="Status & Attribution" color="#2563eb">
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: statusCfg.c, background: `${statusCfg.c}15`, border: `1px solid ${statusCfg.c}30`, borderRadius: 6, padding: '3px 10px' }}>{statusCfg.l}</span>
-          {status === 'sold' && (unit.sold_date || listing.sold_date) && <span style={{ fontSize: 12, color: '#6b7280' }}>on {new Date(unit.sold_date || listing.sold_date).toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' })}</span>}
+          {status === 'sold' && (unit.sold_date || listing.sold_date) && <span style={{ fontSize: 12, color: '#6b7280' }}>on {fmtD(unit.sold_date || listing.sold_date)}</span>}
           {status === 'sold' && (unit.sold_price || listing.sold_price) > 0 && <span style={{ fontSize: 12, color: '#111827', fontWeight: 600 }}>{rm(unit.sold_price || listing.sold_price)}</span>}
         </div>
         <div style={{ marginTop: 8, fontSize: 12, color: '#374151', display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -259,7 +286,6 @@ export default function OwnerCarPanel({ listing, userId, profile, salesmenById =
         </div>
       </Section>
 
-      {/* Verdict + P&L */}
       <Section icon={loss ? AlertTriangle : TrendingUp} title="Profit & Loss" color={tone.ic}>
         <div style={{ background: tone.bg, border: `1px solid ${tone.bd}`, borderRadius: 8, padding: '11px 12px', marginBottom: 12 }}>
           <p style={{ fontSize: 13.5, fontWeight: 700, color: tone.tx, margin: 0 }}>{headline}</p>
@@ -296,104 +322,153 @@ export default function OwnerCarPanel({ listing, userId, profile, salesmenById =
         </div>
       </Section>
 
-      {/* Cost basis */}
-      <Section icon={Pencil} title="Cost Basis" color="#7c3aed" right={
-        editingCost ? (
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button onClick={saveCost} disabled={savingCost} style={{ background: '#111827', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}><Check style={{ width: 12, height: 12 }} /></button>
-            <button onClick={() => setEditingCost(false)} style={{ background: '#f3f4f6', color: '#6b7280', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11, cursor: 'pointer' }}><X style={{ width: 12, height: 12 }} /></button>
-          </div>
-        ) : (
-          <button onClick={() => { setCostForm({ purchase_price: String(unit.purchase_price || ''), recon_cost: String(unit.recon_cost || ''), asking_price: String(unit.asking_price || '') }); setEditingCost(true); }} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 600, color: '#7c3aed', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Pencil style={{ width: 11, height: 11 }} />Edit</button>
-        )
-      }>
-        {editingCost ? (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-            {[['Purchase', 'purchase_price'], ['Recon est.', 'recon_cost'], ['Asking', 'asking_price']].map(([l, k]) => (
-              <div key={k}>
-                <label style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{l}</label>
-                <input type="number" value={costForm[k]} onChange={(e) => setCostForm((p) => ({ ...p, [k]: e.target.value }))} style={inp} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-            {[['Purchase', unit.purchase_price], ['Recon est.', unit.recon_cost], ['Asking', unit.asking_price]].map(([l, val]) => (
-              <div key={l}>
-                <p style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>{l}</p>
-                <p style={{ fontSize: 13, color: '#111827', fontWeight: 600, margin: '2px 0 0' }}>{val ? rm(val) : '—'}</p>
-              </div>
-            ))}
-          </div>
-        )}
+      <Section icon={Pencil} title="Cost Basis" color="#7c3aed">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+          {[['Purchase', unit.purchase_price], ['Recon est.', unit.recon_cost], ['Asking', unit.asking_price]].map(([l, val]) => (
+            <div key={l}>
+              <p style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>{l}</p>
+              <p style={{ fontSize: 13, color: '#111827', fontWeight: 600, margin: '2px 0 0' }}>{val ? rm(val) : '—'}</p>
+            </div>
+          ))}
+        </div>
       </Section>
 
-      {/* Recon jobs */}
       <Section icon={Wrench} title="Recon Jobs" color="#d97706" right={<span style={{ fontSize: 12, fontWeight: 700, color: '#d97706' }}>{rm(reconTotal)}</span>}>
-        {recon.length === 0 && <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 8px' }}>No recon work logged.</p>}
-        {recon.map((j) => (
+        {recon.length === 0 ? <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>No recon work logged.</p> : recon.map((j) => (
           <div key={j.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3f4f6' }}>
             <div style={{ minWidth: 0 }}>
               <p style={{ fontSize: 12, color: '#111827', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.title}</p>
               <p style={{ fontSize: 10, color: '#9ca3af', margin: '1px 0 0', textTransform: 'capitalize' }}>{(j.status || 'pending').replace('_', ' ')}{j.vendor ? ` · ${j.vendor}` : ''}</p>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-              <span style={{ fontSize: 12, color: '#374151', fontWeight: 600 }}>{j.cost ? rm(j.cost) : '—'}</span>
-              <button onClick={() => delRecon(j.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d1d5db', padding: 2 }}><Trash2 style={{ width: 12, height: 12 }} /></button>
-            </div>
+            <span style={{ fontSize: 12, color: '#374151', fontWeight: 600, flexShrink: 0 }}>{j.cost ? rm(j.cost) : '—'}</span>
           </div>
         ))}
-        <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-          <input placeholder="Job (e.g. polish)" value={reconForm.title} onChange={(e) => setReconForm((p) => ({ ...p, title: e.target.value }))} style={{ ...inp, flex: 2 }} />
-          <input type="number" placeholder="RM" value={reconForm.cost} onChange={(e) => setReconForm((p) => ({ ...p, cost: e.target.value }))} style={{ ...inp, flex: 1 }} />
-          <button onClick={addRecon} style={{ background: 'rgba(217,119,6,0.1)', border: '1px solid rgba(217,119,6,0.3)', color: '#d97706', borderRadius: 6, padding: '0 10px', cursor: 'pointer' }}><Plus style={{ width: 14, height: 14 }} /></button>
-        </div>
       </Section>
 
-      {/* Ad spend */}
       <Section icon={Megaphone} title="Advertising Spend" color="#db2777" right={<span style={{ fontSize: 12, fontWeight: 700, color: '#db2777' }}>{rm(adTotal)}</span>}>
-        {ads.length === 0 && <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 8px' }}>No ad spend logged.</p>}
-        {ads.map((a) => (
+        {ads.length === 0 ? <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>No ad spend logged.</p> : ads.map((a) => (
           <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3f4f6' }}>
             <div>
               <p style={{ fontSize: 12, color: '#111827', margin: 0, textTransform: 'capitalize' }}>{a.channel}</p>
-              {a.spent_at && <p style={{ fontSize: 10, color: '#9ca3af', margin: '1px 0 0' }}>{new Date(a.spent_at).toLocaleDateString('en-MY', { day: '2-digit', month: 'short' })}</p>}
+              {a.spent_at && <p style={{ fontSize: 10, color: '#9ca3af', margin: '1px 0 0' }}>{fmtD(a.spent_at)}</p>}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12, color: '#374151', fontWeight: 600 }}>{rm(a.amount)}</span>
-              <button onClick={() => delAd(a.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d1d5db', padding: 2 }}><Trash2 style={{ width: 12, height: 12 }} /></button>
-            </div>
+            <span style={{ fontSize: 12, color: '#374151', fontWeight: 600 }}>{rm(a.amount)}</span>
           </div>
         ))}
-        <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-          <select value={adForm.channel} onChange={(e) => setAdForm((p) => ({ ...p, channel: e.target.value }))} style={{ ...inp, flex: 2 }}>
-            {AD_CHANNELS.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
-          </select>
-          <input type="number" placeholder="RM" value={adForm.amount} onChange={(e) => setAdForm((p) => ({ ...p, amount: e.target.value }))} style={{ ...inp, flex: 1 }} />
-          <button onClick={addAd} style={{ background: 'rgba(219,39,119,0.1)', border: '1px solid rgba(219,39,119,0.3)', color: '#db2777', borderRadius: 6, padding: '0 10px', cursor: 'pointer' }}><Plus style={{ width: 14, height: 14 }} /></button>
+      </Section>
+
+      <Section icon={ShieldCheck} title="Compliance" color="#16a34a">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <Badge ok={!!unit.puspakom_b5_date} color="#16a34a" label={unit.puspakom_b5_date ? `B5 · ${fmtD(unit.puspakom_b5_date)}` : 'B5 not logged'} />
+          <Badge ok={!!unit.puspakom_b7_date} color="#16a34a" label={unit.puspakom_b7_date ? `B7 · ${fmtD(unit.puspakom_b7_date)}` : 'B7 not logged'} />
+          <Badge ok={(unit.encumbrance_status || 'unknown') !== 'unknown'} color={enc.c} label={enc.l} />
         </div>
       </Section>
 
-      {/* Compliance */}
-      <Section icon={ShieldCheck} title="Compliance" color="#16a34a">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div>
-            <label style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>PUSPAKOM B5</label>
-            <input type="date" value={unit.puspakom_b5_date || ''} onChange={(e) => saveComp({ puspakom_b5_date: e.target.value || null })} style={inp} />
+      {/* ---------- TOOL MODALS (opened from the side panel) ---------- */}
+      {tool === 'prices' && (
+        <ToolModal title="Edit Prices" onClose={close} footer={
+          <>
+            <button onClick={close} style={{ flex: 1, padding: 10, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#6b7280', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+            <button onClick={saveCost} disabled={saving} style={{ flex: 1, padding: 10, borderRadius: 8, border: 'none', background: '#111827', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : 'Save'}</button>
+          </>
+        }>
+          {[['Purchase Price', 'purchase_price'], ['Recon Estimate', 'recon_cost'], ['Asking Price', 'asking_price']].map(([l, k]) => (
+            <div key={k} style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 11, color: '#6b7280', fontWeight: 600, display: 'block', marginBottom: 4 }}>{l} (RM)</label>
+              <input type="number" value={costForm[k]} onChange={(e) => setCostForm((p) => ({ ...p, [k]: e.target.value }))} style={inp} />
+            </div>
+          ))}
+        </ToolModal>
+      )}
+
+      {tool === 'compliance' && (
+        <ToolModal title="Compliance" onClose={close} footer={
+          <>
+            <button onClick={close} style={{ flex: 1, padding: 10, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#6b7280', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+            <button onClick={saveComp} disabled={saving} style={{ flex: 1, padding: 10, borderRadius: 8, border: 'none', background: '#111827', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : 'Save'}</button>
+          </>
+        }>
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: 11, color: '#6b7280', fontWeight: 600, display: 'block', marginBottom: 4 }}>PUSPAKOM B5 (chassis &amp; body)</label>
+            <input type="date" value={compForm.puspakom_b5_date} onChange={(e) => setCompForm((p) => ({ ...p, puspakom_b5_date: e.target.value }))} style={inp} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: 11, color: '#6b7280', fontWeight: 600, display: 'block', marginBottom: 4 }}>PUSPAKOM B7 (roadworthiness)</label>
+            <input type="date" value={compForm.puspakom_b7_date} onChange={(e) => setCompForm((p) => ({ ...p, puspakom_b7_date: e.target.value }))} style={inp} />
           </div>
           <div>
-            <label style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>PUSPAKOM B7</label>
-            <input type="date" value={unit.puspakom_b7_date || ''} onChange={(e) => saveComp({ puspakom_b7_date: e.target.value || null })} style={inp} />
-          </div>
-          <div style={{ gridColumn: '1 / -1' }}>
-            <label style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Encumbrance</label>
-            <select value={unit.encumbrance_status || 'unknown'} onChange={(e) => saveComp({ encumbrance_status: e.target.value })} style={inp}>
+            <label style={{ fontSize: 11, color: '#6b7280', fontWeight: 600, display: 'block', marginBottom: 4 }}>Encumbrance</label>
+            <select value={compForm.encumbrance_status} onChange={(e) => setCompForm((p) => ({ ...p, encumbrance_status: e.target.value }))} style={inp}>
               {ENC_OPTS.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
             </select>
           </div>
-        </div>
-        {savingComp && <p style={{ fontSize: 10, color: '#9ca3af', margin: '6px 0 0' }}>Saving…</p>}
-      </Section>
+        </ToolModal>
+      )}
+
+      {tool === 'recon' && (
+        <ToolModal title="Recon Jobs" onClose={close} footer={
+          <button onClick={close} style={{ flex: 1, padding: 10, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Done</button>
+        }>
+          {recon.length === 0 && <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 10px' }}>No recon work logged yet.</p>}
+          {recon.map((j) => (
+            <div key={j.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid #f3f4f6' }}>
+              <p style={{ fontSize: 12.5, color: '#111827', margin: 0 }}>{j.title}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12.5, color: '#374151', fontWeight: 600 }}>{j.cost ? rm(j.cost) : '—'}</span>
+                <button onClick={() => delRecon(j.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d1d5db', padding: 2 }}><Trash2 style={{ width: 13, height: 13 }} /></button>
+              </div>
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+            <input placeholder="Job (e.g. polish)" value={reconForm.title} onChange={(e) => setReconForm((p) => ({ ...p, title: e.target.value }))} style={{ ...inp, flex: 2 }} />
+            <input type="number" placeholder="RM" value={reconForm.cost} onChange={(e) => setReconForm((p) => ({ ...p, cost: e.target.value }))} style={{ ...inp, flex: 1 }} />
+            <button onClick={addRecon} style={{ background: '#d97706', border: 'none', color: '#fff', borderRadius: 7, padding: '0 12px', cursor: 'pointer' }}><Plus style={{ width: 15, height: 15 }} /></button>
+          </div>
+        </ToolModal>
+      )}
+
+      {tool === 'ad' && (
+        <ToolModal title="Advertising Spend" onClose={close} footer={
+          <button onClick={close} style={{ flex: 1, padding: 10, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Done</button>
+        }>
+          {ads.length === 0 && <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 10px' }}>No ad spend logged yet.</p>}
+          {ads.map((a) => (
+            <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid #f3f4f6' }}>
+              <p style={{ fontSize: 12.5, color: '#111827', margin: 0, textTransform: 'capitalize' }}>{a.channel}{a.spent_at ? ` · ${fmtD(a.spent_at)}` : ''}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12.5, color: '#374151', fontWeight: 600 }}>{rm(a.amount)}</span>
+                <button onClick={() => delAd(a.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d1d5db', padding: 2 }}><Trash2 style={{ width: 13, height: 13 }} /></button>
+              </div>
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+            <select value={adForm.channel} onChange={(e) => setAdForm((p) => ({ ...p, channel: e.target.value }))} style={{ ...inp, flex: 2 }}>
+              {AD_CHANNELS.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
+            </select>
+            <input type="number" placeholder="RM" value={adForm.amount} onChange={(e) => setAdForm((p) => ({ ...p, amount: e.target.value }))} style={{ ...inp, flex: 1 }} />
+            <button onClick={addAd} style={{ background: '#db2777', border: 'none', color: '#fff', borderRadius: 7, padding: '0 12px', cursor: 'pointer' }}><Plus style={{ width: 15, height: 15 }} /></button>
+          </div>
+        </ToolModal>
+      )}
+
+      {tool === 'activity' && (
+        <ToolModal title="Activity History" onClose={close} footer={
+          <button onClick={close} style={{ flex: 1, padding: 10, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Close</button>
+        }>
+          {activity === null ? <p style={{ fontSize: 12, color: '#9ca3af', textAlign: 'center', padding: '12px 0' }}>Loading…</p>
+            : activity.length === 0 ? <p style={{ fontSize: 12, color: '#9ca3af', textAlign: 'center', padding: '12px 0' }}>No history recorded for this unit.</p>
+              : activity.map((log, i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '7px 0', borderBottom: '1px solid #f3f4f6' }}>
+                  <Clock style={{ width: 12, height: 12, color: '#9ca3af', marginTop: 3, flexShrink: 0 }} />
+                  <div>
+                    <p style={{ fontSize: 12.5, color: '#111827', margin: 0 }}>{log.summary || log.action}</p>
+                    <p style={{ fontSize: 10.5, color: '#9ca3af', margin: '2px 0 0' }}>{log.actor_name || 'System'}{log.actor_role ? ` · ${log.actor_role}` : ''} · {new Date(log.created_at).toLocaleString('en-MY', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                </div>
+              ))}
+        </ToolModal>
+      )}
     </div>
   );
 }

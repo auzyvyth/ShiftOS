@@ -5295,6 +5295,8 @@ function ListingDetailDrawer({
   const [imgIdx, setImgIdx]       = useState(0);
   const [lbOpen, setLbOpen]       = useState(false);
   const [drawerTab, setDrawerTab] = useState('specs');
+  const [ownerTool, setOwnerTool] = useState(null);
+  useEffect(() => { if (drawerTab !== 'owner') setOwnerTool(null); }, [drawerTab]);
   const [showAssign, setShowAssign] = useState(false);
   const [calcOpen,  setCalcOpen]  = useState(false);
   const [isMobile, setIsMobile]   = useState(() => window.innerWidth < 768);
@@ -5534,15 +5536,41 @@ function ListingDetailDrawer({
 
               {/* Tab: Owner · P&L (owner-only full financial + compliance detail) */}
               {drawerTab === 'owner' && canViewCosts && (
-                <OwnerCarPanel listing={listing} userId={userId} profile={profile} salesmenById={salesmenById} />
+                <OwnerCarPanel listing={listing} userId={userId} salesmenById={salesmenById} tool={ownerTool} setTool={setOwnerTool} />
               )}
             </div>
 
             {/* RIGHT — dark premium sidebar */}
             <div style={{ flex: isMobile ? 'none' : '0 0 210px', width: isMobile ? '100%' : undefined, padding: isMobile ? '12px 16px 24px' : 20, display: 'flex', flexDirection: 'column', gap: 0, borderTop: isMobile ? '1px solid #e5e7eb' : 'none', borderLeft: isMobile ? 'none' : '1px solid #e5e7eb', background: '#fff' }}>
               <div style={{ background: 'transparent', borderRadius: 8, padding: isMobile ? 18 : '18px 0', display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr', gap: 8 }}>
-                <p style={{ fontSize: 10, color: isMobile ? '#6b7280' : '#6b7280', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>Actions</p>
+                <p style={{ fontSize: 10, color: isMobile ? '#6b7280' : '#6b7280', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>{drawerTab === 'owner' ? 'P&L Tools' : 'Actions'}</p>
 
+                {/* Owner-mode: the per-car tools — each opens an editor with an explicit Save */}
+                {drawerTab === 'owner' && canViewCosts && (
+                  <>
+                    {[
+                      ['Edit Prices', DollarSign, () => setOwnerTool('prices')],
+                      ['Recon Jobs', Wrench, () => setOwnerTool('recon')],
+                      ['Ad Spend', Megaphone, () => setOwnerTool('ad')],
+                      ['Compliance', Shield, () => setOwnerTool('compliance')],
+                      ['Activity', Clock, () => setOwnerTool('activity')],
+                    ].map(([label, Icon, onClick]) => (
+                      <button key={label} onClick={onClick} style={{ ...btnBase, border: '1px solid rgba(124,58,237,0.3)', color: '#7c3aed' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                        <Icon style={{ width: 14, height: 14, flexShrink: 0 }} />{label}
+                      </button>
+                    ))}
+                    {!isSold && (
+                      <button onClick={() => setMarkSoldListing(listing)} style={{ ...btnBase, border: '1px solid rgba(5,150,105,0.3)', color: '#059669' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                        <CheckCircle2 style={{ width: 14, height: 14, flexShrink: 0 }} />Mark as Sold
+                      </button>
+                    )}
+                    <button onClick={() => setDrawerTab('specs')} style={{ ...btnBase, border: '1px solid #e5e7eb', color: '#6b7280' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                      <ChevronLeft style={{ width: 14, height: 14, flexShrink: 0 }} />Public Details
+                    </button>
+                  </>
+                )}
+
+                {drawerTab !== 'owner' && (<>
                 {/* Edit */}
                 <button onClick={() => { setEditListing(listing); }} style={{ ...btnBase, border: '1px solid rgba(37,99,235,0.3)', color: '#2563eb' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
                   <Pencil style={{ width: 14, height: 14, flexShrink: 0 }} />Edit Listing
@@ -5623,6 +5651,7 @@ function ListingDetailDrawer({
                 <button onClick={() => { setDeleteId(listing.id); }} style={{ ...btnBase, border: '1px solid rgba(220,38,38,0.3)', color: '#dc2626' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
                   <Trash2 style={{ width: 14, height: 14, flexShrink: 0 }} />Delete Listing
                 </button>
+                </>)}
 
                 {/* Metadata */}
                 <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: 12, marginTop: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>
