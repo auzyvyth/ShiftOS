@@ -6028,7 +6028,7 @@ function StockStatsStrip({ dealerId }) {
     </div>
   );
 }
-const StockTab = React.memo(function StockTab({ userId, listings, profile, onPublishComplete }) {
+const StockTab = React.memo(function StockTab({ userId, listings, profile, onPublishComplete, autoTool, onToolHandled }) {
   const navigate = useNavigate();
   const { can } = usePermissions(profile);
   const [units, setUnits] = useState([]);
@@ -6167,6 +6167,15 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
   };
 
   useEffect(() => { if (userId) fetchUnits(); }, [userId]);
+
+  // Open the tool requested from the Listings "Tools" dropdown, then clear the signal.
+  useEffect(() => {
+    if (!autoTool) return;
+    if (autoTool === 'csv') { setShowCsvImport(true); setCsvRows([]); setCsvError(''); }
+    else if (autoTool === 'vendors') { setShowVendors(true); fetchVendors(); }
+    else if (autoTool === 'add') { setShowAdd(true); }
+    onToolHandled?.();
+  }, [autoTool]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Dealer cost-floor settings → holding cost in P&L (DMS-4)
   const [costCfg, setCostCfg] = useState(null);
@@ -9590,6 +9599,10 @@ export default function DashboardPage() {
   const [assignDropdownId, setAssignDropdownId] = useState(null);
   const [assignToast,      setAssignToast]      = useState(null);
   const [detailListing,    setDetailListing]    = useState(null);
+  // Stock tools (CSV import / vendors / add unit) are reached from the Listings
+  // "Tools" dropdown now that Stock has no nav entry — this signals which to open.
+  const [stockAutoTool,    setStockAutoTool]    = useState(null);
+  const [toolsMenuOpen,    setToolsMenuOpen]    = useState(false);
   const [svcPopupListing,  setSvcPopupListing]  = useState(null);
   const sidebarBellRef = useRef(null);
   const [sidebarBellRect, setSidebarBellRect] = useState(null);
@@ -10290,7 +10303,6 @@ export default function DashboardPage() {
       items: [
         { id: "listings", Icon: Car,        label: "Inventory", badge: listings.length },
         { id: "add",      Icon: PlusCircle, label: "Add Listing" },
-        { id: "stock",    Icon: Package,    label: "Costs & P&L" },
       ],
     },
     {
@@ -10957,6 +10969,37 @@ export default function DashboardPage() {
                         Filters
                         {activeFilterCount > 0 && <span style={{ background: '#3b82f6', color: '#fff', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '1px 6px', marginLeft: 2 }}>{activeFilterCount}</span>}
                       </button>
+                      {/* Stock tools (migrated from the Stock tab) */}
+                      <div style={{ position: 'relative' }}>
+                        <button
+                          onClick={() => setToolsMenuOpen(o => !o)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, background: toolsMenuOpen ? 'rgba(107,114,128,0.12)' : '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600, color: '#374151', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          <Wrench style={{ width: 13, height: 13 }} /> Tools
+                        </button>
+                        {toolsMenuOpen && (
+                          <>
+                            <div onClick={() => setToolsMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                            <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 41, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(15,23,42,0.12)', padding: 6, minWidth: 180 }}>
+                              {[
+                                { key: 'csv', Icon: Upload, label: 'Import CSV' },
+                                { key: 'vendors', Icon: Wrench, label: 'Vendors' },
+                                { key: 'add', Icon: PlusCircle, label: 'Add Stock Unit' },
+                              ].map(({ key, Icon, label }) => (
+                                <button
+                                  key={key}
+                                  onClick={() => { setStockAutoTool(key); handleTabChange('stock'); setToolsMenuOpen(false); }}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', background: 'none', border: 'none', borderRadius: 6, padding: '8px 10px', fontSize: 13, fontWeight: 500, color: '#374151', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                                  onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
+                                  onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                                >
+                                  <Icon style={{ width: 14, height: 14, color: '#6b7280' }} /> {label}
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
                       <button
                         onClick={() => setShowFastModal(true)}
                         style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#dc2626', border: 'none', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
@@ -11506,9 +11549,15 @@ export default function DashboardPage() {
             </>
           )}
           {activeTab === "stock" && userId && (
-            <StockTab userId={userId} listings={listings} profile={profile}
-              onPublishComplete={(l) => setListings(p => p.some(x => x.id === l.id) ? p.map(x => x.id === l.id ? { ...x, ...l } : x) : [l, ...p])}
-            />
+            <>
+              <button onClick={() => handleTabChange("listings")} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 14, fontSize: 13, fontWeight: 600, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'DM Sans', sans-serif" }}>
+                <ChevronLeft style={{ width: 15, height: 15 }} /> Back to Inventory
+              </button>
+              <StockTab userId={userId} listings={listings} profile={profile}
+                autoTool={stockAutoTool} onToolHandled={() => setStockAutoTool(null)}
+                onPublishComplete={(l) => setListings(p => p.some(x => x.id === l.id) ? p.map(x => x.id === l.id ? { ...x, ...l } : x) : [l, ...p])}
+              />
+            </>
           )}
           {activeTab === "documents" && (
             <DocumentsTab userId={userId} listings={listings} prefillDocData={prefillDocData} onClearPrefill={() => setPrefillDocData(null)} profile={profile} />
