@@ -6270,15 +6270,18 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     setSoldSaving(false);
   };
 
-  // HP-3: PUSPAKOM B7 helpers (cert valid 3 months)
+  // HP-3: PUSPAKOM B7 (hire-purchase inspection) — valid 30 days from inspection.
+  // Show the inspection date WITH YEAR so a 2024/2025 cert is obviously stale, and
+  // flag expired (red) / expiring (amber) loudly rather than a silent number.
   const puspakomStatus = (date) => {
     if (!date) return { label: 'B7 missing', color: '#6b7280', urgent: false };
     const issued = new Date(date);
-    const expires = new Date(issued); expires.setMonth(expires.getMonth() + 3);
+    const d = issued.toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' });
+    const expires = new Date(issued); expires.setDate(expires.getDate() + 30);
     const daysLeft = Math.floor((expires - Date.now()) / 86400000);
-    if (daysLeft < 0)  return { label: `B7 expired ${-daysLeft}d ago`, color: '#ef4444', urgent: true };
-    if (daysLeft <= 14) return { label: `B7 expires in ${daysLeft}d`,   color: '#f59e0b', urgent: true };
-    return { label: `B7 valid ${daysLeft}d`, color: '#22c55e', urgent: false };
+    if (daysLeft < 0)  return { label: `B7 expired · ${d}`, color: '#ef4444', urgent: true };
+    if (daysLeft <= 7) return { label: `B7 expires in ${daysLeft}d · ${d}`, color: '#f59e0b', urgent: true };
+    return { label: `B7 valid ${daysLeft}d · ${d}`, color: '#22c55e', urgent: false };
   };
   const handleUpdatePuspakom = async (unit) => {
     const current = unit.puspakom_b7_date || '';
@@ -6297,10 +6300,16 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     toast.success('PUSPAKOM B7 updated');
   };
 
-  // ENT-1: PUSPAKOM B5 helpers (chassis inspection, no expiry)
+  // ENT-1: PUSPAKOM B5 (ownership-transfer inspection) — no hard expiry, but a cert
+  // older than ~12 months usually needs re-inspection before JPJ transfer, so show
+  // the full date WITH YEAR and flag a stale one (amber) instead of a bare "done".
   const b5Status = (date) => {
     if (!date) return { label: 'B5 missing', color: '#6b7280' };
-    return { label: `B5 done ${new Date(date).toLocaleDateString('en-MY', { day:'2-digit', month:'short' })}`, color: '#22c55e' };
+    const dt = new Date(date);
+    const d = dt.toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' });
+    const months = Math.floor((Date.now() - dt) / (30 * 86400000));
+    if (months >= 12) return { label: `B5 ${d} · stale`, color: '#f59e0b' };
+    return { label: `B5 ${d}`, color: '#22c55e' };
   };
   const handleUpdateB5 = async (unit) => {
     const current = unit.puspakom_b5_date || '';
@@ -6863,8 +6872,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                         {/* Status badges */}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
                           {u.status === 'in_stock' && <>
-                            <span title="PUSPAKOM B7 roadworthiness cert — tap the card to update" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${ps.color}15`, border: `1px solid ${ps.color}30`, color: ps.color }}>{ps.label}</span>
-                            <span title="PUSPAKOM B5 ownership transfer cert" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${b5.color}15`, border: `1px solid ${b5.color}30`, color: b5.color }}>{b5.label}</span>
+                            <span title="PUSPAKOM B7 — hire-purchase inspection, valid 30 days from the inspection date. Tap the card to update." style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${ps.color}15`, border: `1px solid ${ps.color}30`, color: ps.color }}>{ps.label}</span>
+                            <span title="PUSPAKOM B5 — ownership-transfer inspection (no hard expiry; re-inspect if older than ~12 months). Tap the card to update." style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${b5.color}15`, border: `1px solid ${b5.color}30`, color: b5.color }}>{b5.label}</span>
                             <span title="Hire-purchase / loan encumbrance" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${enc.color}15`, border: `1px solid ${enc.color}30`, color: enc.color }}>{enc.label}</span>
                             {isUnpublished && <span title="Not visible on the public marketplace" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: '#fffbeb', border: '1px solid #fde68a', color: '#b45309' }}>Not published</span>}
                           </>}
@@ -7036,8 +7045,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                 <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6' }}>
                   <p style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, margin: '0 0 8px' }}>Certifications &amp; Status</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    <button onClick={() => handleUpdatePuspakom(u)} title="Tap to update PUSPAKOM B7 roadworthiness cert" style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: `${ps.color}15`, border: `1px solid ${ps.color}30`, color: ps.color, cursor: 'pointer' }}>B7 · {ps.label.replace('B7 ', '')}</button>
-                    <button onClick={() => handleUpdateB5(u)} title="Tap to update PUSPAKOM B5 ownership transfer cert" style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: `${b5.color}15`, border: `1px solid ${b5.color}30`, color: b5.color, cursor: 'pointer' }}>B5 · {b5.label.replace('B5 ', '')}</button>
+                    <button onClick={() => handleUpdatePuspakom(u)} title="PUSPAKOM B7 — hire-purchase inspection, valid 30 days. Tap to update." style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: `${ps.color}15`, border: `1px solid ${ps.color}30`, color: ps.color, cursor: 'pointer' }}>B7 · {ps.label.replace('B7 ', '')}</button>
+                    <button onClick={() => handleUpdateB5(u)} title="PUSPAKOM B5 — ownership-transfer inspection. Tap to update." style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: `${b5.color}15`, border: `1px solid ${b5.color}30`, color: b5.color, cursor: 'pointer' }}>B5 · {b5.label.replace('B5 ', '')}</button>
                     <button onClick={() => handleUpdateEncumbrance(u)} title="Tap to cycle: clear → under HP → unknown" style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: `${enc.color}15`, border: `1px solid ${enc.color}30`, color: enc.color, cursor: 'pointer' }}>{enc.label}</button>
                     {isUnpublished && (
                       <button onClick={() => handlePublishFromStock(u)} disabled={publishingStockId === u.id}
