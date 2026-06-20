@@ -61,6 +61,8 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
   const [addons, setAddons] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [costCfg, setCostCfg] = useState(null);
+  const [smCount, setSmCount] = useState(0);
+  const [views, setViews] = useState(0);
   const [creating, setCreating] = useState(false);
 
   // tool form state
@@ -80,14 +82,18 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
       .eq('listing_id', listing.id).eq('dealer_id', userId)
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
     setUnit(u || null);
-    const [rcfg, dp, pst] = await Promise.all([
+    const [rcfg, dp, pst, sl, av] = await Promise.all([
       supabase.from('dealer_cost_settings').select('*').eq('dealer_id', userId).maybeSingle(),
       supabase.from('deal_products').select('sold_price, dealer_products(name, cost_price)').eq('listing_id', listing.id).eq('dealer_id', userId),
       supabase.from('post_sale_tasks').select('step_key, status, cost').eq('listing_id', listing.id).eq('dealer_id', userId),
+      supabase.from('salesman_listings').select('id', { count: 'exact', head: true }).eq('listing_id', listing.id),
+      supabase.from('analytics_events').select('id', { count: 'exact', head: true }).eq('car_id', listing.id).eq('event_type', 'car_view'),
     ]);
     setCostCfg(rcfg.data || null);
     setAddons(dp.data || []);
     setTasks(pst.data || []);
+    setSmCount(sl.count || 0);
+    setViews(av.count || 0);
     if (u) {
       const [rj, ad] = await Promise.all([
         supabase.from('recon_jobs').select('*').eq('stock_unit_id', u.id).order('created_at', { ascending: false }),
@@ -266,9 +272,35 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
   const Badge = ({ ok, label, color }) => (
     <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 6, background: ok ? `${color}15` : 'rgba(100,116,139,0.08)', border: `1px solid ${ok ? `${color}40` : 'rgba(100,116,139,0.18)'}`, color: ok ? color : '#94a3b8' }}>{label}</span>
   );
+  const Stat = ({ label, value, color }) => (
+    <div style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: '9px 11px', background: '#fff' }}>
+      <p style={{ fontSize: 9.5, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0, fontWeight: 600 }}>{label}</p>
+      <p style={{ fontSize: 16, fontWeight: 700, color: color || '#111827', margin: '3px 0 0', fontVariantNumeric: 'tabular-nums' }}>{value}</p>
+    </div>
+  );
+  const repsSelling = listing.assigned_to ? 1 : smCount;
 
   return (
     <div>
+      {/* Identity + at-a-glance numbers */}
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+        {listing.images?.[0]
+          ? <img src={listing.images[0]} alt="" style={{ width: 92, height: 66, borderRadius: 10, objectFit: 'cover', flexShrink: 0, border: '1px solid #e5e7eb' }} />
+          : <div style={{ width: 92, height: 66, borderRadius: 10, background: '#f3f4f6', border: '1px solid #e5e7eb', flexShrink: 0 }} />}
+        <div style={{ minWidth: 0 }}>
+          <p style={{ fontSize: 15, fontWeight: 700, color: '#111827', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{listing.brand} {listing.model}</p>
+          <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>{[listing.year, listing.variant, listing.plate_number].filter(Boolean).join(' · ') || '—'}</p>
+        </div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
+        <Stat label="Total Gross" value={`${v.netPnl < 0 ? '− ' : ''}${rm(Math.abs(v.netPnl))}`} color={v.netPnl >= 0 ? '#16a34a' : '#dc2626'} />
+        <Stat label="Days on floor" value={`${v.holdingDays}d`} color={v.holdingDays > 60 ? '#dc2626' : '#111827'} />
+        <Stat label="Reps selling" value={String(repsSelling)} color={repsSelling > 0 ? '#2563eb' : '#9ca3af'} />
+        <Stat label="Asking" value={rm(unit.asking_price || listing.selling_price)} />
+        <Stat label="Ad spend" value={rm(adTotal)} color={adTotal > 0 ? '#db2777' : '#111827'} />
+        <Stat label="Car views" value={views.toLocaleString()} />
+      </div>
+
       {/* ---------- READ-ONLY VIEW ---------- */}
       <Section icon={UserCheck} title="Status & Attribution" color="#2563eb">
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>

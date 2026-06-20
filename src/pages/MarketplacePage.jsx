@@ -13,6 +13,7 @@ import { trackEvent } from '../utils/analytics';
 import { PRICE_STEPS } from '../components/PriceDrumPicker';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import BodyTypeCarousel from '../components/marketplace/BodyTypeCarousel';
+import BrandStrip from '../components/marketplace/BrandStrip';
 import AdvancedSearchModal from '../components/marketplace/AdvancedSearchModal';
 import SkeletonCard from '../components/ui/SkeletonCard';
 import {
@@ -954,50 +955,10 @@ export default function MarketplacePage() {
         </section>
 
         {/* ── Brand strip ── */}
-        <section style={{ background: '#F7F6F2', padding: '28px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '0 clamp(20px, 4vw, 48px)' }}>
-            <div className="mp-brand-grid">
-              {[
-                { label: 'All',         brandVal: ''              },
-                { label: 'Perodua',     brandVal: 'Perodua'       },
-                { label: 'Proton',      brandVal: 'Proton'        },
-                { label: 'Toyota',      brandVal: 'Toyota'        },
-                { label: 'Honda',       brandVal: 'Honda'         },
-                { label: 'Nissan',      brandVal: 'Nissan'        },
-                { label: 'Mazda',       brandVal: 'Mazda'         },
-                { label: 'Mitsubishi',  brandVal: 'Mitsubishi'    },
-                { label: 'BMW',         brandVal: 'BMW'           },
-                { label: 'Mercedes-Benz', brandVal: 'Mercedes-Benz' },
-                { label: 'Hyundai',     brandVal: 'Hyundai'       },
-                { label: 'Kia',         brandVal: 'Kia'           },
-                { label: 'Lexus',       brandVal: 'Lexus'         },
-                { label: 'Subaru',      brandVal: 'Subaru'        },
-                { label: 'Volkswagen',  brandVal: 'Volkswagen'    },
-                { label: 'Audi',        brandVal: 'Audi'          },
-              ].map(({ label, brandVal }) => {
-                const isActive = brandVal ? searchParams.get('brand') === brandVal : !searchParams.get('brand');
-                return (
-                  <Link
-                    key={label}
-                    className="mp-brand-pill"
-                    to={brandVal ? `/showroom?brand=${encodeURIComponent(brandVal)}` : '/showroom'}
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      padding: '9px 16px', borderRadius: '999px', textDecoration: 'none', whiteSpace: 'nowrap',
-                      fontSize: '13px', fontWeight: isActive ? 700 : 500, fontFamily: "'Outfit',sans-serif",
-                      color: isActive ? '#dc2626' : '#374151',
-                      background: isActive ? 'rgba(220,38,38,0.08)' : '#ffffff',
-                      border: `1px solid ${isActive ? 'rgba(220,38,38,0.4)' : 'rgba(0,0,0,0.10)'}`,
-                      transition: 'background 0.2s, border-color 0.2s, color 0.2s, transform 0.15s',
-                    }}
-                  >
-                    {label}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </section>
+        <BrandStrip
+          activeBrand={searchParams.get('brand') || ''}
+          hrefFor={(v) => (v ? `/showroom?brand=${encodeURIComponent(v)}` : '/showroom')}
+        />
 
         <div style={S.wrap}>
           {/* Two-column layout */}

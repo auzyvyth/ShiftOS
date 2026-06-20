@@ -7,6 +7,7 @@ import { useCompare } from '../hooks/useCompare';
 import MarketplaceHeader from '../components/MarketplaceHeader';
 import Header from '../components/Header';
 import MarketplaceFooter from '../components/MarketplaceFooter';
+import BrandStrip from '../components/marketplace/BrandStrip';
 import StickyWhatsAppButton from '../components/StickyWhatsAppButton';
 import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
@@ -66,25 +67,6 @@ const YEARS       = Array.from({ length: CUR_YEAR - 1989 }, (_, i) => CUR_YEAR -
 
 const CAR_FIELDS  = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,engine_cc,condition,previous_owners,auction_grade,interior_grade,is_recon,financing_type,images,status,created_at,market_avg_price';
 const DEALER_JOIN = 'dealer:profiles!dealer_id(dealership,site_name,subdomain,whatsapp_number,site_logo_url,brand_color,role)';
-
-const BRAND_LOGOS = [
-  { label:'All',        slug:'',              initials:'ALL', color:'#DC2626' },
-  { label:'Perodua',    slug:'Perodua',       logo:'/brands/perodua.svg' },
-  { label:'Proton',     slug:'Proton',        logo:'/brands/proton.svg',    invert:true },
-  { label:'Toyota',     slug:'Toyota',        logo:'/brands/toyota.svg',    invert:true },
-  { label:'Honda',      slug:'Honda',         logo:'/brands/honda.svg' },
-  { label:'Nissan',     slug:'Nissan',        logo:'/brands/nissan.svg',    invert:true },
-  { label:'Mazda',      slug:'Mazda',         logo:'/brands/mazda.svg',     invert:true },
-  { label:'Mitsubishi', slug:'Mitsubishi',    logo:'/brands/mitsubishi.svg' },
-  { label:'BMW',        slug:'BMW',           logo:'/brands/bmw.svg' },
-  { label:'Mercedes',   slug:'Mercedes-Benz', logo:'/brands/mercedes.svg',  invert:true },
-  { label:'Hyundai',    slug:'Hyundai',       logo:'/brands/hyundai.svg',   invert:true },
-  { label:'Kia',        slug:'Kia',           logo:'/brands/kia.svg' },
-  { label:'Lexus',      slug:'Lexus',         logo:'/brands/lexus.svg',     invert:true },
-  { label:'Subaru',     slug:'Subaru',        logo:'/brands/subaru.svg' },
-  { label:'VW',         slug:'Volkswagen',    logo:'/brands/volkswagen.svg' },
-  { label:'Audi',       slug:'Audi',          logo:'/brands/audi.svg',      invert:true },
-];
 
 /* ── Sanitisers ─────────────────────────────────────────────────── */
 const san = {
@@ -764,28 +746,10 @@ export default function CarListingPage() {
 
         {/* ── Brand strip — marketplace only ── */}
         {isMarketplace && (
-          <div style={{ borderBottom:'1px solid rgba(0,0,0,0.06)', padding:'18px 0', background:'#F7F6F2' }}>
-            <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'0 20px' }}>
-              <div className="cl-brand-scroll" style={{ display:'flex', gap:'10px', overflowX:'auto', paddingBottom:'4px', scrollbarWidth:'none' }}>
-                {BRAND_LOGOS.map(({ label, slug, logo, initials, color }) => {
-                  const active = slug ? brand===slug : !brand;
-                  const to = slug ? `${basePath}?brand=${encodeURIComponent(slug)}` : basePath;
-                  return (
-                    <Link key={label} to={to} style={{ flexShrink:0, display:'flex', flexDirection:'column', alignItems:'center', gap:'5px', textDecoration:'none' }}>
-                      <div style={{ width:'66px', height:'54px', borderRadius:'12px', padding:'10px', background:active?'rgba(220,38,38,0.07)':'#fff', border:`1px solid ${active?'rgba(220,38,38,0.3)':'rgba(0,0,0,0.08)'}`, display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s' }}>
-                        {logo
-                          ? <img src={logo} alt={label} style={{ width:'100%', height:'100%', objectFit:'contain' }} onError={e=>{ e.currentTarget.style.display='none'; e.currentTarget.nextSibling?.style && (e.currentTarget.nextSibling.style.display='flex'); }}/>
-                          : null}
-                        {!logo && <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:'32px', height:'32px', borderRadius:'6px', background:color||'rgba(0,0,0,0.08)', color:'#fff', fontSize:'9px', fontWeight:'700' }}>{initials}</span>}
-                        {logo && <span style={{ display:'none', alignItems:'center', justifyContent:'center', width:'32px', height:'32px', borderRadius:'6px', background:'rgba(0,0,0,0.08)', color:'#fff', fontSize:'9px', fontWeight:'700' }}>{label.slice(0,3)}</span>}
-                      </div>
-                      <span style={{ fontSize:'10px', color:active?'#dc2626':'#6b7280', fontWeight:active?'700':'500', textAlign:'center', maxWidth:'66px', lineHeight:1.2 }}>{label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+          <BrandStrip
+            activeBrand={brand || ''}
+            hrefFor={(v) => (v ? `${basePath}?brand=${encodeURIComponent(v)}` : basePath)}
+          />
         )}
 
         {/* ── Main content ── */}
