@@ -42,6 +42,7 @@ export default function BuyerAuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [pwFocused, setPwFocused] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [confirmSent, setConfirmSent] = useState(false);
@@ -88,7 +89,7 @@ export default function BuyerAuthPage() {
 
   const handleSignUp = async () => {
     if (!email || !password) { setError("Enter your email and a password."); return; }
-    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
+    if (!pwValid) { setError("Please meet all the password requirements below."); return; }
     setError(""); setLoading(true);
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
@@ -112,6 +113,18 @@ export default function BuyerAuthPage() {
     setResetLoading(false);
     if (error) setError(error.message); else setResetSent(true);
   };
+
+  // Supabase password policy: 8+ chars and at least one of each character class.
+  // Surfaced live below the field on sign-up so users never hit the server error.
+  const pwChecks = [
+    { label: "At least 8 characters",        ok: password.length >= 8 },
+    { label: "A lowercase letter (a–z)",     ok: /[a-z]/.test(password) },
+    { label: "An uppercase letter (A–Z)",    ok: /[A-Z]/.test(password) },
+    { label: "A number (0–9)",               ok: /[0-9]/.test(password) },
+    { label: "A symbol (!@#$%…)",            ok: /[^a-zA-Z0-9]/.test(password) },
+  ];
+  const pwValid = pwChecks.every((c) => c.ok);
+  const showPwChecks = isSignup && (pwFocused || password.length > 0) && !pwValid;
 
   return (
     <>
@@ -180,6 +193,13 @@ export default function BuyerAuthPage() {
         .ba-note-t { font-size: 12px; color: rgba(251,191,36,0.9); font-weight: 600; margin-bottom: 3px; }
         .ba-note-b { font-size: 11.5px; color: rgba(251,191,36,0.55); line-height: 1.5; }
         .ba-success { color: #4ade80; font-size: 12px; display: flex; align-items: center; gap: 6px; margin-bottom: 12px; }
+
+        .ba-pwreq { margin: -4px 0 14px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 10px 12px; }
+        .ba-pwreq-head { font-size: 11px; color: rgba(255,255,255,0.4); margin: 0 0 7px; font-weight: 600; }
+        .ba-pwreq-item { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: rgba(255,255,255,0.4); padding: 2px 0; transition: color .15s; }
+        .ba-pwreq-item.ok { color: #4ade80; }
+        .ba-pwreq-ic { width: 14px; height: 14px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+        .ba-pwreq-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.25); }
 
         .ba-reset { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; }
         .ba-reset-hint { font-size: 11.5px; color: rgba(255,255,255,0.28); margin-bottom: 10px; line-height: 1.5; }
@@ -273,11 +293,22 @@ export default function BuyerAuthPage() {
                 )}
               </div>
               <div className="ba-input-wrap">
-                <input className="ba-input pr" type={showPassword ? "text" : "password"} placeholder={isSignup ? "Create a password (min 6 chars)" : "••••••••"} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={isSignup ? "new-password" : "current-password"} />
+                <input className="ba-input pr" type={showPassword ? "text" : "password"} placeholder={isSignup ? "Create a strong password" : "••••••••"} value={password} onChange={(e) => setPassword(e.target.value)} onFocus={() => setPwFocused(true)} onBlur={() => setPwFocused(false)} autoComplete={isSignup ? "new-password" : "current-password"} />
                 <button type="button" className="ba-eye" onClick={() => setShowPassword((p) => !p)} tabIndex={-1}>
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+              {showPwChecks && (
+                <div className="ba-pwreq">
+                  <p className="ba-pwreq-head">Your password must include:</p>
+                  {pwChecks.map((c) => (
+                    <div key={c.label} className={`ba-pwreq-item${c.ok ? " ok" : ""}`}>
+                      <span className="ba-pwreq-ic">{c.ok ? <Check size={11} strokeWidth={3} /> : <span className="ba-pwreq-dot" />}</span>
+                      {c.label}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {showForgot && !isSignup && (
@@ -304,7 +335,7 @@ export default function BuyerAuthPage() {
               </div>
             )}
 
-            <button type="submit" className="ba-submit" disabled={loading}>
+            <button type="submit" className="ba-submit" disabled={loading || (isSignup && !pwValid)}>
               {loading ? "PLEASE WAIT…" : isSignup ? "CREATE ACCOUNT" : "SIGN IN"}
             </button>
           </form>
