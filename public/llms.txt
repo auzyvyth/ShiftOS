@@ -1,6 +1,7 @@
 ## Pages
 - [· XDrive](/salesmanprofile): No description available
 - [| XDrive](/calculator): No description available
+- [Car Comparison Tool — Compare Cars Side by Side | XDrive](/compare): Free car comparison tool. Compare up to 4 used cars side by side — price, monthly instalment, mileage, year, running costs, specs and an overall value score. Find the best deal on XDrive.
 - [Untitled Page](/articlesindex): No description available
 - [Untitled Page](/salesmanlite): No description available
 - [Untitled Page](/salesmanpremium): No description available

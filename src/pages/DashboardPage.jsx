@@ -9616,23 +9616,11 @@ export default function DashboardPage() {
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [onboardingCopied, setOnboardingCopied] = useState(false);
   const [onboardingToast,  setOnboardingToast]  = useState(false);
-  const [planUsage, setPlanUsage] = useState(null);
   const loadedUidRef = useRef(null);
 
   const planCfg     = getPlanConfig(profile?.plan);
   const nextPlan    = nextDealerPlan(profile?.plan);
   const nextPlanCfg = nextPlan ? getPlanConfig(nextPlan) : null;
-
-  useEffect(() => {
-    if (!profile?.id) return;
-    const dealerIdForUsage = profile.role === 'manager' || profile.role === 'admin'
-      ? profile.dealer_id
-      : profile.id;
-    if (!dealerIdForUsage) return;
-    supabase.rpc('get_plan_usage', { p_dealer_id: dealerIdForUsage }).then(({ data }) => {
-      if (data) setPlanUsage(data);
-    });
-  }, [profile?.id]);
 
   const getStorefrontUrl = () => {
     const sub = dealerSubdomain || profile?.subdomain;
@@ -10634,32 +10622,6 @@ export default function DashboardPage() {
                 <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: color.textMuted, textTransform: 'uppercase' }}>Plan</span>
                 <span style={{ fontSize: 10, fontWeight: 700, color: '#DC2626', background: '#FEE2E2', borderRadius: 4, padding: '1px 5px' }}>{planCfg.label}</span>
               </div>
-              {planUsage && planCfg.listingCap != null && (
-                <div style={{ marginBottom: 4 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                    <span style={{ fontSize: 10, color: color.textMuted }}>Listings</span>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: planUsage.active_listings >= planCfg.listingCap ? '#DC2626' : color.ink }}>
-                      {planUsage.active_listings ?? 0}/{planCfg.listingCap}
-                    </span>
-                  </div>
-                  <div style={{ height: 3, borderRadius: 2, background: '#EAECF0', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', borderRadius: 2, background: planUsage.active_listings >= planCfg.listingCap ? '#DC2626' : '#2563EB', width: `${Math.min(100, ((planUsage.active_listings ?? 0) / planCfg.listingCap) * 100)}%`, transition: 'width 0.4s' }} />
-                  </div>
-                </div>
-              )}
-              {planUsage && planCfg.seatCap != null && (
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                    <span style={{ fontSize: 10, color: color.textMuted }}>Seats</span>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: planUsage.seat_count >= planCfg.seatCap ? '#DC2626' : color.ink }}>
-                      {planUsage.seat_count ?? 0}/{planCfg.seatCap}
-                    </span>
-                  </div>
-                  <div style={{ height: 3, borderRadius: 2, background: '#EAECF0', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', borderRadius: 2, background: planUsage.seat_count >= planCfg.seatCap ? '#DC2626' : '#2563EB', width: `${Math.min(100, ((planUsage.seat_count ?? 0) / planCfg.seatCap) * 100)}%`, transition: 'width 0.4s' }} />
-                  </div>
-                </div>
-              )}
               {nextPlanCfg && (
                 <a href="mailto:support@xdrive.my?subject=Upgrade Plan" style={{ display: 'block', textAlign: 'center', marginTop: 6, fontSize: 10, fontWeight: 600, color: '#DC2626', textDecoration: 'none' }}>
                   Upgrade to {nextPlanCfg.label}

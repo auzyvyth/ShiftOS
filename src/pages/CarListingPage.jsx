@@ -842,17 +842,17 @@ export default function CarListingPage() {
             {/* ── Filter sidebar — RIGHT side (desktop only) ── */}
             {isWide && <aside
               className="cl-sidebar-desktop cl-sidebar-scroll"
-              style={{ width:'260px', flexShrink:0, background:'#fff', border:'1px solid #e5e7eb', borderRadius:'16px', padding:'16px 18px', position:'sticky', top:'130px', maxHeight:'calc(100vh - 150px)', overflowY:'auto' }}
+              style={{ width:'260px', flexShrink:0, background: dark ? '#0d1117' : '#fff', border:`1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb'}`, borderRadius:'16px', padding:'16px 18px', position:'sticky', top:'130px', maxHeight:'calc(100vh - 150px)', overflowY:'auto' }}
             >
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'14px', paddingBottom:'12px', borderBottom:'1px solid #f3f4f6' }}>
-                <h2 style={{ color:'#111827', fontSize:'13px', fontWeight:'800', margin:0, display:'flex', alignItems:'center', gap:'6px', fontFamily:"'Outfit',sans-serif" }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'14px', paddingBottom:'12px', borderBottom:`1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}` }}>
+                <h2 style={{ color:T.text, fontSize:'13px', fontWeight:'800', margin:0, display:'flex', alignItems:'center', gap:'6px', fontFamily:"'Outfit',sans-serif" }}>
                   <SlidersHorizontal size={13} style={{ color:'#dc2626' }}/> Filters
                   {activeChips.length > 0 && (
                     <span style={{ background:'#dc2626', color:'#fff', fontSize:'9px', fontWeight:'800', padding:'1px 6px', borderRadius:'20px' }}>{activeChips.length}</span>
                   )}
                 </h2>
                 {hasFilters && (
-                  <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:'#9ca3af', fontSize:'11px', fontWeight:'600', display:'flex', alignItems:'center', gap:'3px', fontFamily:"'Outfit',sans-serif" }}>
+                  <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:T.textMuted, fontSize:'11px', fontWeight:'600', display:'flex', alignItems:'center', gap:'3px', fontFamily:"'Outfit',sans-serif" }}>
                     <RotateCcw size={10}/> Reset
                   </button>
                 )}

@@ -1,7 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
 
 const SS_KEY = 'xdrive_compare';
-const MAX = 4;
+export const MAX = 4;
+
+// Guided "compare mode": set when a visitor lands on the empty Compare page and
+// taps "Add cars". While active, the global CompareBar auto-opens the comparison
+// once the visitor has picked the max number of cars.
+export const COMPARE_MODE_KEY = 'xdrive_compare_mode';
 
 function readSession() {
   try { return JSON.parse(sessionStorage.getItem(SS_KEY) || '[]'); } catch { return []; }

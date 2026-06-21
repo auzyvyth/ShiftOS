@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import { Helmet } from 'react-helmet';
 import { useMarketplaceTracking } from '../hooks/useMarketplaceTracking';
-import { useSearchParams, Link } from 'react-router-dom';
-import { X, Share2, Check, ExternalLink, Flame, Trophy, Plus, SlidersHorizontal, Layers } from 'lucide-react';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { X, Share2, Check, ExternalLink, Flame, Trophy, Plus, SlidersHorizontal, Layers, ArrowLeftRight } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import { COMPARE_MODE_KEY } from '../hooks/useCompare';
 import HeartButton from '../components/HeartButton';
 import MarketplaceHeader from '../components/MarketplaceHeader';
 import Header from '../components/Header';
@@ -170,6 +172,13 @@ export default function ComparePage() {
     '--cp-hover': '#f9fafb',
   };
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  // Enter guided compare mode: jump to the showroom; CompareBar will bounce the
+  // visitor back here automatically once they've picked the max number of cars.
+  const goAddCars = () => {
+    sessionStorage.setItem(COMPARE_MODE_KEY, '1');
+    navigate(carsHref);
+  };
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -273,11 +282,33 @@ export default function ComparePage() {
   if (!n) {
     return (
       <>
+        <Helmet>
+          <title>Car Comparison Tool — Compare Cars Side by Side | XDrive</title>
+          <meta name="description" content="Free car comparison tool. Compare up to 4 used cars side by side — price, monthly instalment, mileage, year, running costs, specs and an overall value score. Find the best deal on XDrive." />
+          <link rel="canonical" href="https://xdrive.my/compare" />
+        </Helmet>
         <HeaderC />
-        <div style={{ minHeight: '100vh', background: pageBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, fontFamily: "'DM Sans',sans-serif", paddingTop: 72 }}>
-          <p style={{ fontSize: 16, color: 'var(--cp-muted,#6b7280)' }}>No cars selected to compare.</p>
-          <Link to={carsHref} style={{ color: '#dc2626', fontSize: 14, fontWeight: 600 }}>Browse cars →</Link>
+        <div style={{ minHeight: '100vh', background: pageBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, fontFamily: "'DM Sans',sans-serif", padding: '72px 20px 48px', textAlign: 'center', ...cpVars }}>
+          <div style={{ width: 64, height: 64, borderRadius: 18, background: 'rgba(220,38,38,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <ArrowLeftRight size={28} color="#dc2626" />
+          </div>
+          <div>
+            <p style={{ fontSize: 11, color: '#dc2626', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 6px' }}>Car Comparison Tool</p>
+            <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(30px,6vw,46px)', letterSpacing: 2, lineHeight: 1, color: sub ? SF.text : '#111827', margin: '0 0 12px' }}>
+              Compare Cars Side by Side
+            </h1>
+            <p style={{ fontSize: 15, color: 'var(--cp-muted,#6b7280)', maxWidth: 440, margin: '0 auto', lineHeight: 1.6 }}>
+              Pick up to 4 cars and weigh them up on price, mileage, year, running costs and our value score — all on one screen.
+            </p>
+          </div>
+          <button
+            onClick={goAddCars}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#dc2626', color: '#fff', border: 'none', borderRadius: 50, padding: '13px 26px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", boxShadow: '0 8px 28px rgba(220,38,38,0.35)' }}
+          >
+            <Plus size={16} /> Add Cars to Compare
+          </button>
         </div>
+        {!sub && <MarketplaceFooter />}
       </>
     );
   }
@@ -288,6 +319,11 @@ export default function ComparePage() {
 
   return (
     <>
+      <Helmet>
+        <title>{cars.map(c => [c.year, c.brand, c.model].filter(Boolean).join(' ')).join(' vs ')} — Car Comparison | XDrive</title>
+        <meta name="description" content={`Compare ${cars.map(c => [c.brand, c.model].filter(Boolean).join(' ')).join(' vs ')} side by side — price, mileage, year, running costs and value score on XDrive's car comparison tool.`} />
+        {!sub && <link rel="canonical" href="https://xdrive.my/compare" />}
+      </Helmet>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap');
         *, *::before, *::after { box-sizing: border-box; }
@@ -352,11 +388,13 @@ export default function ComparePage() {
         </div>
 
         {/* ── Sticky car strip ── */}
+        {/* On the dealer subdomain the floating header slides up on scroll, so the
+            strip rises to top:0 to fill the gap it leaves behind. */}
         <div style={{
-          position: 'sticky', top: sub ? 80 : 64, zIndex: 40,
+          position: 'sticky', top: sub ? (scrolled ? 0 : 80) : 64, zIndex: 40,
           background: 'var(--cp-surface,#fff)', borderBottom: '2px solid var(--cp-border,#e5e7eb)',
           boxShadow: scrolled ? '0 3px 14px rgba(0,0,0,0.1)' : '0 2px 6px rgba(0,0,0,0.05)',
-          transition: 'box-shadow 0.3s',
+          transition: 'box-shadow 0.3s, top 0.38s cubic-bezier(0.16, 1, 0.3, 1)',
         }}>
 
           {/* ── Expanded strip (at top) ── */}
@@ -517,7 +555,7 @@ export default function ComparePage() {
           )}
           <div
             className="cp-rows"
-            style={{ '--cp-cols': `75px repeat(${n}, 1fr)`, background: 'var(--cp-surface,#fff)', borderRadius: 12, border: '1px solid #DDE3EC', overflow: 'hidden' }}
+            style={{ '--cp-cols': `75px repeat(${n}, 1fr)`, background: 'var(--cp-surface,#fff)', borderRadius: 12, border: '1px solid var(--cp-border,#DDE3EC)', overflow: 'hidden' }}
           >
             {(() => {
               // ── Config-driven comparison table ──────────────────────────────
@@ -643,12 +681,12 @@ export default function ComparePage() {
 
           {/* ── Verdict ── */}
           {verdict && (
-            <div style={{ marginTop: 14, background: 'var(--cp-surface,#fff)', border: '1px solid #DDE3EC', borderLeft: '3px solid #dc2626', borderRadius: 12, padding: 'clamp(14px,3vw,22px)' }}>
+            <div style={{ marginTop: 14, background: 'var(--cp-surface,#fff)', border: '1px solid var(--cp-border,#DDE3EC)', borderLeft: '3px solid #dc2626', borderRadius: 12, padding: 'clamp(14px,3vw,22px)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                 <Trophy size={13} color="#dc2626" />
                 <p style={{ fontSize: 10, color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 700, margin: 0 }}>Our Verdict</p>
               </div>
-              <p style={{ fontSize: 'clamp(13px,2vw,15px)', color: '#374151', lineHeight: 1.65, margin: '0 0 14px' }}>
+              <p style={{ fontSize: 'clamp(13px,2vw,15px)', color: 'var(--cp-text,#374151)', lineHeight: 1.65, margin: '0 0 14px' }}>
                 <strong style={{ color: 'var(--cp-text,#111827)' }}>{[verdict.car.year, verdict.car.brand, verdict.car.model].filter(Boolean).join(' ')}</strong>
                 {' '}offers the best overall value — {verdictReasons} compared to the alternatives.
               </p>
