@@ -21,6 +21,7 @@ const CarDetailPage   = lazy(() => import("./pages/CarDetailPage"));
 // Lazy — everything else
 const CalculatorPage     = lazy(() => import("./pages/CalculatorPage"));
 const LoginPage          = lazy(() => import("./pages/LoginPage"));
+const BuyerAuthPage      = lazy(() => import("./pages/BuyerAuthPage"));
 const RegisterPage       = lazy(() => import("./pages/RegisterPage"));
 const DashboardPage      = lazy(() => import("./pages/DashboardPage"));
 const SalesmanPanel      = lazy(() => import("./pages/Salesmanpanel"));
@@ -106,6 +107,8 @@ function App() {
           {/* Auth */}
           <Route path="/style-guide" element={<StyleGuidePage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/buyer-login" element={<BuyerAuthPage />} />
+          <Route path="/buyer-signup" element={<BuyerAuthPage />} />
           <Route path="/signup"             element={<Navigate to="/salesman-onboarding/lite"    replace />} />
           <Route path="/register"           element={<Navigate to="/salesman-onboarding/lite"    replace />} />
           <Route path="/onboarding"         element={<Navigate to="/salesman-onboarding/lite"    replace />} />

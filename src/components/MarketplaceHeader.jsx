@@ -276,7 +276,7 @@ export default function MarketplaceHeader() {
                 </button>
                 {signinOpen && (
                   <div className="mh-signin-menu">
-                    <a href="/login?as=buyer" className="mh-signin-item" onClick={() => setSigninOpen(false)}>
+                    <a href="/buyer-login" className="mh-signin-item" onClick={() => setSigninOpen(false)}>
                       <User size={17} style={{ color: '#dc2626', flexShrink: 0 }} />
                       <span>
                         <span className="mh-signin-item-t">I'm a Buyer</span>
@@ -357,7 +357,7 @@ export default function MarketplaceHeader() {
             </a>
           ) : (
             <>
-              <a href="/login?as=buyer" className="mh-m-signin" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }} onClick={() => setMenuOpen(false)}>
+              <a href="/buyer-login" className="mh-m-signin" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }} onClick={() => setMenuOpen(false)}>
                 <User size={16} /> Sign In as Buyer
               </a>
               <a href="/login" className="mh-m-signin" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }} onClick={() => setMenuOpen(false)}>

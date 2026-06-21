@@ -28,7 +28,7 @@ export default function AccountPage() {
     let active = true;
     supabase.auth.getSession().then(async ({ data }) => {
       if (!active) return;
-      if (!data.session) { navigate('/login?as=buyer', { replace: true }); return; }
+      if (!data.session) { navigate('/buyer-login', { replace: true }); return; }
       const { data: profile } = await supabase
         .from('profiles').select('role').eq('id', data.session.user.id).maybeSingle();
       if (!active) return;

@@ -490,7 +490,7 @@ export default function Header() {
                   </button>
                   {loginMenuOpen && (
                     <div className="hdr-login-menu">
-                      <a href="/login?as=buyer" className="hdr-login-item" onClick={() => setLoginMenuOpen(false)}>
+                      <a href="/buyer-login" className="hdr-login-item" onClick={() => setLoginMenuOpen(false)}>
                         <User size={16} style={{ color: "#F87171", flexShrink: 0 }} />
                         <span>
                           <span className="hdr-login-item-t">I'm a Buyer</span>
@@ -594,7 +594,7 @@ export default function Header() {
                 >
                   {link.key === "login" ? (
                     <>
-                      <Link to="/login?as=buyer" onClick={() => setMobileOpen(false)} className="hdr-mlink">
+                      <Link to="/buyer-login" onClick={() => setMobileOpen(false)} className="hdr-mlink">
                         <User style={{ width: "15px", height: "15px", flexShrink: 0 }} />
                         <span style={{ flex: 1 }}>Sign In as Buyer</span>
                       </Link>
