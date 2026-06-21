@@ -5,9 +5,17 @@ import {
   LayoutDashboard, Tag, Handshake, PlusCircle, BookOpen, FileCheck, FileText, GitCompare, ArrowUpRight,
 } from 'lucide-react';
 import { useSavedCars } from '../hooks/useSavedCars';
+import { supabase } from '../supabaseClient';
 import SavedCarsPanel from './SavedCarsPanel';
 import AnnouncementBar from './AnnouncementBar';
 import useMarketplaceSettings from '../hooks/useMarketplaceSettings';
+
+// Mirror of useRoleRedirect's ROLE_ROUTES — maps a logged-in business user to their panel.
+const ROLE_ROUTES = {
+  superadmin: '/dashboard', dealer: '/dashboard', owner: '/dashboard',
+  manager: '/manager', salesman: '/salesman', accountant: '/accountant',
+  fi_officer: '/fi', admin: '/admin',
+};
 
 export default function MarketplaceHeader() {
   const [scrolled, setScrolled]     = useState(false);
@@ -18,6 +26,10 @@ export default function MarketplaceHeader() {
   const [q, setQ]                   = useState('');
   const { savedIds }                = useSavedCars();
   const { settings }                = useMarketplaceSettings();
+  // When a business user (dealer/salesman/manager/…) is signed in, the "Sign In"
+  // link becomes "Dashboard" pointing at their role's panel. Buyers with only a
+  // saved-cars/price-alert session (no business role) keep seeing "Sign In".
+  const [dashPath, setDashPath]     = useState(null);
   const rootRef = useRef(null);
   const searchInputRef = useRef(null);
   const navigate = useNavigate();
@@ -49,6 +61,20 @@ export default function MarketplaceHeader() {
     const onScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const resolve = async (session) => {
+      if (!session?.user?.id) { if (active) setDashPath(null); return; }
+      const { data: profile } = await supabase
+        .from('profiles').select('role').eq('id', session.user.id).maybeSingle();
+      if (!active) return;
+      setDashPath(profile?.role ? (ROLE_ROUTES[profile.role] || null) : null);
+    };
+    supabase.auth.getSession().then(({ data }) => resolve(data.session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => resolve(s));
+    return () => { active = false; subscription.unsubscribe(); };
   }, []);
 
   useEffect(() => {
@@ -217,7 +243,13 @@ export default function MarketplaceHeader() {
               {savedIds.size > 0 && <span className="mh-badge">{savedIds.size}</span>}
             </button>
             <span className="mh-vsep" />
-            <a href="/login" className="mh-signin">Sign In</a>
+            {dashPath ? (
+              <a href={dashPath} className="mh-signin" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <LayoutDashboard size={15} /> Dashboard
+              </a>
+            ) : (
+              <a href="/login" className="mh-signin">Sign In</a>
+            )}
             <a href="/shiftos#pricing" className="mh-getstarted">Get Started <ArrowUpRight size={14} /></a>
             <button className="mh-burger" aria-label="Menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}>
               {menuOpen ? <X size={19} /> : <Menu size={19} />}
@@ -275,7 +307,13 @@ export default function MarketplaceHeader() {
           </button>
 
           <a href="/shiftos#pricing" className="mh-m-cta" onClick={() => setMenuOpen(false)}>Get Started <ArrowUpRight size={15} /></a>
-          <a href="/login" className="mh-m-signin" onClick={() => setMenuOpen(false)}>Sign In →</a>
+          {dashPath ? (
+            <a href={dashPath} className="mh-m-signin" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }} onClick={() => setMenuOpen(false)}>
+              <LayoutDashboard size={16} /> Dashboard
+            </a>
+          ) : (
+            <a href="/login" className="mh-m-signin" onClick={() => setMenuOpen(false)}>Sign In →</a>
+          )}
         </div>
       </header>
       <SavedCarsPanel open={savedOpen} onClose={() => setSavedOpen(false)} />
