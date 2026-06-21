@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { handoffSuffix } from "../lib/authHandoff";
-import { markBuyerIntent, ensureBuyerProfile } from "../lib/buyerAuth";
+import { markBuyerIntent } from "../lib/buyerAuth";
 
 const Field = ({ id, label, focused, children }) => (
   <div className={`field ${focused === id ? "is-focused" : ""}`}>
@@ -70,13 +70,6 @@ export default function LoginPage() {
   const [mounted, setMounted] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  // Buyer vs seller entry. ?as=buyer pre-selects the buyer tab (marketplace links
-  // use it). Sellers keep the existing dashboard-login behaviour.
-  const [mode, setMode] = useState(searchParams.get("as") === "buyer" ? "buyer" : "seller");
-  const [isSignup, setIsSignup] = useState(false);      // buyer create-account toggle
-  const [signupConfirm, setSignupConfirm] = useState(false);
-  const isBuyer = mode === "buyer";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -170,7 +163,9 @@ export default function LoginPage() {
   };
 
   const handleGoogleSignIn = async () => {
-    if (isBuyer) markBuyerIntent();   // callback materialises a buyer profile -> /account
+    // Marketplace buyer links carry ?as=buyer so the OAuth callback materialises a
+    // buyer profile -> /account. No visible buyer/seller choice on the page itself.
+    if (searchParams.get("as") === "buyer") markBuyerIntent();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -178,47 +173,6 @@ export default function LoginPage() {
       },
     });
     if (error) setError(error.message);
-  };
-
-  // Buyer "create account" — email + password. Materialises a role='buyer' profile.
-  const handleBuyerSignup = async () => {
-    if (!email || !password) { setError("Enter your email and a password."); return; }
-    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
-    setError("");
-    setLoading(true);
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      // account_type rides on the user so the confirmation-link callback (a fresh
-      // browsing context where sessionStorage is gone) still knows this is a buyer.
-      options: { emailRedirectTo: `${base}/auth/callback`, data: { account_type: 'buyer' } },
-    });
-    if (signUpError) { setError(signUpError.message); setLoading(false); return; }
-    if (data.session) {
-      await ensureBuyerProfile(data.user);
-      window.location.href = `${base}/account`;
-      return;
-    }
-    // Email confirmation required — no session yet.
-    setLoading(false);
-    setSignupConfirm(true);
-  };
-
-  // Buyer sign-in — ensure a buyer profile exists, then let redirectByRole route.
-  const handleBuyerLogin = async () => {
-    if (!email || !password) { setError("Please enter your email and password."); return; }
-    setError("");
-    setLoading(true);
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    if (signInError) { setError("Incorrect email or password."); setLoading(false); return; }
-    await ensureBuyerProfile(data.user);
-    await redirectByRole(data.user, data.session);
-    setLoading(false);
-  };
-
-  const onSubmit = () => {
-    if (isBuyer) return isSignup ? handleBuyerSignup() : handleBuyerLogin();
-    return handleLogin();
   };
 
   const redirectByRole = async (user, session = null) => {
@@ -759,24 +713,10 @@ export default function LoginPage() {
 
         {/* Right — form panel */}
         <div className={`lr-right${mounted ? ' in' : ''}`}>
-          {/* Buyer / Seller toggle */}
-          <div style={{ display: 'flex', gap: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: 4, marginBottom: 24 }}>
-            {[{ k: 'buyer', l: 'Buyer' }, { k: 'seller', l: 'Seller / Dealer' }].map(({ k, l }) => (
-              <button
-                key={k}
-                type="button"
-                onClick={() => { setMode(k); setError(''); setIsSignup(false); setSignupConfirm(false); }}
-                style={{ flex: 1, padding: '9px 0', borderRadius: 9, border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, background: mode === k ? '#dc2626' : 'transparent', color: mode === k ? '#fff' : 'rgba(255,255,255,0.45)', transition: 'background .15s, color .15s' }}
-              >
-                {l}
-              </button>
-            ))}
-          </div>
-
           <div className="lr-form-head">
-            <p className="lr-form-eyebrow">{isBuyer ? 'XDrive Marketplace' : 'Restricted Access'}</p>
-            <h2 className="lr-form-title">{isBuyer && isSignup ? 'CREATE ACCOUNT' : 'SIGN IN'}</h2>
-            <p className="lr-form-sub">{isBuyer ? 'Save cars, set price alerts, sell when you’re ready' : 'Access your dealership dashboard'}</p>
+            <p className="lr-form-eyebrow">Welcome Back</p>
+            <h2 className="lr-form-title">SIGN IN</h2>
+            <p className="lr-form-sub">Sign in to your account</p>
           </div>
 
           {/* Google — first, most prominent */}
@@ -801,7 +741,7 @@ export default function LoginPage() {
             noValidate
             onSubmit={(e) => {
               e.preventDefault();
-              onSubmit();
+              handleLogin();
             }}
           >
             <div className="lr-field">
@@ -824,15 +764,13 @@ export default function LoginPage() {
             <div className="lr-field">
               <div className="lr-label-row">
                 <label className="lr-label">Password</label>
-                {!(isBuyer && isSignup) && (
-                  <button
-                    type="button"
-                    className={`lr-forgot${showForgotPassword ? " active" : ""}`}
-                    onClick={() => setShowForgotPassword((p) => !p)}
-                  >
-                    {showForgotPassword ? "← back" : "Forgot password?"}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className={`lr-forgot${showForgotPassword ? " active" : ""}`}
+                  onClick={() => setShowForgotPassword((p) => !p)}
+                >
+                  {showForgotPassword ? "← back" : "Forgot password?"}
+                </button>
               </div>
               <div className="lr-input-wrap">
                 <input
@@ -908,16 +846,6 @@ export default function LoginPage() {
             {/* Error */}
             {error && <div className="lr-error">⚠ {error}</div>}
 
-            {/* Buyer sign-up email confirmation */}
-            {signupConfirm && (
-              <div className="lr-magic">
-                <p className="lr-magic-title">Check your inbox</p>
-                <p className="lr-magic-body">
-                  We sent a confirmation link to {email}. Click it to finish creating your account, then sign in.
-                </p>
-              </div>
-            )}
-
             {/* Magic link panel — shown when Google/OTP user tries password */}
             {showMagicLink && (
               <div className="lr-magic">
@@ -961,30 +889,14 @@ export default function LoginPage() {
                   <span>·</span>
                 </span>
               ) : (
-                isBuyer && isSignup ? "CREATE ACCOUNT" : "SIGN IN"
+                "SIGN IN"
               )}
             </button>
           </form>
 
           <div className="lr-create-row">
-            {isBuyer ? (
-              <>
-                <span className="lr-create-text">{isSignup ? "Already have an account?" : "New to XDrive?"}</span>
-                <button
-                  type="button"
-                  className="lr-create-link"
-                  style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
-                  onClick={() => { setIsSignup((s) => !s); setError(""); setSignupConfirm(false); }}
-                >
-                  {isSignup ? "Sign in →" : "Create an account →"}
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="lr-create-text">Don't have an account?</span>
-                <a href="/onboarding" className="lr-create-link">Create for free →</a>
-              </>
-            )}
+            <span className="lr-create-text">Don't have an account?</span>
+            <a href="/onboarding" className="lr-create-link">Create for free →</a>
           </div>
         </div>
       </div>
