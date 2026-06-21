@@ -68,39 +68,41 @@ export default function AccountPage() {
   const signOut = async () => { await supabase.auth.signOut(); window.location.href = '/'; };
 
   if (checking) {
-    return <div style={{ minHeight: '100vh', background: '#080C14', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.4)', fontFamily: "'DM Sans',sans-serif", fontSize: 14 }}>Loading…</div>;
+    return <div style={{ minHeight: '100vh', background: '#F7F6F2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontFamily: "'DM Sans',sans-serif", fontSize: 14 }}>Loading…</div>;
   }
 
   const email = session?.user?.email || 'Your account';
 
   return (
-    <div style={{ minHeight: '100vh', background: '#080C14', fontFamily: "'DM Sans',sans-serif", color: '#f1f5f9' }}>
-      {/* Top bar */}
-      <div style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, maxWidth: 1200, margin: '0 auto' }}>
-        <Link to="/showroom" style={{ color: 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, textDecoration: 'none' }}>
-          <ArrowLeft size={16} /> Browse cars
-        </Link>
-        <button onClick={signOut} style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 9, padding: '8px 14px', color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-          <LogOut size={14} /> Sign out
-        </button>
+    <div style={{ minHeight: '100vh', background: '#F7F6F2', fontFamily: "'DM Sans',sans-serif", color: '#111827' }}>
+      {/* Minimal top bar — just "back to marketplace", like the car detail page */}
+      <div style={{ background: '#fff', borderBottom: '1px solid #e5e7eb', position: 'sticky', top: 0, zIndex: 10 }}>
+        <div style={{ padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, maxWidth: 1100, margin: '0 auto' }}>
+          <Link to="/" style={{ color: '#374151', display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+            <ArrowLeft size={16} /> Back to marketplace
+          </Link>
+          <button onClick={signOut} style={{ display: 'flex', alignItems: 'center', gap: 7, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 9, padding: '8px 14px', color: '#6b7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <LogOut size={14} /> Sign out
+          </button>
+        </div>
       </div>
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 24px 80px' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px 80px' }}>
         {/* Heading */}
-        <div style={{ marginBottom: 36 }}>
-          <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 38, letterSpacing: '0.04em', margin: 0 }}>MY ACCOUNT</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{email}</p>
+        <div style={{ marginBottom: 32 }}>
+          <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 38, letterSpacing: '0.04em', margin: 0, color: '#111827' }}>MY ACCOUNT</h1>
+          <p style={{ margin: '4px 0 0', fontSize: 14, color: '#6b7280' }}>{email}</p>
         </div>
 
         {/* Become a seller — Salesman Lite */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap', background: 'linear-gradient(135deg, rgba(220,38,38,0.12), rgba(220,38,38,0.03))', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 16, padding: 22, marginBottom: 40 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 13, background: 'rgba(220,38,38,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Store size={22} color="#f87171" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap', background: '#fff', border: '1px solid #fecaca', borderRadius: 16, padding: 22, marginBottom: 40 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 13, background: 'rgba(220,38,38,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Store size={22} color="#dc2626" />
           </div>
           <div style={{ flex: 1, minWidth: 220 }}>
-            <p style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#fff' }}>Want to sell cars on XDrive?</p>
-            <p style={{ margin: '5px 0 0', fontSize: 13.5, color: 'rgba(255,255,255,0.55)', lineHeight: 1.5 }}>
-              Start free with <strong style={{ color: '#f87171' }}>Salesman Lite</strong> — list up to 10 cars, get leads and a personal showroom. No card needed.
+            <p style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#111827' }}>Want to sell cars on XDrive?</p>
+            <p style={{ margin: '5px 0 0', fontSize: 13.5, color: '#6b7280', lineHeight: 1.5 }}>
+              Start free with <strong style={{ color: '#dc2626' }}>Salesman Lite</strong> — list up to 10 cars, get leads and a personal showroom. No card needed.
             </p>
           </div>
           <Link to="/salesman-onboarding/lite" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: '#dc2626', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 700, padding: '11px 20px', borderRadius: 10, whiteSpace: 'nowrap' }}>
@@ -112,12 +114,12 @@ export default function AccountPage() {
         <section style={{ marginBottom: 44 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
             <Heart size={18} color="#dc2626" fill="#dc2626" />
-            <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Saved Cars</h2>
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>{cars.length}</span>
+            <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#111827' }}>Saved Cars</h2>
+            <span style={{ fontSize: 13, color: '#9ca3af' }}>{cars.length}</span>
           </div>
           {cars.length === 0 ? (
-            <div style={{ border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 14, padding: '32px 20px', textAlign: 'center' }}>
-              <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>No saved cars yet. Tap the ♥ on any listing to save it.</p>
+            <div style={{ background: '#fff', border: '1px dashed #d1d5db', borderRadius: 14, padding: '32px 20px', textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: 14, color: '#6b7280' }}>No saved cars yet. Tap the ♥ on any listing to save it.</p>
               <Link to="/showroom" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 14, background: '#dc2626', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 700, padding: '9px 18px', borderRadius: 9 }}>
                 Browse cars <ArrowRight size={13} />
               </Link>
@@ -133,12 +135,12 @@ export default function AccountPage() {
         <section>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
             <Bell size={18} color="#dc2626" />
-            <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Saved Searches</h2>
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>{alerts.length}</span>
+            <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#111827' }}>Saved Searches</h2>
+            <span style={{ fontSize: 13, color: '#9ca3af' }}>{alerts.length}</span>
           </div>
           {alerts.length === 0 ? (
-            <div style={{ border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 14, padding: '32px 20px', textAlign: 'center' }}>
-              <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>No saved searches. On the showroom, filter cars then tap “Save search” to get emailed about new matches.</p>
+            <div style={{ background: '#fff', border: '1px dashed #d1d5db', borderRadius: 14, padding: '32px 20px', textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: 14, color: '#6b7280' }}>No saved searches. On the showroom, filter cars then tap “Save search” to get emailed about new matches.</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -152,13 +154,13 @@ export default function AccountPage() {
                   a.condition,
                 ].filter(Boolean);
                 return (
-                  <div key={a.id} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '14px 16px' }}>
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '14px 16px' }}>
                     <div style={{ minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 14.5, fontWeight: 600, color: '#f1f5f9' }}>{parts.length ? parts.join(' · ') : 'All cars'}</p>
-                      {tags.length > 0 && <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'rgba(255,255,255,0.4)' }}>{tags.join(' · ')}</p>}
-                      <p style={{ margin: '6px 0 0', fontSize: 11, color: 'rgba(74,222,128,0.7)', display: 'flex', alignItems: 'center', gap: 5 }}><Check size={11} /> Email alerts on</p>
+                      <p style={{ margin: 0, fontSize: 14.5, fontWeight: 600, color: '#111827' }}>{parts.length ? parts.join(' · ') : 'All cars'}</p>
+                      {tags.length > 0 && <p style={{ margin: '4px 0 0', fontSize: 12.5, color: '#6b7280' }}>{tags.join(' · ')}</p>}
+                      <p style={{ margin: '6px 0 0', fontSize: 11, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 5 }}><Check size={11} /> Email alerts on</p>
                     </div>
-                    <button onClick={() => deleteAlert(a.id)} title="Remove alert" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.35)', flexShrink: 0, display: 'flex', padding: 4 }}>
+                    <button onClick={() => deleteAlert(a.id)} title="Remove alert" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', flexShrink: 0, display: 'flex', padding: 4 }}>
                       <X size={16} />
                     </button>
                   </div>

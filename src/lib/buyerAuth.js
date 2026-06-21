@@ -20,14 +20,40 @@ export function consumeBuyerIntent() {
   } catch { return false; }
 }
 
-// Create a buyer profile row if the user has none. Never overwrites an existing
-// profile, so a seller who happens to come through a buyer entry keeps their role.
-// Returns the effective role ('buyer' when freshly created, else the existing role).
+// Ensure the signed-in user has a buyer profile. Used by every buyer entry
+// (buyer login/signup + OAuth callback). Three cases:
+//   1. No profile row     -> create one with role='buyer'.
+//   2. A fresh dealer stub -> the handle_new_user trigger stamps role='dealer' by
+//      default; if this account was never actually set up as a dealer (no
+//      subdomain, onboarding not complete) and the user came through a buyer
+//      entry, correct it to 'buyer' so a shopper can never reach a dealer panel.
+//   3. A real, set-up account -> never touched (returns its existing role).
+// RLS (users_upsert_own_profile_no_escalation) allows a user to set their own
+// role to anything except 'superadmin', so this self-correction is permitted.
+// Returns the effective role.
 export async function ensureBuyerProfile(user) {
   if (!user?.id) return null;
   const { data: existing } = await supabase
-    .from('profiles').select('id, role').eq('id', user.id).maybeSingle();
-  if (existing) return existing.role || null;
-  await supabase.from('profiles').insert({ id: user.id, email: user.email, role: 'buyer' });
-  return 'buyer';
+    .from('profiles')
+    .select('id, role, subdomain, onboarding_complete')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (!existing) {
+    await supabase.from('profiles').insert({ id: user.id, email: user.email, role: 'buyer', is_active: true });
+    return 'buyer';
+  }
+
+  const isUnonboardedStub =
+    existing.role !== 'buyer' &&
+    !existing.subdomain &&
+    existing.onboarding_complete !== true &&
+    ['dealer', 'owner', 'salesman'].includes(existing.role || 'dealer');
+
+  if (isUnonboardedStub) {
+    await supabase.from('profiles').update({ role: 'buyer', is_active: true }).eq('id', user.id);
+    return 'buyer';
+  }
+
+  return existing.role || null;
 }

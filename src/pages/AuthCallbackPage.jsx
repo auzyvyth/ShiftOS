@@ -24,11 +24,13 @@ export default function AuthCallbackPage() {
         .eq('id', session.user.id)
         .maybeSingle();
 
-      // No profile at all → brand new user. If they started auth as a buyer
-      // (marketplace "Sign in as buyer" or "Save search"), materialise a buyer
-      // profile and send them to their account — NOT seller onboarding.
+      // Did this auth flow start as a buyer? (marketplace buyer login/One Tap, or
+      // a buyer signup whose user metadata carries account_type=buyer.)
+      const buyerIntent = consumeBuyerIntent() || session.user?.user_metadata?.account_type === 'buyer';
+
+      // No profile at all → brand new user. A buyer goes straight to their account;
+      // everyone else falls through to seller onboarding.
       if (!profile) {
-        const buyerIntent = consumeBuyerIntent() || session.user?.user_metadata?.account_type === 'buyer';
         if (buyerIntent) {
           await ensureBuyerProfile(session.user);
           navigate('/account');
@@ -46,6 +48,13 @@ export default function AuthCallbackPage() {
           navigate(savedPlan ? `/onboarding/${savedPlan}` : '/onboarding');
         }
         return;
+      }
+
+      // A buyer-intent sign-in where the trigger pre-stamped a default dealer stub:
+      // correct it to a buyer profile and route to /account, never a dealer panel.
+      if (buyerIntent) {
+        const role = await ensureBuyerProfile(session.user);
+        if (role === 'buyer') { navigate('/account'); return; }
       }
 
       const { role, subdomain, dealer_id } = profile;
