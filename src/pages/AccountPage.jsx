@@ -7,6 +7,13 @@ import CarCard from '../components/CarCard';
 
 const CARD_COLS = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,condition,images,status,created_at,dealer_id,auction_grade,interior_grade,is_recon,financing_type,engine_cc,previous_owners';
 
+// Business roles get bounced to their own panel — buyers only ever see /account.
+const SELLER_ROUTES = {
+  superadmin: '/dashboard', dealer: '/dashboard', owner: '/dashboard',
+  manager: '/manager', salesman: '/salesman', accountant: '/accountant',
+  fi_officer: '/fi', admin: '/admin',
+};
+
 export default function AccountPage() {
   const navigate = useNavigate();
   const { savedIds, ready } = useSavedCars();
@@ -15,13 +22,22 @@ export default function AccountPage() {
   const [cars, setCars] = useState([]);
   const [alerts, setAlerts] = useState([]);
 
-  // Auth guard — buyers only need a session; not-logged-in goes to /login.
+  // Auth guard. Not logged in -> /login. A seller (business role) -> their own
+  // panel, so no one ends up with two dashboards. Buyers stay here.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) { navigate('/login', { replace: true }); return; }
+    let active = true;
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!active) return;
+      if (!data.session) { navigate('/login?as=buyer', { replace: true }); return; }
+      const { data: profile } = await supabase
+        .from('profiles').select('role').eq('id', data.session.user.id).maybeSingle();
+      if (!active) return;
+      const sellerRoute = profile?.role && SELLER_ROUTES[profile.role];
+      if (sellerRoute) { navigate(sellerRoute, { replace: true }); return; }
       setSession(data.session);
       setChecking(false);
     });
+    return () => { active = false; };
   }, [navigate]);
 
   // Saved cars (preserve saved order)

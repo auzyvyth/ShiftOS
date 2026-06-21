@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, BellOff, X, Check, LogIn } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import { markBuyerIntent } from '../lib/buyerAuth';
 
 /**
  * "Save this search" button for ShowroomPage.
@@ -58,6 +59,7 @@ export default function PriceAlertButton({ filters, hasFilters }) {
 
   const signInWithGoogle = async () => {
     sessionStorage.setItem('post_auth_return', window.location.href);
+    markBuyerIntent();
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback` },

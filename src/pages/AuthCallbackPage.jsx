@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { handoffSuffix } from '../lib/authHandoff';
+import { consumeBuyerIntent, ensureBuyerProfile } from '../lib/buyerAuth';
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
@@ -23,9 +24,17 @@ export default function AuthCallbackPage() {
         .eq('id', session.user.id)
         .maybeSingle();
 
-      // No profile at all → brand new user, needs onboarding.
-      // Restore plan slug saved before the OAuth redirect so the preset carries through.
+      // No profile at all → brand new user. If they started auth as a buyer
+      // (marketplace "Sign in as buyer" or "Save search"), materialise a buyer
+      // profile and send them to their account — NOT seller onboarding.
       if (!profile) {
+        const buyerIntent = consumeBuyerIntent() || session.user?.user_metadata?.account_type === 'buyer';
+        if (buyerIntent) {
+          await ensureBuyerProfile(session.user);
+          navigate('/account');
+          return;
+        }
+        // Restore plan slug saved before the OAuth redirect so the preset carries through.
         const savedPlan = sessionStorage.getItem("ob_plan_slug");
         if (savedPlan) sessionStorage.removeItem("ob_plan_slug");
 
@@ -71,6 +80,8 @@ export default function AuthCallbackPage() {
         navigate('/fi');
       } else if (role === 'admin') {
         navigate('/admin');
+      } else if (role === 'buyer') {
+        navigate('/account');
       } else {
         navigate('/salesman');
       }

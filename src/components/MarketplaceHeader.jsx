@@ -249,7 +249,7 @@ export default function MarketplaceHeader() {
                 <LayoutDashboard size={15} /> {authLink.label}
               </a>
             ) : (
-              <a href="/login" className="mh-signin">Sign In</a>
+              <a href="/login?as=buyer" className="mh-signin">Sign In</a>
             )}
             <a href="/shiftos#pricing" className="mh-getstarted">Get Started <ArrowUpRight size={14} /></a>
             <button className="mh-burger" aria-label="Menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}>
@@ -313,7 +313,7 @@ export default function MarketplaceHeader() {
               <LayoutDashboard size={16} /> {authLink.label}
             </a>
           ) : (
-            <a href="/login" className="mh-m-signin" onClick={() => setMenuOpen(false)}>Sign In →</a>
+            <a href="/login?as=buyer" className="mh-m-signin" onClick={() => setMenuOpen(false)}>Sign In →</a>
           )}
         </div>
       </header>
