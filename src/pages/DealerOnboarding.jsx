@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import LegalContent from '../components/onboarding/LegalContent';
+import PlanPickerModal from '../components/onboarding/PlanPickerModal';
 
 // Same design system CSS as SalesmanOnboarding (eo- prefix)
 const CSS = `
@@ -12,7 +13,9 @@ const CSS = `
 .eo-logo{display:flex;align-items:center;gap:10px;margin-bottom:32px;}
 .eo-logo-icon{width:30px;height:30px;background:#dc2626;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;font-family:'Bebas Neue',cursive;letter-spacing:1px;}
 .eo-logo-text{font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:4px;color:#E8EDF5;}
-.eo-plan-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:rgba(220,38,38,0.12);border:1px solid rgba(220,38,38,0.25);border-radius:4px;font-size:10px;letter-spacing:0.2em;color:rgba(220,38,38,0.9);text-transform:uppercase;margin-bottom:36px;width:fit-content;}
+.eo-plan-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:rgba(220,38,38,0.12);border:1px solid rgba(220,38,38,0.25);border-radius:4px;font-size:10px;letter-spacing:0.2em;color:rgba(220,38,38,0.9);text-transform:uppercase;margin-bottom:10px;width:fit-content;}
+.eo-changeplan{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:6px 11px;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.5);cursor:pointer;margin-bottom:32px;font-family:'DM Sans',sans-serif;transition:border-color 0.15s,color 0.15s;}
+.eo-changeplan:hover{border-color:rgba(220,38,38,0.45);color:rgba(255,255,255,0.8);}
 .eo-step-list{display:flex;flex-direction:column;gap:0;flex:1;}
 .eo-step{display:flex;align-items:flex-start;gap:14px;position:relative;}
 .eo-step:not(:last-child)::after{content:'';position:absolute;left:13px;top:30px;bottom:-4px;width:1px;background:rgba(255,255,255,0.06);}
@@ -171,7 +174,7 @@ function StepDot({ state, num }) {
   );
 }
 
-function LeftPanel({ step, tier }) {
+function LeftPanel({ step, tier, onChangePlan }) {
   const cfg = TIERS[tier] || TIERS.starter;
   return (
     <div className="eo-left">
@@ -180,6 +183,7 @@ function LeftPanel({ step, tier }) {
         <span className="eo-logo-text">SHIFTOS</span>
       </div>
       <div className="eo-plan-badge">{cfg.label} &mdash; {cfg.price}</div>
+      <button type="button" className="eo-changeplan" onClick={onChangePlan}>Change plan</button>
       <div className="eo-step-list">
         {STEPS.map((s, i) => {
           const state = i < step ? 'done' : i === step ? 'active' : 'pending';
@@ -216,6 +220,7 @@ export default function DealerOnboarding() {
   const tier = ['starter', 'growth', 'pro'].includes(tierParam) ? tierParam : 'starter';
 
   const [step, setStep] = useState(0);
+  const [showPlans, setShowPlans] = useState(false);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
   const [userId, setUserId] = useState(null);
@@ -463,8 +468,9 @@ export default function DealerOnboarding() {
   return (
     <>
       <style>{CSS}</style>
+      {showPlans && <PlanPickerModal currentTier={tier} onClose={() => setShowPlans(false)} />}
       <div className="eo-root">
-        <LeftPanel step={step} tier={tier} />
+        <LeftPanel step={step} tier={tier} onChangePlan={() => setShowPlans(true)} />
         <div className="eo-right">
           <div className="eo-form" key={step}>
 
@@ -473,9 +479,12 @@ export default function DealerOnboarding() {
                 <div className="eo-logo-icon">X</div>
                 <span className="eo-logo-text">SHIFTOS</span>
               </div>
-              <span style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 11, letterSpacing: 3, color: 'rgba(220,38,38,0.6)' }}>
-                {step + 1} / {STEPS.length}
-              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
+                <span style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 11, letterSpacing: 3, color: 'rgba(220,38,38,0.6)' }}>
+                  {step + 1} / {STEPS.length}
+                </span>
+                <button type="button" className="eo-changeplan" style={{ margin: 0, padding: '4px 9px' }} onClick={() => setShowPlans(true)}>Change plan</button>
+              </div>
             </div>
 
             {step === 0 && (
