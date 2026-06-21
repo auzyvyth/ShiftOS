@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Gauge, Settings2, MessageCircle, Fuel, Calendar, Heart, Images } from 'lucide-react';
+import { Gauge, Settings2, MessageCircle, Fuel, Calendar, Heart, Images, GitCompare } from 'lucide-react';
 import GradeBadge from './GradeBadge';
 import { buildWaUrl } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
@@ -9,6 +9,7 @@ import { trackEvent, getOrCreateSessionId } from '../utils/analytics';
 import { getRef } from '../utils/refTracking';
 import { isSubdomain } from '../hooks/useTenant';
 import { useSavedCars } from '../hooks/useSavedCars';
+import { useCompare } from '../hooks/useCompare';
 import { calcMonthly } from '../utils/financing';
 
 const getAgeDays = (createdAt) => {
@@ -27,7 +28,7 @@ const formatAge = (days) => {
 
 const XDRIVE_PHONE = '60174155191';
 
-const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }) => {
+const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, showCompare = false }) => {
   const navigate = useNavigate();
   const [imgError, setImgError]   = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -36,6 +37,9 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
   const suppressClick = useRef(false);
   const galleryPreloaded = useRef(false);
   const { isSaved, toggleSave }   = useSavedCars();
+  const { isInCompare, addToCompare, removeFromCompare, compareIds } = useCompare();
+  const inCompare   = isInCompare(car.id);
+  const compareFull = compareIds.length >= 4 && !inCompare;
 
   const xdrive = !isSubdomain();
 
@@ -440,6 +444,29 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
                 stroke={isSaved(car.id) ? '#fff' : 'rgba(255,255,255,0.9)'}
                 strokeWidth={2}
               />
+            </button>
+          )}
+
+          {/* Compare toggle (opt-in via showCompare) */}
+          {showCompare && !isSold && (
+            <button
+              onClick={e => { e.stopPropagation(); if (inCompare) removeFromCompare(car.id); else if (!compareFull) addToCompare(car.id); }}
+              aria-label={inCompare ? 'Remove from compare' : 'Add to compare'}
+              title={compareFull ? 'Compare list full (max 4)' : inCompare ? 'Remove from compare' : 'Add to compare'}
+              style={{
+                position: 'absolute', top: 44, right: 8, zIndex: 10,
+                width: 30, height: 30, borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: inCompare ? 'rgba(220,38,38,0.92)' : 'rgba(0,0,0,0.35)',
+                backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+                border: inCompare ? '1.5px solid rgba(220,38,38,0.6)' : '1.5px solid rgba(255,255,255,0.22)',
+                cursor: compareFull ? 'not-allowed' : 'pointer',
+                opacity: compareFull ? 0.5 : 1,
+                transition: 'all 0.18s',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+            >
+              <GitCompare size={13} stroke={inCompare ? '#fff' : 'rgba(255,255,255,0.9)'} strokeWidth={2} />
             </button>
           )}
         </div>

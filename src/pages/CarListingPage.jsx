@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from
 import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
-import { X, RotateCcw, SlidersHorizontal, Flame, Car, ChevronDown } from 'lucide-react';
+import { X, RotateCcw, SlidersHorizontal, Flame, Car, ChevronDown, Search } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
 import MarketplaceHeader from '../components/MarketplaceHeader';
 import Header from '../components/Header';
@@ -202,7 +202,8 @@ function FG({ title, children }) {
 }
 
 /* ── Filter panel (sidebar + drawer content) ────────────────────── */
-function FiltersPanel({ isMarketplace, setParam, searchParams, setSearchParams, hotDeals, brand, model, variantInput, setVariantInput, minPrice, maxPrice, state, yearFrom, yearTo, bodyType, transmission, condition, mileageMax, financing, fuelType, colour, sellerType }) {
+function FiltersPanel({ isMarketplace, draft, setDraftParam }) {
+  const d = draft;
   const dark = !isMarketplace;
   // Theme vars — inherited by FG and nested controls so the whole drawer themes
   // from one place (dark on the dealer subdomain, light on the marketplace).
@@ -229,65 +230,53 @@ function FiltersPanel({ isMarketplace, setParam, searchParams, setSearchParams, 
     backgroundRepeat:'no-repeat', backgroundPosition:'right 10px center',
   };
 
-  const modelOptions = CAR_DATA[brand] || [];
+  const modelOptions = CAR_DATA[d.brand] || [];
 
   return (
     <div style={fpVars}>
       <FG title="Hot Deals">
         <button
-          style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', background: hotDeals?'rgba(251,146,60,0.06)':'var(--fp-input)', border:`1px solid ${hotDeals?'rgba(251,146,60,0.35)':'var(--fp-border)'}`, borderRadius:'10px', padding:'10px 14px', cursor:'pointer', color:hotDeals?'#d97706':'var(--fp-text)', fontSize:'13px', fontWeight:'700', transition:'all 0.12s' }}
-          onClick={()=>setParam('hot_deals', hotDeals?'':'true')}
+          style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', background: d.hot_deals?'rgba(251,146,60,0.06)':'var(--fp-input)', border:`1px solid ${d.hot_deals?'rgba(251,146,60,0.35)':'var(--fp-border)'}`, borderRadius:'10px', padding:'10px 14px', cursor:'pointer', color:d.hot_deals?'#d97706':'var(--fp-text)', fontSize:'13px', fontWeight:'700', transition:'all 0.12s' }}
+          onClick={()=>setDraftParam('hot_deals', d.hot_deals?'':'true')}
         >
           <span style={{ display:'flex', alignItems:'center', gap:'7px' }}><Flame size={13}/> Hot Deals Only</span>
-          {hotDeals && <span style={{ fontSize:'12px', color:'#d97706' }}>✓</span>}
+          {d.hot_deals && <span style={{ fontSize:'12px', color:'#d97706' }}>✓</span>}
         </button>
       </FG>
 
       <FG title="Brand">
-        <select style={sel} value={brand||''} onChange={e=>{
-          const n=new URLSearchParams(searchParams);
-          e.target.value ? n.set('brand',e.target.value) : n.delete('brand');
-          n.delete('model'); n.delete('variant'); n.delete('page');
-          setSearchParams(n,{replace:true});
-        }}>
+        <select style={sel} value={d.brand||''} onChange={e=>setDraftParam('brand', e.target.value)}>
           <option value="">All Brands</option>
           {BRAND_OPTS.map(b=><option key={b} value={b}>{b}</option>)}
         </select>
       </FG>
 
-      {brand && modelOptions.length > 0 && (
+      {d.brand && modelOptions.length > 0 && (
         <FG title="Model">
-          <select style={sel} value={model||''} onChange={e=>setParam('model',e.target.value)}>
-            <option value="">All {brand} Models</option>
+          <select style={sel} value={d.model||''} onChange={e=>setDraftParam('model',e.target.value)}>
+            <option value="">All {d.brand} Models</option>
             {modelOptions.map(m=><option key={m} value={m}>{m}</option>)}
           </select>
         </FG>
       )}
 
-      {model && (
+      {d.model && (
         <FG title="Variant">
-          <form onSubmit={e=>{e.preventDefault();setParam('variant',variantInput.trim());}}>
-            <input type="text" placeholder="e.g. 1.5 G" value={variantInput} onChange={e=>setVariantInput(e.target.value)} onBlur={()=>setParam('variant',variantInput.trim())} style={{ ...sel, padding:'9px 12px', backgroundImage:'none' }}/>
-          </form>
+          <input type="text" placeholder="e.g. 1.5 G" value={d.variant||''} onChange={e=>setDraftParam('variant', e.target.value)} style={{ ...sel, padding:'9px 12px', backgroundImage:'none' }}/>
         </FG>
       )}
 
       <FG title="Price Range">
-        <PricePopover minPrice={minPrice} maxPrice={maxPrice} onApply={(min,max)=>{
-          const n=new URLSearchParams(searchParams);
-          min?n.set('min_price',min):n.delete('min_price');
-          max?n.set('max_price',max):n.delete('max_price');
-          n.delete('page'); setSearchParams(n,{replace:true});
-        }}/>
+        <PricePopover minPrice={d.min_price} maxPrice={d.max_price} onApply={(min,max)=>{ setDraftParam('min_price', min); setDraftParam('max_price', max); }}/>
       </FG>
 
       <FG title="Year">
         <div style={{ display:'flex', gap:'8px' }}>
-          <select style={{ ...sel, flex:1 }} value={yearFrom||''} onChange={e=>setParam('year_from',e.target.value)}>
+          <select style={{ ...sel, flex:1 }} value={d.year_from||''} onChange={e=>setDraftParam('year_from',e.target.value)}>
             <option value="">From</option>
             {YEARS.map(y=><option key={y} value={y}>{y}</option>)}
           </select>
-          <select style={{ ...sel, flex:1 }} value={yearTo||''} onChange={e=>setParam('year_to',e.target.value)}>
+          <select style={{ ...sel, flex:1 }} value={d.year_to||''} onChange={e=>setDraftParam('year_to',e.target.value)}>
             <option value="">To</option>
             {YEARS.map(y=><option key={y} value={y}>{y}</option>)}
           </select>
@@ -296,37 +285,37 @@ function FiltersPanel({ isMarketplace, setParam, searchParams, setSearchParams, 
 
       <FG title="Body Type">
         <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {BODY_TYPES.map(bt=><button key={bt} style={pill(bodyType===bt)} onClick={()=>setParam('body_type',bodyType===bt?'':bt)}>{bt}</button>)}
+          {BODY_TYPES.map(bt=><button key={bt} style={pill(d.body_type===bt)} onClick={()=>setDraftParam('body_type',d.body_type===bt?'':bt)}>{bt}</button>)}
         </div>
       </FG>
 
       <FG title="Transmission">
         <div style={{ display:'flex', gap:'6px' }}>
-          {TRANSMISSIONS.map(tx=><button key={tx} style={pill(transmission===tx)} onClick={()=>setParam('transmission',transmission===tx?'':tx)}>{tx}</button>)}
+          {TRANSMISSIONS.map(tx=><button key={tx} style={pill(d.transmission===tx)} onClick={()=>setDraftParam('transmission',d.transmission===tx?'':tx)}>{tx}</button>)}
         </div>
       </FG>
 
       <FG title="Condition">
         <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {CONDITION_OPTS.map(co=><button key={co.value} style={pill(condition===co.value)} onClick={()=>setParam('condition',condition===co.value?'':co.value)}>{co.label}</button>)}
+          {CONDITION_OPTS.map(co=><button key={co.value} style={pill(d.condition===co.value)} onClick={()=>setDraftParam('condition',d.condition===co.value?'':co.value)}>{co.label}</button>)}
         </div>
       </FG>
 
       <FG title="Fuel Type">
         <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {FUEL_TYPES.map(ft=><button key={ft} style={pill(fuelType===ft)} onClick={()=>setParam('fuel_type',fuelType===ft?'':ft)}>{ft}</button>)}
+          {FUEL_TYPES.map(ft=><button key={ft} style={pill(d.fuel_type===ft)} onClick={()=>setDraftParam('fuel_type',d.fuel_type===ft?'':ft)}>{ft}</button>)}
         </div>
       </FG>
 
       <FG title="Max Mileage">
-        <select style={sel} value={mileageMax||''} onChange={e=>setParam('mileage_max',e.target.value)}>
+        <select style={sel} value={d.mileage_max||''} onChange={e=>setDraftParam('mileage_max',e.target.value)}>
           <option value="">Any Mileage</option>
           {MILEAGE_OPTS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </FG>
 
       <FG title="Location">
-        <select style={sel} value={state||''} onChange={e=>setParam('state',e.target.value)}>
+        <select style={sel} value={d.state||''} onChange={e=>setDraftParam('state',e.target.value)}>
           <option value="">All States</option>
           {MY_STATES.map(s=><option key={s} value={s}>{s}</option>)}
         </select>
@@ -334,20 +323,20 @@ function FiltersPanel({ isMarketplace, setParam, searchParams, setSearchParams, 
 
       <FG title="Payment">
         <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {FINANCING_TYPES.map(ft=><button key={ft.value} style={pill(financing===ft.value)} onClick={()=>setParam('financing',financing===ft.value?'':ft.value)}>{ft.label}</button>)}
+          {FINANCING_TYPES.map(ft=><button key={ft.value} style={pill(d.financing===ft.value)} onClick={()=>setDraftParam('financing',d.financing===ft.value?'':ft.value)}>{ft.label}</button>)}
         </div>
       </FG>
 
       <FG title="Colour">
         <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {COLOURS.map(c=><button key={c} style={pill(colour===c)} onClick={()=>setParam('colour',colour===c?'':c)}>{c}</button>)}
+          {COLOURS.map(c=><button key={c} style={pill(d.colour===c)} onClick={()=>setDraftParam('colour',d.colour===c?'':c)}>{c}</button>)}
         </div>
       </FG>
 
       {isMarketplace && (
         <FG title="Seller">
           <div style={{ display:'flex', gap:'6px' }}>
-            {SELLER_TYPES.map(st=><button key={st.value} style={pill(sellerType===st.value)} onClick={()=>setParam('seller_type',sellerType===st.value?'':st.value)}>{st.label}</button>)}
+            {SELLER_TYPES.map(st=><button key={st.value} style={pill(d.seller_type===st.value)} onClick={()=>setDraftParam('seller_type',d.seller_type===st.value?'':st.value)}>{st.label}</button>)}
           </div>
         </FG>
       )}
@@ -410,7 +399,6 @@ export default function CarListingPage() {
   const page        = san.page(searchParams.get('page')||'1');
 
   const [searchInput, setSearchInput]   = useState(q);
-  const [variantInput, setVariantInput] = useState(variant);
   const [cars, setCars]                 = useState([]);
   const [totalCount, setTotal]          = useState(0);
   const [loading, setLoading]           = useState(true);
@@ -437,7 +425,6 @@ export default function CarListingPage() {
   }, []);
 
   useEffect(() => setSearchInput(q), [q]);
-  useEffect(() => setVariantInput(variant), [variant]);
 
   /* Debounce search input → URL param */
   useEffect(() => {
@@ -464,7 +451,35 @@ export default function CarListingPage() {
     setSearchParams(next, { replace:true });
   };
   const setPage  = p => { const next = new URLSearchParams(searchParams); next.set('page', String(p)); setSearchParams(next, { replace:true }); };
-  const resetAll = () => { setSearchInput(''); setSearchParams({}, { replace:true }); };
+
+  // ── Draft filters ── The filter panel edits a local draft; nothing refetches
+  // until the user hits Search. Committed filters live in the URL (drive the
+  // fetch, chips, share links). This stops every colour/brand tap from loading.
+  const PANEL_KEYS = ['hot_deals','brand','model','variant','min_price','max_price','year_from','year_to','body_type','transmission','condition','fuel_type','mileage_max','state','financing','colour','seller_type'];
+  const draftFromParams = () => { const o = {}; PANEL_KEYS.forEach(k => { const v = searchParams.get(k); if (v) o[k] = v; }); return o; };
+  const [draft, setDraft] = useState(draftFromParams);
+  const committedSig = PANEL_KEYS.map(k => searchParams.get(k) || '').join('|');
+  // Resync the draft whenever committed (URL) filters change — apply, chip
+  // removal, reset, or back/forward navigation.
+  useEffect(() => { setDraft(draftFromParams()); }, [committedSig]); // eslint-disable-line
+  const setDraftParam = (key, val) => setDraft(p => {
+    const n = { ...p };
+    if (val) n[key] = val; else delete n[key];
+    if (key === 'brand') { delete n.model; delete n.variant; }
+    if (key === 'model') { delete n.variant; }
+    return n;
+  });
+  const draftDirty = committedSig !== PANEL_KEYS.map(k => draft[k] || '').join('|');
+  const applyDraft = () => {
+    const next = new URLSearchParams(searchParams);
+    PANEL_KEYS.forEach(k => next.delete(k));
+    Object.entries(draft).forEach(([k, v]) => { if (v) next.set(k, v); });
+    next.delete('page');
+    setSearchParams(next, { replace: true });
+    setDrawerOpen(false);
+  };
+
+  const resetAll = () => { setSearchInput(''); setDraft({}); setSearchParams({}, { replace:true }); };
 
   /* ── Fetch ── */
   const fetchCars = useCallback(async () => {
@@ -563,13 +578,7 @@ export default function CarListingPage() {
     else setParam(key,'');
   };
 
-  const filtersProps = {
-    isMarketplace, setParam, searchParams, setSearchParams,
-    hotDeals, brand, model, variantInput, setVariantInput,
-    minPrice, maxPrice, state, yearFrom, yearTo,
-    bodyType, transmission, condition, mileageMax,
-    financing, fuelType, colour, sellerType,
-  };
+  const filtersProps = { isMarketplace, draft, setDraftParam };
 
   /* ── Early states ── */
   if (!isMarketplace && !tenantLoading && !tenant) {
@@ -671,8 +680,8 @@ export default function CarListingPage() {
           <button onClick={resetAll} style={{ flex:1, background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', border:`1px solid ${dark ? SF.border : '#e5e7eb'}`, color: dark ? SF.textSec : '#6b7280', fontSize:'13px', fontWeight:'600', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
             Reset
           </button>
-          <button onClick={()=>setDrawerOpen(false)} style={{ flex:2, background:'linear-gradient(135deg,#dc2626,#b91c1c)', border:'none', color:'#fff', fontSize:'13px', fontWeight:'700', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
-            Show {loading ? '…' : totalCount.toLocaleString()} cars
+          <button onClick={applyDraft} style={{ flex:2, background:'linear-gradient(135deg,#dc2626,#b91c1c)', border:'none', color:'#fff', fontSize:'13px', fontWeight:'700', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:'7px' }}>
+            <Search size={14}/> Search
           </button>
         </div>
       </div>
@@ -858,6 +867,12 @@ export default function CarListingPage() {
                 )}
               </div>
               <FiltersPanel {...filtersProps}/>
+              <div style={{ position:'sticky', bottom:0, background: dark ? '#0d1117' : '#fff', paddingTop:'12px', marginTop:'4px', borderTop:`1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}` }}>
+                <button onClick={applyDraft} disabled={!draftDirty}
+                  style={{ width:'100%', background: draftDirty ? 'linear-gradient(135deg,#dc2626,#b91c1c)' : (dark ? 'rgba(255,255,255,0.06)' : '#f3f4f6'), border:'none', color: draftDirty ? '#fff' : (dark ? 'rgba(255,255,255,0.4)' : '#9ca3af'), fontSize:'13px', fontWeight:'700', borderRadius:'10px', padding:'12px', cursor: draftDirty ? 'pointer' : 'default', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:'7px' }}>
+                  <Search size={14}/> Search
+                </button>
+              </div>
             </aside>}
 
           </div>

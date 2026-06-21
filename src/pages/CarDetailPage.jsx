@@ -2171,7 +2171,7 @@ export default function CarDetailPage() {
             </h2>
             <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
               {similarCars.map(s => (
-                <CarCard key={s.id} car={s} ctaContext={ctaCtx} />
+                <CarCard key={s.id} car={s} ctaContext={ctaCtx} showCompare />
               ))}
             </div>
           </div>
@@ -3022,12 +3022,12 @@ export default function CarDetailPage() {
                   More {car.brand}
                 </h2>
                 <div className="cdp-similar-grid">
-                  {similarCars.map(s => <CarCard key={s.id} car={s} ctaContext={ctaCtx} />)}
+                  {similarCars.map(s => <CarCard key={s.id} car={s} ctaContext={ctaCtx} showCompare />)}
                 </div>
                 <div className="cdp-similar-scroll">
                   {similarCars.map(s => (
                     <div key={s.id} style={{ flexShrink: 0, width: '72vw', scrollSnapAlign: 'start' }}>
-                      <CarCard car={s} ctaContext={ctaCtx} />
+                      <CarCard car={s} ctaContext={ctaCtx} showCompare />
                     </div>
                   ))}
                 </div>
