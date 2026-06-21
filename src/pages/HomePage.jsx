@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import Header from "@/components/Header";
+import GoogleOneTap from "@/components/GoogleOneTap";
 import SciFiLoader from "../components/SciFiLoader";
 import Footer from "@/components/Footer";
 import StickyWhatsAppButton from "@/components/StickyWhatsAppButton";
@@ -675,6 +676,7 @@ const HomePage = () => {
       </Helmet>
 
       <Header />
+      <GoogleOneTap />
 
       {/* ══════════ HERO (carousel) — compact so the search below stays above the fold ══════════ */}
       <HeroCarousel compact siteName={siteName} />
