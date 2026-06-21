@@ -26,10 +26,10 @@ export default function MarketplaceHeader() {
   const [q, setQ]                   = useState('');
   const { savedIds }                = useSavedCars();
   const { settings }                = useMarketplaceSettings();
-  // When a business user (dealer/salesman/manager/…) is signed in, the "Sign In"
-  // link becomes "Dashboard" pointing at their role's panel. Buyers with only a
-  // saved-cars/price-alert session (no business role) keep seeing "Sign In".
-  const [dashPath, setDashPath]     = useState(null);
+  // Auth-aware header link. Signed-out → "Sign In". A business user (dealer/
+  // salesman/…) → "Dashboard" to their panel. A buyer (session, no business role)
+  // → "My Account" (/account). null = not logged in.
+  const [authLink, setAuthLink]     = useState(null);
   const rootRef = useRef(null);
   const searchInputRef = useRef(null);
   const navigate = useNavigate();
@@ -66,11 +66,12 @@ export default function MarketplaceHeader() {
   useEffect(() => {
     let active = true;
     const resolve = async (session) => {
-      if (!session?.user?.id) { if (active) setDashPath(null); return; }
+      if (!session?.user?.id) { if (active) setAuthLink(null); return; }
       const { data: profile } = await supabase
         .from('profiles').select('role').eq('id', session.user.id).maybeSingle();
       if (!active) return;
-      setDashPath(profile?.role ? (ROLE_ROUTES[profile.role] || null) : null);
+      const route = profile?.role && ROLE_ROUTES[profile.role];
+      setAuthLink(route ? { to: route, label: 'Dashboard' } : { to: '/account', label: 'My Account' });
     };
     supabase.auth.getSession().then(({ data }) => resolve(data.session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => resolve(s));
@@ -243,9 +244,9 @@ export default function MarketplaceHeader() {
               {savedIds.size > 0 && <span className="mh-badge">{savedIds.size}</span>}
             </button>
             <span className="mh-vsep" />
-            {dashPath ? (
-              <a href={dashPath} className="mh-signin" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <LayoutDashboard size={15} /> Dashboard
+            {authLink ? (
+              <a href={authLink.to} className="mh-signin" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <LayoutDashboard size={15} /> {authLink.label}
               </a>
             ) : (
               <a href="/login" className="mh-signin">Sign In</a>
@@ -307,9 +308,9 @@ export default function MarketplaceHeader() {
           </button>
 
           <a href="/shiftos#pricing" className="mh-m-cta" onClick={() => setMenuOpen(false)}>Get Started <ArrowUpRight size={15} /></a>
-          {dashPath ? (
-            <a href={dashPath} className="mh-m-signin" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }} onClick={() => setMenuOpen(false)}>
-              <LayoutDashboard size={16} /> Dashboard
+          {authLink ? (
+            <a href={authLink.to} className="mh-m-signin" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }} onClick={() => setMenuOpen(false)}>
+              <LayoutDashboard size={16} /> {authLink.label}
             </a>
           ) : (
             <a href="/login" className="mh-m-signin" onClick={() => setMenuOpen(false)}>Sign In →</a>

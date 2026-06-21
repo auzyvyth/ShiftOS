@@ -7,6 +7,13 @@ import { useSiteProfile } from "../hooks/useSiteProfile";
 import { supabase } from "../supabaseClient";
 import { isSubdomain } from "../hooks/useTenant";
 
+// Business roles → their panel. Anything else (a buyer session) → /account.
+const ROLE_ROUTES = {
+  superadmin: "/dashboard", dealer: "/dashboard", owner: "/dashboard",
+  manager: "/manager", salesman: "/salesman", accountant: "/accountant",
+  fi_officer: "/fi", admin: "/admin",
+};
+
 const HDR_CSS = `
 
   .hdr-root {
@@ -351,7 +358,9 @@ export default function Header() {
   }, []);
 
   const isLoggedIn = !!authUser;
-  const dashboardPath = userRole === "salesman" ? "/salesman" : "/dashboard";
+  const businessRoute = userRole && ROLE_ROUTES[userRole];
+  const accountPath = businessRoute || "/account";
+  const accountLabel = businessRoute ? t("nav.dashboard") : "My Account";
   const toggleLang = () => i18n.changeLanguage(i18n.language.startsWith("en") ? "ms" : "en");
   const isEn = i18n.language.startsWith("en");
   const waHref = waUrl ? waUrl(`Hi ${siteName}, I need help finding a car`) : "#";
@@ -374,7 +383,7 @@ export default function Header() {
         { name: "For Dealers",       path: "/shiftos",       key: "dealers", isSpecial: true },
       ];
   if (isLoggedIn)
-    navLinks.push({ name: t("nav.dashboard"), path: dashboardPath, key: "dashboard" });
+    navLinks.push({ name: accountLabel, path: accountPath, key: "account" });
   else
     navLinks.push({ name: t("nav.login"), path: "/login", key: "login" });
 
