@@ -499,7 +499,7 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div
-      className="w-full max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6"
+      className="w-full space-y-6"
       style={{ fontFamily: "'DM Sans',sans-serif" }}
     >
       {/* Header */}

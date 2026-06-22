@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
-import { Users, Car, Globe, AlertTriangle, TrendingUp, Eye, Share2 } from 'lucide-react';
+import { Users, Car, Globe, AlertTriangle, TrendingUp, Eye, Share2, BarChart2 } from 'lucide-react';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush } from 'recharts';
 
 const fmtRM = (n) =>
   `RM ${Number(n || 0).toLocaleString('en-MY', { maximumFractionDigits: 0 })}`;
@@ -98,6 +99,13 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
   const [range, setRange] = useState(30);
   const [trafficLoading, setTrafficLoading] = useState(true);
 
+  // Engagement chart + salesman leaderboard (moved here from the Listings tab) —
+  // server-side aggregated, fixed 30-day window.
+  const [carStats, setCarStats] = useState([]);
+  const [slugStats, setSlugStats] = useState([]);
+  const [daily, setDaily] = useState([]);
+  const [engLoading, setEngLoading] = useState(true);
+
   useEffect(() => {
     if (!dealerId) return;
     supabase.rpc('gm_salesman_scores', { p_dealer_id: dealerId })
@@ -126,6 +134,21 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
       .gte('created_at', since.toISOString())
       .then(({ data }) => { setTrafficEvents(data || []); setTrafficLoading(false); });
   }, [dealerId, range]);
+
+  useEffect(() => {
+    if (!dealerId) return;
+    setEngLoading(true);
+    Promise.all([
+      supabase.rpc('get_dealer_car_analytics', { p_dealer_id: dealerId }),
+      supabase.rpc('get_dealer_slug_analytics', { p_dealer_id: dealerId }),
+      supabase.rpc('get_dealer_daily_analytics', { p_dealer_id: dealerId }),
+    ]).then(([carRes, slugRes, dailyRes]) => {
+      setCarStats(carRes.data || []);
+      setSlugStats(slugRes.data || []);
+      setDaily(dailyRes.data || []);
+      setEngLoading(false);
+    });
+  }, [dealerId]);
 
   // ── Derived: listings metrics ──────────────────────────────────────────────
   const listingMetrics = useMemo(() => {
@@ -183,6 +206,43 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
   }, [trafficEvents]);
 
   const convColor = Number(traffic.conversion) >= 3 ? '#16a34a' : Number(traffic.conversion) >= 1 ? '#d97706' : '#dc2626';
+
+  // ── Derived: engagement chart + salesman leaderboard ────────────────────────
+  const engTotals = useMemo(() => ({
+    clicks:   carStats.reduce((s, r) => s + (Number(r.views) || 0), 0),
+    whatsapp: carStats.reduce((s, r) => s + (Number(r.whatsapp) || 0), 0),
+    calls:    carStats.reduce((s, r) => s + (Number(r.calls) || 0), 0),
+    bookings: carStats.reduce((s, r) => s + (Number(r.bookings) || 0), 0),
+    visits:   daily.reduce((s, r) => s + (Number(r.visits) || 0), 0),
+  }), [carStats, daily]);
+
+  const dailyChart = useMemo(() => {
+    const rowMap = {};
+    daily.forEach(r => { rowMap[r.date] = r; });
+    const now = new Date();
+    return Array.from({ length: 30 }, (_, i) => {
+      const d = new Date(now);
+      d.setDate(d.getDate() - (29 - i));
+      const dateStr = d.toISOString().slice(0, 10);
+      const r = rowMap[dateStr] || {};
+      return {
+        date:     d.toLocaleDateString('en-MY', { day: 'numeric', month: 'short' }),
+        visits:   Number(r.visits)   || 0,
+        clicks:   Number(r.clicks)   || 0,
+        whatsapp: Number(r.whatsapp) || 0,
+        calls:    Number(r.calls)    || 0,
+        bookings: Number(r.bookings) || 0,
+      };
+    });
+  }, [daily]);
+
+  const topSalesmen = useMemo(() => {
+    const acc = {};
+    slugStats.forEach(r => {
+      if (r.slug && r.slug.trim()) acc[r.slug] = { clicks: Number(r.clicks) || 0, whatsapp: Number(r.whatsapp) || 0 };
+    });
+    return Object.entries(acc).sort((a, b) => b[1].whatsapp - a[1].whatsapp);
+  }, [slugStats]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, fontFamily: "'DM Sans',sans-serif" }}>
@@ -420,6 +480,86 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
               </div>
             )}
           </>
+        )}
+      </SectionShell>
+
+      {/* ── Engagement Overview (moved from Listings tab) ──────────────────────── */}
+      <SectionShell>
+        <PerfSectionHeader
+          icon={TrendingUp}
+          label="Engagement Overview"
+          desc="Daily storefront visits, clicks & conversions — last 30 days"
+          right={
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-end' }}>
+              {[
+                { label: 'Visits',   val: engTotals.visits,   color: '#94a3b8' },
+                { label: 'Clicks',   val: engTotals.clicks,   color: '#67e8f9' },
+                { label: 'WhatsApp', val: engTotals.whatsapp, color: '#4ade80' },
+                { label: 'Bookings', val: engTotals.bookings, color: '#fbbf24' },
+                { label: 'Calls',    val: engTotals.calls,    color: '#c084fc' },
+              ].map(({ label, val, color }) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 9px', borderRadius: 7, background: '#f9fafb', border: '1px solid #e5e7eb' }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, color: '#6b7280' }}>{label}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{engLoading ? '…' : val}</span>
+                </div>
+              ))}
+            </div>
+          }
+        />
+        {engLoading ? (
+          <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13 }}>Loading chart…</div>
+        ) : (
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={dailyChart} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#4b5563' }} axisLine={false} tickLine={false} />
+              <Tooltip
+                contentStyle={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, fontFamily: "'DM Sans', sans-serif", fontSize: 12 }}
+                itemStyle={{ color: '#111827' }}
+                labelStyle={{ color: '#6b7280', marginBottom: 4 }}
+                cursor={{ stroke: 'rgba(59,130,246,0.2)', strokeWidth: 1 }}
+              />
+              <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 11, color: '#6b7280', paddingTop: 8 }} />
+              <Brush dataKey="date" height={20} stroke="rgba(59,130,246,0.3)" fill="rgba(59,130,246,0.05)" travellerWidth={6} startIndex={Math.max(0, dailyChart.length - 14)} />
+              <Line type="monotone" dataKey="visits"   stroke="#94a3b8" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+              <Line type="monotone" dataKey="clicks"   stroke="#67e8f9" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+              <Line type="monotone" dataKey="whatsapp" stroke="#4ade80" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+              <Line type="monotone" dataKey="bookings" stroke="#fbbf24" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+              <Line type="monotone" dataKey="calls"    stroke="#c084fc" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </SectionShell>
+
+      {/* ── Salesman Performance (moved from Listings tab) ─────────────────────── */}
+      <SectionShell>
+        <PerfSectionHeader
+          icon={BarChart2}
+          label="Salesman Performance"
+          desc="Listing clicks & WhatsApp contacts driven by each salesman link — last 30 days"
+          right={
+            !engLoading && topSalesmen.length > 0
+              ? <span style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', background: '#f3f4f6', borderRadius: 6, padding: '3px 10px' }}>{topSalesmen.length} active</span>
+              : null
+          }
+        />
+        {engLoading ? (
+          <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13 }}>Loading…</div>
+        ) : topSalesmen.length === 0 ? (
+          <EmptyState icon={Users} text="No salesman link activity recorded yet." />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {topSalesmen.map(([slug, { clicks, whatsapp }], i) => (
+              <div key={slug} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: '#fafafa', borderRadius: 8, border: '1px solid #f3f4f6' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: i === 0 ? '#dc2626' : '#9ca3af', minWidth: 20, textAlign: 'right' }}>#{i + 1}</span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>/{slug}</span>
+                <span style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}><span style={{ color: '#0369a1', fontWeight: 700 }}>{clicks}</span> clicks</span>
+                <span style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}><span style={{ color: '#16a34a', fontWeight: 700 }}>{whatsapp}</span> WA</span>
+              </div>
+            ))}
+          </div>
         )}
       </SectionShell>
     </div>

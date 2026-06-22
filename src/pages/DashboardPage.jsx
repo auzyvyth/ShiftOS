@@ -51,13 +51,13 @@ class TabErrorBoundary extends Component {
 // Horizontal sub-tab switcher used inside merged tabs (Analytics, Storefront).
 function SubTabBar({ tabs, active, onChange }) {
   return (
-    <div className="flex gap-1 mb-4" style={{ borderBottom: '1px solid #EAECF0' }}>
+    <div className="flex gap-1 mb-3" style={{ borderBottom: '1px solid #EAECF0' }}>
       {tabs.map((t) => (
         <button
           key={t.id}
           onClick={() => onChange(t.id)}
           style={{
-            padding: '8px 12px', fontSize: 13, fontWeight: 500,
+            padding: '6px 11px', fontSize: 12.5, fontWeight: 500,
             borderBottom: active === t.id ? '2px solid #DC2626' : '2px solid transparent',
             color: active === t.id ? '#DC2626' : '#9AA1AD',
             background: 'none', border: 'none',
@@ -2637,7 +2637,6 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
 
   const [carStatsRows, setCarStatsRows] = useState([]);
   const [slugStatsRows, setSlugStatsRows] = useState([]);
-  const [dailyRows, setDailyRows] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   const [lpSearch, setLpSearch] = useState('');
   const [lpVisible, setLpVisible] = useState(20);
@@ -2648,40 +2647,12 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
     Promise.all([
       supabase.rpc("get_dealer_car_analytics", { p_dealer_id: dealerId }),
       supabase.rpc("get_dealer_slug_analytics", { p_dealer_id: dealerId }),
-      supabase.rpc("get_dealer_daily_analytics", { p_dealer_id: dealerId }),
-    ]).then(([carRes, slugRes, dailyRes]) => {
+    ]).then(([carRes, slugRes]) => {
       setCarStatsRows(carRes.data || []);
       setSlugStatsRows(slugRes.data || []);
-      setDailyRows(dailyRes.data || []);
       setEventsLoading(false);
     });
   }, [profile?.id]);
-
-  const totalClicks = carStatsRows.reduce((s, r) => s + (Number(r.views) || 0), 0);
-  const totalWa = carStatsRows.reduce((s, r) => s + (Number(r.whatsapp) || 0), 0);
-  const totalCalls = carStatsRows.reduce((s, r) => s + (Number(r.calls) || 0), 0);
-  const totalBookings = carStatsRows.reduce((s, r) => s + (Number(r.bookings) || 0), 0);
-  const storeVisits = dailyRows.reduce((s, r) => s + (Number(r.visits) || 0), 0);
-
-  const dailyChart = useMemo(() => {
-    const rowMap = {};
-    dailyRows.forEach(r => { rowMap[r.date] = r; });
-    const now = new Date();
-    return Array.from({ length: 30 }, (_, i) => {
-      const d = new Date(now);
-      d.setDate(d.getDate() - (29 - i));
-      const dateStr = d.toISOString().slice(0, 10);
-      const r = rowMap[dateStr] || {};
-      return {
-        date:     d.toLocaleDateString('en-MY', { day: 'numeric', month: 'short' }),
-        visits:   Number(r.visits)   || 0,
-        clicks:   Number(r.clicks)   || 0,
-        whatsapp: Number(r.whatsapp) || 0,
-        calls:    Number(r.calls)    || 0,
-        bookings: Number(r.bookings) || 0,
-      };
-    });
-  }, [dailyRows]);
 
   const carStatsMap = useMemo(() => {
     const map = {};
@@ -2883,140 +2854,6 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
           </div>
         ))}
       </div>
-      <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
-        {/* Header + summary pills */}
-        <div className="flex items-center justify-between p-4 flex-wrap gap-3" style={T.divider}>
-          <div>
-            <h2 className="font-semibold text-gray-900 text-sm">Engagement Overview</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Last 30 days · drag the range slider to zoom into any period</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { label: 'Page Visits', val: storeVisits,   color: '#94a3b8' },
-              { label: 'Clicks',      val: totalClicks,   color: '#67e8f9' },
-              { label: 'WhatsApp',    val: totalWa,       color: '#4ade80' },
-              { label: 'Bookings',    val: totalBookings, color: '#fbbf24' },
-              { label: 'Calls',       val: totalCalls,    color: '#c084fc' },
-            ].map(({ label, val, color }) => (
-              <div key={label}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-                style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}
-              >
-                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-                <span className="text-xs text-gray-500">{label}</span>
-                <span className="text-xs font-bold text-gray-900 tabular-nums">
-                  {eventsLoading ? '…' : val}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-        {/* Chart */}
-        <div className="p-4 pt-2">
-          {eventsLoading ? (
-            <div className="flex items-center justify-center h-52 text-gray-600 text-sm">Loading chart…</div>
-          ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={dailyChart} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 10, fill: '#6b7280' }}
-                  axisLine={false}
-                  tickLine={false}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  allowDecimals={false}
-                  tick={{ fontSize: 10, fill: '#4b5563' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: '#fff',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 8,
-                    fontFamily: "'DM Sans', sans-serif",
-                    fontSize: 12,
-                  }}
-                  itemStyle={{ color: '#111827' }}
-                  labelStyle={{ color: '#6b7280', marginBottom: 4 }}
-                  cursor={{ stroke: 'rgba(59,130,246,0.2)', strokeWidth: 1 }}
-                />
-                <Legend
-                  iconType="circle"
-                  iconSize={6}
-                  wrapperStyle={{ fontSize: 11, color: '#6b7280', paddingTop: 8 }}
-                />
-                <Brush
-                  dataKey="date"
-                  height={20}
-                  stroke="rgba(59,130,246,0.3)"
-                  fill="rgba(59,130,246,0.05)"
-                  travellerWidth={6}
-                  startIndex={Math.max(0, dailyChart.length - 14)}
-                />
-                <Line type="monotone" dataKey="visits"   stroke="#94a3b8" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-                <Line type="monotone" dataKey="clicks"   stroke="#67e8f9" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-                <Line type="monotone" dataKey="whatsapp" stroke="#4ade80" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-                <Line type="monotone" dataKey="bookings" stroke="#fbbf24" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-                <Line type="monotone" dataKey="calls"    stroke="#c084fc" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
-      {topSalesmen.length > 0 && (
-        <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
-          <div className="flex items-center gap-2 p-4" style={T.divider}>
-            <BarChart2 className="w-4 h-4 text-blue-400" />
-            <p className="font-semibold text-gray-900 text-sm">
-              Salesman Performance
-            </p>
-          </div>
-          <div className="divide-y divide-gray-100">
-            {topSalesmen.map(([slug, { clicks, whatsapp }], i) => (
-              <div key={slug} className="flex items-center gap-3 px-4 py-3">
-                <span className="text-xs text-gray-400 w-4 tabular-nums">
-                  {i + 1}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-gray-900 text-sm font-medium truncate">
-                    /{slug}
-                  </p>
-                  <div className="flex items-center gap-3 mt-0.5">
-                    <span className="text-xs text-gray-500">
-                      <span className="text-sky-400 font-semibold">
-                        {clicks}
-                      </span>{" "}
-                      clicks
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      <span className="text-green-400 font-semibold">
-                        {whatsapp}
-                      </span>{" "}
-                      whatsapp
-                    </span>
-                  </div>
-                </div>
-                {whatsapp > 0 && (
-                  <span
-                    className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
-                    style={{
-                      background: "rgba(74,222,128,0.1)",
-                      border: "1px solid rgba(74,222,128,0.2)",
-                      color: "#4ade80",
-                    }}
-                  >
-                    Active
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
       {(() => {
         const visibleStale = stale.filter(l => !(adjustedStaleIds || new Set()).has(l.id));
         const adjustedStale = stale.filter(l => (adjustedStaleIds || new Set()).has(l.id));
@@ -3294,7 +3131,14 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                               }
                               <div style={{ minWidth:0 }}>
                                 <p style={{ fontSize:13, fontWeight:700, color:'#111827', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
-                                  {l.brand} {l.model}
+                                  {l.slug ? (
+                                    <a href={`/cars/${l.slug}`} target="_blank" rel="noopener noreferrer"
+                                       style={{ color:'inherit', textDecoration:'none', cursor:'pointer' }}
+                                       onMouseEnter={e => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.textDecoration = 'underline'; }}
+                                       onMouseLeave={e => { e.currentTarget.style.color = 'inherit'; e.currentTarget.style.textDecoration = 'none'; }}>
+                                      {l.brand} {l.model}
+                                    </a>
+                                  ) : (<>{l.brand} {l.model}</>)}
                                 </p>
                                 <p style={{ fontSize:11, color:'#4b5563', margin:'2px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                                   {l.variant || l.year || '—'}
@@ -3390,7 +3234,15 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                           <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:6 }}>
                             <div style={{ minWidth:0 }}>
                               <p style={{ fontSize:13, fontWeight:800, color:'#111827', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
-                                <span style={{ color:'#9ca3af', fontWeight:700 }}>{i + 1}.</span> {l.brand} {l.model}
+                                <span style={{ color:'#9ca3af', fontWeight:700 }}>{i + 1}.</span>{' '}
+                                {l.slug ? (
+                                  <a href={`/cars/${l.slug}`} target="_blank" rel="noopener noreferrer"
+                                     style={{ color:'inherit', textDecoration:'none', cursor:'pointer' }}
+                                     onMouseEnter={e => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.textDecoration = 'underline'; }}
+                                     onMouseLeave={e => { e.currentTarget.style.color = 'inherit'; e.currentTarget.style.textDecoration = 'none'; }}>
+                                    {l.brand} {l.model}
+                                  </a>
+                                ) : (<>{l.brand} {l.model}</>)}
                               </p>
                               <p style={{ fontSize:11, color:'#4b5563', margin:'1px 0 0' }}>
                                 {l.variant || l.year || '—'}
@@ -10805,14 +10657,14 @@ export default function DashboardPage() {
         )}
 
         <div className="flex-1 p-3 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-          <div className="hidden sm:block mb-4 sm:mb-6">
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: color.ink, letterSpacing: '-0.01em', margin: 0 }}>
+          <div className="hidden sm:block mb-3 sm:mb-4">
+            <h1 style={{ fontSize: 18, fontWeight: 700, color: color.ink, letterSpacing: '-0.01em', margin: 0 }}>
               {TITLES[activeTab]?.title}
             </h1>
-            <p style={{ fontSize: 13, color: color.textMuted, marginTop: 3 }}>
+            <p style={{ fontSize: 12, color: color.textMuted, marginTop: 2 }}>
               {TITLES[activeTab]?.sub}
             </p>
-            <div className="mt-4 h-px" style={{ background: '#EAECF0' }} />
+            <div className="mt-3 h-px" style={{ background: '#EAECF0' }} />
           </div>
 
           {/* ── Overview Tab ── */}
