@@ -63,6 +63,7 @@ import {
  BarChart2,
  MessageCircle,
  BookOpen,
+ Inbox,
 } from "lucide-react";
 
 import { callClaude } from "../lib/callClaude";
@@ -195,8 +196,47 @@ export default function SalesmanPanel() {
  const [staleLeads, setStaleLeads] = useState([]);
  const [leaderboard, setLeaderboard] = useState([]);
  const [leadsLoading, setLeadsLoading] = useState(true);
+ // Incoming (unclaimed) leads pool — first salesman to claim wins.
+ const [incomingLeads, setIncomingLeads] = useState([]);
+ const [incomingLoading, setIncomingLoading] = useState(true);
+ const [claimingId, setClaimingId] = useState(null);
  const [leadScores, setLeadScores] = useState({});
  const [scoreLoading, setScoreLoading] = useState(false);
+
+ // Incoming-leads pool: dealer leads not yet claimed by any salesman. Realtime
+ // so a lead claimed by a teammate disappears here instantly.
+ useEffect(() => {
+   const poolDealer = profile?.dealer_id;
+   if (!poolDealer) { setIncomingLeads([]); setIncomingLoading(false); return; }
+   const fetchPool = () => supabase
+     .from("leads")
+     .select("*, car_listings(brand, model, year, selling_price)")
+     .eq("dealer_id", poolDealer)
+     .is("salesman_id", null)
+     .eq("is_deleted", false)
+     .order("created_at", { ascending: false })
+     .then(({ data }) => { setIncomingLeads(data || []); setIncomingLoading(false); });
+   fetchPool();
+   const ch = supabase
+     .channel("incoming_leads_" + poolDealer)
+     .on("postgres_changes", { event: "*", schema: "public", table: "leads", filter: `dealer_id=eq.${poolDealer}` }, fetchPool)
+     .subscribe();
+   return () => { supabase.removeChannel(ch); };
+ }, [profile?.dealer_id]);
+
+ const claimLead = async (lead) => {
+   if (claimingId) return;
+   setClaimingId(lead.id);
+   const { data, error } = await supabase.rpc("claim_lead", { p_lead_id: lead.id });
+   setClaimingId(null);
+   setIncomingLeads((prev) => prev.filter((l) => l.id !== lead.id));
+   if (error) { alert("Could not claim the lead. Please try again."); return; }
+   if (data === true) {
+     setActiveTab("leads");
+   } else {
+     alert("Too late — another salesman already claimed this lead.");
+   }
+ };
 
  // AI features state
  const [aiFollowups, setAiFollowups] = useState([]);
@@ -5420,6 +5460,79 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  );
  };
 
+ const renderIncoming = () => {
+ const card = { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: 16 };
+ const fmtAgo = (ts) => {
+ if (!ts) return "";
+ const mins = Math.floor((Date.now() - new Date(ts)) / 60000);
+ if (mins < 60) return `${mins}m ago`;
+ if (mins < 1440) return `${Math.floor(mins / 60)}h ago`;
+ return `${Math.floor(mins / 1440)}d ago`;
+ };
+ if (!profile?.dealer_id) {
+ return (
+ <div style={{ ...card, textAlign: "center", color: "#6b7280", fontSize: 14 }}>
+ Incoming leads are shared across a dealer's sales team. As a solo salesman you don't have a shared pool.
+ </div>
+ );
+ }
+ return (
+ <div>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, gap: 12, flexWrap: "wrap" }}>
+ <div>
+ <h2 style={{ fontSize: 18, fontWeight: 700, color: "#fff", margin: 0 }}>Incoming Leads</h2>
+ <p style={{ fontSize: 13, color: "#6b7280", margin: "2px 0 0" }}>Unclaimed enquiries from the marketplace — first to claim gets the lead.</p>
+ </div>
+ <span style={{ fontSize: 12, fontWeight: 700, color: "#f87171", background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", borderRadius: 8, padding: "5px 12px" }}>
+ {incomingLeads.length} waiting
+ </span>
+ </div>
+ {incomingLoading ? (
+ <div style={{ ...card, textAlign: "center", color: "#6b7280" }}>Loading…</div>
+ ) : incomingLeads.length === 0 ? (
+ <div style={{ ...card, textAlign: "center", color: "#6b7280", fontSize: 14, padding: "40px 16px" }}>
+ <Inbox size={28} style={{ color: "#374151", margin: "0 auto 10px", display: "block" }} />
+ No unclaimed leads right now. New marketplace enquiries will appear here instantly.
+ </div>
+ ) : (
+ <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+ {incomingLeads.map((l) => {
+ const carName = l.car_listings ? [l.car_listings.year, l.car_listings.brand, l.car_listings.model].filter(Boolean).join(" ") : null;
+ const claiming = claimingId === l.id;
+ return (
+ <div key={l.id} style={card}>
+ <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+ <div style={{ minWidth: 0, flex: 1 }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+ <p style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: 0 }}>{l.buyer_name || "Unknown buyer"}</p>
+ {l.lead_source && <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "#93c5fd", background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.25)", borderRadius: 6, padding: "2px 7px" }}>{String(l.lead_source).replace(/_/g, " ")}</span>}
+ <span style={{ fontSize: 11, color: "#6b7280" }}>{fmtAgo(l.created_at)}</span>
+ </div>
+ <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 8, fontSize: 13, color: "#cbd5e1" }}>
+ {l.phone && <span>📱 {l.phone}</span>}
+ {carName && <span>🚗 {carName}{l.car_listings?.selling_price ? ` · RM ${Number(l.car_listings.selling_price).toLocaleString()}` : ""}</span>}
+ {l.buyer_state && <span>📍 {l.buyer_state}</span>}
+ {l.buyer_message && <span style={{ color: "#94a3b8", fontStyle: "italic" }}>💬 “{l.buyer_message}”</span>}
+ {l.notes && !l.buyer_message && <span style={{ color: "#94a3b8", fontStyle: "italic" }}>📝 {l.notes}</span>}
+ </div>
+ </div>
+ <button
+ onClick={() => claimLead(l)}
+ disabled={claiming}
+ style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, background: claiming ? "rgba(255,255,255,0.08)" : "#dc2626", color: "#fff", border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 14, fontWeight: 700, cursor: claiming ? "default" : "pointer" }}
+ >
+ {claiming ? "Claiming…" : "Claim lead"}
+ </button>
+ </div>
+ </div>
+ );
+ })}
+ </div>
+ )}
+ </div>
+ );
+ };
+
  const renderEnquiries = () => {
  const newEnqCount = enquiries.filter(e => e.status === "new").length;
  const pendingAptCount = appointments.filter(a => a.status === "pending").length;
@@ -6442,6 +6555,12 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  badge: myListings.filter((c) => c.status !== "sold").length || null,
  },
  {
+ tab: "incoming",
+ label: "Incoming",
+ icon: <Inbox size={18} />,
+ badge: incomingLeads.length || null,
+ },
+ {
  tab: "leads",
  label: "Leads",
  icon: <User size={18} />,
@@ -6706,6 +6825,12 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  >CRM
  </p>
  {[
+ {
+ tab: "incoming",
+ label: "Incoming",
+ icon: <Inbox style={{ width: 14, height: 14, flexShrink: 0 }} />,
+ badge: incomingLeads.length || null,
+ },
  {
  tab: "leads",
  label: "Leads",
@@ -7237,6 +7362,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  >
  {activeTab === "dashboard" && renderDashboard()}
  {activeTab === "listings" && renderListings()}
+ {activeTab === "incoming" && renderIncoming()}
  {activeTab === "leads" && renderLeads()}
  {activeTab === "analytics" && renderAnalytics()}
  {activeTab === "enquiries" && renderEnquiries()}

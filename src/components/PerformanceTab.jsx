@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
+import { useCachedFetch } from '../hooks/useCachedFetch';
 import { Users, Car, Globe, AlertTriangle, TrendingUp, Eye, Share2, BarChart2 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush } from 'recharts';
 
@@ -83,72 +84,96 @@ function SectionShell({ children }) {
   );
 }
 
+// Engagement chart series + a rich hover tooltip so dealers see every metric for
+// the hovered day at once (not just one line).
+// axis: high-volume traffic on the left, low-volume conversions on the right so
+// bookings/calls/WhatsApp aren't crushed to zero under page-visit counts.
+const ENG_SERIES = [
+  { key: 'visits',   label: 'Page visits',    color: '#94a3b8', axis: 'left'  },
+  { key: 'clicks',   label: 'Listing clicks', color: '#67e8f9', axis: 'left'  },
+  { key: 'whatsapp', label: 'WhatsApp',       color: '#4ade80', axis: 'right' },
+  { key: 'calls',    label: 'Calls',          color: '#c084fc', axis: 'right' },
+  { key: 'bookings', label: 'Bookings',       color: '#fbbf24', axis: 'right' },
+];
+
+function EngagementTooltip({ active, payload, label }) {
+  if (!active || !payload || !payload.length) return null;
+  const row = payload[0]?.payload || {};
+  const total = ENG_SERIES.reduce((s, x) => s + (Number(row[x.key]) || 0), 0);
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 12px', boxShadow: '0 6px 24px rgba(15,23,42,0.12)', fontFamily: "'DM Sans',sans-serif", minWidth: 180 }}>
+      <p style={{ fontSize: 12, fontWeight: 700, color: '#111827', margin: '0 0 8px' }}>{label}</p>
+      {ENG_SERIES.map((s) => (
+        <div key={s.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '2px 0' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6b7280' }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, flexShrink: 0 }} />{s.label}
+          </span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{Number(row[s.key]) || 0}</span>
+        </div>
+      ))}
+      <div style={{ borderTop: '1px solid #f3f4f6', marginTop: 6, paddingTop: 6, display: 'flex', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 12, color: '#6b7280' }}>Total events</span>
+        <span style={{ fontSize: 12, fontWeight: 800, color: '#dc2626', fontVariantNumeric: 'tabular-nums' }}>{total}</span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export default function PerformanceTab({ dealerId, listings = [] }) {
-  // Team
-  const [scores, setScores] = useState([]);
-  const [teamLoading, setTeamLoading] = useState(true);
-
-  // Stock
-  const [stock, setStock] = useState([]);
-  const [stockLoading, setStockLoading] = useState(true);
-
-  // Traffic
-  const [trafficEvents, setTrafficEvents] = useState([]);
   const [range, setRange] = useState(30);
-  const [trafficLoading, setTrafficLoading] = useState(true);
 
-  // Engagement chart + salesman leaderboard (moved here from the Listings tab) —
-  // server-side aggregated, fixed 30-day window.
-  const [carStats, setCarStats] = useState([]);
-  const [slugStats, setSlugStats] = useState([]);
-  const [daily, setDaily] = useState([]);
-  const [engLoading, setEngLoading] = useState(true);
+  // All four loads are cached (stale-while-revalidate, per-dealer) so the tab
+  // paints instantly on revisit and refreshes in the background / daily.
+  const { data: scoresRaw, loading: teamLoading } = useCachedFetch(
+    dealerId ? `perf:scores:${dealerId}` : null,
+    async () => (await supabase.rpc('gm_salesman_scores', { p_dealer_id: dealerId })).data || [],
+    { enabled: !!dealerId },
+  );
+  const scores = scoresRaw || [];
 
-  useEffect(() => {
-    if (!dealerId) return;
-    supabase.rpc('gm_salesman_scores', { p_dealer_id: dealerId })
-      .then(({ data }) => { setScores(data || []); setTeamLoading(false); });
-  }, [dealerId]);
-
-  useEffect(() => {
-    if (!dealerId) return;
-    supabase
+  const { data: stockRaw, loading: stockLoading } = useCachedFetch(
+    dealerId ? `perf:stock:${dealerId}` : null,
+    async () => (await supabase
       .from('stock_units')
       .select('id, purchase_date, status, purchase_price, recon_cost, brand, model, year, asking_price')
       .eq('dealer_id', dealerId)
-      .neq('status', 'sold')
-      .then(({ data }) => { setStock(data || []); setStockLoading(false); });
-  }, [dealerId]);
+      .neq('status', 'sold')).data || [],
+    { enabled: !!dealerId },
+  );
+  const stock = useMemo(() => stockRaw || [], [stockRaw]);
 
-  useEffect(() => {
-    if (!dealerId) return;
-    setTrafficLoading(true);
-    const since = new Date();
-    since.setDate(since.getDate() - range);
-    supabase
-      .from('analytics_events')
-      .select('event_type, created_at, session_id, car_id, car_name, metadata')
-      .eq('dealer_id', dealerId)
-      .gte('created_at', since.toISOString())
-      .then(({ data }) => { setTrafficEvents(data || []); setTrafficLoading(false); });
-  }, [dealerId, range]);
+  const { data: trafficRaw, loading: trafficLoading } = useCachedFetch(
+    dealerId ? `perf:traffic:${dealerId}:${range}` : null,
+    async () => {
+      const since = new Date();
+      since.setDate(since.getDate() - range);
+      return (await supabase
+        .from('analytics_events')
+        .select('event_type, created_at, session_id, car_id, car_name, metadata')
+        .eq('dealer_id', dealerId)
+        .gte('created_at', since.toISOString())).data || [];
+    },
+    { enabled: !!dealerId },
+  );
+  const trafficEvents = useMemo(() => trafficRaw || [], [trafficRaw]);
 
-  useEffect(() => {
-    if (!dealerId) return;
-    setEngLoading(true);
-    Promise.all([
-      supabase.rpc('get_dealer_car_analytics', { p_dealer_id: dealerId }),
-      supabase.rpc('get_dealer_slug_analytics', { p_dealer_id: dealerId }),
-      supabase.rpc('get_dealer_daily_analytics', { p_dealer_id: dealerId }),
-    ]).then(([carRes, slugRes, dailyRes]) => {
-      setCarStats(carRes.data || []);
-      setSlugStats(slugRes.data || []);
-      setDaily(dailyRes.data || []);
-      setEngLoading(false);
-    });
-  }, [dealerId]);
+  const { data: eng, loading: engLoading } = useCachedFetch(
+    dealerId ? `perf:eng:${dealerId}` : null,
+    async () => {
+      const [carRes, slugRes, dailyRes] = await Promise.all([
+        supabase.rpc('get_dealer_car_analytics', { p_dealer_id: dealerId }),
+        supabase.rpc('get_dealer_slug_analytics', { p_dealer_id: dealerId }),
+        supabase.rpc('get_dealer_daily_analytics', { p_dealer_id: dealerId }),
+      ]);
+      return { car: carRes.data || [], slug: slugRes.data || [], daily: dailyRes.data || [] };
+    },
+    { enabled: !!dealerId },
+  );
+  const carStats = useMemo(() => eng?.car || [], [eng]);
+  const slugStats = useMemo(() => eng?.slug || [], [eng]);
+  const daily = useMemo(() => eng?.daily || [], [eng]);
 
   // ── Derived: listings metrics ──────────────────────────────────────────────
   const listingMetrics = useMemo(() => {
@@ -212,7 +237,7 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
     clicks:   carStats.reduce((s, r) => s + (Number(r.views) || 0), 0),
     whatsapp: carStats.reduce((s, r) => s + (Number(r.whatsapp) || 0), 0),
     calls:    carStats.reduce((s, r) => s + (Number(r.calls) || 0), 0),
-    bookings: carStats.reduce((s, r) => s + (Number(r.bookings) || 0), 0),
+    bookings: daily.reduce((s, r) => s + (Number(r.bookings) || 0), 0),
     visits:   daily.reduce((s, r) => s + (Number(r.visits) || 0), 0),
   }), [carStats, daily]);
 
@@ -245,7 +270,47 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
   }, [slugStats]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, fontFamily: "'DM Sans',sans-serif" }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, fontFamily: "'DM Sans',sans-serif", minWidth: 0 }}>
+
+      {/* ── Engagement Overview (chart on top) ─────────────────────────────────── */}
+      <SectionShell>
+        <PerfSectionHeader
+          icon={TrendingUp}
+          label="Engagement Overview"
+          desc="Last 30 days · traffic on the left axis, conversions (WhatsApp/calls/bookings) on the right"
+        />
+        {/* Summary pills as a full-width wrapping row (kept out of the header so
+            they never force horizontal overflow on mobile). */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+          {ENG_SERIES.map(({ key, label, color }) => (
+            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 8, background: '#f9fafb', border: '1px solid #e5e7eb' }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
+              <span style={{ fontSize: 11, color: '#6b7280' }}>{label}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{engLoading ? '…' : (engTotals[key] ?? 0)}</span>
+            </div>
+          ))}
+        </div>
+        {engLoading ? (
+          <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13 }}>Loading chart…</div>
+        ) : (
+          <div style={{ width: '100%', minWidth: 0, overflowX: 'hidden' }}>
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={dailyChart} margin={{ top: 4, right: 0, left: -18, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={24} />
+                <YAxis yAxisId="left" allowDecimals={false} width={30} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="right" orientation="right" allowDecimals={false} width={26} tick={{ fontSize: 10, fill: '#d97706' }} axisLine={false} tickLine={false} />
+                <Tooltip content={<EngagementTooltip />} cursor={{ stroke: 'rgba(59,130,246,0.25)', strokeWidth: 1 }} />
+                <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 11, color: '#6b7280', paddingTop: 8 }} />
+                <Brush dataKey="date" height={20} stroke="rgba(59,130,246,0.3)" fill="rgba(59,130,246,0.05)" travellerWidth={6} startIndex={Math.max(0, dailyChart.length - 14)} />
+                {ENG_SERIES.map((s) => (
+                  <Line key={s.key} yAxisId={s.axis} type="monotone" dataKey={s.key} name={s.label} stroke={s.color} strokeWidth={1.75} dot={false} activeDot={{ r: 3 }} />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </SectionShell>
 
       {/* ── Team Performance ──────────────────────────────────────────────────── */}
       <SectionShell>
@@ -480,56 +545,6 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
               </div>
             )}
           </>
-        )}
-      </SectionShell>
-
-      {/* ── Engagement Overview (moved from Listings tab) ──────────────────────── */}
-      <SectionShell>
-        <PerfSectionHeader
-          icon={TrendingUp}
-          label="Engagement Overview"
-          desc="Daily storefront visits, clicks & conversions — last 30 days"
-          right={
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-end' }}>
-              {[
-                { label: 'Visits',   val: engTotals.visits,   color: '#94a3b8' },
-                { label: 'Clicks',   val: engTotals.clicks,   color: '#67e8f9' },
-                { label: 'WhatsApp', val: engTotals.whatsapp, color: '#4ade80' },
-                { label: 'Bookings', val: engTotals.bookings, color: '#fbbf24' },
-                { label: 'Calls',    val: engTotals.calls,    color: '#c084fc' },
-              ].map(({ label, val, color }) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 9px', borderRadius: 7, background: '#f9fafb', border: '1px solid #e5e7eb' }}>
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, color: '#6b7280' }}>{label}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{engLoading ? '…' : val}</span>
-                </div>
-              ))}
-            </div>
-          }
-        />
-        {engLoading ? (
-          <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13 }}>Loading chart…</div>
-        ) : (
-          <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={dailyChart} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-              <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#4b5563' }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, fontFamily: "'DM Sans', sans-serif", fontSize: 12 }}
-                itemStyle={{ color: '#111827' }}
-                labelStyle={{ color: '#6b7280', marginBottom: 4 }}
-                cursor={{ stroke: 'rgba(59,130,246,0.2)', strokeWidth: 1 }}
-              />
-              <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 11, color: '#6b7280', paddingTop: 8 }} />
-              <Brush dataKey="date" height={20} stroke="rgba(59,130,246,0.3)" fill="rgba(59,130,246,0.05)" travellerWidth={6} startIndex={Math.max(0, dailyChart.length - 14)} />
-              <Line type="monotone" dataKey="visits"   stroke="#94a3b8" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-              <Line type="monotone" dataKey="clicks"   stroke="#67e8f9" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-              <Line type="monotone" dataKey="whatsapp" stroke="#4ade80" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-              <Line type="monotone" dataKey="bookings" stroke="#fbbf24" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-              <Line type="monotone" dataKey="calls"    stroke="#c084fc" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
         )}
       </SectionShell>
 
