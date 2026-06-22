@@ -2171,7 +2171,7 @@ export default function CarDetailPage() {
             </h2>
             <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
               {similarCars.map(s => (
-                <CarCard key={s.id} car={s} ctaContext={ctaCtx} />
+                <CarCard key={s.id} car={s} ctaContext={ctaCtx} showCompare />
               ))}
             </div>
           </div>
@@ -3016,18 +3016,18 @@ export default function CarDetailPage() {
 
             {/* SIMILAR CARS */}
             {similarCars.length > 0 && (
-              <div style={{ marginTop: 64, background: '#F7F6F2', borderRadius: 16, padding: '32px 28px' }}>
+              <div style={{ marginTop: 64, background: th.card2, border: `1px solid ${th.borderSec}`, borderRadius: 16, padding: '32px 28px' }}>
                 <p style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.2em', color: '#dc2626', margin: '0 0 4px', fontWeight: 700 }}>You might also like</p>
-                <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '2.4rem', letterSpacing: '0.06em', color: '#111827', margin: '0 0 28px', borderLeft: '3px solid #dc2626', paddingLeft: '14px' }}>
+                <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '2.4rem', letterSpacing: '0.06em', color: th.text, margin: '0 0 28px', borderLeft: '3px solid #dc2626', paddingLeft: '14px' }}>
                   More {car.brand}
                 </h2>
                 <div className="cdp-similar-grid">
-                  {similarCars.map(s => <CarCard key={s.id} car={s} ctaContext={ctaCtx} />)}
+                  {similarCars.map(s => <CarCard key={s.id} car={s} ctaContext={ctaCtx} showCompare />)}
                 </div>
                 <div className="cdp-similar-scroll">
                   {similarCars.map(s => (
                     <div key={s.id} style={{ flexShrink: 0, width: '72vw', scrollSnapAlign: 'start' }}>
-                      <CarCard car={s} ctaContext={ctaCtx} />
+                      <CarCard car={s} ctaContext={ctaCtx} showCompare />
                     </div>
                   ))}
                 </div>

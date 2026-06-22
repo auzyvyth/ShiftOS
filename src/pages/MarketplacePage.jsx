@@ -7,6 +7,7 @@ import { useCompare } from '../hooks/useCompare';
 import MarketplaceFooter from '../components/MarketplaceFooter';
 import CarCard from '@/components/CarCard';
 import MarketplaceHeader from '../components/MarketplaceHeader';
+import GoogleOneTap from '../components/GoogleOneTap';
 import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
 import { trackEvent } from '../utils/analytics';
@@ -735,6 +736,7 @@ export default function MarketplacePage() {
       `}</style>
 
       <MarketplaceHeader />
+      <GoogleOneTap />
 
       <AdvancedSearchModal
         open={advancedOpen}

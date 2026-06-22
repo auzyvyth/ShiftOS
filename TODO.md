@@ -7,7 +7,9 @@
 
 - **ACT-3: Set `TELEGRAM_BOT_TOKEN` edge secret** — Salesman Lite "listing is live" Telegram ping (and appointment-reminder cron) fall back to the platform bot when a user has no personal `telegram_bot_token`. This requires the platform bot token set as a Supabase edge secret: Supabase → Edge Functions → Secrets → `TELEGRAM_BOT_TOKEN=<botfather token>`. Without it, `send-telegram` returns `no_token` for Lite salesmen (silent no-op; dealers with their own token are unaffected). Could not verify whether it is already set from the session.
 
-> Reminder protocol: while ACT-1, ACT-2 or ACT-3 remain here, surface them at session start and whenever 2FA/security/Telegram work is touched.
+- **ACT-4: Enable Google One Tap (`VITE_GOOGLE_CLIENT_ID`)** — The Google One Tap popup for new marketplace visitors (`src/components/GoogleOneTap.jsx`) is built but no-ops until the Google OAuth **Web client ID** is exposed to the frontend. Steps: (1) Vercel → env `VITE_GOOGLE_CLIENT_ID=<google web client id>` (same client used by Supabase's Google provider); (2) Google Cloud Console → that Web client → add `https://xdrive.my` (+ preview origin) to **Authorized JavaScript origins**; (3) Supabase → Auth → Providers → Google → add the same client ID under **Authorized Client IDs** so `signInWithIdToken` accepts the One Tap token. Until done, the popup simply never shows (no error).
+
+> Reminder protocol: while ACT-1, ACT-2, ACT-3 or ACT-4 remain here, surface them at session start and whenever 2FA/security/Telegram/auth work is touched.
 
 ## Dev tasks
 

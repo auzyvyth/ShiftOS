@@ -9,6 +9,7 @@ const ROLE_ROUTES = {
   accountant:  '/accountant',
   fi_officer:  '/fi',
   admin:       '/admin',
+  buyer:       '/account',
 };
 
 /**

@@ -21,6 +21,7 @@ const CarDetailPage   = lazy(() => import("./pages/CarDetailPage"));
 // Lazy — everything else
 const CalculatorPage     = lazy(() => import("./pages/CalculatorPage"));
 const LoginPage          = lazy(() => import("./pages/LoginPage"));
+const BuyerAuthPage      = lazy(() => import("./pages/BuyerAuthPage"));
 const RegisterPage       = lazy(() => import("./pages/RegisterPage"));
 const DashboardPage      = lazy(() => import("./pages/DashboardPage"));
 const SalesmanPanel      = lazy(() => import("./pages/Salesmanpanel"));
@@ -45,6 +46,7 @@ const ResetPasswordPage  = lazy(() => import("./pages/ResetPasswordPage"));
 const ImportStockPage    = lazy(() => import("./pages/ImportStockPage"));
 const ComparePage        = lazy(() => import("./pages/ComparePage"));
 const SavedCarsPage      = lazy(() => import("./pages/SavedCarsPage"));
+const AccountPage        = lazy(() => import("./pages/AccountPage"));
 const GuidesPage         = lazy(() => import("./pages/GuidesPage"));
 const WaitlistPage       = lazy(() => import("./pages/WaitlistPage"));
 const TermsPage          = lazy(() => import("./pages/TermsPage"));
@@ -55,6 +57,11 @@ const ArticlesIndexPage  = lazy(() => import("./pages/ArticlesIndexPage"));
 const PuspakomB5B7Article = lazy(() => import("./pages/articles/PuspakomB5B7Article"));
 const MySikapArticle     = lazy(() => import("./pages/articles/MySikapArticle"));
 const ReconArticle       = lazy(() => import("./pages/articles/ReconArticle"));
+const UrusStokDigitalArticle = lazy(() => import("./pages/articles/UrusStokDigitalArticle"));
+const AppTerbaikDealerArticle = lazy(() => import("./pages/articles/AppTerbaikDealerArticle"));
+const KomisenSalesmanArticle = lazy(() => import("./pages/articles/KomisenSalesmanArticle"));
+const ApaItuDmsArticle   = lazy(() => import("./pages/articles/ApaItuDmsArticle"));
+const SalesAgreementArticle = lazy(() => import("./pages/articles/SalesAgreementArticle"));
 
 const COMPARE_PATHS = ["/", "/cars", "/marketplace", "/showroom", "/compare", "/saved"];
 
@@ -94,16 +101,24 @@ function App() {
           <Route path="/calculator" element={<CalculatorPage />} />
           <Route path="/compare" element={<ComparePage />} />
           <Route path="/saved" element={<SavedCarsPage />} />
+          <Route path="/account" element={<AccountPage />} />
           <Route path="/guides/:slug" element={<GuidesPage />} />
           <Route path="/guides" element={<GuidesPage />} />
           <Route path="/articles" element={<ArticlesIndexPage />} />
           <Route path="/articles/apa-itu-puspakom-b5-b7" element={<PuspakomB5B7Article />} />
           <Route path="/articles/cara-pindah-milik-kereta-mysikap" element={<MySikapArticle />} />
           <Route path="/articles/beza-kereta-recon-dan-terpakai" element={<ReconArticle />} />
+          <Route path="/articles/cara-urus-stok-kereta-terpakai-sistem-digital" element={<UrusStokDigitalArticle />} />
+          <Route path="/articles/app-terbaik-dealer-kereta-terpakai-malaysia" element={<AppTerbaikDealerArticle />} />
+          <Route path="/articles/cara-kira-komisen-salesman-kereta" element={<KomisenSalesmanArticle />} />
+          <Route path="/articles/apa-itu-dms-dealer-kereta" element={<ApaItuDmsArticle />} />
+          <Route path="/articles/cara-buat-sales-agreement-kereta-terpakai" element={<SalesAgreementArticle />} />
 
           {/* Auth */}
           <Route path="/style-guide" element={<StyleGuidePage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/buyer-login" element={<BuyerAuthPage />} />
+          <Route path="/buyer-signup" element={<BuyerAuthPage />} />
           <Route path="/signup"             element={<Navigate to="/salesman-onboarding/lite"    replace />} />
           <Route path="/register"           element={<Navigate to="/salesman-onboarding/lite"    replace />} />
           <Route path="/onboarding"         element={<Navigate to="/salesman-onboarding/lite"    replace />} />

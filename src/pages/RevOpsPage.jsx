@@ -499,7 +499,7 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div
-      className="w-full max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6"
+      className="w-full space-y-6"
       style={{ fontFamily: "'DM Sans',sans-serif" }}
     >
       {/* Header */}
@@ -573,19 +573,19 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
           <MetricCard
             label="Active Leads"
             value={revData ? String(revData.activeLeads) : null}
-            sub="Pipeline count"
+            sub="Open pipeline · all time"
             loading={revLoading}
             icon={Users}
             accentColor="#60a5fa"
           />
           <MetricCard
-            label="Stock Turn (30d)"
+            label="Stock Turn (MTD)"
             value={
               revData
                 ? `${revData.unitsSoldMTD} / ${revData.activeCount}`
                 : null
             }
-            sub="units sold / active"
+            sub="sold this month / active"
             loading={revLoading}
             icon={Package}
             accentColor="#a78bfa"

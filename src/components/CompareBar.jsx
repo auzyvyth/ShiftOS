@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, ArrowLeftRight, Car } from 'lucide-react';
-import { useCompare } from '../hooks/useCompare';
+import { useCompare, MAX, COMPARE_MODE_KEY } from '../hooks/useCompare';
 import { supabase } from '../supabaseClient';
 
 export default function CompareBar() {
@@ -33,6 +33,17 @@ export default function CompareBar() {
     if (compareIds.length === 0) setOpen(false);
     prevCountRef.current = compareIds.length;
   }, [compareIds.length]);
+
+  // Guided compare mode: once the visitor (who started from the empty Compare
+  // page) has picked the max number of cars, jump straight to the comparison.
+  useEffect(() => {
+    if (compareIds.length < MAX) return;
+    if (sessionStorage.getItem(COMPARE_MODE_KEY) !== '1') return;
+    sessionStorage.removeItem(COMPARE_MODE_KEY);
+    const params = new URLSearchParams();
+    compareIds.forEach((id, i) => params.set(['a', 'b', 'c', 'd'][i], id));
+    navigate(`/compare?${params.toString()}`);
+  }, [compareIds, navigate]);
 
   // Fetch car data for new IDs
   useEffect(() => {

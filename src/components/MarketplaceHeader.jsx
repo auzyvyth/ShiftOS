@@ -3,11 +3,20 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   X, Flame, Menu, Heart, Search, ChevronDown, Car, Sparkles, RefreshCw, LayoutGrid,
   LayoutDashboard, Tag, Handshake, PlusCircle, BookOpen, FileCheck, FileText, GitCompare, ArrowUpRight,
+  User, Store,
 } from 'lucide-react';
 import { useSavedCars } from '../hooks/useSavedCars';
+import { supabase } from '../supabaseClient';
 import SavedCarsPanel from './SavedCarsPanel';
 import AnnouncementBar from './AnnouncementBar';
 import useMarketplaceSettings from '../hooks/useMarketplaceSettings';
+
+// Mirror of useRoleRedirect's ROLE_ROUTES — maps a logged-in business user to their panel.
+const ROLE_ROUTES = {
+  superadmin: '/dashboard', dealer: '/dashboard', owner: '/dashboard',
+  manager: '/manager', salesman: '/salesman', accountant: '/accountant',
+  fi_officer: '/fi', admin: '/admin',
+};
 
 export default function MarketplaceHeader() {
   const [scrolled, setScrolled]     = useState(false);
@@ -18,6 +27,12 @@ export default function MarketplaceHeader() {
   const [q, setQ]                   = useState('');
   const { savedIds }                = useSavedCars();
   const { settings }                = useMarketplaceSettings();
+  // Auth-aware header link. Signed-out → "Sign In". A business user (dealer/
+  // salesman/…) → "Dashboard" to their panel. A buyer (session, no business role)
+  // → "My Account" (/account). null = not logged in.
+  const [authLink, setAuthLink]     = useState(null);
+  const [signinOpen, setSigninOpen] = useState(false);
+  const signinRef = useRef(null);
   const rootRef = useRef(null);
   const searchInputRef = useRef(null);
   const navigate = useNavigate();
@@ -49,6 +64,29 @@ export default function MarketplaceHeader() {
     const onScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Close the Sign In buyer/seller dropdown on outside click.
+  useEffect(() => {
+    if (!signinOpen) return;
+    const h = (e) => { if (signinRef.current && !signinRef.current.contains(e.target)) setSigninOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [signinOpen]);
+
+  useEffect(() => {
+    let active = true;
+    const resolve = async (session) => {
+      if (!session?.user?.id) { if (active) setAuthLink(null); return; }
+      const { data: profile } = await supabase
+        .from('profiles').select('role').eq('id', session.user.id).maybeSingle();
+      if (!active) return;
+      const route = profile?.role && ROLE_ROUTES[profile.role];
+      setAuthLink(route ? { to: route, label: 'Dashboard' } : { to: '/account', label: 'My Account' });
+    };
+    supabase.auth.getSession().then(({ data }) => resolve(data.session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => resolve(s));
+    return () => { active = false; subscription.unsubscribe(); };
   }, []);
 
   useEffect(() => {
@@ -157,6 +195,11 @@ export default function MarketplaceHeader() {
         .mh-signin { color:#0f1115; font-size:14px; font-weight:600; text-decoration:none; padding:9px 6px; position:relative; font-family:inherit; }
         .mh-signin::after { content:''; position:absolute; left:6px; right:6px; bottom:3px; height:2px; background:#dc2626; border-radius:2px; transform:scaleX(0); transform-origin:left; transition:transform .2s; }
         .mh-signin:hover::after { transform:scaleX(1); }
+        .mh-signin-menu { position:absolute; top:calc(100% + 12px); right:0; width:248px; background:#fff; border:1px solid #e5e7eb; border-radius:14px; box-shadow:0 16px 40px rgba(15,23,42,0.16); padding:6px; display:flex; flex-direction:column; gap:2px; z-index:1000; }
+        .mh-signin-item { display:flex; align-items:center; gap:11px; padding:10px 11px; border-radius:10px; text-decoration:none; transition:background .14s; }
+        .mh-signin-item:hover { background:#f5f6f8; }
+        .mh-signin-item-t { display:block; font-size:13px; font-weight:700; color:#0f1115; }
+        .mh-signin-item-s { display:block; font-size:11px; color:#6b7280; margin-top:1px; }
         .mh-getstarted { display:flex; align-items:center; gap:6px; background:#0f1115; color:#fff; font-size:13.5px; font-weight:700; padding:11px 18px; border-radius:11px; text-decoration:none; white-space:nowrap; transition:background .15s,transform .12s,box-shadow .15s; box-shadow:0 1px 2px rgba(0,0,0,.18); }
         .mh-getstarted:hover { background:#dc2626; transform:translateY(-1px); box-shadow:0 8px 22px rgba(220,38,38,.26); }
 
@@ -203,6 +246,7 @@ export default function MarketplaceHeader() {
           <nav className="mh-nav">
             <MegaNav id="browse" label="Browse Cars" items={BROWSE} accent={{ eyebrow:'XDrive', title:'10,000+ cars, one place', sub:'New, used and recon from trusted dealers across Malaysia.', to:'/showroom', cta:'Browse all' }} />
             <a href="/marketplace?hot_deals=true" className={`mh-nav-link hot${isHotDeals ? ' active' : ''}`}><Flame size={15} /> Hot Deals</a>
+            <Link to="/compare" className="mh-nav-link"><GitCompare size={15} /> Compare</Link>
             <MegaNav id="dealers" label="For Dealers" items={DEALERS} accent={{ eyebrow:'ShiftOS DMS', title:'Run your dealership', sub:'Listings, leads CRM, F&I and revenue analytics in one system.', to:'/shiftos', cta:'Start free trial' }} />
             <MegaNav id="guides" label="Panduan & Artikel" items={GUIDES} />
           </nav>
@@ -217,7 +261,40 @@ export default function MarketplaceHeader() {
               {savedIds.size > 0 && <span className="mh-badge">{savedIds.size}</span>}
             </button>
             <span className="mh-vsep" />
-            <a href="/login" className="mh-signin">Sign In</a>
+            {authLink ? (
+              <a href={authLink.to} className="mh-signin" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <LayoutDashboard size={15} /> {authLink.label}
+              </a>
+            ) : (
+              <div ref={signinRef} style={{ position: 'relative' }}>
+                <button
+                  className="mh-signin"
+                  onClick={() => setSigninOpen(o => !o)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}
+                >
+                  Sign In
+                  <ChevronDown size={14} style={{ transform: signinOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
+                </button>
+                {signinOpen && (
+                  <div className="mh-signin-menu">
+                    <a href="/buyer-login" className="mh-signin-item" onClick={() => setSigninOpen(false)}>
+                      <User size={17} style={{ color: '#dc2626', flexShrink: 0 }} />
+                      <span>
+                        <span className="mh-signin-item-t">I'm a Buyer</span>
+                        <span className="mh-signin-item-s">Save cars, alerts &amp; enquiries</span>
+                      </span>
+                    </a>
+                    <a href="/login" className="mh-signin-item" onClick={() => setSigninOpen(false)}>
+                      <Store size={17} style={{ color: '#dc2626', flexShrink: 0 }} />
+                      <span>
+                        <span className="mh-signin-item-t">I'm a Seller / Dealer</span>
+                        <span className="mh-signin-item-s">Access your dashboard</span>
+                      </span>
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
             <a href="/shiftos#pricing" className="mh-getstarted">Get Started <ArrowUpRight size={14} /></a>
             <button className="mh-burger" aria-label="Menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}>
               {menuOpen ? <X size={19} /> : <Menu size={19} />}
@@ -268,6 +345,9 @@ export default function MarketplaceHeader() {
           <a href="/marketplace?hot_deals=true" className="mh-m-link" style={{ color:'#ea580c' }} onClick={() => setMenuOpen(false)}>
             <span style={{ display:'flex', alignItems:'center', gap:10 }}><Flame size={17} /> Hot Deals</span>
           </a>
+          <Link to="/compare" className="mh-m-link" onClick={() => setMenuOpen(false)}>
+            <span style={{ display:'flex', alignItems:'center', gap:10 }}><GitCompare size={17} /> Compare Cars</span>
+          </Link>
           <button className="mh-m-link" onClick={() => { setMenuOpen(false); setSavedOpen(true); }}>
             <span style={{ display:'flex', alignItems:'center', gap:10, color: savedIds.size > 0 ? '#dc2626' : '#1f2733' }}>
               <Heart size={17} fill={savedIds.size > 0 ? '#dc2626' : 'none'} stroke="currentColor" /> Saved Cars {savedIds.size > 0 && `(${savedIds.size})`}
@@ -275,7 +355,20 @@ export default function MarketplaceHeader() {
           </button>
 
           <a href="/shiftos#pricing" className="mh-m-cta" onClick={() => setMenuOpen(false)}>Get Started <ArrowUpRight size={15} /></a>
-          <a href="/login" className="mh-m-signin" onClick={() => setMenuOpen(false)}>Sign In →</a>
+          {authLink ? (
+            <a href={authLink.to} className="mh-m-signin" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }} onClick={() => setMenuOpen(false)}>
+              <LayoutDashboard size={16} /> {authLink.label}
+            </a>
+          ) : (
+            <>
+              <a href="/buyer-login" className="mh-m-signin" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }} onClick={() => setMenuOpen(false)}>
+                <User size={16} /> Sign In as Buyer
+              </a>
+              <a href="/login" className="mh-m-signin" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }} onClick={() => setMenuOpen(false)}>
+                <Store size={16} /> Sign In as Seller / Dealer
+              </a>
+            </>
+          )}
         </div>
       </header>
       <SavedCarsPanel open={savedOpen} onClose={() => setSavedOpen(false)} />

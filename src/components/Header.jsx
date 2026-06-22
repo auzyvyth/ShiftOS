@@ -1,11 +1,18 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, MessageCircle, Sparkles, Crown } from "lucide-react";
+import { Menu, X, MessageCircle, Sparkles, Crown, ChevronDown, User, Store } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useSiteProfile } from "../hooks/useSiteProfile";
 import { supabase } from "../supabaseClient";
 import { isSubdomain } from "../hooks/useTenant";
+
+// Business roles → their panel. Anything else (a buyer session) → /account.
+const ROLE_ROUTES = {
+  superadmin: "/dashboard", dealer: "/dashboard", owner: "/dashboard",
+  manager: "/manager", salesman: "/salesman", accountant: "/accountant",
+  fi_officer: "/fi", admin: "/admin",
+};
 
 const HDR_CSS = `
 
@@ -121,6 +128,22 @@ const HDR_CSS = `
   .hdr-link:hover::after { left: 0; right: 0; }
   .hdr-link.active { color: #F0F0F0; }
   .hdr-link.active::after { left: 0; right: 0; }
+
+  /* ── Sign In buyer/seller dropdown ── */
+  .hdr-login-menu {
+    position: absolute; top: calc(100% + 14px); left: 50%; transform: translateX(-50%);
+    width: 252px; padding: 6px;
+    background: rgba(15,15,20,0.97);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 14px;
+    box-shadow: 0 18px 48px rgba(0,0,0,0.5);
+    display: flex; flex-direction: column; gap: 2px; z-index: 60;
+  }
+  .hdr-login-item { display: flex; align-items: center; gap: 11px; padding: 10px 11px; border-radius: 10px; text-decoration: none; transition: background .14s; }
+  .hdr-login-item:hover { background: rgba(255,255,255,0.06); }
+  .hdr-login-item-t { display: block; font-size: 13px; font-weight: 600; color: rgba(240,240,240,0.92); }
+  .hdr-login-item-s { display: block; font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 1px; }
 
   /* ── For Dealers pill ── */
   .hdr-dealer {
@@ -294,6 +317,8 @@ export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [authUser, setAuthUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
+  const [loginMenuOpen, setLoginMenuOpen] = useState(false);
+  const loginRef = useRef(null);
   const lastScrollY = useRef(0);
   const location = useLocation();
   const navigate = useNavigate();
@@ -323,6 +348,14 @@ export default function Header() {
     return () => window.removeEventListener("scroll", fn);
   }, []);
 
+  // Close the Sign In buyer/seller dropdown on outside click.
+  useEffect(() => {
+    if (!loginMenuOpen) return;
+    const h = (e) => { if (loginRef.current && !loginRef.current.contains(e.target)) setLoginMenuOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [loginMenuOpen]);
+
   useEffect(() => {
     const fetchRole = async (uid) => {
       const { data } = await supabase
@@ -351,7 +384,9 @@ export default function Header() {
   }, []);
 
   const isLoggedIn = !!authUser;
-  const dashboardPath = userRole === "salesman" ? "/salesman" : "/dashboard";
+  const businessRoute = userRole && ROLE_ROUTES[userRole];
+  const accountPath = businessRoute || "/account";
+  const accountLabel = businessRoute ? t("nav.dashboard") : "My Account";
   const toggleLang = () => i18n.changeLanguage(i18n.language.startsWith("en") ? "ms" : "en");
   const isEn = i18n.language.startsWith("en");
   const waHref = waUrl ? waUrl(`Hi ${siteName}, I need help finding a car`) : "#";
@@ -374,7 +409,7 @@ export default function Header() {
         { name: "For Dealers",       path: "/shiftos",       key: "dealers", isSpecial: true },
       ];
   if (isLoggedIn)
-    navLinks.push({ name: t("nav.dashboard"), path: dashboardPath, key: "dashboard" });
+    navLinks.push({ name: accountLabel, path: accountPath, key: "account" });
   else
     navLinks.push({ name: t("nav.login"), path: "/login", key: "login" });
 
@@ -443,7 +478,36 @@ export default function Header() {
           {/* Desktop nav */}
           <nav className="hdr-nav">
             {navLinks.map((link) =>
-              link.isSpecial ? (
+              link.key === "login" ? (
+                <div key={link.key} ref={loginRef} style={{ position: "relative" }}>
+                  <button
+                    className="hdr-link"
+                    onClick={() => setLoginMenuOpen((o) => !o)}
+                    style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 4 }}
+                  >
+                    {link.name}
+                    <ChevronDown size={13} style={{ transform: loginMenuOpen ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
+                  </button>
+                  {loginMenuOpen && (
+                    <div className="hdr-login-menu">
+                      <a href="/buyer-login" className="hdr-login-item" onClick={() => setLoginMenuOpen(false)}>
+                        <User size={16} style={{ color: "#F87171", flexShrink: 0 }} />
+                        <span>
+                          <span className="hdr-login-item-t">I'm a Buyer</span>
+                          <span className="hdr-login-item-s">Save cars, alerts &amp; enquiries</span>
+                        </span>
+                      </a>
+                      <a href="/login" className="hdr-login-item" onClick={() => setLoginMenuOpen(false)}>
+                        <Store size={16} style={{ color: "#F87171", flexShrink: 0 }} />
+                        <span>
+                          <span className="hdr-login-item-t">I'm a Seller / Dealer</span>
+                          <span className="hdr-login-item-s">Access your dashboard</span>
+                        </span>
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ) : link.isSpecial ? (
                 <Link key={link.key} to={link.path} className="hdr-dealer">
                   <Crown style={{ width: "10px", height: "10px", flexShrink: 0 }} />
                   {link.name}
@@ -528,7 +592,18 @@ export default function Header() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.035, ease: "easeOut" }}
                 >
-                  {link.path.includes("#") ? (
+                  {link.key === "login" ? (
+                    <>
+                      <Link to="/buyer-login" onClick={() => setMobileOpen(false)} className="hdr-mlink">
+                        <User style={{ width: "15px", height: "15px", flexShrink: 0 }} />
+                        <span style={{ flex: 1 }}>Sign In as Buyer</span>
+                      </Link>
+                      <Link to="/login" onClick={() => setMobileOpen(false)} className="hdr-mlink">
+                        <Store style={{ width: "15px", height: "15px", flexShrink: 0 }} />
+                        <span style={{ flex: 1 }}>Sign In as Seller / Dealer</span>
+                      </Link>
+                    </>
+                  ) : link.path.includes("#") ? (
                     <button
                       onClick={() => handleNav(link.path)}
                       className="hdr-mlink"

@@ -51,13 +51,13 @@ class TabErrorBoundary extends Component {
 // Horizontal sub-tab switcher used inside merged tabs (Analytics, Storefront).
 function SubTabBar({ tabs, active, onChange }) {
   return (
-    <div className="flex gap-1 mb-4" style={{ borderBottom: '1px solid #EAECF0' }}>
+    <div className="flex gap-1 mb-3" style={{ borderBottom: '1px solid #EAECF0' }}>
       {tabs.map((t) => (
         <button
           key={t.id}
           onClick={() => onChange(t.id)}
           style={{
-            padding: '8px 12px', fontSize: 13, fontWeight: 500,
+            padding: '6px 11px', fontSize: 12.5, fontWeight: 500,
             borderBottom: active === t.id ? '2px solid #DC2626' : '2px solid transparent',
             color: active === t.id ? '#DC2626' : '#9AA1AD',
             background: 'none', border: 'none',
@@ -318,7 +318,7 @@ const AgeBadge = React.memo(function AgeBadge({ createdAt }) {
       </span>
     );
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-400/10 text-blue-400 border border-blue-400/20">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-600 border border-red-500/25">
       <Clock className="w-3 h-3" />
       {d}d
     </span>
@@ -1082,30 +1082,28 @@ function SettingsTab({ profile, onProfileUpdate }) {
   };
 
   const saveDealership = async () => {
-    if (dealershipLocked) return;
-    if (!dealership.trim()) {
-      setErrors((p) => ({
-        ...p,
-        identity: "Dealership name cannot be empty.",
-      }));
+    // The name-change limit locks ONLY the name — brand colour, site name and
+    // subdomain stay freely saveable. Never write the dealership column when the
+    // name is locked or unchanged (touching it can trip the limit trigger).
+    if (!dealershipLocked && !dealership.trim()) {
+      setErrors((p) => ({ ...p, identity: "Dealership name cannot be empty." }));
       return;
     }
-    const dealershipChanged = dealership.trim() !== profile?.dealership;
+    const dealershipChanged = !dealershipLocked && dealership.trim() !== (profile?.dealership || "");
     const payload = {
-      dealership: dealership.trim(),
-      site_name: siteName.trim() || dealership.trim(),
+      site_name: siteName.trim() || (profile?.dealership || dealership.trim() || ""),
       brand_color: brandColor,
       subdomain,
+      ...(dealershipChanged && {
+        dealership: dealership.trim(),
+        dealership_change_count: changeCount + 1,
+        dealership_name_changed_at: new Date().toISOString(),
+      }),
       ...(subdomain !== profile?.subdomain && {
         subdomain_changed_at: new Date().toISOString(),
         previous_subdomain: profile?.subdomain,
       }),
     };
-    // Only count toward the change limit if the dealership name itself changed
-    if (dealershipChanged) {
-      payload.dealership_change_count = changeCount + 1;
-      payload.dealership_name_changed_at = new Date().toISOString();
-    }
     const ok = await saveSection("identity", payload);
     if (ok) {
       const changes = [];
@@ -1120,6 +1118,14 @@ function SettingsTab({ profile, onProfileUpdate }) {
       }
     }
   };
+
+  // Save enables on ANY single change (name OR site name OR colour OR subdomain) —
+  // a colour-only edit is enough, and the name lock no longer gates the button.
+  const identityDirty =
+    (!dealershipLocked && dealership.trim() !== (profile?.dealership || "")) ||
+    (siteName.trim() || "") !== (profile?.site_name || "") ||
+    (brandColor || "").toLowerCase() !== (profile?.brand_color || "#c9a84c").toLowerCase() ||
+    subdomain !== (profile?.subdomain || "");
 
   const saveContact = () =>
     saveSection("contact", {
@@ -1551,7 +1557,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
           <SaveBtn
             sectionKey="identity"
             onClick={saveDealership}
-            disabled={dealershipLocked || subdomainStatus === 'taken' || subdomainStatus === 'checking'}
+            disabled={!identityDirty || subdomainStatus === 'taken' || subdomainStatus === 'checking'}
             saving={saving}
             saved={saved}
           />
@@ -2631,7 +2637,6 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
 
   const [carStatsRows, setCarStatsRows] = useState([]);
   const [slugStatsRows, setSlugStatsRows] = useState([]);
-  const [dailyRows, setDailyRows] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   const [lpSearch, setLpSearch] = useState('');
   const [lpVisible, setLpVisible] = useState(20);
@@ -2642,40 +2647,12 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
     Promise.all([
       supabase.rpc("get_dealer_car_analytics", { p_dealer_id: dealerId }),
       supabase.rpc("get_dealer_slug_analytics", { p_dealer_id: dealerId }),
-      supabase.rpc("get_dealer_daily_analytics", { p_dealer_id: dealerId }),
-    ]).then(([carRes, slugRes, dailyRes]) => {
+    ]).then(([carRes, slugRes]) => {
       setCarStatsRows(carRes.data || []);
       setSlugStatsRows(slugRes.data || []);
-      setDailyRows(dailyRes.data || []);
       setEventsLoading(false);
     });
   }, [profile?.id]);
-
-  const totalClicks = carStatsRows.reduce((s, r) => s + (Number(r.views) || 0), 0);
-  const totalWa = carStatsRows.reduce((s, r) => s + (Number(r.whatsapp) || 0), 0);
-  const totalCalls = carStatsRows.reduce((s, r) => s + (Number(r.calls) || 0), 0);
-  const totalBookings = carStatsRows.reduce((s, r) => s + (Number(r.bookings) || 0), 0);
-  const storeVisits = dailyRows.reduce((s, r) => s + (Number(r.visits) || 0), 0);
-
-  const dailyChart = useMemo(() => {
-    const rowMap = {};
-    dailyRows.forEach(r => { rowMap[r.date] = r; });
-    const now = new Date();
-    return Array.from({ length: 30 }, (_, i) => {
-      const d = new Date(now);
-      d.setDate(d.getDate() - (29 - i));
-      const dateStr = d.toISOString().slice(0, 10);
-      const r = rowMap[dateStr] || {};
-      return {
-        date:     d.toLocaleDateString('en-MY', { day: 'numeric', month: 'short' }),
-        visits:   Number(r.visits)   || 0,
-        clicks:   Number(r.clicks)   || 0,
-        whatsapp: Number(r.whatsapp) || 0,
-        calls:    Number(r.calls)    || 0,
-        bookings: Number(r.bookings) || 0,
-      };
-    });
-  }, [dailyRows]);
 
   const carStatsMap = useMemo(() => {
     const map = {};
@@ -2877,140 +2854,6 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
           </div>
         ))}
       </div>
-      <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
-        {/* Header + summary pills */}
-        <div className="flex items-center justify-between p-4 flex-wrap gap-3" style={T.divider}>
-          <div>
-            <h2 className="font-semibold text-gray-900 text-sm">Engagement Overview</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Last 30 days · drag the range slider to zoom into any period</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { label: 'Page Visits', val: storeVisits,   color: '#94a3b8' },
-              { label: 'Clicks',      val: totalClicks,   color: '#67e8f9' },
-              { label: 'WhatsApp',    val: totalWa,       color: '#4ade80' },
-              { label: 'Bookings',    val: totalBookings, color: '#fbbf24' },
-              { label: 'Calls',       val: totalCalls,    color: '#c084fc' },
-            ].map(({ label, val, color }) => (
-              <div key={label}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-                style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}
-              >
-                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-                <span className="text-xs text-gray-500">{label}</span>
-                <span className="text-xs font-bold text-gray-900 tabular-nums">
-                  {eventsLoading ? '…' : val}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-        {/* Chart */}
-        <div className="p-4 pt-2">
-          {eventsLoading ? (
-            <div className="flex items-center justify-center h-52 text-gray-600 text-sm">Loading chart…</div>
-          ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={dailyChart} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 10, fill: '#6b7280' }}
-                  axisLine={false}
-                  tickLine={false}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  allowDecimals={false}
-                  tick={{ fontSize: 10, fill: '#4b5563' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: '#fff',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 8,
-                    fontFamily: "'DM Sans', sans-serif",
-                    fontSize: 12,
-                  }}
-                  itemStyle={{ color: '#111827' }}
-                  labelStyle={{ color: '#6b7280', marginBottom: 4 }}
-                  cursor={{ stroke: 'rgba(59,130,246,0.2)', strokeWidth: 1 }}
-                />
-                <Legend
-                  iconType="circle"
-                  iconSize={6}
-                  wrapperStyle={{ fontSize: 11, color: '#6b7280', paddingTop: 8 }}
-                />
-                <Brush
-                  dataKey="date"
-                  height={20}
-                  stroke="rgba(59,130,246,0.3)"
-                  fill="rgba(59,130,246,0.05)"
-                  travellerWidth={6}
-                  startIndex={Math.max(0, dailyChart.length - 14)}
-                />
-                <Line type="monotone" dataKey="visits"   stroke="#94a3b8" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-                <Line type="monotone" dataKey="clicks"   stroke="#67e8f9" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-                <Line type="monotone" dataKey="whatsapp" stroke="#4ade80" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-                <Line type="monotone" dataKey="bookings" stroke="#fbbf24" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-                <Line type="monotone" dataKey="calls"    stroke="#c084fc" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
-      {topSalesmen.length > 0 && (
-        <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
-          <div className="flex items-center gap-2 p-4" style={T.divider}>
-            <BarChart2 className="w-4 h-4 text-blue-400" />
-            <p className="font-semibold text-gray-900 text-sm">
-              Salesman Performance
-            </p>
-          </div>
-          <div className="divide-y divide-gray-100">
-            {topSalesmen.map(([slug, { clicks, whatsapp }], i) => (
-              <div key={slug} className="flex items-center gap-3 px-4 py-3">
-                <span className="text-xs text-gray-400 w-4 tabular-nums">
-                  {i + 1}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-gray-900 text-sm font-medium truncate">
-                    /{slug}
-                  </p>
-                  <div className="flex items-center gap-3 mt-0.5">
-                    <span className="text-xs text-gray-500">
-                      <span className="text-sky-400 font-semibold">
-                        {clicks}
-                      </span>{" "}
-                      clicks
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      <span className="text-green-400 font-semibold">
-                        {whatsapp}
-                      </span>{" "}
-                      whatsapp
-                    </span>
-                  </div>
-                </div>
-                {whatsapp > 0 && (
-                  <span
-                    className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
-                    style={{
-                      background: "rgba(74,222,128,0.1)",
-                      border: "1px solid rgba(74,222,128,0.2)",
-                      color: "#4ade80",
-                    }}
-                  >
-                    Active
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
       {(() => {
         const visibleStale = stale.filter(l => !(adjustedStaleIds || new Set()).has(l.id));
         const adjustedStale = stale.filter(l => (adjustedStaleIds || new Set()).has(l.id));
@@ -3288,7 +3131,14 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                               }
                               <div style={{ minWidth:0 }}>
                                 <p style={{ fontSize:13, fontWeight:700, color:'#111827', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
-                                  {l.brand} {l.model}
+                                  {l.slug ? (
+                                    <a href={`/cars/${l.slug}`} target="_blank" rel="noopener noreferrer"
+                                       style={{ color:'inherit', textDecoration:'none', cursor:'pointer' }}
+                                       onMouseEnter={e => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.textDecoration = 'underline'; }}
+                                       onMouseLeave={e => { e.currentTarget.style.color = 'inherit'; e.currentTarget.style.textDecoration = 'none'; }}>
+                                      {l.brand} {l.model}
+                                    </a>
+                                  ) : (<>{l.brand} {l.model}</>)}
                                 </p>
                                 <p style={{ fontSize:11, color:'#4b5563', margin:'2px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                                   {l.variant || l.year || '—'}
@@ -3384,7 +3234,15 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                           <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:6 }}>
                             <div style={{ minWidth:0 }}>
                               <p style={{ fontSize:13, fontWeight:800, color:'#111827', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
-                                <span style={{ color:'#9ca3af', fontWeight:700 }}>{i + 1}.</span> {l.brand} {l.model}
+                                <span style={{ color:'#9ca3af', fontWeight:700 }}>{i + 1}.</span>{' '}
+                                {l.slug ? (
+                                  <a href={`/cars/${l.slug}`} target="_blank" rel="noopener noreferrer"
+                                     style={{ color:'inherit', textDecoration:'none', cursor:'pointer' }}
+                                     onMouseEnter={e => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.textDecoration = 'underline'; }}
+                                     onMouseLeave={e => { e.currentTarget.style.color = 'inherit'; e.currentTarget.style.textDecoration = 'none'; }}>
+                                    {l.brand} {l.model}
+                                  </a>
+                                ) : (<>{l.brand} {l.model}</>)}
                               </p>
                               <p style={{ fontSize:11, color:'#4b5563', margin:'1px 0 0' }}>
                                 {l.variant || l.year || '—'}
@@ -3921,6 +3779,10 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const [commissionApproveTarget, setCommissionApproveTarget] = useState(null); // salesman id
   const [commissionPayTarget, setCommissionPayTarget] = useState(null);
   const [commissionWorking, setCommissionWorking] = useState(false);
+  const [assignedMap, setAssignedMap] = useState({}); // salesmanId -> [cars locked to them]
+  const [openCars, setOpenCars] = useState([]);        // unassigned, unsold cars (assignable pool)
+  const [assignPickerFor, setAssignPickerFor] = useState(null); // salesman id whose picker is open
+  const [assignWorking, setAssignWorking] = useState(null);     // listing id mid-mutation
 
   const fetchAnalytics = async () => {
     if (!dealerId) return;
@@ -3984,6 +3846,63 @@ function TeamTab({ managerDealership, dealerId, profile }) {
     setActivityCountMap(counts);
   };
 
+  // Assigned-cars (exclusivity lock) per salesman. Sold units keep assigned_to as
+  // the closer, but "responsibility" only means live inventory, so sold is excluded.
+  const fetchAssignedCars = async () => {
+    if (!dealerId) return;
+    const { data } = await supabase
+      .from("car_listings")
+      .select("id, brand, model, year, status, assigned_to")
+      .eq("dealer_id", dealerId)
+      .neq("status", "sold");
+    if (!data) return;
+    const map = {};
+    const open = [];
+    data.forEach((c) => {
+      if (c.assigned_to) (map[c.assigned_to] ||= []).push(c);
+      else open.push(c);
+    });
+    const byName = (a, b) =>
+      (a.brand || "").localeCompare(b.brand || "") || (a.model || "").localeCompare(b.model || "");
+    Object.values(map).forEach((arr) => arr.sort(byName));
+    open.sort(byName);
+    setAssignedMap(map);
+    setOpenCars(open);
+  };
+
+  // Mirror of the dealer-dash handleAssign exclusivity rule: locking a car to a rep
+  // evicts every OTHER salesman's salesman_listings feature of it (retroactive lock).
+  const handleAssignCar = async (listingId, salesmanId, name) => {
+    setAssignWorking(listingId);
+    const car = openCars.find((c) => c.id === listingId);
+    const { error } = await supabase
+      .from("car_listings")
+      .update({ assigned_to: salesmanId })
+      .eq("id", listingId);
+    if (!error) {
+      await supabase.from("salesman_listings").delete()
+        .eq("listing_id", listingId).neq("salesman_id", salesmanId);
+      logActivity({ dealerId, actor: profile, tableName: 'car_listings', recordId: listingId, action: 'assigned', summary: `Assigned to ${name} — ${car?.brand || ''} ${car?.model || ''} ${car?.year || ''}`.trim(), fieldChanges: { assigned_to: { to: name } } });
+      await fetchAssignedCars();
+    }
+    setAssignWorking(null);
+    setAssignPickerFor(null);
+  };
+
+  const handleUnassignCar = async (listingId) => {
+    setAssignWorking(listingId);
+    const car = Object.values(assignedMap).flat().find((c) => c.id === listingId);
+    const { error } = await supabase
+      .from("car_listings")
+      .update({ assigned_to: null })
+      .eq("id", listingId);
+    if (!error) {
+      logActivity({ dealerId, actor: profile, tableName: 'car_listings', recordId: listingId, action: 'unassigned', summary: `Unassigned — ${car?.brand || ''} ${car?.model || ''} ${car?.year || ''}`.trim() });
+      await fetchAssignedCars();
+    }
+    setAssignWorking(null);
+  };
+
   const handleApproveCommission = async (salesmanId) => {
     setCommissionWorking(true);
     const { error } = await supabase
@@ -4025,6 +3944,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
     fetchAnalytics();
     fetchSoldPerSalesman();
     fetchLastActivity();
+    fetchAssignedCars();
   }, [managerDealership, dealerId]); // dealerId must be here — fetchSold* guard on it
 
   useEffect(() => {
@@ -4043,7 +3963,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "car_listings", filter: `dealer_id=eq.${dealerId}` },
-        () => { fetchSold(); fetchSoldPerSalesman(); },
+        () => { fetchSold(); fetchSoldPerSalesman(); fetchAssignedCars(); },
       )
       .subscribe();
     return () => supabase.removeChannel(ch);
@@ -4400,6 +4320,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                 { bg: 'rgba(148,163,184,0.10)', color: '#94a3b8', border: 'rgba(148,163,184,0.18)' },
                 { bg: 'rgba(180,83,9,0.12)', color: '#f97316', border: 'rgba(180,83,9,0.20)' },
               ];
+              const canAssign = ['owner', 'dealer', 'superadmin', 'manager'].includes(profile?.role);
               return (
                 <>
                   {leaderboard && (
@@ -4562,6 +4483,73 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                               </p>
                             </div>
                           ))}
+                        </div>
+                        {/* Assigned cars — exclusivity lock. Shows which units this rep
+                            is solely responsible for (commission locked to them). */}
+                        <div style={{ marginTop: 10 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
+                            <p style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>
+                              Assigned cars ({(assignedMap[s.id] || []).length})
+                            </p>
+                            {canAssign && (
+                              <button
+                                onClick={() => setAssignPickerFor(assignPickerFor === s.id ? null : s.id)}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer' }}
+                              >
+                                <PlusCircle style={{ width: 13, height: 13 }} />
+                                {assignPickerFor === s.id ? 'Close' : 'Assign'}
+                              </button>
+                            )}
+                          </div>
+                          {(assignedMap[s.id] || []).length > 0 ? (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                              {(assignedMap[s.id] || []).map((c) => (
+                                <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600, color: '#374151', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '3px 8px' }}>
+                                  <Lock style={{ width: 10, height: 10, color: '#9ca3af', flexShrink: 0 }} />
+                                  <span>{c.brand} {c.model}{c.year ? ` · ${c.year}` : ''}</span>
+                                  {c.status === 'reserved' && (
+                                    <span style={{ fontSize: 9, fontWeight: 800, color: '#d97706', letterSpacing: '0.04em' }}>RESERVED</span>
+                                  )}
+                                  {canAssign && (
+                                    <button
+                                      onClick={() => handleUnassignCar(c.id)}
+                                      disabled={assignWorking === c.id}
+                                      title="Unassign"
+                                      style={{ display: 'inline-flex', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#9ca3af', opacity: assignWorking === c.id ? 0.4 : 1 }}
+                                    >
+                                      <X style={{ width: 11, height: 11 }} />
+                                    </button>
+                                  )}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p style={{ fontSize: 11, color: '#9ca3af', margin: 0 }}>No cars locked to this rep.</p>
+                          )}
+                          {canAssign && assignPickerFor === s.id && (
+                            <div style={{ marginTop: 8, border: '1px solid #e5e7eb', borderRadius: 8, maxHeight: 180, overflowY: 'auto', background: '#fff' }}>
+                              {openCars.length === 0 ? (
+                                <p style={{ fontSize: 11, color: '#9ca3af', padding: '10px 12px', margin: 0 }}>No open cars to assign.</p>
+                              ) : (
+                                openCars.map((c) => (
+                                  <button
+                                    key={c.id}
+                                    onClick={() => handleAssignCar(c.id, s.id, s.full_name)}
+                                    disabled={assignWorking === c.id}
+                                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'none', border: 'none', borderBottom: '1px solid #f3f4f6', color: '#374151', fontSize: 12, cursor: 'pointer', textAlign: 'left' }}
+                                  >
+                                    <Car style={{ width: 12, height: 12, color: '#9ca3af', flexShrink: 0 }} />
+                                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {c.brand} {c.model}{c.year ? ` · ${c.year}` : ''}
+                                    </span>
+                                    {c.status === 'reserved' && (
+                                      <span style={{ fontSize: 9, fontWeight: 800, color: '#d97706', flexShrink: 0 }}>RESERVED</span>
+                                    )}
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          )}
                         </div>
                       </>
                     ) : (
@@ -5793,7 +5781,106 @@ const STOCK_SORT_OPTIONS = [
   { value: 'profit_asc',  label: 'Profit low→high' },
   { value: 'days_desc',   label: 'Longest in stock' },
 ];
-const StockTab = React.memo(function StockTab({ userId, listings, profile, onPublishComplete }) {
+
+// Shared stock P&L math — used by StockTab.netProfit AND the compact stats strip on
+// the Listings tab, so both show the same figure as the per-unit P&L modal.
+function stockCostBasis(u) {
+  if (Number(u.purchase_price) > 0) return Number(u.purchase_price);
+  return Number(u.car_listings?.base_price) || 0;
+}
+function stockNetProfit(u, ctx = {}) {
+  const { cfg = {}, ads = {}, handover = {}, addRev = {}, addCost = {} } = ctx;
+  const cost = stockCostBasis(u);
+  const c = u.car_listings || {};
+  const isSold = u.status === 'sold';
+  const revenue = isSold ? (Number(u.sold_price) || 0) : (Number(u.asking_price) || Number(c.selling_price) || 0);
+  if (revenue === 0 && cost === 0) return null;
+  if (isSold && !u.sold_price && cost === 0) return null;
+  const recon = Number(u.recon_cost) || 0;
+  const services = Number(c.included_services_cost) || 0;
+  const commission = Number(c.commission_amount) || 0;
+  const adSpend = ads[u.id] || 0;
+  const hc = handover[u.listing_id] || 0;
+  const aR = addRev[u.listing_id] || 0;
+  const aC = addCost[u.listing_id] || 0;
+  let dailyHold = 0;
+  if (Number(cfg.floor_plan_rate) > 0 && cost > 0) dailyHold = cost * (Number(cfg.floor_plan_rate) / 100) / 365;
+  else if (Number(cfg.monthly_overhead) > 0) dailyHold = Number(cfg.monthly_overhead) / Math.max(1, Number(cfg.avg_fleet_size) || 20) / 30;
+  const start = u.purchase_date || u.created_at;
+  const end = isSold && u.sold_date ? new Date(u.sold_date) : new Date();
+  const days = start ? Math.max(0, Math.floor((end - new Date(start)) / 86400000)) : 0;
+  const holding = Math.round(dailyHold * days);
+  const front = revenue - (cost + recon + services + commission + holding + adSpend + hc);
+  return front + (aR - aC);
+}
+function stockDays(u) {
+  if (u.days_in_stock != null && u.days_in_stock > 0) return u.days_in_stock;
+  const date = u.purchase_date || u.created_at;
+  if (!date) return null;
+  return Math.floor((Date.now() - new Date(date)) / 86400000);
+}
+
+// Compact 6-stat strip surfaced atop the Listings tab (migrated from the Stock tab
+// header). Fetches stock_units + cost components once and reuses the shared P&L math.
+function StockStatsStrip({ dealerId }) {
+  const [s, setS] = useState(null);
+  useEffect(() => {
+    if (!dealerId) return;
+    let cancelled = false;
+    (async () => {
+      const [u, cfg, ads, tasks, dp] = await Promise.all([
+        supabase.from('stock_units').select('*, car_listings(selling_price, base_price, included_services_cost, commission_amount, sold_price, sold_date, status)').eq('dealer_id', dealerId),
+        supabase.from('dealer_cost_settings').select('*').eq('dealer_id', dealerId).maybeSingle(),
+        supabase.from('ad_spend').select('stock_unit_id, amount').eq('dealer_id', dealerId),
+        supabase.from('post_sale_tasks').select('listing_id, status, cost').eq('dealer_id', dealerId),
+        supabase.from('deal_products').select('listing_id, sold_price, dealer_products(cost_price)').eq('dealer_id', dealerId),
+      ]);
+      if (cancelled) return;
+      const units = u.data || [];
+      const a = {}; (ads.data || []).forEach(r => { if (r.stock_unit_id) a[r.stock_unit_id] = (a[r.stock_unit_id] || 0) + (Number(r.amount) || 0); });
+      const h = {}; (tasks.data || []).forEach(t => { if (t.status !== 'na' && t.listing_id) h[t.listing_id] = (h[t.listing_id] || 0) + (Number(t.cost) || 0); });
+      const ar = {}; const ac = {};
+      (dp.data || []).forEach(d => { if (d.listing_id) { ar[d.listing_id] = (ar[d.listing_id] || 0) + (Number(d.sold_price) || 0); ac[d.listing_id] = (ac[d.listing_id] || 0) + (Number(d.dealer_products?.cost_price) || 0); } });
+      const ctx = { cfg: cfg.data || {}, ads: a, handover: h, addRev: ar, addCost: ac };
+      const now = new Date();
+      const active = units.filter(x => x.status !== 'sold');
+      const sold = units.filter(x => x.status === 'sold');
+      const month = sold.filter(x => { if (!x.sold_date) return false; const d = new Date(x.sold_date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
+      const withDays = active.map(stockDays).filter(d => typeof d === 'number');
+      setS({
+        soldRevenue: sold.reduce((t, x) => t + (Number(x.sold_price) || Number(x.asking_price) || 0), 0),
+        stockValue: active.reduce((t, x) => t + (Number(x.asking_price) || 0), 0),
+        avgDays: withDays.length ? Math.round(withDays.reduce((t, d) => t + d, 0) / withDays.length) : 0,
+        gpMonth: month.reduce((t, x) => t + (stockNetProfit(x, ctx) || 0), 0),
+        soldMonth: month.length,
+        aging: active.filter(x => { const d = stockDays(x); return typeof d === 'number' && d > 60; }).length,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [dealerId]);
+
+  const rm = (n) => 'RM ' + Math.round(Number(n || 0)).toLocaleString('en-MY');
+  const items = s ? [
+    { label: 'Revenue (sold)', val: rm(s.soldRevenue) },
+    { label: 'Stock Value', val: rm(s.stockValue) },
+    { label: 'Avg Days', val: String(s.avgDays) },
+    { label: 'GP (month)', val: rm(s.gpMonth), color: s.gpMonth >= 0 ? '#16a34a' : '#dc2626' },
+    { label: 'Sold (month)', val: String(s.soldMonth) },
+    { label: 'Aging 60d+', val: String(s.aging), color: s.aging > 0 ? '#dc2626' : undefined },
+  ] : Array.from({ length: 6 }, () => ({}));
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))', gap: 8, marginBottom: 24 }}>
+      {items.map((it, i) => (
+        <div key={i} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }}>
+          <p style={{ fontSize: 9, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.label || ''}</p>
+          <p style={{ fontSize: 15, fontWeight: 700, color: it.color || '#111827', margin: '2px 0 0', whiteSpace: 'nowrap' }}>{it.val ?? '—'}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+const StockTab = React.memo(function StockTab({ userId, listings, profile, onPublishComplete, autoTool, onToolHandled }) {
   const navigate = useNavigate();
   const { can } = usePermissions(profile);
   const [units, setUnits] = useState([]);
@@ -5923,7 +6010,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     setLoading(true);
     const { data, error } = await supabase
       .from('stock_units')
-      .select('*, car_listings(brand, model, variant, year, plate_number, base_price, selling_price, purchase_price, recon_cost, gross_profit, days_in_stock, sold_price, sold_date, status, images, mileage, transmission, fuel_type, body_type, colour, engine_cc, condition, vin_number, registration_date, previous_owners, road_tax_expiry, warranty_months, is_recon, auction_grade, interior_grade, import_country, commission_amount)')
+      .select('*, car_listings(brand, model, variant, year, plate_number, base_price, selling_price, purchase_price, recon_cost, gross_profit, days_in_stock, sold_price, sold_date, status, images, mileage, transmission, fuel_type, body_type, colour, engine_cc, condition, vin_number, registration_date, previous_owners, road_tax_expiry, warranty_months, is_recon, auction_grade, interior_grade, import_country, commission_amount, included_services_cost)')
       .eq('dealer_id', userId)
       .order('created_at', { ascending: false });
     if (error) console.error('[StockTab] fetchUnits error:', error.message, error);
@@ -5933,12 +6020,45 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
 
   useEffect(() => { if (userId) fetchUnits(); }, [userId]);
 
+  // Open the tool requested from the Listings "Tools" dropdown, then clear the signal.
+  useEffect(() => {
+    if (!autoTool) return;
+    if (autoTool === 'csv') { setShowCsvImport(true); setCsvRows([]); setCsvError(''); }
+    else if (autoTool === 'vendors') { setShowVendors(true); fetchVendors(); }
+    else if (autoTool === 'add') { setShowAdd(true); }
+    onToolHandled?.();
+  }, [autoTool]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Dealer cost-floor settings → holding cost in P&L (DMS-4)
   const [costCfg, setCostCfg] = useState(null);
   useEffect(() => {
     if (!userId) return;
     supabase.from('dealer_cost_settings').select('*').eq('dealer_id', userId).maybeSingle()
       .then(({ data }) => setCostCfg(data || {}));
+  }, [userId]);
+
+  // Extra cost components so the list-level net P&L (loss flag + row badge) matches
+  // the full per-unit P&L modal: ad spend (per stock unit), handover processing
+  // (per listing), and F&I back-end (per listing). Without these the inline gross
+  // was rosy — a 0-margin car with recon/ads/holding never tripped the loss filter.
+  const [costExtras, setCostExtras] = useState({ ads: {}, handover: {}, addRev: {}, addCost: {} });
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      const [ads, tasks, dp] = await Promise.all([
+        supabase.from('ad_spend').select('stock_unit_id, amount').eq('dealer_id', userId),
+        supabase.from('post_sale_tasks').select('listing_id, status, cost').eq('dealer_id', userId),
+        supabase.from('deal_products').select('listing_id, sold_price, dealer_products(cost_price)').eq('dealer_id', userId),
+      ]);
+      if (cancelled) return;
+      const a = {}; (ads.data || []).forEach(r => { if (r.stock_unit_id) a[r.stock_unit_id] = (a[r.stock_unit_id] || 0) + (Number(r.amount) || 0); });
+      const h = {}; (tasks.data || []).forEach(t => { if (t.status !== 'na' && t.listing_id) h[t.listing_id] = (h[t.listing_id] || 0) + (Number(t.cost) || 0); });
+      const ar = {}; const ac = {};
+      (dp.data || []).forEach(d => { if (d.listing_id) { ar[d.listing_id] = (ar[d.listing_id] || 0) + (Number(d.sold_price) || 0); ac[d.listing_id] = (ac[d.listing_id] || 0) + (Number(d.dealer_products?.cost_price) || 0); } });
+      setCostExtras({ ads: a, handover: h, addRev: ar, addCost: ac });
+    })();
+    return () => { cancelled = true; };
   }, [userId]);
 
   const daysInStock = (u) => {
@@ -5953,17 +6073,14 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     return Number(u.car_listings?.base_price) || 0;
   };
 
-  // Available units: potential GP at asking price. Sold units: actual GP at sold price.
-  const grossProfit = (u) => {
-    const cost = costBasis(u);
-    if (u.status === 'sold') {
-      if (!u.sold_price && cost === 0) return null;
-      return (Number(u.sold_price) || 0) - cost - (Number(u.recon_cost) || 0);
-    }
-    const revenue = Number(u.asking_price) || Number(u.car_listings?.selling_price) || 0;
-    if (revenue === 0 && cost === 0) return null;
-    return revenue - cost - (Number(u.recon_cost) || 0);
-  };
+  // True net P&L for the list view — mirrors the per-unit P&L modal (recon, included
+  // services, commission, handover, holding, ad spend, F&I back-end). Drives the
+  // "In loss" filter, the row Net badge and the Listings stats strip via one shared
+  // helper so all three agree.
+  const netProfit = (u) => stockNetProfit(u, {
+    cfg: costCfg, ads: costExtras.ads, handover: costExtras.handover,
+    addRev: costExtras.addRev, addCost: costExtras.addCost,
+  });
 
   // Predicates for the quick-filter chips (each returns true = unit matches the filter)
   const stockFilterFns = {
@@ -5975,7 +6092,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     under_hp:    u => (u.encumbrance_status || 'unknown') === 'under_hp',
     enc_unknown: u => (u.encumbrance_status || 'unknown') === 'unknown',
     aging:       u => u.status === 'in_stock' && typeof daysInStock(u) === 'number' && daysInStock(u) > 60,
-    loss:        u => { const g = grossProfit(u); return g != null && g < 0; },
+    loss:        u => { const g = netProfit(u); return g != null && g < 0; },
   };
   // Apply text search + active chip filters + sort to a list of units
   const applyStockFilters = (list) => {
@@ -6001,8 +6118,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
         price_asc:   (a, b) => priceOf(a) - priceOf(b),
         year_desc:   (a, b) => yearOf(b) - yearOf(a),
         year_asc:    (a, b) => yearOf(a) - yearOf(b),
-        profit_desc: (a, b) => (grossProfit(b) || 0) - (grossProfit(a) || 0),
-        profit_asc:  (a, b) => (grossProfit(a) || 0) - (grossProfit(b) || 0),
+        profit_desc: (a, b) => (netProfit(b) || 0) - (netProfit(a) || 0),
+        profit_asc:  (a, b) => (netProfit(a) || 0) - (netProfit(b) || 0),
         days_desc:   (a, b) => daysOf(b) - daysOf(a),
       };
       if (sorters[stockSort]) out = [...out].sort(sorters[stockSort]);
@@ -6020,7 +6137,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
 
-  const totalGP = thisMonth.reduce((s, u) => s + (grossProfit(u) || 0), 0);
+  const totalGP = thisMonth.reduce((s, u) => s + (netProfit(u) || 0), 0);
   const totalValue = activeUnits.reduce((s, u) => s + (Number(u.asking_price) || 0), 0);
   // Revenue = realised sale price across all sold units (fall back to asking if a
   // pipeline-close didn't stamp a sold_price).
@@ -6084,15 +6201,18 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     setSoldSaving(false);
   };
 
-  // HP-3: PUSPAKOM B7 helpers (cert valid 3 months)
+  // HP-3: PUSPAKOM B7 (hire-purchase inspection) — valid 30 days from inspection.
+  // Show the inspection date WITH YEAR so a 2024/2025 cert is obviously stale, and
+  // flag expired (red) / expiring (amber) loudly rather than a silent number.
   const puspakomStatus = (date) => {
     if (!date) return { label: 'B7 missing', color: '#6b7280', urgent: false };
     const issued = new Date(date);
-    const expires = new Date(issued); expires.setMonth(expires.getMonth() + 3);
+    const d = issued.toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' });
+    const expires = new Date(issued); expires.setDate(expires.getDate() + 30);
     const daysLeft = Math.floor((expires - Date.now()) / 86400000);
-    if (daysLeft < 0)  return { label: `B7 expired ${-daysLeft}d ago`, color: '#ef4444', urgent: true };
-    if (daysLeft <= 14) return { label: `B7 expires in ${daysLeft}d`,   color: '#f59e0b', urgent: true };
-    return { label: `B7 valid ${daysLeft}d`, color: '#22c55e', urgent: false };
+    if (daysLeft < 0)  return { label: `B7 expired · ${d}`, color: '#ef4444', urgent: true };
+    if (daysLeft <= 7) return { label: `B7 expires in ${daysLeft}d · ${d}`, color: '#f59e0b', urgent: true };
+    return { label: `B7 valid ${daysLeft}d · ${d}`, color: '#22c55e', urgent: false };
   };
   const handleUpdatePuspakom = async (unit) => {
     const current = unit.puspakom_b7_date || '';
@@ -6111,10 +6231,16 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     toast.success('PUSPAKOM B7 updated');
   };
 
-  // ENT-1: PUSPAKOM B5 helpers (chassis inspection, no expiry)
+  // ENT-1: PUSPAKOM B5 (ownership-transfer inspection) — no hard expiry, but a cert
+  // older than ~12 months usually needs re-inspection before JPJ transfer, so show
+  // the full date WITH YEAR and flag a stale one (amber) instead of a bare "done".
   const b5Status = (date) => {
     if (!date) return { label: 'B5 missing', color: '#6b7280' };
-    return { label: `B5 done ${new Date(date).toLocaleDateString('en-MY', { day:'2-digit', month:'short' })}`, color: '#22c55e' };
+    const dt = new Date(date);
+    const d = dt.toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' });
+    const months = Math.floor((Date.now() - dt) / (30 * 86400000));
+    if (months >= 12) return { label: `B5 ${d} · stale`, color: '#f59e0b' };
+    return { label: `B5 ${d}`, color: '#22c55e' };
   };
   const handleUpdateB5 = async (unit) => {
     const current = unit.puspakom_b5_date || '';
@@ -6419,11 +6545,14 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     setHistoryUnit(unit);
     setHistoryLogs([]);
     setHistoryLoading(true);
+    // A car's history is split across two record ids: the stock_unit (cost, sold,
+    // compliance) and the linked car_listing (creation, price, status). Pull both
+    // so the timeline is the full story, not half of it.
     const { data } = await supabase
       .from('activity_log')
       .select('actor_name, actor_role, action, summary, created_at')
       .eq('dealer_id', userId)
-      .eq('record_id', unit.id)
+      .in('record_id', [unit.id, unit.listing_id].filter(Boolean))
       .order('created_at', { ascending: false })
       .limit(50);
     setHistoryLogs(data || []);
@@ -6602,7 +6731,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                 ) : visibleUnits.map(u => {
                   const car = u.car_listings || { brand: u.brand, model: u.model, year: u.year, plate_number: u.registration_number };
                   const thumb = u.car_listings?.images?.[0] || null;
-                  const gp = grossProfit(u);
+                  const gp = netProfit(u);
                   const days = daysInStock(u);
                   const daysNum = typeof days === 'number' ? days : 0;
                   const isAging = u.status === 'in_stock' && daysNum > 60;
@@ -6674,14 +6803,14 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                         {/* Status badges */}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
                           {u.status === 'in_stock' && <>
-                            <span title="PUSPAKOM B7 roadworthiness cert — tap the card to update" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${ps.color}15`, border: `1px solid ${ps.color}30`, color: ps.color }}>{ps.label}</span>
-                            <span title="PUSPAKOM B5 ownership transfer cert" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${b5.color}15`, border: `1px solid ${b5.color}30`, color: b5.color }}>{b5.label}</span>
+                            <span title="PUSPAKOM B7 — hire-purchase inspection, valid 30 days from the inspection date. Tap the card to update." style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${ps.color}15`, border: `1px solid ${ps.color}30`, color: ps.color }}>{ps.label}</span>
+                            <span title="PUSPAKOM B5 — ownership-transfer inspection (no hard expiry; re-inspect if older than ~12 months). Tap the card to update." style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${b5.color}15`, border: `1px solid ${b5.color}30`, color: b5.color }}>{b5.label}</span>
                             <span title="Hire-purchase / loan encumbrance" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${enc.color}15`, border: `1px solid ${enc.color}30`, color: enc.color }}>{enc.label}</span>
                             {isUnpublished && <span title="Not visible on the public marketplace" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: '#fffbeb', border: '1px solid #fde68a', color: '#b45309' }}>Not published</span>}
                           </>}
                           {can('view_gross') && gp != null && (
-                            <span title="Estimated gross profit" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: gp >= 0 ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.1)', border: `1px solid ${gp >= 0 ? '#6ee7b7' : '#fca5a5'}`, color: gp >= 0 ? '#059669' : '#dc2626' }}>
-                              GP {gp >= 0 ? '+' : '−'}RM {Math.abs(gp).toLocaleString()}
+                            <span title="Net profit after recon, services, commission, ad spend and holding" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: gp >= 0 ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.1)', border: `1px solid ${gp >= 0 ? '#6ee7b7' : '#fca5a5'}`, color: gp >= 0 ? '#059669' : '#dc2626' }}>
+                              Net {gp >= 0 ? '+' : '−'}RM {Math.abs(gp).toLocaleString()}
                             </span>
                           )}
                         </div>
@@ -6712,7 +6841,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
         const car = u.car_listings || { brand: u.brand, model: u.model, year: u.year, plate_number: u.registration_number };
         const thumb = u.car_listings?.images?.[0] || null;
         const plate = car.plate_number || u.registration_number;
-        const gp = grossProfit(u);
+        const gp = netProfit(u);
         const days = daysInStock(u);
         const daysNum = typeof days === 'number' ? days : 0;
         const isAging = u.status === 'in_stock' && daysNum > 60;
@@ -6812,7 +6941,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                 {[
                   { label: 'Asking',   val: u.asking_price ? `RM ${Number(u.asking_price).toLocaleString()}` : '—', color: '#111827' },
                   can('view_cost')  ? { label: 'Cost',    val: costBasis(u) > 0 ? `RM ${costBasis(u).toLocaleString()}` : '—', color: '#374151' } : null,
-                  can('view_gross') ? { label: 'Est. GP', val: gp != null ? `${gp >= 0 ? '+' : '−'}RM ${Math.abs(gp).toLocaleString()}` : '—', color: gp == null ? '#9ca3af' : gp >= 0 ? '#059669' : '#dc2626' } : null,
+                  can('view_gross') ? { label: 'Net P&L', val: gp != null ? `${gp >= 0 ? '+' : '−'}RM ${Math.abs(gp).toLocaleString()}` : '—', color: gp == null ? '#9ca3af' : gp >= 0 ? '#059669' : '#dc2626' } : null,
                 ].filter(Boolean).map((s, i) => (
                   <div key={i} style={{ background: '#fff', padding: '10px 14px', textAlign: 'center' }}>
                     <p style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, margin: '0 0 2px' }}>{s.label}</p>
@@ -6847,8 +6976,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                 <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6' }}>
                   <p style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, margin: '0 0 8px' }}>Certifications &amp; Status</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    <button onClick={() => handleUpdatePuspakom(u)} title="Tap to update PUSPAKOM B7 roadworthiness cert" style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: `${ps.color}15`, border: `1px solid ${ps.color}30`, color: ps.color, cursor: 'pointer' }}>B7 · {ps.label.replace('B7 ', '')}</button>
-                    <button onClick={() => handleUpdateB5(u)} title="Tap to update PUSPAKOM B5 ownership transfer cert" style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: `${b5.color}15`, border: `1px solid ${b5.color}30`, color: b5.color, cursor: 'pointer' }}>B5 · {b5.label.replace('B5 ', '')}</button>
+                    <button onClick={() => handleUpdatePuspakom(u)} title="PUSPAKOM B7 — hire-purchase inspection, valid 30 days. Tap to update." style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: `${ps.color}15`, border: `1px solid ${ps.color}30`, color: ps.color, cursor: 'pointer' }}>B7 · {ps.label.replace('B7 ', '')}</button>
+                    <button onClick={() => handleUpdateB5(u)} title="PUSPAKOM B5 — ownership-transfer inspection. Tap to update." style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: `${b5.color}15`, border: `1px solid ${b5.color}30`, color: b5.color, cursor: 'pointer' }}>B5 · {b5.label.replace('B5 ', '')}</button>
                     <button onClick={() => handleUpdateEncumbrance(u)} title="Tap to cycle: clear → under HP → unknown" style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: `${enc.color}15`, border: `1px solid ${enc.color}30`, color: enc.color, cursor: 'pointer' }}>{enc.label}</button>
                     {isUnpublished && (
                       <button onClick={() => handlePublishFromStock(u)} disabled={publishingStockId === u.id}
@@ -9322,6 +9451,10 @@ export default function DashboardPage() {
   const [assignDropdownId, setAssignDropdownId] = useState(null);
   const [assignToast,      setAssignToast]      = useState(null);
   const [detailListing,    setDetailListing]    = useState(null);
+  // Stock tools (CSV import / vendors / add unit) are reached from the Listings
+  // "Tools" dropdown now that Stock has no nav entry — this signals which to open.
+  const [stockAutoTool,    setStockAutoTool]    = useState(null);
+  const [toolsMenuOpen,    setToolsMenuOpen]    = useState(false);
   const [svcPopupListing,  setSvcPopupListing]  = useState(null);
   const sidebarBellRef = useRef(null);
   const [sidebarBellRect, setSidebarBellRect] = useState(null);
@@ -9335,23 +9468,11 @@ export default function DashboardPage() {
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [onboardingCopied, setOnboardingCopied] = useState(false);
   const [onboardingToast,  setOnboardingToast]  = useState(false);
-  const [planUsage, setPlanUsage] = useState(null);
   const loadedUidRef = useRef(null);
 
   const planCfg     = getPlanConfig(profile?.plan);
   const nextPlan    = nextDealerPlan(profile?.plan);
   const nextPlanCfg = nextPlan ? getPlanConfig(nextPlan) : null;
-
-  useEffect(() => {
-    if (!profile?.id) return;
-    const dealerIdForUsage = profile.role === 'manager' || profile.role === 'admin'
-      ? profile.dealer_id
-      : profile.id;
-    if (!dealerIdForUsage) return;
-    supabase.rpc('get_plan_usage', { p_dealer_id: dealerIdForUsage }).then(({ data }) => {
-      if (data) setPlanUsage(data);
-    });
-  }, [profile?.id]);
 
   const getStorefrontUrl = () => {
     const sub = dealerSubdomain || profile?.subdomain;
@@ -9445,7 +9566,7 @@ export default function DashboardPage() {
       }
 
       const dealerId = getDealerIdFromProfile(p);
-      const [{ data: cars, error: carsError }, { data: sm }] = await Promise.all([
+      const [{ data: cars, error: carsError }, { data: sm }, { data: stockCost }] = await Promise.all([
         supabase
           .from("car_listings")
           .select("id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,condition,images,status,created_at,dealer_id,assigned_to,commission_amount,sold_at,included_services,included_services_cost,auction_grade,interior_grade,is_recon,financing_type,engine_cc,previous_owners,plate_number,vin_number,engine_number,road_tax_expiry,warranty_months,deposit_amount,reserved_by,reserved_at")
@@ -9456,9 +9577,22 @@ export default function DashboardPage() {
           .select("id, full_name, avatar_url")
           .eq("role", "salesman")
           .eq("dealer_id", dealerId),
+        // Cost basis lives on stock_units, not car_listings — merge it in so the
+        // Listings tab Cost / Recon / Gross columns actually show data.
+        supabase
+          .from("stock_units")
+          .select("listing_id, purchase_price, recon_cost")
+          .eq("dealer_id", dealerId)
+          .not("listing_id", "is", null),
       ]);
       if (active) {
-        setListings(carsError ? [] : cars || []);
+        const costBy = {};
+        (stockCost || []).forEach((s) => { if (s.listing_id) costBy[s.listing_id] = s; });
+        const merged = (cars || []).map((c) => {
+          const sc = costBy[c.id];
+          return sc ? { ...c, purchase_price: sc.purchase_price, recon_cost: sc.recon_cost } : c;
+        });
+        setListings(carsError ? [] : merged);
         setSalesmen(sm || []);
         setLoading(false);
       }
@@ -9711,10 +9845,16 @@ export default function DashboardPage() {
       setUpdatingStatus(null);
     }
   };
-  const handlePriceSave = (u) =>
-    setListings((p) => p.map((l) => (l.id === u.id ? u : l)));
+  const handlePriceSave = (u) => {
+    setListings((p) => p.map((l) => (l.id === u.id ? { ...l, ...u } : l)));
+    setDetailListing((prev) => (prev?.id === u.id ? { ...prev, ...u } : prev));
+  };
   const handleUpdate = (u) => {
-    setListings((p) => p.map((l) => (l.id === u.id ? u : l)));
+    // Merge (not replace) so fields the edit form doesn't manage — e.g. the
+    // stock cost merged in at fetch — survive the save. Also sync the open detail
+    // panel so edits show instantly instead of only after a close/reopen.
+    setListings((p) => p.map((l) => (l.id === u.id ? { ...l, ...u } : l)));
+    setDetailListing((prev) => (prev?.id === u.id ? { ...prev, ...u } : prev));
     // Mark as adjusted only after a real save — not when the form is merely opened
     if (editListing && getListingAge(editListing.created_at) >= 30) {
       handleStaleAdjusted(u.id);
@@ -9735,7 +9875,8 @@ export default function DashboardPage() {
       if (error) throw error;
       const updated = data?.[0] ?? { ...markSoldListing, status: "sold" };
       logActivity({ dealerId: userId, actor: profile, tableName: 'car_listings', recordId: markSoldListing.id, action: 'marked_sold', summary: `Marked sold — ${markSoldListing.brand} ${markSoldListing.model} ${markSoldListing.year}` });
-      setListings((p) => p.map((l) => (l.id === updated.id ? updated : l)));
+      setListings((p) => p.map((l) => (l.id === updated.id ? { ...l, ...updated } : l)));
+      setDetailListing((prev) => (prev?.id === updated.id ? { ...prev, ...updated } : prev));
       setMarkSoldListing(null);
     } catch (e) {
       console.error(e);
@@ -10002,7 +10143,6 @@ export default function DashboardPage() {
       items: [
         { id: "listings", Icon: Car,        label: "Inventory", badge: listings.length },
         { id: "add",      Icon: PlusCircle, label: "Add Listing" },
-        { id: "stock",    Icon: Package,    label: "Costs & P&L" },
       ],
     },
     {
@@ -10334,32 +10474,6 @@ export default function DashboardPage() {
                 <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: color.textMuted, textTransform: 'uppercase' }}>Plan</span>
                 <span style={{ fontSize: 10, fontWeight: 700, color: '#DC2626', background: '#FEE2E2', borderRadius: 4, padding: '1px 5px' }}>{planCfg.label}</span>
               </div>
-              {planUsage && planCfg.listingCap != null && (
-                <div style={{ marginBottom: 4 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                    <span style={{ fontSize: 10, color: color.textMuted }}>Listings</span>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: planUsage.active_listings >= planCfg.listingCap ? '#DC2626' : color.ink }}>
-                      {planUsage.active_listings ?? 0}/{planCfg.listingCap}
-                    </span>
-                  </div>
-                  <div style={{ height: 3, borderRadius: 2, background: '#EAECF0', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', borderRadius: 2, background: planUsage.active_listings >= planCfg.listingCap ? '#DC2626' : '#2563EB', width: `${Math.min(100, ((planUsage.active_listings ?? 0) / planCfg.listingCap) * 100)}%`, transition: 'width 0.4s' }} />
-                  </div>
-                </div>
-              )}
-              {planUsage && planCfg.seatCap != null && (
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                    <span style={{ fontSize: 10, color: color.textMuted }}>Seats</span>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: planUsage.seat_count >= planCfg.seatCap ? '#DC2626' : color.ink }}>
-                      {planUsage.seat_count ?? 0}/{planCfg.seatCap}
-                    </span>
-                  </div>
-                  <div style={{ height: 3, borderRadius: 2, background: '#EAECF0', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', borderRadius: 2, background: planUsage.seat_count >= planCfg.seatCap ? '#DC2626' : '#2563EB', width: `${Math.min(100, ((planUsage.seat_count ?? 0) / planCfg.seatCap) * 100)}%`, transition: 'width 0.4s' }} />
-                  </div>
-                </div>
-              )}
               {nextPlanCfg && (
                 <a href="mailto:support@xdrive.my?subject=Upgrade Plan" style={{ display: 'block', textAlign: 'center', marginTop: 6, fontSize: 10, fontWeight: 600, color: '#DC2626', textDecoration: 'none' }}>
                   Upgrade to {nextPlanCfg.label}
@@ -10543,14 +10657,14 @@ export default function DashboardPage() {
         )}
 
         <div className="flex-1 p-3 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-          <div className="hidden sm:block mb-4 sm:mb-6">
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: color.ink, letterSpacing: '-0.01em', margin: 0 }}>
+          <div className="hidden sm:block mb-3 sm:mb-4">
+            <h1 style={{ fontSize: 18, fontWeight: 700, color: color.ink, letterSpacing: '-0.01em', margin: 0 }}>
               {TITLES[activeTab]?.title}
             </h1>
-            <p style={{ fontSize: 13, color: color.textMuted, marginTop: 3 }}>
+            <p style={{ fontSize: 12, color: color.textMuted, marginTop: 2 }}>
               {TITLES[activeTab]?.sub}
             </p>
-            <div className="mt-4 h-px" style={{ background: '#EAECF0' }} />
+            <div className="mt-3 h-px" style={{ background: '#EAECF0' }} />
           </div>
 
           {/* ── Overview Tab ── */}
@@ -10633,6 +10747,9 @@ export default function DashboardPage() {
                 ))}
               </div>
 
+              {/* Stock P&L stats (migrated from the Stock tab header) */}
+              <StockStatsStrip dealerId={getDealerIdFromProfile(profile)} />
+
               {/* ── Listings panel ── */}
               <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #EAECF0', background: '#FFFFFF', boxShadow: '0 1px 4px rgba(15,23,42,0.06)', fontFamily: "'DM Sans', sans-serif" }}>
                 <div>
@@ -10666,6 +10783,37 @@ export default function DashboardPage() {
                         Filters
                         {activeFilterCount > 0 && <span style={{ background: '#3b82f6', color: '#fff', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '1px 6px', marginLeft: 2 }}>{activeFilterCount}</span>}
                       </button>
+                      {/* Stock tools (migrated from the Stock tab) */}
+                      <div style={{ position: 'relative' }}>
+                        <button
+                          onClick={() => setToolsMenuOpen(o => !o)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, background: toolsMenuOpen ? 'rgba(107,114,128,0.12)' : '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600, color: '#374151', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          <Wrench style={{ width: 13, height: 13 }} /> Tools
+                        </button>
+                        {toolsMenuOpen && (
+                          <>
+                            <div onClick={() => setToolsMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                            <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 41, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(15,23,42,0.12)', padding: 6, minWidth: 180 }}>
+                              {[
+                                { key: 'csv', Icon: Upload, label: 'Import CSV' },
+                                { key: 'vendors', Icon: Wrench, label: 'Vendors' },
+                                { key: 'add', Icon: PlusCircle, label: 'Add Stock Unit' },
+                              ].map(({ key, Icon, label }) => (
+                                <button
+                                  key={key}
+                                  onClick={() => { setStockAutoTool(key); handleTabChange('stock'); setToolsMenuOpen(false); }}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', background: 'none', border: 'none', borderRadius: 6, padding: '8px 10px', fontSize: 13, fontWeight: 500, color: '#374151', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                                  onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
+                                  onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                                >
+                                  <Icon style={{ width: 14, height: 14, color: '#6b7280' }} /> {label}
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
                       <button
                         onClick={() => setShowFastModal(true)}
                         style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#dc2626', border: 'none', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
@@ -10791,7 +10939,7 @@ export default function DashboardPage() {
                   <>
                     {/* Desktop table */}
                     <div className="hidden md:block" style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
+                      <table style={{ width: '100%', minWidth: 1180, borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
                         <thead>
                           <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                             {['', 'Vehicle', 'Price', 'Cost', 'Recon', 'Gross', 'Year / Km', 'Grade', 'Seller', 'Age', 'Status'].map((h, i) => (
@@ -11215,9 +11363,15 @@ export default function DashboardPage() {
             </>
           )}
           {activeTab === "stock" && userId && (
-            <StockTab userId={userId} listings={listings} profile={profile}
-              onPublishComplete={(l) => setListings(p => p.some(x => x.id === l.id) ? p.map(x => x.id === l.id ? { ...x, ...l } : x) : [l, ...p])}
-            />
+            <>
+              <button onClick={() => handleTabChange("listings")} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 14, fontSize: 13, fontWeight: 600, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'DM Sans', sans-serif" }}>
+                <ChevronLeft style={{ width: 15, height: 15 }} /> Back to Inventory
+              </button>
+              <StockTab userId={userId} listings={listings} profile={profile}
+                autoTool={stockAutoTool} onToolHandled={() => setStockAutoTool(null)}
+                onPublishComplete={(l) => setListings(p => p.some(x => x.id === l.id) ? p.map(x => x.id === l.id ? { ...x, ...l } : x) : [l, ...p])}
+              />
+            </>
           )}
           {activeTab === "documents" && (
             <DocumentsTab userId={userId} listings={listings} prefillDocData={prefillDocData} onClearPrefill={() => setPrefillDocData(null)} profile={profile} />

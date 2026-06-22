@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { handoffSuffix } from '../lib/authHandoff';
+import { consumeBuyerIntent, ensureBuyerProfile } from '../lib/buyerAuth';
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
@@ -23,9 +24,19 @@ export default function AuthCallbackPage() {
         .eq('id', session.user.id)
         .maybeSingle();
 
-      // No profile at all → brand new user, needs onboarding.
-      // Restore plan slug saved before the OAuth redirect so the preset carries through.
+      // Did this auth flow start as a buyer? (marketplace buyer login/One Tap, or
+      // a buyer signup whose user metadata carries account_type=buyer.)
+      const buyerIntent = consumeBuyerIntent() || session.user?.user_metadata?.account_type === 'buyer';
+
+      // No profile at all → brand new user. A buyer goes straight to their account;
+      // everyone else falls through to seller onboarding.
       if (!profile) {
+        if (buyerIntent) {
+          await ensureBuyerProfile(session.user);
+          navigate('/account');
+          return;
+        }
+        // Restore plan slug saved before the OAuth redirect so the preset carries through.
         const savedPlan = sessionStorage.getItem("ob_plan_slug");
         if (savedPlan) sessionStorage.removeItem("ob_plan_slug");
 
@@ -37,6 +48,13 @@ export default function AuthCallbackPage() {
           navigate(savedPlan ? `/onboarding/${savedPlan}` : '/onboarding');
         }
         return;
+      }
+
+      // A buyer-intent sign-in where the trigger pre-stamped a default dealer stub:
+      // correct it to a buyer profile and route to /account, never a dealer panel.
+      if (buyerIntent) {
+        const role = await ensureBuyerProfile(session.user);
+        if (role === 'buyer') { navigate('/account'); return; }
       }
 
       const { role, subdomain, dealer_id } = profile;
@@ -71,6 +89,8 @@ export default function AuthCallbackPage() {
         navigate('/fi');
       } else if (role === 'admin') {
         navigate('/admin');
+      } else if (role === 'buyer') {
+        navigate('/account');
       } else {
         navigate('/salesman');
       }

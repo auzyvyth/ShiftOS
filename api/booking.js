@@ -49,7 +49,7 @@ export default async function handler(req, res) {
   // (public reads go through this view), so anon must look it up here.
   const { data: listing } = await supabase
     .from('public_car_listings')
-    .select('dealer_id, assigned_to')
+    .select('dealer_id, assigned_to, brand, model, year')
     .eq('id', carId)
     .maybeSingle();
 
@@ -90,7 +90,9 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Booking failed. Please try again.' });
   }
 
-  // Non-fatal: create lead for heatmap / CRM
+  // Non-fatal: create lead for heatmap / CRM. A completed viewing booking lands
+  // straight in the 'viewing_booked' pipeline stage so it's clearly labelled as
+  // a buyer who wants to view the car (not a generic "new" enquiry).
   await supabase.from('leads').insert({
     dealer_id: listing.dealer_id,
     salesman_id: salesmanId,
@@ -99,8 +101,19 @@ export default async function handler(req, res) {
     phone: phoneClean,
     buyer_state: state || null,
     lead_source: 'enquiry',
-    stage: 'new',
+    stage: 'viewing_booked',
     notes: notesWithIntent,
+  });
+
+  // Non-fatal: record a completed-booking analytics event so it shows in the
+  // dealer's Listing Performance chart (booking_click only tracks button clicks).
+  const carName = [listing.year, listing.brand, listing.model].filter(Boolean).join(' ') || null;
+  await supabase.from('analytics_events').insert({
+    event_type: 'booking',
+    dealer_id: listing.dealer_id,
+    car_id: carId,
+    car_name: carName,
+    metadata: { source: 'car_detail', booking_type: bookingType || null },
   });
 
   return res.status(200).json({ success: true });

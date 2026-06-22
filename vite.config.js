@@ -30,6 +30,16 @@ export default defineConfig({
 			},
 			workbox: {
 				navigateFallback: '/index.html',
+				// Deploy-staleness guard: without these, an old service worker keeps
+				// serving a cached index.html that references chunk hashes the newer
+				// Vercel deploy already purged (vendor-charts/pdf/motion/dnd 404 -> the
+				// SPA rewrite returns index.html -> "Failed to load module script" MIME
+				// error -> white screen). cleanupOutdatedCaches purges stale precache
+				// buckets; skipWaiting + clientsClaim make the fresh SW take control on
+				// the next load so the reload guard in main.jsx can recover in one bounce.
+				cleanupOutdatedCaches: true,
+				skipWaiting: true,
+				clientsClaim: true,
 				// Only precache critical public assets. Dealer-only JS chunks
 				// (Dashboard, Salesman, Import, PDF/XLSX/charts) are excluded so
 				// a public visitor's first load doesn't pull 5.6 MB of admin code.

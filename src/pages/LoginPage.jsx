@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { handoffSuffix } from "../lib/authHandoff";
+import { markBuyerIntent } from "../lib/buyerAuth";
 
 const Field = ({ id, label, focused, children }) => (
   <div className={`field ${focused === id ? "is-focused" : ""}`}>
@@ -162,6 +163,9 @@ export default function LoginPage() {
   };
 
   const handleGoogleSignIn = async () => {
+    // Marketplace buyer links carry ?as=buyer so the OAuth callback materialises a
+    // buyer profile -> /account. No visible buyer/seller choice on the page itself.
+    if (searchParams.get("as") === "buyer") markBuyerIntent();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -196,6 +200,12 @@ export default function LoginPage() {
 
     const subdomain = profile?.subdomain;
     const role = profile?.role;
+
+    // Buyers live on /account, never a seller dashboard.
+    if (role === "buyer") {
+      window.location.href = `${base}/account`;
+      return;
+    }
 
     const getActiveSession = async () => {
       if (session) return session;
@@ -704,9 +714,9 @@ export default function LoginPage() {
         {/* Right — form panel */}
         <div className={`lr-right${mounted ? ' in' : ''}`}>
           <div className="lr-form-head">
-            <p className="lr-form-eyebrow">Restricted Access</p>
+            <p className="lr-form-eyebrow">Welcome Back</p>
             <h2 className="lr-form-title">SIGN IN</h2>
-            <p className="lr-form-sub">Access your dealership dashboard</p>
+            <p className="lr-form-sub">Sign in to your account</p>
           </div>
 
           {/* Google — first, most prominent */}
