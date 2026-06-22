@@ -85,12 +85,14 @@ function SectionShell({ children }) {
 
 // Engagement chart series + a rich hover tooltip so dealers see every metric for
 // the hovered day at once (not just one line).
+// axis: high-volume traffic on the left, low-volume conversions on the right so
+// bookings/calls/WhatsApp aren't crushed to zero under page-visit counts.
 const ENG_SERIES = [
-  { key: 'visits',   label: 'Page visits',    color: '#94a3b8' },
-  { key: 'clicks',   label: 'Listing clicks', color: '#67e8f9' },
-  { key: 'whatsapp', label: 'WhatsApp',       color: '#4ade80' },
-  { key: 'calls',    label: 'Calls',          color: '#c084fc' },
-  { key: 'bookings', label: 'Bookings',       color: '#fbbf24' },
+  { key: 'visits',   label: 'Page visits',    color: '#94a3b8', axis: 'left'  },
+  { key: 'clicks',   label: 'Listing clicks', color: '#67e8f9', axis: 'left'  },
+  { key: 'whatsapp', label: 'WhatsApp',       color: '#4ade80', axis: 'right' },
+  { key: 'calls',    label: 'Calls',          color: '#c084fc', axis: 'right' },
+  { key: 'bookings', label: 'Bookings',       color: '#fbbf24', axis: 'right' },
 ];
 
 function EngagementTooltip({ active, payload, label }) {
@@ -285,7 +287,7 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
         <PerfSectionHeader
           icon={TrendingUp}
           label="Engagement Overview"
-          desc="Daily storefront visits, clicks, calls, WhatsApp & bookings — last 30 days"
+          desc="Last 30 days · traffic on the left axis, conversions (WhatsApp/calls/bookings) on the right"
         />
         {/* Summary pills as a full-width wrapping row (kept out of the header so
             they never force horizontal overflow on mobile). */}
@@ -303,15 +305,16 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
         ) : (
           <div style={{ width: '100%', minWidth: 0, overflowX: 'hidden' }}>
             <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={dailyChart} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
+              <LineChart data={dailyChart} margin={{ top: 4, right: 0, left: -18, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
                 <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={24} />
-                <YAxis allowDecimals={false} width={32} tick={{ fontSize: 10, fill: '#4b5563' }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="left" allowDecimals={false} width={30} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="right" orientation="right" allowDecimals={false} width={26} tick={{ fontSize: 10, fill: '#d97706' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<EngagementTooltip />} cursor={{ stroke: 'rgba(59,130,246,0.25)', strokeWidth: 1 }} />
                 <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 11, color: '#6b7280', paddingTop: 8 }} />
                 <Brush dataKey="date" height={20} stroke="rgba(59,130,246,0.3)" fill="rgba(59,130,246,0.05)" travellerWidth={6} startIndex={Math.max(0, dailyChart.length - 14)} />
                 {ENG_SERIES.map((s) => (
-                  <Line key={s.key} type="monotone" dataKey={s.key} name={s.label} stroke={s.color} strokeWidth={1.75} dot={false} activeDot={{ r: 3 }} />
+                  <Line key={s.key} yAxisId={s.axis} type="monotone" dataKey={s.key} name={s.label} stroke={s.color} strokeWidth={1.75} dot={false} activeDot={{ r: 3 }} />
                 ))}
               </LineChart>
             </ResponsiveContainer>
