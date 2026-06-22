@@ -8,6 +8,7 @@ import CarCard from '../components/CarCard';
 
 export default function SavedCarsPage() {
   useMarketplaceTracking();
+  useEffect(() => { document.title = 'Saved Cars | XDrive'; }, []);
   const { savedIds, ready } = useSavedCars();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);

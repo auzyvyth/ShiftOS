@@ -16,6 +16,7 @@ const SELLER_ROUTES = {
 
 export default function AccountPage() {
   const navigate = useNavigate();
+  useEffect(() => { document.title = 'My Account | XDrive'; }, []);
   const { savedIds, ready } = useSavedCars();
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);

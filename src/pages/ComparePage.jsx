@@ -220,6 +220,14 @@ export default function ComparePage() {
   const hasRecon = cars.some(c => c.is_recon);
   const verdict = getVerdict(cars);
 
+  // Deterministic tab title (react-helmet can be flaky on client-side nav).
+  useEffect(() => {
+    if (loading) return;
+    document.title = n === 0
+      ? 'Compare Cars Side by Side | XDrive'
+      : `${cars.map(c => [c.year, c.brand, c.model].filter(Boolean).join(' ')).join(' vs ')} — Car Comparison | XDrive`;
+  }, [loading, n, cars]);
+
   const verdictReasons = (() => {
     if (!verdict || cars.length < 2) return '';
     const winIdx  = cars.indexOf(verdict.car);
