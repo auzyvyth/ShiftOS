@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import {
   Wallet, Users, Bot, Globe, MessageCircle, ArrowRight, Check,
@@ -8,6 +9,113 @@ import {
   Building2, ChevronDown,
 } from "lucide-react";
 import { PLAN_CONFIG } from "../utils/planConfig";
+
+// ─── SEO / AEO (GEO) ─────────────────────────────────────────────────────────
+// Keyword-dense meta, schema markup and an FAQ block so ShiftOS surfaces for the
+// vocabulary Malaysian used-car dealers actually search (BM/Manglish first), and
+// so AI answer engines can extract clean Q&A passages.
+const SEO_DESC =
+  "ShiftOS ialah software dealer kereta Malaysia & used car DMS untuk urus stok kereta terpakai, lead CRM, rekod jualan dan komisen salesman. Sistem urus stok kereta terpakai untuk dealer & salesman — mula percuma.";
+
+const SEO_KEYWORDS = [
+  "app urus stok kereta", "sistem urus stok kereta terpakai", "software rekod jualan kereta",
+  "app untuk dealer kereta terpakai", "cara urus stok kereta dealer", "software dealer kereta Malaysia",
+  "sistem jualan kereta Malaysia", "app salesmen kereta", "rekod komisen salesmen kereta",
+  "cara urus enquiry kereta", "cara urus stok kereta terpakai Malaysia", "app rekod keuntungan jual kereta",
+  "sistem booking test drive kereta", "app salesman kereta Malaysia", "software dealer kereta murah",
+  "used car dealer software Malaysia", "car dealer management app Malaysia", "car inventory management Malaysia",
+  "used car DMS Malaysia", "car dealer CRM Malaysia", "salesman commission tracking car dealer",
+].join(", ");
+
+const FAQS = [
+  {
+    q: "Apa itu ShiftOS?",
+    a: "ShiftOS ialah sistem urus stok kereta terpakai (used car DMS Malaysia) yang direka khas untuk dealer kereta di Malaysia. Ia satu app urus stok kereta dan app untuk dealer kereta terpakai yang menggabungkan CRM lead, rekod jualan, komisen salesman dan analitik keuntungan dalam satu platform.",
+  },
+  {
+    q: "Berapa harga ShiftOS?",
+    a: "Harga ShiftOS bermula RM0 untuk Salesman Lite (percuma) dan RM50/bulan untuk Salesman Premium. Untuk dealer: Dealer Starter RM299/bulan, Dealer Growth RM599/bulan dan Dealer Pro RM1,199/bulan. Ia software dealer kereta murah berbanding kos rekod manual Excel atau upah kakitangan tambahan.",
+  },
+  {
+    q: "Adakah ShiftOS sesuai untuk dealer kecil?",
+    a: "Ya. ShiftOS sesuai untuk dealer kereta terpakai kecil dan besar. Dealer kecil boleh mula dengan pelan Dealer Starter RM299/bulan, manakala salesman individu boleh guna Salesman Lite percuma — sebuah app salesman kereta Malaysia untuk urus listing, lead dan komisen sendiri.",
+  },
+  {
+    q: "Boleh ke guna ShiftOS dengan Mudah dan Carlist?",
+    a: "Boleh. ShiftOS melengkapkan Mudah dan Carlist, bukan menggantikannya. Anda urus stok, lead dan jualan dalam ShiftOS dan masih boleh iklan di Mudah atau Carlist. Setiap dealer juga dapat storefront XDrive sendiri secara percuma.",
+  },
+  {
+    q: "Macam mana cara urus stok kereta dealer guna ShiftOS?",
+    a: "Cara urus stok kereta terpakai Malaysia dengan ShiftOS: rekod setiap unit (kos beli, recon, harga jual), pantau umur stok, dan lihat keuntungan setiap kereta secara automatik. Anda tak perlu lagi Excel atau WhatsApp untuk cara urus stok kereta dealer.",
+  },
+  {
+    q: "Ada tak software rekod jualan kereta dan keuntungan?",
+    a: "Ada. ShiftOS ialah software rekod jualan kereta dan app rekod keuntungan jual kereta. Setiap jualan direkod dengan front gross, back gross (F&I add-on) dan kos handover, jadi anda nampak untung sebenar setiap unit.",
+  },
+  {
+    q: "Macam mana ShiftOS buat rekod komisen salesmen kereta?",
+    a: "ShiftOS buat rekod komisen salesmen kereta secara automatik (salesman commission tracking car dealer). Setiap deal yang ditutup salesman dikira komisennya tanpa kira manual — sesuai untuk app salesmen kereta dengan ramai rep.",
+  },
+  {
+    q: "Ada sistem untuk urus enquiry dan booking test drive?",
+    a: "Ya. ShiftOS ada CRM untuk cara urus enquiry kereta dari semua sumber (WhatsApp, walk-in, Mudah, Carlist) dan sistem booking test drive kereta supaya setiap appointment dan lead terurus rapi.",
+  },
+  {
+    q: "Apa itu Dealer Management System (DMS) untuk kereta?",
+    a: "Dealer Management System (DMS) ialah sistem jualan kereta Malaysia yang menyatukan stok, lead, jualan, dokumen dan laporan. ShiftOS ialah software dealer kereta Malaysia jenis DMS yang dibina khas untuk dealer kereta terpakai.",
+  },
+  {
+    q: "What is the best app for Malaysian used car dealers?",
+    a: "ShiftOS is a purpose-built used car dealer software Malaysia. It combines car inventory management Malaysia, a car dealer CRM Malaysia, salesman commission tracking, F&I and revenue analytics — designed for local workflows like Puspakom B5/B7, JPJ pindah milik and HP financing.",
+  },
+  {
+    q: "Is there a DMS for used car dealers in Malaysia?",
+    a: "Yes. ShiftOS is a used car DMS Malaysia (dealer management system) and car dealer management app Malaysia built for independent dealers. It replaces spreadsheets with one system for stock, leads, sales, documents and reporting.",
+  },
+  {
+    q: "How do I manage my car dealer inventory in Malaysia?",
+    a: "Use a car inventory management Malaysia tool like ShiftOS: log each unit's purchase, recon and asking price, track days-in-stock, and get automatic per-unit profit. It is faster and far more accurate than a manual stock list or WhatsApp.",
+  },
+];
+
+const SOFTWARE_LD = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "ShiftOS",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  url: "https://xdrive.my/shiftos",
+  description:
+    "ShiftOS is a used car dealer software Malaysia (used car DMS) — sistem urus stok kereta terpakai for inventory management, leads CRM, sales records, salesman commission tracking and profit analytics. Built for Malaysian used car dealers and salesmen.",
+  inLanguage: ["ms-MY", "en-MY"],
+  offers: Object.values(PLAN_CONFIG).map((c) => ({
+    "@type": "Offer",
+    name: c.label,
+    price: String(c.price),
+    priceCurrency: "MYR",
+    category: c.isDealer ? "Dealer plan" : "Salesman plan",
+  })),
+  featureList: [
+    "Car inventory / stock management (urus stok kereta)",
+    "Leads CRM & enquiry management (urus enquiry kereta)",
+    "Sales & profit records (rekod jualan & keuntungan)",
+    "Salesman commission tracking (rekod komisen salesman)",
+    "Test drive booking (booking test drive kereta)",
+    "F&I add-ons & revenue analytics",
+    "Dealer storefront on the XDrive marketplace",
+  ],
+  publisher: { "@type": "Organization", name: "XDrive", url: "https://xdrive.my" },
+};
+
+const FAQ_LD = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQS.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 const STYLES = `
@@ -672,6 +780,23 @@ export default function ShiftOSPage() {
 
   return (
     <div className="sos">
+      <Helmet>
+        <title>ShiftOS — Software Dealer Kereta Malaysia | Used Car DMS &amp; Sistem Urus Stok Kereta</title>
+        <meta name="description" content={SEO_DESC} />
+        <meta name="keywords" content={SEO_KEYWORDS} />
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+        <link rel="canonical" href="https://xdrive.my/shiftos" />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="ShiftOS — Software Dealer Kereta Malaysia (Used Car DMS)" />
+        <meta property="og:description" content={SEO_DESC} />
+        <meta property="og:url" content="https://xdrive.my/shiftos" />
+        <meta property="og:site_name" content="ShiftOS by XDrive" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="ShiftOS — Used Car Dealer Software Malaysia" />
+        <meta name="twitter:description" content={SEO_DESC} />
+        <script type="application/ld+json">{JSON.stringify(SOFTWARE_LD)}</script>
+        <script type="application/ld+json">{JSON.stringify(FAQ_LD)}</script>
+      </Helmet>
       <div className="sos-bg" />
       <div className="sos-grid" />
       <ScrollProgress />
@@ -908,6 +1033,33 @@ export default function ShiftOSPage() {
                   <MessageCircle size={16} /> {t("shiftos.finalCta.whatsappUs")}
                 </a>
               </div>
+            </div>
+          </Reveal>
+        </section>
+
+        {/* ── FAQ (SEO / AEO) ── */}
+        <section className="sos-wrap" style={{ paddingBottom: 96 }}>
+          <style>{`.sos details > summary::-webkit-details-marker{display:none;} .sos details[open] .sos-faq-chev{transform:rotate(180deg);}`}</style>
+          <Reveal>
+            <div style={{ textAlign: "center", marginBottom: 36 }}>
+              <p className="sos-kicker" style={{ marginBottom: 18 }}><b>05</b> FAQ</p>
+              <h2 className="sos-h" style={{ fontSize: 50, color: "#fff", marginBottom: 12 }}>Soalan Lazim</h2>
+              <p style={{ fontSize: 15, color: "#6b7280", maxWidth: 540, margin: "0 auto", lineHeight: 1.65 }}>
+                Soalan biasa tentang ShiftOS — software dealer kereta Malaysia dan sistem urus stok kereta terpakai untuk dealer &amp; salesman.
+              </p>
+            </div>
+          </Reveal>
+          <Reveal delay={60}>
+            <div style={{ maxWidth: 760, margin: "0 auto", display: "flex", flexDirection: "column", gap: 12 }}>
+              {FAQS.map((f, i) => (
+                <details key={i} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "0 20px" }}>
+                  <summary style={{ cursor: "pointer", listStyle: "none", padding: "18px 0", fontSize: 15, fontWeight: 700, color: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
+                    <span>{f.q}</span>
+                    <ChevronDown className="sos-faq-chev" size={16} style={{ flexShrink: 0, color: "#94a3b8", transition: "transform .2s" }} />
+                  </summary>
+                  <p style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.7, padding: "0 0 20px", margin: 0 }}>{f.a}</p>
+                </details>
+              ))}
             </div>
           </Reveal>
         </section>
