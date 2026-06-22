@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
+import { useCachedFetch } from '../hooks/useCachedFetch';
 import { Users, Car, Globe, AlertTriangle, TrendingUp, Eye, Share2, BarChart2 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush } from 'recharts';
 
@@ -121,69 +122,58 @@ function EngagementTooltip({ active, payload, label }) {
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export default function PerformanceTab({ dealerId, listings = [] }) {
-  // Team
-  const [scores, setScores] = useState([]);
-  const [teamLoading, setTeamLoading] = useState(true);
-
-  // Stock
-  const [stock, setStock] = useState([]);
-  const [stockLoading, setStockLoading] = useState(true);
-
-  // Traffic
-  const [trafficEvents, setTrafficEvents] = useState([]);
   const [range, setRange] = useState(30);
-  const [trafficLoading, setTrafficLoading] = useState(true);
 
-  // Engagement chart + salesman leaderboard (moved here from the Listings tab) —
-  // server-side aggregated, fixed 30-day window.
-  const [carStats, setCarStats] = useState([]);
-  const [slugStats, setSlugStats] = useState([]);
-  const [daily, setDaily] = useState([]);
-  const [engLoading, setEngLoading] = useState(true);
+  // All four loads are cached (stale-while-revalidate, per-dealer) so the tab
+  // paints instantly on revisit and refreshes in the background / daily.
+  const { data: scoresRaw, loading: teamLoading } = useCachedFetch(
+    dealerId ? `perf:scores:${dealerId}` : null,
+    async () => (await supabase.rpc('gm_salesman_scores', { p_dealer_id: dealerId })).data || [],
+    { enabled: !!dealerId },
+  );
+  const scores = scoresRaw || [];
 
-  useEffect(() => {
-    if (!dealerId) return;
-    supabase.rpc('gm_salesman_scores', { p_dealer_id: dealerId })
-      .then(({ data }) => { setScores(data || []); setTeamLoading(false); });
-  }, [dealerId]);
-
-  useEffect(() => {
-    if (!dealerId) return;
-    supabase
+  const { data: stockRaw, loading: stockLoading } = useCachedFetch(
+    dealerId ? `perf:stock:${dealerId}` : null,
+    async () => (await supabase
       .from('stock_units')
       .select('id, purchase_date, status, purchase_price, recon_cost, brand, model, year, asking_price')
       .eq('dealer_id', dealerId)
-      .neq('status', 'sold')
-      .then(({ data }) => { setStock(data || []); setStockLoading(false); });
-  }, [dealerId]);
+      .neq('status', 'sold')).data || [],
+    { enabled: !!dealerId },
+  );
+  const stock = useMemo(() => stockRaw || [], [stockRaw]);
 
-  useEffect(() => {
-    if (!dealerId) return;
-    setTrafficLoading(true);
-    const since = new Date();
-    since.setDate(since.getDate() - range);
-    supabase
-      .from('analytics_events')
-      .select('event_type, created_at, session_id, car_id, car_name, metadata')
-      .eq('dealer_id', dealerId)
-      .gte('created_at', since.toISOString())
-      .then(({ data }) => { setTrafficEvents(data || []); setTrafficLoading(false); });
-  }, [dealerId, range]);
+  const { data: trafficRaw, loading: trafficLoading } = useCachedFetch(
+    dealerId ? `perf:traffic:${dealerId}:${range}` : null,
+    async () => {
+      const since = new Date();
+      since.setDate(since.getDate() - range);
+      return (await supabase
+        .from('analytics_events')
+        .select('event_type, created_at, session_id, car_id, car_name, metadata')
+        .eq('dealer_id', dealerId)
+        .gte('created_at', since.toISOString())).data || [];
+    },
+    { enabled: !!dealerId },
+  );
+  const trafficEvents = useMemo(() => trafficRaw || [], [trafficRaw]);
 
-  useEffect(() => {
-    if (!dealerId) return;
-    setEngLoading(true);
-    Promise.all([
-      supabase.rpc('get_dealer_car_analytics', { p_dealer_id: dealerId }),
-      supabase.rpc('get_dealer_slug_analytics', { p_dealer_id: dealerId }),
-      supabase.rpc('get_dealer_daily_analytics', { p_dealer_id: dealerId }),
-    ]).then(([carRes, slugRes, dailyRes]) => {
-      setCarStats(carRes.data || []);
-      setSlugStats(slugRes.data || []);
-      setDaily(dailyRes.data || []);
-      setEngLoading(false);
-    });
-  }, [dealerId]);
+  const { data: eng, loading: engLoading } = useCachedFetch(
+    dealerId ? `perf:eng:${dealerId}` : null,
+    async () => {
+      const [carRes, slugRes, dailyRes] = await Promise.all([
+        supabase.rpc('get_dealer_car_analytics', { p_dealer_id: dealerId }),
+        supabase.rpc('get_dealer_slug_analytics', { p_dealer_id: dealerId }),
+        supabase.rpc('get_dealer_daily_analytics', { p_dealer_id: dealerId }),
+      ]);
+      return { car: carRes.data || [], slug: slugRes.data || [], daily: dailyRes.data || [] };
+    },
+    { enabled: !!dealerId },
+  );
+  const carStats = useMemo(() => eng?.car || [], [eng]);
+  const slugStats = useMemo(() => eng?.slug || [], [eng]);
+  const daily = useMemo(() => eng?.daily || [], [eng]);
 
   // ── Derived: listings metrics ──────────────────────────────────────────────
   const listingMetrics = useMemo(() => {
