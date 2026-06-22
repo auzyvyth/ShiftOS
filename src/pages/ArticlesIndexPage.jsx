@@ -27,6 +27,41 @@ const ARTICLES = [
     category: 'Panduan Beli',
     readMins: 8,
   },
+  {
+    slug: 'apa-itu-dms-dealer-kereta',
+    title: 'Apa Itu Dealer Management System (DMS) Dan Kenapa Dealer Kereta Perlu Guna',
+    description: 'Penjelasan lengkap apa itu DMS untuk kereta, kenapa dealer kereta terpakai Malaysia perlu guna, dan beza DMS dengan platform iklan seperti Mudah & Carlist.',
+    category: 'Urus Dealer',
+    readMins: 8,
+  },
+  {
+    slug: 'cara-urus-stok-kereta-terpakai-sistem-digital',
+    title: 'Cara Urus Stok Kereta Terpakai Dengan Sistem Digital (2026)',
+    description: 'Tinggalkan Excel & WhatsApp. Panduan cara urus stok kereta terpakai Malaysia guna app urus stok kereta — pantau kos, umur stok dan keuntungan automatik.',
+    category: 'Urus Dealer',
+    readMins: 7,
+  },
+  {
+    slug: 'app-terbaik-dealer-kereta-terpakai-malaysia',
+    title: 'App Terbaik Untuk Dealer Kereta Terpakai Di Malaysia 2025',
+    description: 'Bandingkan app terbaik dan software dealer kereta Malaysia untuk dealer kereta terpakai — ciri, harga dan kelebihan setiap pilihan.',
+    category: 'Urus Dealer',
+    readMins: 8,
+  },
+  {
+    slug: 'cara-kira-komisen-salesman-kereta',
+    title: 'Cara Kira Komisen Salesman Kereta Dengan Betul (2026)',
+    description: 'Formula komisen salesman kereta, kesilapan biasa yang menghakis margin, dan cara buat rekod komisen salesmen kereta secara automatik.',
+    category: 'Urus Dealer',
+    readMins: 7,
+  },
+  {
+    slug: 'cara-buat-sales-agreement-kereta-terpakai',
+    title: 'Cara Buat Sales Agreement Kereta Terpakai Malaysia (2026)',
+    description: 'Apa yang wajib ada dalam sales agreement kereta terpakai, contoh klausa, dan cara automasikan dokumen jualan guna software rekod jualan kereta.',
+    category: 'Urus Dealer',
+    readMins: 7,
+  },
 ];
 
 const PAGE_TITLE = 'Panduan Kereta Malaysia — XDrive';

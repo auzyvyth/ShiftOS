@@ -57,6 +57,11 @@ const ArticlesIndexPage  = lazy(() => import("./pages/ArticlesIndexPage"));
 const PuspakomB5B7Article = lazy(() => import("./pages/articles/PuspakomB5B7Article"));
 const MySikapArticle     = lazy(() => import("./pages/articles/MySikapArticle"));
 const ReconArticle       = lazy(() => import("./pages/articles/ReconArticle"));
+const UrusStokDigitalArticle = lazy(() => import("./pages/articles/UrusStokDigitalArticle"));
+const AppTerbaikDealerArticle = lazy(() => import("./pages/articles/AppTerbaikDealerArticle"));
+const KomisenSalesmanArticle = lazy(() => import("./pages/articles/KomisenSalesmanArticle"));
+const ApaItuDmsArticle   = lazy(() => import("./pages/articles/ApaItuDmsArticle"));
+const SalesAgreementArticle = lazy(() => import("./pages/articles/SalesAgreementArticle"));
 
 const COMPARE_PATHS = ["/", "/cars", "/marketplace", "/showroom", "/compare", "/saved"];
 
@@ -103,6 +108,11 @@ function App() {
           <Route path="/articles/apa-itu-puspakom-b5-b7" element={<PuspakomB5B7Article />} />
           <Route path="/articles/cara-pindah-milik-kereta-mysikap" element={<MySikapArticle />} />
           <Route path="/articles/beza-kereta-recon-dan-terpakai" element={<ReconArticle />} />
+          <Route path="/articles/cara-urus-stok-kereta-terpakai-sistem-digital" element={<UrusStokDigitalArticle />} />
+          <Route path="/articles/app-terbaik-dealer-kereta-terpakai-malaysia" element={<AppTerbaikDealerArticle />} />
+          <Route path="/articles/cara-kira-komisen-salesman-kereta" element={<KomisenSalesmanArticle />} />
+          <Route path="/articles/apa-itu-dms-dealer-kereta" element={<ApaItuDmsArticle />} />
+          <Route path="/articles/cara-buat-sales-agreement-kereta-terpakai" element={<SalesAgreementArticle />} />
 
           {/* Auth */}
           <Route path="/style-guide" element={<StyleGuidePage />} />

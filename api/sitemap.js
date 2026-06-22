@@ -96,6 +96,14 @@ export default async function handler(req) {
         { path: "/shiftos",     changefreq: "weekly",  priority: "0.9" },
         { path: "/compare",     changefreq: "weekly",  priority: "0.6" },
         { path: "/articles",    changefreq: "weekly",  priority: "0.7" },
+        { path: "/articles/apa-itu-dms-dealer-kereta",                      changefreq: "monthly", priority: "0.7" },
+        { path: "/articles/cara-urus-stok-kereta-terpakai-sistem-digital", changefreq: "monthly", priority: "0.7" },
+        { path: "/articles/app-terbaik-dealer-kereta-terpakai-malaysia",   changefreq: "monthly", priority: "0.7" },
+        { path: "/articles/cara-kira-komisen-salesman-kereta",             changefreq: "monthly", priority: "0.7" },
+        { path: "/articles/cara-buat-sales-agreement-kereta-terpakai",     changefreq: "monthly", priority: "0.7" },
+        { path: "/articles/apa-itu-puspakom-b5-b7",                        changefreq: "monthly", priority: "0.6" },
+        { path: "/articles/cara-pindah-milik-kereta-mysikap",             changefreq: "monthly", priority: "0.6" },
+        { path: "/articles/beza-kereta-recon-dan-terpakai",               changefreq: "monthly", priority: "0.6" },
         { path: "/calculator",  changefreq: "monthly", priority: "0.6" },
       ];
 
