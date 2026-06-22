@@ -365,7 +365,12 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
         {(v.addonRevenue > 0 || v.addonCost > 0) && (
           <>
             <div style={{ marginTop: 8 }}>
-              {v.addonRevenue > 0 && <Row label={`Add-ons sold (${addons.length})`} val={v.addonRevenue} />}
+              {addons.length > 0 && (
+                <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 5px' }}>Sold with ({addons.length})</p>
+              )}
+              {addons.map((a, i) => (
+                <Row key={i} label={a.dealer_products?.name || 'Add-on'} val={Number(a.sold_price) || 0} />
+              ))}
               {v.addonCost > 0 && <Row label="Add-on cost" val={v.addonCost} neg />}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, marginTop: 4, paddingTop: 6, borderTop: '1px dashed #e5e7eb' }}>

@@ -7296,10 +7296,15 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                     <div style={{ padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
                       <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Back End (F&I / Add-ons)</p>
                       {pnlData.addonRevenue > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 3 }}>
-                          <span style={{ color: '#374151' }}>Add-ons sold ({pnlData.addons.length})</span>
-                          <span style={{ color: '#111827', fontWeight: 600 }}>RM {pnlData.addonRevenue.toLocaleString()}</span>
-                        </div>
+                        <>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Sold with ({pnlData.addons.length})</p>
+                          {pnlData.addons.map((a, i) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 3 }}>
+                              <span style={{ color: '#374151' }}>{a.dealer_products?.name || 'Add-on'}</span>
+                              <span style={{ color: '#111827', fontWeight: 600 }}>RM {(Number(a.sold_price) || 0).toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </>
                       )}
                       {pnlData.addonCost > 0 && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
@@ -9451,6 +9456,9 @@ export default function DashboardPage() {
   const [assignDropdownId, setAssignDropdownId] = useState(null);
   const [assignToast,      setAssignToast]      = useState(null);
   const [detailListing,    setDetailListing]    = useState(null);
+  // Net F&I add-on gross per listing (sold_price − cost) so the Listings table
+  // Gross column reflects what a sold car actually earned, add-ons included.
+  const [addonNetByListing, setAddonNetByListing] = useState({});
   // Stock tools (CSV import / vendors / add unit) are reached from the Listings
   // "Tools" dropdown now that Stock has no nav entry — this signals which to open.
   const [stockAutoTool,    setStockAutoTool]    = useState(null);
@@ -9533,6 +9541,7 @@ export default function DashboardPage() {
       // Prevents any previous owner's branding from bleeding through.
       setProfile(null);
       setListings([]);
+      setAddonNetByListing({});
       setSalesmen([]);
       setLoading(true);
       setUserId(uid);
@@ -9566,7 +9575,7 @@ export default function DashboardPage() {
       }
 
       const dealerId = getDealerIdFromProfile(p);
-      const [{ data: cars, error: carsError }, { data: sm }, { data: stockCost }] = await Promise.all([
+      const [{ data: cars, error: carsError }, { data: sm }, { data: stockCost }, { data: dealProducts }] = await Promise.all([
         supabase
           .from("car_listings")
           .select("id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,condition,images,status,created_at,dealer_id,assigned_to,commission_amount,sold_at,included_services,included_services_cost,auction_grade,interior_grade,is_recon,financing_type,engine_cc,previous_owners,plate_number,vin_number,engine_number,road_tax_expiry,warranty_months,deposit_amount,reserved_by,reserved_at")
@@ -9584,6 +9593,11 @@ export default function DashboardPage() {
           .select("listing_id, purchase_price, recon_cost")
           .eq("dealer_id", dealerId)
           .not("listing_id", "is", null),
+        // F&I add-ons sold per car — net (sold_price − cost) folds into the row Gross.
+        supabase
+          .from("deal_products")
+          .select("listing_id, sold_price, dealer_products(cost_price)")
+          .eq("dealer_id", dealerId),
       ]);
       if (active) {
         const costBy = {};
@@ -9592,6 +9606,12 @@ export default function DashboardPage() {
           const sc = costBy[c.id];
           return sc ? { ...c, purchase_price: sc.purchase_price, recon_cost: sc.recon_cost } : c;
         });
+        const addonNet = {};
+        (dealProducts || []).forEach((d) => {
+          if (!d.listing_id) return;
+          addonNet[d.listing_id] = (addonNet[d.listing_id] || 0) + (Number(d.sold_price) || 0) - (Number(d.dealer_products?.cost_price) || 0);
+        });
+        setAddonNetByListing(addonNet);
         setListings(carsError ? [] : merged);
         setSalesmen(sm || []);
         setLoading(false);
@@ -10998,8 +11018,18 @@ export default function DashboardPage() {
                                 {/* Gross */}
                                 <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                                   {l.purchase_price ? (() => {
-                                    const gross = sp - Number(l.purchase_price) - Number(l.recon_cost || 0);
-                                    return <span style={{ fontSize: 13, fontWeight: 700, color: gross >= 0 ? '#16a34a' : '#dc2626' }}>RM {gross.toLocaleString()}</span>;
+                                    const addonNet = addonNetByListing[l.id] || 0;
+                                    const gross = sp - Number(l.purchase_price) - Number(l.recon_cost || 0) + addonNet;
+                                    return (
+                                      <>
+                                        <span style={{ fontSize: 13, fontWeight: 700, color: gross >= 0 ? '#16a34a' : '#dc2626' }}>RM {gross.toLocaleString()}</span>
+                                        {addonNet !== 0 && (
+                                          <span style={{ display: 'block', fontSize: 10, color: '#16a34a', fontWeight: 600, marginTop: 2 }}>
+                                            incl. RM {addonNet.toLocaleString()} F&amp;I
+                                          </span>
+                                        )}
+                                      </>
+                                    );
                                   })() : <span style={{ color: '#9ca3af', fontSize: 12 }}>—</span>}
                                 </td>
                                 {/* Year / Km */}
