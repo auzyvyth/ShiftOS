@@ -83,6 +83,39 @@ function SectionShell({ children }) {
   );
 }
 
+// Engagement chart series + a rich hover tooltip so dealers see every metric for
+// the hovered day at once (not just one line).
+const ENG_SERIES = [
+  { key: 'visits',   label: 'Page visits',    color: '#94a3b8' },
+  { key: 'clicks',   label: 'Listing clicks', color: '#67e8f9' },
+  { key: 'whatsapp', label: 'WhatsApp',       color: '#4ade80' },
+  { key: 'calls',    label: 'Calls',          color: '#c084fc' },
+  { key: 'bookings', label: 'Bookings',       color: '#fbbf24' },
+];
+
+function EngagementTooltip({ active, payload, label }) {
+  if (!active || !payload || !payload.length) return null;
+  const row = payload[0]?.payload || {};
+  const total = ENG_SERIES.reduce((s, x) => s + (Number(row[x.key]) || 0), 0);
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 12px', boxShadow: '0 6px 24px rgba(15,23,42,0.12)', fontFamily: "'DM Sans',sans-serif", minWidth: 180 }}>
+      <p style={{ fontSize: 12, fontWeight: 700, color: '#111827', margin: '0 0 8px' }}>{label}</p>
+      {ENG_SERIES.map((s) => (
+        <div key={s.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '2px 0' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6b7280' }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, flexShrink: 0 }} />{s.label}
+          </span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{Number(row[s.key]) || 0}</span>
+        </div>
+      ))}
+      <div style={{ borderTop: '1px solid #f3f4f6', marginTop: 6, paddingTop: 6, display: 'flex', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 12, color: '#6b7280' }}>Total events</span>
+        <span style={{ fontSize: 12, fontWeight: 800, color: '#dc2626', fontVariantNumeric: 'tabular-nums' }}>{total}</span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export default function PerformanceTab({ dealerId, listings = [] }) {
@@ -212,7 +245,7 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
     clicks:   carStats.reduce((s, r) => s + (Number(r.views) || 0), 0),
     whatsapp: carStats.reduce((s, r) => s + (Number(r.whatsapp) || 0), 0),
     calls:    carStats.reduce((s, r) => s + (Number(r.calls) || 0), 0),
-    bookings: carStats.reduce((s, r) => s + (Number(r.bookings) || 0), 0),
+    bookings: daily.reduce((s, r) => s + (Number(r.bookings) || 0), 0),
     visits:   daily.reduce((s, r) => s + (Number(r.visits) || 0), 0),
   }), [carStats, daily]);
 
@@ -245,7 +278,46 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
   }, [slugStats]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, fontFamily: "'DM Sans',sans-serif" }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, fontFamily: "'DM Sans',sans-serif", minWidth: 0 }}>
+
+      {/* ── Engagement Overview (chart on top) ─────────────────────────────────── */}
+      <SectionShell>
+        <PerfSectionHeader
+          icon={TrendingUp}
+          label="Engagement Overview"
+          desc="Daily storefront visits, clicks, calls, WhatsApp & bookings — last 30 days"
+        />
+        {/* Summary pills as a full-width wrapping row (kept out of the header so
+            they never force horizontal overflow on mobile). */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+          {ENG_SERIES.map(({ key, label, color }) => (
+            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 8, background: '#f9fafb', border: '1px solid #e5e7eb' }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
+              <span style={{ fontSize: 11, color: '#6b7280' }}>{label}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{engLoading ? '…' : (engTotals[key] ?? 0)}</span>
+            </div>
+          ))}
+        </div>
+        {engLoading ? (
+          <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13 }}>Loading chart…</div>
+        ) : (
+          <div style={{ width: '100%', minWidth: 0, overflowX: 'hidden' }}>
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={dailyChart} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={24} />
+                <YAxis allowDecimals={false} width={32} tick={{ fontSize: 10, fill: '#4b5563' }} axisLine={false} tickLine={false} />
+                <Tooltip content={<EngagementTooltip />} cursor={{ stroke: 'rgba(59,130,246,0.25)', strokeWidth: 1 }} />
+                <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 11, color: '#6b7280', paddingTop: 8 }} />
+                <Brush dataKey="date" height={20} stroke="rgba(59,130,246,0.3)" fill="rgba(59,130,246,0.05)" travellerWidth={6} startIndex={Math.max(0, dailyChart.length - 14)} />
+                {ENG_SERIES.map((s) => (
+                  <Line key={s.key} type="monotone" dataKey={s.key} name={s.label} stroke={s.color} strokeWidth={1.75} dot={false} activeDot={{ r: 3 }} />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </SectionShell>
 
       {/* ── Team Performance ──────────────────────────────────────────────────── */}
       <SectionShell>
@@ -480,56 +552,6 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
               </div>
             )}
           </>
-        )}
-      </SectionShell>
-
-      {/* ── Engagement Overview (moved from Listings tab) ──────────────────────── */}
-      <SectionShell>
-        <PerfSectionHeader
-          icon={TrendingUp}
-          label="Engagement Overview"
-          desc="Daily storefront visits, clicks & conversions — last 30 days"
-          right={
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-end' }}>
-              {[
-                { label: 'Visits',   val: engTotals.visits,   color: '#94a3b8' },
-                { label: 'Clicks',   val: engTotals.clicks,   color: '#67e8f9' },
-                { label: 'WhatsApp', val: engTotals.whatsapp, color: '#4ade80' },
-                { label: 'Bookings', val: engTotals.bookings, color: '#fbbf24' },
-                { label: 'Calls',    val: engTotals.calls,    color: '#c084fc' },
-              ].map(({ label, val, color }) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 9px', borderRadius: 7, background: '#f9fafb', border: '1px solid #e5e7eb' }}>
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, color: '#6b7280' }}>{label}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{engLoading ? '…' : val}</span>
-                </div>
-              ))}
-            </div>
-          }
-        />
-        {engLoading ? (
-          <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13 }}>Loading chart…</div>
-        ) : (
-          <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={dailyChart} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-              <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#4b5563' }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, fontFamily: "'DM Sans', sans-serif", fontSize: 12 }}
-                itemStyle={{ color: '#111827' }}
-                labelStyle={{ color: '#6b7280', marginBottom: 4 }}
-                cursor={{ stroke: 'rgba(59,130,246,0.2)', strokeWidth: 1 }}
-              />
-              <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 11, color: '#6b7280', paddingTop: 8 }} />
-              <Brush dataKey="date" height={20} stroke="rgba(59,130,246,0.3)" fill="rgba(59,130,246,0.05)" travellerWidth={6} startIndex={Math.max(0, dailyChart.length - 14)} />
-              <Line type="monotone" dataKey="visits"   stroke="#94a3b8" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-              <Line type="monotone" dataKey="clicks"   stroke="#67e8f9" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-              <Line type="monotone" dataKey="whatsapp" stroke="#4ade80" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-              <Line type="monotone" dataKey="bookings" stroke="#fbbf24" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-              <Line type="monotone" dataKey="calls"    stroke="#c084fc" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
         )}
       </SectionShell>
 
