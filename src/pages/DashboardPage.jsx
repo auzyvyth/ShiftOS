@@ -353,17 +353,6 @@ function Sparkline({ data = [], color = '#3b82f6', width = 80, height = 28 }) {
   );
 }
 
-function bucketByDay(events, eventTypes, days = 14) {
-  const result = Array(days).fill(0);
-  const now = Date.now();
-  events.forEach(e => {
-    if (!eventTypes.includes(e.event_type)) return;
-    const daysAgo = Math.floor((now - new Date(e.created_at)) / 86400000);
-    if (daysAgo < days) result[days - 1 - daysAgo]++;
-  });
-  return result;
-}
-
 function bucketGPByMonth(units, months = 6) {
   const result = Array(months).fill(0);
   const now = new Date();
@@ -10000,7 +9989,7 @@ export default function DashboardPage() {
       });
   };
 
-  const soldCount = listings.filter((l) => l.status === "sold").length;
+  const reservedCount = listings.filter((l) => l.status === "reserved").length;
   const totalVal = listings.filter(l => l.status !== 'sold').reduce((s, l) => s + (l.selling_price || 0), 0);
   const hotCount = listings.filter(
     (l) =>
@@ -10008,10 +9997,6 @@ export default function DashboardPage() {
       l.selling_price &&
       l.selling_price < l.original_price,
   ).length;
-  const soldSpark = bucketByDay(
-    listings.filter(l => l.status === 'sold' && l.sold_at).map(l => ({ event_type: 'sold', created_at: l.sold_at })),
-    ['sold']
-  );
 
   const STATUS = {
     available: {
@@ -10220,14 +10205,12 @@ export default function DashboardPage() {
       glow: "rgba(103,232,249,0.13)",
     },
     {
-      label: "Sold",
-      val: soldCount,
-      sub: "Cars sold all time",
-      grad: "grad-green",
-      Icon: CheckCircle2,
-      glow: "rgba(110,231,183,0.13)",
-      spark: soldSpark,
-      sparkColor: '#34d399',
+      label: "Reserved",
+      val: reservedCount,
+      sub: "Held with deposit",
+      grad: "grad-gold",
+      Icon: Tag,
+      glow: "rgba(251,191,36,0.13)",
     },
     {
       label: "Total Value",
