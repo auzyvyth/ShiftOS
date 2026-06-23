@@ -1130,7 +1130,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       product_id: product.id,
       name: product.name,
       category: product.category,
-      cost: product.cost_price || 0,
+      cost: Number(product.cost_price) || 0,
+      selling_price: Number(product.selling_price) || 0,
       icon: product.category,
     };
     setForm((f) => ({
@@ -2774,7 +2775,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                     {/* Cost summary */}
                     <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-blue-500/5 border border-blue-500/15">
                       <span className="text-xs text-gray-400 font-medium">
-                        Total included services cost
+                        Total value included
                       </span>
                       <span className="text-sm font-semibold text-blue-400">
                         RM{" "}
@@ -2848,7 +2849,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                           const cfg = getCategoryCfg(p.category);
                           const CatIcon = cfg.icon;
                           const alreadyAdded = form.included_services.some(
-                            (s) => s.id === p.id,
+                            (s) => (s.product_id || s.id) === p.id,
                           );
                           return (
                             <button

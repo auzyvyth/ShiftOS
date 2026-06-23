@@ -218,6 +218,8 @@ const STYLES = `
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: #9AA1AD; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 
   @keyframes slideUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
   @keyframes hotpulse { 0%,100%{opacity:1}50%{opacity:.55} }
@@ -9463,6 +9465,8 @@ export default function DashboardPage() {
   // "Tools" dropdown now that Stock has no nav entry — this signals which to open.
   const [stockAutoTool,    setStockAutoTool]    = useState(null);
   const [toolsMenuOpen,    setToolsMenuOpen]    = useState(false);
+  const toolsBtnRef = useRef(null);
+  const [toolsBtnRect, setToolsBtnRect] = useState(null);
   const [svcPopupListing,  setSvcPopupListing]  = useState(null);
   const sidebarBellRef = useRef(null);
   const [sidebarBellRect, setSidebarBellRect] = useState(null);
@@ -10803,37 +10807,44 @@ export default function DashboardPage() {
                         Filters
                         {activeFilterCount > 0 && <span style={{ background: '#3b82f6', color: '#fff', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '1px 6px', marginLeft: 2 }}>{activeFilterCount}</span>}
                       </button>
-                      {/* Stock tools (migrated from the Stock tab) */}
-                      <div style={{ position: 'relative' }}>
-                        <button
-                          onClick={() => setToolsMenuOpen(o => !o)}
-                          style={{ display: 'flex', alignItems: 'center', gap: 5, background: toolsMenuOpen ? 'rgba(107,114,128,0.12)' : '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600, color: '#374151', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
-                        >
-                          <Wrench style={{ width: 13, height: 13 }} /> Tools
-                        </button>
-                        {toolsMenuOpen && (
-                          <>
-                            <div onClick={() => setToolsMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
-                            <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 41, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(15,23,42,0.12)', padding: 6, minWidth: 180 }}>
-                              {[
-                                { key: 'csv', Icon: Upload, label: 'Import CSV' },
-                                { key: 'vendors', Icon: Wrench, label: 'Vendors' },
-                                { key: 'add', Icon: PlusCircle, label: 'Add Stock Unit' },
-                              ].map(({ key, Icon, label }) => (
-                                <button
-                                  key={key}
-                                  onClick={() => { setStockAutoTool(key); handleTabChange('stock'); setToolsMenuOpen(false); }}
-                                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', background: 'none', border: 'none', borderRadius: 6, padding: '8px 10px', fontSize: 13, fontWeight: 500, color: '#374151', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
-                                  onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
-                                  onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                                >
-                                  <Icon style={{ width: 14, height: 14, color: '#6b7280' }} /> {label}
-                                </button>
-                              ))}
-                            </div>
-                          </>
-                        )}
-                      </div>
+                      {/* Stock tools (migrated from the Stock tab) — portal so the card's
+                          overflow:hidden can't clip the menu (see overlay rules) */}
+                      <button
+                        ref={toolsBtnRef}
+                        onClick={() => {
+                          setToolsMenuOpen(o => {
+                            const next = !o;
+                            if (next && toolsBtnRef.current) setToolsBtnRect(toolsBtnRef.current.getBoundingClientRect());
+                            return next;
+                          });
+                        }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 5, background: toolsMenuOpen ? 'rgba(107,114,128,0.12)' : '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600, color: '#374151', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        <Wrench style={{ width: 13, height: 13 }} /> Tools
+                      </button>
+                      {toolsMenuOpen && toolsBtnRect && createPortal(
+                        <>
+                          <div onClick={() => setToolsMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 10040 }} />
+                          <div style={{ position: 'fixed', top: toolsBtnRect.bottom + 6, left: Math.min(Math.max(8, toolsBtnRect.left), window.innerWidth - 8 - 190), zIndex: 10041, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(15,23,42,0.12)', padding: 6, width: 190 }}>
+                            {[
+                              { key: 'csv', Icon: Upload, label: 'Import CSV' },
+                              { key: 'vendors', Icon: Wrench, label: 'Vendors' },
+                              { key: 'add', Icon: PlusCircle, label: 'Add Stock Unit' },
+                            ].map(({ key, Icon, label }) => (
+                              <button
+                                key={key}
+                                onClick={() => { setStockAutoTool(key); handleTabChange('stock'); setToolsMenuOpen(false); }}
+                                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', background: 'none', border: 'none', borderRadius: 6, padding: '8px 10px', fontSize: 13, fontWeight: 500, color: '#374151', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                              >
+                                <Icon style={{ width: 14, height: 14, color: '#6b7280' }} /> {label}
+                              </button>
+                            ))}
+                          </div>
+                        </>,
+                        document.body
+                      )}
                       <button
                         onClick={() => setShowFastModal(true)}
                         style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#dc2626', border: 'none', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
@@ -10905,7 +10916,7 @@ export default function DashboardPage() {
                   )}
 
                   {/* ── Status filter tabs ── */}
-                  <div style={{ display: 'flex', gap: 0, padding: '0 20px', borderBottom: '1px solid #e5e7eb', marginTop: 14 }}>
+                  <div className="no-scrollbar" style={{ display: 'flex', gap: 0, padding: '0 20px', borderBottom: '1px solid #e5e7eb', marginTop: 14, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
                     {[
                       { key: 'available', label: 'Available', count: listings.filter(l => (l.status || 'available') === 'available').length },
                       { key: 'reserved', label: 'Reserved', count: listings.filter(l => l.status === 'reserved').length },
@@ -10917,7 +10928,7 @@ export default function DashboardPage() {
                         onClick={() => setStatusFilter(key)}
                         style={{
                           background: 'none', border: 'none', cursor: 'pointer',
-                          padding: '10px 16px', fontSize: 13,
+                          padding: '10px 16px', fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap',
                           fontWeight: statusFilter === key ? 600 : 400,
                           fontFamily: "'DM Sans', sans-serif",
                           color: statusFilter === key ? '#111827' : '#4b5563',
