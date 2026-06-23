@@ -704,13 +704,27 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
         }
         const { data, error } = await supabase
           .from("hero_carousel_slides")
-          .select("*, car_listings(slug, status)")
+          .select("*")
           .eq("active", true)
           .eq("dealer_id", dealerId)
           .order("sort_order", { ascending: true });
-        const live = !error && data
-          ? data.filter(s => !s.car_listing_id || s.car_listings?.status !== 'sold')
-          : [];
+        let rows = !error && data ? data : [];
+        // Enrich linked listings via the anon-safe public view. The base
+        // car_listings table is NOT readable by anon (it holds dealer
+        // financials), so embedding car_listings(...) here 403s the whole
+        // request for logged-out visitors and the hero renders empty. The
+        // public_car_listings view exposes slug/status publicly.
+        const carIds = [...new Set(rows.map(r => r.car_listing_id).filter(Boolean))];
+        if (carIds.length) {
+          const { data: cars } = await supabase
+            .from("public_car_listings")
+            .select("id, slug, status")
+            .in("id", carIds);
+          const byId = {};
+          (cars || []).forEach(c => { byId[c.id] = c; });
+          rows = rows.map(r => (r.car_listing_id ? { ...r, car_listings: byId[r.car_listing_id] || null } : r));
+        }
+        const live = rows.filter(s => !s.car_listing_id || s.car_listings?.status !== 'sold');
         setSlides(live);
       } catch {
         setSlides([]);
