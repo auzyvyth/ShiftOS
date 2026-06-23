@@ -779,12 +779,12 @@ function PillSelect({ options, value, onChange }) {
 function Field({ label, required, hint, children }) {
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-gray-700">
+      <div>
+        <label className="block text-sm font-medium text-gray-700">
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
-        {hint && <span className="text-xs text-gray-500">{hint}</span>}
+        {hint && <p className="text-xs text-gray-500 mt-0.5">{hint}</p>}
       </div>
       {children}
     </div>
@@ -2028,7 +2028,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       );
       case 2: return (
         <div className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Brand" required>
               <Combobox
                 value={form.brand}
@@ -2085,7 +2085,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               onChange={(v) => set("condition", v)}
             />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Mileage (km)" required>
               <input
                 type="number"
@@ -2147,7 +2147,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.vin}</p>
             )}
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Previous Owners">
               <input
                 type="number"
@@ -2237,7 +2237,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               </div>
             </div>
           </Field>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <Field label="Power (bhp)">
               <div className="relative">
                 <input
@@ -2280,7 +2280,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               </div>
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Doors">
               <input
                 type="number"
@@ -2330,7 +2330,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           {form.isRecon && (
             <div className="space-y-5">
               {/* Grade row */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field
                   label="Auction Grade"
                   hint={`Suggested: ${suggestedGrade}`}
@@ -2394,7 +2394,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               </div>
 
               {/* Import country + auction house */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Import Country">
                   <div className="relative">
                     <select
@@ -2425,7 +2425,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               </div>
 
               {/* Local reg date + chassis status */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field
                   label="Local Reg Date"
                   hint="When first registered in MY"
@@ -2677,7 +2677,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               );
             })()}
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field
               label="Deposit to Reserve (RM)"
               hint="Amount needed to hold this unit"
