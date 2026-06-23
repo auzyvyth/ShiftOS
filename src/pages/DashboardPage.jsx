@@ -218,6 +218,8 @@ const STYLES = `
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: #9AA1AD; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 
   @keyframes slideUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
   @keyframes hotpulse { 0%,100%{opacity:1}50%{opacity:.55} }
@@ -349,17 +351,6 @@ function Sparkline({ data = [], color = '#3b82f6', width = 80, height = 28 }) {
       <polygon points={`0,${height} ${pts} ${width},${height}`} fill={`url(#${gradId})`} />
     </svg>
   );
-}
-
-function bucketByDay(events, eventTypes, days = 14) {
-  const result = Array(days).fill(0);
-  const now = Date.now();
-  events.forEach(e => {
-    if (!eventTypes.includes(e.event_type)) return;
-    const daysAgo = Math.floor((now - new Date(e.created_at)) / 86400000);
-    if (daysAgo < days) result[days - 1 - daysAgo]++;
-  });
-  return result;
 }
 
 function bucketGPByMonth(units, months = 6) {
@@ -7296,10 +7287,15 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                     <div style={{ padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
                       <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Back End (F&I / Add-ons)</p>
                       {pnlData.addonRevenue > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 3 }}>
-                          <span style={{ color: '#374151' }}>Add-ons sold ({pnlData.addons.length})</span>
-                          <span style={{ color: '#111827', fontWeight: 600 }}>RM {pnlData.addonRevenue.toLocaleString()}</span>
-                        </div>
+                        <>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Sold with ({pnlData.addons.length})</p>
+                          {pnlData.addons.map((a, i) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 3 }}>
+                              <span style={{ color: '#374151' }}>{a.dealer_products?.name || 'Add-on'}</span>
+                              <span style={{ color: '#111827', fontWeight: 600 }}>RM {(Number(a.sold_price) || 0).toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </>
                       )}
                       {pnlData.addonCost > 0 && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
@@ -9451,10 +9447,15 @@ export default function DashboardPage() {
   const [assignDropdownId, setAssignDropdownId] = useState(null);
   const [assignToast,      setAssignToast]      = useState(null);
   const [detailListing,    setDetailListing]    = useState(null);
+  // Net F&I add-on gross per listing (sold_price − cost) so the Listings table
+  // Gross column reflects what a sold car actually earned, add-ons included.
+  const [addonNetByListing, setAddonNetByListing] = useState({});
   // Stock tools (CSV import / vendors / add unit) are reached from the Listings
   // "Tools" dropdown now that Stock has no nav entry — this signals which to open.
   const [stockAutoTool,    setStockAutoTool]    = useState(null);
   const [toolsMenuOpen,    setToolsMenuOpen]    = useState(false);
+  const toolsBtnRef = useRef(null);
+  const [toolsBtnRect, setToolsBtnRect] = useState(null);
   const [svcPopupListing,  setSvcPopupListing]  = useState(null);
   const sidebarBellRef = useRef(null);
   const [sidebarBellRect, setSidebarBellRect] = useState(null);
@@ -9533,6 +9534,7 @@ export default function DashboardPage() {
       // Prevents any previous owner's branding from bleeding through.
       setProfile(null);
       setListings([]);
+      setAddonNetByListing({});
       setSalesmen([]);
       setLoading(true);
       setUserId(uid);
@@ -9566,7 +9568,7 @@ export default function DashboardPage() {
       }
 
       const dealerId = getDealerIdFromProfile(p);
-      const [{ data: cars, error: carsError }, { data: sm }, { data: stockCost }] = await Promise.all([
+      const [{ data: cars, error: carsError }, { data: sm }, { data: stockCost }, { data: dealProducts }] = await Promise.all([
         supabase
           .from("car_listings")
           .select("id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,condition,images,status,created_at,dealer_id,assigned_to,commission_amount,sold_at,included_services,included_services_cost,auction_grade,interior_grade,is_recon,financing_type,engine_cc,previous_owners,plate_number,vin_number,engine_number,road_tax_expiry,warranty_months,deposit_amount,reserved_by,reserved_at")
@@ -9584,6 +9586,11 @@ export default function DashboardPage() {
           .select("listing_id, purchase_price, recon_cost")
           .eq("dealer_id", dealerId)
           .not("listing_id", "is", null),
+        // F&I add-ons sold per car — net (sold_price − cost) folds into the row Gross.
+        supabase
+          .from("deal_products")
+          .select("listing_id, sold_price, dealer_products(cost_price)")
+          .eq("dealer_id", dealerId),
       ]);
       if (active) {
         const costBy = {};
@@ -9592,6 +9599,12 @@ export default function DashboardPage() {
           const sc = costBy[c.id];
           return sc ? { ...c, purchase_price: sc.purchase_price, recon_cost: sc.recon_cost } : c;
         });
+        const addonNet = {};
+        (dealProducts || []).forEach((d) => {
+          if (!d.listing_id) return;
+          addonNet[d.listing_id] = (addonNet[d.listing_id] || 0) + (Number(d.sold_price) || 0) - (Number(d.dealer_products?.cost_price) || 0);
+        });
+        setAddonNetByListing(addonNet);
         setListings(carsError ? [] : merged);
         setSalesmen(sm || []);
         setLoading(false);
@@ -9976,7 +9989,7 @@ export default function DashboardPage() {
       });
   };
 
-  const soldCount = listings.filter((l) => l.status === "sold").length;
+  const reservedCount = listings.filter((l) => l.status === "reserved").length;
   const totalVal = listings.filter(l => l.status !== 'sold').reduce((s, l) => s + (l.selling_price || 0), 0);
   const hotCount = listings.filter(
     (l) =>
@@ -9984,10 +9997,6 @@ export default function DashboardPage() {
       l.selling_price &&
       l.selling_price < l.original_price,
   ).length;
-  const soldSpark = bucketByDay(
-    listings.filter(l => l.status === 'sold' && l.sold_at).map(l => ({ event_type: 'sold', created_at: l.sold_at })),
-    ['sold']
-  );
 
   const STATUS = {
     available: {
@@ -10196,14 +10205,12 @@ export default function DashboardPage() {
       glow: "rgba(103,232,249,0.13)",
     },
     {
-      label: "Sold",
-      val: soldCount,
-      sub: "Cars sold all time",
-      grad: "grad-green",
-      Icon: CheckCircle2,
-      glow: "rgba(110,231,183,0.13)",
-      spark: soldSpark,
-      sparkColor: '#34d399',
+      label: "Reserved",
+      val: reservedCount,
+      sub: "Held with deposit",
+      grad: "grad-gold",
+      Icon: Tag,
+      glow: "rgba(251,191,36,0.13)",
     },
     {
       label: "Total Value",
@@ -10783,37 +10790,44 @@ export default function DashboardPage() {
                         Filters
                         {activeFilterCount > 0 && <span style={{ background: '#3b82f6', color: '#fff', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '1px 6px', marginLeft: 2 }}>{activeFilterCount}</span>}
                       </button>
-                      {/* Stock tools (migrated from the Stock tab) */}
-                      <div style={{ position: 'relative' }}>
-                        <button
-                          onClick={() => setToolsMenuOpen(o => !o)}
-                          style={{ display: 'flex', alignItems: 'center', gap: 5, background: toolsMenuOpen ? 'rgba(107,114,128,0.12)' : '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600, color: '#374151', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
-                        >
-                          <Wrench style={{ width: 13, height: 13 }} /> Tools
-                        </button>
-                        {toolsMenuOpen && (
-                          <>
-                            <div onClick={() => setToolsMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
-                            <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 41, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(15,23,42,0.12)', padding: 6, minWidth: 180 }}>
-                              {[
-                                { key: 'csv', Icon: Upload, label: 'Import CSV' },
-                                { key: 'vendors', Icon: Wrench, label: 'Vendors' },
-                                { key: 'add', Icon: PlusCircle, label: 'Add Stock Unit' },
-                              ].map(({ key, Icon, label }) => (
-                                <button
-                                  key={key}
-                                  onClick={() => { setStockAutoTool(key); handleTabChange('stock'); setToolsMenuOpen(false); }}
-                                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', background: 'none', border: 'none', borderRadius: 6, padding: '8px 10px', fontSize: 13, fontWeight: 500, color: '#374151', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
-                                  onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
-                                  onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                                >
-                                  <Icon style={{ width: 14, height: 14, color: '#6b7280' }} /> {label}
-                                </button>
-                              ))}
-                            </div>
-                          </>
-                        )}
-                      </div>
+                      {/* Stock tools (migrated from the Stock tab) — portal so the card's
+                          overflow:hidden can't clip the menu (see overlay rules) */}
+                      <button
+                        ref={toolsBtnRef}
+                        onClick={() => {
+                          setToolsMenuOpen(o => {
+                            const next = !o;
+                            if (next && toolsBtnRef.current) setToolsBtnRect(toolsBtnRef.current.getBoundingClientRect());
+                            return next;
+                          });
+                        }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 5, background: toolsMenuOpen ? 'rgba(107,114,128,0.12)' : '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600, color: '#374151', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        <Wrench style={{ width: 13, height: 13 }} /> Tools
+                      </button>
+                      {toolsMenuOpen && toolsBtnRect && createPortal(
+                        <>
+                          <div onClick={() => setToolsMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 10040 }} />
+                          <div style={{ position: 'fixed', top: toolsBtnRect.bottom + 6, left: Math.min(Math.max(8, toolsBtnRect.left), window.innerWidth - 8 - 190), zIndex: 10041, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(15,23,42,0.12)', padding: 6, width: 190 }}>
+                            {[
+                              { key: 'csv', Icon: Upload, label: 'Import CSV' },
+                              { key: 'vendors', Icon: Wrench, label: 'Vendors' },
+                              { key: 'add', Icon: PlusCircle, label: 'Add Stock Unit' },
+                            ].map(({ key, Icon, label }) => (
+                              <button
+                                key={key}
+                                onClick={() => { setStockAutoTool(key); handleTabChange('stock'); setToolsMenuOpen(false); }}
+                                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', background: 'none', border: 'none', borderRadius: 6, padding: '8px 10px', fontSize: 13, fontWeight: 500, color: '#374151', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                              >
+                                <Icon style={{ width: 14, height: 14, color: '#6b7280' }} /> {label}
+                              </button>
+                            ))}
+                          </div>
+                        </>,
+                        document.body
+                      )}
                       <button
                         onClick={() => setShowFastModal(true)}
                         style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#dc2626', border: 'none', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
@@ -10885,7 +10899,7 @@ export default function DashboardPage() {
                   )}
 
                   {/* ── Status filter tabs ── */}
-                  <div style={{ display: 'flex', gap: 0, padding: '0 20px', borderBottom: '1px solid #e5e7eb', marginTop: 14 }}>
+                  <div className="no-scrollbar" style={{ display: 'flex', gap: 0, padding: '0 20px', borderBottom: '1px solid #e5e7eb', marginTop: 14, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
                     {[
                       { key: 'available', label: 'Available', count: listings.filter(l => (l.status || 'available') === 'available').length },
                       { key: 'reserved', label: 'Reserved', count: listings.filter(l => l.status === 'reserved').length },
@@ -10897,7 +10911,7 @@ export default function DashboardPage() {
                         onClick={() => setStatusFilter(key)}
                         style={{
                           background: 'none', border: 'none', cursor: 'pointer',
-                          padding: '10px 16px', fontSize: 13,
+                          padding: '10px 16px', fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap',
                           fontWeight: statusFilter === key ? 600 : 400,
                           fontFamily: "'DM Sans', sans-serif",
                           color: statusFilter === key ? '#111827' : '#4b5563',
@@ -10998,8 +11012,18 @@ export default function DashboardPage() {
                                 {/* Gross */}
                                 <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                                   {l.purchase_price ? (() => {
-                                    const gross = sp - Number(l.purchase_price) - Number(l.recon_cost || 0);
-                                    return <span style={{ fontSize: 13, fontWeight: 700, color: gross >= 0 ? '#16a34a' : '#dc2626' }}>RM {gross.toLocaleString()}</span>;
+                                    const addonNet = addonNetByListing[l.id] || 0;
+                                    const gross = sp - Number(l.purchase_price) - Number(l.recon_cost || 0) + addonNet;
+                                    return (
+                                      <>
+                                        <span style={{ fontSize: 13, fontWeight: 700, color: gross >= 0 ? '#16a34a' : '#dc2626' }}>RM {gross.toLocaleString()}</span>
+                                        {addonNet !== 0 && (
+                                          <span style={{ display: 'block', fontSize: 10, color: '#16a34a', fontWeight: 600, marginTop: 2 }}>
+                                            incl. RM {addonNet.toLocaleString()} F&amp;I
+                                          </span>
+                                        )}
+                                      </>
+                                    );
                                   })() : <span style={{ color: '#9ca3af', fontSize: 12 }}>—</span>}
                                 </td>
                                 {/* Year / Km */}

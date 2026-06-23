@@ -245,6 +245,17 @@ export default function DealerOnboarding() {
 
   const upd = (k) => (val) => setForm(p => ({ ...p, [k]: val }));
 
+  // Mirror Supabase's password policy (8+ chars + one of each class) so users
+  // never hit an opaque server-side rejection on sign-up.
+  const pwChecks = [
+    { label: 'At least 8 characters', ok: form.password.length >= 8 },
+    { label: 'A lowercase letter (a-z)', ok: /[a-z]/.test(form.password) },
+    { label: 'An uppercase letter (A-Z)', ok: /[A-Z]/.test(form.password) },
+    { label: 'A number (0-9)', ok: /[0-9]/.test(form.password) },
+    { label: 'A symbol (!@#$%…)', ok: /[^a-zA-Z0-9]/.test(form.password) },
+  ];
+  const pwValid = pwChecks.every(c => c.ok);
+
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -305,7 +316,7 @@ export default function DealerOnboarding() {
 
   const signUp = async () => {
     setErr('');
-    if (form.password.length < 8) { setErr('Password must be at least 8 characters'); return; }
+    if (!pwValid) { setErr('Password needs 8+ characters with an uppercase, lowercase, number and symbol.'); return; }
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -525,10 +536,24 @@ export default function DealerOnboarding() {
                 <input className="eo-inp" type="email" placeholder="owner@yourdealership.com" value={form.email}
                   onChange={e => upd('email')(e.target.value)} autoComplete="email" />
                 <label className="eo-label">PASSWORD</label>
-                <input className="eo-inp" type="password" placeholder="Min 8 chars" value={form.password}
+                <input className="eo-inp" type="password" placeholder="Create a strong password" value={form.password}
                   onChange={e => upd('password')(e.target.value)} autoComplete="new-password" />
+                {form.password.length > 0 && !pwValid && (
+                  <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {pwChecks.map(c => (
+                      <div key={c.label} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: c.ok ? '#4ade80' : 'rgba(255,255,255,0.35)' }}>
+                        <span style={{ width: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {c.ok
+                            ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                            : <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'rgba(255,255,255,0.25)' }} />}
+                        </span>
+                        {c.label}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {err && <div className="eo-error">{err}</div>}
-                <button className="eo-btn" onClick={signUp} disabled={loading || !form.email || form.password.length < 8}>
+                <button className="eo-btn" onClick={signUp} disabled={loading || !form.email || !pwValid}>
                   {loading ? 'CREATING ACCOUNT…' : 'CREATE ACCOUNT'}
                 </button>
                 <p style={{ textAlign: 'center', marginTop: 18, fontSize: 12, color: 'rgba(255,255,255,0.22)' }}>

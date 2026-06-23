@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
@@ -24,6 +25,7 @@ import {
   BadgeCheck,
   Upload,
   GripVertical,
+  Maximize2,
 } from "lucide-react";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
@@ -777,12 +779,12 @@ function PillSelect({ options, value, onChange }) {
 function Field({ label, required, hint, children }) {
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-gray-700">
+      <div>
+        <label className="block text-sm font-medium text-gray-700">
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
-        {hint && <span className="text-xs text-gray-500">{hint}</span>}
+        {hint && <p className="text-xs text-gray-500 mt-0.5">{hint}</p>}
       </div>
       {children}
     </div>
@@ -838,6 +840,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   const [copied, setCopied] = useState(false);
   const [draggingIndex, setDraggingIndex] = useState(null);
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
+  const [photosFull, setPhotosFull] = useState(false);
   const [draftId, setDraftId] = useState(null);
   const [imgProgress, setImgProgress] = useState([]);
   const [dupWarning, setDupWarning] = useState({ plate: null, vin: null });
@@ -960,6 +963,11 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   useEffect(() => {
     previewUrlsRef.current = previews;
   }, [previews]);
+  // Lock body scroll while the fullscreen photo manager is open.
+  useEffect(() => {
+    document.body.style.overflow = photosFull ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [photosFull]);
   useEffect(
     () => () => {
       previewUrlsRef.current.forEach((p) => {
@@ -1122,7 +1130,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       product_id: product.id,
       name: product.name,
       category: product.category,
-      cost: product.cost_price || 0,
+      cost: Number(product.cost_price) || 0,
+      selling_price: Number(product.selling_price) || 0,
       icon: product.category,
     };
     setForm((f) => ({
@@ -1719,6 +1728,64 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   }
 
 
+  // Single photo thumbnail — reused by the inline strip and the fullscreen manager.
+  function renderPhotoTile(src, i) {
+    return (
+      <div
+        key={src + i}
+        draggable
+        onDragStart={(e) => dragStart(i, e)}
+        onDragOver={(e) => dragOver(i, e)}
+        onDrop={(e) => drop(i, e)}
+        onDragEnd={dragEnd}
+        className={`relative aspect-[4/3] sm:aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-gray-100 border transition-all ${i === dropTargetIndex ? "border-blue-500 ring-2 ring-blue-500/30" : "border-gray-200"} ${i === draggingIndex ? "opacity-70 scale-[0.98]" : ""}`}
+      >
+        <img src={src} alt={`preview ${i + 1}`} className="w-full h-full object-cover" />
+        <span className="absolute top-1 left-1 px-1 py-0.5 rounded bg-black/70 text-white text-[9px] sm:text-[10px] font-semibold">
+          #{i + 1}
+        </span>
+        {i === 0 ? (
+          <span className="absolute bottom-1 left-1 px-1 py-0.5 rounded bg-blue-600 text-white text-[9px] sm:text-[10px] font-semibold">
+            Primary
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => moveToFirst(i)}
+            className="absolute bottom-1 left-1 px-1 py-0.5 rounded bg-black/70 hover:bg-black text-white text-[9px] sm:text-[10px] font-medium transition-colors"
+          >
+            Set #1
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => removeImage(i)}
+          className="absolute top-1 right-1 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-black/70 hover:bg-red-600 text-white text-[10px] sm:text-xs font-bold transition-colors"
+        >
+          ×
+        </button>
+        <div className="absolute bottom-1 right-1 flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => moveByStep(i, -1)}
+            disabled={i === 0}
+            className="w-5 h-5 rounded bg-black/70 text-white flex items-center justify-center disabled:opacity-30"
+          >
+            <ChevronLeft className="w-3 h-3" />
+          </button>
+          <button
+            type="button"
+            onClick={() => moveByStep(i, 1)}
+            disabled={i === previews.length - 1}
+            className="w-5 h-5 rounded bg-black/70 text-white flex items-center justify-center disabled:opacity-30"
+          >
+            <ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   function renderSectionContent(id) {
     switch (id) {
       case 1: return (
@@ -1774,76 +1841,68 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           )}
           {previews.length > 0 && (
             <>
-              <p className="text-xs text-gray-500">
-                Drag to reorder on desktop · use arrows on mobile · Image #1 is
-                the main thumbnail
-              </p>
-              <div className="max-h-[40vh] sm:max-h-[52vh] overflow-y-auto rounded-xl border border-gray-200 p-1.5 sm:p-2">
-                <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-1.5 sm:gap-2">
-                  {previews.map((src, i) => (
-                    <div
-                      key={src + i}
-                      draggable
-                      onDragStart={(e) => dragStart(i, e)}
-                      onDragOver={(e) => dragOver(i, e)}
-                      onDrop={(e) => drop(i, e)}
-                      onDragEnd={dragEnd}
-                      className={`relative aspect-[4/3] sm:aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-gray-100 border transition-all ${i === dropTargetIndex ? "border-blue-500 ring-2 ring-blue-500/30" : "border-gray-200"} ${i === draggingIndex ? "opacity-70 scale-[0.98]" : ""}`}
-                    >
-                      <img
-                        src={src}
-                        alt={`preview ${i + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                      <span className="absolute top-1 left-1 px-1 py-0.5 rounded bg-black/70 text-white text-[9px] sm:text-[10px] font-semibold">
-                        #{i + 1}
-                      </span>
-                      <span className="hidden sm:block absolute top-1 right-7 px-1.5 py-0.5 rounded bg-black/70 text-white text-[10px] font-medium select-none">
-                        Drag
-                      </span>
-                      {i === 0 ? (
-                        <span className="absolute bottom-1 left-1 px-1 py-0.5 rounded bg-blue-600 text-white text-[9px] sm:text-[10px] font-semibold">
-                          Primary
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => moveToFirst(i)}
-                          className="absolute bottom-1 left-1 px-1 py-0.5 rounded bg-black/70 hover:bg-black text-white text-[9px] sm:text-[10px] font-medium transition-colors"
-                        >
-                          Set #1
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => removeImage(i)}
-                        className="absolute top-1 right-1 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-black/70 hover:bg-red-600 text-white text-[10px] sm:text-xs font-bold transition-colors"
-                      >
-                        ×
-                      </button>
-                      <div className="absolute bottom-1 right-1 flex items-center gap-1 sm:hidden">
-                        <button
-                          type="button"
-                          onClick={() => moveByStep(i, -1)}
-                          disabled={i === 0}
-                          className="w-5 h-5 rounded bg-black/70 text-white flex items-center justify-center disabled:opacity-30"
-                        >
-                          <ChevronLeft className="w-3 h-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => moveByStep(i, 1)}
-                          disabled={i === previews.length - 1}
-                          className="w-5 h-5 rounded bg-black/70 text-white flex items-center justify-center disabled:opacity-30"
-                        >
-                          <ChevronRight className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-gray-500">
+                  Image #1 is the main thumbnail · use arrows to reorder
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setPhotosFull(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-medium transition-colors flex-shrink-0"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                  Manage all
+                </button>
+              </div>
+              {/* Compact single-row strip — scrolls horizontally, mobile-friendly */}
+              <div className="flex gap-2 overflow-x-auto pb-1 px-0.5">
+                {previews.map((src, i) => (
+                  <div key={src + i} className="w-24 sm:w-28 flex-shrink-0">
+                    {renderPhotoTile(src, i)}
+                  </div>
+                ))}
               </div>
             </>
+          )}
+          {photosFull && createPortal(
+            <div
+              className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex flex-col"
+              onClick={() => setPhotosFull(false)}
+            >
+              <div
+                className="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10 flex-shrink-0"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center gap-2 text-white min-w-0">
+                  <span className="font-semibold text-sm flex-shrink-0">Manage Photos</span>
+                  <span className="text-white/50 text-xs truncate">
+                    {previews.length}/30 · drag or use arrows to reorder
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => photosInputRef.current?.click()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors"
+                  >
+                    <Camera className="w-3.5 h-3.5" /> Add more
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPhotosFull(false)}
+                    className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+                  >
+                    <XIcon className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4" onClick={(e) => e.stopPropagation()}>
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3 max-w-5xl mx-auto">
+                  {previews.map((src, i) => renderPhotoTile(src, i))}
+                </div>
+              </div>
+            </div>,
+            document.body,
           )}
           {/* Walkthrough Video */}
           <div className="space-y-1">
@@ -1969,7 +2028,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       );
       case 2: return (
         <div className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Brand" required>
               <Combobox
                 value={form.brand}
@@ -2026,7 +2085,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               onChange={(v) => set("condition", v)}
             />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Mileage (km)" required>
               <input
                 type="number"
@@ -2088,7 +2147,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.vin}</p>
             )}
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Previous Owners">
               <input
                 type="number"
@@ -2178,7 +2237,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               </div>
             </div>
           </Field>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <Field label="Power (bhp)">
               <div className="relative">
                 <input
@@ -2221,7 +2280,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               </div>
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Doors">
               <input
                 type="number"
@@ -2271,7 +2330,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           {form.isRecon && (
             <div className="space-y-5">
               {/* Grade row */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field
                   label="Auction Grade"
                   hint={`Suggested: ${suggestedGrade}`}
@@ -2335,7 +2394,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               </div>
 
               {/* Import country + auction house */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Import Country">
                   <div className="relative">
                     <select
@@ -2366,7 +2425,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               </div>
 
               {/* Local reg date + chassis status */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field
                   label="Local Reg Date"
                   hint="When first registered in MY"
@@ -2618,7 +2677,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               );
             })()}
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field
               label="Deposit to Reserve (RM)"
               hint="Amount needed to hold this unit"
@@ -2716,7 +2775,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                     {/* Cost summary */}
                     <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-blue-500/5 border border-blue-500/15">
                       <span className="text-xs text-gray-400 font-medium">
-                        Total included services cost
+                        Total value included
                       </span>
                       <span className="text-sm font-semibold text-blue-400">
                         RM{" "}
@@ -2790,7 +2849,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                           const cfg = getCategoryCfg(p.category);
                           const CatIcon = cfg.icon;
                           const alreadyAdded = form.included_services.some(
-                            (s) => s.id === p.id,
+                            (s) => (s.product_id || s.id) === p.id,
                           );
                           return (
                             <button
