@@ -2772,6 +2772,18 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
     "Any I should remove?",
     "How to write better listings?",
   ];
+  // Last 14 days of sold units, bucketed by day, for the Sold KPI sparkline.
+  const soldSpark = useMemo(() => {
+    const buckets = Array(14).fill(0);
+    const now = new Date();
+    listings.forEach((l) => {
+      if (l.status !== 'sold' || !l.sold_at) return;
+      const days = Math.floor((now - new Date(l.sold_at)) / 86_400_000);
+      if (days >= 0 && days < 14) buckets[13 - days] += 1;
+    });
+    return buckets;
+  }, [listings]);
+
   const kpis = [
     {
       label: "Active",
@@ -2788,7 +2800,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
       grad: "grad-green",
       icon: <CheckCircle2 className="w-4 h-4" />,
       glow: "rgba(110,231,183,0.14)",
-      spark: Array(14).fill(0),
+      spark: soldSpark,
       sparkColor: '#34d399',
     },
     {
