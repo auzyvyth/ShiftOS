@@ -2,10 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Heart, Bell, ArrowLeft, ArrowRight, LogOut, Store, Check, X } from 'lucide-react';
 import { supabase } from '../supabaseClient';
-import { useSavedCars } from '../hooks/useSavedCars';
+import { useSavedCars, useSavedCarsDetails } from '../hooks/useSavedCars';
 import CarCard from '../components/CarCard';
-
-const CARD_COLS = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,condition,images,status,created_at,dealer_id,auction_grade,interior_grade,is_recon,financing_type,engine_cc,previous_owners';
 
 // Business roles get bounced to their own panel — buyers only ever see /account.
 const SELLER_ROUTES = {
@@ -18,9 +16,9 @@ export default function AccountPage() {
   const navigate = useNavigate();
   useEffect(() => { document.title = 'My Account | XDrive'; }, []);
   const { savedIds, ready } = useSavedCars();
+  const { cars } = useSavedCarsDetails(savedIds, ready);
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
-  const [cars, setCars] = useState([]);
   const [alerts, setAlerts] = useState([]);
 
   // Auth guard. Not logged in -> /login. A seller (business role) -> their own
@@ -40,18 +38,6 @@ export default function AccountPage() {
     });
     return () => { active = false; };
   }, [navigate]);
-
-  // Saved cars (preserve saved order)
-  useEffect(() => {
-    if (!ready) return;
-    const ids = [...savedIds];
-    if (!ids.length) { setCars([]); return; }
-    supabase.from('public_car_listings').select(CARD_COLS).in('id', ids).then(({ data }) => {
-      if (!data) return;
-      const map = Object.fromEntries(data.map(c => [c.id, c]));
-      setCars(ids.map(id => map[id]).filter(Boolean));
-    });
-  }, [savedIds, ready]);
 
   // Saved searches / price alerts (RLS scopes to the signed-in user)
   useEffect(() => {
