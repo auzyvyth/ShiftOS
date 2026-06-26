@@ -5818,8 +5818,10 @@ function StockStatsStrip({ dealerId }) {
       const month = sold.filter(x => { if (!x.sold_date) return false; const d = new Date(x.sold_date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
       const withDays = active.map(stockDays).filter(d => typeof d === 'number');
       setS({
+        // Matches the Inventory tab's "Total Value" (car_listings.selling_price) so the
+        // two value figures on this page never disagree for the same unsold inventory.
         soldRevenue: sold.reduce((t, x) => t + (Number(x.sold_price) || Number(x.asking_price) || 0), 0),
-        stockValue: active.reduce((t, x) => t + (Number(x.asking_price) || 0), 0),
+        stockValue: active.reduce((t, x) => t + (Number(x.car_listings?.selling_price) || Number(x.asking_price) || 0), 0),
         avgDays: withDays.length ? Math.round(withDays.reduce((t, d) => t + d, 0) / withDays.length) : 0,
         gpMonth: month.reduce((t, x) => t + (stockNetProfit(x, ctx) || 0), 0),
         soldMonth: month.length,
@@ -5842,9 +5844,9 @@ function StockStatsStrip({ dealerId }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))', gap: 8, marginBottom: 24 }}>
       {items.map((it, i) => (
-        <div key={i} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }}>
+        <div key={i} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px', minWidth: 0 }}>
           <p style={{ fontSize: 9, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.label || ''}</p>
-          <p style={{ fontSize: 15, fontWeight: 700, color: it.color || '#111827', margin: '2px 0 0', whiteSpace: 'nowrap' }}>{it.val ?? '—'}</p>
+          <p style={{ fontSize: 15, fontWeight: 700, color: it.color || '#111827', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.val ?? '—'}</p>
         </div>
       ))}
     </div>
@@ -10702,6 +10704,10 @@ export default function DashboardPage() {
           {/* ── Listings Tab ── */}
           {activeTab === "listings" && (
             <>
+              {/* Stock P&L stats (migrated from the Stock tab header) — shown first
+                  since revenue/value figures matter more at a glance than raw counts */}
+              <StockStatsStrip dealerId={getDealerIdFromProfile(profile)} />
+
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-6">
                 {STAT_CARDS.map(({ label, val, sub, Icon, glow, spark, sparkColor }) => (
                   <div key={label} className="stat-card overflow-hidden" style={{ position: 'relative' }}>
@@ -10732,9 +10738,6 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
-
-              {/* Stock P&L stats (migrated from the Stock tab header) */}
-              <StockStatsStrip dealerId={getDealerIdFromProfile(profile)} />
 
               {/* ── Listings panel ── */}
               <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #EAECF0', background: '#FFFFFF', boxShadow: '0 1px 4px rgba(15,23,42,0.06)', fontFamily: "'DM Sans', sans-serif" }}>
