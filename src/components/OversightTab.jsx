@@ -26,7 +26,7 @@ const fmtAgo = (ts) => {
 };
 
 // ─── KPI Hero Card ────────────────────────────────────────────────────────────
-function HeroKPI({ label, value, prev, format = fmtRMShort, hint, sparkline }) {
+function HeroKPI({ label, value, prev, format = fmtRM, hint, sparkline }) {
   const delta = prev != null ? fmtPct(value, prev) : null;
   const up = delta != null && delta >= 0;
 
@@ -348,8 +348,8 @@ function GoalTracker({ dealerId, mtdRevenue, mtdProfit, mtdUnits }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 18 }}>
         {[
           { label: 'Units', actual: mtdUnits, target: goal?.target_units, fmt: (v) => v, ring: rUnits },
-          { label: 'Revenue', actual: mtdRevenue, target: goal?.target_revenue, fmt: fmtRMShort, ring: rRev },
-          { label: 'Profit', actual: mtdProfit, target: goal?.target_profit, fmt: fmtRMShort, ring: rProf },
+          { label: 'Revenue', actual: mtdRevenue, target: goal?.target_revenue, fmt: fmtRM, ring: rRev },
+          { label: 'Profit', actual: mtdProfit, target: goal?.target_profit, fmt: fmtRM, ring: rProf },
         ].map(g => (
           <div key={g.label}>
             <p style={{ fontSize: 11, color: '#6b7280', letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 500, margin: 0 }}>{g.label}</p>
