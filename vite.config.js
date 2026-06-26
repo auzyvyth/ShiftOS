@@ -15,6 +15,7 @@ export default defineConfig({
 		}),
 		VitePWA({
 			registerType: 'autoUpdate',
+				injectRegister: false,
 			manifest: {
 				name: 'ShiftOS by XDrive',
 				short_name: 'ShiftOS',
