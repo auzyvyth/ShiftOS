@@ -865,9 +865,6 @@ function SettingsTab({ profile, onProfileUpdate }) {
   // Section states
   const [dealership, setDealership] = useState(profile?.dealership || "");
   const [siteName, setSiteName] = useState(profile?.site_name || "");
-  const [brandColor, setBrandColor] = useState(
-    profile?.brand_color || "#c9a84c",
-  );
   const [whatsapp, setWhatsapp] = useState(profile?.whatsapp_number || "");
   const [contactEmail, setContactEmail] = useState(profile?.email || "");
   const [contactPhone, setContactPhone] = useState(profile?.phone || "+60");
@@ -980,7 +977,6 @@ function SettingsTab({ profile, onProfileUpdate }) {
     if (!profile) return;
     setDealership(profile.dealership || "");
     setSiteName(profile.site_name || "");
-    setBrandColor(profile.brand_color || "#c9a84c");
     setWhatsapp(profile.whatsapp_number || "");
     setContactEmail(profile.email || "");
     setContactPhone(profile.phone || "");
@@ -1083,7 +1079,6 @@ function SettingsTab({ profile, onProfileUpdate }) {
     const dealershipChanged = !dealershipLocked && dealership.trim() !== (profile?.dealership || "");
     const payload = {
       site_name: siteName.trim() || (profile?.dealership || dealership.trim() || ""),
-      brand_color: brandColor,
       subdomain,
       ...(dealershipChanged && {
         dealership: dealership.trim(),
@@ -1101,7 +1096,6 @@ function SettingsTab({ profile, onProfileUpdate }) {
       const fc = {};
       if (dealership.trim() !== profile?.dealership) { changes.push(`name "${profile?.dealership}" → "${dealership.trim()}"`); fc.dealership = { from: profile?.dealership, to: dealership.trim() }; }
       if (subdomain !== profile?.subdomain) { changes.push(`subdomain "${profile?.subdomain}" → "${subdomain}"`); fc.subdomain = { from: profile?.subdomain, to: subdomain }; }
-      if (brandColor !== profile?.brand_color) { changes.push(`brand color ${profile?.brand_color} → ${brandColor}`); fc.brand_color = { from: profile?.brand_color, to: brandColor }; }
       if (changes.length) {
         const dealerIdForLog = profile?.role === 'manager' || profile?.role === 'admin' ? profile?.dealer_id : profile?.id;
         logActivity({ dealerId: dealerIdForLog, actor: profile, tableName: 'profiles', recordId: profile?.id, action: 'settings_updated', summary: `Settings updated: ${changes.join('; ')}`, fieldChanges: fc });
@@ -1110,12 +1104,11 @@ function SettingsTab({ profile, onProfileUpdate }) {
     }
   };
 
-  // Save enables on ANY single change (name OR site name OR colour OR subdomain) —
-  // a colour-only edit is enough, and the name lock no longer gates the button.
+  // Save enables on ANY single change (name OR site name OR subdomain) —
+  // the name lock no longer gates the button.
   const identityDirty =
     (!dealershipLocked && dealership.trim() !== (profile?.dealership || "")) ||
     (siteName.trim() || "") !== (profile?.site_name || "") ||
-    (brandColor || "").toLowerCase() !== (profile?.brand_color || "#c9a84c").toLowerCase() ||
     subdomain !== (profile?.subdomain || "");
 
   const saveContact = () =>
@@ -1509,32 +1502,6 @@ function SettingsTab({ profile, onProfileUpdate }) {
             placeholder="e.g. Auto City — Used Cars Penang"
             className={iCls}
           />
-        </SettingsField>
-
-        <SettingsField
-          label="Brand Accent Colour"
-          hint="Used on your public site"
-        >
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <input
-                type="color"
-                value={brandColor}
-                onChange={(e) => setBrandColor(e.target.value)}
-                className="w-10 h-10 rounded-lg cursor-pointer border-0 p-0.5 bg-white/5"
-              />
-            </div>
-            <input
-              value={brandColor}
-              onChange={(e) => setBrandColor(e.target.value)}
-              placeholder="#c9a84c"
-              className="flex-1 bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-red-400 transition-all font-mono"
-            />
-            <div
-              className="w-10 h-10 rounded-lg flex-shrink-0 border border-gray-200"
-              style={{ background: brandColor }}
-            />
-          </div>
         </SettingsField>
 
         <ErrMsg k="identity" errors={errors} />
