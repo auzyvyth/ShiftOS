@@ -113,22 +113,15 @@ export default function MarketplacePage() {
     trackEvent(supabase, 'store_visit', { dealer_id: null, metadata: { source: 'organic' } });
   }, []);
 
-  /* ── Fetch marketplace stats ── */
+  /* ── Fetch marketplace stats — single RPC instead of 3 queries (one of
+     which downloaded up to 2000 rows just to count distinct dealers) ── */
   useEffect(() => {
     async function fetchStats() {
-      const [listingsRes, dealersRes, hotRes] = await Promise.all([
-        supabase.from('public_car_listings').select('*', { count: 'exact', head: true }).in('status', ['available', 'reserved']),
-        supabase.from('public_car_listings').select('dealer_id', { count: 'exact', head: false }).in('status', ['available', 'reserved']).limit(2000),
-        supabase.from('public_car_listings').select('*', { count: 'exact', head: true })
-          .in('status', ['available', 'reserved'])
-          .not('original_price', 'is', null)
-          .gt('original_price', 0),
-      ]);
-      const uniqueDealers = new Set((dealersRes.data || []).map(r => r.dealer_id)).size;
+      const { data } = await supabase.rpc('get_marketplace_stats').maybeSingle();
       setStats({
-        listings: listingsRes.count ?? 0,
-        dealers: uniqueDealers,
-        hotDeals: hotRes.count ?? 0,
+        listings: data?.listings ?? 0,
+        dealers: data?.dealers ?? 0,
+        hotDeals: data?.hot_deals ?? 0,
       });
     }
     fetchStats();
@@ -177,7 +170,7 @@ export default function MarketplacePage() {
 
       let query = supabase
         .from('public_car_listings')
-        .select(CAR_FIELDS, { count: 'exact' })
+        .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, { count: 'exact' })
         .in('status', ['available', 'reserved']);
 
       if (q) {
@@ -218,23 +211,10 @@ export default function MarketplacePage() {
 
       const rows = data || [];
 
-      /* Fetch dealer profiles for seller badges — best-effort, non-fatal */
-      let dealerMap = {};
-      const ids = [...new Set(rows.map(c => c.dealer_id).filter(Boolean))];
-      if (ids.length) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id,dealership,site_name,subdomain,whatsapp_number,site_logo_url,brand_color,role')
-          .in('id', ids);
-        (profiles || []).forEach(p => { dealerMap[p.id] = p; });
-      }
-
-      const enriched = rows.map(c => ({ ...c, dealer: dealerMap[c.dealer_id] ?? null }));
-
       if (loadPage === 1) {
-        setCars(dedupe(enriched));
+        setCars(dedupe(rows));
       } else {
-        setCars(prev => dedupe([...prev, ...enriched]));
+        setCars(prev => dedupe([...prev, ...rows]));
       }
       setTotal(count || 0);
     } catch (e) {
