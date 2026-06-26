@@ -246,10 +246,31 @@ export default function AdminPage() {
     // Load pending approval listings (salesman-lite standalone accounts)
     const { data: pending } = await supabase
       .from("car_listings")
-      .select("id, year, brand, model, variant, selling_price, images, status, created_at, rejection_reason, dealer_id, profiles!car_listings_dealer_id_fkey(full_name, slug, dealership)")
+      .select(`id, year, brand, model, variant, mileage, colour, condition, auction_grade, interior_grade,
+        is_recon, import_country, plate_number, vin_number, vin, selling_price, original_price, previous_price,
+        payment_type, images, status, created_at, rejection_reason, dealer_id, city, state,
+        profiles!car_listings_dealer_id_fkey(full_name, slug, dealership, phone, whatsapp_number, ic_submitted, created_at, listing_count_cache, city, state)`)
       .eq("status", "pending_approval")
       .order("created_at", { ascending: true });
-    setPendingListings(pending || []);
+
+    // Rejection counts + duplicate-plate cross-check
+    const plates = (pending || []).map(l => l.plate_number).filter(Boolean);
+    const [{ data: rejections }, { data: plateMatches }] = await Promise.all([
+      supabase.from("car_listings").select("dealer_id").eq("status", "rejected").in("dealer_id", (pending || []).map(l => l.dealer_id)),
+      plates.length > 0
+        ? supabase.from("car_listings").select("id, plate_number, dealer_id").in("plate_number", plates).neq("status", "rejected")
+        : Promise.resolve({ data: [] }),
+    ]);
+    const rejectionCounts = {};
+    (rejections || []).forEach(r => { rejectionCounts[r.dealer_id] = (rejectionCounts[r.dealer_id] || 0) + 1; });
+    const plateCounts = {};
+    (plateMatches || []).forEach(p => { if (p.plate_number) plateCounts[p.plate_number] = (plateCounts[p.plate_number] || 0) + 1; });
+
+    setPendingListings((pending || []).map(l => ({
+      ...l,
+      _rejectionCount: rejectionCounts[l.dealer_id] || 0,
+      _duplicatePlate: l.plate_number ? (plateCounts[l.plate_number] || 0) > 1 : false,
+    })));
   }
 
   async function saveField(id, field, value) {
@@ -545,9 +566,13 @@ export default function AdminPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {pendingListings.map(listing => {
                     const salesman = listing.profiles;
-                    const img = listing.images?.[0];
+                    const imgs = listing.images || [];
                     const carName = [listing.year, listing.brand, listing.model, listing.variant].filter(Boolean).join(" ");
                     const price = listing.selling_price ? `RM ${Number(listing.selling_price).toLocaleString("en-MY")}` : "—";
+                    const origPrice = listing.original_price || listing.previous_price || null;
+                    const discountPct = origPrice && origPrice > listing.selling_price
+                      ? Math.round(((origPrice - listing.selling_price) / origPrice) * 100) : 0;
+                    const accountAgeHrs = salesman?.created_at ? (Date.now() - new Date(salesman.created_at)) / 3600000 : null;
                     const submittedAgo = (() => {
                       const s = Math.floor((Date.now() - new Date(listing.created_at)) / 1000);
                       if (s < 3600) return `${Math.floor(s / 60)}m ago`;
@@ -557,12 +582,43 @@ export default function AdminPage() {
                     const isActioning = approvalActioning === listing.id;
                     const isRejecting = rejectingId === listing.id;
 
+                    const flags = [
+                      imgs.length === 0 && { label: "No images", sev: "high" },
+                      accountAgeHrs !== null && accountAgeHrs < 24 && { label: "New account (<24h)", sev: "high" },
+                      listing._duplicatePlate && { label: "Duplicate plate", sev: "high" },
+                      (salesman?.listing_count_cache || 0) >= 28 && { label: "Near listing cap", sev: "med" },
+                      salesman?.ic_submitted === false && { label: "No IC submitted", sev: "med" },
+                      discountPct > 20 && { label: `Big discount (${discountPct}%)`, sev: "med" },
+                      (listing._rejectionCount || 0) > 0 && { label: `${listing._rejectionCount} prior rejection${listing._rejectionCount > 1 ? "s" : ""}`, sev: "med" },
+                    ].filter(Boolean);
+
                     return (
                       <div key={listing.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "16px 18px" }}>
+                        {flags.length > 0 && (
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                            {flags.map((f, i) => (
+                              <span key={i} style={{ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 5,
+                                background: f.sev === "high" ? "rgba(239,68,68,0.12)" : "rgba(251,191,36,0.1)",
+                                border: f.sev === "high" ? "1px solid rgba(239,68,68,0.3)" : "1px solid rgba(251,191,36,0.25)",
+                                color: f.sev === "high" ? "#f87171" : "#fbbf24" }}>
+                                {f.sev === "high" ? "🔴" : "🟡"} {f.label}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                          {/* Thumbnail */}
-                          {img ? (
-                            <img src={img} alt={carName} style={{ width: 80, height: 60, objectFit: "cover", borderRadius: 7, flexShrink: 0, border: "1px solid rgba(255,255,255,0.06)" }} />
+                          {/* Thumbnails */}
+                          {imgs.length > 0 ? (
+                            <div style={{ display: "flex", gap: 4, flexShrink: 0, maxWidth: 168, overflowX: "auto" }}>
+                              {imgs.slice(0, 4).map((src, i) => (
+                                <img key={i} src={src} alt={carName} style={{ width: 40, height: 60, objectFit: "cover", borderRadius: 6, flexShrink: 0, border: "1px solid rgba(255,255,255,0.06)" }} />
+                              ))}
+                              {imgs.length > 4 && (
+                                <div style={{ width: 40, height: 60, borderRadius: 6, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#6b7280" }}>
+                                  +{imgs.length - 4}
+                                </div>
+                              )}
+                            </div>
                           ) : (
                             <div style={{ width: 80, height: 60, borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
                               <span style={{ fontSize: 20 }}>🚗</span>
@@ -572,11 +628,32 @@ export default function AdminPage() {
                           {/* Info */}
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{carName || "—"}</p>
-                            <p style={{ margin: "0 0 4px", fontSize: 12, color: "#dc2626", fontWeight: 600 }}>{price}</p>
+                            <p style={{ margin: "0 0 4px", fontSize: 12, color: "#dc2626", fontWeight: 600 }}>
+                              {price}
+                              {origPrice ? <span style={{ color: "#4b5563", fontWeight: 500, textDecoration: "line-through", marginLeft: 6 }}>RM {Number(origPrice).toLocaleString("en-MY")}</span> : null}
+                              {listing.payment_type && <span style={{ color: "#6b7280", fontWeight: 500, marginLeft: 8, fontSize: 11 }}>· {listing.payment_type}</span>}
+                            </p>
+                            <p style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}>
+                              {[listing.mileage && `${Number(listing.mileage).toLocaleString()} km`, listing.colour, listing.condition,
+                                listing.is_recon && [listing.auction_grade, listing.interior_grade].filter(Boolean).join("/"),
+                                listing.is_recon && listing.import_country,
+                                [listing.city, listing.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ") || "—"}
+                            </p>
+                            <p style={{ margin: "0 0 4px", fontSize: 10, color: "#4b5563", fontFamily: "monospace" }}>
+                              {listing.plate_number && `Plate: ${listing.plate_number}`}
+                              {(listing.vin_number || listing.vin) && `  ·  VIN: ${listing.vin_number || listing.vin}`}
+                            </p>
                             <p style={{ margin: 0, fontSize: 11, color: "#6b7280" }}>
                               by <span style={{ color: "#9ca3af", fontWeight: 600 }}>{salesman?.full_name || "—"}</span>
                               {salesman?.slug && <span style={{ color: "#4b5563" }}> · @{salesman.slug}</span>}
+                              {(salesman?.phone || salesman?.whatsapp_number) && <span style={{ color: "#4b5563" }}> · {salesman.phone || salesman.whatsapp_number}</span>}
                               <span style={{ color: "#374151" }}> · submitted {submittedAgo}</span>
+                            </p>
+                            <p style={{ margin: "4px 0 0", fontSize: 10, color: "#374151" }}>
+                              IC {salesman?.ic_submitted ? "✓ submitted" : "✗ not submitted"}
+                              {" · "}{salesman?.listing_count_cache ?? 0} listings
+                              {" · "}{listing._rejectionCount || 0} rejection{(listing._rejectionCount || 0) === 1 ? "" : "s"}
+                              {accountAgeHrs !== null && <> · account {accountAgeHrs < 24 ? `${Math.round(accountAgeHrs)}h` : `${Math.round(accountAgeHrs / 24)}d`} old</>}
                             </p>
                           </div>
 
