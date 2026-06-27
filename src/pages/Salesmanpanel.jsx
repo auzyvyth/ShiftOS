@@ -654,7 +654,7 @@ export default function SalesmanPanel() {
  let q = supabase
  .from("leads")
  .select("*, car_listings(brand, model, year, selling_price, commission_amount)")
- .eq("dealer_id", profile?.dealer_id)
+ .eq("dealer_id", getDealerIdFromProfile(profile))
  .eq("is_deleted", false);
  if (!canPerm("view_all_leads")) q = q.eq("salesman_id", userId);
  return q.order("updated_at", { ascending: false });
@@ -865,7 +865,7 @@ Rules:
  setFeaturedIds((p) => (p.includes(car.id) ? p : [...p, car.id]));
  const { error } = await supabase
  .from("salesman_listings")
- .insert({ dealer_id: profile?.dealer_id, salesman_id: userId, listing_id: car.id });
+ .insert({ dealer_id: getDealerIdFromProfile(profile), salesman_id: userId, listing_id: car.id });
  if (error && error.code !== "23505") { // 23505 = already featured, treat as success
  toast.error("Could not add to your listings");
  setMyListings((p) => p.filter((c) => c.id !== car.id));
@@ -1090,7 +1090,8 @@ Rules:
  const autoUpsertLeadFromAppt = async (apt) => {
  const phone = (apt.buyer_phone || "").replace(/\D/g, "");
  if (!phone) return;
- const { data: existing } = await supabase.from("leads").select("id, stage").eq("salesman_id", userId).eq("dealer_id", profile?.dealer_id || "none").eq("phone", phone).maybeSingle();
+ const apptDealerId = getDealerIdFromProfile(profile);
+ const { data: existing } = await supabase.from("leads").select("id, stage").eq("salesman_id", userId).eq("dealer_id", apptDealerId || "none").eq("phone", phone).maybeSingle();
  if (existing) {
  const STAGES = ["new","contacted","viewing_booked","test_drive","negotiating","deposit_taken","won","lost"];
  const curIdx = STAGES.indexOf(existing.stage);
@@ -1101,7 +1102,7 @@ Rules:
  }
  } else {
  const { data: newLead } = await supabase.from("leads").insert({
- salesman_id: userId, dealer_id: profile?.dealer_id || null,
+ salesman_id: userId, dealer_id: apptDealerId || null,
  buyer_name: apt.buyer_name || "Unknown", phone: apt.buyer_phone || "",
  car_listing_id: apt.car_listing_id || null,
  stage: "viewing_booked", lead_source: "manual", is_deleted: false,
