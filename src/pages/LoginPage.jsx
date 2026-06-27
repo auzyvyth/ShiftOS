@@ -248,8 +248,9 @@ export default function LoginPage() {
     }
     setError("");
     setLoading(true);
+    const cleanEmail = email.trim().toLowerCase();
     const { data, error: signInError } = await supabase.auth.signInWithPassword(
-      { email, password },
+      { email: cleanEmail, password },
     );
     if (signInError) {
       const isInvalidCreds =
@@ -258,17 +259,22 @@ export default function LoginPage() {
         signInError.status === 400;
 
       if (isInvalidCreds) {
-        const { data: existingProfile } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("email", email.trim())
-          .maybeSingle();
-        if (existingProfile) {
-          // Account exists but no password — Google/OTP user
+        // Resolve account existence via a SECURITY DEFINER RPC — the old direct
+        // profiles query ran as anon and was RLS-blocked, so it returned null for
+        // real accounts and falsely showed "No account found" on a wrong password.
+        const { data: statusRows } = await supabase.rpc("auth_account_status", { p_email: cleanEmail });
+        const st = Array.isArray(statusRows) ? statusRows[0] : statusRows;
+        if (st?.account_exists && !st?.has_password) {
+          // Account exists but has no password — Google/OTP user → magic link
           setError("");
           setShowForgotPassword(false);
           setShowMagicLink(true);
-          setMagicEmail(email.trim());
+          setMagicEmail(cleanEmail);
+        } else if (st?.account_exists) {
+          // Account + password exist → it's the wrong password
+          setError("Wrong password. Try again or reset it below.");
+          setShowMagicLink(false);
+          setShowForgotPassword(true);
         } else {
           // No account found at all
           setError(
