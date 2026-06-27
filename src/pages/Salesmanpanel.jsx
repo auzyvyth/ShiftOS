@@ -186,6 +186,8 @@ export default function SalesmanPanel() {
  const [editingReminder, setEditingReminder] = useState(null);
  const [reminderMsg, setReminderMsg] = useState("");
  const [inboxSubTab, setInboxSubTab] = useState("enquiries");
+ const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
+ const [calSelected, setCalSelected] = useState(() => new Date().toISOString().slice(0, 10));
  const [reschedulingAptId, setReschedulingAptId] = useState(null);
  const [rescheduleDate, setRescheduleDate] = useState("");
  const [cancelConfirmId, setCancelConfirmId] = useState(null);
@@ -5677,6 +5679,21 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  );
  };
 
+ // Calendar derivations
+ const toKey = (d) => { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; };
+ const aptsByDate = {};
+ appointments.forEach((a) => { if (!a.appointment_date || a.status === "cancelled") return; const k = toKey(a.appointment_date); (aptsByDate[k] = aptsByDate[k] || []).push(a); });
+ const calY = calMonth.getFullYear(), calM = calMonth.getMonth();
+ const firstDow = new Date(calY, calM, 1).getDay();
+ const daysInMonth = new Date(calY, calM + 1, 0).getDate();
+ const todayKey = toKey(new Date());
+ const cells = [];
+ for (let i = 0; i < firstDow; i++) cells.push(null);
+ for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+ const selAppts = (aptsByDate[calSelected] || []).slice().sort(byDate);
+ const monthLabel = calMonth.toLocaleDateString("en-MY", { month: "long", year: "numeric" });
+ const selLabel = (() => { const d = new Date(calSelected + "T00:00:00"); return isNaN(d) ? "" : d.toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" }); })();
+
  return (
  <div>
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
@@ -5691,21 +5708,45 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </div>
  ) : (
  <div>
- {todayApts.length > 0 && (
- <div style={{ marginBottom: 20 }}>
- <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
- <Calendar size={11} color="#fbbf24" /> Today ({todayApts.length})
- </p>
- <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{todayApts.map(renderApptCard)}</div>
+ {/* Month calendar */}
+ <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: 14, marginBottom: 16 }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+ <button onClick={() => setCalMonth(new Date(calY, calM - 1, 1))} style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronLeft size={16} /></button>
+ <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{monthLabel}</p>
+ <button onClick={() => setCalMonth(new Date(calY, calM + 1, 1))} style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronRight size={16} /></button>
  </div>
- )}
- {upcomingApts.length > 0 && (
- <div style={{ marginBottom: 20 }}>
+ <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4 }}>
+ {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+ <div key={i} style={{ textAlign: "center", fontSize: 9, fontWeight: 700, color: "#4b5563", textTransform: "uppercase", paddingBottom: 4 }}>{d}</div>
+ ))}
+ {cells.map((d, i) => {
+ if (d === null) return <div key={`b${i}`} />;
+ const key = toKey(new Date(calY, calM, d));
+ const count = (aptsByDate[key] || []).length;
+ const isSel = key === calSelected;
+ const isToday = key === todayKey;
+ return (
+ <button key={key} onClick={() => setCalSelected(key)}
+ style={{ aspectRatio: "1", borderRadius: 9, cursor: "pointer", position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
+ background: isSel ? "rgba(220,38,38,0.18)" : count > 0 ? "rgba(96,165,250,0.08)" : "transparent",
+ border: isSel ? "1px solid rgba(220,38,38,0.5)" : isToday ? "1px solid rgba(255,255,255,0.25)" : "1px solid transparent",
+ color: isSel ? "#fca5a5" : "#cbd5e1" }}>
+ <span style={{ fontSize: 12, fontWeight: isToday || isSel ? 700 : 500 }}>{d}</span>
+ {count > 0 && <span style={{ fontSize: 8, fontWeight: 700, color: isSel ? "#fca5a5" : "#60a5fa" }}>{count}</span>}
+ </button>
+ );
+ })}
+ </div>
+ </div>
+
+ {/* Selected day's bookings */}
  <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#60a5fa", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
- <Calendar size={11} color="#60a5fa" /> Upcoming ({upcomingApts.length})
+ <Calendar size={11} color="#60a5fa" /> {selLabel} ({selAppts.length})
  </p>
- <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{upcomingApts.map(renderApptCard)}</div>
- </div>
+ {selAppts.length === 0 ? (
+ <p style={{ margin: "0 0 20px", fontSize: 12, color: "#4b5563" }}>No bookings on this day.</p>
+ ) : (
+ <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>{selAppts.map(renderApptCard)}</div>
  )}
  {pastApts.length > 0 && (
  <div style={{ marginTop: 8 }}>
@@ -5813,24 +5854,10 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  );
  };
 
- const renderEnquiries = () => {
- const newEnqCount = enquiries.filter(e => e.status === "new").length;
- const pendingAptCount = appointments.filter(a => a.status === "pending").length;
- return (
- <div>
- {/* Sub-tab switcher */}
- <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
- {[{ key: "enquiries", label: "Enquiries", badge: newEnqCount }, { key: "bookings", label: "Bookings", badge: pendingAptCount }].map(({ key, label, badge }) => (
- <button key={key} onClick={() => setInboxSubTab(key)} style={{ fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 8, cursor: "pointer", background: inboxSubTab === key ? "rgba(220,38,38,0.15)" : "rgba(255,255,255,0.04)", border: `1px solid ${inboxSubTab === key ? "rgba(220,38,38,0.35)" : "rgba(255,255,255,0.08)"}`, color: inboxSubTab === key ? "#f87171" : "#6b7280", display: "flex", alignItems: "center", gap: 6 }}>
- {label}
- {badge > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: "#dc2626", color: "#fff", borderRadius: 99, padding: "0 5px", minWidth: 16, textAlign: "center" }}>{badge}</span>}
- </button>
- ))}
- </div>
- {inboxSubTab === "enquiries" ? renderEnquiriesSection() : renderBookingsSection()}
- </div>
- );
- };
+ // Bookings calendar tab. Enquiries (anonymous WhatsApp clicks with no buyer
+ // contact) were removed from the nav — they're counted in Analytics "WA Taps"
+ // and the real pipeline is for contactable buyers.
+ const renderEnquiries = () => renderBookingsSection();
 
 
  const renderAnalytics = () => {
@@ -6850,7 +6877,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
 
  const MORE_ITEMS = [
  { tab: "analytics", label: "Analytics", icon: <TrendingUp size={18} /> },
- { tab: "enquiries", label: "Enquiries", icon: <MessageSquare size={18} /> },
+ { tab: "enquiries", label: "Bookings", icon: <Calendar size={18} /> },
  { tab: "loans", label: "Loans", icon: <Banknote size={18} /> },
  { tab: "handover", label: "Handover", icon: <ClipboardCheck size={18} /> },
  { tab: "team", label: "Team", icon: <Users size={18} /> },
@@ -6927,7 +6954,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  tab: "__more",
  label: "More",
  icon: <LayoutGrid size={18} />,
- badge: (enquiries.filter((e) => e.status === "new").length + appointments.filter(a => a.status === "pending").length) || null,
+ badge: appointments.filter(a => a.status === "pending").length || null,
  },
  ].map(({ tab, label, icon, badge }) => {
  const isMore = tab === "__more";
@@ -7152,13 +7179,13 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  },
  {
  tab: "enquiries",
- label: "Enquiries",
+ label: "Bookings",
  icon: (
- <MessageSquare
+ <Calendar
  style={{ width: 14, height: 14, flexShrink: 0 }}
  />
  ),
- badge: (enquiries.filter((e) => e.status === "new").length + appointments.filter(a => a.status === "pending").length) || null,
+ badge: appointments.filter(a => a.status === "pending").length || null,
  },
  {
  tab: "loans",
