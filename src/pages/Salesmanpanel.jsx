@@ -6005,7 +6005,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </h2>
  <p style={{ margin: "4px 0 0", fontSize: 12, color: "#4b5563" }}>Your sold deals and their post-sale steps: Puspakom, JPJ transfer, road tax, insurance, handover.</p>
  </div>
- <PostSaleBoard dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} />
+ <PostSaleBoard dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} dark />
  </div>
  );
 
