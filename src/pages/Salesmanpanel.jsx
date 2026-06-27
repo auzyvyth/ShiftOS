@@ -5066,10 +5066,15 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </div>
  </div>
 
- {/* price strip */}
- {plCarPrice && (
- <div style={{ padding: "8px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)" }}>
- <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#60a5fa" }}>{plCarPrice}</p>
+ {/* price + last-contact strip */}
+ {(plCarPrice || pl.updated_at) && (
+ <div style={{ padding: "8px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+ {plCarPrice ? <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#60a5fa" }}>{plCarPrice}</p> : <span />}
+ {pl.updated_at && (() => {
+ const d = Math.floor((Date.now() - new Date(pl.updated_at).getTime()) / 86400000);
+ const stale = d >= 7;
+ return <span style={{ fontSize: 11, color: stale ? "#fbbf24" : "#6b7280", whiteSpace: "nowrap" }}>Last touch {timeAgo(pl.updated_at)}</span>;
+ })()}
  </div>
  )}
 
@@ -5101,12 +5106,18 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  plCar.colour && { label: "Colour", val: plCar.colour },
  plCar.transmission && { label: "Transmission", val: plCar.transmission },
  plCar.fuel_type && { label: "Fuel", val: plCar.fuel_type },
- ].filter(Boolean).map((row) => (
+ ].filter(Boolean).map((row) => {
+ const copyable = row.label === "VIN" || row.label === "Plate";
+ return (
  <div key={row.label} style={{ minWidth: 0 }}>
  <p style={{ margin: 0, fontSize: 9, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>{row.label}</p>
- <p style={{ margin: "1px 0 0", fontSize: 12, color: "#cbd5e1", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: row.label === "VIN" || row.label === "Plate" ? "monospace" : "inherit" }}>{row.val}</p>
+ <p
+ onClick={copyable ? () => { navigator.clipboard?.writeText(String(row.val)).then(() => toast.success(`${row.label} copied`)).catch(() => {}); } : undefined}
+ title={copyable ? "Tap to copy" : undefined}
+ style={{ margin: "1px 0 0", fontSize: 12, color: "#cbd5e1", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: copyable ? "monospace" : "inherit", cursor: copyable ? "pointer" : "default" }}>{row.val}</p>
  </div>
- ))}
+ );
+ })}
  </div>
  </div>
  </div>
@@ -5140,6 +5151,48 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <div key={row.label} style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
  <span style={{ fontSize: 11, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>{row.label}</span>
  <span style={{ fontSize: 12, color: "#cbd5e1", textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: row.mono ? "monospace" : "inherit", textTransform: row.label === "Source" ? "capitalize" : "none" }}>{row.val}</span>
+ </div>
+ ))}
+ </div>
+ </div>
+ )}
+
+ {/* Deposit */}
+ {(pl.deposit_amount || pl.stage === "deposit_taken") && (
+ <div style={{ background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 12, padding: "12px 14px" }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+ <p style={{ margin: 0, fontSize: 10, color: "#4ade80", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700 }}>Deposit</p>
+ {pl.deposit_amount ? <span style={{ fontSize: 15, fontWeight: 800, color: "#4ade80" }}>RM {Number(pl.deposit_amount).toLocaleString()}</span> : <span style={{ fontSize: 11, color: "#9ca3af" }}>amount not set</span>}
+ </div>
+ <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+ {[
+ pl.deposit_balance_due && { label: "Balance due", val: `RM ${Number(pl.deposit_balance_due).toLocaleString()}` },
+ pl.deposit_date && { label: "Paid on", val: new Date(pl.deposit_date).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" }) },
+ pl.deposit_method && { label: "Method", val: pl.deposit_method },
+ pl.deposit_receipt_no && { label: "Receipt", val: pl.deposit_receipt_no, mono: true },
+ ].filter(Boolean).map((row) => (
+ <div key={row.label} style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+ <span style={{ fontSize: 11, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em" }}>{row.label}</span>
+ <span style={{ fontSize: 12, color: "#cbd5e1", textAlign: "right", fontFamily: row.mono ? "monospace" : "inherit" }}>{row.val}</span>
+ </div>
+ ))}
+ </div>
+ </div>
+ )}
+
+ {/* Loan / HP */}
+ {(pl.loan_bank || pl.loan_amount || pl.loan_status) && (
+ <div>
+ <p style={{ margin: "0 0 6px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>Financing</p>
+ <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+ {[
+ pl.loan_bank && { label: "Bank", val: pl.loan_bank },
+ pl.loan_amount && { label: "Loan amount", val: `RM ${Number(pl.loan_amount).toLocaleString()}` },
+ pl.loan_status && { label: "Status", val: pl.loan_status.replace(/_/g, " "), cap: true },
+ ].filter(Boolean).map((row) => (
+ <div key={row.label} style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+ <span style={{ fontSize: 11, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em" }}>{row.label}</span>
+ <span style={{ fontSize: 12, color: "#cbd5e1", textAlign: "right", textTransform: row.cap ? "capitalize" : "none" }}>{row.val}</span>
  </div>
  ))}
  </div>
