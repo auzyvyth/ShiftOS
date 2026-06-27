@@ -473,10 +473,12 @@ export default function SalesmanPanel() {
    });
  }
 
- // Fetch car IDs from both direct assignment and salesman_listings (featured cars)
+ // Fetch car IDs from both direct assignment and salesman_listings (featured cars).
+ // Use user.id, NOT the userId state — setUserId() above hasn't flushed yet in this
+ // closure, so userId is still null here and the analytics would come back empty.
  const [{ data: assignedCars }, { data: featuredCars }] = await Promise.all([
-   supabase.from("car_listings").select("id").eq("assigned_to", userId),
-   supabase.from("salesman_listings").select("listing_id").eq("salesman_id", userId),
+   supabase.from("car_listings").select("id").eq("assigned_to", user.id),
+   supabase.from("salesman_listings").select("listing_id").eq("salesman_id", user.id),
  ]);
  const myCarIds = [...new Set([
    ...(assignedCars || []).map((c) => c.id),
@@ -5698,6 +5700,14 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
   const cvrColor = cvrNum >= 10 ? "#4ade80" : cvrNum >= 5 ? "#fbbf24" : "#f87171";
   const cvrD = viewsD.map((v, i) => v > 0 ? (waD[i] / v) * 100 : 0);
 
+  // Today / last 24h
+  const last24 = Date.now() - 86400000;
+  const viewsToday = viewsD[6] || 0;
+  const waToday = waD[6] || 0;
+  const enqToday = enquiries.filter(e => e.created_at && new Date(e.created_at).getTime() >= last24).length;
+  const leadsToday = leads.filter(l => l.created_at && new Date(l.created_at).getTime() >= last24).length;
+  const apptToday = appointments.filter(a => a.created_at && new Date(a.created_at).getTime() >= last24).length;
+
   const now2 = new Date();
   const monthStart = new Date(now2.getFullYear(), now2.getMonth(), 1);
   const leadsThisMonth = leads.filter(l => l.created_at && new Date(l.created_at) >= monthStart).length;
@@ -5735,7 +5745,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
 
     {/* Sparkline KPI grid */}
     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3, 1fr)", gap: 10, marginBottom: 18 }}>
-     <KPI label="Listing Views" value={totalViews} data={viewsD} color="#93c5fd" sub="All time" />
+     <KPI label="Total Views" value={totalViews} data={viewsD} color="#93c5fd" sub="All time" />
      <KPI label="WA Taps" value={totalWA} data={waD} color="#4ade80" sub="All time" />
      <KPI label="CVR" value={`${cvr}%`} data={cvrD} color={cvrColor} sub="WA / Views" />
      <KPI label="Enquiries" value={enquiries.length} data={enqD} color="#c084fc" sub="All messages" />
@@ -5743,6 +5753,29 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
      {canPerm("view_commission") && (
      <KPI label="Commission" value={commission !== null ? `RM ${Number(commission).toLocaleString()}` : "—"} data={Array(7).fill(0)} color="#4ade80" sub="All time" />
      )}
+    </div>
+
+    {/* Today — last 24h */}
+    <div style={{ marginBottom: 18 }}>
+     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} className="hot-dot" />
+      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>Today</p>
+      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>last 24 hours</span>
+     </div>
+     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: isMobile ? 8 : 10 }}>
+      {[
+       { label: "Views", val: viewsToday, color: "#93c5fd" },
+       { label: "WA taps", val: waToday, color: "#4ade80" },
+       { label: "Enquiries", val: enqToday, color: "#c084fc" },
+       { label: "New leads", val: leadsToday, color: "#60a5fa" },
+       { label: "Appointments", val: apptToday, color: "#fbbf24" },
+      ].map(({ label, val, color }) => (
+       <div key={label} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "12px 14px" }}>
+        <p style={{ margin: 0, fontSize: 9, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 600 }}>{label}</p>
+        <p style={{ margin: "5px 0 0", fontSize: 26, fontFamily: "'Bebas Neue',sans-serif", color, lineHeight: 1 }}>{val}</p>
+       </div>
+      ))}
+     </div>
     </div>
 
     {/* This Month KPI strip */}
