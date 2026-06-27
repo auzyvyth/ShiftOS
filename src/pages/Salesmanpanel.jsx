@@ -56,6 +56,7 @@ import {
  Search,
  PhoneCall,
  PhoneOff,
+ Download,
  History,
  RefreshCw,
  CheckCircle,
@@ -1176,6 +1177,32 @@ Rules:
  }).select().single();
  if (newLead) { setLeads((p) => [newLead, ...p]); toast.success("Lead created at Viewing Booked!"); }
  }
+ };
+
+ // Download a listing's photos straight to the device so the salesman can
+ // post them on WhatsApp/socials without opening the dealer PDF.
+ const downloadListingImages = async (car) => {
+ const imgs = Array.isArray(car.images) ? car.images.filter(Boolean) : [];
+ if (imgs.length === 0) { toast.error("No images on this listing"); return; }
+ toast.message(`Downloading ${imgs.length} photo${imgs.length > 1 ? "s" : ""}…`);
+ const base = [car.year, car.brand, car.model].filter(Boolean).join("-").replace(/\s+/g, "-") || "car";
+ let ok = 0;
+ for (let i = 0; i < imgs.length; i++) {
+   try {
+     const resp = await fetch(imgs[i]);
+     const blob = await resp.blob();
+     const url = URL.createObjectURL(blob);
+     const a = document.createElement("a");
+     a.href = url;
+     const ext = ((blob.type.split("/")[1] || "jpg").replace("jpeg", "jpg")).split("+")[0];
+     a.download = `${base}-${i + 1}.${ext}`;
+     document.body.appendChild(a); a.click(); a.remove();
+     URL.revokeObjectURL(url);
+     ok++;
+   } catch { /* skip a failed image */ }
+ }
+ if (ok === 0) toast.error("Couldn't download images");
+ else toast.success(`Saved ${ok} photo${ok > 1 ? "s" : ""}`);
  };
 
  const handleListingCopy = (car, type) => {
@@ -4247,6 +4274,25 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  }}
  >AI Caption
  </button>
+ {Array.isArray(car.images) && car.images.length > 0 && (
+ <button
+ onClick={() => downloadListingImages(car)}
+ title="Download photos"
+ style={{
+ display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+ fontSize: 10,
+ padding: "4px 8px",
+ borderRadius: 6,
+ background: "rgba(59,130,246,0.1)",
+ border: "1px solid rgba(59,130,246,0.25)",
+ color: "#93c5fd",
+ cursor: "pointer",
+ textAlign: "center",
+ }}
+ >
+ <Download size={11} /> Photos
+ </button>
+ )}
  </div>
  </div>
  </div>
@@ -5086,7 +5132,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, overflow: "hidden" }}>
  <div
  onClick={() => { if (plCar.slug) window.open(`${dealerSubdomain ? `https://${dealerSubdomain}.xdrive.my` : "https://xdrive.my"}/cars/${plCar.slug}`, "_blank"); }}
- style={{ position: "relative", aspectRatio: "16 / 9", background: "rgba(255,255,255,0.04)", cursor: plCar.slug ? "pointer" : "default" }}
+ style={{ position: "relative", aspectRatio: "4 / 3", background: "rgba(255,255,255,0.04)", cursor: plCar.slug ? "pointer" : "default" }}
  >
  {Array.isArray(plCar.images) && plCar.images[0]
  ? <img src={plCar.images[0]} alt={plCarName || ""} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
