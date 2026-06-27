@@ -679,7 +679,7 @@ export default function SalesmanPanel() {
  (() => {
  let q = supabase
  .from("leads")
- .select("*, car_listings(brand, model, year, selling_price, commission_amount)")
+ .select("*, car_listings(brand, model, year, variant, selling_price, commission_amount, images, vin_number, vin, plate_number, mileage, colour, transmission, fuel_type, body_type, slug, status)")
  .eq("dealer_id", getDealerIdFromProfile(profile))
  .eq("is_deleted", false);
  if (!canPerm("view_all_leads")) q = q.eq("salesman_id", userId);
@@ -1742,7 +1742,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  lead_source: "manual",
  is_deleted: false,
  })
- .select("*, car_listings(brand, model, year, selling_price, commission_amount)")
+ .select("*, car_listings(brand, model, year, variant, selling_price, commission_amount, images, vin_number, vin, plate_number, mileage, colour, transmission, fuel_type, body_type, slug, status)")
  .single();
  setAddLeadSaving(false);
  // Never close the form on failure — surface it so the lead isn't silently lost.
@@ -5075,6 +5075,76 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
 
  {/* scrollable body */}
  <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14, WebkitOverflowScrolling: "touch" }}>
+
+ {/* Car of interest */}
+ {plCar ? (
+ <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, overflow: "hidden" }}>
+ <div
+ onClick={() => { if (plCar.slug) window.open(`${dealerSubdomain ? `https://${dealerSubdomain}.xdrive.my` : "https://xdrive.my"}/cars/${plCar.slug}`, "_blank"); }}
+ style={{ position: "relative", aspectRatio: "16 / 9", background: "rgba(255,255,255,0.04)", cursor: plCar.slug ? "pointer" : "default" }}
+ >
+ {Array.isArray(plCar.images) && plCar.images[0]
+ ? <img src={plCar.images[0]} alt={plCarName || ""} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+ : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.2)" }}><Car size={30} /></div>}
+ {plCar.status && plCar.status !== "available" && (
+ <span style={{ position: "absolute", top: 8, left: 8, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", padding: "3px 8px", borderRadius: 6, background: "rgba(6,8,15,0.8)", color: plCar.status === "sold" ? "#c084fc" : "#fbbf24", border: `1px solid ${plCar.status === "sold" ? "rgba(192,132,252,0.4)" : "rgba(251,191,36,0.4)"}` }}>{plCar.status}</span>
+ )}
+ </div>
+ <div style={{ padding: "11px 13px" }}>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{plCarName}{plCar.variant ? ` ${plCar.variant}` : ""}</p>
+ {plCarPrice && <p style={{ margin: "2px 0 0", fontSize: 13, fontWeight: 700, color: "#60a5fa" }}>{plCarPrice}</p>}
+ <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px", marginTop: 10 }}>
+ {[
+ plCar.plate_number && { label: "Plate", val: plCar.plate_number },
+ (plCar.vin_number || plCar.vin) && { label: "VIN", val: plCar.vin_number || plCar.vin },
+ plCar.mileage && { label: "Mileage", val: `${Number(plCar.mileage).toLocaleString()} km` },
+ plCar.colour && { label: "Colour", val: plCar.colour },
+ plCar.transmission && { label: "Transmission", val: plCar.transmission },
+ plCar.fuel_type && { label: "Fuel", val: plCar.fuel_type },
+ ].filter(Boolean).map((row) => (
+ <div key={row.label} style={{ minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: 9, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>{row.label}</p>
+ <p style={{ margin: "1px 0 0", fontSize: 12, color: "#cbd5e1", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: row.label === "VIN" || row.label === "Plate" ? "monospace" : "inherit" }}>{row.val}</p>
+ </div>
+ ))}
+ </div>
+ </div>
+ </div>
+ ) : (
+ <div style={{ background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.12)", borderRadius: 12, padding: "16px", textAlign: "center" }}>
+ <Car size={22} style={{ color: "rgba(255,255,255,0.25)", marginBottom: 6 }} />
+ <p style={{ margin: 0, fontSize: 12, color: "#6b7280" }}>No car linked — use "Link Car" below.</p>
+ </div>
+ )}
+
+ {/* Buyer contact */}
+ {(pl.phone || pl.buyer_email || pl.buyer_ic || pl.buyer_state || pl.source || pl.lead_source) && (
+ <div>
+ <p style={{ margin: "0 0 6px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>Buyer</p>
+ <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+ {pl.phone && (
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+ <span style={{ fontSize: 13, color: "#cbd5e1", fontFamily: "monospace" }}>{pl.phone}</span>
+ <div style={{ display: "flex", gap: 6 }}>
+ <a href={`tel:${pl.phone}`} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#9ca3af", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, padding: "4px 9px", textDecoration: "none" }}><Phone size={11} /> Call</a>
+ <a href={`https://wa.me/${(pl.phone || "").replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#4ade80", background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.22)", borderRadius: 6, padding: "4px 9px", textDecoration: "none" }}>WA</a>
+ </div>
+ </div>
+ )}
+ {[
+ pl.buyer_email && { label: "Email", val: pl.buyer_email },
+ pl.buyer_ic && { label: "IC", val: pl.buyer_ic, mono: true },
+ pl.buyer_state && { label: "State", val: pl.buyer_state },
+ (pl.source || pl.lead_source) && { label: "Source", val: (pl.source || pl.lead_source).replace(/_/g, " ") },
+ ].filter(Boolean).map((row) => (
+ <div key={row.label} style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+ <span style={{ fontSize: 11, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>{row.label}</span>
+ <span style={{ fontSize: 12, color: "#cbd5e1", textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: row.mono ? "monospace" : "inherit", textTransform: row.label === "Source" ? "capitalize" : "none" }}>{row.val}</span>
+ </div>
+ ))}
+ </div>
+ </div>
+ )}
 
  {/* Notes */}
  <div>
