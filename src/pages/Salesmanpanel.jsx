@@ -687,7 +687,18 @@ export default function SalesmanPanel() {
  setLeads(rows);
  setLeadsLoading(false);
  if (rows.length === 0) return;
- // AI lead scoring — fire and forget; errors are silent
+ // AI lead scoring — cached per session keyed on a signature of the leads'
+ // ids + updated_at, so re-mounts/tab-switches don't re-hit the AI proxy. The
+ // score only changes when a lead changes, which bumps updated_at -> new sig.
+ const scoreSig = rows.map((l) => `${l.id}:${l.updated_at}`).sort().join("|");
+ const cacheKey = `leadScores:${userId}`;
+ try {
+ const cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
+ if (cached && cached.sig === scoreSig && cached.map) {
+ setLeadScores(cached.map);
+ return;
+ }
+ } catch { /* ignore malformed cache */ }
  setScoreLoading(true);
  try {
  const payload = rows.map((l) => ({
@@ -728,6 +739,7 @@ Rules:
  if (r.id) map[r.id] = { score: r.score, reason: r.reason };
  });
  setLeadScores(map);
+ try { sessionStorage.setItem(cacheKey, JSON.stringify({ sig: scoreSig, map })); } catch { /* quota — skip cache */ }
  }
  } catch {
  // silent — no scores shown on failure
