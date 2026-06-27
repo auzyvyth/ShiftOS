@@ -215,7 +215,10 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
         {/* Top badge row */}
         <div style={{ position: 'absolute', top: 6, left: 6, right: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4 }}>
           {(() => {
-            const role = car.dealer?.role;
+            // seller_role comes from the public_car_listings view (anon-safe);
+            // the car.dealer embed is RLS-blocked for logged-out visitors, which
+            // made every card fall back to "Dealer".
+            const role = car.seller_role || car.dealer?.role;
             const isAgent = role === 'salesman';
             return (
               <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: isAgent ? 'rgba(251,146,60,0.18)' : 'rgba(59,130,246,0.18)', border: `1px solid ${isAgent ? 'rgba(251,146,60,0.4)' : 'rgba(59,130,246,0.4)'}`, borderRadius: '6px', padding: '2px 7px', backdropFilter: 'blur(6px)' }}>
