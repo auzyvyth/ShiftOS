@@ -56,6 +56,32 @@ window.addEventListener('unhandledrejection', (event) => {
   }
 });
 
+// skipWaiting + clientsClaim activate a new service worker the instant a
+// deploy lands, but an already-open tab keeps running its old JS until
+// something reloads it — that's the "blank after deploy, fine after one
+// manual refresh" report. Force that reload ourselves instead of waiting
+// for a chunk to 404 first.
+if ('serviceWorker' in navigator) {
+  import('virtual:pwa-register').then(({ registerSW }) => {
+    registerSW({
+      immediate: true,
+      onRegisteredSW(_url, registration) {
+        if (!registration) return;
+        // Only the *first* install has no controller yet — that's a fresh
+        // visitor, not a stale tab, so skip the reload in that case.
+        const isUpdate = Boolean(navigator.serviceWorker.controller);
+        registration.addEventListener('updatefound', () => {
+          const installing = registration.installing;
+          if (!installing || !isUpdate) return;
+          installing.addEventListener('statechange', () => {
+            if (installing.state === 'activated') reloadOnceForChunk();
+          });
+        });
+      },
+    });
+  });
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <Sentry.ErrorBoundary
     fallback={<p>Something went wrong. Please refresh.</p>}

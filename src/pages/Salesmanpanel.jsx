@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import SuspendedBanner from "../components/SuspendedBanner";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
@@ -9,6 +10,7 @@ import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { usePermissions } from "../hooks/usePermissions";
 import { usePresence } from "../hooks/usePresence";
 import PostSaleBoard from "../components/postsale/PostSaleBoard";
+import PostSaleChecklist from "../components/postsale/PostSaleChecklist";
 import SalesmanPanelHelp from "../components/SalesmanPanelHelp";
 import ShareMenu from "../components/ShareMenu";
 import { toast } from "sonner";
@@ -55,6 +57,7 @@ import {
  Search,
  PhoneCall,
  PhoneOff,
+ Download,
  History,
  RefreshCw,
  CheckCircle,
@@ -136,6 +139,7 @@ export default function SalesmanPanel() {
  const [userId, setUserId] = useState(null);
  const [loading, setLoading] = useState(true);
  const [activeTab, setActiveTab] = useState("dashboard");
+ const [moreOpen, setMoreOpen] = useState(false);
  const [subTab, setSubTab] = useState("overview");
  const [chartJsLoaded, setChartJsLoaded] = useState(!!window.Chart);
  const isMobile = useWindowSize() < 768;
@@ -182,6 +186,8 @@ export default function SalesmanPanel() {
  const [editingReminder, setEditingReminder] = useState(null);
  const [reminderMsg, setReminderMsg] = useState("");
  const [inboxSubTab, setInboxSubTab] = useState("enquiries");
+ const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
+ const [calSelected, setCalSelected] = useState(() => new Date().toISOString().slice(0, 10));
  const [reschedulingAptId, setReschedulingAptId] = useState(null);
  const [rescheduleDate, setRescheduleDate] = useState("");
  const [cancelConfirmId, setCancelConfirmId] = useState(null);
@@ -190,6 +196,7 @@ export default function SalesmanPanel() {
  const [reminderSaving, setReminderSaving] = useState(false);
  const [pastOpen, setPastOpen] = useState(false);
  const [telegramSetupModal, setTelegramSetupModal] = useState(false);
+ const [tgTesting, setTgTesting] = useState(false);
 
  // Leads
  const [leads, setLeads] = useState([]);
@@ -230,11 +237,12 @@ export default function SalesmanPanel() {
    const { data, error } = await supabase.rpc("claim_lead", { p_lead_id: lead.id });
    setClaimingId(null);
    setIncomingLeads((prev) => prev.filter((l) => l.id !== lead.id));
-   if (error) { alert("Could not claim the lead. Please try again."); return; }
+   if (error) { toast.error("Could not claim the lead. Please try again."); return; }
    if (data === true) {
+     toast.success("Lead claimed — it's yours.");
      setActiveTab("leads");
    } else {
-     alert("Too late — another salesman already claimed this lead.");
+     toast.error("Too late — another salesman already claimed this lead.");
    }
  };
 
@@ -272,6 +280,7 @@ export default function SalesmanPanel() {
 
  // CRM pipeline state
  const [drawerLeadId, setDrawerLeadId] = useState(null);
+ const [drawerHandoverOpen, setDrawerHandoverOpen] = useState(false);
  const [dealSheetBusyId, setDealSheetBusyId] = useState(null);
  const [dealSheetLink, setDealSheetLink] = useState(null);
  const [dealSheetConfigLead, setDealSheetConfigLead] = useState(null);
@@ -396,6 +405,21 @@ export default function SalesmanPanel() {
  });
  }, [profile?.id]);
 
+ // Lock background scroll whenever ANY overlay/sheet/modal is open, so the page
+ // behind never scrolls under it (non-negotiable overlay rule). Keyed on every
+ // overlay's open-state so it releases the moment the last one closes.
+ const anyOverlayOpen = !!(
+ moreOpen || dealSheetConfigLead || linkCarLeadId || testDriveConfirm || waModalLead ||
+ logCallLeadId || followUpModalLead || (batchWALeads && batchWALeads.length) || selectedCar ||
+ aiCaptionCar || broadcastCar || showAddLead || telegramSetupModal || deleteConfirmId ||
+ cancelConfirmId || reminderPickerAptId || reschedulingAptId
+ );
+ useEffect(() => {
+ if (!anyOverlayOpen) return;
+ document.body.style.overflow = "hidden";
+ return () => { document.body.style.overflow = ""; };
+ }, [anyOverlayOpen]);
+
  // page title
  useEffect(() => {
  document.title = t("salesman.meta.title", {
@@ -454,10 +478,12 @@ export default function SalesmanPanel() {
    });
  }
 
- // Fetch car IDs from both direct assignment and salesman_listings (featured cars)
+ // Fetch car IDs from both direct assignment and salesman_listings (featured cars).
+ // Use user.id, NOT the userId state — setUserId() above hasn't flushed yet in this
+ // closure, so userId is still null here and the analytics would come back empty.
  const [{ data: assignedCars }, { data: featuredCars }] = await Promise.all([
-   supabase.from("car_listings").select("id").eq("assigned_to", userId),
-   supabase.from("salesman_listings").select("listing_id").eq("salesman_id", userId),
+   supabase.from("car_listings").select("id").eq("assigned_to", user.id),
+   supabase.from("salesman_listings").select("listing_id").eq("salesman_id", user.id),
  ]);
  const myCarIds = [...new Set([
    ...(assignedCars || []).map((c) => c.id),
@@ -486,9 +512,13 @@ export default function SalesmanPanel() {
  }, [navigate]);
  // 
 
- // userId-dependent data 
+ // userId-dependent data
  useEffect(() => {
- if (!userId) return;
+ // Wait for BOTH userId and profile: this block scopes every query by
+ // getDealerIdFromProfile(profile). userId is set a few awaits before profile,
+ // so firing on userId alone runs with profile=null -> dealer_id filter resolves
+ // to null and the pipeline (and other reads) come back empty and never reload.
+ if (!userId || !profile) return;
 
  // Personal sold count with realtime subscription
  const fetchSold = async () => {
@@ -551,7 +581,8 @@ export default function SalesmanPanel() {
  )
  .subscribe();
 
- // All-time commission — no sold_at column yet, date filter removed
+ // All-time commission across all this salesman's sold cars (intentionally not
+ // date-bounded — the dashboard card and analytics KPI both label it "All time").
  supabase
  .from("car_listings")
  .select("commission_amount")
@@ -572,12 +603,12 @@ export default function SalesmanPanel() {
      .eq("salesman_id", userId).order("created_at", { ascending: false }),
    supabase.from("salesman_listings").select("listing_id").eq("salesman_id", userId),
  ]);
- const featuredIds = (featuredListings || []).map((l) => l.listing_id);
+ const featuredListingIds = (featuredListings || []).map((l) => l.listing_id);
  let unattributed = [];
- if (featuredIds.length > 0) {
+ if (featuredListingIds.length > 0) {
    const { data } = await supabase.from("appointments")
      .select("*, car_listings(brand, model, year, images)")
-     .in("car_listing_id", featuredIds)
+     .in("car_listing_id", featuredListingIds)
      .is("salesman_id", null)
      .order("created_at", { ascending: false });
    unattributed = data || [];
@@ -653,8 +684,8 @@ export default function SalesmanPanel() {
  (() => {
  let q = supabase
  .from("leads")
- .select("*, car_listings(brand, model, year, selling_price, commission_amount)")
- .eq("dealer_id", profile?.dealer_id)
+ .select("*, car_listings(brand, model, year, variant, selling_price, commission_amount, images, vin_number, vin, plate_number, mileage, colour, transmission, fuel_type, body_type, slug, status)")
+ .eq("dealer_id", getDealerIdFromProfile(profile))
  .eq("is_deleted", false);
  if (!canPerm("view_all_leads")) q = q.eq("salesman_id", userId);
  return q.order("updated_at", { ascending: false });
@@ -664,7 +695,18 @@ export default function SalesmanPanel() {
  setLeads(rows);
  setLeadsLoading(false);
  if (rows.length === 0) return;
- // AI lead scoring — fire and forget; errors are silent
+ // AI lead scoring — cached per session keyed on a signature of the leads'
+ // ids + updated_at, so re-mounts/tab-switches don't re-hit the AI proxy. The
+ // score only changes when a lead changes, which bumps updated_at -> new sig.
+ const scoreSig = rows.map((l) => `${l.id}:${l.updated_at}`).sort().join("|");
+ const cacheKey = `leadScores:${userId}`;
+ try {
+ const cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
+ if (cached && cached.sig === scoreSig && cached.map) {
+ setLeadScores(cached.map);
+ return;
+ }
+ } catch { /* ignore malformed cache */ }
  setScoreLoading(true);
  try {
  const payload = rows.map((l) => ({
@@ -705,6 +747,7 @@ Rules:
  if (r.id) map[r.id] = { score: r.score, reason: r.reason };
  });
  setLeadScores(map);
+ try { sessionStorage.setItem(cacheKey, JSON.stringify({ sig: scoreSig, map })); } catch { /* quota — skip cache */ }
  }
  } catch {
  // silent — no scores shown on failure
@@ -759,7 +802,7 @@ Rules:
  supabase.removeChannel(apptCh);
  supabase.removeChannel(listingsCh);
  };
- }, [userId]);
+ }, [userId, profile?.id]);
 
  // team leaderboard — units sold this month per salesman (names visible, deals private)
  useEffect(() => {
@@ -865,7 +908,7 @@ Rules:
  setFeaturedIds((p) => (p.includes(car.id) ? p : [...p, car.id]));
  const { error } = await supabase
  .from("salesman_listings")
- .insert({ dealer_id: profile?.dealer_id, salesman_id: userId, listing_id: car.id });
+ .insert({ dealer_id: getDealerIdFromProfile(profile), salesman_id: userId, listing_id: car.id });
  if (error && error.code !== "23505") { // 23505 = already featured, treat as success
  toast.error("Could not add to your listings");
  setMyListings((p) => p.filter((c) => c.id !== car.id));
@@ -1059,6 +1102,35 @@ Rules:
  window.location.href = "https://xdrive.my/login";
  };
 
+ // Send a test Telegram message to the salesman's own chat id, via the dealer's
+ // bot token (or the platform fallback bot). Saves the chat id first if changed.
+ const testTelegramConnection = async () => {
+ const chatId = (profileSettings.telegram_chat_id || "").trim();
+ if (!chatId) { toast.error("Enter your Telegram Chat ID first"); return; }
+ setTgTesting(true);
+ try {
+  // Persist the chat id so future reminders use it.
+  await supabase.from("profiles").update({ telegram_chat_id: chatId }).eq("id", profile.id);
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await supabase.functions.invoke("send-telegram", {
+   body: {
+    dealer_id: getDealerIdFromProfile(profile),
+    channel_id: chatId,
+    message: `Telegram connected! You'll get appointment + handover reminders here. — ${profile.full_name || "ShiftOS"}`,
+   },
+   headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+  });
+  const data = res.data;
+  if (data?.ok) toast.success("Test message sent — check your Telegram");
+  else if (data?.error === "no_token") toast.error("Dealer has no Telegram bot connected yet");
+  else toast.error(data?.description || "Couldn't send — check the Chat ID");
+ } catch {
+  toast.error("Network error sending test message");
+ } finally {
+  setTgTesting(false);
+ }
+ };
+
  const _siteBase = dealerSubdomain
   ? `https://${dealerSubdomain}.xdrive.my`
   : "https://xdrive.my";
@@ -1090,7 +1162,8 @@ Rules:
  const autoUpsertLeadFromAppt = async (apt) => {
  const phone = (apt.buyer_phone || "").replace(/\D/g, "");
  if (!phone) return;
- const { data: existing } = await supabase.from("leads").select("id, stage").eq("salesman_id", userId).eq("dealer_id", profile?.dealer_id || "none").eq("phone", phone).maybeSingle();
+ const apptDealerId = getDealerIdFromProfile(profile);
+ const { data: existing } = await supabase.from("leads").select("id, stage").eq("salesman_id", userId).eq("dealer_id", apptDealerId || "none").eq("phone", phone).maybeSingle();
  if (existing) {
  const STAGES = ["new","contacted","viewing_booked","test_drive","negotiating","deposit_taken","won","lost"];
  const curIdx = STAGES.indexOf(existing.stage);
@@ -1101,13 +1174,39 @@ Rules:
  }
  } else {
  const { data: newLead } = await supabase.from("leads").insert({
- salesman_id: userId, dealer_id: profile?.dealer_id || null,
+ salesman_id: userId, dealer_id: apptDealerId || null,
  buyer_name: apt.buyer_name || "Unknown", phone: apt.buyer_phone || "",
  car_listing_id: apt.car_listing_id || null,
  stage: "viewing_booked", lead_source: "manual", is_deleted: false,
  }).select().single();
  if (newLead) { setLeads((p) => [newLead, ...p]); toast.success("Lead created at Viewing Booked!"); }
  }
+ };
+
+ // Download a listing's photos straight to the device so the salesman can
+ // post them on WhatsApp/socials without opening the dealer PDF.
+ const downloadListingImages = async (car) => {
+ const imgs = Array.isArray(car.images) ? car.images.filter(Boolean) : [];
+ if (imgs.length === 0) { toast.error("No images on this listing"); return; }
+ toast.message(`Downloading ${imgs.length} photo${imgs.length > 1 ? "s" : ""}…`);
+ const base = [car.year, car.brand, car.model].filter(Boolean).join("-").replace(/\s+/g, "-") || "car";
+ let ok = 0;
+ for (let i = 0; i < imgs.length; i++) {
+   try {
+     const resp = await fetch(imgs[i]);
+     const blob = await resp.blob();
+     const url = URL.createObjectURL(blob);
+     const a = document.createElement("a");
+     a.href = url;
+     const ext = ((blob.type.split("/")[1] || "jpg").replace("jpeg", "jpg")).split("+")[0];
+     a.download = `${base}-${i + 1}.${ext}`;
+     document.body.appendChild(a); a.click(); a.remove();
+     URL.revokeObjectURL(url);
+     ok++;
+   } catch { /* skip a failed image */ }
+ }
+ if (ok === 0) toast.error("Couldn't download images");
+ else toast.success(`Saved ${ok} photo${ok > 1 ? "s" : ""}`);
  };
 
  const handleListingCopy = (car, type) => {
@@ -1464,7 +1563,11 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
 
  const advanceLeadStage = (lead, newStage, force = false) => {
  if (!newStage) return;
- if (!force && lead.stage === "test_drive") { setTestDriveConfirm({ lead, nextStage: newStage }); return; }
+ // Confirm before a test drive moves on, and before taking a deposit (a real
+ // commitment that flips the car to reserved server-side).
+ if (!force && (lead.stage === "test_drive" || newStage === "deposit_taken")) {
+ setTestDriveConfirm({ lead, nextStage: newStage }); return;
+ }
  const oldStage = lead.stage;
  const leadId = lead.id;
  const buyerName = lead.buyer_name || "Lead";
@@ -1670,7 +1773,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  lead_source: "manual",
  is_deleted: false,
  })
- .select("*, car_listings(brand, model, year, selling_price, commission_amount)")
+ .select("*, car_listings(brand, model, year, variant, selling_price, commission_amount, images, vin_number, vin, plate_number, mileage, colour, transmission, fuel_type, body_type, slug, status)")
  .single();
  setAddLeadSaving(false);
  // Never close the form on failure — surface it so the lead isn't silently lost.
@@ -2187,7 +2290,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  >
  <span
  style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}
- >Commission
+ >Commission <span style={{ color: "#475569", fontWeight: 400 }}>· all time</span>
  </span>
  <TrendingUp size={14} color="#22c55e" />
  </div>
@@ -4175,6 +4278,25 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  }}
  >AI Caption
  </button>
+ {Array.isArray(car.images) && car.images.length > 0 && (
+ <button
+ onClick={() => downloadListingImages(car)}
+ title="Download photos"
+ style={{
+ display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+ fontSize: 10,
+ padding: "4px 8px",
+ borderRadius: 6,
+ background: "rgba(59,130,246,0.1)",
+ border: "1px solid rgba(59,130,246,0.25)",
+ color: "#93c5fd",
+ cursor: "pointer",
+ textAlign: "center",
+ }}
+ >
+ <Download size={11} /> Photos
+ </button>
+ )}
  </div>
  </div>
  </div>
@@ -4416,25 +4538,37 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
    );
  };
 
- const renderTestDriveConfirmModal = () => testDriveConfirm && (
+ const renderTestDriveConfirmModal = () => {
+ if (!testDriveConfirm) return null;
+ const isDeposit = testDriveConfirm.nextStage === "deposit_taken";
+ const title = isDeposit ? "Confirm Deposit Taken" : "Confirm Test Drive";
+ const sub = isDeposit
+   ? `${testDriveConfirm.lead.buyer_name || "Lead"} — has the buyer paid a deposit?`
+   : `${testDriveConfirm.lead.buyer_name || "Lead"} — did the test drive happen?`;
+ const body = isDeposit
+   ? <>This reserves the car for this buyer (it will show as <strong style={{ color: "#e5e7eb" }}>reserved</strong> publicly). Only confirm once the deposit is actually collected.</>
+   : <>This will move the lead to <strong style={{ color: "#e5e7eb" }}>{testDriveConfirm.nextStage.replace(/_/g, " ")}</strong>. Only confirm if the test drive has been completed.</>;
+ const cta = isDeposit ? "Yes, deposit taken" : "Yes, test drive done";
+ return (
  <div onClick={() => setTestDriveConfirm(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
    <div onClick={(e) => e.stopPropagation()} style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px 16px 0 0", padding: "20px 20px 32px", width: "100%", maxWidth: 480 }}>
-     <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Confirm Test Drive</p>
+     <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{title}</p>
      <p style={{ margin: "0 0 16px", fontSize: 12, color: "#4b5563" }}>
-       {testDriveConfirm.lead.buyer_name || "Lead"} — did the test drive happen?
+       {sub}
      </p>
      <p style={{ margin: "0 0 16px", fontSize: 13, color: "#9ca3af", lineHeight: 1.6 }}>
-       This will move the lead to <strong style={{ color: "#e5e7eb" }}>{testDriveConfirm.nextStage.replace(/_/g, " ")}</strong>. Only confirm if the test drive has been completed.
+       {body}
      </p>
      <div style={{ display: "flex", gap: 8 }}>
        <button onClick={() => setTestDriveConfirm(null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
        <button onClick={() => { advanceLeadStage(testDriveConfirm.lead, testDriveConfirm.nextStage, true); setTestDriveConfirm(null); }} style={{ flex: 2, padding: "11px 0", borderRadius: 10, background: "#dc2626", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-         Yes, test drive done
+         {cta}
        </button>
      </div>
    </div>
  </div>
  );
+ };
 
  const renderWAModal = () =>
  waModalLead && (
@@ -4956,7 +5090,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  timing: { label: "Not ready yet", color: "#fbbf24", lines: [`"Totally understand — what would need to change for you to feel ready? Is it financing, or something else?"`, `"I can hold this for you with a small refundable deposit while you sort things out. No pressure."`, `"Just so you know — cars at this price point move fast. I'd hate for you to miss it."`] },
  trust: { label: "Not sure / need to think", color: "#f87171", lines: [`"What specific questions can I answer right now? Let's remove all the uncertainty together."`, `"I'm not here to rush you — but I want to make sure you have everything you need to decide confidently."`, `"Can I send you a full brief on this car — specs, loan estimate, everything — so you have it all in one place?"`] },
  };
- const close = () => { setDrawerLeadId(null); setEditingNoteId(null); setPlaybookLeadId(null); setExpandedActivityLeadId(null); setLostPromptId(null); setDeleteConfirmId(null); setDealSheetLink(null); };
+ const close = () => { setDrawerLeadId(null); setEditingNoteId(null); setPlaybookLeadId(null); setExpandedActivityLeadId(null); setLostPromptId(null); setDeleteConfirmId(null); setDealSheetLink(null); setDrawerHandoverOpen(false); };
+ const plIsWon = ["won", "closed_won"].includes(pl.stage);
+ const plIsLite = profile?.plan === "salesman_lite";
  return (
  <>
  {/* backdrop */}
@@ -4982,15 +5118,161 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </div>
  </div>
 
- {/* price strip */}
- {plCarPrice && (
- <div style={{ padding: "8px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)" }}>
- <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#60a5fa" }}>{plCarPrice}</p>
+ {/* price + last-contact strip */}
+ {(plCarPrice || pl.updated_at) && (
+ <div style={{ padding: "8px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+ {plCarPrice ? <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#60a5fa" }}>{plCarPrice}</p> : <span />}
+ {pl.updated_at && (() => {
+ const d = Math.floor((Date.now() - new Date(pl.updated_at).getTime()) / 86400000);
+ const stale = d >= 7;
+ return <span style={{ fontSize: 11, color: stale ? "#fbbf24" : "#6b7280", whiteSpace: "nowrap" }}>Last touch {timeAgo(pl.updated_at)}</span>;
+ })()}
  </div>
  )}
 
  {/* scrollable body */}
  <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14, WebkitOverflowScrolling: "touch" }}>
+
+ {/* Car of interest */}
+ {plCar ? (
+ <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, overflow: "hidden" }}>
+ <div
+ onClick={() => { if (plCar.slug) window.open(`${dealerSubdomain ? `https://${dealerSubdomain}.xdrive.my` : "https://xdrive.my"}/cars/${plCar.slug}`, "_blank"); }}
+ style={{ position: "relative", aspectRatio: "4 / 3", background: "rgba(255,255,255,0.04)", cursor: plCar.slug ? "pointer" : "default" }}
+ >
+ {Array.isArray(plCar.images) && plCar.images[0]
+ ? <img src={plCar.images[0]} alt={plCarName || ""} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+ : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.2)" }}><Car size={30} /></div>}
+ {plCar.status && plCar.status !== "available" && (
+ <span style={{ position: "absolute", top: 8, left: 8, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", padding: "3px 8px", borderRadius: 6, background: "rgba(6,8,15,0.8)", color: plCar.status === "sold" ? "#c084fc" : "#fbbf24", border: `1px solid ${plCar.status === "sold" ? "rgba(192,132,252,0.4)" : "rgba(251,191,36,0.4)"}` }}>{plCar.status}</span>
+ )}
+ </div>
+ <div style={{ padding: "11px 13px" }}>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{plCarName}{plCar.variant ? ` ${plCar.variant}` : ""}</p>
+ {plCarPrice && <p style={{ margin: "2px 0 0", fontSize: 13, fontWeight: 700, color: "#60a5fa" }}>{plCarPrice}</p>}
+ <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px", marginTop: 10 }}>
+ {[
+ plCar.plate_number && { label: "Plate", val: plCar.plate_number },
+ (plCar.vin_number || plCar.vin) && { label: "VIN", val: plCar.vin_number || plCar.vin },
+ plCar.mileage && { label: "Mileage", val: `${Number(plCar.mileage).toLocaleString()} km` },
+ plCar.colour && { label: "Colour", val: plCar.colour },
+ plCar.transmission && { label: "Transmission", val: plCar.transmission },
+ plCar.fuel_type && { label: "Fuel", val: plCar.fuel_type },
+ ].filter(Boolean).map((row) => {
+ const copyable = row.label === "VIN" || row.label === "Plate";
+ return (
+ <div key={row.label} style={{ minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: 9, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>{row.label}</p>
+ <p
+ onClick={copyable ? () => { navigator.clipboard?.writeText(String(row.val)).then(() => toast.success(`${row.label} copied`)).catch(() => {}); } : undefined}
+ title={copyable ? "Tap to copy" : undefined}
+ style={{ margin: "1px 0 0", fontSize: 12, color: "#cbd5e1", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: copyable ? "monospace" : "inherit", cursor: copyable ? "pointer" : "default" }}>{row.val}</p>
+ </div>
+ );
+ })}
+ </div>
+ </div>
+ </div>
+ ) : (
+ <div style={{ background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.12)", borderRadius: 12, padding: "16px", textAlign: "center" }}>
+ <Car size={22} style={{ color: "rgba(255,255,255,0.25)", marginBottom: 6 }} />
+ <p style={{ margin: 0, fontSize: 12, color: "#6b7280" }}>No car linked — use "Link Car" below.</p>
+ </div>
+ )}
+
+ {/* Buyer contact */}
+ {(pl.phone || pl.buyer_email || pl.buyer_ic || pl.buyer_state || pl.source || pl.lead_source) && (
+ <div>
+ <p style={{ margin: "0 0 6px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>Buyer</p>
+ <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+ {pl.phone && (
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+ <span style={{ fontSize: 13, color: "#cbd5e1", fontFamily: "monospace" }}>{pl.phone}</span>
+ <div style={{ display: "flex", gap: 6 }}>
+ <a href={`tel:${pl.phone}`} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#9ca3af", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, padding: "4px 9px", textDecoration: "none" }}><Phone size={11} /> Call</a>
+ <a href={`https://wa.me/${(pl.phone || "").replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#4ade80", background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.22)", borderRadius: 6, padding: "4px 9px", textDecoration: "none" }}>WA</a>
+ </div>
+ </div>
+ )}
+ {[
+ pl.buyer_email && { label: "Email", val: pl.buyer_email },
+ pl.buyer_ic && { label: "IC", val: pl.buyer_ic, mono: true },
+ pl.buyer_state && { label: "State", val: pl.buyer_state },
+ (pl.source || pl.lead_source) && { label: "Source", val: (pl.source || pl.lead_source).replace(/_/g, " ") },
+ ].filter(Boolean).map((row) => (
+ <div key={row.label} style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+ <span style={{ fontSize: 11, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>{row.label}</span>
+ <span style={{ fontSize: 12, color: "#cbd5e1", textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: row.mono ? "monospace" : "inherit", textTransform: row.label === "Source" ? "capitalize" : "none" }}>{row.val}</span>
+ </div>
+ ))}
+ </div>
+ </div>
+ )}
+
+ {/* Deposit */}
+ {(pl.deposit_amount || pl.stage === "deposit_taken") && (
+ <div style={{ background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 12, padding: "12px 14px" }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+ <p style={{ margin: 0, fontSize: 10, color: "#4ade80", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700 }}>Deposit</p>
+ {pl.deposit_amount ? <span style={{ fontSize: 15, fontWeight: 800, color: "#4ade80" }}>RM {Number(pl.deposit_amount).toLocaleString()}</span> : <span style={{ fontSize: 11, color: "#9ca3af" }}>amount not set</span>}
+ </div>
+ <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+ {[
+ pl.deposit_balance_due && { label: "Balance due", val: `RM ${Number(pl.deposit_balance_due).toLocaleString()}` },
+ pl.deposit_date && { label: "Paid on", val: new Date(pl.deposit_date).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" }) },
+ pl.deposit_method && { label: "Method", val: pl.deposit_method },
+ pl.deposit_receipt_no && { label: "Receipt", val: pl.deposit_receipt_no, mono: true },
+ ].filter(Boolean).map((row) => (
+ <div key={row.label} style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+ <span style={{ fontSize: 11, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em" }}>{row.label}</span>
+ <span style={{ fontSize: 12, color: "#cbd5e1", textAlign: "right", fontFamily: row.mono ? "monospace" : "inherit" }}>{row.val}</span>
+ </div>
+ ))}
+ </div>
+ </div>
+ )}
+
+ {/* Loan / HP */}
+ {(pl.loan_bank || pl.loan_amount || pl.loan_status) && (
+ <div>
+ <p style={{ margin: "0 0 6px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>Financing</p>
+ <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+ {[
+ pl.loan_bank && { label: "Bank", val: pl.loan_bank },
+ pl.loan_amount && { label: "Loan amount", val: `RM ${Number(pl.loan_amount).toLocaleString()}` },
+ pl.loan_status && { label: "Status", val: pl.loan_status.replace(/_/g, " "), cap: true },
+ ].filter(Boolean).map((row) => (
+ <div key={row.label} style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+ <span style={{ fontSize: 11, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em" }}>{row.label}</span>
+ <span style={{ fontSize: 12, color: "#cbd5e1", textAlign: "right", textTransform: row.cap ? "capitalize" : "none" }}>{row.val}</span>
+ </div>
+ ))}
+ </div>
+ </div>
+ )}
+
+ {/* Handover process (won deals) — update the steps the buyer sees live */}
+ {plIsWon && (
+ <div>
+ <button
+ onClick={() => setDrawerHandoverOpen(v => !v)}
+ style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 12px", borderRadius: 8, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600 }}
+ >
+ <span style={{ display: "flex", alignItems: "center", gap: 7 }}><ClipboardCheck size={14} /> Handover process</span>
+ {drawerHandoverOpen ? <ChevronLeft size={15} style={{ transform: "rotate(90deg)" }} /> : <ChevronRight size={15} style={{ transform: "rotate(90deg)" }} />}
+ </button>
+ {drawerHandoverOpen && (
+ <div style={{ marginTop: 10 }}>
+ <p style={{ margin: "0 0 8px", fontSize: 11, color: plIsLite ? "#6b7280" : "#4ade80", display: "flex", alignItems: "center", gap: 5 }}>
+ {plIsLite
+ ? "Update steps to track the handover internally."
+ : "Update steps — the buyer sees this live on their account."}
+ </p>
+ <PostSaleChecklist lead={pl} dark />
+ </div>
+ )}
+ </div>
+ )}
 
  {/* Notes */}
  <div>
@@ -5397,6 +5679,21 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  );
  };
 
+ // Calendar derivations
+ const toKey = (d) => { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; };
+ const aptsByDate = {};
+ appointments.forEach((a) => { if (!a.appointment_date || a.status === "cancelled") return; const k = toKey(a.appointment_date); (aptsByDate[k] = aptsByDate[k] || []).push(a); });
+ const calY = calMonth.getFullYear(), calM = calMonth.getMonth();
+ const firstDow = new Date(calY, calM, 1).getDay();
+ const daysInMonth = new Date(calY, calM + 1, 0).getDate();
+ const todayKey = toKey(new Date());
+ const cells = [];
+ for (let i = 0; i < firstDow; i++) cells.push(null);
+ for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+ const selAppts = (aptsByDate[calSelected] || []).slice().sort(byDate);
+ const monthLabel = calMonth.toLocaleDateString("en-MY", { month: "long", year: "numeric" });
+ const selLabel = (() => { const d = new Date(calSelected + "T00:00:00"); return isNaN(d) ? "" : d.toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" }); })();
+
  return (
  <div>
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
@@ -5411,21 +5708,45 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </div>
  ) : (
  <div>
- {todayApts.length > 0 && (
- <div style={{ marginBottom: 20 }}>
- <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
- <Calendar size={11} color="#fbbf24" /> Today ({todayApts.length})
- </p>
- <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{todayApts.map(renderApptCard)}</div>
+ {/* Month calendar */}
+ <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: 14, marginBottom: 16 }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+ <button onClick={() => setCalMonth(new Date(calY, calM - 1, 1))} style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronLeft size={16} /></button>
+ <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{monthLabel}</p>
+ <button onClick={() => setCalMonth(new Date(calY, calM + 1, 1))} style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronRight size={16} /></button>
  </div>
- )}
- {upcomingApts.length > 0 && (
- <div style={{ marginBottom: 20 }}>
+ <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4 }}>
+ {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+ <div key={i} style={{ textAlign: "center", fontSize: 9, fontWeight: 700, color: "#4b5563", textTransform: "uppercase", paddingBottom: 4 }}>{d}</div>
+ ))}
+ {cells.map((d, i) => {
+ if (d === null) return <div key={`b${i}`} />;
+ const key = toKey(new Date(calY, calM, d));
+ const count = (aptsByDate[key] || []).length;
+ const isSel = key === calSelected;
+ const isToday = key === todayKey;
+ return (
+ <button key={key} onClick={() => setCalSelected(key)}
+ style={{ aspectRatio: "1", borderRadius: 9, cursor: "pointer", position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
+ background: isSel ? "rgba(220,38,38,0.18)" : count > 0 ? "rgba(96,165,250,0.08)" : "transparent",
+ border: isSel ? "1px solid rgba(220,38,38,0.5)" : isToday ? "1px solid rgba(255,255,255,0.25)" : "1px solid transparent",
+ color: isSel ? "#fca5a5" : "#cbd5e1" }}>
+ <span style={{ fontSize: 12, fontWeight: isToday || isSel ? 700 : 500 }}>{d}</span>
+ {count > 0 && <span style={{ fontSize: 8, fontWeight: 700, color: isSel ? "#fca5a5" : "#60a5fa" }}>{count}</span>}
+ </button>
+ );
+ })}
+ </div>
+ </div>
+
+ {/* Selected day's bookings */}
  <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#60a5fa", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
- <Calendar size={11} color="#60a5fa" /> Upcoming ({upcomingApts.length})
+ <Calendar size={11} color="#60a5fa" /> {selLabel} ({selAppts.length})
  </p>
- <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{upcomingApts.map(renderApptCard)}</div>
- </div>
+ {selAppts.length === 0 ? (
+ <p style={{ margin: "0 0 20px", fontSize: 12, color: "#4b5563" }}>No bookings on this day.</p>
+ ) : (
+ <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>{selAppts.map(renderApptCard)}</div>
  )}
  {pastApts.length > 0 && (
  <div style={{ marginTop: 8 }}>
@@ -5533,24 +5854,10 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  );
  };
 
- const renderEnquiries = () => {
- const newEnqCount = enquiries.filter(e => e.status === "new").length;
- const pendingAptCount = appointments.filter(a => a.status === "pending").length;
- return (
- <div>
- {/* Sub-tab switcher */}
- <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
- {[{ key: "enquiries", label: "Enquiries", badge: newEnqCount }, { key: "bookings", label: "Bookings", badge: pendingAptCount }].map(({ key, label, badge }) => (
- <button key={key} onClick={() => setInboxSubTab(key)} style={{ fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 8, cursor: "pointer", background: inboxSubTab === key ? "rgba(220,38,38,0.15)" : "rgba(255,255,255,0.04)", border: `1px solid ${inboxSubTab === key ? "rgba(220,38,38,0.35)" : "rgba(255,255,255,0.08)"}`, color: inboxSubTab === key ? "#f87171" : "#6b7280", display: "flex", alignItems: "center", gap: 6 }}>
- {label}
- {badge > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: "#dc2626", color: "#fff", borderRadius: 99, padding: "0 5px", minWidth: 16, textAlign: "center" }}>{badge}</span>}
- </button>
- ))}
- </div>
- {inboxSubTab === "enquiries" ? renderEnquiriesSection() : renderBookingsSection()}
- </div>
- );
- };
+ // Bookings calendar tab. Enquiries (anonymous WhatsApp clicks with no buyer
+ // contact) were removed from the nav — they're counted in Analytics "WA Taps"
+ // and the real pipeline is for contactable buyers.
+ const renderEnquiries = () => renderBookingsSection();
 
 
  const renderAnalytics = () => {
@@ -5616,6 +5923,14 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
   const cvrColor = cvrNum >= 10 ? "#4ade80" : cvrNum >= 5 ? "#fbbf24" : "#f87171";
   const cvrD = viewsD.map((v, i) => v > 0 ? (waD[i] / v) * 100 : 0);
 
+  // Today / last 24h
+  const last24 = Date.now() - 86400000;
+  const viewsToday = viewsD[6] || 0;
+  const waToday = waD[6] || 0;
+  const enqToday = enquiries.filter(e => e.created_at && new Date(e.created_at).getTime() >= last24).length;
+  const leadsToday = leads.filter(l => l.created_at && new Date(l.created_at).getTime() >= last24).length;
+  const apptToday = appointments.filter(a => a.created_at && new Date(a.created_at).getTime() >= last24).length;
+
   const now2 = new Date();
   const monthStart = new Date(now2.getFullYear(), now2.getMonth(), 1);
   const leadsThisMonth = leads.filter(l => l.created_at && new Date(l.created_at) >= monthStart).length;
@@ -5653,7 +5968,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
 
     {/* Sparkline KPI grid */}
     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3, 1fr)", gap: 10, marginBottom: 18 }}>
-     <KPI label="Listing Views" value={totalViews} data={viewsD} color="#93c5fd" sub="All time" />
+     <KPI label="Total Views" value={totalViews} data={viewsD} color="#93c5fd" sub="All time" />
      <KPI label="WA Taps" value={totalWA} data={waD} color="#4ade80" sub="All time" />
      <KPI label="CVR" value={`${cvr}%`} data={cvrD} color={cvrColor} sub="WA / Views" />
      <KPI label="Enquiries" value={enquiries.length} data={enqD} color="#c084fc" sub="All messages" />
@@ -5661,6 +5976,29 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
      {canPerm("view_commission") && (
      <KPI label="Commission" value={commission !== null ? `RM ${Number(commission).toLocaleString()}` : "—"} data={Array(7).fill(0)} color="#4ade80" sub="All time" />
      )}
+    </div>
+
+    {/* Today — last 24h */}
+    <div style={{ marginBottom: 18 }}>
+     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} className="hot-dot" />
+      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>Today</p>
+      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>last 24 hours</span>
+     </div>
+     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: isMobile ? 8 : 10 }}>
+      {[
+       { label: "Views", val: viewsToday, color: "#93c5fd" },
+       { label: "WA taps", val: waToday, color: "#4ade80" },
+       { label: "Enquiries", val: enqToday, color: "#c084fc" },
+       { label: "New leads", val: leadsToday, color: "#60a5fa" },
+       { label: "Appointments", val: apptToday, color: "#fbbf24" },
+      ].map(({ label, val, color }) => (
+       <div key={label} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "12px 14px" }}>
+        <p style={{ margin: 0, fontSize: 9, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 600 }}>{label}</p>
+        <p style={{ margin: "5px 0 0", fontSize: 26, fontFamily: "'Bebas Neue',sans-serif", color, lineHeight: 1 }}>{val}</p>
+       </div>
+      ))}
+     </div>
     </div>
 
     {/* This Month KPI strip */}
@@ -5823,7 +6161,10 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  };
 
  const submitLoan = async () => {
- if (!loanForm.bank_name ||!loanForm.loan_amount ||!loanForm.loan_tenure) return;
+ if (!loanForm.bank_name || !loanForm.loan_amount || !loanForm.loan_tenure) {
+ toast.error("Bank, loan amount and tenure are required");
+ return;
+ }
  setLoanSaving(true);
  const dealerId = getDealerIdFromProfile(profile);
  const banksPayload = loanForm.bank_name? [{
@@ -5920,7 +6261,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </h2>
  <p style={{ margin: "4px 0 0", fontSize: 12, color: "#4b5563" }}>Your sold deals and their post-sale steps: Puspakom, JPJ transfer, road tax, insurance, handover.</p>
  </div>
- <PostSaleBoard dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} />
+ <PostSaleBoard dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} dark />
  </div>
  );
 
@@ -5974,7 +6315,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
  <thead>
  <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
- {["Bank", "Rate", "Monthly Payment", "Total Interest", "Total Payable", ""].map((h) => (
+ {["Bank", "Rate (flat)", "Monthly Payment", "Total Interest", "Total Payable", ""].map((h) => (
  <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "#6b7280", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>{h}</th>
  ))}
  </tr>
@@ -6130,7 +6471,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  onChange={(e) => recalcLoanForm({ ...loanForm, loan_amount: e.target.value })} />
  </div>
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Interest Rate (%)</label>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Interest Rate (% flat)</label>
  <input type="number" step="0.01" placeholder="e.g. 3.25" style={loanInputSx}
  value={loanForm.interest_rate}
  onChange={(e) => recalcLoanForm({ ...loanForm, interest_rate: e.target.value })} />
@@ -6379,6 +6720,13 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <input type="text" value={profileSettings.telegram_chat_id}
  onChange={e => setProfileSettings(p => ({ ...p, telegram_chat_id: e.target.value }))}
  placeholder="e.g. 123456789" style={inputStyle} />
+ <button
+ type="button"
+ onClick={testTelegramConnection}
+ disabled={tgTesting || !profileSettings.telegram_chat_id}
+ style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '8px 14px', borderRadius: 8, background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)', color: '#93c5fd', cursor: (tgTesting || !profileSettings.telegram_chat_id) ? 'not-allowed' : 'pointer', opacity: (tgTesting || !profileSettings.telegram_chat_id) ? 0.55 : 1, fontFamily: 'inherit' }}>
+ <Send size={13} /> {tgTesting ? 'Sending…' : 'Send test message'}
+ </button>
  <p style={{ margin: '5px 0 0', fontSize: 10, color: '#64748b', lineHeight: 1.6 }}>
  Get appointment + handover reminders on Telegram. Open Telegram, search <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd', textDecoration: 'none' }}>@userinfobot</a>, send /start, copy the Id number.
  </p>
@@ -6480,26 +6828,62 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  );
  };
 
- const renderTeam = () => (
- <div
- style={{
- display: "flex",
- alignItems: "center",
- justifyContent: "center",
- height: 300,
- }}
- >
+ const renderTeam = () => {
+ const maxUnits = Math.max(1, ...leaderboard.map((r) => r.units));
+ return (
+ <div style={{ maxWidth: 760 }}>
+ <div style={{ marginBottom: 20 }}>
+ <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#fff" }}>
+ <Users size={18} style={{ marginRight: 8, verticalAlign: "middle", color: "#dc2626" }} />Team Leaderboard
+ </h2>
+ <p style={{ margin: "4px 0 0", fontSize: 12, color: "#4b5563" }}>Units sold this month per salesman. Names are shared; individual deals stay private.</p>
+ </div>
+ {leaderboard.length === 0 ? (
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 220 }}>
  <div style={{ textAlign: "center" }}>
  <Users size={32} color="#374151" style={{ marginBottom: 12 }} />
- <p
- style={{ margin: 0, fontSize: 14, color: "#4b5563", fontWeight: 500 }}
- >Team view coming soon
- </p>
- <p style={{ margin: "6px 0 0", fontSize: 12, color: "#374151" }}>See your team's performance here.
- </p>
+ <p style={{ margin: 0, fontSize: 14, color: "#4b5563", fontWeight: 500 }}>No team members yet</p>
+ <p style={{ margin: "6px 0 0", fontSize: 12, color: "#374151" }}>Your team's performance will show here once sales come in.</p>
  </div>
+ </div>
+ ) : (
+ <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+ {leaderboard.map((r, i) => {
+ const medal = i === 0 ? "#fbbf24" : i === 1 ? "#cbd5e1" : i === 2 ? "#d97706" : "#4b5563";
+ return (
+ <div key={r.id} style={{
+ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 10,
+ background: r.isMe ? "rgba(37,99,235,0.12)" : "rgba(255,255,255,0.03)",
+ border: r.isMe ? "1px solid rgba(37,99,235,0.3)" : "1px solid rgba(255,255,255,0.06)",
+ }}>
+ <span style={{ width: 22, textAlign: "center", fontSize: 14, fontWeight: 800, color: medal, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{i + 1}</span>
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {r.name}{r.isMe ? <span style={{ color: "#93c5fd", fontWeight: 700 }}> · You</span> : null}
+ </p>
+ <div style={{ marginTop: 6, height: 4, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+ <div style={{ width: `${(r.units / maxUnits) * 100}%`, height: "100%", borderRadius: 99, background: r.isMe ? "#3b82f6" : "#6b7280" }} />
+ </div>
+ </div>
+ <span style={{ fontSize: 16, fontWeight: 800, color: "#fff", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{r.units}<span style={{ fontSize: 10, color: "#6b7280", fontWeight: 600, marginLeft: 3 }}>sold</span></span>
  </div>
  );
+ })}
+ </div>
+ )}
+ </div>
+ );
+ }
+
+ const MORE_ITEMS = [
+ { tab: "analytics", label: "Analytics", icon: <TrendingUp size={18} /> },
+ { tab: "enquiries", label: "Bookings", icon: <Calendar size={18} /> },
+ { tab: "loans", label: "Loans", icon: <Banknote size={18} /> },
+ { tab: "handover", label: "Handover", icon: <ClipboardCheck size={18} /> },
+ { tab: "team", label: "Team", icon: <Users size={18} /> },
+ { tab: "settings", label: "Settings", icon: <Settings size={18} /> },
+ { tab: "help", label: "Manual", icon: <BookOpen size={18} /> },
+ ];
 
  return (
  <>
@@ -6567,84 +6951,37 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  badge: null,
  },
  {
- tab: "analytics",
- label: "Analytics",
- icon: <TrendingUp size={18} />,
- badge: null,
- },
- {
- tab: "enquiries",
- label: "Enquiries",
- icon: <MessageSquare size={18} />,
- badge: (enquiries.filter((e) => e.status === "new").length + appointments.filter(a => a.status === "pending").length) || null,
- },
- {
- tab: "loans",
- label: "Loans",
- icon: <Banknote size={18} />,
- badge: null,
- },
- {
- tab: "handover",
- label: "Handover",
- icon: <ClipboardCheck size={18} />,
- badge: null,
- },
- {
- tab: "team",
- label: "Team",
- icon: <Users size={18} />,
- badge: null,
- },
- {
- tab: "settings",
- label: "Settings",
- icon: <Settings size={18} />,
- badge: null,
- },
- {
- tab: "help",
- label: "Manual",
- icon: <BookOpen size={18} />,
- badge: null,
+ tab: "__more",
+ label: "More",
+ icon: <LayoutGrid size={18} />,
+ badge: appointments.filter(a => a.status === "pending").length || null,
  },
  ].map(({ tab, label, icon, badge }) => {
- const isActive = activeTab === tab;
+ const isMore = tab === "__more";
+ const moreTabs = ["analytics", "enquiries", "loans", "handover", "team", "settings", "help"];
+ const isActive = isMore ? moreTabs.includes(activeTab) : activeTab === tab;
+ const moreIcon = isMore ? <Plus size={18} /> : icon;
  return (
  <button
  key={tab}
- onClick={() => setActiveTab(tab)}
+ onClick={() => (isMore ? setMoreOpen(true) : setActiveTab(tab))}
  style={{
  flex: 1,
  display: "flex",
  flexDirection: "column",
  alignItems: "center",
  justifyContent: "center",
- gap: 2,
+ gap: 3,
  background: "transparent",
  border: "none",
  cursor: "pointer",
- color: isActive? "#93c5fd" : "#4b5563",
+ color: isActive? "#93c5fd" : "#6b7280",
  position: "relative",
  padding: "6px 0",
  }}
  >
- {isActive && (
- <div
- style={{
- position: "absolute",
- top: 5,
- left: "50%",
- transform: "translateX(-50%)",
- width: 3,
- height: 3,
- borderRadius: 99,
- background: "#3b82f6",
- }}
- />
- )}
  <div style={{ position: "relative" }}>
- {icon}
+ {moreIcon}
  {badge? (
  <span
  style={{
@@ -6659,13 +6996,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  />
  ) : null}
  </div>
- {isActive && (
- <span
- style={{ fontSize: 9, color: "#93c5fd", lineHeight: 1 }}
- >
+ <span style={{ fontSize: 9, color: isActive? "#93c5fd" : "#6b7280", lineHeight: 1 }}>
  {label}
  </span>
- )}
  </button>
  );
  })}
@@ -6683,7 +7016,6 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  position: "sticky",
  top: 0,
  height: "100vh",
- overflow: "hidden",
  }}
  >
  {/* Logo */}
@@ -6847,13 +7179,13 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  },
  {
  tab: "enquiries",
- label: "Enquiries",
+ label: "Bookings",
  icon: (
- <MessageSquare
+ <Calendar
  style={{ width: 14, height: 14, flexShrink: 0 }}
  />
  ),
- badge: (enquiries.filter((e) => e.status === "new").length + appointments.filter(a => a.status === "pending").length) || null,
+ badge: appointments.filter(a => a.status === "pending").length || null,
  },
  {
  tab: "loans",
@@ -7553,9 +7885,11 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  >
  <option value="">— no car selected —</option>
  {(() => {
+ // Only cars this salesman has featured from inventory or been assigned
+ // (myListings) — not the dealer's whole open pool.
  const seen = new Set();
- return [...myListings, ...availableCars]
- .filter((c) => c && !seen.has(c.id) && seen.add(c.id))
+ return myListings
+ .filter((c) => c && c.status !== "sold" && !seen.has(c.id) && seen.add(c.id))
  .map((c) => (
  <option key={c.id} value={c.id}>
  {c.year} {c.brand} {c.model}
@@ -8151,6 +8485,40 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  {renderLogCallModal()}
  {renderFollowUpModal()}
  {renderBatchWAModal()}
+
+ {/* Mobile "More" bottom sheet */}
+ {moreOpen && createPortal(
+ <div
+ onClick={() => setMoreOpen(false)}
+ style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)", display: "flex", alignItems: "flex-end", fontFamily: "'DM Sans', sans-serif" }}
+ >
+ <div
+ onClick={(e) => e.stopPropagation()}
+ style={{ width: "100%", background: "#0b0f1a", borderTop: "1px solid rgba(255,255,255,0.08)", borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: "8px 16px max(20px, env(safe-area-inset-bottom))", maxHeight: "70vh", overflowY: "auto" }}
+ >
+ <div style={{ width: 36, height: 4, borderRadius: 99, background: "rgba(255,255,255,0.18)", margin: "8px auto 16px" }} />
+ <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+ {MORE_ITEMS.map(({ tab, label, icon }) => {
+ const isActive = activeTab === tab;
+ return (
+ <button
+ key={tab}
+ onClick={() => { setActiveTab(tab); setMoreOpen(false); }}
+ style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: "18px 8px", borderRadius: 12, cursor: "pointer",
+ background: isActive ? "rgba(37,99,235,0.15)" : "rgba(255,255,255,0.03)",
+ border: isActive ? "1px solid rgba(37,99,235,0.35)" : "1px solid rgba(255,255,255,0.06)",
+ color: isActive ? "#93c5fd" : "#9ca3af" }}
+ >
+ {icon}
+ <span style={{ fontSize: 12, fontWeight: 600 }}>{label}</span>
+ </button>
+ );
+ })}
+ </div>
+ </div>
+ </div>,
+ document.body,
+ )}
  </div>
  </>
  );

@@ -13,6 +13,7 @@ import { supabase } from "../supabaseClient";
 import { cdnImg, imgFallback } from "../utils/img";
 import useTenant, { isSubdomain, getSubdomain } from "../hooks/useTenant";
 import { trackEvent, getSlugFromURL, getOrCreateSessionId } from "../utils/analytics";
+import ContactGate from "./ContactGate";
 
 const HC_CSS = `
 
@@ -593,6 +594,7 @@ const TOUCH_PAUSE = 25000;
 
 // Reusable meta+price+ctas block (defined at module scope to avoid recreation on every render)
 function MetaBlock({ extraClass = "", metaItems, priceVal, waHref, s, tenant }) {
+  const [waGateOpen, setWaGateOpen] = useState(false);
   return (
     <div className={extraClass}>
       {metaItems.length > 0 && (
@@ -615,39 +617,46 @@ function MetaBlock({ extraClass = "", metaItems, priceVal, waHref, s, tenant }) 
         {waHref && (
           <button
             className="hc-enquire"
-            onClick={() => {
-              // Fire-and-forget IIFEs — never block the WhatsApp redirect
-              (async () => {
-                try {
-                  await supabase.from('whatsapp_enquiries').insert({
-                    dealer_id: s.dealer_id || tenant?.id || null,
-                    listing_id: s.car_listing_id || null,
-                    buyer_name: null,
-                    buyer_phone: null,
-                    buyer_message: `Enquiry from hero carousel — ${s.car_name || 'Featured Car'}`,
-                    source: 'hero_carousel',
-                    status: 'new',
-                    ref_slug: getSlugFromURL(),
-                    session_id: getOrCreateSessionId(),
-                  });
-                } catch (e) { console.warn(e); }
-              })();
-              (async () => {
-                try {
-                  await trackEvent(supabase, 'whatsapp_click', {
-                    car_id: s.car_listing_id || null,
-                    car_name: s.car_name || null,
-                    dealer_id: s.dealer_id || tenant?.id || null,
-                    metadata: { source: 'hero_carousel' },
-                  });
-                } catch (e) { console.warn(e); }
-              })();
-              window.open(waHref, '_blank', 'noopener,noreferrer');
-            }}
+            onClick={() => setWaGateOpen(true)}
           >
             Enquire Now <ArrowRight size={12} />
           </button>
         )}
+        <ContactGate
+          open={waGateOpen}
+          onClose={() => setWaGateOpen(false)}
+          waUrl={waHref}
+          dealerId={s.dealer_id || tenant?.id || null}
+          carId={s.car_listing_id || null}
+          carName={s.car_name || null}
+          onConfirmed={() => {
+            (async () => {
+              try {
+                await supabase.from('whatsapp_enquiries').insert({
+                  dealer_id: s.dealer_id || tenant?.id || null,
+                  listing_id: s.car_listing_id || null,
+                  buyer_name: null,
+                  buyer_phone: null,
+                  buyer_message: `Enquiry from hero carousel — ${s.car_name || 'Featured Car'}`,
+                  source: 'hero_carousel',
+                  status: 'new',
+                  ref_slug: getSlugFromURL(),
+                  session_id: getOrCreateSessionId(),
+                });
+              } catch (e) { console.warn(e); }
+            })();
+            (async () => {
+              try {
+                await trackEvent(supabase, 'whatsapp_click', {
+                  car_id: s.car_listing_id || null,
+                  car_name: s.car_name || null,
+                  dealer_id: s.dealer_id || tenant?.id || null,
+                  metadata: { source: 'hero_carousel' },
+                });
+              } catch (e) { console.warn(e); }
+            })();
+          }}
+        />
         {s.car_listing_id && (
           <Link
             to={`/cars/${s.car_listings?.slug || s.car_listing_id}`}

@@ -130,6 +130,11 @@ the same `baggage`/`sentry-trace` CORS header fix applied in source (DASH-5) but
 are NOT yet redeployed — only send-document was redeployed (the reported blocker).
 Redeploy the other four when convenient to prevent the same Sentry preflight issue.
 
+### PUBLIC CAR DETAIL PAGE (CarDetailPage) — engagement backlog
+
+- [ ] **CDP-COMMENTS: Comments / Q&A on listings** — public "Ask a question" / "Read all comments" area on the car detail page (Carlist parity). Needs a `listing_comments` table (listing_id, author_name/buyer_id, body, parent_id for replies, created_at), RLS (public read, authenticated/captcha write), a dealer/salesman reply path, and moderation (hide/report). Surface a visible Q&A block on CarDetailPage.
+- [ ] **CDP-REVIEWS: Buyer reviews / ratings** — buyer reviews + star rating on the detail page (and aggregate on the dealer/agent). Needs a `reviews` table (dealer_id/salesman_id, buyer_id, rating 1-5, body, verified_purchase flag tied to a won deal, created_at), RLS, an aggregate-rating RPC, and UI. Only show "verified" stars backed by a real closed deal — no fake/default ratings (anti-slop).
+
 ### INFRASTRUCTURE
 
 - **INFRA-1: Supabase storage cleanup** — Storage is full. Audit bucket usage, delete orphaned images (listings that were deleted but images remain), consider image compression pipeline or CDN offload. (Requires manual review of what to delete — user decision needed.)

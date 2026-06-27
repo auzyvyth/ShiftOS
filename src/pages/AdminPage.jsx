@@ -153,6 +153,13 @@ export default function AdminPage() {
   const [rejectingId, setRejectingId] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
   const [approvalActioning, setApprovalActioning] = useState(null);
+  const [selectedListingIds, setSelectedListingIds] = useState(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkRejectOpen, setBulkRejectOpen] = useState(false);
+  const [bulkRejectReason, setBulkRejectReason] = useState("");
+  const [noteEditId, setNoteEditId] = useState(null);
+  const [noteVal, setNoteVal] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
   const [blastModal, setBlastModal] = useState(false);
   const [blastMsg, setBlastMsg] = useState("Hi! ShiftOS Lite is launching soon — free car listings, your own profile page, and lead tracking. You're on the early list. Stay tuned!");
   const [blastCopied, setBlastCopied] = useState(null); // "numbers" | "msg" | null
@@ -246,10 +253,51 @@ export default function AdminPage() {
     // Load pending approval listings (salesman-lite standalone accounts)
     const { data: pending } = await supabase
       .from("car_listings")
-      .select("id, year, brand, model, variant, selling_price, images, status, created_at, rejection_reason, dealer_id, profiles!car_listings_dealer_id_fkey(full_name, slug, dealership)")
+      .select(`id, year, brand, model, variant, mileage, colour, condition, auction_grade, interior_grade,
+        is_recon, import_country, plate_number, vin_number, vin, selling_price, original_price, previous_price,
+        payment_type, images, status, created_at, rejection_reason, admin_notes, dealer_id, city, state,
+        profiles!car_listings_dealer_id_fkey(full_name, slug, dealership, phone, whatsapp_number, ic_submitted, created_at, listing_count_cache, city, state)`)
       .eq("status", "pending_approval")
       .order("created_at", { ascending: true });
-    setPendingListings(pending || []);
+
+    // Rejection counts + duplicate-plate cross-check + shared-phone scam check
+    const plates = (pending || []).map(l => l.plate_number).filter(Boolean);
+    const sellerPhones = [...new Set((pending || [])
+      .map(l => (l.profiles?.phone || l.profiles?.whatsapp_number || "").replace(/\D/g, ""))
+      .filter(Boolean))];
+    const [{ data: rejections }, { data: plateMatches }, { data: phoneOwners }] = await Promise.all([
+      supabase.from("car_listings").select("dealer_id").eq("status", "rejected").in("dealer_id", (pending || []).map(l => l.dealer_id)),
+      plates.length > 0
+        ? supabase.from("car_listings").select("id, plate_number, dealer_id").in("plate_number", plates).neq("status", "rejected")
+        : Promise.resolve({ data: [] }),
+      sellerPhones.length > 0
+        ? supabase.from("profiles").select("id, phone, whatsapp_number")
+        : Promise.resolve({ data: [] }),
+    ]);
+    const rejectionCounts = {};
+    (rejections || []).forEach(r => { rejectionCounts[r.dealer_id] = (rejectionCounts[r.dealer_id] || 0) + 1; });
+    const plateCounts = {};
+    (plateMatches || []).forEach(p => { if (p.plate_number) plateCounts[p.plate_number] = (plateCounts[p.plate_number] || 0) + 1; });
+    // Map normalized phone -> set of distinct account ids that use it.
+    const phoneAccounts = {};
+    (phoneOwners || []).forEach(p => {
+      [p.phone, p.whatsapp_number].forEach(raw => {
+        const ph = (raw || "").replace(/\D/g, "");
+        if (!ph) return;
+        (phoneAccounts[ph] = phoneAccounts[ph] || new Set()).add(p.id);
+      });
+    });
+
+    setPendingListings((pending || []).map(l => {
+      const ph = (l.profiles?.phone || l.profiles?.whatsapp_number || "").replace(/\D/g, "");
+      const shared = ph ? (phoneAccounts[ph]?.size || 0) : 0;
+      return {
+        ...l,
+        _rejectionCount: rejectionCounts[l.dealer_id] || 0,
+        _duplicatePlate: l.plate_number ? (plateCounts[l.plate_number] || 0) > 1 : false,
+        _sharedPhoneAccounts: shared > 1 ? shared : 0,
+      };
+    }));
   }
 
   async function saveField(id, field, value) {
@@ -536,6 +584,81 @@ export default function AdminPage() {
                 )}
               </div>
 
+              {/* Bulk action toolbar */}
+              {pendingListings.length > 0 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 14, padding: "10px 14px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10 }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: "#9ca3af", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedListingIds.size === pendingListings.length && pendingListings.length > 0}
+                      ref={el => { if (el) el.indeterminate = selectedListingIds.size > 0 && selectedListingIds.size < pendingListings.length; }}
+                      onChange={e => setSelectedListingIds(e.target.checked ? new Set(pendingListings.map(l => l.id)) : new Set())}
+                    />
+                    {selectedListingIds.size > 0 ? `${selectedListingIds.size} selected` : "Select all"}
+                  </label>
+                  {selectedListingIds.size > 0 && (
+                    <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
+                      <button
+                        disabled={bulkBusy}
+                        onClick={async () => {
+                          setBulkBusy(true);
+                          const ids = [...selectedListingIds];
+                          const results = await Promise.all(ids.map(id => supabase.rpc("approve_listing", { p_listing_id: id })));
+                          const okIds = ids.filter((id, i) => !results[i].error);
+                          setPendingListings(p => p.filter(l => !okIds.includes(l.id)));
+                          setSelectedListingIds(new Set());
+                          setBulkBusy(false);
+                        }}
+                        style={{ fontSize: 12, fontWeight: 700, padding: "7px 16px", borderRadius: 8, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", color: "#4ade80", cursor: bulkBusy ? "not-allowed" : "pointer", opacity: bulkBusy ? 0.6 : 1 }}
+                      >
+                        {bulkBusy ? "…" : `✓ Approve ${selectedListingIds.size}`}
+                      </button>
+                      <button
+                        disabled={bulkBusy}
+                        onClick={() => { setBulkRejectOpen(true); setBulkRejectReason(""); }}
+                        style={{ fontSize: 12, fontWeight: 600, padding: "7px 14px", borderRadius: 8, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", cursor: "pointer" }}
+                      >
+                        ✕ Reject {selectedListingIds.size}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Bulk reject reason */}
+              {bulkRejectOpen && (
+                <div style={{ marginBottom: 14, padding: "12px 14px", background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.18)", borderRadius: 8 }}>
+                  <p style={{ margin: "0 0 8px", fontSize: 12, color: "#f87171", fontWeight: 600 }}>Reason for rejecting {selectedListingIds.size} listing(s) — shown to each salesman</p>
+                  <textarea
+                    value={bulkRejectReason}
+                    onChange={e => setBulkRejectReason(e.target.value)}
+                    placeholder="e.g. Incomplete details / suspected duplicates…"
+                    rows={2}
+                    style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", resize: "vertical", fontFamily: "'DM Sans', sans-serif", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
+                  />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => setBulkRejectOpen(false)} style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                    <button
+                      disabled={!bulkRejectReason.trim() || bulkBusy}
+                      onClick={async () => {
+                        if (!bulkRejectReason.trim()) return;
+                        setBulkBusy(true);
+                        const ids = [...selectedListingIds];
+                        const results = await Promise.all(ids.map(id => supabase.rpc("reject_listing", { p_listing_id: id, p_reason: bulkRejectReason.trim() })));
+                        const okIds = ids.filter((id, i) => !results[i].error);
+                        setPendingListings(p => p.filter(l => !okIds.includes(l.id)));
+                        setSelectedListingIds(new Set());
+                        setBulkRejectOpen(false);
+                        setBulkBusy(false);
+                      }}
+                      style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 700, background: bulkRejectReason.trim() ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.04)", border: bulkRejectReason.trim() ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(255,255,255,0.08)", color: bulkRejectReason.trim() ? "#f87171" : "#374151", cursor: bulkRejectReason.trim() ? "pointer" : "not-allowed", fontFamily: "inherit", opacity: bulkBusy ? 0.6 : 1 }}
+                    >
+                      {bulkBusy ? "Rejecting…" : `Confirm reject ${selectedListingIds.size}`}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {pendingListings.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "60px 0", color: "#374151" }}>
                   <p style={{ fontSize: 32, marginBottom: 8 }}>✓</p>
@@ -545,9 +668,13 @@ export default function AdminPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {pendingListings.map(listing => {
                     const salesman = listing.profiles;
-                    const img = listing.images?.[0];
+                    const imgs = listing.images || [];
                     const carName = [listing.year, listing.brand, listing.model, listing.variant].filter(Boolean).join(" ");
                     const price = listing.selling_price ? `RM ${Number(listing.selling_price).toLocaleString("en-MY")}` : "—";
+                    const origPrice = listing.original_price || listing.previous_price || null;
+                    const discountPct = origPrice && origPrice > listing.selling_price
+                      ? Math.round(((origPrice - listing.selling_price) / origPrice) * 100) : 0;
+                    const accountAgeHrs = salesman?.created_at ? (Date.now() - new Date(salesman.created_at)) / 3600000 : null;
                     const submittedAgo = (() => {
                       const s = Math.floor((Date.now() - new Date(listing.created_at)) / 1000);
                       if (s < 3600) return `${Math.floor(s / 60)}m ago`;
@@ -557,12 +684,55 @@ export default function AdminPage() {
                     const isActioning = approvalActioning === listing.id;
                     const isRejecting = rejectingId === listing.id;
 
+                    const flags = [
+                      imgs.length === 0 && { label: "No images", sev: "high" },
+                      accountAgeHrs !== null && accountAgeHrs < 24 && { label: "New account (<24h)", sev: "high" },
+                      listing._duplicatePlate && { label: "Duplicate plate", sev: "high" },
+                      (salesman?.listing_count_cache || 0) >= 28 && { label: "Near listing cap", sev: "med" },
+                      salesman?.ic_submitted === false && { label: "No IC submitted", sev: "med" },
+                      discountPct > 20 && { label: `Big discount (${discountPct}%)`, sev: "med" },
+                      (listing._rejectionCount || 0) > 0 && { label: `${listing._rejectionCount} prior rejection${listing._rejectionCount > 1 ? "s" : ""}`, sev: "med" },
+                      (listing._sharedPhoneAccounts || 0) > 1 && { label: `Phone on ${listing._sharedPhoneAccounts} accounts`, sev: "high" },
+                    ].filter(Boolean);
+
                     return (
                       <div key={listing.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "16px 18px" }}>
+                        {flags.length > 0 && (
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                            {flags.map((f, i) => (
+                              <span key={i} style={{ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 5,
+                                background: f.sev === "high" ? "rgba(239,68,68,0.12)" : "rgba(251,191,36,0.1)",
+                                border: f.sev === "high" ? "1px solid rgba(239,68,68,0.3)" : "1px solid rgba(251,191,36,0.25)",
+                                color: f.sev === "high" ? "#f87171" : "#fbbf24" }}>
+                                {f.sev === "high" ? "🔴" : "🟡"} {f.label}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                          {/* Thumbnail */}
-                          {img ? (
-                            <img src={img} alt={carName} style={{ width: 80, height: 60, objectFit: "cover", borderRadius: 7, flexShrink: 0, border: "1px solid rgba(255,255,255,0.06)" }} />
+                          {/* Select */}
+                          <input
+                            type="checkbox"
+                            checked={selectedListingIds.has(listing.id)}
+                            onChange={e => setSelectedListingIds(prev => {
+                              const next = new Set(prev);
+                              if (e.target.checked) next.add(listing.id); else next.delete(listing.id);
+                              return next;
+                            })}
+                            style={{ marginTop: 4, flexShrink: 0, cursor: "pointer" }}
+                          />
+                          {/* Thumbnails */}
+                          {imgs.length > 0 ? (
+                            <div style={{ display: "flex", gap: 4, flexShrink: 0, maxWidth: 168, overflowX: "auto" }}>
+                              {imgs.slice(0, 4).map((src, i) => (
+                                <img key={i} src={src} alt={carName} style={{ width: 40, height: 60, objectFit: "cover", borderRadius: 6, flexShrink: 0, border: "1px solid rgba(255,255,255,0.06)" }} />
+                              ))}
+                              {imgs.length > 4 && (
+                                <div style={{ width: 40, height: 60, borderRadius: 6, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#6b7280" }}>
+                                  +{imgs.length - 4}
+                                </div>
+                              )}
+                            </div>
                           ) : (
                             <div style={{ width: 80, height: 60, borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
                               <span style={{ fontSize: 20 }}>🚗</span>
@@ -572,11 +742,32 @@ export default function AdminPage() {
                           {/* Info */}
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{carName || "—"}</p>
-                            <p style={{ margin: "0 0 4px", fontSize: 12, color: "#dc2626", fontWeight: 600 }}>{price}</p>
+                            <p style={{ margin: "0 0 4px", fontSize: 12, color: "#dc2626", fontWeight: 600 }}>
+                              {price}
+                              {origPrice ? <span style={{ color: "#4b5563", fontWeight: 500, textDecoration: "line-through", marginLeft: 6 }}>RM {Number(origPrice).toLocaleString("en-MY")}</span> : null}
+                              {listing.payment_type && <span style={{ color: "#6b7280", fontWeight: 500, marginLeft: 8, fontSize: 11 }}>· {listing.payment_type}</span>}
+                            </p>
+                            <p style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}>
+                              {[listing.mileage && `${Number(listing.mileage).toLocaleString()} km`, listing.colour, listing.condition,
+                                listing.is_recon && [listing.auction_grade, listing.interior_grade].filter(Boolean).join("/"),
+                                listing.is_recon && listing.import_country,
+                                [listing.city, listing.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ") || "—"}
+                            </p>
+                            <p style={{ margin: "0 0 4px", fontSize: 10, color: "#4b5563", fontFamily: "monospace" }}>
+                              {listing.plate_number && `Plate: ${listing.plate_number}`}
+                              {(listing.vin_number || listing.vin) && `  ·  VIN: ${listing.vin_number || listing.vin}`}
+                            </p>
                             <p style={{ margin: 0, fontSize: 11, color: "#6b7280" }}>
                               by <span style={{ color: "#9ca3af", fontWeight: 600 }}>{salesman?.full_name || "—"}</span>
                               {salesman?.slug && <span style={{ color: "#4b5563" }}> · @{salesman.slug}</span>}
+                              {(salesman?.phone || salesman?.whatsapp_number) && <span style={{ color: "#4b5563" }}> · {salesman.phone || salesman.whatsapp_number}</span>}
                               <span style={{ color: "#374151" }}> · submitted {submittedAgo}</span>
+                            </p>
+                            <p style={{ margin: "4px 0 0", fontSize: 10, color: "#374151" }}>
+                              IC {salesman?.ic_submitted ? "✓ submitted" : "✗ not submitted"}
+                              {" · "}{salesman?.listing_count_cache ?? 0} listings
+                              {" · "}{listing._rejectionCount || 0} rejection{(listing._rejectionCount || 0) === 1 ? "" : "s"}
+                              {accountAgeHrs !== null && <> · account {accountAgeHrs < 24 ? `${Math.round(accountAgeHrs)}h` : `${Math.round(accountAgeHrs / 24)}d`} old</>}
                             </p>
                           </div>
 
@@ -641,6 +832,44 @@ export default function AdminPage() {
                             </div>
                           </div>
                         )}
+
+                        {/* Internal admin notes (never shown to the salesman) */}
+                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                          {noteEditId === listing.id ? (
+                            <div>
+                              <textarea
+                                value={noteVal}
+                                onChange={e => setNoteVal(e.target.value)}
+                                placeholder="Internal note — only superadmins see this"
+                                rows={2}
+                                style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 12, padding: "8px 10px", resize: "vertical", fontFamily: "'DM Sans', sans-serif", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
+                              />
+                              <div style={{ display: "flex", gap: 8 }}>
+                                <button onClick={() => { setNoteEditId(null); setNoteVal(""); }} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                                <button
+                                  disabled={noteSaving}
+                                  onClick={async () => {
+                                    setNoteSaving(true);
+                                    const { error } = await supabase.rpc("set_listing_admin_note", { p_listing_id: listing.id, p_note: noteVal });
+                                    if (!error) setPendingListings(p => p.map(l => l.id === listing.id ? { ...l, admin_notes: noteVal.trim() || null } : l));
+                                    setNoteSaving(false); setNoteEditId(null); setNoteVal("");
+                                  }}
+                                  style={{ flex: 2, padding: "6px 0", borderRadius: 7, fontSize: 12, fontWeight: 700, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd", cursor: "pointer", fontFamily: "inherit", opacity: noteSaving ? 0.6 : 1 }}
+                                >{noteSaving ? "Saving…" : "Save note"}</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => { setNoteEditId(listing.id); setNoteVal(listing.admin_notes || ""); }}
+                              style={{ display: "flex", alignItems: "flex-start", gap: 7, width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
+                            >
+                              <span style={{ fontSize: 11, color: "#475569", fontWeight: 600, flexShrink: 0, marginTop: 1 }}>🗒 Note:</span>
+                              <span style={{ fontSize: 11, color: listing.admin_notes ? "#cbd5e1" : "#475569", fontStyle: listing.admin_notes ? "normal" : "italic" }}>
+                                {listing.admin_notes || "add internal note"}
+                              </span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     );
                   })}

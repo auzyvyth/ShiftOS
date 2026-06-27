@@ -17,7 +17,7 @@ function daysSince(ts) {
 
 // Lists won deals that still need post-sale processing. dealerId scopes to a
 // dealership; pass salesmanId to scope to one salesman's own sold deals.
-export default function PostSaleBoard({ dealerId, salesmanId = null }) {
+export default function PostSaleBoard({ dealerId, salesmanId = null, dark = false }) {
   const [deals, setDeals] = useState([]);
   const [progressMap, setProgressMap] = useState({});
   const [tasksMap, setTasksMap] = useState({});
@@ -61,10 +61,13 @@ export default function PostSaleBoard({ dealerId, salesmanId = null }) {
     return () => { cancelled = true; };
   }, [dealerId, salesmanId]);
 
-  // Light panel — matches the dashboard shell (white cards, dark text).
-  const PANEL = { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 16, padding: 'clamp(12px, 3vw, 18px)' };
+  // Theme tokens — light (dealer dashboard shell) or dark (salesman panel).
+  const t = dark
+    ? { panelBg: 'rgba(255,255,255,0.03)', cardBg: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.08)', divider: 'rgba(255,255,255,0.06)', text: '#f1f5f9', sub: '#9ca3af', chip: 'rgba(255,255,255,0.06)', chipBorder: 'rgba(255,255,255,0.1)', chipText: '#d1d5db', track: 'rgba(255,255,255,0.1)', btnBg: 'rgba(255,255,255,0.06)' }
+    : { panelBg: '#fff', cardBg: '#fff', border: '#e5e7eb', divider: '#f3f4f6', text: '#111827', sub: '#6b7280', chip: '#f3f4f6', chipBorder: '#e5e7eb', chipText: '#374151', track: '#e5e7eb', btnBg: '#f3f4f6' };
+  const PANEL = { background: t.panelBg, border: `1px solid ${t.border}`, borderRadius: 16, padding: 'clamp(12px, 3vw, 18px)' };
 
-  if (loading) return <div style={PANEL}><p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>Loading sold deals…</p></div>;
+  if (loading) return <div style={PANEL}><p style={{ fontSize: 13, color: t.sub, margin: 0 }}>Loading sold deals…</p></div>;
 
   const visible = (hideDone ? deals.filter((d) => progressMap[d.id] !== 100) : deals)
     .slice()
@@ -82,7 +85,7 @@ export default function PostSaleBoard({ dealerId, salesmanId = null }) {
 
   if (deals.length === 0) {
     return (
-      <div style={{ ...PANEL, textAlign: 'center', color: '#6b7280' }}>
+      <div style={{ ...PANEL, textAlign: 'center', color: t.sub }}>
         <Car size={28} style={{ opacity: 0.4, marginBottom: 8 }} />
         <p style={{ fontSize: 13, margin: 0 }}>No sold deals yet. Won deals show up here for handover processing.</p>
       </div>
@@ -93,7 +96,7 @@ export default function PostSaleBoard({ dealerId, salesmanId = null }) {
     <div style={{ ...PANEL, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>
+          <p style={{ fontSize: 12, color: t.sub, margin: 0 }}>
             {deals.filter((d) => progressMap[d.id] !== 100).length} in processing
           </p>
           {overdueCount > 0 && (
@@ -107,9 +110,13 @@ export default function PostSaleBoard({ dealerId, salesmanId = null }) {
             </span>
           )}
         </div>
-        <button onClick={() => setHideDone((v) => !v)} style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8, padding: '5px 10px', cursor: 'pointer' }}>
-          {hideDone ? 'Show completed' : 'Hide completed'}
-        </button>
+        {doneCount > 0 ? (
+          <button onClick={() => setHideDone((v) => !v)} style={{ fontSize: 11, fontWeight: 600, color: t.sub, background: t.btnBg, border: `1px solid ${t.border}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer' }}>
+            {hideDone ? `Show completed (${doneCount})` : 'Hide completed'}
+          </button>
+        ) : (
+          <span style={{ fontSize: 11, fontWeight: 600, color: t.sub, opacity: 0.7 }}>No completed yet</span>
+        )}
       </div>
 
       {visible.map((d) => {
@@ -122,15 +129,15 @@ export default function PostSaleBoard({ dealerId, salesmanId = null }) {
         const slaColor = done ? '#059669' : age > SLA_BREACH_DAYS ? '#dc2626' : age >= SLA_WARN_DAYS ? '#d97706' : '#9ca3af';
         const blocker = done ? null : nextBlocker(tasksMap[d.id]);
         return (
-          <div key={d.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
+          <div key={d.id} style={{ background: t.cardBg, border: `1px solid ${t.border}`, borderRadius: 12, overflow: 'hidden' }}>
             <button
               onClick={() => setOpen(isOpen ? null : d.id)}
               style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
             >
               {isOpen ? <ChevronDown size={16} color="#9ca3af" /> : <ChevronRight size={16} color="#9ca3af" />}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 14, fontWeight: 700, color: '#111827', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.buyer_name || 'Buyer'}</p>
-                <p style={{ fontSize: 11.5, color: '#6b7280', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <p style={{ fontSize: 14, fontWeight: 700, color: t.text, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.buyer_name || 'Buyer'}</p>
+                <p style={{ fontSize: 11.5, color: t.sub, margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {carLabel}{d.salesman_profile?.full_name ? ` · ${d.salesman_profile.full_name.split(' ')[0]}` : ''}
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '5px 0 0', flexWrap: 'wrap' }}>
@@ -141,8 +148,8 @@ export default function PostSaleBoard({ dealerId, salesmanId = null }) {
                     </span>
                   )}
                   {blocker && (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 600, color: '#374151', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 6, padding: '1px 7px', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      Next: {blocker.label}<span style={{ color: '#9ca3af' }}> · {blocker.owner}</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 600, color: t.chipText, background: t.chip, border: `1px solid ${t.chipBorder}`, borderRadius: 6, padding: '1px 7px', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      Next: {blocker.label}<span style={{ color: t.sub }}> · {blocker.owner}</span>
                     </span>
                   )}
                 </div>
@@ -153,17 +160,17 @@ export default function PostSaleBoard({ dealerId, salesmanId = null }) {
                 </span>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, width: 90 }}>
-                  <div style={{ flex: 1, height: 5, borderRadius: 99, background: '#e5e7eb', overflow: 'hidden' }}>
+                  <div style={{ flex: 1, height: 5, borderRadius: 99, background: t.track, overflow: 'hidden' }}>
                     <div style={{ width: `${prog < 0 ? 0 : prog}%`, height: '100%', background: '#dc2626' }} />
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', minWidth: 30, textAlign: 'right' }}>{prog < 0 ? '–' : `${prog}%`}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: t.sub, minWidth: 30, textAlign: 'right' }}>{prog < 0 ? '–' : `${prog}%`}</span>
                 </div>
               )}
             </button>
             {isOpen && (
-              <div style={{ padding: '0 14px 14px', borderTop: '1px solid #f3f4f6' }}>
+              <div style={{ padding: '0 14px 14px', borderTop: `1px solid ${t.divider}` }}>
                 <div style={{ paddingTop: 12 }}>
-                  <PostSaleChecklist lead={d} />
+                  <PostSaleChecklist lead={d} dark={dark} />
                 </div>
               </div>
             )}

@@ -1,33 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { X, Heart, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useSavedCars } from '../hooks/useSavedCars';
-import { supabase } from '../supabaseClient';
+import { useSavedCars, useSavedCarsDetails } from '../hooks/useSavedCars';
 import CarCard from './CarCard';
 
 export default function SavedCarsPanel({ open, onClose }) {
   const { savedIds, toggleSave, ready } = useSavedCars();
-  const [cars, setCars]     = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  // Fetch full car objects whenever savedIds changes and panel is open
-  useEffect(() => {
-    if (!ready) return;
-    const ids = [...savedIds];
-    if (!ids.length) { setCars([]); return; }
-    setLoading(true);
-    supabase
-      .from('public_car_listings')
-      .select('id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,condition,images,status,created_at,dealer_id,auction_grade,interior_grade,is_recon,financing_type,engine_cc,previous_owners')
-      .in('id', ids)
-      .then(({ data }) => {
-        if (data) {
-          const map = Object.fromEntries(data.map(c => [c.id, c]));
-          setCars(ids.map(id => map[id]).filter(Boolean));
-        }
-        setLoading(false);
-      });
-  }, [savedIds, ready]);
+  const { cars, loading } = useSavedCarsDetails(savedIds, ready);
 
   // Lock body scroll while open
   useEffect(() => {

@@ -104,6 +104,66 @@ const fmtFinancing = (car) => {
   return car.loan_eligible === false ? "Cash Only" : "Loan Available";
 };
 
+/* Spec Highlights — surfaces the dealer's own feature tags as scannable chips
+   right under the price. Data-backed (real car.features), capped so it stays a
+   highlight, not the full list (the Features tab below holds everything). */
+const SpecHighlights = ({ car, th }) => {
+  const tags = parseTags(car.features).slice(0, 8);
+  if (tags.length === 0) return null;
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.16em', color: th.textMuted, fontWeight: 700, marginBottom: 10 }}>Spec Highlights</p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+        {tags.map((tag, i) => (
+          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', border: `1px solid ${th.border}`, borderRadius: 6, fontSize: 12, color: th.text, background: th.card2, fontWeight: 500 }}>
+            <Check size={12} strokeWidth={3} style={{ color: '#dc2626', flexShrink: 0 }} /> {tag}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/* Prominent warranty banner — promotes the dealer's warranty months from a thin
+   line to a highlighted strip directly under the price. Real data only. */
+const WarrantyBanner = ({ car, isXdrive }) => {
+  if (!(car.warranty_months > 0)) return null;
+  const head = isXdrive ? '#16a34a' : '#4ade80';
+  const sub = isXdrive ? '#15803d' : 'rgba(74,222,128,0.75)';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '11px 14px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.28)', borderRadius: 10 }}>
+      <ShieldCheck size={18} style={{ color: head, flexShrink: 0 }} />
+      <div style={{ minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: head }}>{car.warranty_months}-month warranty included</p>
+        <p style={{ margin: '1px 0 0', fontSize: 11, color: sub }}>Covered by the dealer · drive with peace of mind</p>
+      </div>
+    </div>
+  );
+};
+
+/* Recon trust signals — turns is_recon + import + grades into clear chips
+   ("Japan Spec", "Unregistered", "Auction Grade 4.5"). */
+const ReconTrust = ({ car, isXdrive }) => {
+  if (!car.is_recon) return null;
+  const amber = isXdrive ? '#b45309' : '#fbbf24';
+  const origin = car.import_country ? `${car.import_country} Spec` : 'Recon Unit';
+  const chips = [
+    { label: origin },
+    car.local_reg_date ? null : { label: 'Unregistered' },
+    car.auction_grade ? { label: `Auction Grade ${car.auction_grade}` } : null,
+    car.interior_grade ? { label: `Interior ${car.interior_grade}` } : null,
+  ].filter(Boolean);
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 16 }}>
+      {chips.map((c, i) => (
+        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 6, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', color: amber, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.28)' }}>
+          <BadgeCheck size={12} style={{ flexShrink: 0 }} /> {c.label}
+        </span>
+      ))}
+    </div>
+  );
+};
+
 
 const isImageUrl = (url) =>
   /\.(jpg|jpeg|png|webp|gif|avif|svg)(\?|$)/i.test(url || "");
@@ -650,17 +710,17 @@ export default function CarDetailPage() {
                 .then((r) => r.data)
             : Promise.resolve(null),
 
-          // Salesman profile
-          carData.dealer_id
+          // Salesman/agent profile — via SECURITY DEFINER RPC (get_salesman_by_slug)
+          // so anonymous visitors get it; the direct profiles query was RLS-blocked
+          // for anon, which made standalone agents (Salesman Lite, dealer_id = own id)
+          // silently render as a nameless "dealer" with no mini-page link. Only treat
+          // it as the agent-seller when the agent IS the listing owner (id === dealer_id),
+          // mirroring the old role='salesman' + id=dealer_id condition.
+          carData.salesman_slug
             ? supabase
-                .from("profiles")
-                .select(
-                  "full_name, avatar_url, job_title, whatsapp_number, slug, plan",
-                )
-                .eq("id", carData.dealer_id)
-                .eq("role", "salesman")
+                .rpc("get_salesman_by_slug", { p_slug: carData.salesman_slug })
                 .maybeSingle()
-                .then((r) => r.data)
+                .then((r) => (r.data && r.data.id === carData.dealer_id ? r.data : null))
             : Promise.resolve(null),
 
           // Similar cars (2-step chain internally)
@@ -881,6 +941,18 @@ export default function CarDetailPage() {
         refSlug: getRef() || null,
       }),
     }).catch((err) => console.error("[handleEnquirySubmit] fetch error:", err));
+
+    // Create a real pipeline lead from the captured name + phone so the WhatsApp
+    // click lands in the dealer/salesman pipeline (not just anonymous analytics).
+    if (car.dealer_id) {
+      supabase.rpc("create_lead_from_whatsapp", {
+        p_dealer_id: car.dealer_id,
+        p_car_id: car.id,
+        p_name: enquiryForm.name,
+        p_phone: enquiryForm.phone,
+        p_ref_slug: getRef() || car.salesman_slug || null,
+      }).then(({ error }) => { if (error) console.error("create_lead_from_whatsapp:", error); });
+    }
   }
 
   async function handleBook(e) {
@@ -1001,6 +1073,17 @@ export default function CarDetailPage() {
   const carTitle = `${car.year} ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""}`;
   const dealerName =
     dealer?.site_name || dealer?.dealership || dealer?.full_name || "Dealer";
+  // Seller mini-page link: dealer subdomain/slug, or the standalone agent's /s/slug.
+  // Standalone agents (Salesman Lite) have no dealer profile, so without this their
+  // listing showed no "Visit page" link at all.
+  const sellerPageUrl = dealer?.subdomain
+    ? `https://${dealer.subdomain}.xdrive.my`
+    : dealer?.slug
+      ? `https://xdrive.my/s/${dealer.slug}`
+      : salesmanProfile?.slug
+        ? `https://xdrive.my/s/${salesmanProfile.slug}`
+        : null;
+  const sellerPageLabel = salesmanProfile && !dealer ? "Visit Agent's Page" : "Visit Dealer's Page";
   const listedDays = daysAgo(car.created_at);
   const today = new Date().toISOString().split("T")[0];
   const imgCount = images.length;
@@ -1438,6 +1521,24 @@ export default function CarDetailPage() {
             </div>
           </div>
 
+          {/* Thumbnail strip (desktop) — jump straight to any photo */}
+          {imgCount > 1 && (
+            <div className="cdp-desktop-only" style={{ display: 'flex', gap: 8, marginTop: 10, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
+              {images.map((src, i) => (
+                <button
+                  key={i}
+                  onClick={() => go(i, i > activeIdx ? 'next' : 'prev')}
+                  aria-label={`View photo ${i + 1}`}
+                  style={{ flex: '0 0 auto', width: 84, height: 60, padding: 0, borderRadius: 8, overflow: 'hidden', cursor: 'pointer', background: 'none', border: `2px solid ${i === activeIdx ? '#dc2626' : 'transparent'}`, opacity: i === activeIdx ? 1 : 0.6, transition: 'opacity .15s, border-color .15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.opacity = 1; }}
+                  onMouseLeave={e => { e.currentTarget.style.opacity = i === activeIdx ? 1 : 0.6; }}
+                >
+                  <img src={disp(src, 200)} alt={`${carTitle} thumbnail ${i + 1}`} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={onImgErr(src)} />
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Mobile single swipeable panel — desktop-only since M1 handles mobile */}
           <div
             className="cdp-mosaic-mobile cdp-desktop-only"
@@ -1600,6 +1701,22 @@ export default function CarDetailPage() {
           })()}
         </div>
 
+        {/* Thumbnail strip (mobile) */}
+        {imgCount > 1 && (
+          <div className="cdp-mobile-only" style={{ display: 'flex', gap: 7, padding: '10px 18px 0', overflowX: 'auto', scrollbarWidth: 'none' }}>
+            {images.map((src, i) => (
+              <button
+                key={i}
+                onClick={() => go(i, i > activeIdx ? 'next' : 'prev')}
+                aria-label={`View photo ${i + 1}`}
+                style={{ flex: '0 0 auto', width: 64, height: 46, padding: 0, borderRadius: 7, overflow: 'hidden', cursor: 'pointer', background: 'none', border: `2px solid ${i === activeIdx ? '#dc2626' : 'transparent'}`, opacity: i === activeIdx ? 1 : 0.55 }}
+              >
+                <img src={disp(src, 160)} alt={`${carTitle} thumbnail ${i + 1}`} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={onImgErr(src)} />
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* M2 — Identity block */}
         <div className="cdp-mobile-only" style={{ padding:'20px 18px 0' }}>
           {(isRecon || isReserved || isHot || hasDocuments) && (
@@ -1643,6 +1760,11 @@ export default function CarDetailPage() {
               <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.2)', color:'#f87171', fontSize:'11px', padding:'2px 10px', borderRadius:'20px', fontWeight:600, letterSpacing:'0.04em' }}>SAVE {fmtPrice(saving)}</span>
             </div>
           )}
+          <div style={{ marginTop:16 }}>
+            <WarrantyBanner car={car} isXdrive={isXdrive} />
+            <ReconTrust car={car} isXdrive={isXdrive} />
+            <SpecHighlights car={car} th={th} />
+          </div>
           <div style={{ height:1, marginBottom:20, background:'linear-gradient(to right,rgba(220,38,38,0.3),rgba(255,255,255,0.04),transparent)' }} />
         </div>
 
@@ -1694,12 +1816,6 @@ export default function CarDetailPage() {
                 </button>
               )}
             </div>
-            {car.warranty_months > 0 && (
-              <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:10, padding:'8px 12px', background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.25)', borderRadius:9 }}>
-                <ShieldCheck size={13} style={{ color:'#4ade80', flexShrink:0 }} />
-                <span style={{ fontSize:12, color:'#4ade80', fontWeight:600 }}>{car.warranty_months}-month warranty included</span>
-              </div>
-            )}
             {car.deposit_amount > 0 && (
               <p style={{ fontSize:11, color:'#475569', marginTop:8, textAlign:'center' }}>RM {fmt(car.deposit_amount)} deposit to reserve</p>
             )}
@@ -1709,10 +1825,10 @@ export default function CarDetailPage() {
               onMouseLeave={e => { e.currentTarget.style.background='rgba(220,38,38,0.06)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.22)'; }}>
               <Calculator size={14} /> Financing Calculator
             </button>
-            {(dealer?.subdomain || dealer?.slug) && !isSubdomain() && (
-              <a href={dealer.subdomain ? `https://${dealer.subdomain}.xdrive.my` : `https://xdrive.my/s/${dealer.slug}`} target="_blank" rel="noopener noreferrer"
+            {sellerPageUrl && !isSubdomain() && (
+              <a href={sellerPageUrl} target="_blank" rel="noopener noreferrer"
                 style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, width:'100%', marginTop:8, background: th.card2, border:`1px solid ${th.border}`, color: th.textSec, borderRadius:10, padding:'10px', fontSize:12, letterSpacing:'0.05em', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", textDecoration:'none', boxSizing:'border-box' }}>
-                <ExternalLink size={13} /> Visit Dealer's Page
+                <ExternalLink size={13} /> {sellerPageLabel}
               </a>
             )}
             <div style={{ height:1, background: th.border, margin:'14px 0' }} />
@@ -2377,6 +2493,12 @@ export default function CarDetailPage() {
                   </p>
                 </div>
               ))}
+            </div>
+
+            {/* Recon trust signals + spec highlights */}
+            <div style={{ marginBottom: 32 }}>
+              <ReconTrust car={car} isXdrive={isXdrive} />
+              <SpecHighlights car={car} th={th} />
             </div>
 
             {/* Description */}
@@ -3077,13 +3199,13 @@ export default function CarDetailPage() {
             <div style={{ marginBottom: 4 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                 <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, margin: 0 }}>Asking Price</p>
-                {(dealer?.subdomain || dealer?.slug) && !isSubdomain() && (
+                {sellerPageUrl && !isSubdomain() && (
                   <a
-                    href={dealer.subdomain ? `https://${dealer.subdomain}.xdrive.my` : `https://xdrive.my/s/${dealer.slug}`}
+                    href={sellerPageUrl}
                     target="_blank" rel="noopener noreferrer"
                     style={{ fontSize: 11, color: '#60a5fa', textDecoration: 'none', letterSpacing: '0.03em' }}
                   >
-                    {dealer.site_name || dealer.dealership} ↗
+                    {dealer?.site_name || dealer?.dealership || salesmanProfile?.full_name || 'Seller'} ↗
                   </a>
                 )}
               </div>
@@ -3109,8 +3231,8 @@ export default function CarDetailPage() {
               {isRecon && <span style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.25)', color: '#c084fc', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>Recon</span>}
               {isHot && <span style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.28)', color: '#f87171', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>Hot Deal</span>}
               {hasDocuments && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.28)', color: '#4ade80', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}><BadgeCheck size={11} /> Verified Docs</span>}
-              {car.warranty_months > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.28)', color: '#4ade80', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}><ShieldCheck size={11} /> {car.warranty_months}m Warranty</span>}
             </div>
+            <WarrantyBanner car={car} isXdrive={isXdrive} />
             {car.deposit_amount > 0 && (
               <p style={{ fontSize: 11, color: th.textMuted, marginBottom: 8, textAlign: 'center' }}>RM {fmt(car.deposit_amount)} deposit to reserve</p>
             )}
@@ -3143,10 +3265,10 @@ export default function CarDetailPage() {
               onMouseLeave={e => { e.currentTarget.style.background='rgba(220,38,38,0.06)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.22)'; }}>
               <Calculator size={14} /> Financing Calculator
             </button>
-            {(dealer?.subdomain || dealer?.slug) && !isSubdomain() && (
-              <a href={dealer.subdomain ? `https://${dealer.subdomain}.xdrive.my` : `https://xdrive.my/s/${dealer.slug}`} target="_blank" rel="noopener noreferrer"
+            {sellerPageUrl && !isSubdomain() && (
+              <a href={sellerPageUrl} target="_blank" rel="noopener noreferrer"
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', marginTop: 8, background: th.inputBg, border: `1px solid ${th.border}`, color: th.textSec, borderRadius: 10, padding: 10, fontSize: 12, letterSpacing: '0.05em', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", textDecoration: 'none', boxSizing: 'border-box', transition: 'all .2s' }}>
-                <ExternalLink size={13} /> Visit Dealer's Page
+                <ExternalLink size={13} /> {sellerPageLabel}
               </a>
             )}
 
@@ -3323,12 +3445,12 @@ export default function CarDetailPage() {
             />
             <input
               id="cdp-enq-phone"
-              placeholder="Phone number (e.g. 0123456789)"
+              placeholder="Phone number (optional)"
               aria-label="Phone number"
               inputMode="tel"
               value={enquiryForm.phone}
               onChange={e => setEnquiryForm(p => ({ ...p, phone: e.target.value }))}
-              onKeyDown={e => { if (e.key === 'Enter' && enquiryForm.name && enquiryForm.phone) { e.preventDefault(); handleEnquirySubmit(); } }}
+              onKeyDown={e => { if (e.key === 'Enter' && enquiryForm.name) { e.preventDefault(); handleEnquirySubmit(); } }}
               onFocus={() => setFocused('enq_phone')} onBlur={() => setFocused(null)}
               style={inputStyle(focusedField === 'enq_phone', th)}
             />
@@ -3346,7 +3468,7 @@ export default function CarDetailPage() {
             </select>
             <button
               onClick={handleEnquirySubmit}
-              disabled={!enquiryForm.name || !enquiryForm.phone || enquirySubmitting}
+              disabled={!enquiryForm.name || enquirySubmitting}
               className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-semibold py-3 rounded-lg text-sm"
               style={{ borderTop: '2px solid #16a34a', letterSpacing: '0.02em' }}
             >

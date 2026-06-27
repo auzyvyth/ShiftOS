@@ -8,6 +8,7 @@ import { cdnImg } from '../utils/img';
 import { trackEvent, getOrCreateSessionId } from '../utils/analytics';
 import { getRef } from '../utils/refTracking';
 import { isSubdomain } from '../hooks/useTenant';
+import ContactGate from './ContactGate';
 import { useSavedCars } from '../hooks/useSavedCars';
 import { useCompare } from '../hooks/useCompare';
 import { calcMonthly } from '../utils/financing';
@@ -33,6 +34,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
   const [imgError, setImgError]   = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgIdx, setImgIdx]       = useState(0);
+  const [waGateOpen, setWaGateOpen] = useState(false);
   const dragX = useRef(null);
   const suppressClick = useRef(false);
   const galleryPreloaded = useRef(false);
@@ -644,24 +646,9 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
               aria-label={`WhatsApp enquiry for ${year} ${brand} ${model}`}
               className="cc-wa"
               onClick={e => {
+                e.preventDefault();
                 e.stopPropagation();
-                supabase.from('whatsapp_enquiries').insert({
-                  dealer_id:     car.dealer_id || null,
-                  listing_id:    car.id        || null,
-                  buyer_name:    null,
-                  buyer_phone:   null,
-                  buyer_message: waText,
-                  source:        'car_card',
-                  status:        'new',
-                  ref_slug:      getRef() || null,
-                  session_id:    getOrCreateSessionId(),
-                }).then(() => {});
-                trackEvent(supabase, 'whatsapp_click', {
-                  car_id:    car.id,
-                  car_name:  `${year} ${brand} ${model}`,
-                  dealer_id: car.dealer_id || null,
-                  metadata:  { source: 'car_card' },
-                });
+                setWaGateOpen(true);
               }}
               style={{
                 flexShrink:    0,
@@ -681,6 +668,33 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
 
           </div>
         </div>
+        <ContactGate
+          open={waGateOpen}
+          onClose={() => setWaGateOpen(false)}
+          waUrl={whatsappUrl}
+          dealerId={car.dealer_id}
+          carId={car.id}
+          carName={`${year} ${brand} ${model}`}
+          onConfirmed={() => {
+            supabase.from('whatsapp_enquiries').insert({
+              dealer_id:     car.dealer_id || null,
+              listing_id:    car.id        || null,
+              buyer_name:    null,
+              buyer_phone:   null,
+              buyer_message: waText,
+              source:        'car_card',
+              status:        'new',
+              ref_slug:      getRef() || null,
+              session_id:    getOrCreateSessionId(),
+            }).then(() => {});
+            trackEvent(supabase, 'whatsapp_click', {
+              car_id:    car.id,
+              car_name:  `${year} ${brand} ${model}`,
+              dealer_id: car.dealer_id || null,
+              metadata:  { source: 'car_card' },
+            });
+          }}
+        />
       </article>
     </>
   );

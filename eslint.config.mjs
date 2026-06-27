@@ -47,6 +47,8 @@ export default [
 
 			// Disable expensive rules for performance
 			'import/no-cycle': 'off', // AI rarely makes this error, and the rule is very slow to run
+
+			'import/no-unresolved': ['error', { ignore: ['^virtual:'] }], // vite-plugin-pwa's virtual module isn't resolvable by eslint
 		},
 	},
 	{ files: ['server/**/*.js', 'api/**/*.js', 'lib/**/*.js', 'middleware.js'], languageOptions: { globals: globals.node } },

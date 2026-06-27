@@ -121,14 +121,15 @@ export default function LoginPage() {
     return true;
   };
 
-  const handleMfaVerify = async () => {
-    if (mfaCode.trim().length < 6) { setError("Enter the 6-digit code."); return; }
+  const handleMfaVerify = async (codeOverride) => {
+    const code = (codeOverride ?? mfaCode).trim();
+    if (code.length < 6) { setError("Enter the 6-digit code."); return; }
     setError("");
     setMfaLoading(true);
     const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: mfaFactorId });
     if (chErr) { setError(chErr.message); setMfaLoading(false); return; }
     const { error: vErr } = await supabase.auth.mfa.verify({
-      factorId: mfaFactorId, challengeId: ch.id, code: mfaCode.trim(),
+      factorId: mfaFactorId, challengeId: ch.id, code,
     });
     if (vErr) { setError("Invalid code. Please try again."); setMfaLoading(false); return; }
     const { data: { session } } = await supabase.auth.getSession();
@@ -314,7 +315,11 @@ export default function LoginPage() {
           </p>
           <input
             type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} autoFocus
-            value={mfaCode} onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+            value={mfaCode} onChange={(e) => {
+              const digits = e.target.value.replace(/\D/g, "").slice(0, 6);
+              setMfaCode(digits);
+              if (digits.length === 6) handleMfaVerify(digits);
+            }}
             onKeyDown={(e) => { if (e.key === "Enter") handleMfaVerify(); }}
             placeholder="000000"
             style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "14px", color: "#fff", fontSize: 24, letterSpacing: "0.4em", textAlign: "center", outline: "none", marginBottom: 16, fontFamily: "'DM Sans', sans-serif" }}

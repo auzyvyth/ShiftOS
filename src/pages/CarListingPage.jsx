@@ -65,7 +65,7 @@ const SELLER_TYPES = [{ value:'dealer', label:'Dealer' },{ value:'agent', label:
 const CUR_YEAR    = new Date().getFullYear();
 const YEARS       = Array.from({ length: CUR_YEAR - 1989 }, (_, i) => CUR_YEAR - i);
 
-const CAR_FIELDS  = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,engine_cc,condition,previous_owners,auction_grade,interior_grade,is_recon,financing_type,images,status,created_at,market_avg_price';
+const CAR_FIELDS  = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,engine_cc,condition,previous_owners,auction_grade,interior_grade,is_recon,financing_type,images,status,created_at,market_avg_price,seller_role';
 const DEALER_JOIN = 'dealer:profiles!dealer_id(dealership,site_name,subdomain,whatsapp_number,site_logo_url,brand_color,role)';
 
 /* ── Sanitisers ─────────────────────────────────────────────────── */

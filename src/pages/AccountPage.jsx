@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Heart, Bell, ArrowLeft, ArrowRight, LogOut, Store, Check, X } from 'lucide-react';
+import { Heart, Bell, ArrowLeft, ArrowRight, LogOut, Store, Check, X, Clock, PackageCheck } from 'lucide-react';
 import { supabase } from '../supabaseClient';
-import { useSavedCars } from '../hooks/useSavedCars';
+import { useSavedCars, useSavedCarsDetails } from '../hooks/useSavedCars';
 import CarCard from '../components/CarCard';
+import { POST_SALE_STEPS, STATUS_CONFIG } from '../utils/postSaleSteps';
 
-const CARD_COLS = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,condition,images,status,created_at,dealer_id,auction_grade,interior_grade,is_recon,financing_type,engine_cc,previous_owners';
+const STEP_LABEL = Object.fromEntries(POST_SALE_STEPS.map((s) => [s.key, s.label]));
 
 // Business roles get bounced to their own panel — buyers only ever see /account.
 const SELLER_ROUTES = {
@@ -18,9 +19,9 @@ export default function AccountPage() {
   const navigate = useNavigate();
   useEffect(() => { document.title = 'My Account | XDrive'; }, []);
   const { savedIds, ready } = useSavedCars();
+  const { cars } = useSavedCarsDetails(savedIds, ready);
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
-  const [cars, setCars] = useState([]);
   const [alerts, setAlerts] = useState([]);
 
   // Auth guard. Not logged in -> /login. A seller (business role) -> their own
@@ -41,24 +42,39 @@ export default function AccountPage() {
     return () => { active = false; };
   }, [navigate]);
 
-  // Saved cars (preserve saved order)
-  useEffect(() => {
-    if (!ready) return;
-    const ids = [...savedIds];
-    if (!ids.length) { setCars([]); return; }
-    supabase.from('public_car_listings').select(CARD_COLS).in('id', ids).then(({ data }) => {
-      if (!data) return;
-      const map = Object.fromEntries(data.map(c => [c.id, c]));
-      setCars(ids.map(id => map[id]).filter(Boolean));
-    });
-  }, [savedIds, ready]);
-
   // Saved searches / price alerts (RLS scopes to the signed-in user)
   useEffect(() => {
     if (!session) return;
     supabase.from('price_alerts').select('*').eq('is_active', true)
       .order('created_at', { ascending: false })
       .then(({ data }) => setAlerts(data || []));
+  }, [session]);
+
+  // Purchase tracker — the buyer's cars currently going through handover, grouped
+  // by deal. Re-fetches when the tab regains focus so the status stays current.
+  const [purchases, setPurchases] = useState([]);
+  useEffect(() => {
+    if (!session) return;
+    let active = true;
+    const load = async () => {
+      const { data } = await supabase.rpc('get_my_purchase_tracker');
+      if (!active) return;
+      const by = {};
+      (data || []).forEach((r) => {
+        const g = by[r.lead_id] || (by[r.lead_id] = {
+          lead_id: r.lead_id, car_label: r.car_label, plate: r.plate,
+          purchase_date: r.purchase_date, selling_price: r.selling_price,
+          dealership: r.dealership, steps: [],
+        });
+        g.steps.push({ step_key: r.step_key, status: r.status, sort_order: r.sort_order, due_date: r.due_date });
+      });
+      Object.values(by).forEach((g) => g.steps.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)));
+      setPurchases(Object.values(by));
+    };
+    load();
+    const onFocus = () => load();
+    window.addEventListener('focus', onFocus);
+    return () => { active = false; window.removeEventListener('focus', onFocus); };
   }, [session]);
 
   const deleteAlert = async (id) => {
@@ -110,6 +126,68 @@ export default function AccountPage() {
             Start selling free <ArrowRight size={15} />
           </Link>
         </div>
+
+        {/* Purchase tracker */}
+        {purchases.length > 0 && (
+          <section style={{ marginBottom: 44 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+              <PackageCheck size={18} color="#dc2626" />
+              <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#111827' }}>Your Purchase{purchases.length > 1 ? 's' : ''}</h2>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              {purchases.map((p) => {
+                const steps = p.steps.filter((s) => s.status !== 'na');
+                const doneCount = steps.filter((s) => s.status === 'done').length;
+                const pct = steps.length ? Math.round((doneCount / steps.length) * 100) : 0;
+                const allDone = steps.length > 0 && doneCount === steps.length;
+                const currentIdx = steps.findIndex((s) => s.status !== 'done');
+                return (
+                  <div key={p.lead_id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 16, padding: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#111827' }}>{p.car_label || 'Your car'}</p>
+                        <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6b7280' }}>
+                          {[p.plate, p.dealership].filter(Boolean).join(' · ')}
+                          {p.purchase_date ? ` · bought ${new Date(p.purchase_date).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                        </p>
+                      </div>
+                      <span style={{ fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 99, background: allDone ? 'rgba(5,150,105,0.1)' : 'rgba(220,38,38,0.08)', color: allDone ? '#059669' : '#dc2626' }}>
+                        {allDone ? 'Ready for handover' : `${pct}% done`}
+                      </span>
+                    </div>
+                    {/* progress bar */}
+                    <div style={{ height: 6, borderRadius: 99, background: '#f3f4f6', overflow: 'hidden', marginBottom: 16 }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: allDone ? '#059669' : '#dc2626', transition: 'width 0.3s' }} />
+                    </div>
+                    {/* stepper */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                      {steps.map((s, i) => {
+                        const cfg = STATUS_CONFIG[s.status] || STATUS_CONFIG.pending;
+                        const isCurrent = i === currentIdx && s.status !== 'done';
+                        const done = s.status === 'done';
+                        const isLast = i === steps.length - 1;
+                        return (
+                          <div key={s.step_key} style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                              <div style={{ width: 24, height: 24, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: done ? '#059669' : isCurrent ? '#dc2626' : '#f3f4f6', color: done || isCurrent ? '#fff' : '#9ca3af', border: done || isCurrent ? 'none' : '1px solid #e5e7eb' }}>
+                                {done ? <Check size={13} /> : isCurrent ? <Clock size={12} /> : <span style={{ fontSize: 11, fontWeight: 700 }}>{i + 1}</span>}
+                              </div>
+                              {!isLast && <div style={{ width: 2, flex: 1, minHeight: 14, background: done ? '#059669' : '#e5e7eb' }} />}
+                            </div>
+                            <div style={{ paddingBottom: isLast ? 0 : 14, minWidth: 0 }}>
+                              <p style={{ margin: 0, fontSize: 13, fontWeight: isCurrent ? 700 : 500, color: done ? '#111827' : isCurrent ? '#dc2626' : '#6b7280' }}>{STEP_LABEL[s.step_key] || s.step_key}</p>
+                              <p style={{ margin: '1px 0 0', fontSize: 11, color: cfg.color }}>{isCurrent ? 'In progress now' : cfg.label}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Saved cars */}
         <section style={{ marginBottom: 44 }}>

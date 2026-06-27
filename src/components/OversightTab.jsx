@@ -4,7 +4,7 @@ import {
   TrendingUp, TrendingDown, AlertTriangle, Activity,
   Target, Clock, Award, Eye, ChevronRight, RefreshCw,
 } from 'lucide-react';
-import { LineChart, Line, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis } from 'recharts';
+import { LineChart, Line, AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis } from 'recharts';
 
 const fmtRM = (n) => 'RM ' + Math.round(Number(n || 0)).toLocaleString('en-MY');
 const fmtRMShort = (n) => {
@@ -26,7 +26,7 @@ const fmtAgo = (ts) => {
 };
 
 // ─── KPI Hero Card ────────────────────────────────────────────────────────────
-function HeroKPI({ label, value, prev, format = fmtRMShort, hint, sparkline }) {
+function HeroKPI({ label, value, prev, format = fmtRM, hint, sparkline }) {
   const delta = prev != null ? fmtPct(value, prev) : null;
   const up = delta != null && delta >= 0;
 
@@ -348,8 +348,8 @@ function GoalTracker({ dealerId, mtdRevenue, mtdProfit, mtdUnits }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 18 }}>
         {[
           { label: 'Units', actual: mtdUnits, target: goal?.target_units, fmt: (v) => v, ring: rUnits },
-          { label: 'Revenue', actual: mtdRevenue, target: goal?.target_revenue, fmt: fmtRMShort, ring: rRev },
-          { label: 'Profit', actual: mtdProfit, target: goal?.target_profit, fmt: fmtRMShort, ring: rProf },
+          { label: 'Revenue', actual: mtdRevenue, target: goal?.target_revenue, fmt: fmtRM, ring: rRev },
+          { label: 'Profit', actual: mtdProfit, target: goal?.target_profit, fmt: fmtRM, ring: rProf },
         ].map(g => (
           <div key={g.label}>
             <p style={{ fontSize: 11, color: '#6b7280', letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 500, margin: 0 }}>{g.label}</p>
@@ -380,12 +380,28 @@ function RevenueTrend({ sparkline }) {
     if (val >= 1e3) return (val / 1e3).toFixed(0) + 'k';
     return val.toFixed(0);
   };
+  const total = sparkline.reduce((s, p) => s + (Number(p.rev) || 0), 0);
+  const avgPerDay = total / sparkline.length;
+  const best = sparkline.reduce((b, p) => (Number(p.rev) || 0) > (Number(b?.rev) || 0) ? p : b, null);
   return (
     <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '20px 24px' }}>
-      <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: '0 0 14px' }}>Revenue · last 30 days</p>
-      <div style={{ height: 180 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: 0 }}>Revenue · last 30 days</p>
+        <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#6b7280' }}>
+          <span>Total <b style={{ color: '#111827' }}>{fmtRM(total)}</b></span>
+          <span>Avg/day <b style={{ color: '#111827' }}>{fmtRM(avgPerDay)}</b></span>
+          {best && <span>Best day <b style={{ color: '#16a34a' }}>{fmtRM(best.rev)}</b> ({new Date(best.d).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })})</span>}
+        </div>
+      </div>
+      <div style={{ height: 200 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={sparkline} margin={{ top: 5, right: 8, bottom: 5, left: 0 }}>
+          <AreaChart data={sparkline} margin={{ top: 5, right: 8, bottom: 5, left: 0 }}>
+            <defs>
+              <linearGradient id="revTrendFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#111827" stopOpacity={0.18} />
+                <stop offset="100%" stopColor="#111827" stopOpacity={0} />
+              </linearGradient>
+            </defs>
             <XAxis dataKey="d" tick={{ fontSize: 10, fill: '#9ca3af' }} tickLine={false} axisLine={{ stroke: '#e5e7eb' }} tickFormatter={(v) => new Date(v).getDate()} />
             <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} tickLine={false} axisLine={false} tickFormatter={fmt} width={45} />
             <RTooltip
@@ -393,8 +409,8 @@ function RevenueTrend({ sparkline }) {
               labelFormatter={(v) => new Date(v).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })}
               formatter={(v) => [fmtRM(v), 'Revenue']}
             />
-            <Line type="monotone" dataKey="rev" stroke="#111827" strokeWidth={2} dot={{ r: 2, fill: '#111827' }} activeDot={{ r: 4 }} />
-          </LineChart>
+            <Area type="monotone" dataKey="rev" stroke="#111827" strokeWidth={2} fill="url(#revTrendFill)" dot={{ r: 2, fill: '#111827' }} activeDot={{ r: 4 }} />
+          </AreaChart>
         </ResponsiveContainer>
       </div>
     </div>
@@ -499,10 +515,25 @@ function RevenueBreakdown({ dealerId }) {
       .sort((a, b) => b.units - a.units || b.gross - a.gross);
   }, [filtered]);
 
+  const bySalesman = useMemo(() => {
+    const by = {};
+    filtered.forEach((r) => {
+      const g = by[r.salesman] || (by[r.salesman] = { name: r.salesman, units: 0, gross: 0 });
+      g.units += 1; g.gross += r.gross || 0;
+    });
+    return Object.values(by).filter((g) => g.name !== 'Unassigned').sort((a, b) => b.gross - a.gross);
+  }, [filtered]);
+
+  const bestSale = useMemo(() => {
+    return filtered.reduce((b, r) => (r.gross || 0) > (b?.gross || -Infinity) ? r : b, null);
+  }, [filtered]);
+
   if (rows === null) return <p style={{ color: '#9ca3af', fontSize: 13 }}>Loading breakdown…</p>;
 
   const totalRev = filtered.reduce((s, r) => s + (r.revenue || 0), 0);
   const totalGross = filtered.reduce((s, r) => s + (r.gross || 0), 0);
+  const topModel = trends[0];
+  const topSalesman = bySalesman[0];
   const th = { fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right', padding: '8px 10px', whiteSpace: 'nowrap' };
   const td = { fontSize: 13, color: '#374151', textAlign: 'right', padding: '10px', whiteSpace: 'nowrap' };
 
@@ -521,6 +552,33 @@ function RevenueBreakdown({ dealerId }) {
           <span>Gross <b style={{ color: totalGross >= 0 ? '#16a34a' : '#dc2626' }}>{fmtRM(totalGross)}</b></span>
         </div>
       </div>
+
+      {/* Highlights */}
+      {filtered.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+          {topModel && (
+            <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 14px' }}>
+              <p style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Top model</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: '#111827', margin: '4px 0 0' }}>{topModel.key}</p>
+              <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>{topModel.units} sold · {fmtRM(topModel.gross)} gross</p>
+            </div>
+          )}
+          {topSalesman && (
+            <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 14px' }}>
+              <p style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Top salesperson</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: '#111827', margin: '4px 0 0' }}>{topSalesman.name}</p>
+              <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>{topSalesman.units} sold · {fmtRM(topSalesman.gross)} gross</p>
+            </div>
+          )}
+          {bestSale && (
+            <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 14px' }}>
+              <p style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Best single sale</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: '#111827', margin: '4px 0 0' }}>{bestSale.brand} {bestSale.model}</p>
+              <p style={{ fontSize: 12, color: '#16a34a', margin: '2px 0 0' }}>{fmtRM(bestSale.gross)} gross</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Contributors table */}
       <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>

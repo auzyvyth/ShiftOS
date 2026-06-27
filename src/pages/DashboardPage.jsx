@@ -865,9 +865,6 @@ function SettingsTab({ profile, onProfileUpdate }) {
   // Section states
   const [dealership, setDealership] = useState(profile?.dealership || "");
   const [siteName, setSiteName] = useState(profile?.site_name || "");
-  const [brandColor, setBrandColor] = useState(
-    profile?.brand_color || "#c9a84c",
-  );
   const [whatsapp, setWhatsapp] = useState(profile?.whatsapp_number || "");
   const [contactEmail, setContactEmail] = useState(profile?.email || "");
   const [contactPhone, setContactPhone] = useState(profile?.phone || "+60");
@@ -980,7 +977,6 @@ function SettingsTab({ profile, onProfileUpdate }) {
     if (!profile) return;
     setDealership(profile.dealership || "");
     setSiteName(profile.site_name || "");
-    setBrandColor(profile.brand_color || "#c9a84c");
     setWhatsapp(profile.whatsapp_number || "");
     setContactEmail(profile.email || "");
     setContactPhone(profile.phone || "");
@@ -1083,7 +1079,6 @@ function SettingsTab({ profile, onProfileUpdate }) {
     const dealershipChanged = !dealershipLocked && dealership.trim() !== (profile?.dealership || "");
     const payload = {
       site_name: siteName.trim() || (profile?.dealership || dealership.trim() || ""),
-      brand_color: brandColor,
       subdomain,
       ...(dealershipChanged && {
         dealership: dealership.trim(),
@@ -1101,7 +1096,6 @@ function SettingsTab({ profile, onProfileUpdate }) {
       const fc = {};
       if (dealership.trim() !== profile?.dealership) { changes.push(`name "${profile?.dealership}" → "${dealership.trim()}"`); fc.dealership = { from: profile?.dealership, to: dealership.trim() }; }
       if (subdomain !== profile?.subdomain) { changes.push(`subdomain "${profile?.subdomain}" → "${subdomain}"`); fc.subdomain = { from: profile?.subdomain, to: subdomain }; }
-      if (brandColor !== profile?.brand_color) { changes.push(`brand color ${profile?.brand_color} → ${brandColor}`); fc.brand_color = { from: profile?.brand_color, to: brandColor }; }
       if (changes.length) {
         const dealerIdForLog = profile?.role === 'manager' || profile?.role === 'admin' ? profile?.dealer_id : profile?.id;
         logActivity({ dealerId: dealerIdForLog, actor: profile, tableName: 'profiles', recordId: profile?.id, action: 'settings_updated', summary: `Settings updated: ${changes.join('; ')}`, fieldChanges: fc });
@@ -1110,12 +1104,11 @@ function SettingsTab({ profile, onProfileUpdate }) {
     }
   };
 
-  // Save enables on ANY single change (name OR site name OR colour OR subdomain) —
-  // a colour-only edit is enough, and the name lock no longer gates the button.
+  // Save enables on ANY single change (name OR site name OR subdomain) —
+  // the name lock no longer gates the button.
   const identityDirty =
     (!dealershipLocked && dealership.trim() !== (profile?.dealership || "")) ||
     (siteName.trim() || "") !== (profile?.site_name || "") ||
-    (brandColor || "").toLowerCase() !== (profile?.brand_color || "#c9a84c").toLowerCase() ||
     subdomain !== (profile?.subdomain || "");
 
   const saveContact = () =>
@@ -1509,32 +1502,6 @@ function SettingsTab({ profile, onProfileUpdate }) {
             placeholder="e.g. Auto City — Used Cars Penang"
             className={iCls}
           />
-        </SettingsField>
-
-        <SettingsField
-          label="Brand Accent Colour"
-          hint="Used on your public site"
-        >
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <input
-                type="color"
-                value={brandColor}
-                onChange={(e) => setBrandColor(e.target.value)}
-                className="w-10 h-10 rounded-lg cursor-pointer border-0 p-0.5 bg-white/5"
-              />
-            </div>
-            <input
-              value={brandColor}
-              onChange={(e) => setBrandColor(e.target.value)}
-              placeholder="#c9a84c"
-              className="flex-1 bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-red-400 transition-all font-mono"
-            />
-            <div
-              className="w-10 h-10 rounded-lg flex-shrink-0 border border-gray-200"
-              style={{ background: brandColor }}
-            />
-          </div>
         </SettingsField>
 
         <ErrMsg k="identity" errors={errors} />
@@ -2603,7 +2570,7 @@ function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
 }
 
 // ─── AnalyticsTab ─────────────────────────────────────────────────────────────
-function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStaleAdjusted, adjustedStaleIds }) {
+function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelectListing, onStaleAdjusted, adjustedStaleIds }) {
   const { can } = usePermissions(profile);
   // SF-2b: map reserved_by -> salesman first name for the Reserved badge sub-label
   // (dealer-only surface; never exposed to public storefront visitors).
@@ -2772,6 +2739,18 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
     "Any I should remove?",
     "How to write better listings?",
   ];
+  // Last 14 days of sold units, bucketed by day, for the Sold KPI sparkline.
+  const soldSpark = useMemo(() => {
+    const buckets = Array(14).fill(0);
+    const now = new Date();
+    listings.forEach((l) => {
+      if (l.status !== 'sold' || !l.sold_at) return;
+      const days = Math.floor((now - new Date(l.sold_at)) / 86_400_000);
+      if (days >= 0 && days < 14) buckets[13 - days] += 1;
+    });
+    return buckets;
+  }, [listings]);
+
   const kpis = [
     {
       label: "Active",
@@ -2788,7 +2767,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
       grad: "grad-green",
       icon: <CheckCircle2 className="w-4 h-4" />,
       glow: "rgba(110,231,183,0.14)",
-      spark: Array(14).fill(0),
+      spark: soldSpark,
       sparkColor: '#34d399',
     },
     {
@@ -3122,13 +3101,15 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                               }
                               <div style={{ minWidth:0 }}>
                                 <p style={{ fontSize:13, fontWeight:700, color:'#111827', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
-                                  {l.slug ? (
-                                    <a href={`/cars/${l.slug}`} target="_blank" rel="noopener noreferrer"
+                                  {onSelectListing ? (
+                                    <span role="button" tabIndex={0}
+                                       onClick={() => onSelectListing(l)}
+                                       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectListing(l); } }}
                                        style={{ color:'inherit', textDecoration:'none', cursor:'pointer' }}
                                        onMouseEnter={e => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.textDecoration = 'underline'; }}
                                        onMouseLeave={e => { e.currentTarget.style.color = 'inherit'; e.currentTarget.style.textDecoration = 'none'; }}>
                                       {l.brand} {l.model}
-                                    </a>
+                                    </span>
                                   ) : (<>{l.brand} {l.model}</>)}
                                 </p>
                                 <p style={{ fontSize:11, color:'#4b5563', margin:'2px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
@@ -3226,13 +3207,15 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                             <div style={{ minWidth:0 }}>
                               <p style={{ fontSize:13, fontWeight:800, color:'#111827', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
                                 <span style={{ color:'#9ca3af', fontWeight:700 }}>{i + 1}.</span>{' '}
-                                {l.slug ? (
-                                  <a href={`/cars/${l.slug}`} target="_blank" rel="noopener noreferrer"
+                                {onSelectListing ? (
+                                  <span role="button" tabIndex={0}
+                                     onClick={() => onSelectListing(l)}
+                                     onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectListing(l); } }}
                                      style={{ color:'inherit', textDecoration:'none', cursor:'pointer' }}
                                      onMouseEnter={e => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.textDecoration = 'underline'; }}
                                      onMouseLeave={e => { e.currentTarget.style.color = 'inherit'; e.currentTarget.style.textDecoration = 'none'; }}>
                                     {l.brand} {l.model}
-                                  </a>
+                                  </span>
                                 ) : (<>{l.brand} {l.model}</>)}
                               </p>
                               <p style={{ fontSize:11, color:'#4b5563', margin:'1px 0 0' }}>
@@ -5839,8 +5822,10 @@ function StockStatsStrip({ dealerId }) {
       const month = sold.filter(x => { if (!x.sold_date) return false; const d = new Date(x.sold_date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
       const withDays = active.map(stockDays).filter(d => typeof d === 'number');
       setS({
+        // Matches the Inventory tab's "Total Value" (car_listings.selling_price) so the
+        // two value figures on this page never disagree for the same unsold inventory.
         soldRevenue: sold.reduce((t, x) => t + (Number(x.sold_price) || Number(x.asking_price) || 0), 0),
-        stockValue: active.reduce((t, x) => t + (Number(x.asking_price) || 0), 0),
+        stockValue: active.reduce((t, x) => t + (Number(x.car_listings?.selling_price) || Number(x.asking_price) || 0), 0),
         avgDays: withDays.length ? Math.round(withDays.reduce((t, d) => t + d, 0) / withDays.length) : 0,
         gpMonth: month.reduce((t, x) => t + (stockNetProfit(x, ctx) || 0), 0),
         soldMonth: month.length,
@@ -5863,9 +5848,9 @@ function StockStatsStrip({ dealerId }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))', gap: 8, marginBottom: 24 }}>
       {items.map((it, i) => (
-        <div key={i} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }}>
+        <div key={i} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px', minWidth: 0 }}>
           <p style={{ fontSize: 9, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.label || ''}</p>
-          <p style={{ fontSize: 15, fontWeight: 700, color: it.color || '#111827', margin: '2px 0 0', whiteSpace: 'nowrap' }}>{it.val ?? '—'}</p>
+          <p style={{ fontSize: 15, fontWeight: 700, color: it.color || '#111827', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.val ?? '—'}</p>
         </div>
       ))}
     </div>
@@ -9571,7 +9556,7 @@ export default function DashboardPage() {
       const [{ data: cars, error: carsError }, { data: sm }, { data: stockCost }, { data: dealProducts }] = await Promise.all([
         supabase
           .from("car_listings")
-          .select("id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,condition,images,status,created_at,dealer_id,assigned_to,commission_amount,sold_at,included_services,included_services_cost,auction_grade,interior_grade,is_recon,financing_type,engine_cc,previous_owners,plate_number,vin_number,engine_number,road_tax_expiry,warranty_months,deposit_amount,reserved_by,reserved_at")
+          .select("id,slug,brand,model,variant,year,base_price,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,city,colour,condition,registration_date,specs,options,features,images,status,created_at,dealer_id,assigned_to,commission_amount,sold_at,included_services,included_services_cost,recon_cost,auction_grade,interior_grade,is_recon,import_country,auction_house,local_reg_date,chassis_status,damage_map,financing_type,payment_type,loan_eligible,engine_cc,horsepower,cylinders,doors,seats,fuel_consumption,previous_owners,plate_number,vin_number,engine_number,road_tax_expiry,warranty_months,deposit_amount,video_url,car_documents,reserved_by,reserved_at")
           .eq("dealer_id", dealerId)
           .order("created_at", { ascending: false }),
         supabase
@@ -10723,6 +10708,10 @@ export default function DashboardPage() {
           {/* ── Listings Tab ── */}
           {activeTab === "listings" && (
             <>
+              {/* Stock P&L stats (migrated from the Stock tab header) — shown first
+                  since revenue/value figures matter more at a glance than raw counts */}
+              <StockStatsStrip dealerId={getDealerIdFromProfile(profile)} />
+
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-6">
                 {STAT_CARDS.map(({ label, val, sub, Icon, glow, spark, sparkColor }) => (
                   <div key={label} className="stat-card overflow-hidden" style={{ position: 'relative' }}>
@@ -10753,9 +10742,6 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
-
-              {/* Stock P&L stats (migrated from the Stock tab header) */}
-              <StockStatsStrip dealerId={getDealerIdFromProfile(profile)} />
 
               {/* ── Listings panel ── */}
               <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #EAECF0', background: '#FFFFFF', boxShadow: '0 1px 4px rgba(15,23,42,0.06)', fontFamily: "'DM Sans', sans-serif" }}>
@@ -11345,6 +11331,7 @@ export default function DashboardPage() {
                   profile={profile}
                   salesmen={salesmen}
                   onEditListing={setEditListing}
+                  onSelectListing={setDetailListing}
                   onStaleAdjusted={handleStaleAdjusted}
                   adjustedStaleIds={adjustedStaleIds}
                 />
