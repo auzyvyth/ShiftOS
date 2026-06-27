@@ -226,13 +226,6 @@ export default function SalesmanPanel() {
    return () => { supabase.removeChannel(ch); };
  }, [profile?.dealer_id]);
 
- // Lock background scroll whenever the mobile "More" sheet is open.
- useEffect(() => {
-   if (!moreOpen) return;
-   document.body.style.overflow = "hidden";
-   return () => { document.body.style.overflow = ""; };
- }, [moreOpen]);
-
  const claimLead = async (lead) => {
    if (claimingId) return;
    setClaimingId(lead.id);
@@ -404,6 +397,21 @@ export default function SalesmanPanel() {
  monthly_target: profile.monthly_target || 5,
  });
  }, [profile?.id]);
+
+ // Lock background scroll whenever ANY overlay/sheet/modal is open, so the page
+ // behind never scrolls under it (non-negotiable overlay rule). Keyed on every
+ // overlay's open-state so it releases the moment the last one closes.
+ const anyOverlayOpen = !!(
+ moreOpen || dealSheetConfigLead || linkCarLeadId || testDriveConfirm || waModalLead ||
+ logCallLeadId || followUpModalLead || (batchWALeads && batchWALeads.length) || selectedCar ||
+ aiCaptionCar || broadcastCar || showAddLead || telegramSetupModal || deleteConfirmId ||
+ cancelConfirmId || reminderPickerAptId || reschedulingAptId
+ );
+ useEffect(() => {
+ if (!anyOverlayOpen) return;
+ document.body.style.overflow = "hidden";
+ return () => { document.body.style.overflow = ""; };
+ }, [anyOverlayOpen]);
 
  // page title
  useEffect(() => {
