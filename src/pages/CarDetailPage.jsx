@@ -710,17 +710,17 @@ export default function CarDetailPage() {
                 .then((r) => r.data)
             : Promise.resolve(null),
 
-          // Salesman profile
-          carData.dealer_id
+          // Salesman/agent profile — via SECURITY DEFINER RPC (get_salesman_by_slug)
+          // so anonymous visitors get it; the direct profiles query was RLS-blocked
+          // for anon, which made standalone agents (Salesman Lite, dealer_id = own id)
+          // silently render as a nameless "dealer" with no mini-page link. Only treat
+          // it as the agent-seller when the agent IS the listing owner (id === dealer_id),
+          // mirroring the old role='salesman' + id=dealer_id condition.
+          carData.salesman_slug
             ? supabase
-                .from("profiles")
-                .select(
-                  "full_name, avatar_url, job_title, whatsapp_number, slug, plan",
-                )
-                .eq("id", carData.dealer_id)
-                .eq("role", "salesman")
+                .rpc("get_salesman_by_slug", { p_slug: carData.salesman_slug })
                 .maybeSingle()
-                .then((r) => r.data)
+                .then((r) => (r.data && r.data.id === carData.dealer_id ? r.data : null))
             : Promise.resolve(null),
 
           // Similar cars (2-step chain internally)
@@ -1061,6 +1061,17 @@ export default function CarDetailPage() {
   const carTitle = `${car.year} ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""}`;
   const dealerName =
     dealer?.site_name || dealer?.dealership || dealer?.full_name || "Dealer";
+  // Seller mini-page link: dealer subdomain/slug, or the standalone agent's /s/slug.
+  // Standalone agents (Salesman Lite) have no dealer profile, so without this their
+  // listing showed no "Visit page" link at all.
+  const sellerPageUrl = dealer?.subdomain
+    ? `https://${dealer.subdomain}.xdrive.my`
+    : dealer?.slug
+      ? `https://xdrive.my/s/${dealer.slug}`
+      : salesmanProfile?.slug
+        ? `https://xdrive.my/s/${salesmanProfile.slug}`
+        : null;
+  const sellerPageLabel = salesmanProfile && !dealer ? "Visit Agent's Page" : "Visit Dealer's Page";
   const listedDays = daysAgo(car.created_at);
   const today = new Date().toISOString().split("T")[0];
   const imgCount = images.length;
@@ -1802,10 +1813,10 @@ export default function CarDetailPage() {
               onMouseLeave={e => { e.currentTarget.style.background='rgba(220,38,38,0.06)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.22)'; }}>
               <Calculator size={14} /> Financing Calculator
             </button>
-            {(dealer?.subdomain || dealer?.slug) && !isSubdomain() && (
-              <a href={dealer.subdomain ? `https://${dealer.subdomain}.xdrive.my` : `https://xdrive.my/s/${dealer.slug}`} target="_blank" rel="noopener noreferrer"
+            {sellerPageUrl && !isSubdomain() && (
+              <a href={sellerPageUrl} target="_blank" rel="noopener noreferrer"
                 style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, width:'100%', marginTop:8, background: th.card2, border:`1px solid ${th.border}`, color: th.textSec, borderRadius:10, padding:'10px', fontSize:12, letterSpacing:'0.05em', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", textDecoration:'none', boxSizing:'border-box' }}>
-                <ExternalLink size={13} /> Visit Dealer's Page
+                <ExternalLink size={13} /> {sellerPageLabel}
               </a>
             )}
             <div style={{ height:1, background: th.border, margin:'14px 0' }} />
@@ -3176,13 +3187,13 @@ export default function CarDetailPage() {
             <div style={{ marginBottom: 4 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                 <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, margin: 0 }}>Asking Price</p>
-                {(dealer?.subdomain || dealer?.slug) && !isSubdomain() && (
+                {sellerPageUrl && !isSubdomain() && (
                   <a
-                    href={dealer.subdomain ? `https://${dealer.subdomain}.xdrive.my` : `https://xdrive.my/s/${dealer.slug}`}
+                    href={sellerPageUrl}
                     target="_blank" rel="noopener noreferrer"
                     style={{ fontSize: 11, color: '#60a5fa', textDecoration: 'none', letterSpacing: '0.03em' }}
                   >
-                    {dealer.site_name || dealer.dealership} ↗
+                    {dealer?.site_name || dealer?.dealership || salesmanProfile?.full_name || 'Seller'} ↗
                   </a>
                 )}
               </div>
@@ -3242,10 +3253,10 @@ export default function CarDetailPage() {
               onMouseLeave={e => { e.currentTarget.style.background='rgba(220,38,38,0.06)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.22)'; }}>
               <Calculator size={14} /> Financing Calculator
             </button>
-            {(dealer?.subdomain || dealer?.slug) && !isSubdomain() && (
-              <a href={dealer.subdomain ? `https://${dealer.subdomain}.xdrive.my` : `https://xdrive.my/s/${dealer.slug}`} target="_blank" rel="noopener noreferrer"
+            {sellerPageUrl && !isSubdomain() && (
+              <a href={sellerPageUrl} target="_blank" rel="noopener noreferrer"
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', marginTop: 8, background: th.inputBg, border: `1px solid ${th.border}`, color: th.textSec, borderRadius: 10, padding: 10, fontSize: 12, letterSpacing: '0.05em', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", textDecoration: 'none', boxSizing: 'border-box', transition: 'all .2s' }}>
-                <ExternalLink size={13} /> Visit Dealer's Page
+                <ExternalLink size={13} /> {sellerPageLabel}
               </a>
             )}
 
