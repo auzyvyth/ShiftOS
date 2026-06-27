@@ -232,11 +232,12 @@ export default function SalesmanPanel() {
    const { data, error } = await supabase.rpc("claim_lead", { p_lead_id: lead.id });
    setClaimingId(null);
    setIncomingLeads((prev) => prev.filter((l) => l.id !== lead.id));
-   if (error) { alert("Could not claim the lead. Please try again."); return; }
+   if (error) { toast.error("Could not claim the lead. Please try again."); return; }
    if (data === true) {
+     toast.success("Lead claimed — it's yours.");
      setActiveTab("leads");
    } else {
-     alert("Too late — another salesman already claimed this lead.");
+     toast.error("Too late — another salesman already claimed this lead.");
    }
  };
 
@@ -568,7 +569,8 @@ export default function SalesmanPanel() {
  )
  .subscribe();
 
- // All-time commission — no sold_at column yet, date filter removed
+ // All-time commission across all this salesman's sold cars (intentionally not
+ // date-bounded — the dashboard card and analytics KPI both label it "All time").
  supabase
  .from("car_listings")
  .select("commission_amount")
@@ -589,12 +591,12 @@ export default function SalesmanPanel() {
      .eq("salesman_id", userId).order("created_at", { ascending: false }),
    supabase.from("salesman_listings").select("listing_id").eq("salesman_id", userId),
  ]);
- const featuredIds = (featuredListings || []).map((l) => l.listing_id);
+ const featuredListingIds = (featuredListings || []).map((l) => l.listing_id);
  let unattributed = [];
- if (featuredIds.length > 0) {
+ if (featuredListingIds.length > 0) {
    const { data } = await supabase.from("appointments")
      .select("*, car_listings(brand, model, year, images)")
-     .in("car_listing_id", featuredIds)
+     .in("car_listing_id", featuredListingIds)
      .is("salesman_id", null)
      .order("created_at", { ascending: false });
    unattributed = data || [];
@@ -2205,7 +2207,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  >
  <span
  style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}
- >Commission
+ >Commission <span style={{ color: "#475569", fontWeight: 400 }}>· all time</span>
  </span>
  <TrendingUp size={14} color="#22c55e" />
  </div>
@@ -5841,7 +5843,10 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  };
 
  const submitLoan = async () => {
- if (!loanForm.bank_name ||!loanForm.loan_amount ||!loanForm.loan_tenure) return;
+ if (!loanForm.bank_name || !loanForm.loan_amount || !loanForm.loan_tenure) {
+ toast.error("Bank, loan amount and tenure are required");
+ return;
+ }
  setLoanSaving(true);
  const dealerId = getDealerIdFromProfile(profile);
  const banksPayload = loanForm.bank_name? [{
@@ -5992,7 +5997,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
  <thead>
  <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
- {["Bank", "Rate", "Monthly Payment", "Total Interest", "Total Payable", ""].map((h) => (
+ {["Bank", "Rate (flat)", "Monthly Payment", "Total Interest", "Total Payable", ""].map((h) => (
  <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "#6b7280", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>{h}</th>
  ))}
  </tr>
@@ -6148,7 +6153,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  onChange={(e) => recalcLoanForm({ ...loanForm, loan_amount: e.target.value })} />
  </div>
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Interest Rate (%)</label>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Interest Rate (% flat)</label>
  <input type="number" step="0.01" placeholder="e.g. 3.25" style={loanInputSx}
  value={loanForm.interest_rate}
  onChange={(e) => recalcLoanForm({ ...loanForm, interest_rate: e.target.value })} />
