@@ -6481,26 +6481,52 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  );
  };
 
- const renderTeam = () => (
- <div
- style={{
- display: "flex",
- alignItems: "center",
- justifyContent: "center",
- height: 300,
- }}
- >
+ const renderTeam = () => {
+ const maxUnits = Math.max(1, ...leaderboard.map((r) => r.units));
+ return (
+ <div style={{ maxWidth: 760 }}>
+ <div style={{ marginBottom: 20 }}>
+ <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#fff" }}>
+ <Users size={18} style={{ marginRight: 8, verticalAlign: "middle", color: "#dc2626" }} />Team Leaderboard
+ </h2>
+ <p style={{ margin: "4px 0 0", fontSize: 12, color: "#4b5563" }}>Units sold this month per salesman. Names are shared; individual deals stay private.</p>
+ </div>
+ {leaderboard.length === 0 ? (
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 220 }}>
  <div style={{ textAlign: "center" }}>
  <Users size={32} color="#374151" style={{ marginBottom: 12 }} />
- <p
- style={{ margin: 0, fontSize: 14, color: "#4b5563", fontWeight: 500 }}
- >Team view coming soon
- </p>
- <p style={{ margin: "6px 0 0", fontSize: 12, color: "#374151" }}>See your team's performance here.
- </p>
+ <p style={{ margin: 0, fontSize: 14, color: "#4b5563", fontWeight: 500 }}>No team members yet</p>
+ <p style={{ margin: "6px 0 0", fontSize: 12, color: "#374151" }}>Your team's performance will show here once sales come in.</p>
  </div>
+ </div>
+ ) : (
+ <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+ {leaderboard.map((r, i) => {
+ const medal = i === 0 ? "#fbbf24" : i === 1 ? "#cbd5e1" : i === 2 ? "#d97706" : "#4b5563";
+ return (
+ <div key={r.id} style={{
+ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 10,
+ background: r.isMe ? "rgba(37,99,235,0.12)" : "rgba(255,255,255,0.03)",
+ border: r.isMe ? "1px solid rgba(37,99,235,0.3)" : "1px solid rgba(255,255,255,0.06)",
+ }}>
+ <span style={{ width: 22, textAlign: "center", fontSize: 14, fontWeight: 800, color: medal, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{i + 1}</span>
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {r.name}{r.isMe ? <span style={{ color: "#93c5fd", fontWeight: 700 }}> · You</span> : null}
+ </p>
+ <div style={{ marginTop: 6, height: 4, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+ <div style={{ width: `${(r.units / maxUnits) * 100}%`, height: "100%", borderRadius: 99, background: r.isMe ? "#3b82f6" : "#6b7280" }} />
+ </div>
+ </div>
+ <span style={{ fontSize: 16, fontWeight: 800, color: "#fff", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{r.units}<span style={{ fontSize: 10, color: "#6b7280", fontWeight: 600, marginLeft: 3 }}>sold</span></span>
  </div>
  );
+ })}
+ </div>
+ )}
+ </div>
+ );
+ }
 
  return (
  <>
