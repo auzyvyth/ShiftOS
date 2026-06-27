@@ -3445,12 +3445,12 @@ export default function CarDetailPage() {
             />
             <input
               id="cdp-enq-phone"
-              placeholder="Phone number (e.g. 0123456789)"
+              placeholder="Phone number (optional)"
               aria-label="Phone number"
               inputMode="tel"
               value={enquiryForm.phone}
               onChange={e => setEnquiryForm(p => ({ ...p, phone: e.target.value }))}
-              onKeyDown={e => { if (e.key === 'Enter' && enquiryForm.name && enquiryForm.phone) { e.preventDefault(); handleEnquirySubmit(); } }}
+              onKeyDown={e => { if (e.key === 'Enter' && enquiryForm.name) { e.preventDefault(); handleEnquirySubmit(); } }}
               onFocus={() => setFocused('enq_phone')} onBlur={() => setFocused(null)}
               style={inputStyle(focusedField === 'enq_phone', th)}
             />
@@ -3468,7 +3468,7 @@ export default function CarDetailPage() {
             </select>
             <button
               onClick={handleEnquirySubmit}
-              disabled={!enquiryForm.name || !enquiryForm.phone || enquirySubmitting}
+              disabled={!enquiryForm.name || enquirySubmitting}
               className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-semibold py-3 rounded-lg text-sm"
               style={{ borderTop: '2px solid #16a34a', letterSpacing: '0.02em' }}
             >

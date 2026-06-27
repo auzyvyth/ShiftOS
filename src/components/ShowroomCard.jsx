@@ -8,6 +8,7 @@ import { supabase } from '../supabaseClient';
 import { cdnImg } from '../utils/img';
 import { trackEvent, getOrCreateSessionId } from '../utils/analytics';
 import { getRef } from '../utils/refTracking';
+import ContactGate from './ContactGate';
 import { useSavedCars } from '../hooks/useSavedCars';
 import { calcMonthly } from '../utils/financing';
 
@@ -42,6 +43,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgIdx, setImgIdx] = useState(0);
   const [inView, setInView] = useState(false);
+  const [waGateOpen, setWaGateOpen] = useState(false);
   const cardRef = useRef(null);
   const dragX = useRef(null);
   const suppressClick = useRef(false);
@@ -301,14 +303,26 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
             target="_blank"
             rel="noopener noreferrer"
             onClick={e => {
+              e.preventDefault();
               e.stopPropagation();
-              supabase.from('whatsapp_enquiries').insert({ dealer_id: car.dealer_id || null, listing_id: car.id || null, buyer_name: null, buyer_phone: null, buyer_message: waText, source: 'showroom_card', status: 'new', ref_slug: getRef() || null, session_id: getOrCreateSessionId() }).then(() => {});
-              trackEvent(supabase, 'whatsapp_click', { car_id: car.id, car_name: `${year} ${brand} ${model}`, dealer_id: car.dealer_id || null, metadata: { source: 'showroom_card' } });
+              setWaGateOpen(true);
             }}
             style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '7px 0', background: isSold ? 'rgba(0,0,0,0.03)' : '#16a34a', border: isSold ? '1px solid rgba(0,0,0,0.07)' : '1px solid #15803d', color: isSold ? '#9ca3af' : '#ffffff', borderRadius: '8px', textDecoration: 'none', fontSize: '12px', fontWeight: '700', fontFamily: "'Outfit',sans-serif", transition: 'all 0.15s', pointerEvents: isSold ? 'none' : 'auto', boxSizing: 'border-box' }}
           >
             <MessageCircle size={13} /> WhatsApp
           </a>
+          <ContactGate
+            open={waGateOpen}
+            onClose={() => setWaGateOpen(false)}
+            waUrl={whatsappUrl}
+            dealerId={car.dealer_id}
+            carId={car.id}
+            carName={`${year} ${brand} ${model}`}
+            onConfirmed={() => {
+              supabase.from('whatsapp_enquiries').insert({ dealer_id: car.dealer_id || null, listing_id: car.id || null, buyer_name: null, buyer_phone: null, buyer_message: waText, source: 'showroom_card', status: 'new', ref_slug: getRef() || null, session_id: getOrCreateSessionId() }).then(() => {});
+              trackEvent(supabase, 'whatsapp_click', { car_id: car.id, car_name: `${year} ${brand} ${model}`, dealer_id: car.dealer_id || null, metadata: { source: 'showroom_card' } });
+            }}
+          />
           {!isSold && (
             <button
               onClick={e => { e.stopPropagation(); toggleSave(car.id); }}
