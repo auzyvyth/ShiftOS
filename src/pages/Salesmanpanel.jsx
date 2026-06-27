@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import SuspendedBanner from "../components/SuspendedBanner";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
@@ -136,6 +137,7 @@ export default function SalesmanPanel() {
  const [userId, setUserId] = useState(null);
  const [loading, setLoading] = useState(true);
  const [activeTab, setActiveTab] = useState("dashboard");
+ const [moreOpen, setMoreOpen] = useState(false);
  const [subTab, setSubTab] = useState("overview");
  const [chartJsLoaded, setChartJsLoaded] = useState(!!window.Chart);
  const isMobile = useWindowSize() < 768;
@@ -223,6 +225,13 @@ export default function SalesmanPanel() {
      .subscribe();
    return () => { supabase.removeChannel(ch); };
  }, [profile?.dealer_id]);
+
+ // Lock background scroll whenever the mobile "More" sheet is open.
+ useEffect(() => {
+   if (!moreOpen) return;
+   document.body.style.overflow = "hidden";
+   return () => { document.body.style.overflow = ""; };
+ }, [moreOpen]);
 
  const claimLead = async (lead) => {
    if (claimingId) return;
@@ -6528,6 +6537,16 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  );
  }
 
+ const MORE_ITEMS = [
+ { tab: "analytics", label: "Analytics", icon: <TrendingUp size={18} /> },
+ { tab: "enquiries", label: "Enquiries", icon: <MessageSquare size={18} /> },
+ { tab: "loans", label: "Loans", icon: <Banknote size={18} /> },
+ { tab: "handover", label: "Handover", icon: <ClipboardCheck size={18} /> },
+ { tab: "team", label: "Team", icon: <Users size={18} /> },
+ { tab: "settings", label: "Settings", icon: <Settings size={18} /> },
+ { tab: "help", label: "Manual", icon: <BookOpen size={18} /> },
+ ];
+
  return (
  <>
  <SuspendedBanner />
@@ -6594,84 +6613,37 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  badge: null,
  },
  {
- tab: "analytics",
- label: "Analytics",
- icon: <TrendingUp size={18} />,
- badge: null,
- },
- {
- tab: "enquiries",
- label: "Enquiries",
- icon: <MessageSquare size={18} />,
+ tab: "__more",
+ label: "More",
+ icon: <LayoutGrid size={18} />,
  badge: (enquiries.filter((e) => e.status === "new").length + appointments.filter(a => a.status === "pending").length) || null,
  },
- {
- tab: "loans",
- label: "Loans",
- icon: <Banknote size={18} />,
- badge: null,
- },
- {
- tab: "handover",
- label: "Handover",
- icon: <ClipboardCheck size={18} />,
- badge: null,
- },
- {
- tab: "team",
- label: "Team",
- icon: <Users size={18} />,
- badge: null,
- },
- {
- tab: "settings",
- label: "Settings",
- icon: <Settings size={18} />,
- badge: null,
- },
- {
- tab: "help",
- label: "Manual",
- icon: <BookOpen size={18} />,
- badge: null,
- },
  ].map(({ tab, label, icon, badge }) => {
- const isActive = activeTab === tab;
+ const isMore = tab === "__more";
+ const moreTabs = ["analytics", "enquiries", "loans", "handover", "team", "settings", "help"];
+ const isActive = isMore ? moreTabs.includes(activeTab) : activeTab === tab;
+ const moreIcon = isMore ? <Plus size={18} /> : icon;
  return (
  <button
  key={tab}
- onClick={() => setActiveTab(tab)}
+ onClick={() => (isMore ? setMoreOpen(true) : setActiveTab(tab))}
  style={{
  flex: 1,
  display: "flex",
  flexDirection: "column",
  alignItems: "center",
  justifyContent: "center",
- gap: 2,
+ gap: 3,
  background: "transparent",
  border: "none",
  cursor: "pointer",
- color: isActive? "#93c5fd" : "#4b5563",
+ color: isActive? "#93c5fd" : "#6b7280",
  position: "relative",
  padding: "6px 0",
  }}
  >
- {isActive && (
- <div
- style={{
- position: "absolute",
- top: 5,
- left: "50%",
- transform: "translateX(-50%)",
- width: 3,
- height: 3,
- borderRadius: 99,
- background: "#3b82f6",
- }}
- />
- )}
  <div style={{ position: "relative" }}>
- {icon}
+ {moreIcon}
  {badge? (
  <span
  style={{
@@ -6686,13 +6658,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  />
  ) : null}
  </div>
- {isActive && (
- <span
- style={{ fontSize: 9, color: "#93c5fd", lineHeight: 1 }}
- >
+ <span style={{ fontSize: 9, color: isActive? "#93c5fd" : "#6b7280", lineHeight: 1 }}>
  {label}
  </span>
- )}
  </button>
  );
  })}
@@ -6710,7 +6678,6 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  position: "sticky",
  top: 0,
  height: "100vh",
- overflow: "hidden",
  }}
  >
  {/* Logo */}
@@ -8178,6 +8145,40 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  {renderLogCallModal()}
  {renderFollowUpModal()}
  {renderBatchWAModal()}
+
+ {/* Mobile "More" bottom sheet */}
+ {moreOpen && createPortal(
+ <div
+ onClick={() => setMoreOpen(false)}
+ style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)", display: "flex", alignItems: "flex-end", fontFamily: "'DM Sans', sans-serif" }}
+ >
+ <div
+ onClick={(e) => e.stopPropagation()}
+ style={{ width: "100%", background: "#0b0f1a", borderTop: "1px solid rgba(255,255,255,0.08)", borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: "8px 16px max(20px, env(safe-area-inset-bottom))", maxHeight: "70vh", overflowY: "auto" }}
+ >
+ <div style={{ width: 36, height: 4, borderRadius: 99, background: "rgba(255,255,255,0.18)", margin: "8px auto 16px" }} />
+ <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+ {MORE_ITEMS.map(({ tab, label, icon }) => {
+ const isActive = activeTab === tab;
+ return (
+ <button
+ key={tab}
+ onClick={() => { setActiveTab(tab); setMoreOpen(false); }}
+ style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: "18px 8px", borderRadius: 12, cursor: "pointer",
+ background: isActive ? "rgba(37,99,235,0.15)" : "rgba(255,255,255,0.03)",
+ border: isActive ? "1px solid rgba(37,99,235,0.35)" : "1px solid rgba(255,255,255,0.06)",
+ color: isActive ? "#93c5fd" : "#9ca3af" }}
+ >
+ {icon}
+ <span style={{ fontSize: 12, fontWeight: 600 }}>{label}</span>
+ </button>
+ );
+ })}
+ </div>
+ </div>
+ </div>,
+ document.body,
+ )}
  </div>
  </>
  );
