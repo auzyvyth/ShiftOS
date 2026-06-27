@@ -104,6 +104,66 @@ const fmtFinancing = (car) => {
   return car.loan_eligible === false ? "Cash Only" : "Loan Available";
 };
 
+/* Spec Highlights — surfaces the dealer's own feature tags as scannable chips
+   right under the price. Data-backed (real car.features), capped so it stays a
+   highlight, not the full list (the Features tab below holds everything). */
+const SpecHighlights = ({ car, th }) => {
+  const tags = parseTags(car.features).slice(0, 8);
+  if (tags.length === 0) return null;
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.16em', color: th.textMuted, fontWeight: 700, marginBottom: 10 }}>Spec Highlights</p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+        {tags.map((tag, i) => (
+          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', border: `1px solid ${th.border}`, borderRadius: 6, fontSize: 12, color: th.text, background: th.card2, fontWeight: 500 }}>
+            <Check size={12} strokeWidth={3} style={{ color: '#dc2626', flexShrink: 0 }} /> {tag}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/* Prominent warranty banner — promotes the dealer's warranty months from a thin
+   line to a highlighted strip directly under the price. Real data only. */
+const WarrantyBanner = ({ car, isXdrive }) => {
+  if (!(car.warranty_months > 0)) return null;
+  const head = isXdrive ? '#16a34a' : '#4ade80';
+  const sub = isXdrive ? '#15803d' : 'rgba(74,222,128,0.75)';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '11px 14px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.28)', borderRadius: 10 }}>
+      <ShieldCheck size={18} style={{ color: head, flexShrink: 0 }} />
+      <div style={{ minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: head }}>{car.warranty_months}-month warranty included</p>
+        <p style={{ margin: '1px 0 0', fontSize: 11, color: sub }}>Covered by the dealer · drive with peace of mind</p>
+      </div>
+    </div>
+  );
+};
+
+/* Recon trust signals — turns is_recon + import + grades into clear chips
+   ("Japan Spec", "Unregistered", "Auction Grade 4.5"). */
+const ReconTrust = ({ car, isXdrive }) => {
+  if (!car.is_recon) return null;
+  const amber = isXdrive ? '#b45309' : '#fbbf24';
+  const origin = car.import_country ? `${car.import_country} Spec` : 'Recon Unit';
+  const chips = [
+    { label: origin },
+    car.local_reg_date ? null : { label: 'Unregistered' },
+    car.auction_grade ? { label: `Auction Grade ${car.auction_grade}` } : null,
+    car.interior_grade ? { label: `Interior ${car.interior_grade}` } : null,
+  ].filter(Boolean);
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 16 }}>
+      {chips.map((c, i) => (
+        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 6, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', color: amber, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.28)' }}>
+          <BadgeCheck size={12} style={{ flexShrink: 0 }} /> {c.label}
+        </span>
+      ))}
+    </div>
+  );
+};
+
 
 const isImageUrl = (url) =>
   /\.(jpg|jpeg|png|webp|gif|avif|svg)(\?|$)/i.test(url || "");
@@ -1643,6 +1703,11 @@ export default function CarDetailPage() {
               <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.2)', color:'#f87171', fontSize:'11px', padding:'2px 10px', borderRadius:'20px', fontWeight:600, letterSpacing:'0.04em' }}>SAVE {fmtPrice(saving)}</span>
             </div>
           )}
+          <div style={{ marginTop:16 }}>
+            <WarrantyBanner car={car} isXdrive={isXdrive} />
+            <ReconTrust car={car} isXdrive={isXdrive} />
+            <SpecHighlights car={car} th={th} />
+          </div>
           <div style={{ height:1, marginBottom:20, background:'linear-gradient(to right,rgba(220,38,38,0.3),rgba(255,255,255,0.04),transparent)' }} />
         </div>
 
@@ -1694,12 +1759,6 @@ export default function CarDetailPage() {
                 </button>
               )}
             </div>
-            {car.warranty_months > 0 && (
-              <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:10, padding:'8px 12px', background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.25)', borderRadius:9 }}>
-                <ShieldCheck size={13} style={{ color:'#4ade80', flexShrink:0 }} />
-                <span style={{ fontSize:12, color:'#4ade80', fontWeight:600 }}>{car.warranty_months}-month warranty included</span>
-              </div>
-            )}
             {car.deposit_amount > 0 && (
               <p style={{ fontSize:11, color:'#475569', marginTop:8, textAlign:'center' }}>RM {fmt(car.deposit_amount)} deposit to reserve</p>
             )}
@@ -2377,6 +2436,12 @@ export default function CarDetailPage() {
                   </p>
                 </div>
               ))}
+            </div>
+
+            {/* Recon trust signals + spec highlights */}
+            <div style={{ marginBottom: 32 }}>
+              <ReconTrust car={car} isXdrive={isXdrive} />
+              <SpecHighlights car={car} th={th} />
             </div>
 
             {/* Description */}
@@ -3109,8 +3174,8 @@ export default function CarDetailPage() {
               {isRecon && <span style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.25)', color: '#c084fc', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>Recon</span>}
               {isHot && <span style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.28)', color: '#f87171', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>Hot Deal</span>}
               {hasDocuments && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.28)', color: '#4ade80', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}><BadgeCheck size={11} /> Verified Docs</span>}
-              {car.warranty_months > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.28)', color: '#4ade80', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}><ShieldCheck size={11} /> {car.warranty_months}m Warranty</span>}
             </div>
+            <WarrantyBanner car={car} isXdrive={isXdrive} />
             {car.deposit_amount > 0 && (
               <p style={{ fontSize: 11, color: th.textMuted, marginBottom: 8, textAlign: 'center' }}>RM {fmt(car.deposit_amount)} deposit to reserve</p>
             )}
