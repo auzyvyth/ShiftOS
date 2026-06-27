@@ -2570,7 +2570,7 @@ function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
 }
 
 // ─── AnalyticsTab ─────────────────────────────────────────────────────────────
-function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStaleAdjusted, adjustedStaleIds }) {
+function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelectListing, onStaleAdjusted, adjustedStaleIds }) {
   const { can } = usePermissions(profile);
   // SF-2b: map reserved_by -> salesman first name for the Reserved badge sub-label
   // (dealer-only surface; never exposed to public storefront visitors).
@@ -3101,13 +3101,15 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                               }
                               <div style={{ minWidth:0 }}>
                                 <p style={{ fontSize:13, fontWeight:700, color:'#111827', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
-                                  {l.slug ? (
-                                    <a href={`/cars/${l.slug}`} target="_blank" rel="noopener noreferrer"
+                                  {onSelectListing ? (
+                                    <span role="button" tabIndex={0}
+                                       onClick={() => onSelectListing(l)}
+                                       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectListing(l); } }}
                                        style={{ color:'inherit', textDecoration:'none', cursor:'pointer' }}
                                        onMouseEnter={e => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.textDecoration = 'underline'; }}
                                        onMouseLeave={e => { e.currentTarget.style.color = 'inherit'; e.currentTarget.style.textDecoration = 'none'; }}>
                                       {l.brand} {l.model}
-                                    </a>
+                                    </span>
                                   ) : (<>{l.brand} {l.model}</>)}
                                 </p>
                                 <p style={{ fontSize:11, color:'#4b5563', margin:'2px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
@@ -3205,13 +3207,15 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                             <div style={{ minWidth:0 }}>
                               <p style={{ fontSize:13, fontWeight:800, color:'#111827', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
                                 <span style={{ color:'#9ca3af', fontWeight:700 }}>{i + 1}.</span>{' '}
-                                {l.slug ? (
-                                  <a href={`/cars/${l.slug}`} target="_blank" rel="noopener noreferrer"
+                                {onSelectListing ? (
+                                  <span role="button" tabIndex={0}
+                                     onClick={() => onSelectListing(l)}
+                                     onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectListing(l); } }}
                                      style={{ color:'inherit', textDecoration:'none', cursor:'pointer' }}
                                      onMouseEnter={e => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.textDecoration = 'underline'; }}
                                      onMouseLeave={e => { e.currentTarget.style.color = 'inherit'; e.currentTarget.style.textDecoration = 'none'; }}>
                                     {l.brand} {l.model}
-                                  </a>
+                                  </span>
                                 ) : (<>{l.brand} {l.model}</>)}
                               </p>
                               <p style={{ fontSize:11, color:'#4b5563', margin:'1px 0 0' }}>
@@ -11327,6 +11331,7 @@ export default function DashboardPage() {
                   profile={profile}
                   salesmen={salesmen}
                   onEditListing={setEditListing}
+                  onSelectListing={setDetailListing}
                   onStaleAdjusted={handleStaleAdjusted}
                   adjustedStaleIds={adjustedStaleIds}
                 />
