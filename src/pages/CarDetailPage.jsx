@@ -941,6 +941,18 @@ export default function CarDetailPage() {
         refSlug: getRef() || null,
       }),
     }).catch((err) => console.error("[handleEnquirySubmit] fetch error:", err));
+
+    // Create a real pipeline lead from the captured name + phone so the WhatsApp
+    // click lands in the dealer/salesman pipeline (not just anonymous analytics).
+    if (car.dealer_id) {
+      supabase.rpc("create_lead_from_whatsapp", {
+        p_dealer_id: car.dealer_id,
+        p_car_id: car.id,
+        p_name: enquiryForm.name,
+        p_phone: enquiryForm.phone,
+        p_ref_slug: getRef() || car.salesman_slug || null,
+      }).then(({ error }) => { if (error) console.error("create_lead_from_whatsapp:", error); });
+    }
   }
 
   async function handleBook(e) {
