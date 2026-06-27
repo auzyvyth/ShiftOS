@@ -504,9 +504,13 @@ export default function SalesmanPanel() {
  }, [navigate]);
  // 
 
- // userId-dependent data 
+ // userId-dependent data
  useEffect(() => {
- if (!userId) return;
+ // Wait for BOTH userId and profile: this block scopes every query by
+ // getDealerIdFromProfile(profile). userId is set a few awaits before profile,
+ // so firing on userId alone runs with profile=null -> dealer_id filter resolves
+ // to null and the pipeline (and other reads) come back empty and never reload.
+ if (!userId || !profile) return;
 
  // Personal sold count with realtime subscription
  const fetchSold = async () => {
@@ -778,7 +782,7 @@ Rules:
  supabase.removeChannel(apptCh);
  supabase.removeChannel(listingsCh);
  };
- }, [userId]);
+ }, [userId, profile?.id]);
 
  // team leaderboard — units sold this month per salesman (names visible, deals private)
  useEffect(() => {
