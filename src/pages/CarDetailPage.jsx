@@ -1498,6 +1498,24 @@ export default function CarDetailPage() {
             </div>
           </div>
 
+          {/* Thumbnail strip (desktop) — jump straight to any photo */}
+          {imgCount > 1 && (
+            <div className="cdp-desktop-only" style={{ display: 'flex', gap: 8, marginTop: 10, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
+              {images.map((src, i) => (
+                <button
+                  key={i}
+                  onClick={() => go(i, i > activeIdx ? 'next' : 'prev')}
+                  aria-label={`View photo ${i + 1}`}
+                  style={{ flex: '0 0 auto', width: 84, height: 60, padding: 0, borderRadius: 8, overflow: 'hidden', cursor: 'pointer', background: 'none', border: `2px solid ${i === activeIdx ? '#dc2626' : 'transparent'}`, opacity: i === activeIdx ? 1 : 0.6, transition: 'opacity .15s, border-color .15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.opacity = 1; }}
+                  onMouseLeave={e => { e.currentTarget.style.opacity = i === activeIdx ? 1 : 0.6; }}
+                >
+                  <img src={disp(src, 200)} alt={`${carTitle} thumbnail ${i + 1}`} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={onImgErr(src)} />
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Mobile single swipeable panel — desktop-only since M1 handles mobile */}
           <div
             className="cdp-mosaic-mobile cdp-desktop-only"
@@ -1659,6 +1677,22 @@ export default function CarDetailPage() {
             );
           })()}
         </div>
+
+        {/* Thumbnail strip (mobile) */}
+        {imgCount > 1 && (
+          <div className="cdp-mobile-only" style={{ display: 'flex', gap: 7, padding: '10px 18px 0', overflowX: 'auto', scrollbarWidth: 'none' }}>
+            {images.map((src, i) => (
+              <button
+                key={i}
+                onClick={() => go(i, i > activeIdx ? 'next' : 'prev')}
+                aria-label={`View photo ${i + 1}`}
+                style={{ flex: '0 0 auto', width: 64, height: 46, padding: 0, borderRadius: 7, overflow: 'hidden', cursor: 'pointer', background: 'none', border: `2px solid ${i === activeIdx ? '#dc2626' : 'transparent'}`, opacity: i === activeIdx ? 1 : 0.55 }}
+              >
+                <img src={disp(src, 160)} alt={`${carTitle} thumbnail ${i + 1}`} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={onImgErr(src)} />
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* M2 — Identity block */}
         <div className="cdp-mobile-only" style={{ padding:'20px 18px 0' }}>
