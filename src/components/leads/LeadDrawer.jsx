@@ -7,6 +7,7 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '../../supabaseClient';
 import LeadSourceBadge from './LeadSourceBadge';
+import PostSaleChecklist from '../postsale/PostSaleChecklist';
 import { useLeadActivities } from '../../hooks/useLeadActivities';
 import {
   formatWhatsAppURL, calcInstalment, getLeadAgeDays, ageTextColor,
@@ -169,6 +170,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const [savingLoss, setSavingLoss]   = useState(false);
   const [pendingStage, setPendingStage] = useState(null);
 
+  const [showHandover, setShowHandover] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [selectedCloser, setSelectedCloser] = useState('');
   const [closeSaving, setCloseSaving] = useState(false);
@@ -1150,6 +1152,23 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
               <textarea value={notes} onChange={e => handleNotesChange(e.target.value)} placeholder="Add notes about this lead…" rows={3}
                 style={{ ...w.inp, resize: 'vertical', minHeight: 72 }} className="ld-inp" />
             </div>
+
+            {/* ── Handover process (won deals) — buyer sees this live ── */}
+            {['won','closed_won'].includes(lead.stage) && (
+              <div style={w.section}>
+                <button onClick={() => setShowHandover(v => !v)}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <span style={{ ...w.label, margin: 0, display: 'flex', alignItems: 'center', gap: 7 }}><Package style={{ width: 13, height: 13 }} /> Handover process</span>
+                  {showHandover ? <ChevronUp style={{ width: 15, height: 15, color: '#9ca3af' }} /> : <ChevronDown style={{ width: 15, height: 15, color: '#9ca3af' }} />}
+                </button>
+                {showHandover && (
+                  <div style={{ marginTop: 12 }}>
+                    <p style={{ margin: '0 0 10px', fontSize: 11, color: '#16a34a' }}>Update steps — the buyer sees this live on their account.</p>
+                    <PostSaleChecklist lead={lead} />
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ── Deposit / Booking Fee ── */}
             {(['deposit_taken','won','closed_won'].includes(lead.stage) || depositAmount !== '') && (

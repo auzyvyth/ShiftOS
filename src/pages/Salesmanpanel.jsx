@@ -10,6 +10,7 @@ import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { usePermissions } from "../hooks/usePermissions";
 import { usePresence } from "../hooks/usePresence";
 import PostSaleBoard from "../components/postsale/PostSaleBoard";
+import PostSaleChecklist from "../components/postsale/PostSaleChecklist";
 import SalesmanPanelHelp from "../components/SalesmanPanelHelp";
 import ShareMenu from "../components/ShareMenu";
 import { toast } from "sonner";
@@ -277,6 +278,7 @@ export default function SalesmanPanel() {
 
  // CRM pipeline state
  const [drawerLeadId, setDrawerLeadId] = useState(null);
+ const [drawerHandoverOpen, setDrawerHandoverOpen] = useState(false);
  const [dealSheetBusyId, setDealSheetBusyId] = useState(null);
  const [dealSheetLink, setDealSheetLink] = useState(null);
  const [dealSheetConfigLead, setDealSheetConfigLead] = useState(null);
@@ -5086,7 +5088,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  timing: { label: "Not ready yet", color: "#fbbf24", lines: [`"Totally understand — what would need to change for you to feel ready? Is it financing, or something else?"`, `"I can hold this for you with a small refundable deposit while you sort things out. No pressure."`, `"Just so you know — cars at this price point move fast. I'd hate for you to miss it."`] },
  trust: { label: "Not sure / need to think", color: "#f87171", lines: [`"What specific questions can I answer right now? Let's remove all the uncertainty together."`, `"I'm not here to rush you — but I want to make sure you have everything you need to decide confidently."`, `"Can I send you a full brief on this car — specs, loan estimate, everything — so you have it all in one place?"`] },
  };
- const close = () => { setDrawerLeadId(null); setEditingNoteId(null); setPlaybookLeadId(null); setExpandedActivityLeadId(null); setLostPromptId(null); setDeleteConfirmId(null); setDealSheetLink(null); };
+ const close = () => { setDrawerLeadId(null); setEditingNoteId(null); setPlaybookLeadId(null); setExpandedActivityLeadId(null); setLostPromptId(null); setDeleteConfirmId(null); setDealSheetLink(null); setDrawerHandoverOpen(false); };
+ const plIsWon = ["won", "closed_won"].includes(pl.stage);
+ const plIsLite = profile?.plan === "salesman_lite";
  return (
  <>
  {/* backdrop */}
@@ -5242,6 +5246,29 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </div>
  ))}
  </div>
+ </div>
+ )}
+
+ {/* Handover process (won deals) — update the steps the buyer sees live */}
+ {plIsWon && (
+ <div>
+ <button
+ onClick={() => setDrawerHandoverOpen(v => !v)}
+ style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 12px", borderRadius: 8, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600 }}
+ >
+ <span style={{ display: "flex", alignItems: "center", gap: 7 }}><ClipboardCheck size={14} /> Handover process</span>
+ {drawerHandoverOpen ? <ChevronLeft size={15} style={{ transform: "rotate(90deg)" }} /> : <ChevronRight size={15} style={{ transform: "rotate(90deg)" }} />}
+ </button>
+ {drawerHandoverOpen && (
+ <div style={{ marginTop: 10 }}>
+ <p style={{ margin: "0 0 8px", fontSize: 11, color: plIsLite ? "#6b7280" : "#4ade80", display: "flex", alignItems: "center", gap: 5 }}>
+ {plIsLite
+ ? "Update steps to track the handover internally."
+ : "Update steps — the buyer sees this live on their account."}
+ </p>
+ <PostSaleChecklist lead={pl} dark />
+ </div>
+ )}
  </div>
  )}
 
