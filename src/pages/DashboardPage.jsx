@@ -9556,7 +9556,7 @@ export default function DashboardPage() {
       const [{ data: cars, error: carsError }, { data: sm }, { data: stockCost }, { data: dealProducts }] = await Promise.all([
         supabase
           .from("car_listings")
-          .select("id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,condition,images,status,created_at,dealer_id,assigned_to,commission_amount,sold_at,included_services,included_services_cost,auction_grade,interior_grade,is_recon,financing_type,engine_cc,previous_owners,plate_number,vin_number,engine_number,road_tax_expiry,warranty_months,deposit_amount,reserved_by,reserved_at")
+          .select("id,slug,brand,model,variant,year,base_price,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,city,colour,condition,registration_date,specs,options,features,images,status,created_at,dealer_id,assigned_to,commission_amount,sold_at,included_services,included_services_cost,recon_cost,auction_grade,interior_grade,is_recon,import_country,auction_house,local_reg_date,chassis_status,damage_map,financing_type,payment_type,loan_eligible,engine_cc,horsepower,cylinders,doors,seats,fuel_consumption,previous_owners,plate_number,vin_number,engine_number,road_tax_expiry,warranty_months,deposit_amount,video_url,car_documents,reserved_by,reserved_at")
           .eq("dealer_id", dealerId)
           .order("created_at", { ascending: false }),
         supabase
