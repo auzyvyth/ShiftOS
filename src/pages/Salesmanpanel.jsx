@@ -192,6 +192,7 @@ export default function SalesmanPanel() {
  const [reminderSaving, setReminderSaving] = useState(false);
  const [pastOpen, setPastOpen] = useState(false);
  const [telegramSetupModal, setTelegramSetupModal] = useState(false);
+ const [tgTesting, setTgTesting] = useState(false);
 
  // Leads
  const [leads, setLeads] = useState([]);
@@ -1094,6 +1095,35 @@ Rules:
  window.location.href = "https://xdrive.my/login";
  };
 
+ // Send a test Telegram message to the salesman's own chat id, via the dealer's
+ // bot token (or the platform fallback bot). Saves the chat id first if changed.
+ const testTelegramConnection = async () => {
+ const chatId = (profileSettings.telegram_chat_id || "").trim();
+ if (!chatId) { toast.error("Enter your Telegram Chat ID first"); return; }
+ setTgTesting(true);
+ try {
+  // Persist the chat id so future reminders use it.
+  await supabase.from("profiles").update({ telegram_chat_id: chatId }).eq("id", profile.id);
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await supabase.functions.invoke("send-telegram", {
+   body: {
+    dealer_id: getDealerIdFromProfile(profile),
+    channel_id: chatId,
+    message: `Telegram connected! You'll get appointment + handover reminders here. — ${profile.full_name || "ShiftOS"}`,
+   },
+   headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+  });
+  const data = res.data;
+  if (data?.ok) toast.success("Test message sent — check your Telegram");
+  else if (data?.error === "no_token") toast.error("Dealer has no Telegram bot connected yet");
+  else toast.error(data?.description || "Couldn't send — check the Chat ID");
+ } catch {
+  toast.error("Network error sending test message");
+ } finally {
+  setTgTesting(false);
+ }
+ };
+
  const _siteBase = dealerSubdomain
   ? `https://${dealerSubdomain}.xdrive.my`
   : "https://xdrive.my";
@@ -1500,7 +1530,11 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
 
  const advanceLeadStage = (lead, newStage, force = false) => {
  if (!newStage) return;
- if (!force && lead.stage === "test_drive") { setTestDriveConfirm({ lead, nextStage: newStage }); return; }
+ // Confirm before a test drive moves on, and before taking a deposit (a real
+ // commitment that flips the car to reserved server-side).
+ if (!force && (lead.stage === "test_drive" || newStage === "deposit_taken")) {
+ setTestDriveConfirm({ lead, nextStage: newStage }); return;
+ }
  const oldStage = lead.stage;
  const leadId = lead.id;
  const buyerName = lead.buyer_name || "Lead";
@@ -4452,25 +4486,37 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
    );
  };
 
- const renderTestDriveConfirmModal = () => testDriveConfirm && (
+ const renderTestDriveConfirmModal = () => {
+ if (!testDriveConfirm) return null;
+ const isDeposit = testDriveConfirm.nextStage === "deposit_taken";
+ const title = isDeposit ? "Confirm Deposit Taken" : "Confirm Test Drive";
+ const sub = isDeposit
+   ? `${testDriveConfirm.lead.buyer_name || "Lead"} — has the buyer paid a deposit?`
+   : `${testDriveConfirm.lead.buyer_name || "Lead"} — did the test drive happen?`;
+ const body = isDeposit
+   ? <>This reserves the car for this buyer (it will show as <strong style={{ color: "#e5e7eb" }}>reserved</strong> publicly). Only confirm once the deposit is actually collected.</>
+   : <>This will move the lead to <strong style={{ color: "#e5e7eb" }}>{testDriveConfirm.nextStage.replace(/_/g, " ")}</strong>. Only confirm if the test drive has been completed.</>;
+ const cta = isDeposit ? "Yes, deposit taken" : "Yes, test drive done";
+ return (
  <div onClick={() => setTestDriveConfirm(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
    <div onClick={(e) => e.stopPropagation()} style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px 16px 0 0", padding: "20px 20px 32px", width: "100%", maxWidth: 480 }}>
-     <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Confirm Test Drive</p>
+     <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{title}</p>
      <p style={{ margin: "0 0 16px", fontSize: 12, color: "#4b5563" }}>
-       {testDriveConfirm.lead.buyer_name || "Lead"} — did the test drive happen?
+       {sub}
      </p>
      <p style={{ margin: "0 0 16px", fontSize: 13, color: "#9ca3af", lineHeight: 1.6 }}>
-       This will move the lead to <strong style={{ color: "#e5e7eb" }}>{testDriveConfirm.nextStage.replace(/_/g, " ")}</strong>. Only confirm if the test drive has been completed.
+       {body}
      </p>
      <div style={{ display: "flex", gap: 8 }}>
        <button onClick={() => setTestDriveConfirm(null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
        <button onClick={() => { advanceLeadStage(testDriveConfirm.lead, testDriveConfirm.nextStage, true); setTestDriveConfirm(null); }} style={{ flex: 2, padding: "11px 0", borderRadius: 10, background: "#dc2626", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-         Yes, test drive done
+         {cta}
        </button>
      </div>
    </div>
  </div>
  );
+ };
 
  const renderWAModal = () =>
  waModalLead && (
@@ -6418,6 +6464,13 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <input type="text" value={profileSettings.telegram_chat_id}
  onChange={e => setProfileSettings(p => ({ ...p, telegram_chat_id: e.target.value }))}
  placeholder="e.g. 123456789" style={inputStyle} />
+ <button
+ type="button"
+ onClick={testTelegramConnection}
+ disabled={tgTesting || !profileSettings.telegram_chat_id}
+ style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '8px 14px', borderRadius: 8, background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)', color: '#93c5fd', cursor: (tgTesting || !profileSettings.telegram_chat_id) ? 'not-allowed' : 'pointer', opacity: (tgTesting || !profileSettings.telegram_chat_id) ? 0.55 : 1, fontFamily: 'inherit' }}>
+ <Send size={13} /> {tgTesting ? 'Sending…' : 'Send test message'}
+ </button>
  <p style={{ margin: '5px 0 0', fontSize: 10, color: '#64748b', lineHeight: 1.6 }}>
  Get appointment + handover reminders on Telegram. Open Telegram, search <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd', textDecoration: 'none' }}>@userinfobot</a>, send /start, copy the Id number.
  </p>
@@ -7576,9 +7629,11 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  >
  <option value="">— no car selected —</option>
  {(() => {
+ // Only cars this salesman has featured from inventory or been assigned
+ // (myListings) — not the dealer's whole open pool.
  const seen = new Set();
- return [...myListings, ...availableCars]
- .filter((c) => c && !seen.has(c.id) && seen.add(c.id))
+ return myListings
+ .filter((c) => c && c.status !== "sold" && !seen.has(c.id) && seen.add(c.id))
  .map((c) => (
  <option key={c.id} value={c.id}>
  {c.year} {c.brand} {c.model}
