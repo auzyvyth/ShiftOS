@@ -13,6 +13,8 @@ import "./i18n/config";
 // Eager — only true above-the-fold entry points
 import HomePage from "./pages/HomePage";
 import CarListingPage from "./pages/CarListingPage";
+// Eager — tiny, and must render instantly (no blank Suspense flash) on bad URLs
+import NotFoundPage from "./pages/NotFoundPage";
 
 // Lazy — navigated to, not landed on directly
 const MarketplacePage = lazy(() => import("./pages/MarketplacePage"));
@@ -38,7 +40,6 @@ const AccountsPanel      = lazy(() => import("./pages/AccountsPanel"));
 const ShiftOSPage        = lazy(() => import("./pages/ShiftOSPage"));
 const MindMapPage        = lazy(() => import("./pages/MindMapPage"));
 const DealerSlugRedirect = lazy(() => import("./pages/DealerSlugRedirect"));
-const NotFoundPage       = lazy(() => import("./pages/NotFoundPage"));
 const SalesmanProfilePage= lazy(() => import("./pages/SalesmanProfilePage"));
 const AuthConfirmPage    = lazy(() => import("./pages/AuthConfirmPage"));
 const AuthCallbackPage   = lazy(() => import("./pages/AuthCallbackPage"));
