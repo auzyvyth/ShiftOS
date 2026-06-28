@@ -3773,7 +3773,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
     if (!dealerId) return;
     const { data } = await supabase
       .from("car_listings")
-      .select("assigned_to, commission_amount, commission_status, sold_price, selling_price, price, purchase_price, recon_cost, included_services_cost")
+      .select("assigned_to, commission_amount, commission_status, sold_price, selling_price, price, purchase_price, base_price, recon_cost, included_services_cost")
       .eq("dealer_id", dealerId)
       .eq("status", "sold")
       .not("assigned_to", "is", null);
@@ -3788,9 +3788,10 @@ function TeamTab({ managerDealership, dealerId, profile }) {
       const cs = commission_status || 'pending';
       map[assigned_to][cs] = (map[assigned_to][cs] || 0) + amt;
       // Front gross per unit: sale - cost - recon - included services - commission.
-      // Only counted when a purchase price exists, so units with no cost data
-      // don't show a misleading "full sale price = profit".
-      const cost = Number(row.purchase_price) || 0;
+      // Cost basis = stock purchase price, falling back to the listing's base_price
+      // (listings with no procurement record still have a cost basis). Only counted
+      // when some cost exists, so units with zero cost don't show "full sale = profit".
+      const cost = Number(row.purchase_price) || Number(row.base_price) || 0;
       if (cost > 0) {
         const sale = Number(row.sold_price ?? row.selling_price ?? row.price) || 0;
         map[assigned_to].gross += sale - cost - (Number(row.recon_cost) || 0) - (Number(row.included_services_cost) || 0) - amt;
@@ -9876,6 +9877,8 @@ export default function DashboardPage() {
       setListings((p) => p.map((l) => (l.id === updated.id ? { ...l, ...updated } : l)));
       setDetailListing((prev) => (prev?.id === updated.id ? { ...prev, ...updated } : prev));
       setMarkSoldListing(null);
+      // The merged listings state above feeds StockTab's P&L; TeamTab refetches
+      // per-salesman gross on mount, so no out-of-scope refetch is needed here.
     } catch (e) {
       console.error(e);
     }
