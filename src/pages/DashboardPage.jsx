@@ -5534,7 +5534,7 @@ function ListingDetailDrawer({
                 {drawerTab === 'owner' && canViewCosts && (
                   <>
                     {[
-                      ['Edit Prices', DollarSign, () => setOwnerTool('prices')],
+                      ['Edit Costs', DollarSign, () => setOwnerTool('prices')],
                       ['Recon Jobs', Wrench, () => setOwnerTool('recon')],
                       ['Ad Spend', Megaphone, () => setOwnerTool('ad')],
                       ['Compliance', Shield, () => setOwnerTool('compliance')],
@@ -5902,7 +5902,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
 
   // ENT-8: inline price editing
   const [editPriceUnit, setEditPriceUnit] = useState(null);
-  const [editPriceForm, setEditPriceForm] = useState({ purchase_price: '', recon_cost: '', asking_price: '' });
+  const [editPriceForm, setEditPriceForm] = useState({ purchase_price: '', recon_cost: '' });
   const [editPriceSaving, setEditPriceSaving] = useState(false);
 
   const [publishingStockId, setPublishingStockId] = useState(null);
@@ -6115,10 +6115,13 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
   });
 
   const totalGP = thisMonth.reduce((s, u) => s + (netProfit(u) || 0), 0);
-  const totalValue = activeUnits.reduce((s, u) => s + (Number(u.asking_price) || 0), 0);
-  // Revenue = realised sale price across all sold units (fall back to asking if a
-  // pipeline-close didn't stamp a sold_price).
-  const soldRevenue = soldUnits.reduce((s, u) => s + (Number(u.sold_price) || Number(u.asking_price) || 0), 0);
+  // Sale price source of truth is car_listings.selling_price (edited via the
+  // detail-drawer Adjust Price modal or CarForm); asking_price is a legacy
+  // per-unit fallback only.
+  const totalValue = activeUnits.reduce((s, u) => s + (Number(u.car_listings?.selling_price) || Number(u.asking_price) || 0), 0);
+  // Revenue = realised sale price across all sold units (fall back to listing
+  // price, then asking, if a pipeline-close didn't stamp a sold_price).
+  const soldRevenue = soldUnits.reduce((s, u) => s + (Number(u.sold_price) || Number(u.car_listings?.selling_price) || Number(u.asking_price) || 0), 0);
   const unitsWithDays = activeUnits.filter(u => typeof daysInStock(u) === 'number');
   const avgDays = unitsWithDays.length
     ? Math.round(unitsWithDays.reduce((s, u) => s + daysInStock(u), 0) / unitsWithDays.length)
@@ -6542,7 +6545,6 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     const patch = {
       purchase_price: Number(editPriceForm.purchase_price) || 0,
       recon_cost:     Number(editPriceForm.recon_cost)     || 0,
-      asking_price:   Number(editPriceForm.asking_price)   || 0,
     };
     const { error } = await supabase.from('stock_units').update(patch).eq('id', editPriceUnit.id).eq('dealer_id', userId);
     if (!error) {
@@ -6550,16 +6552,15 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
       const fc = {};
       if (patch.purchase_price !== (Number(editPriceUnit.purchase_price)||0)) { changes.push(`purchase RM ${(Number(editPriceUnit.purchase_price)||0).toLocaleString()} → RM ${patch.purchase_price.toLocaleString()}`); fc.purchase_price = { from: Number(editPriceUnit.purchase_price)||0, to: patch.purchase_price }; }
       if (patch.recon_cost     !== (Number(editPriceUnit.recon_cost)||0))     { changes.push(`recon RM ${(Number(editPriceUnit.recon_cost)||0).toLocaleString()} → RM ${patch.recon_cost.toLocaleString()}`); fc.recon_cost = { from: Number(editPriceUnit.recon_cost)||0, to: patch.recon_cost }; }
-      if (patch.asking_price   !== (Number(editPriceUnit.asking_price)||0))   { changes.push(`asking RM ${(Number(editPriceUnit.asking_price)||0).toLocaleString()} → RM ${patch.asking_price.toLocaleString()}`); fc.asking_price = { from: Number(editPriceUnit.asking_price)||0, to: patch.asking_price }; }
       if (changes.length) {
-        logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: editPriceUnit.id, action: 'prices_updated', summary: `Prices updated — ${changes.join('; ')}`, fieldChanges: fc });
+        logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: editPriceUnit.id, action: 'costs_updated', summary: `Costs updated — ${changes.join('; ')}`, fieldChanges: fc });
       }
       setUnits(u => u.map(x => x.id === editPriceUnit.id ? { ...x, ...patch } : x));
       setDetailUnit(prev => (prev && prev.id === editPriceUnit.id) ? { ...prev, ...patch } : prev);
-      toast.success('Prices updated');
+      toast.success('Costs updated');
       setEditPriceUnit(null);
     } else {
-      toast.error('Failed to save prices');
+      toast.error('Failed to save costs');
     }
     setEditPriceSaving(false);
   };
@@ -6972,7 +6973,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                 {ACTION_BTN('View P&L',         'Full profit breakdown — cost, recon, commission, holding, add-ons', '#059669', 'rgba(5,150,105,0.06)', '#6ee7b7', () => fetchPnl(u))}
                 {ACTION_BTN('Recon Jobs',        'Log and track all reconditioning work and costs', '#d97706', 'rgba(245,158,11,0.06)', '#fde68a', () => fetchReconJobs(u))}
                 {can('view_cost') && ACTION_BTN('Ad Spend',   'Track advertising spend (Mudah, Carsome, Facebook, etc.)', '#db2777', 'rgba(236,72,153,0.06)', '#fbcfe8', () => openAdSpend(u))}
-                {can('view_cost') && ACTION_BTN('Edit Prices','Update purchase price, recon cost, and asking price', '#7c3aed', 'rgba(124,58,237,0.06)', '#ddd6fe', () => { setEditPriceUnit(u); setEditPriceForm({ purchase_price: String(u.purchase_price||''), recon_cost: String(u.recon_cost||''), asking_price: String(u.asking_price||'') }); })}
+                {can('view_cost') && ACTION_BTN('Edit Costs','Update purchase price and recon cost (sale price is set on the listing)', '#7c3aed', 'rgba(124,58,237,0.06)', '#ddd6fe', () => { setEditPriceUnit(u); setEditPriceForm({ purchase_price: String(u.purchase_price||''), recon_cost: String(u.recon_cost||'') }); })}
                 {ACTION_BTN('Activity History',  'See all edits, updates, and status changes for this unit', '#6b7280', '#f9fafb', '#e5e7eb', () => fetchHistory(u))}
                 {u.status === 'in_stock' && ACTION_BTN('Mark as Sold', 'Record the final sale price and close out this unit', '#2563eb', 'rgba(37,99,235,0.06)', '#bfdbfe', () => { setSoldTarget(u); setSoldForm({ sold_price: u.asking_price ? String(u.asking_price) : '', sold_date: new Date().toISOString().slice(0, 10) }); })}
               </div>
@@ -7127,19 +7128,19 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
         </div>
       , document.body)}
 
-      {/* Edit Prices Modal */}
+      {/* Edit Costs Modal */}
       {editPriceUnit && createPortal(
         <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.78)', zIndex: 10000 }}>
           <div className="modal-top rounded-2xl w-full max-w-sm" style={{ background: '#fff' }}>
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <div>
-                <h3 className="font-semibold text-gray-900" style={{ fontSize: 15 }}>Edit Prices</h3>
+                <h3 className="font-semibold text-gray-900" style={{ fontSize: 15 }}>Edit Costs</h3>
                 <p style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{editPriceUnit.car_listings?.brand} {editPriceUnit.car_listings?.model} {editPriceUnit.car_listings?.year}</p>
               </div>
               <button onClick={() => setEditPriceUnit(null)} className="text-gray-400 hover:text-gray-700 p-1"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-5 space-y-4">
-              {[['Purchase Price', 'purchase_price'], ['Recon Cost', 'recon_cost'], ['Asking Price', 'asking_price']].map(([label, key]) => (
+              {[['Purchase Price', 'purchase_price'], ['Recon Cost', 'recon_cost']].map(([label, key]) => (
                 <div key={key}>
                   <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">{label}</label>
                   <div className="flex items-center gap-2">
