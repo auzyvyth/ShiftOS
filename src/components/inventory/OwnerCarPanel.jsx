@@ -70,7 +70,7 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
   const [creating, setCreating] = useState(false);
 
   // tool form state
-  const [costForm, setCostForm] = useState({ purchase_price: '', recon_cost: '', asking_price: '' });
+  const [costForm, setCostForm] = useState({ purchase_price: '', recon_cost: '' });
   const [compForm, setCompForm] = useState({ puspakom_b5_date: '', puspakom_b7_date: '', encumbrance_status: 'unknown' });
   const [reconForm, setReconForm] = useState({ title: '', cost: '' });
   const [adForm, setAdForm] = useState({ channel: 'mudah', amount: '' });
@@ -120,7 +120,7 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
   // Seed the relevant tool form whenever a tool opens.
   useEffect(() => {
     if (!unit) return;
-    if (tool === 'prices') setCostForm({ purchase_price: String(unit.purchase_price || ''), recon_cost: String(unit.recon_cost || ''), asking_price: String(unit.asking_price || '') });
+    if (tool === 'prices') setCostForm({ purchase_price: String(unit.purchase_price || ''), recon_cost: String(unit.recon_cost || '') });
     if (tool === 'compliance') setCompForm({ puspakom_b5_date: unit.puspakom_b5_date || '', puspakom_b7_date: unit.puspakom_b7_date || '', encumbrance_status: unit.encumbrance_status || 'unknown' });
     if (tool === 'activity') {
       setActivity(null);
@@ -160,7 +160,7 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
     const addonRevenue = addons.reduce((s, a) => s + (Number(a.sold_price) || 0), 0);
     const addonCost = addons.reduce((s, a) => s + (Number(a.dealer_products?.cost_price) || 0), 0);
     const isSold = unit.status === 'sold' || listing.status === 'sold';
-    const revenue = Number(unit.sold_price) || Number(unit.asking_price) || Number(listing.selling_price) || 0;
+    const revenue = Number(unit.sold_price) || Number(listing.selling_price) || Number(unit.asking_price) || 0;
     const cc = costCfg || {};
     let dailyHold = 0;
     if (Number(cc.floor_plan_rate) > 0 && purchasePrice > 0) dailyHold = purchasePrice * (Number(cc.floor_plan_rate) / 100) / 365;
@@ -181,7 +181,7 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
   // ---- tool actions ----
   const saveCost = async () => {
     setSaving(true);
-    const patch = { purchase_price: Number(costForm.purchase_price) || 0, recon_cost: Number(costForm.recon_cost) || 0, asking_price: Number(costForm.asking_price) || 0 };
+    const patch = { purchase_price: Number(costForm.purchase_price) || 0, recon_cost: Number(costForm.recon_cost) || 0 };
     const { error } = await supabase.from('stock_units').update(patch).eq('id', unit.id).eq('dealer_id', userId);
     setSaving(false);
     if (error) { toast.error('Failed to save'); return; }
@@ -309,7 +309,7 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
         <Stat label="Total Gross" value={`${v.netPnl < 0 ? '− ' : ''}${rm(Math.abs(v.netPnl))}`} color={v.netPnl >= 0 ? '#16a34a' : '#dc2626'} />
         <Stat label="Days on floor" value={`${v.holdingDays}d`} color={v.holdingDays > 60 ? '#dc2626' : '#111827'} />
         <Stat label="Reps selling" value={String(repsSelling)} color={repsSelling > 0 ? '#2563eb' : '#9ca3af'} />
-        <Stat label="Asking" value={rm(unit.asking_price || listing.selling_price)} />
+        <Stat label="Asking" value={rm(listing.selling_price || unit.asking_price)} />
         <Stat label="Ad spend" value={rm(adTotal)} color={adTotal > 0 ? '#db2777' : '#111827'} />
         <Stat label="Car views" value={views.toLocaleString()} />
         <Stat label="Enquiries" value={enquiries.toLocaleString()} color={enquiries > 0 ? '#2563eb' : '#111827'} />
@@ -387,7 +387,7 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
 
       <Section icon={Pencil} title="Cost Basis" color="#7c3aed">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-          {[['Purchase', unit.purchase_price], ['Recon est.', unit.recon_cost], ['Asking', unit.asking_price]].map(([l, val]) => (
+          {[['Purchase', unit.purchase_price], ['Recon est.', unit.recon_cost], ['Asking', listing.selling_price || unit.asking_price]].map(([l, val]) => (
             <div key={l}>
               <p style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>{l}</p>
               <p style={{ fontSize: 13, color: '#111827', fontWeight: 600, margin: '2px 0 0' }}>{val ? rm(val) : '—'}</p>
@@ -430,18 +430,19 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
 
       {/* ---------- TOOL MODALS (opened from the side panel) ---------- */}
       {tool === 'prices' && (
-        <ToolModal title="Edit Prices" onClose={close} footer={
+        <ToolModal title="Edit Costs" onClose={close} footer={
           <>
             <button onClick={close} style={{ flex: 1, padding: 10, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#6b7280', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
             <button onClick={saveCost} disabled={saving} style={{ flex: 1, padding: 10, borderRadius: 8, border: 'none', background: '#111827', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : 'Save'}</button>
           </>
         }>
-          {[['Purchase Price', 'purchase_price'], ['Recon Estimate', 'recon_cost'], ['Asking Price', 'asking_price']].map(([l, k]) => (
+          {[['Purchase Price', 'purchase_price'], ['Recon Estimate', 'recon_cost']].map(([l, k]) => (
             <div key={k} style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 11, color: '#6b7280', fontWeight: 600, display: 'block', marginBottom: 4 }}>{l} (RM)</label>
               <input type="number" value={costForm[k]} onChange={(e) => setCostForm((p) => ({ ...p, [k]: e.target.value }))} style={inp} />
             </div>
           ))}
+          <p style={{ fontSize: 11, color: '#9ca3af', margin: '4px 0 0', lineHeight: 1.4 }}>Sale price is set on the listing — use “Adjust Price” or the full edit form.</p>
         </ToolModal>
       )}
 
