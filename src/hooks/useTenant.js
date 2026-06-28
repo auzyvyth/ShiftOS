@@ -81,41 +81,64 @@ export default function useTenant() {
 
   useEffect(() => {
     let realtimeChannel = null;
+    let settled = false;
+    // Safety net: in-app webviews (Instagram/Facebook) and flaky mobile networks
+    // can make Supabase storage/auth/RPC calls throw or hang. Without this the
+    // hook would sit at tenant===undefined forever and HomePage shows the
+    // full-screen loader indefinitely. Force-resolve to the public marketplace
+    // after a short timeout so the page always renders.
+    const settle = (value) => {
+      if (settled) return;
+      settled = true;
+      setTenant(value);
+      setLoading(false);
+    };
+    const timer = setTimeout(() => settle(null), 6000);
 
     async function resolve() {
-      const { at: accessToken, rt: refreshToken } = readHandoffTokens();
-
-      if (accessToken && refreshToken) {
-        await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        clearHandoffTokens();
+      // Each Supabase/storage touch is individually guarded — a throw here (e.g.
+      // localStorage blocked in a partitioned webview) must not abort resolution.
+      try {
+        const { at: accessToken, rt: refreshToken } = readHandoffTokens();
+        if (accessToken && refreshToken) {
+          await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          clearHandoffTokens();
+        }
+      } catch (e) {
+        // ignore — handoff is best-effort; storefront still resolves below
       }
 
       const subdomain = getSubdomain();
       if (!subdomain) {
-        localStorage.removeItem("tenantSubdomain");
-        setTenant(null); // main domain — show marketplace
-        setLoading(false);
+        try { localStorage.removeItem("tenantSubdomain"); } catch {}
+        clearTimeout(timer);
+        settle(null); // main domain — show marketplace
         return;
       }
 
       // RPC (SECURITY DEFINER) — public_dealer_profiles is security_invoker and
       // subject to profiles RLS, which has no anon-read policy for dealer rows.
       // Anonymous storefront visitors must go through this narrow lookup instead.
-      const { data } = await supabase
-        .rpc("get_dealer_profile_by_subdomain", { p_subdomain: subdomain })
-        .maybeSingle();
-
-      const profile = data || null;
-      setTenant(profile);
-      setLoading(false);
+      let profile = null;
+      try {
+        const { data } = await supabase
+          .rpc("get_dealer_profile_by_subdomain", { p_subdomain: subdomain })
+          .maybeSingle();
+        profile = data || null;
+      } catch (e) {
+        profile = null;
+      }
+      clearTimeout(timer);
+      settle(profile);
 
       // Subscribe to realtime changes for this dealer's profile row so that
       // when settings are saved in the dashboard, the storefront tab updates
       // without requiring a manual page refresh.
       if (profile?.id) {
+        try {
         tenantIdRef.current = profile.id;
         realtimeChannel = supabase
           .channel(`tenant_profile_${profile.id}`)
@@ -136,12 +159,16 @@ export default function useTenant() {
             }
           )
           .subscribe();
+        } catch (e) {
+          // realtime is non-essential — storefront already rendered
+        }
       }
     }
 
-    resolve();
+    resolve().catch(() => settle(null));
 
     return () => {
+      clearTimeout(timer);
       if (realtimeChannel) supabase.removeChannel(realtimeChannel);
     };
   }, []);
