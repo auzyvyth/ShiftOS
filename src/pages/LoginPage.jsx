@@ -70,6 +70,10 @@ export default function LoginPage() {
   const [mounted, setMounted] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  // Client-side brute-force throttle: lock the button for 60s after 5 failed
+  // password attempts (Supabase also rate-limits server-side; this is UX).
+  const [attempts, setAttempts] = useState(0);
+  const [lockSeconds, setLockSeconds] = useState(0);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -94,6 +98,13 @@ export default function LoginPage() {
   useEffect(() => {
     document.title = t("login.meta.title", { defaultValue: "ShiftOS · Login" });
   }, [t]);
+
+  // Tick down the lockout countdown.
+  useEffect(() => {
+    if (lockSeconds <= 0) return;
+    const id = setInterval(() => setLockSeconds((s) => (s <= 1 ? 0 : s - 1)), 1000);
+    return () => clearInterval(id);
+  }, [lockSeconds]);
 
   useEffect(() => {
     setMounted(true);
@@ -242,6 +253,10 @@ export default function LoginPage() {
   };
 
   const handleLogin = async () => {
+    if (lockSeconds > 0) {
+      setError(`Too many attempts. Try again in ${lockSeconds}s.`);
+      return;
+    }
     if (!email || !password) {
       setError("Please enter your email and password.");
       return;
@@ -257,6 +272,11 @@ export default function LoginPage() {
         signInError.message.toLowerCase().includes("invalid") ||
         signInError.message.toLowerCase().includes("credentials") ||
         signInError.status === 400;
+
+      // Count failed attempts; lock the button for 60s after 5.
+      const nextAttempts = attempts + 1;
+      setAttempts(nextAttempts);
+      if (nextAttempts >= 5) { setLockSeconds(60); setAttempts(0); }
 
       if (isInvalidCreds) {
         // Resolve account existence via a SECURITY DEFINER RPC — the old direct
@@ -891,7 +911,7 @@ export default function LoginPage() {
             )}
 
             {/* Submit */}
-            <button type="submit" className="lr-submit" disabled={loading}>
+            <button type="submit" className="lr-submit" disabled={loading || lockSeconds > 0}>
               <div className="lr-shimmer" />
               {loading ? (
                 <span className="lr-dots">
@@ -899,6 +919,8 @@ export default function LoginPage() {
                   <span>·</span>
                   <span>·</span>
                 </span>
+              ) : lockSeconds > 0 ? (
+                `TRY AGAIN IN ${lockSeconds}s`
               ) : (
                 "SIGN IN"
               )}

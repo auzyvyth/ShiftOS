@@ -325,6 +325,11 @@ export default function DealerOnboarding() {
         options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
       });
       if (error) throw error;
+      // Empty identities array (no error) = email already registered.
+      if (data?.user && (data.user.identities?.length ?? 0) === 0) {
+        setErr('An account with this email already exists. Please log in instead.');
+        return;
+      }
       if (data?.user) {
         setUserId(data.user.id);
         setUserEmail(data.user.email);

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
+import { normalizePhone } from "../lib/phone";
 import CarForm from "../components/CarForm";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import SalesmanLiteHelp from "../components/SalesmanLiteHelp";
@@ -76,13 +77,8 @@ function useWindowSize() {
 }
 
 // Canonical Malaysian phone form (digits, leading 60) — matches the app's own
-// wa.me/tel link normalization. Used so auto-converted leads dedup reliably
-// regardless of whether the enquiry stored "0112…", "+60112…" or "60112…".
-const normalizePhone = (p) => {
-  const s = (p || "").replace(/\D/g, "");
-  if (!s) return "";
-  return s.startsWith("6") ? s : "6" + s;
-};
+// normalizePhone imported from ../lib/phone (canonical 60… form, matches the DB
+// normalize trigger) so auto-converted leads dedup reliably regardless of input.
 
 const timeAgo = (iso) => {
   if (!iso) return "—";
@@ -800,7 +796,7 @@ export default function SalesmanLite() {
             if (!row.buyer_phone && !row.listing_id) return;
             const phone = normalizePhone(row.buyer_phone);
             if (phone) {
-              const { data: dupLead } = await supabase.from("leads").select("id").eq("salesman_id", uid).is("dealer_id", null).eq("phone", phone).limit(1);
+              const { data: dupLead } = await supabase.from("leads").select("id").eq("salesman_id", uid).eq("phone", phone).limit(1);
               if (!dupLead || !dupLead.length) {
                 const { data: newLead, error: rtInsertErr } = await supabase.from("leads").insert({
                   salesman_id: uid, dealer_id: null,
@@ -866,7 +862,7 @@ export default function SalesmanLite() {
                   toast("New booking!", { description: payload.new.buyer_name || "New appointment" });
                   const phone = normalizePhone(payload.new.buyer_phone);
                   if (phone) {
-                    const { data: existing } = await supabase.from("leads").select("id").eq("salesman_id", uid).is("dealer_id", null).eq("phone", phone).limit(1);
+                    const { data: existing } = await supabase.from("leads").select("id").eq("salesman_id", uid).eq("phone", phone).limit(1);
                     if (!existing || !existing.length) {
                       const { data: newLead } = await supabase.from("leads").insert({
                         salesman_id: uid, dealer_id: null,
@@ -1352,7 +1348,7 @@ export default function SalesmanLite() {
     const phone = normalizePhone(apt.buyer_phone);
     if (!phone) return;
     const { data: existingRows } = await supabase
-      .from("leads").select("id, stage").eq("salesman_id", userId).is("dealer_id", null).eq("phone", phone).limit(1);
+      .from("leads").select("id, stage").eq("salesman_id", userId).eq("phone", phone).limit(1);
     const existing = existingRows && existingRows[0];
     if (existing) {
       const curIdx = LEAD_STAGES.indexOf(existing.stage);
@@ -1377,7 +1373,7 @@ export default function SalesmanLite() {
     const phone = normalizePhone(enq.buyer_phone);
     if (!phone) return;
     const { data: existingRows } = await supabase
-      .from("leads").select("id").eq("salesman_id", userId).is("dealer_id", null).eq("phone", phone).limit(1);
+      .from("leads").select("id").eq("salesman_id", userId).eq("phone", phone).limit(1);
     if (!existingRows || !existingRows.length) {
       const { data: newLead } = await supabase.from("leads").insert({
         salesman_id: userId, dealer_id: null,

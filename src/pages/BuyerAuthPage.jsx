@@ -49,6 +49,10 @@ export default function BuyerAuthPage() {
   const [showForgot, setShowForgot] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  // Google/OTP-only accounts have no password — offer a magic link instead of reset.
+  const [showMagic, setShowMagic] = useState(false);
+  const [magicSent, setMagicSent] = useState(false);
+  const [magicLoading, setMagicLoading] = useState(false);
 
   useEffect(() => {
     document.title = "Sign in — XDrive";
@@ -67,7 +71,17 @@ export default function BuyerAuthPage() {
     window.location.href = `${base}${route}`;
   };
 
-  const switchMode = (m) => { setMode(m); setError(""); setConfirmSent(false); setShowForgot(false); };
+  const switchMode = (m) => { setMode(m); setError(""); setConfirmSent(false); setShowForgot(false); setShowMagic(false); setMagicSent(false); };
+
+  const sendMagicLink = async () => {
+    setMagicLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: { emailRedirectTo: `${base}/auth/callback` },
+    });
+    setMagicLoading(false);
+    if (error) setError(error.message); else setMagicSent(true);
+  };
 
   const handleGoogle = async () => {
     markBuyerIntent(); // OAuth callback materialises a buyer profile -> /account
@@ -80,9 +94,25 @@ export default function BuyerAuthPage() {
 
   const handleSignIn = async () => {
     if (!email || !password) { setError("Please enter your email and password."); return; }
-    setError(""); setLoading(true);
+    setError(""); setShowForgot(false); setShowMagic(false); setLoading(true);
     const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    if (error) { setError("Incorrect email or password."); setLoading(false); return; }
+    if (error) {
+      // Distinguish "no account" vs "wrong password" and offer the right recovery:
+      // a password user gets a reset link; a Google/OTP-only user gets a magic link.
+      const { data: rows } = await supabase.rpc("auth_account_status", { p_email: email.trim().toLowerCase() });
+      const st = Array.isArray(rows) ? rows[0] : rows;
+      if (st?.account_exists && !st?.has_password) {
+        setError("This email signed up with Google. Use “Continue with Google”, or get a magic link below.");
+        setShowMagic(true);
+      } else if (st?.account_exists) {
+        setError("Wrong password. Try again or reset it below.");
+        setShowForgot(true);
+      } else {
+        setError("No account found with that email. Check for typos or create one.");
+      }
+      setLoading(false);
+      return;
+    }
     await ensureBuyerProfile(data.user);
     await redirectByRole(data.user);
   };
@@ -97,6 +127,12 @@ export default function BuyerAuthPage() {
       options: { emailRedirectTo: `${base}/auth/callback`, data: { account_type: "buyer" } },
     });
     if (error) { setError(error.message); setLoading(false); return; }
+    // Empty identities array (no error) = email already registered.
+    if (data?.user && (data.user.identities?.length ?? 0) === 0) {
+      setError("An account with this email already exists. Please log in instead.");
+      setLoading(false);
+      return;
+    }
     if (data.session) {
       await ensureBuyerProfile(data.user);
       window.location.href = `${base}/account`;
@@ -320,6 +356,21 @@ export default function BuyerAuthPage() {
                     <p className="ba-reset-hint">We'll send a reset link to the email address you entered above.</p>
                     <button type="button" className="ba-reset-btn" onClick={handleForgot} disabled={resetLoading}>
                       {resetLoading ? "SENDING…" : "SEND RESET LINK"}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+
+            {showMagic && !isSignup && (
+              <div className="ba-reset">
+                {magicSent ? (
+                  <p className="ba-success"><Check size={13} /> Magic link sent — check your inbox.</p>
+                ) : (
+                  <>
+                    <p className="ba-reset-hint">No password on this account — we'll email you a one-tap magic link to sign in.</p>
+                    <button type="button" className="ba-reset-btn" onClick={sendMagicLink} disabled={magicLoading}>
+                      {magicLoading ? "SENDING…" : "EMAIL ME A MAGIC LINK"}
                     </button>
                   </>
                 )}

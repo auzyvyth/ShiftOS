@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { handoffSuffix } from '../lib/authHandoff';
 
 const STRONG_PW = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
@@ -25,9 +26,10 @@ async function redirectByRole(session, navigate) {
 
   if (role === 'dealer' || role === 'superadmin') {
     if (subdomain) {
-      const accessToken = session.access_token;
-      const refreshToken = session.refresh_token;
-      window.location.href = `https://${subdomain}.xdrive.my?access_token=${accessToken}&refresh_token=${refreshToken}`;
+      // Carry the session across to the subdomain via the hash-fragment handoff
+      // (same mechanism useTenant consumes). Query-string tokens were never read
+      // by the subdomain (so the dealer landed logged out) and leak via referer.
+      window.location.href = `https://${subdomain}.xdrive.my/dashboard${handoffSuffix(session)}`;
     } else {
       navigate('/dashboard');
     }

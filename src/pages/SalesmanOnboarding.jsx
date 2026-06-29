@@ -301,6 +301,13 @@ export default function SalesmanOnboarding() {
         options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
       });
       if (error) throw error;
+      // Supabase returns a user with an empty identities array (and no error)
+      // when the email is already registered — anti-enumeration. Detect it so we
+      // don't silently advance into a broken signup.
+      if (data?.user && (data.user.identities?.length ?? 0) === 0) {
+        setErr('An account with this email already exists. Please log in instead.');
+        return;
+      }
       if (data?.user) {
         setUserId(data.user.id);
         setUserEmail(data.user.email);

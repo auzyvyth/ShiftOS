@@ -8,6 +8,9 @@ import { supabase } from "../supabaseClient";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { usePermissions } from "../hooks/usePermissions";
+import { hasFeature } from "../lib/permissions";
+import OutreachHub from "../components/crm/OutreachHub";
+import CustomersTab from "../components/crm/CustomersTab";
 import { usePresence } from "../hooks/usePresence";
 import PostSaleBoard from "../components/postsale/PostSaleBoard";
 import PostSaleChecklist from "../components/postsale/PostSaleChecklist";
@@ -52,6 +55,8 @@ import {
  Banknote,
  CreditCard,
  ClipboardCheck,
+ Megaphone,
+ UserCheck,
  Pencil,
  Trash2,
  Search,
@@ -126,13 +131,30 @@ function useWindowSize() {
  return w;
 }
 
+// Lazy-load JSZip from CDN once (same as TikTok Studio) for the photo-zip download.
+let _zipPromise = null;
+function loadJSZip() {
+ if (!_zipPromise)
+   _zipPromise = new Promise((res, rej) => {
+     const s = document.createElement("script");
+     s.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+     s.onload = () => res(window.JSZip);
+     s.onerror = rej;
+     document.head.appendChild(s);
+   });
+ return _zipPromise;
+}
+
 export default function SalesmanPanel() {
  const navigate = useNavigate();
  const { t } = useTranslation();
  const redirectByRole = useRoleRedirect("salesman");
 
  const [profile, setProfile] = useState(null);
- const { can: canPerm } = usePermissions(profile);
+ const { can: canPerm, permissions } = usePermissions(profile);
+ // Owner-granted extra: Outreach Hub (scoped to this salesman's own leads).
+ const showOutreach = hasFeature('salesman', 'outreach', permissions);
+ const showCustomers = hasFeature('salesman', 'customers', permissions);
  // Broadcast presence on the dealer's shared channel so the dealer dashboard
  // sees this salesman as live (keyed on the dealer's profile id).
  usePresence(profile?.dealer_id || profile?.id || null);
@@ -458,8 +480,12 @@ export default function SalesmanPanel() {
  return;
  }
 
- if (profileData.plan === 'salesman_lite' && !profileData.dealer_id) {
- navigate('/salesman-lite', { replace: true });
+ // SalesmanPanel is for LINKED salesmen only (dealer_id set — the dealer owns
+ // the listings). Any solo salesman (no dealer_id) belongs on their own panel:
+ // Premium if salesman_full, otherwise Lite. Keeps the two from overlapping so
+ // one account never sees both surfaces.
+ if (!profileData.dealer_id) {
+ navigate(profileData.plan === 'salesman_full' ? '/salesman-premium' : '/salesman-lite', { replace: true });
  return;
  }
 
@@ -1183,30 +1209,52 @@ Rules:
  }
  };
 
- // Download a listing's photos straight to the device so the salesman can
- // post them on WhatsApp/socials without opening the dealer PDF.
+ // Download a listing's photos as a SINGLE zip so the salesman gets one file
+ // instead of a flurry of one-by-one downloads (same pattern as TikTok Studio).
  const downloadListingImages = async (car) => {
  const imgs = Array.isArray(car.images) ? car.images.filter(Boolean) : [];
  if (imgs.length === 0) { toast.error("No images on this listing"); return; }
- toast.message(`Downloading ${imgs.length} photo${imgs.length > 1 ? "s" : ""}…`);
  const base = [car.year, car.brand, car.model].filter(Boolean).join("-").replace(/\s+/g, "-") || "car";
- let ok = 0;
- for (let i = 0; i < imgs.length; i++) {
+ // Single image: skip the zip, just save it.
+ if (imgs.length === 1) {
    try {
-     const resp = await fetch(imgs[i]);
+     const resp = await fetch(imgs[0]);
      const blob = await resp.blob();
      const url = URL.createObjectURL(blob);
      const a = document.createElement("a");
-     a.href = url;
      const ext = ((blob.type.split("/")[1] || "jpg").replace("jpeg", "jpg")).split("+")[0];
-     a.download = `${base}-${i + 1}.${ext}`;
+     a.href = url; a.download = `${base}.${ext}`;
      document.body.appendChild(a); a.click(); a.remove();
      URL.revokeObjectURL(url);
-     ok++;
-   } catch { /* skip a failed image */ }
+     toast.success("Saved photo");
+   } catch { toast.error("Couldn't download image"); }
+   return;
  }
- if (ok === 0) toast.error("Couldn't download images");
- else toast.success(`Saved ${ok} photo${ok > 1 ? "s" : ""}`);
+ const tId = toast.loading(`Zipping ${imgs.length} photos…`);
+ try {
+   const JSZip = await loadJSZip();
+   const zip = new JSZip();
+   let ok = 0;
+   await Promise.all(imgs.map(async (src, i) => {
+     try {
+       const resp = await fetch(src);
+       const blob = await resp.blob();
+       const ext = ((blob.type.split("/")[1] || "jpg").replace("jpeg", "jpg")).split("+")[0];
+       zip.file(`${base}-${i + 1}.${ext}`, blob);
+       ok++;
+     } catch { /* skip a failed image */ }
+   }));
+   if (ok === 0) { toast.error("Couldn't download images", { id: tId }); return; }
+   const out = await zip.generateAsync({ type: "blob" });
+   const url = URL.createObjectURL(out);
+   const a = document.createElement("a");
+   a.href = url; a.download = `${base}-photos.zip`;
+   document.body.appendChild(a); a.click(); a.remove();
+   URL.revokeObjectURL(url);
+   toast.success(`Saved ${ok} photo${ok > 1 ? "s" : ""} as zip`, { id: tId });
+ } catch {
+   toast.error("Couldn't build zip", { id: tId });
+ }
  };
 
  const handleListingCopy = (car, type) => {
@@ -6958,7 +7006,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  },
  ].map(({ tab, label, icon, badge }) => {
  const isMore = tab === "__more";
- const moreTabs = ["analytics", "enquiries", "loans", "handover", "team", "settings", "help"];
+ const moreTabs = ["analytics", "enquiries", "loans", "handover", "outreach", "customers", "team", "settings", "help"];
  const isActive = isMore ? moreTabs.includes(activeTab) : activeTab === tab;
  const moreIcon = isMore ? <Plus size={18} /> : icon;
  return (
@@ -7199,6 +7247,18 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  icon: <ClipboardCheck style={{ width: 14, height: 14, flexShrink: 0 }} />,
  badge: null,
  },
+ ...(showOutreach ? [{
+ tab: "outreach",
+ label: "Outreach",
+ icon: <Megaphone style={{ width: 14, height: 14, flexShrink: 0 }} />,
+ badge: null,
+ }] : []),
+ ...(showCustomers ? [{
+ tab: "customers",
+ label: "Customers",
+ icon: <UserCheck style={{ width: 14, height: 14, flexShrink: 0 }} />,
+ badge: null,
+ }] : []),
  ].map(({ tab, label, icon, badge }) => (
  <button
  key={tab}
@@ -7700,6 +7760,12 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  {activeTab === "enquiries" && renderEnquiries()}
  {activeTab === "loans" && renderLoans()}
  {activeTab === "handover" && renderHandover()}
+ {activeTab === "outreach" && showOutreach && (
+ <OutreachHub dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} />
+ )}
+ {activeTab === "customers" && showCustomers && (
+ <CustomersTab dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} />
+ )}
  {activeTab === "team" && renderTeam()}
  {activeTab === "settings" && renderSettings()}
  {activeTab === "help" && <SalesmanPanelHelp />}
