@@ -234,6 +234,7 @@ const HDR_CSS = `
     .hdr-desktop { display: none !important; }
     .hdr-mobile-only { display: flex !important; }
     .hdr-nav { display: none !important; }
+    .hdr-root { overflow: hidden; }
   }
 
   /* ── Mobile panel — exact same glass as header pill ── */
