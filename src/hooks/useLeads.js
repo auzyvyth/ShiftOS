@@ -38,6 +38,10 @@ export function useLeads() {
       .from('leads')
       .select(SELECT_QUERY)
       .eq('is_deleted', false)
+      // 'enquiry' is the pre-pipeline stage (raw WhatsApp enquiries surfaced in
+      // the Outreach tab). Keep them out of the pipeline board until qualified,
+      // so the funnel isn't polluted with un-vetted tyre-kickers.
+      .neq('stage', 'enquiry')
       .order('created_at', { ascending: false });
     if (dealerId) query = query.eq('dealer_id', dealerId);
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Bug, X } from "lucide-react";
 
 const SUPPORT_WHATSAPP = "60174155191";
@@ -64,7 +65,7 @@ export default function ReportBugButton({ context = "", userLabel = "", variant 
         </button>
       )}
 
-      {open && (
+      {open && createPortal(
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center px-4"
           style={{ background: "rgba(0,0,0,0.6)" }}
@@ -114,7 +115,8 @@ export default function ReportBugButton({ context = "", userLabel = "", variant 
               Send via WhatsApp
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

@@ -5,10 +5,45 @@
 
 // Roles whose capabilities the owner can configure.
 export const CONFIGURABLE_ROLES = [
-  { value: 'salesman', label: 'Salesman' },
-  { value: 'manager',  label: 'Manager'  },
-  { value: 'admin',    label: 'Admin'    },
+  { value: 'salesman',   label: 'Salesman'   },
+  { value: 'manager',    label: 'Manager'    },
+  { value: 'admin',      label: 'Admin'      },
+  { value: 'accountant', label: 'Accountant' },
+  { value: 'fi_officer', label: 'F&I Officer' },
 ];
+
+// ─── Grantable EXTRA features (dealer-dashboard features the owner can lend to a
+// role's own panel) ────────────────────────────────────────────────────────────
+// A role's NATIVE tabs are always present and are NOT listed here. These are the
+// optional add-ons the owner can switch ON for a role — imported into that role's
+// own panel, scoped to the staff member's id (e.g. own leads only) so it stays
+// secure and attributable by name. Capability key = `feat_<id>`. Default OFF.
+export const ROLE_EXTRAS = {
+  salesman: [
+    { id: 'outreach',  label: 'Outreach Hub', description: "Lead liveliness + guided WhatsApp campaign, scoped to the salesman's own leads." },
+    { id: 'customers', label: 'Customers',    description: "Post-sale buyer records (road tax / insurance expiry, service plans) for the salesman's own won deals — shared with the dealer dashboard." },
+  ],
+  manager: [
+    { id: 'outreach', label: 'Outreach Hub', description: 'Lead liveliness + guided WhatsApp campaign across the dealership.' },
+  ],
+};
+
+export function roleExtras(role) {
+  return ROLE_EXTRAS[role] || [];
+}
+
+// Extras default OFF — the owner must explicitly grant them.
+export function defaultTabAccessForRole(role) {
+  const map = {};
+  for (const f of roleExtras(role)) map[`feat_${f.id}`] = false;
+  return map;
+}
+
+// Has the owner granted a role this extra feature? Owners implicitly have all.
+export function hasFeature(role, featureId, permissions) {
+  if (isFullAccessRole(role)) return true;
+  return permissions?.[`feat_${featureId}`] === true;
+}
 
 // Capability registry. Each capability declares which roles it applies to and
 // its default value when no stored override exists.
@@ -71,6 +106,8 @@ export function defaultPermissionsForRole(role) {
   for (const cap of CAPABILITIES) {
     if (cap.roles.includes(role)) map[cap.key] = cap.default;
   }
+  // Grantable extras default OFF.
+  if (ROLE_EXTRAS[role]) Object.assign(map, defaultTabAccessForRole(role));
   return map;
 }
 
@@ -84,6 +121,11 @@ export function resolvePermissions(role, stored) {
     if (cap.roles.includes(role) && typeof stored[cap.key] === 'boolean') {
       out[cap.key] = stored[cap.key];
     }
+  }
+  // Honour stored feat_* overrides for this role's grantable extras.
+  for (const f of roleExtras(role)) {
+    const key = `feat_${f.id}`;
+    if (typeof stored[key] === 'boolean') out[key] = stored[key];
   }
   return out;
 }

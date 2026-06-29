@@ -33,6 +33,21 @@ function isChunkLoadError(msg = '') {
   );
 }
 
+// Cache-busting reload. A plain location.reload() is not enough in aggressively
+// caching in-app webviews (Facebook/Instagram): they re-serve the stale
+// index.html from cache, which still references the missing chunk hash, so the
+// page crashes again. Appending a changing query param forces the webview to
+// bypass its HTTP cache for the document request.
+function hardReload() {
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.set('_r', Date.now().toString());
+    window.location.replace(url.toString());
+  } catch {
+    window.location.reload();
+  }
+}
+
 // One-shot guard: never reload more than once per short window, so a chunk that
 // genuinely cannot load can't trap the page in an infinite reload loop.
 function reloadOnceForChunk() {
@@ -40,7 +55,29 @@ function reloadOnceForChunk() {
   const last = Number(sessionStorage.getItem(KEY) || 0);
   if (Date.now() - last < 10000) return;
   sessionStorage.setItem(KEY, String(Date.now()));
-  window.location.reload();
+  hardReload();
+}
+
+// Branded fallback with a working recovery action. The previous bare-text
+// fallback was a dead end when the auto-reload guard had already fired (the
+// user just saw "Something went wrong" with no way forward). The button does a
+// cache-busting reload that ignores the 10s guard.
+function ErrorFallback() {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '24px 20px', background: '#080C14', color: '#fff', fontFamily: "'DM Sans', sans-serif", textAlign: 'center' }}>
+      <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 52, color: '#dc2626', letterSpacing: 2, lineHeight: 1, margin: 0 }}>OOPS</p>
+      <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Something went wrong</h1>
+      <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', maxWidth: 320, margin: 0 }}>
+        The page failed to load. This usually fixes itself with a reload.
+      </p>
+      <button
+        onClick={hardReload}
+        style={{ marginTop: 8, padding: '12px 28px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+      >
+        Reload
+      </button>
+    </div>
+  );
 }
 
 // Vite's own signal when a dynamically imported module fails to preload.
@@ -84,7 +121,7 @@ if ('serviceWorker' in navigator) {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <Sentry.ErrorBoundary
-    fallback={<p>Something went wrong. Please refresh.</p>}
+    fallback={<ErrorFallback />}
     onError={(error) => {
       // Lazy-route failures are caught here (not as unhandledrejection), so the
       // reload must be triggered from the boundary too.

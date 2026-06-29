@@ -20,6 +20,7 @@ import {
  MessageSquare,
  Link as LinkIcon,
  GitMerge,
+ Megaphone,
  AlertCircle,
  CheckCircle2,
  Trash2,
@@ -57,6 +58,9 @@ import {
  Clock,
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
+import { usePermissions } from "../hooks/usePermissions";
+import { hasFeature } from "../lib/permissions";
+import OutreachHub from "../components/crm/OutreachHub";
 import UpgradeBanner from "../components/ai/UpgradeBanner";
 import AiLoadingState from "../components/ai/AiLoadingState";
 import AiQuotaBadge from "../components/ai/AiQuotaBadge";
@@ -194,6 +198,9 @@ export default function SalesmanPremium() {
  const [userId, setUserId] = useState(null);
  const [loading, setLoading] = useState(true);
  const isPremium = profile?.plan === 'salesman_full';
+ const { permissions } = usePermissions(profile);
+ // Owner-granted extra: Outreach Hub (scoped to this salesman's own leads).
+ const showOutreach = hasFeature('salesman', 'outreach', permissions);
  const [activeTab, setActiveTab] = useState("dashboard");
  const [newBookingsCount, setNewBookingsCount] = useState(0);
 
@@ -418,8 +425,14 @@ export default function SalesmanPremium() {
  return;
  }
 
+ // Premium is for SOLO full salesmen only. Linked salesmen (dealer_id set) go
+ // to the dealer SalesmanPanel; solo non-full plans go to Lite.
  if (profileData.dealer_id) {
  navigate("/salesman", { replace: true });
+ return;
+ }
+ if (profileData.plan !== 'salesman_full') {
+ navigate("/salesman-lite", { replace: true });
  return;
  }
 
@@ -1223,6 +1236,11 @@ export default function SalesmanPremium() {
  label: "Loans",
  icon: <Banknote style={{ width: 14, height: 14 }} />,
  },
+ ...(showOutreach ? [{
+ tab: "outreach",
+ label: "Outreach",
+ icon: <Megaphone style={{ width: 14, height: 14 }} />,
+ }] : []),
  {
  tab: "merge",
  label: profile?.dealer_id? "My Dealership" : "Join Dealership",
@@ -1257,6 +1275,7 @@ export default function SalesmanPremium() {
  },
  { tab: "analytics", label: "Analytics", icon: <TrendingUp size={18} /> },
  { tab: "loans", label: "Loans", icon: <Banknote size={18} /> },
+ ...(showOutreach ? [{ tab: "outreach", label: "Outreach", icon: <Megaphone size={18} /> }] : []),
  { tab: "merge", label: profile?.dealer_id? "Dealer" : "Merge", icon: <GitMerge size={18} /> },
  { tab: "settings", label: "Settings", icon: <Settings size={18} /> },
  ];
@@ -6675,6 +6694,9 @@ export default function SalesmanPremium() {
  {activeTab === "bookings" && renderBookings()}
  {activeTab === "analytics" && renderAnalytics()}
  {activeTab === "loans" && renderLoans()}
+ {activeTab === "outreach" && showOutreach && (
+ <OutreachHub dealerId={profile?.dealer_id} salesmanId={userId} />
+ )}
  {activeTab === "merge" && renderMerge()}
  {activeTab === "settings" && renderSettings()}
  </div>

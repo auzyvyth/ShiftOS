@@ -103,6 +103,17 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
 
   useEffect(() => { setImgLoaded(false); }, [safeIdx]);
 
+  // weserv.nl (the CDN resizer) occasionally stalls instead of erroring —
+  // the <img> never fires onError, so the shimmer placeholder spins forever.
+  // Fall back to the original Supabase URL if it hasn't loaded within 4s.
+  const [cdnTimedOut, setCdnTimedOut] = useState(false);
+  useEffect(() => {
+    setCdnTimedOut(false);
+    if (!inView || imgLoaded) return;
+    const t = setTimeout(() => setCdnTimedOut(true), 4000);
+    return () => clearTimeout(t);
+  }, [inView, safeIdx, imgLoaded]);
+
   const slideBy = (dx) => {
     if (!hasGallery || Math.abs(dx) <= 36) return false;
     setImgIdx(i => {
@@ -185,7 +196,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
             {inView && (
               <img
                 key={safeIdx}
-                src={image}
+                src={cdnTimedOut && rawImage ? rawImage : image}
                 alt={`${year} ${brand} ${model}`}
                 loading="eager"
                 decoding="async"

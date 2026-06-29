@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { X, MessageCircle, Save, FileText, PlusCircle, Trash2, Plus, Bell, MapPin, Calendar, Phone, User } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import LeadsPage from "./LeadsPage";
+import OutreachHub from "../components/crm/OutreachHub";
 
 // ─── Shared style tokens (mirror DashboardPage) ────────────────────────────────
 const T = {
@@ -2198,9 +2199,13 @@ export default function CRMPanel({ userId, listings = [], salesmen = [] }) {
         <button className={`crm-tab${crmTab === 'bookings' ? ' active' : ''}`} onClick={() => setCrmTab('bookings')}>
           Appointments
         </button>
+        <button className={`crm-tab${crmTab === 'outreach' ? ' active' : ''}`} onClick={() => setCrmTab('outreach')}>
+          Outreach
+        </button>
       </div>
       {crmTab === 'leads'    && <LeadsPage />}
       {crmTab === 'bookings' && <BookingsTab userId={userId} listings={listings} salesmen={salesmen} />}
+      {crmTab === 'outreach' && <OutreachHub dealerId={userId} />}
     </div>
   );
 }

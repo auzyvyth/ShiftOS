@@ -88,6 +88,17 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
   // Reset shimmer whenever the visible slide changes.
   useEffect(() => { setImgLoaded(false); }, [safeIdx]);
 
+  // weserv.nl (the CDN resizer) occasionally stalls instead of erroring —
+  // the <img> never fires onError, so the shimmer placeholder spins forever.
+  // Fall back to the original Supabase URL if it hasn't loaded within 4s.
+  const [cdnTimedOut, setCdnTimedOut] = useState(false);
+  useEffect(() => {
+    setCdnTimedOut(false);
+    if (imgLoaded) return;
+    const t = setTimeout(() => setCdnTimedOut(true), 4000);
+    return () => clearTimeout(t);
+  }, [safeIdx, imgLoaded]);
+
   const slideBy = (dx) => {
     if (!hasGallery || Math.abs(dx) <= 36) return false;
     setImgIdx((i) => {
@@ -324,7 +335,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
               )}
               <img
                 key={safeIdx}
-                src={image}
+                src={cdnTimedOut && rawImage ? rawImage : image}
                 alt={`${year} ${brand} ${model}`}
                 loading={priority ? 'eager' : 'lazy'}
                 fetchPriority={priority ? 'high' : 'auto'}

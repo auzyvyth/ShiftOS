@@ -72,10 +72,11 @@ export default function PostSaleBoard({ dealerId, salesmanId = null, dark = fals
   const visible = (hideDone ? deals.filter((d) => progressMap[d.id] !== 100) : deals)
     .slice()
     .sort((a, b) => {
-      // Active deals first, oldest (most overdue) at the top; done deals sink.
+      // Active deals first; among them the most RECENT on top so newly added
+      // customers surface immediately. Done deals sink to the bottom.
       const aDone = progressMap[a.id] === 100, bDone = progressMap[b.id] === 100;
       if (aDone !== bDone) return aDone ? 1 : -1;
-      return (daysSince(b.updated_at) || 0) - (daysSince(a.updated_at) || 0);
+      return (daysSince(a.updated_at) || 0) - (daysSince(b.updated_at) || 0);
     });
 
   const overdueCount = deals.filter(
