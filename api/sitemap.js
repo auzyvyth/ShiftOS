@@ -68,13 +68,26 @@ function buildSitemap(baseUrl, staticRoutes, cars, isSubdomain) {
 </urlset>`;
 }
 
+function getSupabaseHeaders() {
+  const url = SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    throw new Error("Missing Supabase env: SUPABASE_SERVICE_ROLE_KEY / SUPABASE_URL / SUPABASE_SERVICE_KEY");
+  }
+  return {
+    "apikey": key,
+    "Authorization": `Bearer ${key}`,
+  };
+}
+
 async function fetchJson(url) {
   const res = await fetch(url, {
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-    },
+    headers: getSupabaseHeaders(),
   });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Supabase fetch failed ${res.status}: ${text}`);
+  }
   const data = await res.json();
   return Array.isArray(data) ? data : [];
 }
