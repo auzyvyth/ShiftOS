@@ -39,7 +39,19 @@ export default function AuthConfirmPage() {
         .eq('id', session.user.id)
         .maybeSingle();
 
-      if (!profile || ((profile.role === 'dealer' || profile.role === 'superadmin') && profile.onboarding_complete === false)) {
+      if (!profile) {
+        // Brand new account — resume whichever onboarding flow it started in
+        // (flag saved before signUp() since there's no profile row yet to key off).
+        const savedPlan = sessionStorage.getItem('ob_plan_slug');
+        if (savedPlan) sessionStorage.removeItem('ob_plan_slug');
+        if (savedPlan === 'lite' || savedPlan === 'premium') {
+          navigate(`/salesman-onboarding/${savedPlan}`, { replace: true });
+        } else if (savedPlan === 'starter' || savedPlan === 'growth' || savedPlan === 'pro') {
+          navigate(`/dealer-onboarding/${savedPlan}`, { replace: true });
+        } else {
+          navigate(savedPlan ? `/onboarding/${savedPlan}` : '/onboarding', { replace: true });
+        }
+      } else if ((profile.role === 'dealer' || profile.role === 'superadmin') && profile.onboarding_complete === false) {
         navigate('/onboarding', { replace: true });
       } else if (profile.role === 'salesman') {
         navigate(profile.dealer_id ? '/salesman' : '/salesman-lite', { replace: true });
