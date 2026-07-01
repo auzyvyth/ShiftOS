@@ -166,7 +166,19 @@ const STAGE_WEIGHT = {
   deposit_taken: 6,
 };
 
+const TERMINAL_STAGES = new Set(["won", "closed_won", "lost", "closed_lost"]);
+
 const getHeatScore = (lead) => {
+  if (TERMINAL_STAGES.has(lead.stage)) {
+    const isWon = lead.stage === "won" || lead.stage === "closed_won";
+    return {
+      score: 0,
+      icon: isWon ? CheckCircle : Snowflake,
+      label: isWon ? "won" : "lost",
+      color: isWon ? "#22c55e" : "#6b7280",
+      isTerminal: true,
+    };
+  }
   const stageWeight = STAGE_WEIGHT[lead.stage] || 0;
   const daysStale = lead.updated_at
     ? Math.floor((Date.now() - new Date(lead.updated_at).getTime()) / 86400000)

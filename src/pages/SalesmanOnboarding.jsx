@@ -355,8 +355,14 @@ export default function SalesmanOnboarding() {
         const { error } = await supabase.from('profiles').upsert({
           id: userId,
           full_name: form.fullName.trim(),
+          phone: normalizePhone(form.phone),
+          whatsapp_number: normalizePhone(form.phone),
           ic_number: form.icNumber.replace(/-/g, ''),
           role: 'salesman',
+          state: form.state || null,
+          city: form.city || null,
+          slug: form.slug || null,
+          dealership: (form.brand || form.fullName).trim(),
           onboarding_complete: false,
         }, { onConflict: 'id' });
         if (error) throw error;
@@ -396,6 +402,7 @@ export default function SalesmanOnboarding() {
         email: userEmail,
         full_name: form.fullName.trim(),
         phone: normalizePhone(form.phone),
+        whatsapp_number: normalizePhone(form.phone),
         ic_number: form.icNumber.replace(/-/g, ''),
         role: 'salesman',
         slug: form.slug,
