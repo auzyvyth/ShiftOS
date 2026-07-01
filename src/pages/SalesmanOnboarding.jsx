@@ -204,6 +204,8 @@ export default function SalesmanOnboarding() {
   const [userEmail, setUserEmail] = useState('');
   const [legalScrolled, setLegalScrolled] = useState(false);
   const [showResumeChoice, setShowResumeChoice] = useState(false);
+  const [awaitingConfirm, setAwaitingConfirm] = useState(false);
+  const [resendMsg, setResendMsg] = useState('');
   const [done, setDone] = useState(false);
   const [slugTaken, setSlugTaken] = useState(false);
   const [slugChecking, setSlugChecking] = useState(false);
@@ -295,6 +297,11 @@ export default function SalesmanOnboarding() {
     if (!pwValid) { setErr('Password needs 8+ characters with an uppercase, lowercase, number and symbol.'); return; }
     setLoading(true);
     try {
+      // Persist onboarding context so the post-confirmation callback (which runs
+      // in a fresh page load, no React state) knows to resume salesman onboarding
+      // instead of defaulting to the dealer flow.
+      sessionStorage.setItem('ob_plan_slug', tier);
+      sessionStorage.setItem('ob_account_type', 'salesman');
       const { data, error } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
@@ -308,6 +315,13 @@ export default function SalesmanOnboarding() {
         setErr('An account with this email already exists. Please log in instead.');
         return;
       }
+      // Email confirmation is required — Supabase returns a user but no session,
+      // so there's no JWT to write the profile row with yet. Wait for the click.
+      if (data?.user && !data.session) {
+        setUserEmail(data.user.email);
+        setAwaitingConfirm(true);
+        return;
+      }
       if (data?.user) {
         setUserId(data.user.id);
         setUserEmail(data.user.email);
@@ -317,6 +331,17 @@ export default function SalesmanOnboarding() {
       setErr(e.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const resendConfirmation = async () => {
+    setResendMsg('');
+    try {
+      const { error } = await supabase.auth.resend({ type: 'signup', email: form.email });
+      if (error) throw error;
+      setResendMsg('Sent. Check your inbox (and spam folder).');
+    } catch (e) {
+      setResendMsg(e.message);
     }
   };
 
@@ -421,6 +446,32 @@ export default function SalesmanOnboarding() {
           <p style={{ color: '#E8EDF5', fontWeight: 600, fontSize: 14, marginBottom: 36, textAlign: 'center', wordBreak: 'break-all' }}>{userEmail}</p>
           <button className="eo-btn" style={{ marginTop: 0 }} onClick={() => { setShowResumeChoice(false); setStep(2); }}>CONTINUE SIGN-UP</button>
           <button className="eo-ghost" onClick={resetAndStart}>USE A DIFFERENT ACCOUNT</button>
+          <p style={{ textAlign: 'center', marginTop: 24, fontSize: 12, color: 'rgba(255,255,255,0.2)' }}>
+            <a href="/login" style={{ color: 'rgba(220,38,38,0.5)', textDecoration: 'none' }}>Sign in to existing account</a>
+          </p>
+        </div>
+      </div>
+    </>
+  );
+
+  if (awaitingConfirm) return (
+    <>
+      <style>{CSS}</style>
+      <div className="eo-resume-root">
+        <div style={{ width: 'min(420px, 90%)', padding: '0 20px' }}>
+          <div className="eo-logo" style={{ justifyContent: 'center', marginBottom: 32 }}>
+            <div className="eo-logo-icon">X</div>
+            <span className="eo-logo-text">SHIFTOS</span>
+          </div>
+          <p className="eo-eyebrow" style={{ textAlign: 'center', marginBottom: 20 }}>ONE MORE STEP</p>
+          <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 40, letterSpacing: 3, color: '#E8EDF5', marginBottom: 10, textAlign: 'center' }}>CHECK YOUR EMAIL</div>
+          <p style={{ color: 'rgba(255,255,255,0.32)', fontSize: 13, marginBottom: 4, textAlign: 'center' }}>We sent a confirmation link to</p>
+          <p style={{ color: '#E8EDF5', fontWeight: 600, fontSize: 14, marginBottom: 36, textAlign: 'center', wordBreak: 'break-all' }}>{userEmail}</p>
+          <p style={{ color: 'rgba(255,255,255,0.28)', fontSize: 12, marginBottom: 24, textAlign: 'center', lineHeight: 1.6 }}>
+            Click the link to verify your account — it'll bring you straight back here to finish signing up.
+          </p>
+          <button className="eo-ghost" style={{ marginTop: 0 }} onClick={resendConfirmation}>RESEND EMAIL</button>
+          {resendMsg && <div className="eo-hint" style={{ textAlign: 'center', marginTop: 10 }}>{resendMsg}</div>}
           <p style={{ textAlign: 'center', marginTop: 24, fontSize: 12, color: 'rgba(255,255,255,0.2)' }}>
             <a href="/login" style={{ color: 'rgba(220,38,38,0.5)', textDecoration: 'none' }}>Sign in to existing account</a>
           </p>
