@@ -80,7 +80,9 @@ export default function AuthCallbackPage() {
         }
       } else if (role === 'salesman') {
         const target = dealer_id ? 'salesman' : 'salesman-lite';
-        window.location.href = `https://xdrive.my/${target}${handoffSuffix(session)}`;
+        const isProd = window.location.hostname === 'xdrive.my' || window.location.hostname.endsWith('.xdrive.my');
+        const origin = isProd ? 'https://xdrive.my' : window.location.origin;
+        window.location.href = `${origin}/${target}${handoffSuffix(session)}`;
       } else if (role === 'manager') {
         navigate('/manager');
       } else if (role === 'accountant') {
