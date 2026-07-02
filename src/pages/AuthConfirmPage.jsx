@@ -40,21 +40,35 @@ export default function AuthConfirmPage() {
         .maybeSingle();
 
       if (!profile) {
-        // Brand new account — resume whichever onboarding flow it started in
-        // (flag saved before signUp() since there's no profile row yet to key off).
-        const savedPlan = sessionStorage.getItem('ob_plan_slug');
-        if (savedPlan) sessionStorage.removeItem('ob_plan_slug');
-        if (savedPlan === 'lite' || savedPlan === 'premium') {
+        // Brand new account — resume whichever onboarding flow it started in.
+        // Prefer account_type/plan from user_metadata (set at signup, so it works
+        // when the email is confirmed on a different device); fall back to
+        // sessionStorage for same-device flows.
+        const meta = session.user?.user_metadata || {};
+        const savedPlan = meta.tier || sessionStorage.getItem('ob_plan_slug');
+        const acctType = meta.account_type || sessionStorage.getItem('ob_account_type');
+        sessionStorage.removeItem('ob_plan_slug');
+        sessionStorage.removeItem('ob_account_type');
+        if (acctType === 'salesman') {
+          navigate(`/salesman-onboarding/${savedPlan === 'premium' ? 'premium' : 'lite'}`, { replace: true });
+        } else if (acctType === 'dealer') {
+          navigate(`/dealer-onboarding/${['starter', 'growth', 'pro'].includes(savedPlan) ? savedPlan : 'starter'}`, { replace: true });
+        } else if (savedPlan === 'lite' || savedPlan === 'premium') {
           navigate(`/salesman-onboarding/${savedPlan}`, { replace: true });
         } else if (savedPlan === 'starter' || savedPlan === 'growth' || savedPlan === 'pro') {
           navigate(`/dealer-onboarding/${savedPlan}`, { replace: true });
         } else {
-          navigate(savedPlan ? `/onboarding/${savedPlan}` : '/onboarding', { replace: true });
+          // Unknown context → default to salesman-lite, never the dealer flow.
+          navigate('/onboarding', { replace: true });
         }
       } else if ((profile.role === 'dealer' || profile.role === 'superadmin') && profile.onboarding_complete === false) {
         navigate('/onboarding', { replace: true });
       } else if (profile.role === 'salesman') {
-        navigate(profile.dealer_id ? '/salesman' : '/salesman-lite', { replace: true });
+        if (profile.onboarding_complete === false) {
+          navigate('/salesman-onboarding', { replace: true });
+        } else {
+          navigate(profile.dealer_id ? '/salesman' : '/salesman-lite', { replace: true });
+        }
       } else if (profile.role === 'manager') {
         navigate('/manager', { replace: true });
       } else if (profile.role === 'accountant') {

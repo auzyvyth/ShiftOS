@@ -18,6 +18,7 @@ import SalesmanPanelHelp from "../components/SalesmanPanelHelp";
 import ShareMenu from "../components/ShareMenu";
 import { toast } from "sonner";
 import { generateDealSheet } from "../utils/dealSheet";
+import { maskIC } from "../utils/maskIC";
 import {
  LogOut,
  Link,
@@ -5244,7 +5245,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  )}
  {[
  pl.buyer_email && { label: "Email", val: pl.buyer_email },
- pl.buyer_ic && { label: "IC", val: pl.buyer_ic, mono: true },
+ pl.buyer_ic && { label: "IC", val: maskIC(pl.buyer_ic), mono: true },
  pl.buyer_state && { label: "State", val: pl.buyer_state },
  (pl.source || pl.lead_source) && { label: "Source", val: (pl.source || pl.lead_source).replace(/_/g, " ") },
  ].filter(Boolean).map((row) => (

@@ -1,0 +1,7 @@
+Drop your DuitNow / bank payment QR image here as:  payment-qr.png
+
+It is shown to dealers on the "Awaiting Payment Confirmation" screen
+(src/components/DealerPendingApproval.jsx) after they finish onboarding and on
+their dashboard until an admin marks payment received in the /platform admin
+console. If this file is missing, the screen shows a graceful "contact us"
+fallback instead of a broken image.
