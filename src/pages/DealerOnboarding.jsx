@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import LegalContent from '../components/onboarding/LegalContent';
 import PlanPickerModal from '../components/onboarding/PlanPickerModal';
 import { isReservedSubdomain } from '../utils/reservedSubdomains';
+import DealerPendingApproval from '../components/DealerPendingApproval';
 
 // Same design system CSS as SalesmanOnboarding (eo- prefix)
 const CSS = `
@@ -233,8 +234,9 @@ export default function DealerOnboarding() {
   const [subReserved, setSubReserved] = useState(false);
   const [subChecking, setSubChecking] = useState(false);
 
+  const [showPw, setShowPw] = useState(false);
   const [form, setForm] = useState({
-    email: '', password: '',
+    email: '', password: '', confirmPassword: '',
     fullName: '', icNumber: '',
     phone: '+60',
     dealerName: '', dealerType: '', ssmNumber: '', fleetSize: '',
@@ -257,6 +259,7 @@ export default function DealerOnboarding() {
     { label: 'A symbol (!@#$%…)', ok: /[^a-zA-Z0-9]/.test(form.password) },
   ];
   const pwValid = pwChecks.every(c => c.ok);
+  const pwMatch = form.password.length > 0 && form.password === form.confirmPassword;
 
   useEffect(() => {
     const init = async () => {
@@ -319,6 +322,7 @@ export default function DealerOnboarding() {
   const signUp = async () => {
     setErr('');
     if (!pwValid) { setErr('Password needs 8+ characters with an uppercase, lowercase, number and symbol.'); return; }
+    if (form.password !== form.confirmPassword) { setErr('Passwords do not match.'); return; }
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -377,8 +381,11 @@ export default function DealerOnboarding() {
     if (!sub || sub.length < 3) { setSubTaken(false); return; }
     setSubChecking(true);
     try {
-      const { data } = await supabase.from('profiles').select('id').eq('subdomain', sub).maybeSingle();
-      setSubTaken(!!data && data.id !== userId);
+      // SECURITY DEFINER RPC — profiles RLS hides other dealers' rows, so a plain
+      // select would wrongly report every taken subdomain as available. Reserved
+      // names are surfaced separately via subReserved, so exclude them here.
+      const { data: available } = await supabase.rpc('is_subdomain_available', { p_sub: sub });
+      setSubTaken(available === false && !isReservedSubdomain(sub));
     } finally {
       setSubChecking(false);
     }
@@ -419,6 +426,10 @@ export default function DealerOnboarding() {
         is_active: true,
         onboarding_complete: true,
         plan: planMap[tier] || 'dealer_starter',
+        // Paid tier — hold dashboard access until an admin confirms payment
+        // (see DashboardPage gate + AdminPage "mark received"). Reuses the
+        // existing payment_status field the admin console already acts on.
+        payment_status: 'pending',
         pdpa_consent: true,
         pdpa_consent_at: new Date().toISOString(),
         ic_deadline: null,
@@ -440,7 +451,7 @@ export default function DealerOnboarding() {
     setShowResumeChoice(false);
     setUserId(null);
     setUserEmail('');
-    setForm({ email: '', password: '', fullName: '', icNumber: '', phone: '+60', dealerName: '', dealerType: '', ssmNumber: '', fleetSize: '', state: '', city: '', address: '', subdomain: '' });
+    setForm({ email: '', password: '', confirmPassword: '', fullName: '', icNumber: '', phone: '+60', dealerName: '', dealerType: '', ssmNumber: '', fleetSize: '', state: '', city: '', address: '', subdomain: '' });
     setStep(0);
   };
 
@@ -468,24 +479,12 @@ export default function DealerOnboarding() {
   );
 
   if (submitted) return (
-    <>
-      <style>{CSS}</style>
-      <div className="eo-done-root">
-        <div className="eo-done-ring">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="1.5">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        </div>
-        <div className="eo-done-title">APPLICATION SUBMITTED</div>
-        <p className="eo-done-sub">
-          Our team will review your dealership application within 24 hours.<br />
-          You'll receive an email at {userEmail} once approved.
-        </p>
-        <a href="/login" style={{ marginTop: 40, fontSize: 12, color: 'rgba(220,38,38,0.55)', textDecoration: 'none', letterSpacing: '0.1em' }}>
-          SIGN IN TO CHECK STATUS
-        </a>
-      </div>
-    </>
+    <DealerPendingApproval
+      planKey={{ starter: 'dealer_starter', growth: 'dealer_growth', pro: 'dealer_pro' }[tier] || 'dealer_starter'}
+      dealershipName={form.dealerName}
+      email={userEmail}
+      profileId={userId}
+    />
   );
 
   const canSubContinue = form.subdomain.length >= 3 && !subTaken && !subReserved && !subChecking;
@@ -550,8 +549,14 @@ export default function DealerOnboarding() {
                 <input className="eo-inp" type="email" placeholder="owner@yourdealership.com" value={form.email}
                   onChange={e => upd('email')(e.target.value)} autoComplete="email" />
                 <label className="eo-label">PASSWORD</label>
-                <input className="eo-inp" type="password" placeholder="Create a strong password" value={form.password}
-                  onChange={e => upd('password')(e.target.value)} autoComplete="new-password" />
+                <div style={{ position: 'relative' }}>
+                  <input className="eo-inp" type={showPw ? 'text' : 'password'} placeholder="Create a strong password" value={form.password}
+                    onChange={e => upd('password')(e.target.value)} autoComplete="new-password" style={{ paddingRight: 62 }} />
+                  <button type="button" onClick={() => setShowPw(v => !v)} tabIndex={-1}
+                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
+                    {showPw ? 'Hide' : 'Show'}
+                  </button>
+                </div>
                 {form.password.length > 0 && !pwValid && (
                   <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 5 }}>
                     {pwChecks.map(c => (
@@ -566,8 +571,14 @@ export default function DealerOnboarding() {
                     ))}
                   </div>
                 )}
+                <label className="eo-label">CONFIRM PASSWORD</label>
+                <input className="eo-inp" type={showPw ? 'text' : 'password'} placeholder="Re-enter your password" value={form.confirmPassword}
+                  onChange={e => upd('confirmPassword')(e.target.value)} autoComplete="new-password" />
+                {form.confirmPassword.length > 0 && !pwMatch && (
+                  <div className="eo-hint" style={{ color: '#f87171', marginTop: 6 }}>Passwords don't match</div>
+                )}
                 {err && <div className="eo-error">{err}</div>}
-                <button className="eo-btn" onClick={signUp} disabled={loading || !form.email || !pwValid}>
+                <button className="eo-btn" onClick={signUp} disabled={loading || !form.email || !pwValid || !pwMatch}>
                   {loading ? 'CREATING ACCOUNT…' : 'CREATE ACCOUNT'}
                 </button>
                 <p style={{ textAlign: 'center', marginTop: 18, fontSize: 12, color: 'rgba(255,255,255,0.22)' }}>

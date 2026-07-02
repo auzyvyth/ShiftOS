@@ -21,6 +21,7 @@ import { DEFAULT_WA_TEMPLATES, WA_PLACEHOLDERS } from "../lib/leadsHelpers";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import SciFiLoader from "../components/SciFiLoader";
+import DealerPendingApproval from "../components/DealerPendingApproval";
 
 class TabErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -9573,6 +9574,19 @@ export default function DashboardPage() {
   const showOnboardingBanner = profile && profile.onboarding_complete === false && !onboardingDismissed;
 
   if (!profile) return <SciFiLoader />;
+
+  // Paid dealer whose payment isn't yet confirmed — gate the whole dashboard
+  // behind the pending/payment screen until an admin marks payment received.
+  if (profile.role === 'dealer' && profile.payment_status === 'pending') {
+    return (
+      <DealerPendingApproval
+        planKey={profile.plan}
+        dealershipName={profile.dealership}
+        email={profile.email}
+        profileId={profile.id}
+      />
+    );
+  }
 
   if (!subLoading && status === 'expired') return (
     <div style={{ background: '#F7F8FA', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", gap: 16 }}>
