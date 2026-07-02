@@ -710,17 +710,19 @@ export default function CarDetailPage() {
                 .then((r) => r.data)
             : Promise.resolve(null),
 
-          // Salesman/agent profile — via SECURITY DEFINER RPC (get_salesman_by_slug)
+          // Salesman/agent profile — via SECURITY DEFINER RPC (get_salesman_by_id)
           // so anonymous visitors get it; the direct profiles query was RLS-blocked
           // for anon, which made standalone agents (Salesman Lite, dealer_id = own id)
-          // silently render as a nameless "dealer" with no mini-page link. Only treat
-          // it as the agent-seller when the agent IS the listing owner (id === dealer_id),
-          // mirroring the old role='salesman' + id=dealer_id condition.
-          carData.salesman_slug
+          // silently render as a nameless "dealer" with no mini-page link. Keyed by
+          // dealer_id (the agent's own profile id — see getDealerIdFromProfile), not
+          // salesman_slug, which isn't reliably stamped on every listing row.
+          // seller_role (from public_car_listings) is the authoritative signal for
+          // whether this dealer_id belongs to a salesman.
+          carData.seller_role === "salesman" && carData.dealer_id
             ? supabase
-                .rpc("get_salesman_by_slug", { p_slug: carData.salesman_slug })
+                .rpc("get_salesman_by_id", { p_id: carData.dealer_id })
                 .maybeSingle()
-                .then((r) => (r.data && r.data.id === carData.dealer_id ? r.data : null))
+                .then((r) => r.data)
             : Promise.resolve(null),
 
           // Similar cars (2-step chain internally)
@@ -1834,9 +1836,9 @@ export default function CarDetailPage() {
             <div style={{ height:1, background: th.border, margin:'14px 0' }} />
             {/* Dealer row */}
             {(() => {
-              const isAgent = !!salesmanProfile;
-              const displayName = isAgent ? (salesmanProfile.full_name || 'Agent') : dealerName;
-              const avatarSrc = isAgent ? salesmanProfile.avatar_url : (dealer?.site_logo_url || dealer?.avatar_url);
+              const isAgent = car.seller_role === 'salesman' || !!salesmanProfile;
+              const displayName = isAgent ? (salesmanProfile?.full_name || 'Agent') : (dealer ? dealerName : 'Seller');
+              const avatarSrc = isAgent ? salesmanProfile?.avatar_url : (dealer?.site_logo_url || dealer?.avatar_url);
               return (
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                   {avatarSrc
@@ -1848,12 +1850,12 @@ export default function CarDetailPage() {
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ fontSize:13, color: th.text, fontWeight:600, marginBottom:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{displayName}</p>
                     <p style={{ fontSize:11, color: isAgent ? '#60a5fa' : '#334155' }}>
-                      {isAgent ? 'Independent Agent' : (
+                      {isAgent ? 'Independent Agent' : dealer ? (
                         <span style={{ display:'inline-flex', alignItems:'center', gap:5 }}>
                           <span style={{ width:6, height:6, borderRadius:'50%', background:'#4ade80', display:'inline-block', animation:'cdp-pulse 2s ease infinite' }} />
                           Verified Dealer
                         </span>
-                      )}
+                      ) : 'Seller'}
                     </p>
                   </div>
                   <div style={{ textAlign:'right' }}>
@@ -3162,9 +3164,9 @@ export default function CarDetailPage() {
 
             {/* DEALER TOPBAR */}
             {(() => {
-              const isAgent = !!salesmanProfile;
-              const displayName = isAgent ? (salesmanProfile.full_name || 'Agent') : dealerName;
-              const avatarSrc = isAgent ? salesmanProfile.avatar_url : (dealer?.site_logo_url || dealer?.avatar_url);
+              const isAgent = car.seller_role === 'salesman' || !!salesmanProfile;
+              const displayName = isAgent ? (salesmanProfile?.full_name || 'Agent') : (dealer ? dealerName : 'Seller');
+              const avatarSrc = isAgent ? salesmanProfile?.avatar_url : (dealer?.site_logo_url || dealer?.avatar_url);
               return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   {avatarSrc
@@ -3176,12 +3178,12 @@ export default function CarDetailPage() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 13, color: th.text, fontWeight: 600, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</p>
                     <p style={{ fontSize: 11, color: isAgent ? '#60a5fa' : '#334155' }}>
-                      {isAgent ? 'Independent Agent' : (
+                      {isAgent ? 'Independent Agent' : dealer ? (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                           <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ade80', display: 'inline-block', animation: 'cdp-pulse 2s ease infinite' }} />
                           Verified Dealer
                         </span>
-                      )}
+                      ) : 'Seller'}
                     </p>
                   </div>
                   <div style={{ textAlign: 'right' }}>
