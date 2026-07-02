@@ -10276,10 +10276,18 @@ export default function DashboardPage() {
                                 <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                                   {l.purchase_price ? (() => {
                                     const addonNet = addonNetByListing[l.id] || 0;
-                                    const gross = sp - Number(l.purchase_price) - Number(l.recon_cost || 0) + addonNet;
+                                    const c = l.car_listings || {};
+                                    const cost =
+                                      Number(l.purchase_price) ||
+                                      Number(c.base_price) ||
+                                      0;
+                                    const rev = sp > 0 ? sp : cost;
+                                    const services = Number(c.included_services_cost) || 0;
+                                    const commission = Number(c.commission_amount) || 0;
+                                    const gp = rev - cost - Number(l.recon_cost || 0) + addonNet - services - commission;
                                     return (
                                       <>
-                                        <span style={{ fontSize: 13, fontWeight: 700, color: gross >= 0 ? '#16a34a' : '#dc2626' }}>RM {gross.toLocaleString()}</span>
+                                        <span style={{ fontSize: 13, fontWeight: 700, color: gp >= 0 ? '#16a34a' : '#dc2626' }}>RM {gp.toLocaleString()}</span>
                                         {addonNet !== 0 && (
                                           <span style={{ display: 'block', fontSize: 10, color: '#16a34a', fontWeight: 600, marginTop: 2 }}>
                                             incl. RM {addonNet.toLocaleString()} F&amp;I
