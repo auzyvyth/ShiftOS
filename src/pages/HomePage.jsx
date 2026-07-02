@@ -16,6 +16,11 @@ import {
   ChevronDown,
   ArrowRight,
   MapPin,
+  Phone,
+  Mail,
+  Facebook,
+  Instagram,
+  Music2,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import Header from "@/components/Header";
@@ -598,6 +603,22 @@ const HomePage = () => {
         /* Stats strip */
         .stats-flex { display:flex; }
 
+        /* Dealer trust + quick-contact strip */
+        .dealer-strip { display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; }
+        .dealer-strip-stats { display:flex; align-items:center; gap:0; flex-wrap:wrap; }
+        .dealer-strip-stat { padding:0 22px; border-right:1px solid rgba(255,255,255,0.08); }
+        .dealer-strip-stat:first-child { padding-left:0; }
+        .dealer-strip-stat:last-child { border-right:none; }
+        .dealer-strip-actions { display:flex; gap:10px; flex-wrap:wrap; }
+
+        /* Inventory toolbar (search inside Our Cars) */
+        .inv-toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:22px; }
+        .inv-toolbar .inv-search { flex:1; min-width:240px; }
+
+        /* Contact section grid */
+        .contact-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; margin-top:36px; }
+        .contact-socials { display:flex; gap:10px; justify-content:center; margin-top:28px; }
+
         /* Section padding */
         .sec-pad { padding: 72px 0; }
 
@@ -616,6 +637,9 @@ const HomePage = () => {
           .stats-flex > div   { border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.05) !important; }
           .for-dealers-inner  { flex-direction: column !important; align-items: flex-start !important; }
           .sec-pad { padding: 48px 0 !important; }
+          .dealer-strip       { flex-direction: column !important; align-items: stretch !important; gap: 18px !important; }
+          .dealer-strip-actions a { flex: 1 !important; justify-content: center !important; }
+          .inv-toolbar .inv-search { min-width: 0 !important; width: 100% !important; }
         }
       `}</style>
 
@@ -681,42 +705,61 @@ const HomePage = () => {
       {/* ══════════ HERO (carousel) — compact so the search below stays above the fold ══════════ */}
       <HeroCarousel compact siteName={siteName} />
 
-      {/* ══════════ SEARCH + QUICK BROWSE — below the hero, above the fold ══════════ */}
-      {(() => {
-        const chip = (active) => ({
-          flexShrink: 0, padding: "7px 15px", borderRadius: 50, textDecoration: "none",
-          fontSize: 13, fontWeight: 600, fontFamily: "'Outfit',sans-serif",
-          whiteSpace: "nowrap", transition: "all 0.15s",
-          border: `1px solid ${active ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.14)"}`,
-          background: active ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.04)",
-          color: active ? "#f87171" : "rgba(255,255,255,0.78)",
-        });
-        return (
-          <section style={{ background: "#0C0C0E", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-            <div style={{ ...wrap, padding: "20px 20px 22px" }}>
-              <div style={{ maxWidth: 720, margin: "0 auto" }}>
-                <SearchAutocomplete
-                  dark
-                  value={heroQ}
-                  onChange={setHeroQ}
-                  placeholder="Search make, model or variant…"
-                  onSubmit={(val) => {
-                    const s = (val || "").trim();
-                    navigate(s ? `${carsBase}?q=${encodeURIComponent(s)}` : carsBase);
-                  }}
-                  inputStyle={{ padding: "14px 16px", fontSize: "15px" }}
-                />
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12, justifyContent: "center" }}>
-                  <Link to={carsBase} style={chip(true)}>All cars</Link>
-                  {BODY_TYPES.map((bt) => (
-                    <Link key={bt} to={`${carsBase}?body_type=${encodeURIComponent(bt)}`} style={chip(false)}>{bt}</Link>
-                  ))}
-                </div>
+      {/* ══════════ DEALER TRUST + QUICK CONTACT STRIP ══════════ */}
+      <section style={{ background: "#0C0C0E", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+        <div style={{ ...wrap, padding: "18px 20px" }}>
+          <div className="dealer-strip">
+            <div className="dealer-strip-stats">
+              <div className="dealer-strip-stat">
+                <p style={{ color: "#F0F0F0", fontSize: 20, fontWeight: 700, lineHeight: 1, margin: "0 0 4px" }}>
+                  {stock != null ? String(stock) : "—"}
+                </p>
+                <p style={{ color: "#52525A", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", margin: 0, fontWeight: 600 }}>
+                  Cars in Stock
+                </p>
               </div>
+              <div className="dealer-strip-stat">
+                <p style={{ color: "#F0F0F0", fontSize: 20, fontWeight: 700, lineHeight: 1, margin: "0 0 4px" }}>
+                  {soldDisplay}
+                </p>
+                <p style={{ color: "#52525A", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", margin: 0, fontWeight: 600 }}>
+                  Cars Sold
+                </p>
+              </div>
+              {(tenant?.city || tenant?.state) && (
+                <div className="dealer-strip-stat" style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                  <MapPin size={14} style={{ color: "#C4A265", flexShrink: 0 }} />
+                  <span style={{ color: "#C0C0C6", fontSize: 13, fontWeight: 600 }}>
+                    {[tenant?.city, tenant?.state].filter(Boolean).join(", ")}
+                  </span>
+                </div>
+              )}
             </div>
-          </section>
-        );
-      })()}
+            <div className="dealer-strip-actions">
+              <Link to={carsBase} className="primary-btn" style={{ ...primaryBtn, padding: "11px 22px" }}>
+                Browse Our Cars <ArrowRight size={14} />
+              </Link>
+              <a
+                href={
+                  buildWaUrl(
+                    ctaCtx.type !== "loading"
+                      ? ctaCtx
+                      : { type: "listing", profile: null, ref: null },
+                    tenant?.whatsapp_number,
+                    `Hi ${siteName}, I'd like to enquire about a car`,
+                  ) || "#"
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                className="wa-btn-hp"
+                style={{ ...waBtn, padding: "11px 22px" }}
+              >
+                <MessageCircle size={14} /> WhatsApp Us
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* ══════════ HERO VIDEO ══════════ */}
       {tenant?.hero_video_enabled &&
@@ -775,153 +818,9 @@ const HomePage = () => {
           </section>
         )}
 
-      {/* ══════════ HOT DEALS ══════════ */}
-      {(hotDeals.length > 0 || loading) && (
-        <section className="sec-pad" style={secA}>
-          <div style={wrap}>
-            <FadeIn>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "flex-end",
-                  justifyContent: "space-between",
-                  marginBottom: "40px",
-                  flexWrap: "wrap",
-                  gap: "12px",
-                }}
-              >
-                <div>
-                  <p className="sec-eyebrow red">
-                    <Flame size={10} style={{ marginRight: -4 }} /> Limited Time
-                  </p>
-                  <h2 className="sec-title">Hot Deals</h2>
-                </div>
-                <Link to={`${carsBase}?hot_deals=true`} className="view-all-link">
-                  View All <ArrowRight size={12} />
-                </Link>
-              </div>
-            </FadeIn>
-            <div className="car-grid-hp">
-              {loading
-                ? [...Array(3)].map((_, i) => <SkeletonCard key={i} />)
-                : hotDeals.map((c, i) => (
-                    <CarCard key={c.id} car={c} ctaContext={ctaCtx} priority={i === 0} />
-                  ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ══════════ FEATURED ══════════ */}
-      <section className="sec-pad" style={secB}>
-        <div style={wrap}>
-          <FadeIn>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-end",
-                justifyContent: "space-between",
-                marginBottom: "40px",
-                flexWrap: "wrap",
-                gap: "12px",
-              }}
-            >
-              <div>
-                <p className="sec-eyebrow">Just Listed</p>
-                <h2 className="sec-title">{t("home.hotDeals.title")}</h2>
-              </div>
-              <Link to={carsBase} className="view-all-link">
-                All Cars <ArrowRight size={12} />
-              </Link>
-            </div>
-          </FadeIn>
-          <div className="car-grid-hp" style={{ marginBottom: "36px" }}>
-            {loading
-              ? [...Array(3)].map((_, i) => <SkeletonCard key={i} />)
-              : featured.map((c, i) => (
-                  <CarCard key={c.id} car={c} ctaContext={ctaCtx} priority={i === 0} />
-                ))}
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <Link
-              to={carsBase}
-              className="ghost-outline"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                background: "transparent",
-                border: "1px solid rgba(255,255,255,0.1)",
-                color: "#C0C0C6",
-                fontWeight: "600",
-                fontSize: "13px",
-                padding: "12px 28px",
-                borderRadius: "4px",
-                textDecoration: "none",
-                transition: "all 0.2s ease",
-                letterSpacing: "0.02em",
-              }}
-            >
-              {t("home.hotDeals.viewAllBtn")} <ArrowRight size={14} />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════ STATS ══════════ */}
-      <section style={secLight}>
-        <div style={wrap}>
-          <div className="stats-flex">
-            {[
-              { v: stock != null ? String(stock) : "—", l: "In Stock" },
-              { v: soldDisplay, l: "Cars Sold" },
-            ].map((s, i, arr) => (
-              <FadeIn key={i} delay={i * 0.08} style={{ flex: 1 }}>
-                <div
-                  style={{
-                    textAlign: "center",
-                    padding: "40px 16px",
-                    borderRight:
-                      i < arr.length - 1
-                        ? "1px solid rgba(255,255,255,0.05)"
-                        : "none",
-                  }}
-                >
-                  <p
-                    style={{
-                      fontFamily: "'Outfit', sans-serif",
-                      color: "#F0F0F0",
-                      fontSize: "clamp(1.8rem,5vw,2.6rem)",
-                      fontWeight: "700",
-                      letterSpacing: "-0.03em",
-                      lineHeight: 1,
-                      margin: "0 0 6px 0",
-                    }}
-                  >
-                    {s.v}
-                  </p>
-                  <p
-                    style={{
-                      color: "#3A3A42",
-                      fontSize: "10px",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.14em",
-                      margin: 0,
-                      fontWeight: 600,
-                    }}
-                  >
-                    {s.l}
-                  </p>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ══════════ ABOUT (storefront only — dealer's editable about_text) ══════════ */}
       {isSubdomain() && tenant?.about_text && (
-        <section className="sec-pad" style={secA}>
+        <section className="sec-pad" style={secB}>
           <div style={wrap}>
             <FadeIn>
               <div style={{ marginBottom: "24px" }}>
@@ -1018,6 +917,132 @@ const HomePage = () => {
           </div>
         </div>
       </section>
+
+      {/* ══════════ HOT DEALS (dealer's own offers) ══════════ */}
+      {(hotDeals.length > 0 || loading) && (
+        <section className="sec-pad" style={secB}>
+          <div style={wrap}>
+            <FadeIn>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-end",
+                  justifyContent: "space-between",
+                  marginBottom: "40px",
+                  flexWrap: "wrap",
+                  gap: "12px",
+                }}
+              >
+                <div>
+                  <p className="sec-eyebrow red">
+                    <Flame size={10} style={{ marginRight: -4 }} /> Limited Time
+                  </p>
+                  <h2 className="sec-title">Hot Deals</h2>
+                </div>
+                <Link to={`${carsBase}?hot_deals=true`} className="view-all-link">
+                  View All <ArrowRight size={12} />
+                </Link>
+              </div>
+            </FadeIn>
+            <div className="car-grid-hp">
+              {loading
+                ? [...Array(3)].map((_, i) => <SkeletonCard key={i} />)
+                : hotDeals.map((c, i) => (
+                    <CarCard key={c.id} car={c} ctaContext={ctaCtx} priority={i === 0} />
+                  ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ══════════ OUR CARS (inventory + search — dealer-scoped) ══════════ */}
+      {(() => {
+        const chip = (active) => ({
+          flexShrink: 0, padding: "7px 15px", borderRadius: 50, textDecoration: "none",
+          fontSize: 13, fontWeight: 600, fontFamily: "'Outfit',sans-serif",
+          whiteSpace: "nowrap", transition: "all 0.15s",
+          border: `1px solid ${active ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.14)"}`,
+          background: active ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.04)",
+          color: active ? "#f87171" : "rgba(255,255,255,0.78)",
+        });
+        return (
+          <section className="sec-pad" style={secA}>
+            <div style={wrap}>
+              <FadeIn>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-end",
+                    justifyContent: "space-between",
+                    marginBottom: "28px",
+                    flexWrap: "wrap",
+                    gap: "12px",
+                  }}
+                >
+                  <div>
+                    <p className="sec-eyebrow">Our Inventory</p>
+                    <h2 className="sec-title">Browse Our Cars</h2>
+                  </div>
+                  <Link to={carsBase} className="view-all-link">
+                    All Cars <ArrowRight size={12} />
+                  </Link>
+                </div>
+              </FadeIn>
+              <div className="inv-toolbar">
+                <div className="inv-search">
+                  <SearchAutocomplete
+                    dark
+                    value={heroQ}
+                    onChange={setHeroQ}
+                    placeholder="Search our cars by make, model or variant…"
+                    onSubmit={(val) => {
+                      const s = (val || "").trim();
+                      navigate(s ? `${carsBase}?q=${encodeURIComponent(s)}` : carsBase);
+                    }}
+                    inputStyle={{ padding: "13px 16px", fontSize: "15px" }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: "28px" }}>
+                <Link to={carsBase} style={chip(true)}>All cars</Link>
+                {BODY_TYPES.map((bt) => (
+                  <Link key={bt} to={`${carsBase}?body_type=${encodeURIComponent(bt)}`} style={chip(false)}>{bt}</Link>
+                ))}
+              </div>
+              <div className="car-grid-hp" style={{ marginBottom: "36px" }}>
+                {loading
+                  ? [...Array(3)].map((_, i) => <SkeletonCard key={i} />)
+                  : featured.map((c, i) => (
+                      <CarCard key={c.id} car={c} ctaContext={ctaCtx} priority={i === 0} />
+                    ))}
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <Link
+                  to={carsBase}
+                  className="ghost-outline"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    background: "transparent",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "#C0C0C6",
+                    fontWeight: "600",
+                    fontSize: "13px",
+                    padding: "12px 28px",
+                    borderRadius: "4px",
+                    textDecoration: "none",
+                    transition: "all 0.2s ease",
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  {t("home.hotDeals.viewAllBtn")} <ArrowRight size={14} />
+                </Link>
+              </div>
+            </div>
+          </section>
+        );
+      })()}
 
       {/* ══════════ HOW IT WORKS ══════════ */}
       <section id="how-it-works" className="sec-pad" style={secB}>
@@ -1435,113 +1460,268 @@ const HomePage = () => {
       </section>
       )}
 
-      {/* ══════════ FINAL CTA ══════════ */}
-      <section
-        id="contact"
-        className="sec-pad"
-        style={{ ...secB, position: "relative", overflow: "hidden" }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%,-50%)",
-            width: "600px",
-            height: "600px",
-            background:
-              "radial-gradient(circle,rgba(196,162,101,0.025) 0%,transparent 65%)",
-            pointerEvents: "none",
-          }}
-        />
-        <div
-          style={{
-            ...wrap,
-            maxWidth: "580px",
-            textAlign: "center",
-            position: "relative",
-            zIndex: 1,
-          }}
-        >
-          <FadeIn>
-            <p
-              className="sec-eyebrow"
-              style={{ justifyContent: "center", marginBottom: "16px" }}
-            >
-              Ready to Drive?
-            </p>
-            <h2
-              style={{
-                fontFamily: "'Outfit', sans-serif",
-                color: "#F0F0F0",
-                fontSize: "clamp(2rem,7vw,3.6rem)",
-                fontWeight: "800",
-                letterSpacing: "-0.035em",
-                lineHeight: 1.05,
-                margin: "0 0 16px 0",
-              }}
-            >
-              {ctaTitle}
-            </h2>
-            <p
-              style={{
-                color: "#52525A",
-                fontSize: "clamp(13px,3.5vw,15px)",
-                lineHeight: "1.8",
-                margin: "0 0 36px 0",
-              }}
-            >
-              {ctaSubtitle}
-            </p>
+      {/* ══════════ CONTACT / VISIT US ══════════ */}
+      {(() => {
+        const waHref =
+          buildWaUrl(
+            ctaCtx.type !== "loading"
+              ? ctaCtx
+              : { type: "listing", profile: null, ref: null },
+            tenant?.whatsapp_number,
+            ctaCtx.type === "salesman"
+              ? `Hi, I need help finding a car — via ${ctaCtx.ref}`
+              : `Hi ${siteName}, I need help finding a car`,
+          ) || "#";
+        const logEnquiry = () => {
+          supabase
+            .from("whatsapp_enquiries")
+            .insert({
+              dealer_id: tenant?.id || null,
+              listing_id: null,
+              buyer_name: null,
+              buyer_phone: null,
+              buyer_message: `General enquiry from homepage CTA`,
+              source: "homepage_cta",
+              status: "new",
+            })
+            .then(() => {});
+        };
+        const contactItems = [
+          tenant?.phone && {
+            icon: Phone,
+            label: "Call us",
+            value: tenant.phone,
+            href: `tel:${String(tenant.phone).replace(/[^\d+]/g, "")}`,
+          },
+          tenant?.email && {
+            icon: Mail,
+            label: "Email us",
+            value: tenant.email,
+            href: `mailto:${tenant.email}`,
+          },
+          (tenant?.city || tenant?.state || tenant?.location) && {
+            icon: MapPin,
+            label: "Visit us",
+            value:
+              [tenant?.city, tenant?.state].filter(Boolean).join(", ") ||
+              tenant?.location,
+            href: null,
+          },
+        ].filter(Boolean);
+        const socials = [
+          tenant?.social_facebook && { icon: Facebook, href: tenant.social_facebook },
+          tenant?.social_instagram && { icon: Instagram, href: tenant.social_instagram },
+          tenant?.social_tiktok && { icon: Music2, href: tenant.social_tiktok },
+        ].filter(Boolean);
+        const cardStyle = {
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "10px",
+          padding: "24px 18px",
+          background: "#111113",
+          border: "1px solid rgba(255,255,255,0.07)",
+          borderRadius: "8px",
+          textDecoration: "none",
+        };
+        return (
+          <section
+            id="contact"
+            className="sec-pad"
+            style={{ ...secA, position: "relative", overflow: "hidden" }}
+          >
             <div
               style={{
-                display: "flex",
-                gap: "12px",
-                justifyContent: "center",
-                flexWrap: "wrap",
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%,-50%)",
+                width: "600px",
+                height: "600px",
+                background:
+                  "radial-gradient(circle,rgba(196,162,101,0.025) 0%,transparent 65%)",
+                pointerEvents: "none",
+              }}
+            />
+            <div
+              style={{
+                ...wrap,
+                maxWidth: "760px",
+                textAlign: "center",
+                position: "relative",
+                zIndex: 1,
               }}
             >
-              <Link to={carsBase} className="primary-btn" style={primaryBtn}>
-                {ctaPrimaryLabel} <ArrowRight size={14} />
-              </Link>
-              <a
-                href={
-                  buildWaUrl(
-                    ctaCtx.type !== "loading"
-                      ? ctaCtx
-                      : { type: "listing", profile: null, ref: null },
-                    tenant?.whatsapp_number,
-                    ctaCtx.type === "salesman"
-                      ? `Hi, I need help finding a car — via ${ctaCtx.ref}`
-                      : `Hi ${siteName}, I need help finding a car`,
-                  ) || "#"
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-                className="wa-btn-hp"
-                style={waBtn}
-                onClick={() => {
-                  supabase
-                    .from("whatsapp_enquiries")
-                    .insert({
-                      dealer_id: tenant?.id || null,
-                      listing_id: null,
-                      buyer_name: null,
-                      buyer_phone: null,
-                      buyer_message: `General enquiry from homepage CTA`,
-                      source: "homepage_cta",
-                      status: "new",
-                    })
-                    .then(() => {});
-                }}
-              >
-                <MessageCircle size={14} />
-                {ctaSecondaryLabel}
-              </a>
+              <FadeIn>
+                <p
+                  className="sec-eyebrow"
+                  style={{ justifyContent: "center", marginBottom: "16px" }}
+                >
+                  Get in Touch
+                </p>
+                <h2
+                  style={{
+                    fontFamily: "'Outfit', sans-serif",
+                    color: "#F0F0F0",
+                    fontSize: "clamp(2rem,7vw,3.6rem)",
+                    fontWeight: "800",
+                    letterSpacing: "-0.035em",
+                    lineHeight: 1.05,
+                    margin: "0 0 16px 0",
+                  }}
+                >
+                  {ctaTitle}
+                </h2>
+                <p
+                  style={{
+                    color: "#52525A",
+                    fontSize: "clamp(13px,3.5vw,15px)",
+                    lineHeight: "1.8",
+                    margin: "0 auto 36px",
+                    maxWidth: "520px",
+                  }}
+                >
+                  {ctaSubtitle}
+                </p>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "12px",
+                    justifyContent: "center",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <a
+                    href={waHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="primary-btn"
+                    style={{
+                      ...primaryBtn,
+                      background: "#25D366",
+                      borderColor: "#25D366",
+                    }}
+                    onClick={logEnquiry}
+                  >
+                    <MessageCircle size={14} />
+                    {ctaSecondaryLabel}
+                  </a>
+                  <Link
+                    to={carsBase}
+                    className="ghost-outline"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      background: "transparent",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      color: "#C0C0C6",
+                      fontWeight: "600",
+                      fontSize: "14px",
+                      padding: "13px 28px",
+                      borderRadius: "4px",
+                      textDecoration: "none",
+                      transition: "all 0.2s ease",
+                      letterSpacing: "0.02em",
+                    }}
+                  >
+                    {ctaPrimaryLabel} <ArrowRight size={14} />
+                  </Link>
+                </div>
+
+                {contactItems.length > 0 && (
+                  <div className="contact-grid">
+                    {contactItems.map((c, i) => {
+                      const Inner = (
+                        <>
+                          <div
+                            style={{
+                              width: "38px",
+                              height: "38px",
+                              borderRadius: "3px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              background: "rgba(196,162,101,0.08)",
+                              border: "1px solid rgba(196,162,101,0.18)",
+                            }}
+                          >
+                            <c.icon size={16} style={{ color: "#C4A265" }} />
+                          </div>
+                          <p
+                            style={{
+                              color: "#3A3A42",
+                              fontSize: "10px",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.14em",
+                              margin: 0,
+                              fontWeight: 600,
+                            }}
+                          >
+                            {c.label}
+                          </p>
+                          <p
+                            style={{
+                              color: "#F0F0F0",
+                              fontSize: "13px",
+                              fontWeight: 600,
+                              margin: 0,
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {c.value}
+                          </p>
+                        </>
+                      );
+                      return c.href ? (
+                        <a
+                          key={i}
+                          href={c.href}
+                          className="card-hover"
+                          style={cardStyle}
+                        >
+                          {Inner}
+                        </a>
+                      ) : (
+                        <div key={i} style={cardStyle}>
+                          {Inner}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {socials.length > 0 && (
+                  <div className="contact-socials">
+                    {socials.map((s, i) => (
+                      <a
+                        key={i}
+                        href={s.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="card-hover"
+                        style={{
+                          width: "42px",
+                          height: "42px",
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          background: "#111113",
+                          border: "1px solid rgba(255,255,255,0.08)",
+                        }}
+                        aria-label="Social link"
+                      >
+                        <s.icon size={16} style={{ color: "#C0C0C6" }} />
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </FadeIn>
             </div>
-          </FadeIn>
-        </div>
-      </section>
+          </section>
+        );
+      })()}
 
       <Footer />
       <StickyWhatsAppButton />
