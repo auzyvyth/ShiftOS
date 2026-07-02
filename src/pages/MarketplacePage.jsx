@@ -1006,7 +1006,10 @@ export default function MarketplacePage() {
                       : cars.map(car => {
                           const inCompare = isInCompare(car.id);
                           const compareFull = compareIds.length >= 4 && !inCompare;
-                          const sellerRole = car.dealer?.role;
+                          // seller_role comes from the public_car_listings view (anon-safe);
+                          // car.dealer is an RLS-blocked profiles join for logged-out
+                          // visitors, which made every card fall back to "Dealer".
+                          const sellerRole = car.seller_role || car.dealer?.role;
                           const isAgent = sellerRole === 'salesman';
                           const sellerLabel = isAgent ? 'Agent' : 'Dealer';
                           const sellerColor = isAgent
