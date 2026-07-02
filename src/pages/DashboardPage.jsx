@@ -1422,7 +1422,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
             )}
           </div>
           {nextPlanCfg && (
-            <a href="mailto:support@xdrive.my?subject=Upgrade to Plan" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, textDecoration: 'none' }}>
+            <a href="https://wa.me/60174155191?text=Hi%2C%20I%20want%20to%20upgrade%20my%20plan" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, textDecoration: 'none' }}>
               <span style={{ fontSize: 13, color: '#dc2626', fontWeight: 600 }}>Upgrade to {nextPlanCfg.label}</span>
               <span style={{ fontSize: 13, color: '#6b7280' }}>RM {nextPlanCfg.price.toLocaleString()}/mo →</span>
             </a>
@@ -9744,7 +9744,7 @@ export default function DashboardPage() {
                 <span style={{ fontSize: 10, fontWeight: 700, color: '#DC2626', background: '#FEE2E2', borderRadius: 4, padding: '1px 5px' }}>{planCfg.label}</span>
               </div>
               {nextPlanCfg && (
-                <a href="mailto:support@xdrive.my?subject=Upgrade Plan" style={{ display: 'block', textAlign: 'center', marginTop: 6, fontSize: 10, fontWeight: 600, color: '#DC2626', textDecoration: 'none' }}>
+                <a href="https://wa.me/60174155191?text=Hi%2C%20I%20want%20to%20upgrade%20my%20plan" target="_blank" rel="noopener noreferrer" style={{ display: 'block', textAlign: 'center', marginTop: 6, fontSize: 10, fontWeight: 700, color: '#DC2626', textDecoration: 'none' }}>
                   Upgrade to {nextPlanCfg.label}
                 </a>
               )}

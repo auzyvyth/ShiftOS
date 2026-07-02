@@ -440,15 +440,16 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
               onClick={e => { e.stopPropagation(); toggleSave(car.id); }}
               aria-label={isSaved(car.id) ? 'Remove from saved' : 'Save this car'}
               style={{
-                position:      'absolute', top: 8, right: 8, zIndex: 10,
+                position:      'absolute', top: 8, right: 8, zIndex: 20,
                 width:         30, height: 30, borderRadius: '50%',
                 display:       'flex', alignItems: 'center', justifyContent: 'center',
-                background:    isSaved(car.id) ? 'rgba(220,38,38,0.92)' : 'rgba(0,0,0,0.35)',
-                backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
-                border:        isSaved(car.id) ? '1.5px solid rgba(220,38,38,0.6)' : '1.5px solid rgba(255,255,255,0.22)',
+                background:    isSaved(car.id) ? 'rgba(220,38,38,0.92)' : 'rgba(0,0,0,0.45)',
+                backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+                border:        isSaved(car.id) ? '1.5px solid rgba(220,38,38,0.7)' : '1.5px solid rgba(255,255,255,0.35)',
                 cursor:        'pointer',
                 transition:    'all 0.18s',
                 WebkitTapHighlightColor: 'transparent',
+                boxShadow:     '0 4px 14px rgba(0,0,0,0.25)',
               }}
             >
               <Heart

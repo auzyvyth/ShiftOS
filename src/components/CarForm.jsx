@@ -3051,7 +3051,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           <p style={{ color: '#6b7280', fontSize: 12, lineHeight: 1.5 }}>
             Your current plan allows a limited number of active listings. Remove a listing or upgrade your plan to add more.
           </p>
-          <a href="mailto:support@xdrive.my?subject=Upgrade Plan" style={{ display: 'inline-block', marginTop: 10, padding: '7px 14px', background: '#dc2626', borderRadius: 6, color: '#fff', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+          <a href="https://wa.me/60174155191?text=Hi%2C%20I%20want%20to%20upgrade%20my%20plan" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 10, padding: '7px 14px', background: '#dc2626', borderRadius: 6, color: '#fff', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
             Upgrade Plan
           </a>
         </div>
