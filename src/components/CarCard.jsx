@@ -296,6 +296,8 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
           }
         }}
         style={{
+          position:      'relative',
+          zIndex:        0,
           background:    xd.cardBg,
           border:        xd.border,
           borderRadius:  xdrive ? 16 : 12,
