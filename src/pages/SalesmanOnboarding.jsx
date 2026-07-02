@@ -210,8 +210,9 @@ export default function SalesmanOnboarding() {
   const [slugTaken, setSlugTaken] = useState(false);
   const [slugChecking, setSlugChecking] = useState(false);
 
+  const [showPw, setShowPw] = useState(false);
   const [form, setForm] = useState({
-    email: '', password: '',
+    email: '', password: '', confirmPassword: '',
     fullName: '', icNumber: '',
     phone: '+60',
     brand: '', slug: '', state: '', city: '',
@@ -232,6 +233,7 @@ export default function SalesmanOnboarding() {
     { label: 'A symbol (!@#$%…)', ok: /[^a-zA-Z0-9]/.test(form.password) },
   ];
   const pwValid = pwChecks.every(c => c.ok);
+  const pwMatch = form.password.length > 0 && form.password === form.confirmPassword;
 
   useEffect(() => {
     const init = async () => {
@@ -295,6 +297,7 @@ export default function SalesmanOnboarding() {
   const signUp = async () => {
     setErr('');
     if (!pwValid) { setErr('Password needs 8+ characters with an uppercase, lowercase, number and symbol.'); return; }
+    if (form.password !== form.confirmPassword) { setErr('Passwords do not match.'); return; }
     setLoading(true);
     try {
       // Persist onboarding context so the post-confirmation callback (which runs
@@ -305,7 +308,13 @@ export default function SalesmanOnboarding() {
       const { data, error } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        // Persist onboarding context on the ACCOUNT (user_metadata), not just
+        // sessionStorage — so confirming the email on a different device still
+        // resumes the correct (salesman) flow at the right tier.
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: { account_type: 'salesman', tier },
+        },
       });
       if (error) throw error;
       // Supabase returns a user with an empty identities array (and no error)
@@ -373,8 +382,10 @@ export default function SalesmanOnboarding() {
     if (!slug || slug.length < 3) { setSlugTaken(false); return; }
     setSlugChecking(true);
     try {
-      const { data } = await supabase.from('profiles').select('id').eq('slug', slug).maybeSingle();
-      setSlugTaken(!!data && data.id !== userId);
+      // SECURITY DEFINER RPC — profiles RLS hides other dealers' rows, so a plain
+      // select would wrongly report every taken slug as available.
+      const { data: available } = await supabase.rpc('is_slug_available', { p_slug: slug });
+      setSlugTaken(available === false);
     } finally {
       setSlugChecking(false);
     }
@@ -427,7 +438,7 @@ export default function SalesmanOnboarding() {
     setShowResumeChoice(false);
     setUserId(null);
     setUserEmail('');
-    setForm({ email: '', password: '', fullName: '', icNumber: '', phone: '+60', brand: '', slug: '', state: '', city: '' });
+    setForm({ email: '', password: '', confirmPassword: '', fullName: '', icNumber: '', phone: '+60', brand: '', slug: '', state: '', city: '' });
     setStep(0);
   };
 
@@ -558,8 +569,14 @@ export default function SalesmanOnboarding() {
                 <input className="eo-inp" type="email" placeholder="you@example.com" value={form.email}
                   onChange={e => upd('email')(e.target.value)} autoComplete="email" />
                 <label className="eo-label">PASSWORD</label>
-                <input className="eo-inp" type="password" placeholder="Create a strong password" value={form.password}
-                  onChange={e => upd('password')(e.target.value)} autoComplete="new-password" />
+                <div style={{ position: 'relative' }}>
+                  <input className="eo-inp" type={showPw ? 'text' : 'password'} placeholder="Create a strong password" value={form.password}
+                    onChange={e => upd('password')(e.target.value)} autoComplete="new-password" style={{ paddingRight: 62 }} />
+                  <button type="button" onClick={() => setShowPw(v => !v)} tabIndex={-1}
+                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
+                    {showPw ? 'Hide' : 'Show'}
+                  </button>
+                </div>
                 {form.password.length > 0 && !pwValid && (
                   <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 5 }}>
                     {pwChecks.map(c => (
@@ -574,8 +591,14 @@ export default function SalesmanOnboarding() {
                     ))}
                   </div>
                 )}
+                <label className="eo-label">CONFIRM PASSWORD</label>
+                <input className="eo-inp" type={showPw ? 'text' : 'password'} placeholder="Re-enter your password" value={form.confirmPassword}
+                  onChange={e => upd('confirmPassword')(e.target.value)} autoComplete="new-password" />
+                {form.confirmPassword.length > 0 && !pwMatch && (
+                  <div className="eo-hint" style={{ color: '#f87171', marginTop: 6 }}>Passwords don't match</div>
+                )}
                 {err && <div className="eo-error">{err}</div>}
-                <button className="eo-btn" onClick={signUp} disabled={loading || !form.email || !pwValid}>
+                <button className="eo-btn" onClick={signUp} disabled={loading || !form.email || !pwValid || !pwMatch}>
                   {loading ? 'CREATING ACCOUNT…' : 'CREATE ACCOUNT'}
                 </button>
                 <p style={{ textAlign: 'center', marginTop: 18, fontSize: 12, color: 'rgba(255,255,255,0.22)' }}>

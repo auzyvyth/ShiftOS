@@ -15,6 +15,22 @@
 
 ---
 
+### BILLING / PAYMENTS
+
+- [ ] **PAY-1: Salesman Premium payment gate (QR + approval)** — Salesman Premium
+  (`salesman_full`, RM50/mo) currently activates for FREE at onboarding
+  (`SalesmanOnboarding.activate()` sets `plan:'salesman_full'` with no payment).
+  Apply the same pattern already shipped for dealers: on premium signup set
+  `payment_status:'pending'`, show a QR pending screen (generalise/rename the
+  existing `src/components/DealerPendingApproval.jsx`), and gate `/salesman-premium`
+  until an admin marks payment received in `/platform`. The free Lite tier must stay
+  unaffected. Reference (dealer flow, shipped 2026-07-02): `payment_status='pending'`
+  at DealerOnboarding.submit → `DealerPendingApproval` QR screen (public/payment-qr.png)
+  → DashboardPage gate → AdminPage "mark received" (superadmin_update_any_profile) →
+  realtime auto-forward; storefront hidden while pending via the subdomain RPCs.
+
+---
+
 ### UNIFIED CAR INTAKE (DMS workflow) — in progress
 
 - [x] **DMS-1: AddCarForm (dealer unified intake)** — DONE. New `src/components/AddCarForm.jsx` replaces the old listing-then-prompt flow on the dealer dashboard "Add" tab. One 4-step flow: Identity → Procurement → Condition & Pricing (with live cost floor) → Photos & Publish. Publish toggle: ON inserts car_listings (trigger auto-creates stock_unit, then patches cost fields); OFF inserts stock_units directly (internal inventory, no public listing). Salesman CarForm untouched. `dealer_cost_settings` table created with RLS (dealer_id = get_my_dealer_id()).

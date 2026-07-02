@@ -36,16 +36,28 @@ export default function AuthCallbackPage() {
           navigate('/account');
           return;
         }
-        // Restore plan slug saved before the OAuth redirect so the preset carries through.
-        const savedPlan = sessionStorage.getItem("ob_plan_slug");
-        if (savedPlan) sessionStorage.removeItem("ob_plan_slug");
+        // Resume the correct onboarding flow. Prefer the account_type/plan saved
+        // on the user's metadata at signup (travels with the account, so it works
+        // even when the email is confirmed on a different device); fall back to
+        // sessionStorage for same-device OAuth redirects.
+        const meta = session.user?.user_metadata || {};
+        const savedPlan = meta.tier || sessionStorage.getItem("ob_plan_slug");
+        const acctType = meta.account_type || sessionStorage.getItem("ob_account_type");
+        sessionStorage.removeItem("ob_plan_slug");
+        sessionStorage.removeItem("ob_account_type");
 
-        if (savedPlan === 'lite' || savedPlan === 'premium') {
+        if (acctType === 'salesman') {
+          navigate(`/salesman-onboarding/${savedPlan === 'premium' ? 'premium' : 'lite'}`);
+        } else if (acctType === 'dealer') {
+          navigate(`/dealer-onboarding/${['starter', 'growth', 'pro'].includes(savedPlan) ? savedPlan : 'starter'}`);
+        } else if (savedPlan === 'lite' || savedPlan === 'premium') {
           navigate(`/salesman-onboarding/${savedPlan}`);
         } else if (savedPlan === 'starter' || savedPlan === 'growth' || savedPlan === 'pro') {
           navigate(`/dealer-onboarding/${savedPlan}`);
         } else {
-          navigate(savedPlan ? `/onboarding/${savedPlan}` : '/onboarding');
+          // Unknown context → default to salesman-lite (the most common signup),
+          // never the dealer flow.
+          navigate('/onboarding');
         }
         return;
       }
