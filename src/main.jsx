@@ -95,25 +95,45 @@ window.addEventListener('unhandledrejection', (event) => {
 
 // skipWaiting + clientsClaim activate a new service worker the instant a
 // deploy lands, but an already-open tab keeps running its old JS until
-// something reloads it — that's the "blank after deploy, fine after one
-// manual refresh" report. Force that reload ourselves instead of waiting
-// for a chunk to 404 first.
+// something reloads it — that's the "blank after deploy, needs several
+// manual refreshes" report. Two things were wrong with the previous
+// approach: (1) registerType 'autoUpdate' made the plugin ALSO fire its own
+// internal plain window.location.reload() on activation, racing our
+// cache-busting hardReload() — whichever won, a plain reload in an
+// aggressively caching mobile webview can be served the same stale document
+// back from HTTP cache, silently no-opping; (2) the browser only re-checks
+// the SW script for changes on a fresh top-level navigation or ~24h — an
+// already-open tab (or a PWA re-opened from the home screen) can sit on a
+// stale worker indefinitely with no update check at all.
+//
+// Fix: registerType is now 'prompt' (vite.config.js) so the plugin never
+// reloads on its own; we drive the ONE reload ourselves via the raw
+// controllerchange event (fires the instant the new worker actually takes
+// over fetches — the earliest point a reload is guaranteed fresh) and always
+// cache-bust with hardReload(). We also actively poll for updates so a
+// backgrounded/reopened tab checks within seconds instead of waiting on the
+// browser's own lazy check.
 if ('serviceWorker' in navigator) {
+  // Snapshot BEFORE registration: a controller already present means this is
+  // a returning tab picking up a real update. No controller yet means this is
+  // this tab's first-ever load, and the SW claiming it for the first time is
+  // not an "update" worth reloading for.
+  const hadControllerAtBoot = Boolean(navigator.serviceWorker.controller);
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hadControllerAtBoot) reloadOnceForChunk();
+  });
+
   import('virtual:pwa-register').then(({ registerSW }) => {
     registerSW({
       immediate: true,
       onRegisteredSW(_url, registration) {
         if (!registration) return;
-        // Only the *first* install has no controller yet — that's a fresh
-        // visitor, not a stale tab, so skip the reload in that case.
-        const isUpdate = Boolean(navigator.serviceWorker.controller);
-        registration.addEventListener('updatefound', () => {
-          const installing = registration.installing;
-          if (!installing || !isUpdate) return;
-          installing.addEventListener('statechange', () => {
-            if (installing.state === 'activated') reloadOnceForChunk();
-          });
+        const poll = () => registration.update().catch(() => {});
+        setInterval(poll, 60_000);
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') poll();
         });
+        window.addEventListener('focus', poll);
       },
     });
   });

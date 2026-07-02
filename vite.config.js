@@ -14,7 +14,14 @@ export default defineConfig({
 			silent: true,
 		}),
 		VitePWA({
-			registerType: 'autoUpdate',
+			// 'prompt' (not 'autoUpdate') so the plugin's own client bundle never
+			// fires its internal window.location.reload() on activation — that call
+			// is a *plain* reload with no cache-busting, which in aggressively
+			// caching mobile webviews (Facebook/Instagram in-app browsers) can be
+			// served the same stale document from HTTP cache, silently no-opping
+			// and forcing repeat manual reloads after every deploy. main.jsx drives
+			// the reload itself via controllerchange + hardReload() instead.
+			registerType: 'prompt',
 				injectRegister: false,
 			manifest: {
 				name: 'ShiftOS by XDrive',
