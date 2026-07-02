@@ -305,7 +305,13 @@ export default function SalesmanOnboarding() {
       const { data, error } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        // Persist onboarding context on the ACCOUNT (user_metadata), not just
+        // sessionStorage — so confirming the email on a different device still
+        // resumes the correct (salesman) flow at the right tier.
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: { account_type: 'salesman', tier },
+        },
       });
       if (error) throw error;
       // Supabase returns a user with an empty identities array (and no error)

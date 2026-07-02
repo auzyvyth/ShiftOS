@@ -322,7 +322,12 @@ export default function DealerOnboarding() {
       const { data, error } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        // Persist onboarding context on the ACCOUNT (user_metadata) so confirming
+        // on another device resumes the correct (dealer) flow at the right tier.
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: { account_type: 'dealer', tier },
+        },
       });
       if (error) throw error;
       // Empty identities array (no error) = email already registered.

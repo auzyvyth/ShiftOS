@@ -1,0 +1,93 @@
+<!--
+  XDrive / ShiftOS — Supabase "Confirm signup" email template.
+
+  WHERE TO PASTE:
+    Supabase Dashboard → Authentication → Email Templates → "Confirm signup"
+    Set Subject to:  Confirm your XDrive account
+    Paste the HTML below into the message body.
+
+  Supabase Go-template variables available here:
+    {{ .ConfirmationURL }}  — the confirm link (used on the button + fallback)
+    {{ .Email }}            — the recipient's email
+    {{ .SiteURL }}          — your site URL
+
+  NOTE: this only changes the look. For deliverability (so it doesn't land in
+  spam / show "powered by Supabase"), also configure custom SMTP under
+  Authentication → SMTP Settings (e.g. Resend, from no-reply@xdrive.my).
+-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0;padding:0;background:#080C14;">
+  <tr>
+    <td align="center" style="padding:32px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#0F1520;border:1px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+
+        <!-- Brand bar -->
+        <tr>
+          <td style="padding:28px 32px 20px 32px;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <table role="presentation" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="vertical-align:middle;">
+                  <span style="display:inline-block;width:30px;height:30px;background:#dc2626;border-radius:7px;text-align:center;line-height:30px;color:#ffffff;font-size:17px;font-weight:800;">X</span>
+                </td>
+                <td style="vertical-align:middle;padding-left:10px;">
+                  <span style="color:#F0F0F0;font-size:18px;font-weight:700;letter-spacing:-0.01em;">XDrive</span>
+                  <span style="color:#6b7280;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;padding-left:8px;">ShiftOS</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:36px 32px 8px 32px;">
+            <h1 style="margin:0 0 14px 0;color:#F0F0F0;font-size:24px;font-weight:800;letter-spacing:-0.02em;">Confirm your email</h1>
+            <p style="margin:0 0 8px 0;color:#9ca3af;font-size:15px;line-height:1.7;">
+              Welcome to XDrive. Tap the button below to confirm your account and finish setting up.
+            </p>
+          </td>
+        </tr>
+
+        <!-- CTA button -->
+        <tr>
+          <td align="center" style="padding:24px 32px 8px 32px;">
+            <table role="presentation" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="border-radius:8px;background:#dc2626;">
+                  <a href="{{ .ConfirmationURL }}" target="_blank"
+                     style="display:inline-block;padding:15px 40px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:8px;letter-spacing:0.01em;">
+                    Confirm My Account
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Fallback link -->
+        <tr>
+          <td style="padding:20px 32px 32px 32px;">
+            <p style="margin:0 0 6px 0;color:#6b7280;font-size:12px;line-height:1.6;">
+              Button not working? Copy and paste this link into your browser:
+            </p>
+            <p style="margin:0;word-break:break-all;">
+              <a href="{{ .ConfirmationURL }}" target="_blank" style="color:#f87171;font-size:12px;text-decoration:underline;">{{ .ConfirmationURL }}</a>
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding:20px 32px 28px 32px;border-top:1px solid rgba(255,255,255,0.06);">
+            <p style="margin:0 0 4px 0;color:#4b5563;font-size:12px;line-height:1.6;">
+              You're receiving this because someone signed up for XDrive with this email. If that wasn't you, you can safely ignore it.
+            </p>
+            <p style="margin:8px 0 0 0;color:#374151;font-size:11px;">
+              &copy; XDrive &middot; Quality used cars in Malaysia
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
