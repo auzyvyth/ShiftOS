@@ -19,7 +19,6 @@ const HDR_CSS = `
   .hdr-root {
     font-family: 'Outfit', sans-serif;
     position: relative;
-    border-radius: 22px;
     transition: background 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
   }
 
@@ -75,7 +74,7 @@ const HDR_CSS = `
   /* ── Logo ── */
   .hdr-logo {
     display: flex; align-items: center; gap: 10px;
-    text-decoration: none; flex-shrink: 0;
+    text-decoration: none; min-width: 0;
   }
   .hdr-mark {
     width: 32px; height: 32px;
@@ -92,16 +91,18 @@ const HDR_CSS = `
   .hdr-logo:hover .hdr-mark {
     box-shadow: 0 0 0 1px rgba(220,38,38,0.55), 0 6px 22px rgba(220,38,38,0.35);
   }
-  .hdr-logo-text { display: flex; flex-direction: column; }
+  .hdr-logo-text { display: flex; flex-direction: column; min-width: 0; }
   .hdr-logo-name {
     font-family: 'Outfit', sans-serif;
     font-size: 16px; font-weight: 700; color: #F0F0F0;
     letter-spacing: -0.02em; line-height: 1.1; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
   }
   .hdr-logo-sub {
     font-size: 8px; font-weight: 500; color: rgba(255,255,255,0.18);
     letter-spacing: 0.2em; text-transform: uppercase; white-space: nowrap;
     margin-top: 1px;
+    overflow: hidden; text-overflow: ellipsis;
   }
 
   /* ── Desktop nav ── */
@@ -228,7 +229,7 @@ const HDR_CSS = `
 
   /* ── Responsive ── */
   .hdr-desktop { display: flex; align-items: center; gap: 10px; }
-  .hdr-mobile-only { display: none; }
+  .hdr-mobile-only { display: none; flex-shrink: 0; }
 
   @media (max-width: 1024px) {
     .hdr-desktop { display: none !important; }
