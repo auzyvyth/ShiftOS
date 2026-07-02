@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import LegalContent from '../components/onboarding/LegalContent';
 import PlanPickerModal from '../components/onboarding/PlanPickerModal';
+import { isReservedSubdomain } from '../utils/reservedSubdomains';
 
 // Same design system CSS as SalesmanOnboarding (eo- prefix)
 const CSS = `
@@ -229,6 +230,7 @@ export default function DealerOnboarding() {
   const [showResumeChoice, setShowResumeChoice] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [subTaken, setSubTaken] = useState(false);
+  const [subReserved, setSubReserved] = useState(false);
   const [subChecking, setSubChecking] = useState(false);
 
   const [form, setForm] = useState({
@@ -385,6 +387,7 @@ export default function DealerOnboarding() {
   const handleSubChange = (val) => {
     const clean = val.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 30);
     upd('subdomain')(clean);
+    setSubReserved(isReservedSubdomain(clean));
     clearTimeout(subTimer.current);
     subTimer.current = setTimeout(() => checkSubdomain(clean), 450);
   };
@@ -393,6 +396,7 @@ export default function DealerOnboarding() {
     setErr('');
     if (!form.dealerName.trim()) { setErr('Dealership name is required'); return; }
     if (!form.subdomain || form.subdomain.length < 3) { setErr('Choose a subdomain (at least 3 characters)'); return; }
+    if (isReservedSubdomain(form.subdomain)) { setErr('That subdomain is reserved — please choose another'); return; }
     if (subTaken) { setErr('That subdomain is already taken'); return; }
     if (!form.state) { setErr('Please select your state'); return; }
     setLoading(true);
@@ -484,7 +488,7 @@ export default function DealerOnboarding() {
     </>
   );
 
-  const canSubContinue = form.subdomain.length >= 3 && !subTaken && !subChecking;
+  const canSubContinue = form.subdomain.length >= 3 && !subTaken && !subReserved && !subChecking;
 
   return (
     <>
@@ -684,8 +688,8 @@ export default function DealerOnboarding() {
                     onChange={e => handleSubChange(e.target.value)}
                     style={{ paddingRight: 90 }} />
                   {form.subdomain.length >= 3 && (
-                    <span className="eo-slug-status" style={{ color: subTaken ? '#f87171' : subChecking ? 'rgba(255,255,255,0.3)' : '#4ade80' }}>
-                      {subChecking ? 'CHECKING' : subTaken ? 'TAKEN' : 'AVAILABLE'}
+                    <span className="eo-slug-status" style={{ color: (subTaken || subReserved) ? '#f87171' : subChecking ? 'rgba(255,255,255,0.3)' : '#4ade80' }}>
+                      {subReserved ? 'RESERVED' : subChecking ? 'CHECKING' : subTaken ? 'TAKEN' : 'AVAILABLE'}
                     </span>
                   )}
                 </div>
