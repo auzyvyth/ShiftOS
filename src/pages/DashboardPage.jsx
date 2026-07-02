@@ -906,6 +906,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
     profile?.announcement_bar_enabled || false,
   );
   const [aboutText, setAboutText] = useState(profile?.about_text || "");
+  const [statYears, setStatYears] = useState(profile?.stat_years != null ? String(profile.stat_years) : "");
+  const [statHappyCustomers, setStatHappyCustomers] = useState(profile?.stat_happy_customers != null ? String(profile.stat_happy_customers) : "");
   const [dealDisclaimer, setDealDisclaimer] = useState(profile?.deal_disclaimer || "");
   const [commType, setCommType] = useState(profile?.commission_config?.type || "percent_gross");
   const [commValue, setCommValue] = useState(profile?.commission_config?.value != null ? String(profile.commission_config.value) : "10");
@@ -1012,6 +1014,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setAnnouncementText(profile.announcement_bar || "");
     setAnnouncementOn(profile.announcement_bar_enabled || false);
     setAboutText(profile.about_text || "");
+    setStatYears(profile.stat_years != null ? String(profile.stat_years) : "");
+    setStatHappyCustomers(profile.stat_happy_customers != null ? String(profile.stat_happy_customers) : "");
     setDealDisclaimer(profile.deal_disclaimer || "");
     setCommType(profile.commission_config?.type || "percent_gross");
     setCommValue(profile.commission_config?.value != null ? String(profile.commission_config.value) : "10");
@@ -1206,6 +1210,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
       announcement_bar: announcementText.trim(),
       announcement_bar_enabled: announcementOn,
       about_text: aboutText.trim(),
+      stat_years: statYears.trim() === "" ? null : (parseInt(statYears, 10) || null),
+      stat_happy_customers: statHappyCustomers.trim() === "" ? null : (parseInt(statHappyCustomers, 10) || null),
       hero_video_enabled: heroVideoEnabled,
       hero_video_url: heroVideoUrl.trim() || null,
       hero_video_title: heroVideoTitle.trim() || null,
@@ -1729,6 +1735,32 @@ function SettingsTab({ profile, onProfileUpdate }) {
             {aboutText.length}/500 characters
           </p>
         </SettingsField>
+
+        {/* ── Storefront stat counters (Cars in Stock & Cars Sold pull from live data) ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <SettingsField label="Years in Business" hint="Shown in your homepage stats. Leave blank to hide.">
+            <input
+              type="number"
+              min="0"
+              inputMode="numeric"
+              value={statYears}
+              onChange={(e) => setStatYears(e.target.value)}
+              placeholder="e.g. 12"
+              className={iCls}
+            />
+          </SettingsField>
+          <SettingsField label="Happy Customers" hint="Total customers served. Leave blank to hide.">
+            <input
+              type="number"
+              min="0"
+              inputMode="numeric"
+              value={statHappyCustomers}
+              onChange={(e) => setStatHappyCustomers(e.target.value)}
+              placeholder="e.g. 850"
+              className={iCls}
+            />
+          </SettingsField>
+        </div>
 
         {/* ── Hero Video ── */}
         <div style={{ paddingTop: 16, borderTop: '1px solid #e5e7eb' }}>
