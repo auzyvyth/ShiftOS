@@ -67,17 +67,9 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Failed to record enquiry' });
   }
 
-  // Non-fatal: create lead for heatmap / CRM
-  await supabase.from('leads').insert({
-    dealer_id: listing.dealer_id,
-    salesman_id: salesmanId,
-    car_listing_id: carId,
-    buyer_name: name.trim().substring(0, 100),
-    phone: phoneClean,
-    buyer_state: state || null,
-    lead_source: 'whatsapp',
-    stage: 'new',
-  });
+  // The lead is created DB-side by the enquiry_to_lead trigger on
+  // whatsapp_enquiries (dedups by phone + resolves the salesman). Do NOT insert a
+  // lead here too — that produced a duplicate lead per enquiry.
 
   return res.status(200).json({ success: true });
 }
