@@ -8959,9 +8959,35 @@ export default function DashboardPage() {
       let session;
       if (_at && _rt) {
         clearHandoffTokens();
-        const { data } = await supabase.auth.setSession({ access_token: _at, refresh_token: _rt });
+        // Cross-domain handoff: setSession can stall when supabase-js is still
+        // recovering/refreshing a STALE localStorage session from a previous login
+        // on this subdomain — the two contend on the auth lock and the dashboard
+        // hangs on the loader until a manual refresh (which works because the fresh
+        // session is by then persisted). Race setSession against a short timeout;
+        // if it stalls, fall back to getSession() — the same thing a refresh does —
+        // so we never sit on the loader forever.
+        const setResult = await Promise.race([
+          supabase.auth.setSession({ access_token: _at, refresh_token: _rt }).then((r) => ({ ok: true, r })),
+          new Promise((res) => setTimeout(() => res({ ok: false }), 4000)),
+        ]);
         if (!active) return;
-        session = data?.session ?? null;
+        if (setResult.ok) {
+          session = setResult.r?.data?.session ?? null;
+        } else {
+          const { data } = await supabase.auth.getSession();
+          if (!active) return;
+          session = data?.session ?? null;
+          // Still nothing after the stall + retry: the session didn't take. A single
+          // guarded reload lands on the now-clean URL and recovers via getSession,
+          // exactly like the manual refresh the user found works. Guard prevents loops.
+          if (!session && !sessionStorage.getItem('dash_handoff_reloaded')) {
+            sessionStorage.setItem('dash_handoff_reloaded', '1');
+            window.location.reload();
+            return;
+          }
+        }
+        // Clear the one-shot reload guard once we have a good session.
+        if (session) { try { sessionStorage.removeItem('dash_handoff_reloaded'); } catch { /* ignore */ } }
       } else {
         const { data } = await supabase.auth.getSession();
         if (!active) return;
