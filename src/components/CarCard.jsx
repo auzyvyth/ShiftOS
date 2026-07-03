@@ -136,8 +136,20 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
   const interiorGrade = car.interior_grade || null;
   const hasGrade      = auctionGrade || interiorGrade;
 
-  const formattedPrice   = price ? 'RM ' + price.toLocaleString('en-MY') : 'P.O.R';
-  const monthly          = calcMonthly(price);
+  // Sambung bayar (loan takeover): a full price is meaningless — the buyer takes
+  // over the loan, so the headline is the real monthly + upfront cash + months left.
+  const isSambung = (car.payment_type === 'sambung_bayar') && Number(car.sambung_monthly) > 0;
+  const sambungMonthly = Number(car.sambung_monthly) || 0;
+  const sambungDeposit = Number(car.sambung_deposit) || 0;
+  const sambungMonths  = Number(car.sambung_months_left) || 0;
+  const fmtRM = (n) => 'RM ' + Number(n).toLocaleString('en-MY');
+
+  const formattedPrice   = isSambung
+    ? fmtRM(sambungMonthly) + '/mo'
+    : (price ? 'RM ' + price.toLocaleString('en-MY') : 'P.O.R');
+  // For sambung the "monthly pill" slot carries the deposit + months-left instead
+  // of an estimated instalment (which doesn't apply to a takeover).
+  const monthly          = isSambung ? null : calcMonthly(price);
   const formattedMileage = mileage ? Number(mileage).toLocaleString('en-MY') + ' km' : null;
   const normalTx =
     ['Auto', 'Automatic', 'AT'].includes(transmission) ? 'Auto' :
@@ -523,9 +535,20 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
           {/* ── Price block ── */}
           <div style={{ marginBottom: 10 }}>
 
-            {/* Strikethrough + save — 16px reserved */}
+            {/* Strikethrough + save — 16px reserved. For sambung bayar this slot
+                carries the "Sambung Bayar" tag instead (no strike price applies). */}
             <div style={{ height: 16, display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
-              {hasDiscount && (
+              {isSambung ? (
+                <span style={{
+                  fontSize: 9, fontWeight: 700, lineHeight: 1, flexShrink: 0, letterSpacing: '0.04em',
+                  padding: '2px 6px', borderRadius: 20,
+                  background: xdrive ? 'rgba(245,158,11,0.15)' : 'rgba(217,119,6,0.09)',
+                  color: xdrive ? '#fbbf24' : '#b45309',
+                  border: `1px solid ${xdrive ? 'rgba(245,158,11,0.3)' : 'rgba(217,119,6,0.2)'}`,
+                }}>
+                  SAMBUNG BAYAR
+                </span>
+              ) : hasDiscount && (
                 <>
                   <span style={{ fontSize: 10, color: xd.strike, textDecoration: 'line-through', lineHeight: 1, flexShrink: 0 }}>
                     RM {originalPrice.toLocaleString('en-MY')}
@@ -554,9 +577,21 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
               {formattedPrice}
             </span>
 
-            {/* Monthly pill — 20px reserved, hidden as full row on mobile */}
+            {/* Monthly pill — 20px reserved, hidden as full row on mobile. For
+                sambung bayar this carries the upfront deposit + months left. */}
             <div className="cc-monthly-row" style={{ height: 20, display: 'flex', alignItems: 'center', marginTop: 4 }}>
-              {monthly ? (
+              {isSambung ? (
+                (sambungDeposit > 0 || sambungMonths > 0) ? (
+                  <span className="cc-monthly-pill" style={{
+                    display: 'inline-flex', alignItems: 'center', fontSize: 10, fontWeight: 600,
+                    color: xd.monthlyColor, background: xd.monthlyBg, border: xd.monthlyBdr,
+                    padding: '3px 8px', borderRadius: 20, lineHeight: 1,
+                  }}>
+                    {[sambungDeposit > 0 ? `${fmtRM(sambungDeposit)} deposit` : null,
+                      sambungMonths > 0 ? `${sambungMonths} bln lagi` : null].filter(Boolean).join(' · ')}
+                  </span>
+                ) : <span />
+              ) : monthly ? (
                 <span className="cc-monthly-pill" style={{
                   display:      'inline-flex',
                   alignItems:   'center',
