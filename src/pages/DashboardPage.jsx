@@ -5819,7 +5819,12 @@ function stockCostBasis(u) {
   if (Number(u.purchase_price) > 0) return Number(u.purchase_price);
   return Number(u.car_listings?.base_price) || 0;
 }
-function stockNetProfit(u, ctx = {}) {
+// Split version — returns the vehicle-only front gross and the F&I add-on net
+// (back gross) separately, so callers that need to show them as distinct
+// figures (e.g. "Car GP" vs "Add-on GP") don't have to duplicate this math.
+// stockNetProfit() below is just front + addonNet for callers that only want
+// one combined number (row badges, loss filter).
+function stockNetProfitParts(u, ctx = {}) {
   const { cfg = {}, ads = {}, handover = {}, addRev = {}, addCost = {} } = ctx;
   const cost = stockCostBasis(u);
   const c = u.car_listings || {};
@@ -5842,7 +5847,11 @@ function stockNetProfit(u, ctx = {}) {
   const days = start ? Math.max(0, Math.floor((end - new Date(start)) / 86400000)) : 0;
   const holding = Math.round(dailyHold * days);
   const front = revenue - (cost + recon + services + commission + holding + adSpend + hc);
-  return front + (aR - aC);
+  return { front, addonRevenue: aR, addonCost: aC, addonNet: aR - aC };
+}
+function stockNetProfit(u, ctx = {}) {
+  const parts = stockNetProfitParts(u, ctx);
+  return parts == null ? null : parts.front + parts.addonNet;
 }
 function stockDays(u) {
   if (u.days_in_stock != null && u.days_in_stock > 0) return u.days_in_stock;
@@ -5851,8 +5860,12 @@ function stockDays(u) {
   return Math.floor((Date.now() - new Date(date)) / 86400000);
 }
 
-// Compact 6-stat strip surfaced atop the Listings tab (migrated from the Stock tab
+// Compact 7-stat strip surfaced atop the Listings tab (migrated from the Stock tab
 // header). Fetches stock_units + cost components once and reuses the shared P&L math.
+// GP (month) is split into vehicle margin (Car GP) and F&I back-end margin
+// (Add-on GP) rather than one merged number, and Revenue (sold) folds in add-on
+// revenue for sold cars so it reads as one honest total instead of hiding
+// add-on income in a separate figure.
 function StockStatsStrip({ dealerId }) {
   const [s, setS] = useState(null);
   useEffect(() => {
@@ -5878,13 +5891,25 @@ function StockStatsStrip({ dealerId }) {
       const sold = units.filter(x => x.status === 'sold');
       const month = sold.filter(x => { if (!x.sold_date) return false; const d = new Date(x.sold_date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
       const withDays = active.map(stockDays).filter(d => typeof d === 'number');
+      // Add-on revenue for cars that are actually sold — matches soldCarRevenue's
+      // scope so "Revenue (sold)" is one honest total (car price + F&I add-ons),
+      // not just the vehicle price with add-on income hiding in a separate number.
+      const soldAddonRevenue = sold.reduce((t, x) => t + (ar[x.listing_id] || 0), 0);
+      const soldCarRevenue = sold.reduce((t, x) => t + (Number(x.sold_price) || Number(x.asking_price) || 0), 0);
+      // Split GP (month) into vehicle margin vs F&I add-on margin — previously one
+      // merged number that read 0 whenever vehicle-only front gross was 0/unset
+      // even if add-ons had profit, and vice versa.
+      const monthParts = month.map(x => stockNetProfitParts(x, ctx)).filter(Boolean);
       setS({
         // Matches the Inventory tab's "Total Value" (car_listings.selling_price) so the
         // two value figures on this page never disagree for the same unsold inventory.
-        soldRevenue: sold.reduce((t, x) => t + (Number(x.sold_price) || Number(x.asking_price) || 0), 0),
+        soldCarRevenue,
+        soldAddonRevenue,
+        soldRevenue: soldCarRevenue + soldAddonRevenue,
         stockValue: active.reduce((t, x) => t + (Number(x.car_listings?.selling_price) || Number(x.asking_price) || 0), 0),
         avgDays: withDays.length ? Math.round(withDays.reduce((t, d) => t + d, 0) / withDays.length) : 0,
-        gpMonth: month.reduce((t, x) => t + (stockNetProfit(x, ctx) || 0), 0),
+        carGpMonth: monthParts.reduce((t, p) => t + p.front, 0),
+        addonGpMonth: monthParts.reduce((t, p) => t + p.addonNet, 0),
         soldMonth: month.length,
         aging: active.filter(x => { const d = stockDays(x); return typeof d === 'number' && d > 60; }).length,
       });
@@ -5894,13 +5919,14 @@ function StockStatsStrip({ dealerId }) {
 
   const rm = (n) => 'RM ' + Math.round(Number(n || 0)).toLocaleString('en-MY');
   const items = s ? [
-    { label: 'Revenue (sold)', val: rm(s.soldRevenue) },
+    { label: 'Revenue (sold)', val: rm(s.soldRevenue), sub: s.soldAddonRevenue > 0 ? `incl. ${rm(s.soldAddonRevenue)} add-ons` : undefined },
     { label: 'Stock Value', val: rm(s.stockValue) },
     { label: 'Avg Days', val: String(s.avgDays) },
-    { label: 'GP (month)', val: rm(s.gpMonth), color: s.gpMonth >= 0 ? '#16a34a' : '#dc2626' },
+    { label: 'Car GP (month)', val: rm(s.carGpMonth), color: s.carGpMonth >= 0 ? '#16a34a' : '#dc2626' },
+    { label: 'Add-on GP (month)', val: rm(s.addonGpMonth), color: s.addonGpMonth >= 0 ? '#16a34a' : '#dc2626' },
     { label: 'Sold (month)', val: String(s.soldMonth) },
     { label: 'Aging 60d+', val: String(s.aging), color: s.aging > 0 ? '#dc2626' : undefined },
-  ] : Array.from({ length: 6 }, () => ({}));
+  ] : Array.from({ length: 7 }, () => ({}));
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))', gap: 8, marginBottom: 24 }}>
@@ -5908,6 +5934,7 @@ function StockStatsStrip({ dealerId }) {
         <div key={i} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px', minWidth: 0 }}>
           <p style={{ fontSize: 9, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.label || ''}</p>
           <p style={{ fontSize: 15, fontWeight: 700, color: it.color || '#111827', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.val ?? '—'}</p>
+          {it.sub && <p style={{ fontSize: 9, color: '#9ca3af', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.sub}</p>}
         </div>
       ))}
     </div>
