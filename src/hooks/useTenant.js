@@ -1,6 +1,21 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
+import { readCache, writeCache } from "../utils/localCache";
+
+// Stale-while-revalidate: a dealer's own profile changes rarely, but every
+// single subdomain page mounts this hook and otherwise waits on a fresh RPC
+// round-trip before painting anything (HomePage/CarDetailPage/etc. all block
+// on tenant !== undefined). Caching it here benefits every one of them at
+// once. The RPC below always still runs and overwrites tenant + cache the
+// moment it lands — this only affects what paints before that response
+// arrives, and the realtime subscription further down keeps it correct
+// whenever the dealer edits their storefront.
+const TENANT_CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
+const tenantCacheKey = (subdomain) => `tenant_profile_v1_${subdomain}`;
+function readTenantCache(subdomain) {
+  return subdomain ? readCache(tenantCacheKey(subdomain), TENANT_CACHE_TTL) : null;
+}
 
 export const MARKETPLACE_DOMAIN = "xdrive.my";
 export const DASHBOARD_DOMAIN = "shiftos.com";
@@ -75,8 +90,10 @@ export function getStorefrontUrl(subdomain) {
 }
 
 export default function useTenant() {
-  const [tenant, setTenant] = useState(undefined); // undefined = loading
-  const [loading, setLoading] = useState(true);
+  // Read once per mount — hostname can't change without a full page reload.
+  const cachedTenantRef = useRef(readTenantCache(getSubdomain()));
+  const [tenant, setTenant] = useState(() => cachedTenantRef.current || undefined); // undefined = loading
+  const [loading, setLoading] = useState(() => !cachedTenantRef.current);
   const tenantIdRef = useRef(null); // used by realtime subscription
 
   useEffect(() => {
@@ -85,15 +102,17 @@ export default function useTenant() {
     // Safety net: in-app webviews (Instagram/Facebook) and flaky mobile networks
     // can make Supabase storage/auth/RPC calls throw or hang. Without this the
     // hook would sit at tenant===undefined forever and HomePage shows the
-    // full-screen loader indefinitely. Force-resolve to the public marketplace
-    // after a short timeout so the page always renders.
+    // full-screen loader indefinitely. Force-resolve after a short timeout so
+    // the page always renders — falling back to the cached tenant (if we
+    // already painted one) rather than null, so a flaky network degrades to
+    // "showing slightly-stale data" instead of "storefront doesn't exist".
     const settle = (value) => {
       if (settled) return;
       settled = true;
       setTenant(value);
       setLoading(false);
     };
-    const timer = setTimeout(() => settle(null), 6000);
+    const timer = setTimeout(() => settle(cachedTenantRef.current || null), 6000);
 
     async function resolve() {
       // Each Supabase/storage touch is individually guarded — a throw here (e.g.
@@ -133,6 +152,9 @@ export default function useTenant() {
       }
       clearTimeout(timer);
       settle(profile);
+      // Don't cache a miss — a transient RPC failure shouldn't make the
+      // storefront remember "not found" past this one bad request.
+      if (profile) writeCache(tenantCacheKey(subdomain), profile);
 
       // Subscribe to realtime changes for this dealer's profile row so that
       // when settings are saved in the dashboard, the storefront tab updates
@@ -155,7 +177,12 @@ export default function useTenant() {
               const { data: updated } = await supabase
                 .rpc("get_dealer_profile_by_subdomain", { p_subdomain: subdomain })
                 .maybeSingle();
-              if (updated) setTenant(updated);
+              if (updated) {
+                setTenant(updated);
+                // Keep the cache in step with a dashboard edit, so the next
+                // repeat visit paints the latest version instantly too.
+                writeCache(tenantCacheKey(subdomain), updated);
+              }
             }
           )
           .subscribe();
