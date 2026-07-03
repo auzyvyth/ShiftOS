@@ -498,12 +498,13 @@ const FUEL_TYPES = ["Petrol", "Diesel", "Hybrid", "Electric"];
 const CC_PRESETS = [660, 1000, 1300, 1500, 1600, 1800, 2000, 2500, 3000, 3500];
 
 const STEPS = [
-  { id: 1, label: "Photos",      icon: Camera,      desc: "Upload images first" },
-  { id: 2, label: "Car Details", icon: Car,         desc: "Brand, model & condition" },
-  { id: 3, label: "Technical",   icon: Gauge,       desc: "Specs & history" },
-  { id: 4, label: "Location",    icon: MapPin,      desc: "State & city" },
-  { id: 5, label: "Pricing",     icon: DollarSign,  desc: "Prices & add-ons" },
-  { id: 6, label: "Details",     icon: FileText,    desc: "Features & documents" },
+  { id: 1, label: "Photos",   icon: Camera,         desc: "Upload images first" },
+  { id: 2, label: "Car",      icon: Car,            desc: "Brand, model & condition" },
+  { id: 3, label: "Technical",icon: Gauge,          desc: "Specs & history" },
+  { id: 4, label: "Location", icon: MapPin,         desc: "State & city" },
+  { id: 5, label: "Pricing",  icon: DollarSign,     desc: "Prices & add-ons" },
+  { id: 6, label: "Details",  icon: FileText,       desc: "Features & documents" },
+  { id: 7, label: "Review",   icon: ClipboardCheck, desc: "Confirm everything before publishing" },
 ];
 
 function SortableSection({ id, section, complete, collapsed, onToggle, children }) {
@@ -817,6 +818,38 @@ function PickerField({ label, value, onChange, options, placeholder = "Select…
   );
 }
 
+// Review-step building blocks: a titled card with an Edit jump, and a
+// label/value cell that renders nothing when the value is empty.
+function ReviewSection({ title, onEdit, children }) {
+  return (
+    <div className="rounded-2xl border border-gray-200 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-100">
+        <span className="text-xs font-bold uppercase tracking-wide text-gray-500">{title}</span>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+          >
+            Edit
+          </button>
+        )}
+      </div>
+      <div className="px-4 py-3">{children}</div>
+    </div>
+  );
+}
+
+function ReviewItem({ label, value }) {
+  if (value === null || value === undefined || value === "") return null;
+  return (
+    <div className="min-w-0">
+      <p className="text-[11px] text-gray-500">{label}</p>
+      <p className="text-sm font-medium text-gray-900 truncate">{value}</p>
+    </div>
+  );
+}
+
 function Field({ label, required, hint, children }) {
   return (
     <div className="space-y-2">
@@ -864,7 +897,13 @@ const cfSaveDraft = (uid, form, step) => { try { localStorage.setItem(cfDraftKey
 const cfLoadDraft = (uid) => { try { const r = localStorage.getItem(cfDraftKey(uid)); if (!r) return null; const d = JSON.parse(r); if (Date.now() - d.savedAt > DRAFT_TTL_MS) { localStorage.removeItem(cfDraftKey(uid)); return null; } return d; } catch (_) { return null; } };
 const cfClearDraft = (uid) => { try { localStorage.removeItem(cfDraftKey(uid)); } catch (_) {} };
 
-export default function CarForm({ onCreate, listing, onUpdate, defaultValues, onBack }) {
+// intakeDone: set by the dealer 2-phase flow (AddCarForm -> CarForm). AddCarForm's
+// Identity/Pricing steps already captured brand/model/variant/year/mileage/colour/
+// plate/VIN/CC/transmission/fuel/body/prices/commission/warranty/services, so those
+// inputs are hidden here (values carry over via the `listing` prefill) and their
+// step validations are relaxed. Standalone CarForm (salesman flows, plain edits)
+// still shows everything.
+export default function CarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intakeDone }) {
   const { profile } = useProfile();
   const dealerId = getDealerIdFromProfile(profile);
 
@@ -1027,7 +1066,12 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         bodyType: listing.body_type || "",
         fuelType: listing.fuel_type || "",
         transmission: listing.transmission || "Auto",
-        condition: listing.condition || "used",
+        // AddCarForm writes its stock condition ("Good"/"Excellent"…) into this
+        // column; the marketplace domain is used/recon/new, so normalize anything
+        // else from the recon flag (this is what gets written back on save).
+        condition: ["used", "recon", "new"].includes(listing.condition)
+          ? listing.condition
+          : listing.is_recon ? "recon" : "used",
         engineCc: listing.engine_cc ? String(listing.engine_cc) : "",
         horsepower: listing.horsepower ? String(listing.horsepower) : "",
         cylinders: listing.cylinders ? String(listing.cylinders) : "",
@@ -1510,13 +1554,15 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   // Which required fields are still empty on the current step (for the toast).
   const missingFields = () => {
     if (step === 1) return form.images.length > 0 ? [] : ["at least 1 photo"];
-    if (step === 2) return [
+    if (step === 2) return (intakeDone ? [
+      [!form.condition, "Condition"],
+    ] : [
       [!form.brand, "Brand"], [!form.model, "Model"], [!form.year, "Year"],
       [!form.mileage, "Mileage"], [!form.colour, "Colour"], [!form.condition, "Condition"],
-    ].filter(([m]) => m).map(([, l]) => l);
-    if (step === 3) return [[!form.bodyType, "Body type"], [!form.fuelType, "Fuel type"]].filter(([m]) => m).map(([, l]) => l);
+    ]).filter(([m]) => m).map(([, l]) => l);
+    if (step === 3) return intakeDone ? [] : [[!form.bodyType, "Body type"], [!form.fuelType, "Fuel type"]].filter(([m]) => m).map(([, l]) => l);
     if (step === 4) return [[!form.state, "State"], [!form.city, "City"]].filter(([m]) => m).map(([, l]) => l);
-    if (step === 5) return [[!form.basePrice, "Base price"], [!form.sellingPrice, "Selling price"]].filter(([m]) => m).map(([, l]) => l);
+    if (step === 5) return intakeDone ? [] : [[!form.basePrice, "Base price"], [!form.sellingPrice, "Selling price"]].filter(([m]) => m).map(([, l]) => l);
     return [];
   };
 
@@ -1764,11 +1810,15 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   function isSectionComplete(id) {
     switch (id) {
       case 1: return form.images.length > 0;
-      case 2: return !!(form.brand && form.model && form.year && form.mileage && form.colour && form.condition);
-      case 3: return !!(form.bodyType && form.fuelType);
+      // In intakeDone mode the identity/technical/pricing fields are hidden here
+      // (already captured by AddCarForm — some, like colour, are optional there),
+      // so only require what this form still shows.
+      case 2: return intakeDone ? !!form.condition : !!(form.brand && form.model && form.year && form.mileage && form.colour && form.condition);
+      case 3: return intakeDone ? true : !!(form.bodyType && form.fuelType);
       case 4: return !!(form.state && form.city);
-      case 5: return !!(form.basePrice && form.sellingPrice);
+      case 5: return intakeDone ? true : !!(form.basePrice && form.sellingPrice);
       case 6: return true;
+      case 7: return true;
       default: return false;
     }
   }
@@ -2068,6 +2118,14 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       );
       case 2: return (
         <div className="space-y-5">
+          {intakeDone && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
+              <Check size={12} />
+              {form.year} {form.brand} {form.model} — identity carried over from Core Details
+            </div>
+          )}
+          {!intakeDone && (
+          <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Brand" required>
               <PickerField
@@ -2116,6 +2174,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               className={inputCls}
             />
           </Field>
+          </>
+          )}
           {autoFilled && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200 text-green-700 text-xs font-medium">
               <Check size={12} />
@@ -2129,6 +2189,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               onChange={(v) => set("condition", v)}
             />
           </Field>
+          {!intakeDone && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Mileage (km)" required>
               <input
@@ -2153,6 +2214,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               />
             </Field>
           </div>
+          )}
           <Field label="Registration Date">
             <input
               type="date"
@@ -2162,6 +2224,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               className={inputCls}
             />
           </Field>
+          {!intakeDone && (
+          <>
           <Field
             label="Plate Number"
             hint="Optional — vehicle registration plate"
@@ -2191,6 +2255,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.vin}</p>
             )}
           </Field>
+          </>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Previous Owners">
               <input
@@ -2225,6 +2291,14 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       );
       case 3: return (
         <div className="space-y-6">
+          {intakeDone && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
+              <Check size={12} />
+              {[form.bodyType, form.fuelType, form.transmission, form.engineCc && `${form.engineCc}cc`].filter(Boolean).join(" · ")} — carried over from Core Details
+            </div>
+          )}
+          {!intakeDone && (
+          <>
           <Field label="Body Type" required>
             <PillSelect
               options={BODY_TYPES}
@@ -2246,6 +2320,9 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               onChange={(v) => set("transmission", v)}
             />
           </Field>
+          </>
+          )}
+          {!intakeDone && (
           <Field
             label="Engine Displacement (CC)"
             hint="Used for road tax & insurance calc"
@@ -2281,6 +2358,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               </div>
             </div>
           </Field>
+          )}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <Field label="Power (bhp)">
               <div className="relative">
@@ -2500,6 +2578,12 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       );
       case 5: return (
         <div className="space-y-5">
+          {intakeDone && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
+              <Check size={12} />
+              Asking RM {Number(form.sellingPrice || 0).toLocaleString()} — pricing carried over from Core Details
+            </div>
+          )}
           <Field label="Payment Type" required>
             <PillSelect
               options={["Cash", "Loan", "Sambung Bayar"]}
@@ -2515,6 +2599,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               }
             />
           </Field>
+          {!intakeDone && (
+          <>
           <Field
             label="Base Price (RM)"
             required
@@ -2671,6 +2757,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               );
             })()}
           </Field>
+          </>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field
               label="Deposit to Reserve (RM)"
@@ -2691,6 +2779,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 />
               </div>
             </Field>
+            {!intakeDone && (
             <Field label="Warranty Offered (months)" hint="0 = no warranty">
               <input
                 type="number"
@@ -2702,9 +2791,11 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 className={inputCls}
               />
             </Field>
+            )}
           </div>
 
           {/* ── Included Services & Add-ons ── */}
+          {!intakeDone && (
           <div className="rounded-2xl border border-gray-200 overflow-hidden">
             {/* Header toggle */}
             <button
@@ -2883,6 +2974,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               </div>
             )}
           </div>
+          )}
         </div>
       );
       case 6: return (
@@ -2919,6 +3011,99 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           </Field>
         </div>
       );
+      case 7: {
+        const rm = (v) => (v !== "" && v != null && !isNaN(Number(v)) && Number(v) > 0 ? `RM ${Number(v).toLocaleString()}` : null);
+        const svcTotal = form.included_services.reduce((s, x) => s + Number(x.selling_price || 0), 0);
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Last check — confirm everything below, then hit {listing ? "Save Changes" : "Publish Listing"}. Tap Edit to fix a section.
+            </p>
+            <ReviewSection title={`Photos · ${previews.length}`} onEdit={() => setStep(1)}>
+              {previews.length > 0 ? (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {previews.slice(0, 8).map((src, i) => (
+                    <img key={src + i} src={src} alt={`photo ${i + 1}`} className="w-16 h-12 rounded-lg object-cover border border-gray-200 flex-shrink-0" />
+                  ))}
+                  {previews.length > 8 && (
+                    <div className="w-16 h-12 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-xs font-semibold text-gray-500 flex-shrink-0">
+                      +{previews.length - 8}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-red-500">No photos yet — at least 1 required</p>
+              )}
+              {(form.video_url || form.car_documents.length > 0) && (
+                <p className="text-xs text-gray-500 mt-2">
+                  {[
+                    form.video_url && "Walkthrough video attached",
+                    form.car_documents.length > 0 && `${form.car_documents.length} document${form.car_documents.length > 1 ? "s" : ""}`,
+                  ].filter(Boolean).join(" · ")}
+                </p>
+              )}
+            </ReviewSection>
+            <ReviewSection title="Car" onEdit={() => setStep(2)}>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                <ReviewItem label="Vehicle" value={[form.year, form.brand, form.model, form.variant].filter(Boolean).join(" ")} />
+                <ReviewItem label="Condition" value={{ used: "Used", recon: "Recon", new: "New" }[form.condition] || form.condition} />
+                <ReviewItem label="Mileage" value={form.mileage ? `${Number(form.mileage).toLocaleString()} km` : null} />
+                <ReviewItem label="Colour" value={form.colour} />
+                <ReviewItem label="Plate" value={form.plate_number} />
+                <ReviewItem label="VIN" value={form.vin_number} />
+                <ReviewItem label="Registered" value={form.registrationDate} />
+                <ReviewItem label="Previous owners" value={form.previous_owners} />
+                <ReviewItem label="Road tax expiry" value={form.road_tax_expiry} />
+                <ReviewItem label="Loan eligible" value={form.loan_eligible ? "Yes" : "No"} />
+              </div>
+            </ReviewSection>
+            <ReviewSection title="Technical" onEdit={() => setStep(3)}>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                <ReviewItem label="Body type" value={form.bodyType} />
+                <ReviewItem label="Fuel" value={form.fuelType} />
+                <ReviewItem label="Transmission" value={form.transmission} />
+                <ReviewItem label="Engine" value={form.engineCc ? `${form.engineCc}cc` : null} />
+                <ReviewItem label="Power" value={form.horsepower ? `${form.horsepower} bhp` : null} />
+                <ReviewItem label="Doors / Seats" value={[form.doors, form.seats].filter(Boolean).join(" / ") || null} />
+                {form.isRecon && (
+                  <ReviewItem label="Recon" value={[form.auctionGrade && `Grade ${form.auctionGrade}`, form.importCountry].filter(Boolean).join(" · ") || "Yes"} />
+                )}
+              </div>
+            </ReviewSection>
+            <ReviewSection title="Location" onEdit={() => setStep(4)}>
+              {form.state || form.city ? (
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                  <ReviewItem label="State" value={form.state} />
+                  <ReviewItem label="City" value={form.city} />
+                </div>
+              ) : (
+                <p className="text-sm text-red-500">Not set — state & city are required</p>
+              )}
+            </ReviewSection>
+            <ReviewSection title="Pricing" onEdit={() => setStep(5)}>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                <ReviewItem label="Selling price" value={rm(form.sellingPrice)} />
+                <ReviewItem label="Was price" value={rm(form.originalPrice)} />
+                <ReviewItem label="Base / cost" value={rm(form.basePrice)} />
+                <ReviewItem label="Commission" value={rm(form.commissionAmount)} />
+                <ReviewItem label="Deposit to reserve" value={rm(form.deposit_amount)} />
+                <ReviewItem label="Warranty" value={form.warranty_months && Number(form.warranty_months) > 0 ? `${form.warranty_months} months` : null} />
+                <ReviewItem label="Payment" value={form.payment_type === "sambung_bayar" ? "Sambung Bayar" : (form.payment_type || "cash").charAt(0).toUpperCase() + (form.payment_type || "cash").slice(1)} />
+                <ReviewItem label="Included services" value={form.included_services.length ? `${form.included_services.length} · RM ${svcTotal.toLocaleString()}` : null} />
+              </div>
+            </ReviewSection>
+            {(form.specs || form.options || form.features) && (
+              <ReviewSection title="Description" onEdit={() => setStep(6)}>
+                <div className="space-y-2.5">
+                  <ReviewItem label="Specs" value={form.specs} />
+                  <ReviewItem label="Options" value={form.options} />
+                  <ReviewItem label="Features" value={form.features} />
+                </div>
+              </ReviewSection>
+            )}
+          </div>
+        );
+      }
       default: return null;
     }
   }
@@ -2969,7 +3154,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
             <ChevronLeft className="w-4 h-4" /> Back
           </button>
         )}
-        <div style={{ flex: 1, display: "flex", alignItems: "flex-end" }}>
+        <div style={{ flex: 1, display: "flex", alignItems: "flex-end", overflowX: "auto", minWidth: 0 }}>
           {STEPS.map((s, i) => {
             const complete = isSectionComplete(s.id);
             const isCurrent = step === s.id;

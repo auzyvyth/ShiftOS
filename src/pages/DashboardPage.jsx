@@ -10613,6 +10613,7 @@ export default function DashboardPage() {
                   ) : (
                     <CarForm
                       listing={marketplaceDraftListing}
+                      intakeDone
                       defaultValues={{ state: profile?.state || '', city: profile?.city || '' }}
                       onBack={() => setMarketplaceDraftListing(null)}
                       onUpdate={handleMarketplacePublish}
