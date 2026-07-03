@@ -498,12 +498,13 @@ const FUEL_TYPES = ["Petrol", "Diesel", "Hybrid", "Electric"];
 const CC_PRESETS = [660, 1000, 1300, 1500, 1600, 1800, 2000, 2500, 3000, 3500];
 
 const STEPS = [
-  { id: 1, label: "Photos",      icon: Camera,      desc: "Upload images first" },
-  { id: 2, label: "Car Details", icon: Car,         desc: "Brand, model & condition" },
-  { id: 3, label: "Technical",   icon: Gauge,       desc: "Specs & history" },
-  { id: 4, label: "Location",    icon: MapPin,      desc: "State & city" },
-  { id: 5, label: "Pricing",     icon: DollarSign,  desc: "Prices & add-ons" },
-  { id: 6, label: "Details",     icon: FileText,    desc: "Features & documents" },
+  { id: 1, label: "Photos",   icon: Camera,         desc: "Upload images first" },
+  { id: 2, label: "Car",      icon: Car,            desc: "Brand, model & condition" },
+  { id: 3, label: "Technical",icon: Gauge,          desc: "Specs & history" },
+  { id: 4, label: "Location", icon: MapPin,         desc: "State & city" },
+  { id: 5, label: "Pricing",  icon: DollarSign,     desc: "Prices & add-ons" },
+  { id: 6, label: "Details",  icon: FileText,       desc: "Features & documents" },
+  { id: 7, label: "Review",   icon: ClipboardCheck, desc: "Confirm everything before publishing" },
 ];
 
 function SortableSection({ id, section, complete, collapsed, onToggle, children }) {
@@ -688,77 +689,6 @@ export function buildCopyText(l) {
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
-function Combobox({ value, onChange, options, placeholder, disabled }) {
-  const [query, setQuery] = useState(value || "");
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  const filtered = query
-    ? options
-        .filter((o) => o.toLowerCase().includes(query.toLowerCase()))
-        .slice(0, 20)
-    : options.slice(0, 20);
-  useEffect(() => {
-    setQuery(value || "");
-  }, [value]);
-  useEffect(() => {
-    const h = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
-  return (
-    <div ref={ref} className="relative">
-      <input
-        value={query}
-        enterKeyHint="next"
-        onChange={(e) => {
-          setQuery(e.target.value);
-          onChange(e.target.value);
-          setOpen(true);
-        }}
-        onFocus={() => !disabled && setOpen(true)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && open && filtered.length > 0) {
-            e.preventDefault();
-            onChange(filtered[0]);
-            setQuery(filtered[0]);
-            setOpen(false);
-            // bubble up so parent handleKeyDown advances to the next field
-          } else if (e.key === "Escape") {
-            setOpen(false);
-          }
-        }}
-        placeholder={placeholder}
-        disabled={disabled}
-        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-      />
-      {open && !disabled && (
-        <ul className="absolute z-[200] w-full bg-white border border-gray-200 rounded-xl mt-1 max-h-48 overflow-y-auto shadow-lg">
-          {filtered.map((o) => (
-            <li
-              key={o}
-              onMouseDown={() => {
-                onChange(o);
-                setQuery(o);
-                setOpen(false);
-              }}
-              className="px-4 py-2.5 text-gray-900 hover:bg-blue-50 hover:text-blue-600 cursor-pointer text-sm transition-colors"
-            >
-              {o}
-            </li>
-          ))}
-          {filtered.length === 0 && (
-            <li className="px-4 py-2.5 text-gray-400 text-sm italic">
-              No match — input saved as-is
-            </li>
-          )}
-        </ul>
-      )}
-    </div>
-  );
-}
-
 function PillSelect({ options, value, onChange }) {
   return (
     <div className="flex flex-wrap gap-2">
@@ -772,6 +702,264 @@ function PillSelect({ options, value, onChange }) {
           {opt}
         </button>
       ))}
+    </div>
+  );
+}
+
+// Tap-to-pick row that opens a bottom sheet — replaces both native <select>
+// (styling parity) and the free-text Combobox (kills the unwanted mobile
+// keyboard) for any field backed by an enumerated list. Options may be plain
+// strings or { value, label, color? } for cases needing a distinct value/label
+// (e.g. DOC_TYPES) or a colour swatch. allowCustom keeps the old Combobox
+// behavior of accepting a value not in the list (Brand/Model/City aren't
+// exhaustive lists).
+function PickerField({ label, value, onChange, options, placeholder = "Select…", disabled, allowCustom = false }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const normalized = options.map((o) => (typeof o === "string" ? { value: o, label: o } : o));
+  const selected = normalized.find((o) => o.value === value);
+  const searchable = normalized.length > 12;
+  const filtered = query
+    ? normalized.filter((o) => o.label.toLowerCase().includes(query.toLowerCase()))
+    : normalized;
+  const exactMatch = filtered.some((o) => o.label.toLowerCase() === query.toLowerCase());
+
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    setQuery("");
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
+  const pick = (v) => {
+    onChange(v);
+    setOpen(false);
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => !disabled && setOpen(true)}
+        disabled={disabled}
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 bg-white border border-gray-200 rounded-xl text-left transition-colors hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        <span className={`truncate text-sm ${value ? "text-gray-900 font-medium" : "text-gray-400"}`}>
+          {selected ? selected.label : value || placeholder}
+        </span>
+        <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+      </button>
+      {open &&
+        createPortal(
+          <div className="fixed inset-0 z-[300] flex items-end sm:items-center sm:justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
+            <div className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl max-h-[75vh] flex flex-col shadow-xl">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+                <p className="text-sm font-semibold text-gray-900">{label}</p>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                >
+                  <XIcon className="w-4 h-4" />
+                </button>
+              </div>
+              {searchable && (
+                <div className="px-5 py-3 border-b border-gray-100 flex-shrink-0">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      autoFocus
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search…"
+                      className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="overflow-y-auto flex-1 py-1.5">
+                {allowCustom && query && !exactMatch && (
+                  <button
+                    type="button"
+                    onClick={() => pick(query)}
+                    className="w-full flex items-center gap-2 px-5 py-3 text-left text-sm text-blue-600 hover:bg-blue-50 transition-colors border-b border-gray-100"
+                  >
+                    Use "{query}"
+                  </button>
+                )}
+                {filtered.map((o) => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    onClick={() => pick(o.value)}
+                    className={`w-full flex items-center justify-between gap-3 px-5 py-3 text-left text-sm transition-colors ${value === o.value ? "text-blue-600 font-semibold bg-blue-50" : "text-gray-900 hover:bg-gray-50"}`}
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      {o.color && (
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: o.color }} />
+                      )}
+                      <span className="truncate">{o.label}</span>
+                    </span>
+                    {value === o.value && <Check className="w-4 h-4 flex-shrink-0" />}
+                  </button>
+                ))}
+                {filtered.length === 0 && !(allowCustom && query) && (
+                  <p className="px-5 py-6 text-center text-sm text-gray-400">No matches</p>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
+// Typing-assist textarea for long-form listing copy (the About section).
+// Mimics how sellers hand-type Carlist-style descriptions:
+//  - Enter continues a list line: "1. …" -> "2. ", and "-", "•" or an
+//    emoji-prefixed line repeats its marker. Enter on an empty item exits
+//    the list (marker is stripped), same as Google Keep.
+//  - Double-space ends the sentence with ". " like phone keyboards. Done in
+//    onChange (not keydown) because Android IMEs don't reliably emit key
+//    events for space.
+//  - Quick-insert chips drop common emoji markers at the cursor.
+const QUICK_MARKS = ["✅", "•", "🔥", "⭐", "📌", "🛠️", "🚗", "💯"];
+function SmartTextarea({ value, onValueChange, placeholder, rows = 6 }) {
+  const ref = useRef(null);
+
+  const applyEdit = (next, caret) => {
+    onValueChange(next);
+    requestAnimationFrame(() => {
+      const el = ref.current;
+      if (el) {
+        el.focus();
+        el.setSelectionRange(caret, caret);
+      }
+    });
+  };
+
+  const handleChange = (e) => {
+    const el = e.target;
+    const next = el.value;
+    const caret = el.selectionStart;
+    // Just-typed double space after a word/number -> ". "
+    if (
+      next.length === value.length + 1 &&
+      caret >= 3 &&
+      next.slice(caret - 2, caret) === "  " &&
+      /[\p{L}\p{N}]/u.test(next[caret - 3])
+    ) {
+      applyEdit(next.slice(0, caret - 2) + ". " + next.slice(caret), caret);
+      return;
+    }
+    onValueChange(next);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key !== "Enter" || e.shiftKey) return;
+    const el = e.target;
+    const s = el.selectionStart;
+    if (s !== el.selectionEnd) return;
+    const lineStart = value.lastIndexOf("\n", s - 1) + 1;
+    const line = value.slice(lineStart, s);
+    const num = line.match(/^(\d+)([.)])\s+/);
+    const bul = num ? null : line.match(/^([-*•]|\p{Extended_Pictographic}\ufe0f?)\s+/u);
+    const m = num || bul;
+    if (!m) return;
+    e.preventDefault();
+    // Stop the Enter from also bubbling to the wizard's field-advance handler
+    e.stopPropagation();
+    const content = line.slice(m[0].length);
+    if (!content.trim()) {
+      applyEdit(value.slice(0, lineStart) + value.slice(s), lineStart);
+    } else {
+      const marker = num ? `${Number(num[1]) + 1}${num[2]} ` : `${bul[1]} `;
+      const insert = `\n${marker}`;
+      applyEdit(value.slice(0, s) + insert + value.slice(s), s + insert.length);
+    }
+  };
+
+  const insertMark = (mark) => {
+    const el = ref.current;
+    const s = el && document.activeElement === el ? el.selectionStart : value.length;
+    const end = el && document.activeElement === el ? el.selectionEnd : value.length;
+    // Markers start a line — if the cursor is mid-line, break to a new one
+    const atLineStart = s === 0 || value[s - 1] === "\n";
+    const insert = `${atLineStart ? "" : "\n"}${mark} `;
+    applyEdit(value.slice(0, s) + insert + value.slice(end), s + insert.length);
+  };
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {QUICK_MARKS.map((m) => (
+          <button
+            key={m}
+            type="button"
+            onPointerDown={(e) => e.preventDefault()}
+            onClick={() => insertMark(m)}
+            className="px-2.5 py-1 rounded-lg bg-gray-100 border border-gray-200 text-sm hover:border-blue-400 transition-colors"
+          >
+            {m}
+          </button>
+        ))}
+        <button
+          type="button"
+          onPointerDown={(e) => e.preventDefault()}
+          onClick={() => insertMark("1.")}
+          className="px-2.5 py-1 rounded-lg bg-gray-100 border border-gray-200 text-xs font-semibold text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
+        >
+          1. list
+        </button>
+      </div>
+      <textarea
+        ref={ref}
+        value={value}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+        rows={rows}
+        className={textareaCls}
+      />
+      <p className="text-xs text-gray-400 mt-1.5">
+        Enter continues a numbered or bullet line · double-space ends a sentence with "."
+      </p>
+    </div>
+  );
+}
+
+// Review-step building blocks: a titled card with an Edit jump, and a
+// label/value cell that renders nothing when the value is empty.
+function ReviewSection({ title, onEdit, children }) {
+  return (
+    <div className="rounded-2xl border border-gray-200 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-100">
+        <span className="text-xs font-bold uppercase tracking-wide text-gray-500">{title}</span>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+          >
+            Edit
+          </button>
+        )}
+      </div>
+      <div className="px-4 py-3">{children}</div>
+    </div>
+  );
+}
+
+function ReviewItem({ label, value }) {
+  if (value === null || value === undefined || value === "") return null;
+  return (
+    <div className="min-w-0">
+      <p className="text-[11px] text-gray-500">{label}</p>
+      <p className="text-sm font-medium text-gray-900 truncate">{value}</p>
     </div>
   );
 }
@@ -793,8 +981,6 @@ function Field({ label, required, hint, children }) {
 
 const inputCls =
   "w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors";
-const selectCls =
-  "w-full px-4 pr-10 py-3 bg-white border border-gray-200 rounded-2xl text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition-colors appearance-none cursor-pointer";
 const textareaCls =
   "w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors resize-none";
 
@@ -825,7 +1011,13 @@ const cfSaveDraft = (uid, form, step) => { try { localStorage.setItem(cfDraftKey
 const cfLoadDraft = (uid) => { try { const r = localStorage.getItem(cfDraftKey(uid)); if (!r) return null; const d = JSON.parse(r); if (Date.now() - d.savedAt > DRAFT_TTL_MS) { localStorage.removeItem(cfDraftKey(uid)); return null; } return d; } catch (_) { return null; } };
 const cfClearDraft = (uid) => { try { localStorage.removeItem(cfDraftKey(uid)); } catch (_) {} };
 
-export default function CarForm({ onCreate, listing, onUpdate, defaultValues, onBack }) {
+// intakeDone: set by the dealer 2-phase flow (AddCarForm -> CarForm). AddCarForm's
+// Identity/Pricing steps already captured brand/model/variant/year/mileage/colour/
+// plate/VIN/CC/transmission/fuel/body/prices/commission/warranty/services, so those
+// inputs are hidden here (values carry over via the `listing` prefill) and their
+// step validations are relaxed. Standalone CarForm (salesman flows, plain edits)
+// still shows everything.
+export default function CarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intakeDone }) {
   const { profile } = useProfile();
   const dealerId = getDealerIdFromProfile(profile);
 
@@ -988,7 +1180,12 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         bodyType: listing.body_type || "",
         fuelType: listing.fuel_type || "",
         transmission: listing.transmission || "Auto",
-        condition: listing.condition || "used",
+        // AddCarForm writes its stock condition ("Good"/"Excellent"…) into this
+        // column; the marketplace domain is used/recon/new, so normalize anything
+        // else from the recon flag (this is what gets written back on save).
+        condition: ["used", "recon", "new"].includes(listing.condition)
+          ? listing.condition
+          : listing.is_recon ? "recon" : "used",
         engineCc: listing.engine_cc ? String(listing.engine_cc) : "",
         horsepower: listing.horsepower ? String(listing.horsepower) : "",
         cylinders: listing.cylinders ? String(listing.cylinders) : "",
@@ -1406,9 +1603,16 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     if (photosInputRef.current) photosInputRef.current.value = "";
   };
 
-  // Scroll the form back to the top and focus the first input whenever step changes
+  // Scroll the form back to the top whenever step changes. Auto-focusing the
+  // first field is a desktop convenience (fast tab/type entry) — on touch
+  // devices it force-opens the on-screen keyboard the instant a step loads,
+  // which is actively harmful on Step 1 (Photos): the first focusable field
+  // there ends up being the optional Walkthrough Video URL input even though
+  // the actual task is tapping the photo upload button.
   useEffect(() => {
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const isTouchDevice = window.matchMedia?.("(pointer: coarse)").matches;
+    if (isTouchDevice) return;
     const t = setTimeout(() => {
       const el = formRef.current?.querySelector(
         'input:not([type="file"]):not([type="hidden"]):not([disabled]), select:not([disabled])',
@@ -1464,13 +1668,15 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   // Which required fields are still empty on the current step (for the toast).
   const missingFields = () => {
     if (step === 1) return form.images.length > 0 ? [] : ["at least 1 photo"];
-    if (step === 2) return [
+    if (step === 2) return (intakeDone ? [
+      [!form.condition, "Condition"],
+    ] : [
       [!form.brand, "Brand"], [!form.model, "Model"], [!form.year, "Year"],
       [!form.mileage, "Mileage"], [!form.colour, "Colour"], [!form.condition, "Condition"],
-    ].filter(([m]) => m).map(([, l]) => l);
-    if (step === 3) return [[!form.bodyType, "Body type"], [!form.fuelType, "Fuel type"]].filter(([m]) => m).map(([, l]) => l);
+    ]).filter(([m]) => m).map(([, l]) => l);
+    if (step === 3) return intakeDone ? [] : [[!form.bodyType, "Body type"], [!form.fuelType, "Fuel type"]].filter(([m]) => m).map(([, l]) => l);
     if (step === 4) return [[!form.state, "State"], [!form.city, "City"]].filter(([m]) => m).map(([, l]) => l);
-    if (step === 5) return [[!form.basePrice, "Base price"], [!form.sellingPrice, "Selling price"]].filter(([m]) => m).map(([, l]) => l);
+    if (step === 5) return intakeDone ? [] : [[!form.basePrice, "Base price"], [!form.sellingPrice, "Selling price"]].filter(([m]) => m).map(([, l]) => l);
     return [];
   };
 
@@ -1718,11 +1924,15 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   function isSectionComplete(id) {
     switch (id) {
       case 1: return form.images.length > 0;
-      case 2: return !!(form.brand && form.model && form.year && form.mileage && form.colour && form.condition);
-      case 3: return !!(form.bodyType && form.fuelType);
+      // In intakeDone mode the identity/technical/pricing fields are hidden here
+      // (already captured by AddCarForm — some, like colour, are optional there),
+      // so only require what this form still shows.
+      case 2: return intakeDone ? !!form.condition : !!(form.brand && form.model && form.year && form.mileage && form.colour && form.condition);
+      case 3: return intakeDone ? true : !!(form.bodyType && form.fuelType);
       case 4: return !!(form.state && form.city);
-      case 5: return !!(form.basePrice && form.sellingPrice);
+      case 5: return intakeDone ? true : !!(form.basePrice && form.sellingPrice);
       case 6: return true;
+      case 7: return true;
       default: return false;
     }
   }
@@ -1981,21 +2191,15 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <select
-                  value={docTypeInput}
-                  onChange={(e) => setDocTypeInput(e.target.value)}
-                  className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
-                >
-                  {DOC_TYPES.map((d) => (
-                    <option
-                      key={d.key}
-                      value={d.key}
-                      style={{ background: "#ffffff" }}
-                    >
-                      {d.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex-1">
+                  <PickerField
+                    label="Document Type"
+                    value={docTypeInput}
+                    onChange={(v) => setDocTypeInput(v)}
+                    options={DOC_TYPES.map((d) => ({ value: d.key, label: d.label, color: d.color }))}
+                    placeholder="Select type"
+                  />
+                </div>
                 <label
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-colors flex-shrink-0 ${docUploading ? "bg-gray-200 text-gray-400 cursor-wait" : "bg-emerald-600 hover:bg-emerald-500 text-white"}`}
                 >
@@ -2028,24 +2232,36 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       );
       case 2: return (
         <div className="space-y-5">
+          {intakeDone && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
+              <Check size={12} />
+              {form.year} {form.brand} {form.model} — identity carried over from Core Details
+            </div>
+          )}
+          {!intakeDone && (
+          <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Brand" required>
-              <Combobox
+              <PickerField
+                label="Select Brand"
                 value={form.brand}
                 onChange={(v) =>
                   setForm((f) => ({ ...f, brand: v, model: "" }))
                 }
                 options={ALL_BRANDS}
-                placeholder="e.g. Toyota"
+                placeholder="Select brand"
+                allowCustom
               />
             </Field>
             <Field label="Model" required>
-              <Combobox
+              <PickerField
+                label="Select Model"
                 value={form.model}
                 onChange={(v) => set("model", v)}
                 options={modelOptions}
-                placeholder={form.brand ? "e.g. Vios" : "Pick brand first"}
+                placeholder={form.brand ? "Select model" : "Pick brand first"}
                 disabled={!form.brand}
+                allowCustom
               />
             </Field>
           </div>
@@ -2072,6 +2288,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               className={inputCls}
             />
           </Field>
+          </>
+          )}
           {autoFilled && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200 text-green-700 text-xs font-medium">
               <Check size={12} />
@@ -2085,6 +2303,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               onChange={(v) => set("condition", v)}
             />
           </Field>
+          {!intakeDone && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Mileage (km)" required>
               <input
@@ -2109,6 +2328,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               />
             </Field>
           </div>
+          )}
           <Field label="Registration Date">
             <input
               type="date"
@@ -2118,6 +2338,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               className={inputCls}
             />
           </Field>
+          {!intakeDone && (
+          <>
           <Field
             label="Plate Number"
             hint="Optional — vehicle registration plate"
@@ -2147,6 +2369,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.vin}</p>
             )}
           </Field>
+          </>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Previous Owners">
               <input
@@ -2181,6 +2405,14 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       );
       case 3: return (
         <div className="space-y-6">
+          {intakeDone && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
+              <Check size={12} />
+              {[form.bodyType, form.fuelType, form.transmission, form.engineCc && `${form.engineCc}cc`].filter(Boolean).join(" · ")} — carried over from Core Details
+            </div>
+          )}
+          {!intakeDone && (
+          <>
           <Field label="Body Type" required>
             <PillSelect
               options={BODY_TYPES}
@@ -2202,6 +2434,9 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               onChange={(v) => set("transmission", v)}
             />
           </Field>
+          </>
+          )}
+          {!intakeDone && (
           <Field
             label="Engine Displacement (CC)"
             hint="Used for road tax & insurance calc"
@@ -2237,6 +2472,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               </div>
             </div>
           </Field>
+          )}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <Field label="Power (bhp)">
               <div className="relative">
@@ -2335,34 +2571,16 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                   label="Auction Grade"
                   hint={`Suggested: ${suggestedGrade}`}
                 >
-                  <div className="relative">
-                    <select
-                      name="auctionGrade"
-                      value={form.auctionGrade}
-                      onChange={handleChange}
-                      className={selectCls}
-                    >
-                      <option value="">— Select grade —</option>
-                      {[
-                        "S",
-                        "5",
-                        "4.5",
-                        "4",
-                        "3.5",
-                        "3",
-                        "R",
-                        "RA",
-                        "2",
-                        "1",
-                      ].map((g) => (
-                        <option key={g} value={g}>
-                          {g}
-                          {g === suggestedGrade ? " ★ suggested" : ""}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                  </div>
+                  <PickerField
+                    label="Auction Grade"
+                    value={form.auctionGrade}
+                    onChange={(v) => set("auctionGrade", v)}
+                    options={["S", "5", "4.5", "4", "3.5", "3", "R", "RA", "2", "1"].map((g) => ({
+                      value: g,
+                      label: g === suggestedGrade ? `${g}  ★ suggested` : g,
+                    }))}
+                    placeholder="Select grade"
+                  />
                   {!form.auctionGrade && (
                     <button
                       type="button"
@@ -2374,44 +2592,26 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                   )}
                 </Field>
                 <Field label="Interior Grade">
-                  <div className="relative">
-                    <select
-                      name="interiorGrade"
-                      value={form.interiorGrade}
-                      onChange={handleChange}
-                      className={selectCls}
-                    >
-                      <option value="">— Select —</option>
-                      {["A", "B", "C", "D"].map((g) => (
-                        <option key={g} value={g}>
-                          {g}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                  </div>
+                  <PickerField
+                    label="Interior Grade"
+                    value={form.interiorGrade}
+                    onChange={(v) => set("interiorGrade", v)}
+                    options={["A", "B", "C", "D"]}
+                    placeholder="Select"
+                  />
                 </Field>
               </div>
 
               {/* Import country + auction house */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Import Country">
-                  <div className="relative">
-                    <select
-                      name="importCountry"
-                      value={form.importCountry}
-                      onChange={handleChange}
-                      className={selectCls}
-                    >
-                      <option value="">— Select —</option>
-                      {["Japan", "UK", "Australia", "Other"].map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                  </div>
+                  <PickerField
+                    label="Import Country"
+                    value={form.importCountry}
+                    onChange={(v) => set("importCountry", v)}
+                    options={["Japan", "UK", "Australia", "Other"]}
+                    placeholder="Select"
+                  />
                 </Field>
                 <Field label="Auction House" hint="e.g. USS, TAA, JAA">
                   <input
@@ -2439,20 +2639,17 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                   />
                 </Field>
                 <Field label="Chassis Status">
-                  <div className="relative">
-                    <select
-                      name="chassisStatus"
-                      value={form.chassisStatus}
-                      onChange={handleChange}
-                      className={selectCls}
-                    >
-                      <option value="">— Select —</option>
-                      <option value="clean">Clean</option>
-                      <option value="repaired">Repaired</option>
-                      <option value="written_off">Written Off</option>
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                  </div>
+                  <PickerField
+                    label="Chassis Status"
+                    value={form.chassisStatus}
+                    onChange={(v) => set("chassisStatus", v)}
+                    options={[
+                      { value: "clean", label: "Clean" },
+                      { value: "repaired", label: "Repaired" },
+                      { value: "written_off", label: "Written Off" },
+                    ]}
+                    placeholder="Select"
+                  />
                 </Field>
               </div>
 
@@ -2472,40 +2669,35 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       case 4: return (
         <div className="space-y-5">
           <Field label="State" required>
-            <div className="relative">
-              <select
-                name="state"
-                value={form.state}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, state: e.target.value, city: "" }))
-                }
-                className={selectCls}
-              >
-                <option value="">-- Select state --</option>
-                {Object.keys(STATE_CITIES).map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-            </div>
+            <PickerField
+              label="Select State"
+              value={form.state}
+              onChange={(v) => setForm((f) => ({ ...f, state: v, city: "" }))}
+              options={Object.keys(STATE_CITIES)}
+              placeholder="Select state"
+            />
           </Field>
           <Field label="City" required>
-            <Combobox
+            <PickerField
+              label="Select City"
               value={form.city}
               onChange={(v) => set("city", v)}
               options={cityOptions}
-              placeholder={
-                form.state ? "Type or search city..." : "Select state first"
-              }
+              placeholder={form.state ? "Select city" : "Select state first"}
               disabled={!form.state}
+              allowCustom
             />
           </Field>
         </div>
       );
       case 5: return (
         <div className="space-y-5">
+          {intakeDone && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
+              <Check size={12} />
+              Asking RM {Number(form.sellingPrice || 0).toLocaleString()} — pricing carried over from Core Details
+            </div>
+          )}
           <Field label="Payment Type" required>
             <PillSelect
               options={["Cash", "Loan", "Sambung Bayar"]}
@@ -2521,6 +2713,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               }
             />
           </Field>
+          {!intakeDone && (
+          <>
           <Field
             label="Base Price (RM)"
             required
@@ -2677,6 +2871,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               );
             })()}
           </Field>
+          </>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field
               label="Deposit to Reserve (RM)"
@@ -2697,6 +2893,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 />
               </div>
             </Field>
+            {!intakeDone && (
             <Field label="Warranty Offered (months)" hint="0 = no warranty">
               <input
                 type="number"
@@ -2708,9 +2905,11 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 className={inputCls}
               />
             </Field>
+            )}
           </div>
 
           {/* ── Included Services & Add-ons ── */}
+          {!intakeDone && (
           <div className="rounded-2xl border border-gray-200 overflow-hidden">
             {/* Header toggle */}
             <button
@@ -2889,21 +3088,23 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               </div>
             )}
           </div>
+          )}
         </div>
       );
       case 6: return (
         <div className="space-y-5">
-          <Field label="Specs">
-            <textarea
-              name="specs"
+          <Field
+            label="About"
+            hint={'Free text — shown as the "About this car" section on the listing page'}
+          >
+            <SmartTextarea
               value={form.specs}
-              onChange={handleChange}
-              placeholder="e.g. 1.5L DOHC, 107hp, 140Nm..."
-              className={textareaCls}
-              rows={3}
+              onValueChange={(v) => set("specs", v)}
+              placeholder={"e.g.\n✅ FULL SERVICE RECORD\n• Interior 9/10\n• One owner, accident-free"}
+              rows={8}
             />
           </Field>
-          <Field label="Options">
+          <Field label="Options" hint="Shown as tags — separate with commas or new lines">
             <textarea
               name="options"
               value={form.options}
@@ -2913,7 +3114,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               rows={3}
             />
           </Field>
-          <Field label="Features">
+          <Field label="Features" hint="Shown as tags — separate with commas or new lines">
             <textarea
               name="features"
               value={form.features}
@@ -2925,6 +3126,99 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           </Field>
         </div>
       );
+      case 7: {
+        const rm = (v) => (v !== "" && v != null && !isNaN(Number(v)) && Number(v) > 0 ? `RM ${Number(v).toLocaleString()}` : null);
+        const svcTotal = form.included_services.reduce((s, x) => s + Number(x.selling_price || 0), 0);
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Last check — confirm everything below, then hit {listing ? "Save Changes" : "Publish Listing"}. Tap Edit to fix a section.
+            </p>
+            <ReviewSection title={`Photos · ${previews.length}`} onEdit={() => setStep(1)}>
+              {previews.length > 0 ? (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {previews.slice(0, 8).map((src, i) => (
+                    <img key={src + i} src={src} alt={`photo ${i + 1}`} className="w-16 h-12 rounded-lg object-cover border border-gray-200 flex-shrink-0" />
+                  ))}
+                  {previews.length > 8 && (
+                    <div className="w-16 h-12 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-xs font-semibold text-gray-500 flex-shrink-0">
+                      +{previews.length - 8}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-red-500">No photos yet — at least 1 required</p>
+              )}
+              {(form.video_url || form.car_documents.length > 0) && (
+                <p className="text-xs text-gray-500 mt-2">
+                  {[
+                    form.video_url && "Walkthrough video attached",
+                    form.car_documents.length > 0 && `${form.car_documents.length} document${form.car_documents.length > 1 ? "s" : ""}`,
+                  ].filter(Boolean).join(" · ")}
+                </p>
+              )}
+            </ReviewSection>
+            <ReviewSection title="Car" onEdit={() => setStep(2)}>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                <ReviewItem label="Vehicle" value={[form.year, form.brand, form.model, form.variant].filter(Boolean).join(" ")} />
+                <ReviewItem label="Condition" value={{ used: "Used", recon: "Recon", new: "New" }[form.condition] || form.condition} />
+                <ReviewItem label="Mileage" value={form.mileage ? `${Number(form.mileage).toLocaleString()} km` : null} />
+                <ReviewItem label="Colour" value={form.colour} />
+                <ReviewItem label="Plate" value={form.plate_number} />
+                <ReviewItem label="VIN" value={form.vin_number} />
+                <ReviewItem label="Registered" value={form.registrationDate} />
+                <ReviewItem label="Previous owners" value={form.previous_owners} />
+                <ReviewItem label="Road tax expiry" value={form.road_tax_expiry} />
+                <ReviewItem label="Loan eligible" value={form.loan_eligible ? "Yes" : "No"} />
+              </div>
+            </ReviewSection>
+            <ReviewSection title="Technical" onEdit={() => setStep(3)}>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                <ReviewItem label="Body type" value={form.bodyType} />
+                <ReviewItem label="Fuel" value={form.fuelType} />
+                <ReviewItem label="Transmission" value={form.transmission} />
+                <ReviewItem label="Engine" value={form.engineCc ? `${form.engineCc}cc` : null} />
+                <ReviewItem label="Power" value={form.horsepower ? `${form.horsepower} bhp` : null} />
+                <ReviewItem label="Doors / Seats" value={[form.doors, form.seats].filter(Boolean).join(" / ") || null} />
+                {form.isRecon && (
+                  <ReviewItem label="Recon" value={[form.auctionGrade && `Grade ${form.auctionGrade}`, form.importCountry].filter(Boolean).join(" · ") || "Yes"} />
+                )}
+              </div>
+            </ReviewSection>
+            <ReviewSection title="Location" onEdit={() => setStep(4)}>
+              {form.state || form.city ? (
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                  <ReviewItem label="State" value={form.state} />
+                  <ReviewItem label="City" value={form.city} />
+                </div>
+              ) : (
+                <p className="text-sm text-red-500">Not set — state & city are required</p>
+              )}
+            </ReviewSection>
+            <ReviewSection title="Pricing" onEdit={() => setStep(5)}>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                <ReviewItem label="Selling price" value={rm(form.sellingPrice)} />
+                <ReviewItem label="Was price" value={rm(form.originalPrice)} />
+                <ReviewItem label="Base / cost" value={rm(form.basePrice)} />
+                <ReviewItem label="Commission" value={rm(form.commissionAmount)} />
+                <ReviewItem label="Deposit to reserve" value={rm(form.deposit_amount)} />
+                <ReviewItem label="Warranty" value={form.warranty_months && Number(form.warranty_months) > 0 ? `${form.warranty_months} months` : null} />
+                <ReviewItem label="Payment" value={form.payment_type === "sambung_bayar" ? "Sambung Bayar" : (form.payment_type || "cash").charAt(0).toUpperCase() + (form.payment_type || "cash").slice(1)} />
+                <ReviewItem label="Included services" value={form.included_services.length ? `${form.included_services.length} · RM ${svcTotal.toLocaleString()}` : null} />
+              </div>
+            </ReviewSection>
+            {(form.specs || form.options || form.features) && (
+              <ReviewSection title="Description" onEdit={() => setStep(6)}>
+                <div className="space-y-2.5">
+                  <ReviewItem label="About" value={form.specs} />
+                  <ReviewItem label="Options" value={form.options} />
+                  <ReviewItem label="Features" value={form.features} />
+                </div>
+              </ReviewSection>
+            )}
+          </div>
+        );
+      }
       default: return null;
     }
   }
@@ -2975,7 +3269,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
             <ChevronLeft className="w-4 h-4" /> Back
           </button>
         )}
-        <div style={{ flex: 1, display: "flex", alignItems: "flex-end" }}>
+        <div style={{ flex: 1, display: "flex", alignItems: "flex-end", overflowX: "auto", minWidth: 0 }}>
           {STEPS.map((s, i) => {
             const complete = isSectionComplete(s.id);
             const isCurrent = step === s.id;
@@ -3016,7 +3310,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 </div>
                 {listing && (
                   <div className="ml-auto flex items-center gap-2 flex-shrink-0">
-                    {step === STEPS.length && (
+                    {/* Copy summary lives on Details (while writing the About copy) and Review */}
+                    {step >= STEPS.length - 1 && (
                       <button
                         type="button"
                         onClick={handleCopy}

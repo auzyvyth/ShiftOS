@@ -565,7 +565,7 @@ export default function SalesmanLite() {
 
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, ic_number, account_status, instagram, tiktok, facebook, website, lite_goal")
+        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, ic_number, account_status, instagram, tiktok, facebook, website, lite_goal, onboarding_complete")
         .eq("id", uid)
         .maybeSingle();
 
@@ -606,6 +606,15 @@ export default function SalesmanLite() {
       // Premium standalone accounts go to their own page
       if (profileData.plan === "salesman_full") {
         navigate("/salesman-premium", { replace: true });
+        return;
+      }
+
+      // Final guard: never let a half-onboarded salesman (no name/IC/phone yet)
+      // sit in the dashboard, no matter how they got here. Every routing path
+      // upstream should already catch this, but this is the last line of defence
+      // right at the dashboard door.
+      if (profileData.onboarding_complete === false) {
+        navigate("/salesman-onboarding/lite", { replace: true });
         return;
       }
 

@@ -2,92 +2,142 @@
   XDrive / ShiftOS — Supabase "Confirm signup" email template.
 
   WHERE TO PASTE:
-    Supabase Dashboard → Authentication → Email Templates → "Confirm signup"
-    Set Subject to:  Confirm your XDrive account
-    Paste the HTML below into the message body.
+    Supabase Dashboard -> Authentication -> Email Templates -> "Confirm signup"
+    Subject:  Confirm your XDrive account
+    Paste the markup below this comment block into the message body.
 
   Supabase Go-template variables available here:
-    {{ .ConfirmationURL }}  — the confirm link (used on the button + fallback)
+    {{ .ConfirmationURL }}  — the confirm link (button + fallback)
     {{ .Email }}            — the recipient's email
     {{ .SiteURL }}          — your site URL
 
-  NOTE: this only changes the look. For deliverability (so it doesn't land in
-  spam / show "powered by Supabase"), also configure custom SMTP under
-  Authentication → SMTP Settings (e.g. Resend, from no-reply@xdrive.my).
+  NOTES
+   - Design is dark-on-brand (#080C14). All styles are inlined and laid out with
+     tables so it survives Gmail/Outlook/Apple Mail. No web fonts, no images —
+     the "X" mark is a styled table cell so nothing breaks if images are blocked.
+   - For deliverability (no "via supabase.io", lands in inbox not spam), also set
+     custom SMTP under Authentication -> SMTP Settings (e.g. Resend, from
+     no-reply@xdrive.my).
 -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0;padding:0;background:#080C14;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0;padding:0;background:#05070C;">
   <tr>
-    <td align="center" style="padding:32px 16px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#0F1520;border:1px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <td align="center" style="padding:0;">
 
-        <!-- Brand bar -->
+      <!-- Hidden preheader: the grey preview line shown in the inbox list -->
+      <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">
+        One tap to confirm your email and start listing cars on XDrive.
+      </div>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#05070C;">
         <tr>
-          <td style="padding:28px 32px 20px 32px;border-bottom:1px solid rgba(255,255,255,0.06);">
-            <table role="presentation" cellpadding="0" cellspacing="0">
+          <td align="center" style="padding:40px 16px;">
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#0F1520;border:1px solid rgba(255,255,255,0.08);border-radius:18px;overflow:hidden;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+
+              <!-- Brand bar -->
               <tr>
-                <td style="vertical-align:middle;">
-                  <span style="display:inline-block;width:30px;height:30px;background:#dc2626;border-radius:7px;text-align:center;line-height:30px;color:#ffffff;font-size:17px;font-weight:800;">X</span>
-                </td>
-                <td style="vertical-align:middle;padding-left:10px;">
-                  <span style="color:#F0F0F0;font-size:18px;font-weight:700;letter-spacing:-0.01em;">XDrive</span>
-                  <span style="color:#6b7280;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;padding-left:8px;">ShiftOS</span>
+                <td style="padding:26px 34px;border-bottom:1px solid rgba(255,255,255,0.06);">
+                  <table role="presentation" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="vertical-align:middle;">
+                        <span style="display:inline-block;width:32px;height:32px;background:#dc2626;border-radius:8px;text-align:center;line-height:32px;color:#ffffff;font-size:18px;font-weight:800;">X</span>
+                      </td>
+                      <td style="vertical-align:middle;padding-left:11px;">
+                        <span style="color:#F5F6F8;font-size:19px;font-weight:700;letter-spacing:-0.01em;">XDrive</span>
+                        <span style="color:#6b7280;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;padding-left:8px;">ShiftOS</span>
+                      </td>
+                    </tr>
+                  </table>
                 </td>
               </tr>
-            </table>
-          </td>
-        </tr>
 
-        <!-- Body -->
-        <tr>
-          <td style="padding:36px 32px 8px 32px;">
-            <h1 style="margin:0 0 14px 0;color:#F0F0F0;font-size:24px;font-weight:800;letter-spacing:-0.02em;">Confirm your email</h1>
-            <p style="margin:0 0 8px 0;color:#9ca3af;font-size:15px;line-height:1.7;">
-              Welcome to XDrive. Tap the button below to confirm your account and finish setting up.
-            </p>
-          </td>
-        </tr>
-
-        <!-- CTA button -->
-        <tr>
-          <td align="center" style="padding:24px 32px 8px 32px;">
-            <table role="presentation" cellpadding="0" cellspacing="0">
+              <!-- Hero -->
               <tr>
-                <td style="border-radius:8px;background:#dc2626;">
-                  <a href="{{ .ConfirmationURL }}" target="_blank"
-                     style="display:inline-block;padding:15px 40px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:8px;letter-spacing:0.01em;">
-                    Confirm My Account
-                  </a>
+                <td style="padding:40px 34px 6px 34px;">
+                  <p style="margin:0 0 12px 0;color:#dc2626;font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;">One last step</p>
+                  <h1 style="margin:0 0 14px 0;color:#F5F6F8;font-size:26px;font-weight:800;letter-spacing:-0.02em;line-height:1.2;">Confirm your email</h1>
+                  <p style="margin:0;color:#9ca3af;font-size:15px;line-height:1.7;">
+                    Welcome to XDrive. Confirm the email address for
+                    <span style="color:#e5e7eb;font-weight:600;">{{ .Email }}</span>
+                    to activate your account and start listing cars.
+                  </p>
                 </td>
               </tr>
+
+              <!-- CTA button (bulletproof: table + inner padding) -->
+              <tr>
+                <td align="center" style="padding:28px 34px 10px 34px;">
+                  <table role="presentation" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td align="center" style="border-radius:10px;background:#dc2626;box-shadow:0 8px 24px rgba(220,38,38,0.35);">
+                        <a href="{{ .ConfirmationURL }}" target="_blank"
+                           style="display:inline-block;padding:16px 46px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;letter-spacing:0.01em;">
+                          Confirm my account
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+
+              <!-- Expiry note -->
+              <tr>
+                <td align="center" style="padding:2px 34px 22px 34px;">
+                  <p style="margin:0;color:#6b7280;font-size:12px;line-height:1.6;">This link expires in 5 minutes and can only be used once.</p>
+                </td>
+              </tr>
+
+              <!-- "What's next" strip -->
+              <tr>
+                <td style="padding:0 34px;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;">
+                    <tr>
+                      <td style="padding:16px 18px;">
+                        <p style="margin:0 0 4px 0;color:#e5e7eb;font-size:13px;font-weight:600;">What happens next</p>
+                        <p style="margin:0;color:#9ca3af;font-size:13px;line-height:1.7;">
+                          You'll finish a quick setup — your name, contact and public page — then your storefront goes live on xdrive.my.
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+
+              <!-- Fallback link -->
+              <tr>
+                <td style="padding:22px 34px 30px 34px;">
+                  <p style="margin:0 0 6px 0;color:#6b7280;font-size:12px;line-height:1.6;">
+                    Button not working? Open this link on <span style="color:#9ca3af;font-weight:600;">this device</span> — it signs you straight in, so don't forward it to anyone:
+                  </p>
+                  <p style="margin:0;word-break:break-all;">
+                    <a href="{{ .ConfirmationURL }}" target="_blank" style="color:#f87171;font-size:12px;text-decoration:underline;">{{ .ConfirmationURL }}</a>
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Footer -->
+              <tr>
+                <td style="padding:20px 34px 28px 34px;border-top:1px solid rgba(255,255,255,0.06);">
+                  <p style="margin:0 0 6px 0;color:#4b5563;font-size:12px;line-height:1.6;">
+                    You're receiving this because someone signed up for XDrive with this email. If that wasn't you, you can safely ignore it — no account is created until it's confirmed.
+                  </p>
+                  <p style="margin:10px 0 0 0;color:#374151;font-size:11px;">
+                    &copy; XDrive &middot; Quality used cars in Malaysia
+                  </p>
+                </td>
+              </tr>
+
             </table>
+
+            <!-- Sub-footer outside the card -->
+            <p style="margin:18px 0 0 0;color:#2f3743;font-size:11px;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+              XDrive &middot; xdrive.my
+            </p>
+
           </td>
         </tr>
-
-        <!-- Fallback link -->
-        <tr>
-          <td style="padding:20px 32px 32px 32px;">
-            <p style="margin:0 0 6px 0;color:#6b7280;font-size:12px;line-height:1.6;">
-              Button not working? Copy and paste this link into your browser:
-            </p>
-            <p style="margin:0;word-break:break-all;">
-              <a href="{{ .ConfirmationURL }}" target="_blank" style="color:#f87171;font-size:12px;text-decoration:underline;">{{ .ConfirmationURL }}</a>
-            </p>
-          </td>
-        </tr>
-
-        <!-- Footer -->
-        <tr>
-          <td style="padding:20px 32px 28px 32px;border-top:1px solid rgba(255,255,255,0.06);">
-            <p style="margin:0 0 4px 0;color:#4b5563;font-size:12px;line-height:1.6;">
-              You're receiving this because someone signed up for XDrive with this email. If that wasn't you, you can safely ignore it.
-            </p>
-            <p style="margin:8px 0 0 0;color:#374151;font-size:11px;">
-              &copy; XDrive &middot; Quality used cars in Malaysia
-            </p>
-          </td>
-        </tr>
-
       </table>
+
     </td>
   </tr>
 </table>
