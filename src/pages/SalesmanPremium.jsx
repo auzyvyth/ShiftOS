@@ -436,6 +436,13 @@ export default function SalesmanPremium() {
  return;
  }
 
+ // Final guard: a half-onboarded salesman (no name/IC/phone yet) must finish
+ // the wizard before the dashboard, no matter how they arrived here.
+ if (profileData.onboarding_complete === false) {
+ navigate("/salesman-onboarding/premium", { replace: true });
+ return;
+ }
+
  setProfile(profileData);
  setLoading(false);
 

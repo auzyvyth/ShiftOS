@@ -237,6 +237,16 @@ export default function LoginPage() {
         window.location.href = `${base}/dashboard`;
       }
     } else if (role === "salesman") {
+      // A salesman who hasn't finished onboarding (no name/IC/phone/profile yet)
+      // must go back to the wizard, never straight to the dashboard. Without this
+      // an authenticated-but-half-signed-up salesman who lands on /login for any
+      // reason (auth-callback fallback race, bookmark, back button, session
+      // restore) drops into an empty dashboard. Mirror the dealer branch above.
+      if (profile?.onboarding_complete === false) {
+        const tier = profile?.plan === "salesman_full" ? "premium" : "lite";
+        window.location.href = `${base}/salesman-onboarding/${tier}`;
+        return;
+      }
       const activeSession = await getActiveSession();
       const target = profile?.dealer_id
         ? "salesman"
