@@ -818,6 +818,120 @@ function PickerField({ label, value, onChange, options, placeholder = "Select…
   );
 }
 
+// Typing-assist textarea for long-form listing copy (the About section).
+// Mimics how sellers hand-type Carlist-style descriptions:
+//  - Enter continues a list line: "1. …" -> "2. ", and "-", "•" or an
+//    emoji-prefixed line repeats its marker. Enter on an empty item exits
+//    the list (marker is stripped), same as Google Keep.
+//  - Double-space ends the sentence with ". " like phone keyboards. Done in
+//    onChange (not keydown) because Android IMEs don't reliably emit key
+//    events for space.
+//  - Quick-insert chips drop common emoji markers at the cursor.
+const QUICK_MARKS = ["✅", "•", "🔥", "⭐", "📌", "🛠️", "🚗", "💯"];
+function SmartTextarea({ value, onValueChange, placeholder, rows = 6 }) {
+  const ref = useRef(null);
+
+  const applyEdit = (next, caret) => {
+    onValueChange(next);
+    requestAnimationFrame(() => {
+      const el = ref.current;
+      if (el) {
+        el.focus();
+        el.setSelectionRange(caret, caret);
+      }
+    });
+  };
+
+  const handleChange = (e) => {
+    const el = e.target;
+    const next = el.value;
+    const caret = el.selectionStart;
+    // Just-typed double space after a word/number -> ". "
+    if (
+      next.length === value.length + 1 &&
+      caret >= 3 &&
+      next.slice(caret - 2, caret) === "  " &&
+      /[\p{L}\p{N}]/u.test(next[caret - 3])
+    ) {
+      applyEdit(next.slice(0, caret - 2) + ". " + next.slice(caret), caret);
+      return;
+    }
+    onValueChange(next);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key !== "Enter" || e.shiftKey) return;
+    const el = e.target;
+    const s = el.selectionStart;
+    if (s !== el.selectionEnd) return;
+    const lineStart = value.lastIndexOf("\n", s - 1) + 1;
+    const line = value.slice(lineStart, s);
+    const num = line.match(/^(\d+)([.)])\s+/);
+    const bul = num ? null : line.match(/^([-*•]|\p{Extended_Pictographic}\ufe0f?)\s+/u);
+    const m = num || bul;
+    if (!m) return;
+    e.preventDefault();
+    // Stop the Enter from also bubbling to the wizard's field-advance handler
+    e.stopPropagation();
+    const content = line.slice(m[0].length);
+    if (!content.trim()) {
+      applyEdit(value.slice(0, lineStart) + value.slice(s), lineStart);
+    } else {
+      const marker = num ? `${Number(num[1]) + 1}${num[2]} ` : `${bul[1]} `;
+      const insert = `\n${marker}`;
+      applyEdit(value.slice(0, s) + insert + value.slice(s), s + insert.length);
+    }
+  };
+
+  const insertMark = (mark) => {
+    const el = ref.current;
+    const s = el && document.activeElement === el ? el.selectionStart : value.length;
+    const end = el && document.activeElement === el ? el.selectionEnd : value.length;
+    // Markers start a line — if the cursor is mid-line, break to a new one
+    const atLineStart = s === 0 || value[s - 1] === "\n";
+    const insert = `${atLineStart ? "" : "\n"}${mark} `;
+    applyEdit(value.slice(0, s) + insert + value.slice(end), s + insert.length);
+  };
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {QUICK_MARKS.map((m) => (
+          <button
+            key={m}
+            type="button"
+            onPointerDown={(e) => e.preventDefault()}
+            onClick={() => insertMark(m)}
+            className="px-2.5 py-1 rounded-lg bg-gray-100 border border-gray-200 text-sm hover:border-blue-400 transition-colors"
+          >
+            {m}
+          </button>
+        ))}
+        <button
+          type="button"
+          onPointerDown={(e) => e.preventDefault()}
+          onClick={() => insertMark("1.")}
+          className="px-2.5 py-1 rounded-lg bg-gray-100 border border-gray-200 text-xs font-semibold text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
+        >
+          1. list
+        </button>
+      </div>
+      <textarea
+        ref={ref}
+        value={value}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+        rows={rows}
+        className={textareaCls}
+      />
+      <p className="text-xs text-gray-400 mt-1.5">
+        Enter continues a numbered or bullet line · double-space ends a sentence with "."
+      </p>
+    </div>
+  );
+}
+
 // Review-step building blocks: a titled card with an Edit jump, and a
 // label/value cell that renders nothing when the value is empty.
 function ReviewSection({ title, onEdit, children }) {
@@ -2979,17 +3093,18 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       );
       case 6: return (
         <div className="space-y-5">
-          <Field label="Specs">
-            <textarea
-              name="specs"
+          <Field
+            label="About"
+            hint={'Free text — shown as the "About this car" section on the listing page'}
+          >
+            <SmartTextarea
               value={form.specs}
-              onChange={handleChange}
-              placeholder="e.g. 1.5L DOHC, 107hp, 140Nm..."
-              className={textareaCls}
-              rows={3}
+              onValueChange={(v) => set("specs", v)}
+              placeholder={"e.g.\n✅ FULL SERVICE RECORD\n• Interior 9/10\n• One owner, accident-free"}
+              rows={8}
             />
           </Field>
-          <Field label="Options">
+          <Field label="Options" hint="Shown as tags — separate with commas or new lines">
             <textarea
               name="options"
               value={form.options}
@@ -2999,7 +3114,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               rows={3}
             />
           </Field>
-          <Field label="Features">
+          <Field label="Features" hint="Shown as tags — separate with commas or new lines">
             <textarea
               name="features"
               value={form.features}
@@ -3095,7 +3210,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
             {(form.specs || form.options || form.features) && (
               <ReviewSection title="Description" onEdit={() => setStep(6)}>
                 <div className="space-y-2.5">
-                  <ReviewItem label="Specs" value={form.specs} />
+                  <ReviewItem label="About" value={form.specs} />
                   <ReviewItem label="Options" value={form.options} />
                   <ReviewItem label="Features" value={form.features} />
                 </div>
@@ -3195,7 +3310,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 </div>
                 {listing && (
                   <div className="ml-auto flex items-center gap-2 flex-shrink-0">
-                    {step === STEPS.length && (
+                    {/* Copy summary lives on Details (while writing the About copy) and Review */}
+                    {step >= STEPS.length - 1 && (
                       <button
                         type="button"
                         onClick={handleCopy}

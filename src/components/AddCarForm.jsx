@@ -63,7 +63,7 @@ const blankForm = {
   asking_price: "", min_price: "", commission_amount: "",
   warranty_months: "",
   // Publish
-  images: [], description: "", original_price: "", publish: false,
+  images: [], original_price: "", publish: false,
   included_services: [],
 };
 
@@ -352,7 +352,6 @@ export default function AddCarForm({ onPublished, onStocked, mode, onBack, onCon
           included_services: form.included_services,
           included_services_cost: servicesCost,
           images: form.images,
-          description: form.description || null,
           // marketplace path always starts as unpublished; CarForm continuation publishes it
           status: mode === 'marketplace' ? "unpublished" : (form.publish ? "available" : "unpublished"),
         })
@@ -617,10 +616,6 @@ export default function AddCarForm({ onPublished, onStocked, mode, onBack, onCon
             </div>
           </div>
 
-          <Field label="Short description" hint="Optional — shown on the public listing">
-            <textarea style={{ ...INP, minHeight: 64, resize: "vertical" }} value={form.description}
-              placeholder="One owner, full service record, accident-free…" onChange={(e) => setVal("description", e.target.value)} />
-          </Field>
           <Field label="Original / 'was' price (RM)" hint="Shows a discount badge on the listing"><FText k="original_price" ph="58000" type="number" /></Field>
 
           {/* Included services */}
