@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -192,6 +193,44 @@ function StatusBadge({ status }) {
     >
       {status}
     </span>
+  );
+}
+
+// Shared CarForm popup — used for both Add and Edit so the two flows can never
+// drift apart. White card (matches the dealer dashboard's own CarForm modals —
+// DashboardPage's .modal-top / Stock Publish overlay — CarForm is a light-themed
+// component regardless of the page it's embedded in) over a dark backdrop, full
+// screen on mobile with no rounded corners or gap, centered capped-height card on
+// desktop. Portal + body-scroll-lock per the app's overlay rules.
+function CarFormModal({ title, subtitle, onClose, children }) {
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex sm:items-center sm:justify-center sm:p-4"
+      style={{ background: "rgba(0,0,0,0.82)" }}
+    >
+      <div className="w-full h-[100dvh] sm:h-auto sm:max-h-[92vh] sm:max-w-2xl bg-white sm:rounded-2xl flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+          <div className="min-w-0">
+            <h3 className="font-semibold text-gray-900 text-[15px] truncate">{title}</h3>
+            {subtitle && <p className="text-xs text-gray-500 mt-0.5 truncate">{subtitle}</p>}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-900 p-1 transition-colors flex-shrink-0"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="overflow-y-auto flex-1 p-5">{children}</div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -2818,15 +2857,7 @@ export default function SalesmanLite() {
         })()}
 
         {showAddForm && (
-          <div
-            style={{
-              marginBottom: 24,
-              background: "#0d1117",
-              border: "1px solid rgba(255,255,255,0.07)",
-              borderRadius: 12,
-              padding: 16,
-            }}
-          >
+          <CarFormModal title="Add Listing" onClose={() => setShowAddForm(false)}>
             <CarForm
               onCreate={(car) => {
                 setMyListings((p) => [car, ...p]);
@@ -2847,7 +2878,7 @@ export default function SalesmanLite() {
                 }
               }}
             />
-          </div>
+          </CarFormModal>
         )}
 
         {myListings.length > 0 && !showAddForm && (
@@ -7670,77 +7701,22 @@ export default function SalesmanLite() {
         })()}
 
       {editListing && (
-        <div
-          className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
-          style={{ background: "rgba(0,0,0,0.82)" }}
+        <CarFormModal
+          title="Edit Listing"
+          subtitle={[editListing.brand, editListing.model, editListing.variant || ""].filter(Boolean).join(" ")}
+          onClose={() => setEditListing(null)}
         >
-          <div
-            style={{
-              background: "#0d1117",
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: isMobile ? "16px 16px 0 0" : 16,
-              width: "100%",
-              maxWidth: 672,
-              maxHeight: "92vh",
-              display: "flex",
-              flexDirection: "column",
+          <CarForm
+            listing={editListing}
+            onUpdate={(updated) => {
+              setMyListings((p) =>
+                p.map((l) => (l.id === updated.id ? updated : l)),
+              );
+              setEditListing(null);
             }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "16px 20px",
-                borderBottom: "1px solid rgba(255,255,255,0.07)",
-                flexShrink: 0,
-              }}
-            >
-              <div>
-                <p
-                  style={{
-                    margin: 0,
-                    fontWeight: 600,
-                    color: "#f1f5f9",
-                    fontSize: 15,
-                  }}
-                >
-                  Edit Listing
-                </p>
-                <p
-                  style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}
-                >
-                  {editListing.brand} {editListing.model}{" "}
-                  {editListing.variant || ""}
-                </p>
-              </div>
-              <button
-                onClick={() => setEditListing(null)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "#6b7280",
-                  padding: 4,
-                }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div style={{ overflowY: "auto", flex: 1, padding: 20 }}>
-              <CarForm
-                listing={editListing}
-                onUpdate={(updated) => {
-                  setMyListings((p) =>
-                    p.map((l) => (l.id === updated.id ? updated : l)),
-                  );
-                  setEditListing(null);
-                }}
-                onCreate={() => {}}
-              />
-            </div>
-          </div>
-        </div>
+            onCreate={() => {}}
+          />
+        </CarFormModal>
       )}
 
       {/* ── Boost modal ── */}
