@@ -1406,9 +1406,16 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     if (photosInputRef.current) photosInputRef.current.value = "";
   };
 
-  // Scroll the form back to the top and focus the first input whenever step changes
+  // Scroll the form back to the top whenever step changes. Auto-focusing the
+  // first field is a desktop convenience (fast tab/type entry) — on touch
+  // devices it force-opens the on-screen keyboard the instant a step loads,
+  // which is actively harmful on Step 1 (Photos): the first focusable field
+  // there ends up being the optional Walkthrough Video URL input even though
+  // the actual task is tapping the photo upload button.
   useEffect(() => {
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const isTouchDevice = window.matchMedia?.("(pointer: coarse)").matches;
+    if (isTouchDevice) return;
     const t = setTimeout(() => {
       const el = formRef.current?.querySelector(
         'input:not([type="file"]):not([type="hidden"]):not([disabled]), select:not([disabled])',
