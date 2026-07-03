@@ -7793,14 +7793,20 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
     onClearPrefill?.();
   }, [prefillDocData]);
 
-  // Auto-fill dealer + SA from profile when modal opens
+  // Auto-fill dealer + SA from profile when modal opens.
+  // The Sales Advisor is ALWAYS the person generating the document (the logged-in
+  // user), role-aware by construction: `profile` is the current user's own row, so
+  // a manager sees the manager, a salesman sees the salesman, an owner sees the
+  // owner. Take the live profile FIRST (not `p.sa_name ||`) so a value that got
+  // stuck in the form from a previous doc can never shadow the real generator —
+  // that was the "shows the wrong name" bug. Still editable per-document below.
   useEffect(() => {
     if (showGen && profile) {
       setGenForm(p => ({
         ...p,
-        sa_name:     p.sa_name     || profile.full_name        || '',
-        sa_phone:    p.sa_phone    || profile.whatsapp_number   || '',
-        sa_ic:       p.sa_ic       || profile.ic_number         || '',
+        sa_name:     profile.full_name        || p.sa_name     || '',
+        sa_phone:    profile.whatsapp_number   || p.sa_phone    || '',
+        sa_ic:       profile.ic_number         || p.sa_ic       || '',
         dealer_name: p.dealer_name || profile.dealership        || '',
         dealer_ssm:  p.dealer_ssm  || profile.ssm_number        || '',
         dealer_city: p.dealer_city || profile.city              || '',
@@ -8486,6 +8492,15 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Email <span style={{ color: '#9ca3af', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>— for document delivery</span></label><input type="email" value={genForm.buyer_email} onChange={e => setGenForm(p => ({ ...p, buyer_email: e.target.value }))} placeholder="buyer@email.com" className={iCls} /></div>
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Address</label><textarea value={genForm.buyer_address} onChange={e => setGenForm(p => ({ ...p, buyer_address: e.target.value }))} rows={2} className={taCls} placeholder="Full address" /></div>
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Deposit Amount (RM)</label><input type="number" value={genForm.deposit_amount} onChange={e => setGenForm(p => ({ ...p, deposit_amount: e.target.value }))} placeholder="0" className={iCls} /></div>
+
+              {/* Balance due — auto-computed (sale price − deposit), never typed. Shows the
+                  same figure that gets saved to the document so there's no surprise. */}
+              {(Number(genForm.sale_price) > 0 || Number(genForm.deposit_amount) > 0) && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Balance Due <span style={{ color: '#9ca3af', fontWeight: 400 }}>(auto)</span></span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: '#111827' }}>RM {Math.max(0, (Number(genForm.sale_price) || 0) - (Number(genForm.deposit_amount) || 0)).toLocaleString('en-MY')}</span>
+                </div>
+              )}
 
               {genForm.doc_type !== 'Handover Checklist' && (
                 <div className="grid grid-cols-2 gap-3">
