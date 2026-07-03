@@ -636,11 +636,13 @@ export default function SalesmanLite() {
 
       if (
         !profileData.onboarding_tour_done &&
-        !localStorage.getItem(`slite_tour_seen_${uid}`) &&
-        profileData.created_at &&
-        Date.now() - new Date(profileData.created_at).getTime() < 7 * 24 * 60 * 60 * 1000
+        !localStorage.getItem(`slite_tour_seen_${uid}`)
       ) {
-        localStorage.setItem(`slite_tour_seen_${uid}`, '1');
+        // Do NOT mark it seen here — only dismissTour() sets that, once the user
+        // actually finishes/closes the tour. Setting it on trigger meant an
+        // interrupted first landing (a reload, a redirect) permanently suppressed
+        // the tour even though onboarding_tour_done was still false. The DB flag is
+        // the real guard; this runs on first landing and keeps showing until done.
         setTourStep(0);
       }
 
@@ -659,13 +661,19 @@ export default function SalesmanLite() {
         supabase
           .from("car_listings")
           .select(
-            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, included_services, included_services_cost, sold_at, commission_amount, rejection_reason",
+            // Must include every column CarForm's edit prefill reads, or editing a
+            // listing silently blanks those fields and Save fails (e.g. "base price
+            // not set"). See CarForm pre-fill effect for the full list.
+            "id, slug, year, brand, model, variant, selling_price, original_price, base_price, purchase_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, specs, city, state, condition, engine_cc, horsepower, cylinders, doors, seats, fuel_consumption, created_at, included_services, included_services_cost, recon_cost, sold_at, commission_amount, rejection_reason, is_recon, auction_grade, interior_grade, import_country, auction_house, local_reg_date, chassis_status, damage_map, video_url, car_documents, registration_date, plate_number, vin_number, previous_owners, road_tax_expiry, loan_eligible, payment_type, warranty_months, deposit_amount",
           )
           .eq("assigned_to", uid),
         supabase
           .from("car_listings")
           .select(
-            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, included_services, included_services_cost, sold_at, commission_amount, rejection_reason",
+            // Must include every column CarForm's edit prefill reads, or editing a
+            // listing silently blanks those fields and Save fails (e.g. "base price
+            // not set"). See CarForm pre-fill effect for the full list.
+            "id, slug, year, brand, model, variant, selling_price, original_price, base_price, purchase_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, specs, city, state, condition, engine_cc, horsepower, cylinders, doors, seats, fuel_consumption, created_at, included_services, included_services_cost, recon_cost, sold_at, commission_amount, rejection_reason, is_recon, auction_grade, interior_grade, import_country, auction_house, local_reg_date, chassis_status, damage_map, video_url, car_documents, registration_date, plate_number, vin_number, previous_owners, road_tax_expiry, loan_eligible, payment_type, warranty_months, deposit_amount",
           )
           .eq("dealer_id", uid),
       ]).then(([r1, r2]) => {
@@ -933,7 +941,9 @@ export default function SalesmanLite() {
 
   useEffect(() => {
     if (tourStep === null) { setTourTarget(null); return; }
-    const TOUR_TABS = [null, "dashboard", "listings", "leads", "enquiries", "bookings", "merge"];
+    // Index-aligned with TOUR_STEPS. "bookings" resolves to the enquiries tab's
+    // bookings sub-tab below; the rest map 1:1 to nav data-tour-id anchors.
+    const TOUR_TABS = [null, "dashboard", "listings", "leads", "enquiries", "bookings", "performance", "merge", "settings", "help"];
     const tab = TOUR_TABS[tourStep];
     if (!tab) { setTourTarget(null); return; }
     if (tab === "bookings") {
@@ -5621,7 +5631,11 @@ export default function SalesmanLite() {
       fontFamily: "'DM Sans', sans-serif",
     };
 
-    const localPhone = (settingsForm.whatsapp_number || "").replace(/^\+?60/, "");
+    // Strip the country code AND any leading trunk 0 — a MY mobile under +60 is
+    // written without the leading 0 (011… -> +6011…). Without the /^0+/ strip a
+    // stored value could carry an extra 0 (+60011…), which is an invalid number
+    // and breaks WhatsApp links + enquiries.
+    const localPhone = (settingsForm.whatsapp_number || "").replace(/^\+?60/, "").replace(/^0+/, "");
 
     const handleAvatarUpload = async (e) => {
       const file = e.target.files?.[0];
@@ -5652,7 +5666,8 @@ export default function SalesmanLite() {
 
     const handleSave = async () => {
       setSettingsSaving(true);
-      const phone = "+60" + localPhone.replace(/\D/g, "");
+      const cleanLocal = localPhone.replace(/\D/g, "").replace(/^0+/, "");
+      const phone = cleanLocal ? "+60" + cleanLocal : "";
       const { error: saveProfileErr } = await supabase
         .from("profiles")
         .update({
@@ -5751,8 +5766,8 @@ export default function SalesmanLite() {
                 type="tel"
                 value={localPhone}
                 onChange={(e) => {
-                  const digits = e.target.value.replace(/\D/g, "");
-                  setSettingsForm((p) => ({ ...p, whatsapp_number: "+60" + digits }));
+                  const digits = e.target.value.replace(/\D/g, "").replace(/^0+/, "");
+                  setSettingsForm((p) => ({ ...p, whatsapp_number: digits ? "+60" + digits : "" }));
                 }}
                 placeholder="123456789"
                 style={{ ...inputStyle, background: "transparent", border: "none", borderRadius: 0, flex: 1, width: "auto" }}
@@ -6497,16 +6512,22 @@ export default function SalesmanLite() {
     { icon: Users,        title: "Bakal Pelanggan", body: "Jejak setiap pembeli: Baru → Dihubungi → Test Drive → Menang. Skor panas menunjukkan siapa yang perlu perhatian. Hantar mesej terus ke WhatsApp." },
     { icon: MessageSquare, title: "Pertanyaan",    body: "Pembeli yang menghantar mesej melalui kad iklan anda akan masuk di sini. Balas dengan templat atau tukar kepada lead dalam satu ketikan." },
     { icon: Calendar,     title: "Tempahan",        body: "Janji temu tontonan kereta dipaparkan di sini. Sahkan, batalkan, atau hantar peringatan WA tanpa keluar dari aplikasi." },
+    { icon: BarChart2,    title: "Prestasi",        body: "Statistik jualan anda — komisen diperoleh, unit terjual, dan prestasi setiap iklan dari semasa ke semasa. Tahu apa yang berkesan." },
     { icon: GitMerge,     title: "Sertai Pengedar", body: "Ada kod jemputan dari pengedar anda? Masukkan di sini untuk buka panel penuh — stok dikongsi, lead bersama, penjejak komisen dan lebih banyak lagi." },
+    { icon: Settings,     title: "Tetapan",         body: "Kemas kini nombor WhatsApp, foto profil, lokasi dan pautan media sosial. Nombor WhatsApp penting — di situlah pembeli menghubungi anda." },
+    { icon: BookOpen,     title: "Bantuan",         body: "Panduan langkah demi langkah, tip jualan dan soalan lazim. Rujuk di sini bila-bila masa anda tersekat." },
   ];
 
   const dismissTour = async () => {
-    const { error: tourErr } = await supabase
-      .from("profiles").update({ onboarding_tour_done: true }).eq("id", userId);
-    if (tourErr) { console.error("dismissTour:", tourErr); return; }
+    // Mark seen locally the moment they close it, so a slow/failed DB write never
+    // makes the tour re-pop on the next mount within this session.
+    try { if (userId) localStorage.setItem(`slite_tour_seen_${userId}`, '1'); } catch {}
     setTourStep(null);
     setTourTarget(null);
     setProfile((p) => ({ ...p, onboarding_tour_done: true }));
+    const { error: tourErr } = await supabase
+      .from("profiles").update({ onboarding_tour_done: true }).eq("id", userId);
+    if (tourErr) console.error("dismissTour:", tourErr);
   };
 
   const renderTour = () => {

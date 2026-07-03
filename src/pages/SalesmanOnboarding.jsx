@@ -407,6 +407,10 @@ export default function SalesmanOnboarding() {
         email: userEmail,
         full_name: form.fullName.trim(),
         phone: normalizePhone(form.phone),
+        // The storefront, WhatsApp enquiry buttons and CarDetail contact card all
+        // read whatsapp_number — the onboarding phone is useless unless we also
+        // seed it here, otherwise buyers get "dealer hasn't added a WhatsApp number".
+        whatsapp_number: normalizePhone(form.phone),
         ic_number: form.icNumber.replace(/-/g, ''),
         role: 'salesman',
         slug: form.slug,
