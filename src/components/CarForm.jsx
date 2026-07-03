@@ -688,77 +688,6 @@ export function buildCopyText(l) {
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
-function Combobox({ value, onChange, options, placeholder, disabled }) {
-  const [query, setQuery] = useState(value || "");
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  const filtered = query
-    ? options
-        .filter((o) => o.toLowerCase().includes(query.toLowerCase()))
-        .slice(0, 20)
-    : options.slice(0, 20);
-  useEffect(() => {
-    setQuery(value || "");
-  }, [value]);
-  useEffect(() => {
-    const h = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
-  return (
-    <div ref={ref} className="relative">
-      <input
-        value={query}
-        enterKeyHint="next"
-        onChange={(e) => {
-          setQuery(e.target.value);
-          onChange(e.target.value);
-          setOpen(true);
-        }}
-        onFocus={() => !disabled && setOpen(true)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && open && filtered.length > 0) {
-            e.preventDefault();
-            onChange(filtered[0]);
-            setQuery(filtered[0]);
-            setOpen(false);
-            // bubble up so parent handleKeyDown advances to the next field
-          } else if (e.key === "Escape") {
-            setOpen(false);
-          }
-        }}
-        placeholder={placeholder}
-        disabled={disabled}
-        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-      />
-      {open && !disabled && (
-        <ul className="absolute z-[200] w-full bg-white border border-gray-200 rounded-xl mt-1 max-h-48 overflow-y-auto shadow-lg">
-          {filtered.map((o) => (
-            <li
-              key={o}
-              onMouseDown={() => {
-                onChange(o);
-                setQuery(o);
-                setOpen(false);
-              }}
-              className="px-4 py-2.5 text-gray-900 hover:bg-blue-50 hover:text-blue-600 cursor-pointer text-sm transition-colors"
-            >
-              {o}
-            </li>
-          ))}
-          {filtered.length === 0 && (
-            <li className="px-4 py-2.5 text-gray-400 text-sm italic">
-              No match — input saved as-is
-            </li>
-          )}
-        </ul>
-      )}
-    </div>
-  );
-}
-
 function PillSelect({ options, value, onChange }) {
   return (
     <div className="flex flex-wrap gap-2">
@@ -773,6 +702,118 @@ function PillSelect({ options, value, onChange }) {
         </button>
       ))}
     </div>
+  );
+}
+
+// Tap-to-pick row that opens a bottom sheet — replaces both native <select>
+// (styling parity) and the free-text Combobox (kills the unwanted mobile
+// keyboard) for any field backed by an enumerated list. Options may be plain
+// strings or { value, label, color? } for cases needing a distinct value/label
+// (e.g. DOC_TYPES) or a colour swatch. allowCustom keeps the old Combobox
+// behavior of accepting a value not in the list (Brand/Model/City aren't
+// exhaustive lists).
+function PickerField({ label, value, onChange, options, placeholder = "Select…", disabled, allowCustom = false }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const normalized = options.map((o) => (typeof o === "string" ? { value: o, label: o } : o));
+  const selected = normalized.find((o) => o.value === value);
+  const searchable = normalized.length > 12;
+  const filtered = query
+    ? normalized.filter((o) => o.label.toLowerCase().includes(query.toLowerCase()))
+    : normalized;
+  const exactMatch = filtered.some((o) => o.label.toLowerCase() === query.toLowerCase());
+
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    setQuery("");
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
+  const pick = (v) => {
+    onChange(v);
+    setOpen(false);
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => !disabled && setOpen(true)}
+        disabled={disabled}
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 bg-white border border-gray-200 rounded-xl text-left transition-colors hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        <span className={`truncate text-sm ${value ? "text-gray-900 font-medium" : "text-gray-400"}`}>
+          {selected ? selected.label : value || placeholder}
+        </span>
+        <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+      </button>
+      {open &&
+        createPortal(
+          <div className="fixed inset-0 z-[300] flex items-end sm:items-center sm:justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
+            <div className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl max-h-[75vh] flex flex-col shadow-xl">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+                <p className="text-sm font-semibold text-gray-900">{label}</p>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                >
+                  <XIcon className="w-4 h-4" />
+                </button>
+              </div>
+              {searchable && (
+                <div className="px-5 py-3 border-b border-gray-100 flex-shrink-0">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      autoFocus
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search…"
+                      className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="overflow-y-auto flex-1 py-1.5">
+                {allowCustom && query && !exactMatch && (
+                  <button
+                    type="button"
+                    onClick={() => pick(query)}
+                    className="w-full flex items-center gap-2 px-5 py-3 text-left text-sm text-blue-600 hover:bg-blue-50 transition-colors border-b border-gray-100"
+                  >
+                    Use "{query}"
+                  </button>
+                )}
+                {filtered.map((o) => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    onClick={() => pick(o.value)}
+                    className={`w-full flex items-center justify-between gap-3 px-5 py-3 text-left text-sm transition-colors ${value === o.value ? "text-blue-600 font-semibold bg-blue-50" : "text-gray-900 hover:bg-gray-50"}`}
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      {o.color && (
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: o.color }} />
+                      )}
+                      <span className="truncate">{o.label}</span>
+                    </span>
+                    {value === o.value && <Check className="w-4 h-4 flex-shrink-0" />}
+                  </button>
+                ))}
+                {filtered.length === 0 && !(allowCustom && query) && (
+                  <p className="px-5 py-6 text-center text-sm text-gray-400">No matches</p>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }
 
@@ -793,8 +834,6 @@ function Field({ label, required, hint, children }) {
 
 const inputCls =
   "w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors";
-const selectCls =
-  "w-full px-4 pr-10 py-3 bg-white border border-gray-200 rounded-2xl text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition-colors appearance-none cursor-pointer";
 const textareaCls =
   "w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors resize-none";
 
@@ -1988,21 +2027,15 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <select
-                  value={docTypeInput}
-                  onChange={(e) => setDocTypeInput(e.target.value)}
-                  className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
-                >
-                  {DOC_TYPES.map((d) => (
-                    <option
-                      key={d.key}
-                      value={d.key}
-                      style={{ background: "#ffffff" }}
-                    >
-                      {d.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex-1">
+                  <PickerField
+                    label="Document Type"
+                    value={docTypeInput}
+                    onChange={(v) => setDocTypeInput(v)}
+                    options={DOC_TYPES.map((d) => ({ value: d.key, label: d.label, color: d.color }))}
+                    placeholder="Select type"
+                  />
+                </div>
                 <label
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-colors flex-shrink-0 ${docUploading ? "bg-gray-200 text-gray-400 cursor-wait" : "bg-emerald-600 hover:bg-emerald-500 text-white"}`}
                 >
@@ -2037,22 +2070,26 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         <div className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Brand" required>
-              <Combobox
+              <PickerField
+                label="Select Brand"
                 value={form.brand}
                 onChange={(v) =>
                   setForm((f) => ({ ...f, brand: v, model: "" }))
                 }
                 options={ALL_BRANDS}
-                placeholder="e.g. Toyota"
+                placeholder="Select brand"
+                allowCustom
               />
             </Field>
             <Field label="Model" required>
-              <Combobox
+              <PickerField
+                label="Select Model"
                 value={form.model}
                 onChange={(v) => set("model", v)}
                 options={modelOptions}
-                placeholder={form.brand ? "e.g. Vios" : "Pick brand first"}
+                placeholder={form.brand ? "Select model" : "Pick brand first"}
                 disabled={!form.brand}
+                allowCustom
               />
             </Field>
           </div>
@@ -2342,34 +2379,16 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                   label="Auction Grade"
                   hint={`Suggested: ${suggestedGrade}`}
                 >
-                  <div className="relative">
-                    <select
-                      name="auctionGrade"
-                      value={form.auctionGrade}
-                      onChange={handleChange}
-                      className={selectCls}
-                    >
-                      <option value="">— Select grade —</option>
-                      {[
-                        "S",
-                        "5",
-                        "4.5",
-                        "4",
-                        "3.5",
-                        "3",
-                        "R",
-                        "RA",
-                        "2",
-                        "1",
-                      ].map((g) => (
-                        <option key={g} value={g}>
-                          {g}
-                          {g === suggestedGrade ? " ★ suggested" : ""}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                  </div>
+                  <PickerField
+                    label="Auction Grade"
+                    value={form.auctionGrade}
+                    onChange={(v) => set("auctionGrade", v)}
+                    options={["S", "5", "4.5", "4", "3.5", "3", "R", "RA", "2", "1"].map((g) => ({
+                      value: g,
+                      label: g === suggestedGrade ? `${g}  ★ suggested` : g,
+                    }))}
+                    placeholder="Select grade"
+                  />
                   {!form.auctionGrade && (
                     <button
                       type="button"
@@ -2381,44 +2400,26 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                   )}
                 </Field>
                 <Field label="Interior Grade">
-                  <div className="relative">
-                    <select
-                      name="interiorGrade"
-                      value={form.interiorGrade}
-                      onChange={handleChange}
-                      className={selectCls}
-                    >
-                      <option value="">— Select —</option>
-                      {["A", "B", "C", "D"].map((g) => (
-                        <option key={g} value={g}>
-                          {g}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                  </div>
+                  <PickerField
+                    label="Interior Grade"
+                    value={form.interiorGrade}
+                    onChange={(v) => set("interiorGrade", v)}
+                    options={["A", "B", "C", "D"]}
+                    placeholder="Select"
+                  />
                 </Field>
               </div>
 
               {/* Import country + auction house */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Import Country">
-                  <div className="relative">
-                    <select
-                      name="importCountry"
-                      value={form.importCountry}
-                      onChange={handleChange}
-                      className={selectCls}
-                    >
-                      <option value="">— Select —</option>
-                      {["Japan", "UK", "Australia", "Other"].map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                  </div>
+                  <PickerField
+                    label="Import Country"
+                    value={form.importCountry}
+                    onChange={(v) => set("importCountry", v)}
+                    options={["Japan", "UK", "Australia", "Other"]}
+                    placeholder="Select"
+                  />
                 </Field>
                 <Field label="Auction House" hint="e.g. USS, TAA, JAA">
                   <input
@@ -2446,20 +2447,17 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                   />
                 </Field>
                 <Field label="Chassis Status">
-                  <div className="relative">
-                    <select
-                      name="chassisStatus"
-                      value={form.chassisStatus}
-                      onChange={handleChange}
-                      className={selectCls}
-                    >
-                      <option value="">— Select —</option>
-                      <option value="clean">Clean</option>
-                      <option value="repaired">Repaired</option>
-                      <option value="written_off">Written Off</option>
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                  </div>
+                  <PickerField
+                    label="Chassis Status"
+                    value={form.chassisStatus}
+                    onChange={(v) => set("chassisStatus", v)}
+                    options={[
+                      { value: "clean", label: "Clean" },
+                      { value: "repaired", label: "Repaired" },
+                      { value: "written_off", label: "Written Off" },
+                    ]}
+                    placeholder="Select"
+                  />
                 </Field>
               </div>
 
@@ -2479,34 +2477,23 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       case 4: return (
         <div className="space-y-5">
           <Field label="State" required>
-            <div className="relative">
-              <select
-                name="state"
-                value={form.state}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, state: e.target.value, city: "" }))
-                }
-                className={selectCls}
-              >
-                <option value="">-- Select state --</option>
-                {Object.keys(STATE_CITIES).map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-            </div>
+            <PickerField
+              label="Select State"
+              value={form.state}
+              onChange={(v) => setForm((f) => ({ ...f, state: v, city: "" }))}
+              options={Object.keys(STATE_CITIES)}
+              placeholder="Select state"
+            />
           </Field>
           <Field label="City" required>
-            <Combobox
+            <PickerField
+              label="Select City"
               value={form.city}
               onChange={(v) => set("city", v)}
               options={cityOptions}
-              placeholder={
-                form.state ? "Type or search city..." : "Select state first"
-              }
+              placeholder={form.state ? "Select city" : "Select state first"}
               disabled={!form.state}
+              allowCustom
             />
           </Field>
         </div>
