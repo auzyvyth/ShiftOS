@@ -34,6 +34,7 @@ import CarCard from "@/components/CarCard";
 import HeroCarousel from "@/components/HeroCarousel";
 import SearchAutocomplete from "@/components/SearchAutocomplete";
 import { supabase } from "../supabaseClient";
+import { readCache, writeCache, precacheImages } from "../utils/localCache";
 import { useSiteProfile } from "../hooks/useSiteProfile";
 import useTenant, { isSubdomain, getSubdomain } from "../hooks/useTenant";
 import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
@@ -244,11 +245,20 @@ const HomePage = () => {
     supabase.rpc("get_dealer_id_by_subdomain", { p_subdomain: sub })
       .then(({ data }) => setFastDealerId(data || null));
   }, []);
-  const [featured, setFeatured] = useState([]);
-  const [hotDeals, setHotDeals] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [stock, setStock] = useState(0);
-  const [soldCount, setSoldCount] = useState(null);
+  // Stale-while-revalidate for the storefront's own car grids — keyed by
+  // subdomain (known synchronously, before fastDealerId's RPC resolves) so a
+  // repeat visit paints instantly. The fetch below always still runs and
+  // overwrites both state and cache the moment it lands.
+  const HP_CACHE_TTL = 30 * 60 * 1000; // 30 min
+  const hpGridCacheKey = (sub) => `hp_grid_v1_${sub}`;
+  const initialHpSub = getSubdomain();
+  const initialHpCache = initialHpSub ? readCache(hpGridCacheKey(initialHpSub), HP_CACHE_TTL) : null;
+
+  const [featured, setFeatured] = useState(() => initialHpCache?.featured || []);
+  const [hotDeals, setHotDeals] = useState(() => initialHpCache?.hotDeals || []);
+  const [loading, setLoading] = useState(() => !initialHpCache);
+  const [stock, setStock] = useState(() => initialHpCache?.stock || 0);
+  const [soldCount, setSoldCount] = useState(() => initialHpCache?.soldCount ?? null);
   const [brand, setBrand] = useState("");
   const [bodyType, setBodyType] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
@@ -312,25 +322,35 @@ const HomePage = () => {
       if (dealerId) query = query.eq("dealer_id", dealerId);
 
       const { data, error, count } = await query;
+      let result = null;
       if (!error && data) {
         // Attach tenant as dealer object when join was skipped
         const rows = (dealerId && tenant)
           ? data.map((c) => ({ ...c, dealer: tenant }))
           : data;
-        setFeatured(rows.slice(0, 6));
-        setStock(count || data.length);
-        setHotDeals(
-          rows
-            .filter(isHotDeal)
-            .sort(
-              (a, b) =>
-                (b.original_price - b.selling_price) / b.original_price -
-                (a.original_price - a.selling_price) / a.original_price,
-            )
-            .slice(0, 6),
-        );
+        const featuredRows = rows.slice(0, 6);
+        const stockCount = count || data.length;
+        const hotDealsRows = rows
+          .filter(isHotDeal)
+          .sort(
+            (a, b) =>
+              (b.original_price - b.selling_price) / b.original_price -
+              (a.original_price - a.selling_price) / a.original_price,
+          )
+          .slice(0, 6);
+        setFeatured(featuredRows);
+        setStock(stockCount);
+        setHotDeals(hotDealsRows);
+        result = { featured: featuredRows, stock: stockCount, hotDeals: hotDealsRows };
+        if (dealerId) {
+          precacheImages(
+            featuredRows.flatMap((c) => Array.isArray(c.images) ? c.images.slice(0, 1) : []).filter(Boolean),
+            "hp-images-v1",
+          );
+        }
       }
       setLoading(false);
+      return result;
     };
     // PERF-5: sold count runs in parallel — no 800ms artificial delay
     const fetchSoldCount = async () => {
@@ -340,9 +360,18 @@ const HomePage = () => {
         .eq("status", "sold");
       if (dealerId) q = q.eq("dealer_id", dealerId);
       const { count } = await q;
-      setSoldCount(count || 0);
+      const soldCountVal = count || 0;
+      setSoldCount(soldCountVal);
+      return soldCountVal;
     };
-    Promise.all([load(), fetchSoldCount()]);
+    Promise.all([load(), fetchSoldCount()]).then(([loadResult, soldCountVal]) => {
+      // Only the dealer-subdomain storefront caches its grid — the main
+      // marketplace domain redirects away before this ever renders.
+      const sub = getSubdomain();
+      if (dealerId && sub && loadResult) {
+        writeCache(hpGridCacheKey(sub), { ...loadResult, soldCount: soldCountVal });
+      }
+    });
   }, [fastDealerId, tenant]);
 
   useEffect(() => {

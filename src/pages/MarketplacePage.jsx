@@ -11,6 +11,7 @@ import GoogleOneTap from '../components/GoogleOneTap';
 import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
 import { trackEvent } from '../utils/analytics';
+import { readCache, writeCache, precacheImages } from '../utils/localCache';
 import { PRICE_STEPS } from '../components/PriceDrumPicker';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import BodyTypeCarousel from '../components/marketplace/BodyTypeCarousel';
@@ -84,10 +85,25 @@ export default function MarketplacePage() {
     navigate(`/showroom${p.toString() ? `?${p}` : ''}`);
   };
 
+  /* Stale-while-revalidate cache — only for the true default view (no filters,
+     page 1, newest first): the most repeat-visited state, and small enough to
+     be one cache key rather than one per filter combination. A background
+     fetch always still runs and overwrites this the moment it lands — the
+     cache only affects what paints before that first response arrives. */
+  const CACHE_TTL = 30 * 60 * 1000; // 30 min
+  const DEFAULT_GRID_CACHE_KEY = 'mp_default_grid_v1';
+  const isDefaultView = !brand && !bodyType && !transmission && !state && !minPrice && !maxPrice &&
+    !financing && !yearFrom && !yearTo && !q && !condition && !mileageMax && !hotDeals &&
+    !fuelType && !colour && !sellerType && !model && !variant && sort === 'newest';
+  const initialCache = isDefaultView ? readCache(DEFAULT_GRID_CACHE_KEY, CACHE_TTL) : null;
+  // Consumed by the first fetchCars() call only — skips forcing the loading
+  // skeleton over cars we already painted instantly from cache.
+  const hadCacheOnMount = useRef(!!initialCache);
+
   /* Data state */
-  const [cars, setCars]           = useState([]);
-  const [totalCount, setTotal]    = useState(0);
-  const [loading, setLoading]     = useState(true);
+  const [cars, setCars]           = useState(() => initialCache?.cars || []);
+  const [totalCount, setTotal]    = useState(() => initialCache?.totalCount || 0);
+  const [loading, setLoading]     = useState(() => !initialCache);
   const [error, setError]         = useState(null);
   const [loadPage, setLoadPage]   = useState(1);
 
@@ -162,7 +178,11 @@ export default function MarketplacePage() {
 
   /* ── Fetch cars (server-side, load-more) ── */
   const fetchCars = useCallback(async () => {
-    setLoading(true);
+    // Consume the cache-hit flag once — the very first fetch after an instant
+    // cached paint shouldn't flash the skeleton over cars already on screen.
+    const usingCachedFallback = hadCacheOnMount.current;
+    hadCacheOnMount.current = false;
+    if (!usingCachedFallback) setLoading(true);
     setError(null);
     try {
       const from = (loadPage - 1) * PER_PAGE;
@@ -212,18 +232,28 @@ export default function MarketplacePage() {
       const rows = data || [];
 
       if (loadPage === 1) {
-        setCars(dedupe(rows));
+        const deduped = dedupe(rows);
+        setCars(deduped);
+        if (isDefaultView) {
+          writeCache(DEFAULT_GRID_CACHE_KEY, { cars: deduped, totalCount: count || 0 });
+          precacheImages(
+            deduped.slice(0, 8).flatMap(c => Array.isArray(c.images) ? c.images.slice(0, 1) : []).filter(Boolean),
+            'mp-images-v1',
+          );
+        }
       } else {
         setCars(prev => dedupe([...prev, ...rows]));
       }
       setTotal(count || 0);
     } catch (e) {
       console.error('[fetchCars]', e?.message || e?.code || e);
-      setError('Failed to load listings. Please try again.');
+      // Already showing cached cars from a previous visit — keep them on
+      // screen rather than covering them with an error banner.
+      if (!usingCachedFallback) setError('Failed to load listings. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [loadPage, brand, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, fuelType, colour, sellerType, model, variant, sort]);
+  }, [loadPage, brand, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, fuelType, colour, sellerType, model, variant, sort, isDefaultView]);
 
   /* Reset to page 1 whenever filter params change from outside (URL navigation) */
   useEffect(() => {
