@@ -703,6 +703,23 @@ export function buildCopyText(l) {
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
+// Common features buyers actually search for — rendered as tap-to-add chips in
+// step 6 so dealers populate the SEO-critical features field without typing.
+// Whatever they enter flows into the car-page prerender's alt text + schema.
+const COMMON_FEATURES = [
+  "Sunroof", "Panoramic roof", "Bucket seats", "Leather seats", "Ventilated seats",
+  "Power seats", "360 camera", "Reverse camera", "Apple CarPlay", "Android Auto",
+  "Push start", "Keyless entry", "HUD", "Blind spot monitor", "Adaptive cruise",
+  "Digital cockpit", "Ambient lighting", "Carbon pack", "Sports exhaust",
+  "Forged wheels", "Paddle shift", "Electric tailgate",
+];
+
+function parseTags(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.map((s) => String(s).trim()).filter(Boolean);
+  return String(raw).split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
+}
+
 function PillSelect({ options, value, onChange }) {
   return (
     <div className="flex flex-wrap gap-2">
@@ -3170,41 +3187,65 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           )}
         </div>
       );
-      case 6: return (
-        <div className="space-y-5">
-          <Field
-            label="About"
-            hint={'Free text — shown as the "About this car" section on the listing page'}
-          >
-            <SmartTextarea
-              value={form.specs}
-              onValueChange={(v) => set("specs", v)}
-              placeholder={"e.g.\n✅ FULL SERVICE RECORD\n• Interior 9/10\n• One owner, accident-free"}
-              rows={8}
-            />
-          </Field>
-          <Field label="Options" hint="Shown as tags — separate with commas or new lines">
-            <textarea
-              name="options"
-              value={form.options}
-              onChange={handleChange}
-              placeholder="e.g. Sunroof, leather seats, Apple CarPlay..."
-              className={textareaCls}
-              rows={3}
-            />
-          </Field>
-          <Field label="Features" hint="Shown as tags — separate with commas or new lines">
-            <textarea
-              name="features"
-              value={form.features}
-              onChange={handleChange}
-              placeholder="e.g. Reverse camera, push start, keyless entry..."
-              className={textareaCls}
-              rows={3}
-            />
-          </Field>
-        </div>
-      );
+      case 6: {
+        const selFeatures = parseTags(form.features);
+        const isSel = (f) => selFeatures.some((t) => t.toLowerCase() === f.toLowerCase());
+        const toggleFeature = (f) => {
+          const tags = parseTags(form.features);
+          const i = tags.findIndex((t) => t.toLowerCase() === f.toLowerCase());
+          if (i >= 0) tags.splice(i, 1);
+          else tags.push(f);
+          set("features", tags.join(", "));
+        };
+        return (
+          <div className="space-y-5">
+            <Field
+              label="About this car"
+              hint={'Condition, history, why it stands out — shown as the "About this car" section on the listing.'}
+            >
+              <SmartTextarea
+                value={form.specs}
+                onValueChange={(v) => set("specs", v)}
+                placeholder={"e.g.\nFull service record\nOne owner, accident-free\nInterior 9/10, tyres 80%"}
+                rows={7}
+              />
+            </Field>
+            <Field
+              label="Features & options"
+              hint="What buyers search for on Google — tap to add, or type your own. The more you list, the more searches this car shows up in."
+            >
+              <div className="flex flex-wrap gap-2 mb-2.5">
+                {COMMON_FEATURES.map((f) => {
+                  const on = isSel(f);
+                  return (
+                    <button
+                      key={f}
+                      type="button"
+                      onClick={() => toggleFeature(f)}
+                      className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                        on
+                          ? "bg-blue-600 border-blue-600 text-white"
+                          : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
+                      }`}
+                    >
+                      {on && <Check className="w-3.5 h-3.5" />}
+                      {f}
+                    </button>
+                  );
+                })}
+              </div>
+              <textarea
+                name="features"
+                value={form.features}
+                onChange={handleChange}
+                placeholder="Anything else — e.g. bucket seats, carbon pack, tinted windows. Separate with commas."
+                className={textareaCls}
+                rows={2}
+              />
+            </Field>
+          </div>
+        );
+      }
       case 7: {
         const rm = (v) => (v !== "" && v != null && !isNaN(Number(v)) && Number(v) > 0 ? `RM ${Number(v).toLocaleString()}` : null);
         const svcTotal = form.included_services.reduce((s, x) => s + Number(x.selling_price || 0), 0);
