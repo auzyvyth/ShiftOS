@@ -2,8 +2,16 @@
 export const config = { runtime: "edge" };
 
 const ROOT_DOMAIN = "xdrive.my";
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY; // service key, not anon
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+// Read the public_car_listings VIEW (granted to anon) with the anon key — the
+// same source the marketplace uses. The base car_listings table is NOT granted
+// to anon, and SUPABASE_SERVICE_KEY was unset/invalid in the deploy env, so the
+// old service-key query silently returned zero cars and every listing URL was
+// missing from the sitemap.
+const SUPABASE_KEY =
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_SERVICE_KEY;
 
 function getSubdomain(host) {
   const h = host.split(":")[0];
@@ -111,8 +119,8 @@ export default async function handler(req) {
   let cars = [];
 
   try {
-    // Columns needed: slug, brand, model, year, updated_at, images
-    const select = "slug,brand,model,year,updated_at,images";
+    // public_car_listings has no updated_at; alias created_at so lastmod works.
+    const select = "slug,brand,model,year,updated_at:created_at,images";
 
     if (subdomain) {
       // Tenant subdomain — only their listings
@@ -122,13 +130,13 @@ export default async function handler(req) {
       const dealerId = profiles[0]?.id;
       if (dealerId) {
         cars = await fetchJson(
-          `${SUPABASE_URL}/rest/v1/car_listings?dealer_id=eq.${encodeURIComponent(dealerId)}&status=eq.available&select=${select}&limit=1000`,
+          `${SUPABASE_URL}/rest/v1/public_car_listings?dealer_id=eq.${encodeURIComponent(dealerId)}&status=eq.available&select=${select}&limit=1000`,
         );
       }
     } else {
       // Root domain — all available listings across all dealers
       cars = await fetchJson(
-        `${SUPABASE_URL}/rest/v1/car_listings?status=eq.available&select=${select}&order=updated_at.desc&limit=5000`,
+        `${SUPABASE_URL}/rest/v1/public_car_listings?status=eq.available&select=${select}&order=created_at.desc&limit=5000`,
       );
     }
   } catch (_) {}

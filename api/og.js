@@ -51,9 +51,12 @@ async function sbFetch(path) {
   }
 }
 
+// Query the public_car_listings VIEW: the anon key has no grant on the base
+// car_listings table, so hitting it here returned nothing and every car page
+// 404'd for crawlers. The view exposes the same columns and is granted to anon.
 async function getListingData(slug) {
   const [car] = await sbFetch(
-    `car_listings?slug=eq.${encodeURIComponent(slug)}&select=brand,model,variant,year,selling_price,mileage,colour,transmission,fuel_type,body_type,engine_cc,images,status,city,state,slug,is_recon,auction_grade,dealer_id&limit=1`,
+    `public_car_listings?slug=eq.${encodeURIComponent(slug)}&select=brand,model,variant,year,selling_price,mileage,colour,transmission,fuel_type,body_type,engine_cc,images,status,city,state,slug,is_recon,auction_grade,dealer_id&limit=1`,
   );
   return car ?? null;
 }
@@ -77,7 +80,7 @@ async function getDealerBySubdomain(subdomain) {
 async function getRecentListings(dealerId, limit = 48) {
   const filter = dealerId ? `&dealer_id=eq.${dealerId}` : "";
   return sbFetch(
-    `car_listings?status=eq.available${filter}&select=slug,brand,model,variant,year,selling_price,mileage,state&order=updated_at.desc&limit=${limit}`,
+    `public_car_listings?status=eq.available${filter}&select=slug,brand,model,variant,year,selling_price,mileage,state&order=created_at.desc&limit=${limit}`,
   );
 }
 
