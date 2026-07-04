@@ -12,8 +12,13 @@ const ROOT_DOMAIN = "xdrive.my";
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
+// MUST recognise every UA that vercel.json rewrites here. If vercel routes an
+// agent to /api/og but this regex misses it, the !isBot branch below 302s the
+// request back to the same path, vercel re-routes it, and it loops forever —
+// which is exactly how Google-InspectionTool (URL Inspection / Request Indexing)
+// and googleother got stuck, making GSC reject indexing during live testing.
 const BOT_AGENTS =
-  /bot|crawler|spider|facebookexternalhit|whatsapp|telegrambot|twitterbot|linkedinbot|slackbot|discordbot|googlebot|bingbot|applebot|duckduckbot|perplexitybot|chatgpt|claudebot|gptbot/i;
+  /bot|crawler|spider|facebookexternalhit|whatsapp|telegrambot|twitterbot|linkedinbot|slackbot|discordbot|googlebot|google-inspectiontool|inspectiontool|googleother|bingbot|applebot|duckduckbot|perplexitybot|chatgpt|claudebot|gptbot|anthropic-ai|cohere-ai|ia_archiver/i;
 
 function isBot(ua) {
   return BOT_AGENTS.test(ua);
