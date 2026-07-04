@@ -35,6 +35,7 @@ import { getCategoryCfg } from "../utils/serviceCategories";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { useProfile, getDealerIdFromProfile } from "../hooks/useProfile";
 import { lookupMYCar, isMYBrand } from "../data/malayCars";
+import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 const initialListing = {
@@ -90,6 +91,12 @@ const initialListing = {
   warranty_months: "",
   deposit_amount: "",
   payment_type: "cash",
+  // Sambung bayar (loan takeover) — only used when payment_type === 'sambung_bayar'
+  sambungMonthly: "",
+  sambungMonthsLeft: "",
+  sambungBalance: "",
+  sambungDeposit: "",
+  sambungBank: "",
 };
 
 export const CAR_DATA = {
@@ -586,20 +593,23 @@ export function buildCopyText(l) {
     : 0;
   const isHot = discountPct >= 3;
 
-  // Auto hashtags
+  // Auto hashtags — luxury/exotic listings get premium tags instead of budget
+  // ones ("#keretamurah" = "cheap car", "#jualbeli" = "buy-sell") that read as
+  // mismatched/damaging against a RM1m+ asking price.
   const brand = (l.brand || "").toLowerCase().replace(/\s+/g, "");
   const model = (l.model || "").toLowerCase().replace(/\s+/g, "");
   const state = (l.state || "").toLowerCase().replace(/\s+/g, "");
   const cond = (l.condition || "").toLowerCase();
+  const isHighValue = Number(l.selling_price) > HIGH_VALUE_THRESHOLD;
   const tags = [
-    "#keretamurah",
-    "#keretamalaysia",
+    isHighValue ? "#supercar" : "#keretamurah",
+    isHighValue ? "#exoticcarsmalaysia" : "#keretamalaysia",
     `#${brand}`,
     `#${model}`,
     state ? `#kereta${state}` : "",
     `#${cond}`,
-    "#keretabekas",
-    "#jualbeli",
+    isHighValue ? "" : "#keretabekas",
+    isHighValue ? "" : "#jualbeli",
   ]
     .filter(Boolean)
     .join(" ");
@@ -680,7 +690,11 @@ export function buildCopyText(l) {
   }
 
   lines.push(`📞 DM or WhatsApp to enquire!`);
-  lines.push(`Loan available ✅ Trade-in welcome ✅`);
+  lines.push(
+    isHighValue
+      ? `Viewing by appointment · Bank financing available`
+      : `Loan available ✅ Trade-in welcome ✅`,
+  );
   lines.push("");
   lines.push(tags);
   lines.push(`━━━━━━━━━━━━━━━━━━━━`);
@@ -1242,6 +1256,11 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
             : "",
         deposit_amount:
           listing.deposit_amount != null ? String(listing.deposit_amount) : "",
+        sambungMonthly:    listing.sambung_monthly     != null ? String(listing.sambung_monthly)     : "",
+        sambungMonthsLeft: listing.sambung_months_left != null ? String(listing.sambung_months_left) : "",
+        sambungBalance:    listing.sambung_balance     != null ? String(listing.sambung_balance)     : "",
+        sambungDeposit:    listing.sambung_deposit     != null ? String(listing.sambung_deposit)     : "",
+        sambungBank:       listing.sambung_bank        || "",
       });
       setPreviews(listing.images || []);
       setStep(1);
@@ -1661,7 +1680,9 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     if (step === 2) return form.brand && form.model && form.year && form.mileage && form.colour && form.condition;
     if (step === 3) return form.bodyType && form.fuelType;
     if (step === 4) return form.state && form.city;
-    if (step === 5) return form.basePrice && form.sellingPrice;
+    if (step === 5) return form.payment_type === "sambung_bayar"
+      ? (Number(form.sambungMonthly) > 0 && Number(form.sambungDeposit) > 0)
+      : (form.basePrice && form.sellingPrice);
     return true;
   };
 
@@ -1676,7 +1697,12 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     ]).filter(([m]) => m).map(([, l]) => l);
     if (step === 3) return intakeDone ? [] : [[!form.bodyType, "Body type"], [!form.fuelType, "Fuel type"]].filter(([m]) => m).map(([, l]) => l);
     if (step === 4) return [[!form.state, "State"], [!form.city, "City"]].filter(([m]) => m).map(([, l]) => l);
-    if (step === 5) return intakeDone ? [] : [[!form.basePrice, "Base price"], [!form.sellingPrice, "Selling price"]].filter(([m]) => m).map(([, l]) => l);
+    if (step === 5) {
+      if (intakeDone) return [];
+      if (form.payment_type === "sambung_bayar")
+        return [[!(Number(form.sambungMonthly) > 0), "Monthly (ansuran)"], [!(Number(form.sambungDeposit) > 0), "Deposit / duit nampak"]].filter(([m]) => m).map(([, l]) => l);
+      return [[!form.basePrice, "Base price"], [!form.sellingPrice, "Selling price"]].filter(([m]) => m).map(([, l]) => l);
+    }
     return [];
   };
 
@@ -1711,9 +1737,13 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       toast.error("Please add at least 1 photo");
       return;
     }
+    // Sambung bayar cars aren't sold at a full price — the buyer takes over the
+    // loan — so base/selling price are optional there (default 0) and the sambung
+    // monthly/deposit are what matter. Everything else stays required as before.
+    const isSambung = form.payment_type === "sambung_bayar";
     const mileage = parseInt(form.mileage);
-    const basePrice = parseFloat(form.basePrice);
-    const sellingPrice = parseFloat(form.sellingPrice);
+    const basePrice = form.basePrice ? parseFloat(form.basePrice) : 0;
+    const sellingPrice = form.sellingPrice ? parseFloat(form.sellingPrice) : 0;
     const originalPrice = form.originalPrice
       ? parseFloat(form.originalPrice)
       : null;
@@ -1724,13 +1754,18 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       toast.error("Invalid mileage");
       return;
     }
-    if (isNaN(basePrice) || basePrice < 0) {
-      toast.error("Invalid base price");
-      return;
-    }
-    if (isNaN(sellingPrice) || sellingPrice < 0) {
-      toast.error("Invalid selling price");
-      return;
+    if (isSambung) {
+      if (!(Number(form.sambungMonthly) > 0)) { toast.error("Sambung Bayar: monthly (ansuran) is required"); return; }
+      if (!(Number(form.sambungDeposit) > 0)) { toast.error("Sambung Bayar: deposit / duit nampak is required"); return; }
+    } else {
+      if (isNaN(basePrice) || basePrice < 0) {
+        toast.error("Invalid base price");
+        return;
+      }
+      if (isNaN(sellingPrice) || sellingPrice < 0) {
+        toast.error("Invalid selling price");
+        return;
+      }
     }
     if (isNaN(year) || year < 1900) {
       toast.error("Invalid year");
@@ -1804,6 +1839,13 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           ? parseFloat(form.deposit_amount)
           : null,
         payment_type: form.payment_type || "cash",
+        // Sambung bayar figures — only persisted when this is a sambung listing,
+        // cleared otherwise so switching payment type doesn't leave stale numbers.
+        sambung_monthly:     form.payment_type === "sambung_bayar" && form.sambungMonthly     ? parseFloat(form.sambungMonthly)     : null,
+        sambung_months_left: form.payment_type === "sambung_bayar" && form.sambungMonthsLeft  ? parseInt(form.sambungMonthsLeft)    : null,
+        sambung_balance:     form.payment_type === "sambung_bayar" && form.sambungBalance     ? parseFloat(form.sambungBalance)     : null,
+        sambung_deposit:     form.payment_type === "sambung_bayar" && form.sambungDeposit     ? parseFloat(form.sambungDeposit)     : null,
+        sambung_bank:        form.payment_type === "sambung_bayar" && form.sambungBank        ? form.sambungBank.trim()             : null,
       };
 
       // All salesmen require approval — standalone → superadmin, under-dealer → manager
@@ -1930,7 +1972,9 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       case 2: return intakeDone ? !!form.condition : !!(form.brand && form.model && form.year && form.mileage && form.colour && form.condition);
       case 3: return intakeDone ? true : !!(form.bodyType && form.fuelType);
       case 4: return !!(form.state && form.city);
-      case 5: return intakeDone ? true : !!(form.basePrice && form.sellingPrice);
+      case 5: return intakeDone ? true : (form.payment_type === "sambung_bayar"
+        ? (Number(form.sambungMonthly) > 0 && Number(form.sambungDeposit) > 0)
+        : !!(form.basePrice && form.sellingPrice));
       case 6: return true;
       case 7: return true;
       default: return false;
@@ -2713,6 +2757,41 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               }
             />
           </Field>
+
+          {/* Sambung bayar (loan takeover) — buyers decide on monthly + upfront cash +
+              months left, not a full price, so capture those directly. */}
+          {form.payment_type === "sambung_bayar" && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 space-y-4">
+              <p className="text-xs font-semibold text-amber-700">Sambung Bayar details — what buyers see first</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Monthly (Ansuran)" required hint="Buyer's monthly payment">
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">RM</span>
+                    <input type="number" name="sambungMonthly" value={form.sambungMonthly} onChange={handleChange} placeholder="0" min="0" inputMode="numeric" className={`${inputCls} pl-12`} />
+                  </div>
+                </Field>
+                <Field label="Deposit / Duit Nampak" required hint="Upfront cash to take over">
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">RM</span>
+                    <input type="number" name="sambungDeposit" value={form.sambungDeposit} onChange={handleChange} placeholder="0" min="0" inputMode="numeric" className={`${inputCls} pl-12`} />
+                  </div>
+                </Field>
+                <Field label="Months Left (Baki Tempoh)" hint="Remaining tenure">
+                  <input type="number" name="sambungMonthsLeft" value={form.sambungMonthsLeft} onChange={handleChange} placeholder="e.g. 36" min="0" max="120" inputMode="numeric" className={inputCls} />
+                </Field>
+                <Field label="Balance (Baki Pinjaman)" hint="Outstanding loan — optional">
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">RM</span>
+                    <input type="number" name="sambungBalance" value={form.sambungBalance} onChange={handleChange} placeholder="0" min="0" inputMode="numeric" className={`${inputCls} pl-12`} />
+                  </div>
+                </Field>
+              </div>
+              <Field label="Bank" hint="Which bank holds the loan">
+                <input name="sambungBank" value={form.sambungBank} onChange={handleChange} placeholder="e.g. Maybank, Public Bank" className={inputCls} />
+              </Field>
+            </div>
+          )}
+
           {!intakeDone && (
           <>
           <Field
@@ -3197,13 +3276,25 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
             </ReviewSection>
             <ReviewSection title="Pricing" onEdit={() => setStep(5)}>
               <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-                <ReviewItem label="Selling price" value={rm(form.sellingPrice)} />
-                <ReviewItem label="Was price" value={rm(form.originalPrice)} />
-                <ReviewItem label="Base / cost" value={rm(form.basePrice)} />
-                <ReviewItem label="Commission" value={rm(form.commissionAmount)} />
-                <ReviewItem label="Deposit to reserve" value={rm(form.deposit_amount)} />
-                <ReviewItem label="Warranty" value={form.warranty_months && Number(form.warranty_months) > 0 ? `${form.warranty_months} months` : null} />
                 <ReviewItem label="Payment" value={form.payment_type === "sambung_bayar" ? "Sambung Bayar" : (form.payment_type || "cash").charAt(0).toUpperCase() + (form.payment_type || "cash").slice(1)} />
+                {form.payment_type === "sambung_bayar" ? (
+                  <>
+                    <ReviewItem label="Monthly (ansuran)" value={rm(form.sambungMonthly)} />
+                    <ReviewItem label="Deposit / duit nampak" value={rm(form.sambungDeposit)} />
+                    <ReviewItem label="Months left" value={form.sambungMonthsLeft ? `${form.sambungMonthsLeft} months` : null} />
+                    <ReviewItem label="Balance" value={rm(form.sambungBalance)} />
+                    <ReviewItem label="Bank" value={form.sambungBank} />
+                  </>
+                ) : (
+                  <>
+                    <ReviewItem label="Selling price" value={rm(form.sellingPrice)} />
+                    <ReviewItem label="Was price" value={rm(form.originalPrice)} />
+                    <ReviewItem label="Base / cost" value={rm(form.basePrice)} />
+                    <ReviewItem label="Commission" value={rm(form.commissionAmount)} />
+                    <ReviewItem label="Deposit to reserve" value={rm(form.deposit_amount)} />
+                    <ReviewItem label="Warranty" value={form.warranty_months && Number(form.warranty_months) > 0 ? `${form.warranty_months} months` : null} />
+                  </>
+                )}
                 <ReviewItem label="Included services" value={form.included_services.length ? `${form.included_services.length} · RM ${svcTotal.toLocaleString()}` : null} />
               </div>
             </ReviewSection>
@@ -3376,7 +3467,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={uploading || capError || !(form.images.length > 0 && form.brand && form.model && form.year && form.state && form.city && form.basePrice && form.sellingPrice)}
+            disabled={uploading || capError || !(form.images.length > 0 && form.brand && form.model && form.year && form.state && form.city && (form.payment_type === "sambung_bayar" ? (Number(form.sambungMonthly) > 0 && Number(form.sambungDeposit) > 0) : (form.basePrice && form.sellingPrice)))}
             className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {uploading ? (

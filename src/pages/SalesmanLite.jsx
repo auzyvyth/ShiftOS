@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -65,6 +66,17 @@ import {
   CheckCircle,
   BookOpen,
 } from "lucide-react";
+import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
+
+// Price visual weight — a RM45k car and a RM2.4M car shouldn't read at the
+// same size/color; scale the price figure up for higher tiers so the card
+// itself signals value at a glance.
+function priceStyle(sellingPrice) {
+  const sp = Number(sellingPrice) || 0;
+  if (sp >= 1000000) return { fontSize: 18, fontWeight: 800, color: "#fbbf24" };
+  if (sp >= HIGH_VALUE_THRESHOLD) return { fontSize: 16, fontWeight: 800, color: "#93c5fd" };
+  return { fontSize: 14, fontWeight: 700, color: "#60a5fa" };
+}
 
 function useWindowSize() {
   const [w, setW] = useState(window.innerWidth);
@@ -192,6 +204,44 @@ function StatusBadge({ status }) {
     >
       {status}
     </span>
+  );
+}
+
+// Shared CarForm popup — used for both Add and Edit so the two flows can never
+// drift apart. White card (matches the dealer dashboard's own CarForm modals —
+// DashboardPage's .modal-top / Stock Publish overlay — CarForm is a light-themed
+// component regardless of the page it's embedded in) over a dark backdrop, full
+// screen on mobile with no rounded corners or gap, centered capped-height card on
+// desktop. Portal + body-scroll-lock per the app's overlay rules.
+function CarFormModal({ title, subtitle, onClose, children }) {
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex sm:items-center sm:justify-center sm:p-4"
+      style={{ background: "rgba(0,0,0,0.82)" }}
+    >
+      <div className="w-full h-[100dvh] sm:h-auto sm:max-h-[92vh] sm:max-w-2xl bg-white sm:rounded-2xl flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+          <div className="min-w-0">
+            <h3 className="font-semibold text-gray-900 text-[15px] truncate">{title}</h3>
+            {subtitle && <p className="text-xs text-gray-500 mt-0.5 truncate">{subtitle}</p>}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-900 p-1 transition-colors flex-shrink-0"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="overflow-y-auto flex-1 p-5">{children}</div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -565,7 +615,7 @@ export default function SalesmanLite() {
 
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, ic_number, account_status, instagram, tiktok, facebook, website, lite_goal, onboarding_complete")
+        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, ic_number, account_status, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
         .eq("id", uid)
         .maybeSingle();
 
@@ -664,7 +714,7 @@ export default function SalesmanLite() {
             // Must include every column CarForm's edit prefill reads, or editing a
             // listing silently blanks those fields and Save fails (e.g. "base price
             // not set"). See CarForm pre-fill effect for the full list.
-            "id, slug, year, brand, model, variant, selling_price, original_price, base_price, purchase_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, specs, city, state, condition, engine_cc, horsepower, cylinders, doors, seats, fuel_consumption, created_at, included_services, included_services_cost, recon_cost, sold_at, commission_amount, rejection_reason, is_recon, auction_grade, interior_grade, import_country, auction_house, local_reg_date, chassis_status, damage_map, video_url, car_documents, registration_date, plate_number, vin_number, previous_owners, road_tax_expiry, loan_eligible, payment_type, warranty_months, deposit_amount",
+            "id, slug, year, brand, model, variant, selling_price, original_price, base_price, purchase_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, specs, city, state, condition, engine_cc, horsepower, cylinders, doors, seats, fuel_consumption, created_at, included_services, included_services_cost, recon_cost, sold_at, commission_amount, rejection_reason, is_recon, auction_grade, interior_grade, import_country, auction_house, local_reg_date, chassis_status, damage_map, video_url, car_documents, registration_date, plate_number, vin_number, previous_owners, road_tax_expiry, loan_eligible, payment_type, warranty_months, deposit_amount, sambung_monthly, sambung_months_left, sambung_balance, sambung_deposit, sambung_bank",
           )
           .eq("assigned_to", uid),
         supabase
@@ -673,7 +723,7 @@ export default function SalesmanLite() {
             // Must include every column CarForm's edit prefill reads, or editing a
             // listing silently blanks those fields and Save fails (e.g. "base price
             // not set"). See CarForm pre-fill effect for the full list.
-            "id, slug, year, brand, model, variant, selling_price, original_price, base_price, purchase_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, specs, city, state, condition, engine_cc, horsepower, cylinders, doors, seats, fuel_consumption, created_at, included_services, included_services_cost, recon_cost, sold_at, commission_amount, rejection_reason, is_recon, auction_grade, interior_grade, import_country, auction_house, local_reg_date, chassis_status, damage_map, video_url, car_documents, registration_date, plate_number, vin_number, previous_owners, road_tax_expiry, loan_eligible, payment_type, warranty_months, deposit_amount",
+            "id, slug, year, brand, model, variant, selling_price, original_price, base_price, purchase_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, specs, city, state, condition, engine_cc, horsepower, cylinders, doors, seats, fuel_consumption, created_at, included_services, included_services_cost, recon_cost, sold_at, commission_amount, rejection_reason, is_recon, auction_grade, interior_grade, import_country, auction_house, local_reg_date, chassis_status, damage_map, video_url, car_documents, registration_date, plate_number, vin_number, previous_owners, road_tax_expiry, loan_eligible, payment_type, warranty_months, deposit_amount, sambung_monthly, sambung_months_left, sambung_balance, sambung_deposit, sambung_bank",
           )
           .eq("dealer_id", uid),
       ]).then(([r1, r2]) => {
@@ -1918,24 +1968,122 @@ export default function SalesmanLite() {
       display: "flex", alignItems: "center", justifyContent: "space-between",
     };
 
+    // Live portfolio value — sum of currently-available listings' asking price.
+    // Distinct from soldThisMonth (realized commission) and the "Revenue (Sales)"
+    // figure further down (sold cars only) — this is "what you're carrying right
+    // now," the number that makes the landing page feel like a real book of stock.
+    const portfolioValue = available.reduce((sum, c) => sum + (Number(c.selling_price) || 0), 0);
+    const topCar = available.length > 0
+      ? available.reduce((best, c) => (Number(c.selling_price) || 0) > (Number(best.selling_price) || 0) ? c : best, available[0])
+      : null;
+    const greetingWord = (() => {
+      const h = new Date().getHours();
+      return h < 12 ? t("salesmanLite.greeting.morning") : h < 17 ? t("salesmanLite.greeting.afternoon") : t("salesmanLite.greeting.evening");
+    })();
+    const personalizedLine = isNewUser
+      ? "Add your first car to start building your portfolio."
+      : staleLeads.length > 0
+      ? `${staleLeads.length} buyer${staleLeads.length !== 1 ? "s" : ""} waiting on a follow-up — don't let a hot lead go cold.`
+      : todayAppts > 0
+      ? `You've got ${todayAppts} appointment${todayAppts !== 1 ? "s" : ""} today. Make ${todayAppts !== 1 ? "them" : "it"} count.`
+      : activeLeads.length > 0
+      ? `${activeLeads.length} deal${activeLeads.length !== 1 ? "s" : ""} in motion right now.`
+      : "Pipeline's clear — good time to feature a car or reach out to a past buyer.";
+
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-        {/* ── Greeting ── */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.3px" }}>
-              {(() => { const h = new Date().getHours(); return h < 12 ? t("salesmanLite.greeting.morning") : h < 17 ? t("salesmanLite.greeting.afternoon") : t("salesmanLite.greeting.evening"); })()}, {profile?.full_name?.split(" ")[0] || "there"}.
-            </p>
-            <p style={{ margin: "2px 0 0", fontSize: 12, color: "#475569" }}>
-              {new Date().toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" })}
-            </p>
-          </div>
-          {staleLeads.length > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 99, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.18)" }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", flexShrink: 0 }} />
-              <span style={{ fontSize: 11, fontWeight: 600, color: "#ef4444" }}>{staleLeads.length} {t("salesmanLite.kpi.overdue")}</span>
+        {/* ── Hero: greeting + live portfolio value ── */}
+        <div style={{ ...CARD, position: "relative", overflow: "hidden", padding: isMobile ? "20px 18px" : "26px 28px", background: "linear-gradient(135deg, #0d1117 0%, #161b22 100%)" }}>
+          <div style={{ position: "absolute", top: -50, right: -50, width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(220,38,38,0.14) 0%, transparent 70%)", pointerEvents: "none" }} />
+          <div style={{ position: "relative", display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.3px" }}>
+                {greetingWord}, {profile?.full_name?.split(" ")[0] || "there"}.
+              </p>
+              <p style={{ margin: "5px 0 0", fontSize: 13, color: "#94a3b8", maxWidth: 440 }}>
+                {personalizedLine}
+              </p>
             </div>
+            {staleLeads.length > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 99, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.18)", flexShrink: 0 }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", flexShrink: 0 }} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#ef4444" }}>{staleLeads.length} {t("salesmanLite.kpi.overdue")}</span>
+              </div>
+            )}
+          </div>
+          {portfolioValue > 0 && (
+            <div style={{ position: "relative", marginTop: 20 }}>
+              <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                Live portfolio value
+              </p>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                <p style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: isMobile ? 38 : 50, color: "#fbbf24", letterSpacing: 1, lineHeight: 1 }}>
+                  RM {portfolioValue.toLocaleString("en-MY")}
+                </p>
+                <span style={{ fontSize: 12, color: "#475569" }}>
+                  across {available.length} live listing{available.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+              {topCar && (
+                <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b" }}>
+                  Headlined by your {topCar.year} {topCar.brand} {topCar.model}{topCar.variant ? ` ${topCar.variant}` : ""} — RM {Number(topCar.selling_price).toLocaleString("en-MY")}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── My Performance ── */}
+        <div style={CARD}>
+          <div style={CARD_HEADER}>
+            <span>My Performance</span>
+            <span>30 days</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            {[
+              { label: "Views", value: totalViews || 0 },
+              { label: "WA Taps", value: totalWATaps || 0 },
+              { label: "CVR", value: overallCVR !== null ? `${overallCVR}%` : "—" },
+            ].map(({ label, value }, i, arr) => (
+              <div key={label} style={{ padding: "16px 18px", borderRight: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
+                <p style={{ margin: "0 0 4px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
+                <p style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</p>
+              </div>
+            ))}
+          </div>
+          {listingStats.length > 0 && (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 50px 50px 70px", padding: "8px 18px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                {["Listing", "Views", "WA", "CVR"].map((h, i) => (
+                  <p key={h} style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: i > 0 ? "center" : "left" }}>{h}</p>
+                ))}
+              </div>
+              {[...listingStats].sort((a, b) => (b.cvr ?? -1) - (a.cvr ?? -1)).map(({ car, views, waTaps, cvr }, idx, arr) => {
+                const isHot = views > 20 && cvr >= 10;
+                const isWarm = !isHot && views > 5 && cvr >= 5;
+                return (
+                  <div key={car.id} style={{ display: "grid", gridTemplateColumns: "1fr 50px 50px 70px", padding: "11px 18px", alignItems: "center", borderBottom: idx < arr.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", background: idx % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 12, color: "#d1d5db", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{perfCarName(car)}</p>
+                      {isHot && <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)", flexShrink: 0 }}>HOT</span>}
+                      {isWarm && <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "rgba(234,179,8,0.1)", color: "#eab308", border: "1px solid rgba(234,179,8,0.2)", flexShrink: 0 }}>WARM</span>}
+                    </div>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", textAlign: "center" }}>{views}</p>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", textAlign: "center" }}>{waTaps}</p>
+                    <div style={{ textAlign: "center" }}>
+                      {cvr !== null
+                        ? <span style={{ fontSize: 11, fontWeight: 700, color: cvrColor(cvr) }}>{cvr.toFixed(1)}%</span>
+                        : <span style={{ fontSize: 11, color: "#374151" }}>—</span>
+                      }
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          )}
+          {listingStats.length === 0 && (
+            <p style={{ margin: 0, padding: "16px 18px", fontSize: 12, color: "#475569" }}>No listing data yet — publish a car to start tracking.</p>
           )}
         </div>
 
@@ -2234,59 +2382,6 @@ export default function SalesmanLite() {
             </div>
           </div>
         )}
-
-        {/* ── My Performance ── */}
-        <div style={CARD}>
-          <div style={CARD_HEADER}>
-            <span>My Performance</span>
-            <span>30 days</span>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            {[
-              { label: "Views", value: totalViews || 0 },
-              { label: "WA Taps", value: totalWATaps || 0 },
-              { label: "CVR", value: overallCVR !== null ? `${overallCVR}%` : "—" },
-            ].map(({ label, value }, i, arr) => (
-              <div key={label} style={{ padding: "16px 18px", borderRight: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
-                <p style={{ margin: "0 0 4px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
-                <p style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</p>
-              </div>
-            ))}
-          </div>
-          {listingStats.length > 0 && (
-            <>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 50px 50px 70px", padding: "8px 18px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                {["Listing", "Views", "WA", "CVR"].map((h, i) => (
-                  <p key={h} style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: i > 0 ? "center" : "left" }}>{h}</p>
-                ))}
-              </div>
-              {[...listingStats].sort((a, b) => (b.cvr ?? -1) - (a.cvr ?? -1)).map(({ car, views, waTaps, cvr }, idx, arr) => {
-                const isHot = views > 20 && cvr >= 10;
-                const isWarm = !isHot && views > 5 && cvr >= 5;
-                return (
-                  <div key={car.id} style={{ display: "grid", gridTemplateColumns: "1fr 50px 50px 70px", padding: "11px 18px", alignItems: "center", borderBottom: idx < arr.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", background: idx % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 12, color: "#d1d5db", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{perfCarName(car)}</p>
-                      {isHot && <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)", flexShrink: 0 }}>HOT</span>}
-                      {isWarm && <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "rgba(234,179,8,0.1)", color: "#eab308", border: "1px solid rgba(234,179,8,0.2)", flexShrink: 0 }}>WARM</span>}
-                    </div>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", textAlign: "center" }}>{views}</p>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", textAlign: "center" }}>{waTaps}</p>
-                    <div style={{ textAlign: "center" }}>
-                      {cvr !== null
-                        ? <span style={{ fontSize: 11, fontWeight: 700, color: cvrColor(cvr) }}>{cvr.toFixed(1)}%</span>
-                        : <span style={{ fontSize: 11, color: "#374151" }}>—</span>
-                      }
-                    </div>
-                  </div>
-                );
-              })}
-            </>
-          )}
-          {listingStats.length === 0 && (
-            <p style={{ margin: 0, padding: "16px 18px", fontSize: 12, color: "#475569" }}>No listing data yet — publish a car to start tracking.</p>
-          )}
-        </div>
 
         {/* ── Onboarding ── */}
         {isNewUser && !profile?.onboarding_tour_done && (
@@ -2818,15 +2913,7 @@ export default function SalesmanLite() {
         })()}
 
         {showAddForm && (
-          <div
-            style={{
-              marginBottom: 24,
-              background: "#0d1117",
-              border: "1px solid rgba(255,255,255,0.07)",
-              borderRadius: 12,
-              padding: 16,
-            }}
-          >
+          <CarFormModal title="Add Listing" onClose={() => setShowAddForm(false)}>
             <CarForm
               onCreate={(car) => {
                 setMyListings((p) => [car, ...p]);
@@ -2847,7 +2934,7 @@ export default function SalesmanLite() {
                 }
               }}
             />
-          </div>
+          </CarFormModal>
         )}
 
         {myListings.length > 0 && !showAddForm && (
@@ -3198,8 +3285,8 @@ export default function SalesmanLite() {
                       </div>
                     </div>
 
-                    {/* Price */}
-                    <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: isSold ? "#4b5563" : "#60a5fa" }}>
+                    {/* Price — scaled by tier so higher-value cars read heavier */}
+                    <p style={{ margin: "0 0 6px", lineHeight: 1, ...(isSold ? { fontSize: 14, fontWeight: 700, color: "#4b5563" } : priceStyle(car.selling_price)) }}>
                       {price}
                     </p>
 
@@ -3452,8 +3539,7 @@ export default function SalesmanLite() {
     const sp = car.selling_price || 0;
     const op = car.original_price || null;
     const saving = op && op > sp ? op - sp : 0;
-    const monthly =
-      sp > 0 ? Math.round((sp * 0.9 * (1 + (3.5 / 100) * 7)) / (7 * 12)) : null;
+    const monthly = calcMonthly(sp);
     const stats = carStatsMap[car.id] ?? {};
     const views = stats.views || 0;
     const enqs = stats.enquiries || 0;
@@ -3832,12 +3918,16 @@ export default function SalesmanLite() {
                       </span>
                     </div>
                   )}
-                  {monthly > 0 && (
+                  {monthly > 0 ? (
                     <p style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
                       Est. RM {monthly.toLocaleString()}/mo · 90% loan · 7yr ·
                       3.5% p.a.
                     </p>
-                  )}
+                  ) : sp > HIGH_VALUE_THRESHOLD ? (
+                    <p style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+                      Financing available on request
+                    </p>
+                  ) : null}
                 </div>
 
                 {/* Specs strip */}
@@ -7670,77 +7760,22 @@ export default function SalesmanLite() {
         })()}
 
       {editListing && (
-        <div
-          className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
-          style={{ background: "rgba(0,0,0,0.82)" }}
+        <CarFormModal
+          title="Edit Listing"
+          subtitle={[editListing.brand, editListing.model, editListing.variant || ""].filter(Boolean).join(" ")}
+          onClose={() => setEditListing(null)}
         >
-          <div
-            style={{
-              background: "#0d1117",
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: isMobile ? "16px 16px 0 0" : 16,
-              width: "100%",
-              maxWidth: 672,
-              maxHeight: "92vh",
-              display: "flex",
-              flexDirection: "column",
+          <CarForm
+            listing={editListing}
+            onUpdate={(updated) => {
+              setMyListings((p) =>
+                p.map((l) => (l.id === updated.id ? updated : l)),
+              );
+              setEditListing(null);
             }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "16px 20px",
-                borderBottom: "1px solid rgba(255,255,255,0.07)",
-                flexShrink: 0,
-              }}
-            >
-              <div>
-                <p
-                  style={{
-                    margin: 0,
-                    fontWeight: 600,
-                    color: "#f1f5f9",
-                    fontSize: 15,
-                  }}
-                >
-                  Edit Listing
-                </p>
-                <p
-                  style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}
-                >
-                  {editListing.brand} {editListing.model}{" "}
-                  {editListing.variant || ""}
-                </p>
-              </div>
-              <button
-                onClick={() => setEditListing(null)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "#6b7280",
-                  padding: 4,
-                }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div style={{ overflowY: "auto", flex: 1, padding: 20 }}>
-              <CarForm
-                listing={editListing}
-                onUpdate={(updated) => {
-                  setMyListings((p) =>
-                    p.map((l) => (l.id === updated.id ? updated : l)),
-                  );
-                  setEditListing(null);
-                }}
-                onCreate={() => {}}
-              />
-            </div>
-          </div>
-        </div>
+            onCreate={() => {}}
+          />
+        </CarFormModal>
       )}
 
       {/* ── Boost modal ── */}

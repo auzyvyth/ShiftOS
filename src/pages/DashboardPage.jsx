@@ -5819,7 +5819,12 @@ function stockCostBasis(u) {
   if (Number(u.purchase_price) > 0) return Number(u.purchase_price);
   return Number(u.car_listings?.base_price) || 0;
 }
-function stockNetProfit(u, ctx = {}) {
+// Split version — returns the vehicle-only front gross and the F&I add-on net
+// (back gross) separately, so callers that need to show them as distinct
+// figures (e.g. "Car GP" vs "Add-on GP") don't have to duplicate this math.
+// stockNetProfit() below is just front + addonNet for callers that only want
+// one combined number (row badges, loss filter).
+function stockNetProfitParts(u, ctx = {}) {
   const { cfg = {}, ads = {}, handover = {}, addRev = {}, addCost = {} } = ctx;
   const cost = stockCostBasis(u);
   const c = u.car_listings || {};
@@ -5842,7 +5847,11 @@ function stockNetProfit(u, ctx = {}) {
   const days = start ? Math.max(0, Math.floor((end - new Date(start)) / 86400000)) : 0;
   const holding = Math.round(dailyHold * days);
   const front = revenue - (cost + recon + services + commission + holding + adSpend + hc);
-  return front + (aR - aC);
+  return { front, addonRevenue: aR, addonCost: aC, addonNet: aR - aC };
+}
+function stockNetProfit(u, ctx = {}) {
+  const parts = stockNetProfitParts(u, ctx);
+  return parts == null ? null : parts.front + parts.addonNet;
 }
 function stockDays(u) {
   if (u.days_in_stock != null && u.days_in_stock > 0) return u.days_in_stock;
@@ -5851,8 +5860,12 @@ function stockDays(u) {
   return Math.floor((Date.now() - new Date(date)) / 86400000);
 }
 
-// Compact 6-stat strip surfaced atop the Listings tab (migrated from the Stock tab
+// Compact 7-stat strip surfaced atop the Listings tab (migrated from the Stock tab
 // header). Fetches stock_units + cost components once and reuses the shared P&L math.
+// GP (month) is split into vehicle margin (Car GP) and F&I back-end margin
+// (Add-on GP) rather than one merged number, and Revenue (sold) folds in add-on
+// revenue for sold cars so it reads as one honest total instead of hiding
+// add-on income in a separate figure.
 function StockStatsStrip({ dealerId }) {
   const [s, setS] = useState(null);
   useEffect(() => {
@@ -5878,13 +5891,25 @@ function StockStatsStrip({ dealerId }) {
       const sold = units.filter(x => x.status === 'sold');
       const month = sold.filter(x => { if (!x.sold_date) return false; const d = new Date(x.sold_date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
       const withDays = active.map(stockDays).filter(d => typeof d === 'number');
+      // Add-on revenue for cars that are actually sold — matches soldCarRevenue's
+      // scope so "Revenue (sold)" is one honest total (car price + F&I add-ons),
+      // not just the vehicle price with add-on income hiding in a separate number.
+      const soldAddonRevenue = sold.reduce((t, x) => t + (ar[x.listing_id] || 0), 0);
+      const soldCarRevenue = sold.reduce((t, x) => t + (Number(x.sold_price) || Number(x.asking_price) || 0), 0);
+      // Split GP (month) into vehicle margin vs F&I add-on margin — previously one
+      // merged number that read 0 whenever vehicle-only front gross was 0/unset
+      // even if add-ons had profit, and vice versa.
+      const monthParts = month.map(x => stockNetProfitParts(x, ctx)).filter(Boolean);
       setS({
         // Matches the Inventory tab's "Total Value" (car_listings.selling_price) so the
         // two value figures on this page never disagree for the same unsold inventory.
-        soldRevenue: sold.reduce((t, x) => t + (Number(x.sold_price) || Number(x.asking_price) || 0), 0),
+        soldCarRevenue,
+        soldAddonRevenue,
+        soldRevenue: soldCarRevenue + soldAddonRevenue,
         stockValue: active.reduce((t, x) => t + (Number(x.car_listings?.selling_price) || Number(x.asking_price) || 0), 0),
         avgDays: withDays.length ? Math.round(withDays.reduce((t, d) => t + d, 0) / withDays.length) : 0,
-        gpMonth: month.reduce((t, x) => t + (stockNetProfit(x, ctx) || 0), 0),
+        carGpMonth: monthParts.reduce((t, p) => t + p.front, 0),
+        addonGpMonth: monthParts.reduce((t, p) => t + p.addonNet, 0),
         soldMonth: month.length,
         aging: active.filter(x => { const d = stockDays(x); return typeof d === 'number' && d > 60; }).length,
       });
@@ -5894,13 +5919,14 @@ function StockStatsStrip({ dealerId }) {
 
   const rm = (n) => 'RM ' + Math.round(Number(n || 0)).toLocaleString('en-MY');
   const items = s ? [
-    { label: 'Revenue (sold)', val: rm(s.soldRevenue) },
+    { label: 'Revenue (sold)', val: rm(s.soldRevenue), sub: s.soldAddonRevenue > 0 ? `incl. ${rm(s.soldAddonRevenue)} add-ons` : undefined },
     { label: 'Stock Value', val: rm(s.stockValue) },
     { label: 'Avg Days', val: String(s.avgDays) },
-    { label: 'GP (month)', val: rm(s.gpMonth), color: s.gpMonth >= 0 ? '#16a34a' : '#dc2626' },
+    { label: 'Car GP (month)', val: rm(s.carGpMonth), color: s.carGpMonth >= 0 ? '#16a34a' : '#dc2626' },
+    { label: 'Add-on GP (month)', val: rm(s.addonGpMonth), color: s.addonGpMonth >= 0 ? '#16a34a' : '#dc2626' },
     { label: 'Sold (month)', val: String(s.soldMonth) },
     { label: 'Aging 60d+', val: String(s.aging), color: s.aging > 0 ? '#dc2626' : undefined },
-  ] : Array.from({ length: 6 }, () => ({}));
+  ] : Array.from({ length: 7 }, () => ({}));
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))', gap: 8, marginBottom: 24 }}>
@@ -5908,6 +5934,7 @@ function StockStatsStrip({ dealerId }) {
         <div key={i} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px', minWidth: 0 }}>
           <p style={{ fontSize: 9, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.label || ''}</p>
           <p style={{ fontSize: 15, fontWeight: 700, color: it.color || '#111827', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.val ?? '—'}</p>
+          {it.sub && <p style={{ fontSize: 9, color: '#9ca3af', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.sub}</p>}
         </div>
       ))}
     </div>
@@ -7766,14 +7793,20 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
     onClearPrefill?.();
   }, [prefillDocData]);
 
-  // Auto-fill dealer + SA from profile when modal opens
+  // Auto-fill dealer + SA from profile when modal opens.
+  // The Sales Advisor is ALWAYS the person generating the document (the logged-in
+  // user), role-aware by construction: `profile` is the current user's own row, so
+  // a manager sees the manager, a salesman sees the salesman, an owner sees the
+  // owner. Take the live profile FIRST (not `p.sa_name ||`) so a value that got
+  // stuck in the form from a previous doc can never shadow the real generator —
+  // that was the "shows the wrong name" bug. Still editable per-document below.
   useEffect(() => {
     if (showGen && profile) {
       setGenForm(p => ({
         ...p,
-        sa_name:     p.sa_name     || profile.full_name        || '',
-        sa_phone:    p.sa_phone    || profile.whatsapp_number   || '',
-        sa_ic:       p.sa_ic       || profile.ic_number         || '',
+        sa_name:     profile.full_name        || p.sa_name     || '',
+        sa_phone:    profile.whatsapp_number   || p.sa_phone    || '',
+        sa_ic:       profile.ic_number         || p.sa_ic       || '',
         dealer_name: p.dealer_name || profile.dealership        || '',
         dealer_ssm:  p.dealer_ssm  || profile.ssm_number        || '',
         dealer_city: p.dealer_city || profile.city              || '',
@@ -8460,6 +8493,15 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Address</label><textarea value={genForm.buyer_address} onChange={e => setGenForm(p => ({ ...p, buyer_address: e.target.value }))} rows={2} className={taCls} placeholder="Full address" /></div>
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Deposit Amount (RM)</label><input type="number" value={genForm.deposit_amount} onChange={e => setGenForm(p => ({ ...p, deposit_amount: e.target.value }))} placeholder="0" className={iCls} /></div>
 
+              {/* Balance due — auto-computed (sale price − deposit), never typed. Shows the
+                  same figure that gets saved to the document so there's no surprise. */}
+              {(Number(genForm.sale_price) > 0 || Number(genForm.deposit_amount) > 0) && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Balance Due <span style={{ color: '#9ca3af', fontWeight: 400 }}>(auto)</span></span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: '#111827' }}>RM {Math.max(0, (Number(genForm.sale_price) || 0) - (Number(genForm.deposit_amount) || 0)).toLocaleString('en-MY')}</span>
+                </div>
+              )}
+
               {genForm.doc_type !== 'Handover Checklist' && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -8917,9 +8959,35 @@ export default function DashboardPage() {
       let session;
       if (_at && _rt) {
         clearHandoffTokens();
-        const { data } = await supabase.auth.setSession({ access_token: _at, refresh_token: _rt });
+        // Cross-domain handoff: setSession can stall when supabase-js is still
+        // recovering/refreshing a STALE localStorage session from a previous login
+        // on this subdomain — the two contend on the auth lock and the dashboard
+        // hangs on the loader until a manual refresh (which works because the fresh
+        // session is by then persisted). Race setSession against a short timeout;
+        // if it stalls, fall back to getSession() — the same thing a refresh does —
+        // so we never sit on the loader forever.
+        const setResult = await Promise.race([
+          supabase.auth.setSession({ access_token: _at, refresh_token: _rt }).then((r) => ({ ok: true, r })),
+          new Promise((res) => setTimeout(() => res({ ok: false }), 4000)),
+        ]);
         if (!active) return;
-        session = data?.session ?? null;
+        if (setResult.ok) {
+          session = setResult.r?.data?.session ?? null;
+        } else {
+          const { data } = await supabase.auth.getSession();
+          if (!active) return;
+          session = data?.session ?? null;
+          // Still nothing after the stall + retry: the session didn't take. A single
+          // guarded reload lands on the now-clean URL and recovers via getSession,
+          // exactly like the manual refresh the user found works. Guard prevents loops.
+          if (!session && !sessionStorage.getItem('dash_handoff_reloaded')) {
+            sessionStorage.setItem('dash_handoff_reloaded', '1');
+            window.location.reload();
+            return;
+          }
+        }
+        // Clear the one-shot reload guard once we have a good session.
+        if (session) { try { sessionStorage.removeItem('dash_handoff_reloaded'); } catch { /* ignore */ } }
       } else {
         const { data } = await supabase.auth.getSession();
         if (!active) return;
