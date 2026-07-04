@@ -329,11 +329,11 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
           onTouchEnd={onImgTouchEnd}
           onMouseDown={onImgMouseDown}
           style={{
-            position:   'relative',
-            height:     170,
-            flexShrink: 0,
-            overflow:   'hidden',
-            background: xd.imgBg,
+            position:     'relative',
+            aspectRatio:  '16 / 9',
+            flexShrink:   0,
+            overflow:     'hidden',
+            background:   xd.imgBg,
           }}>
           {image ? (
             <>
