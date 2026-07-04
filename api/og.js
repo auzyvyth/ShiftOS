@@ -12,8 +12,13 @@ const ROOT_DOMAIN = "xdrive.my";
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
+// MUST recognise every UA that vercel.json rewrites here. If vercel routes an
+// agent to /api/og but this regex misses it, the !isBot branch below 302s the
+// request back to the same path, vercel re-routes it, and it loops forever —
+// which is exactly how Google-InspectionTool (URL Inspection / Request Indexing)
+// and googleother got stuck, making GSC reject indexing during live testing.
 const BOT_AGENTS =
-  /bot|crawler|spider|facebookexternalhit|whatsapp|telegrambot|twitterbot|linkedinbot|slackbot|discordbot|googlebot|bingbot|applebot|duckduckbot|perplexitybot|chatgpt|claudebot|gptbot/i;
+  /bot|crawler|spider|facebookexternalhit|whatsapp|telegrambot|twitterbot|linkedinbot|slackbot|discordbot|googlebot|google-inspectiontool|inspectiontool|googleother|bingbot|applebot|duckduckbot|perplexitybot|chatgpt|claudebot|gptbot|anthropic-ai|cohere-ai|ia_archiver/i;
 
 function isBot(ua) {
   return BOT_AGENTS.test(ua);
@@ -46,9 +51,12 @@ async function sbFetch(path) {
   }
 }
 
+// Query the public_car_listings VIEW: the anon key has no grant on the base
+// car_listings table, so hitting it here returned nothing and every car page
+// 404'd for crawlers. The view exposes the same columns and is granted to anon.
 async function getListingData(slug) {
   const [car] = await sbFetch(
-    `car_listings?slug=eq.${encodeURIComponent(slug)}&select=brand,model,variant,year,selling_price,mileage,colour,transmission,fuel_type,body_type,engine_cc,images,status,city,state,slug,is_recon,auction_grade,dealer_id&limit=1`,
+    `public_car_listings?slug=eq.${encodeURIComponent(slug)}&select=brand,model,variant,year,selling_price,mileage,colour,transmission,fuel_type,body_type,engine_cc,images,status,city,state,slug,is_recon,auction_grade,dealer_id&limit=1`,
   );
   return car ?? null;
 }
@@ -72,7 +80,7 @@ async function getDealerBySubdomain(subdomain) {
 async function getRecentListings(dealerId, limit = 48) {
   const filter = dealerId ? `&dealer_id=eq.${dealerId}` : "";
   return sbFetch(
-    `car_listings?status=eq.available${filter}&select=slug,brand,model,variant,year,selling_price,mileage,state&order=updated_at.desc&limit=${limit}`,
+    `public_car_listings?status=eq.available${filter}&select=slug,brand,model,variant,year,selling_price,mileage,state&order=created_at.desc&limit=${limit}`,
   );
 }
 
