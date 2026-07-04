@@ -67,6 +67,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
+import AvailabilityEditor from "../components/AvailabilityEditor";
 
 // Price visual weight — a RM45k car and a RM2.4M car shouldn't read at the
 // same size/color; scale the price figure up for higher tiers so the card
@@ -5836,6 +5837,11 @@ export default function SalesmanLite() {
               {avatarUploading ? t("salesmanLite.settings.uploading") : t("salesmanLite.settings.changePhoto")}
             </button>
           </div>
+        </div>
+
+        {/* Viewing availability — buyers can only book the days/times set here */}
+        <div style={{ marginBottom: 24, padding: 16, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
+          <AvailabilityEditor ownerId={userId} dealerId={userId} dark />
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>

@@ -44,6 +44,7 @@ import { getEmbedUrl } from "../utils/videoEmbed";
 import { supabase } from "../supabaseClient";
 import FinancingCalculator from "../components/FinancingCalculator";
 import CarCard from "../components/CarCard";
+import BookingCalendar from "../components/BookingCalendar";
 import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 import { captureRef, getRef } from "../utils/refTracking";
 import { isSubdomain } from "../hooks/useTenant";
@@ -513,7 +514,7 @@ export default function CarDetailPage() {
     name: "",
     phone: "+60",
     date: "",
-    time: "09:00",
+    time: "",
     timeline: "",
     notes: "",
     state: "",
@@ -1121,7 +1122,9 @@ export default function CarDetailPage() {
         : null;
   const sellerPageLabel = salesmanProfile && !dealer ? "Visit Agent's Page" : "Visit Dealer's Page";
   const listedDays = daysAgo(car.created_at);
-  const today = new Date().toISOString().split("T")[0];
+  // A booking is submittable only once a real slot is chosen and both consent
+  // boxes are ticked — the commitment gate.
+  const bookReady = bookingConsent.appear && bookingConsent.whatsapp && !!form.date && !!form.time;
   const imgCount = images.length;
   const prevIdx = (activeIdx - 1 + imgCount) % imgCount;
   const nextIdx = (activeIdx + 1) % imgCount;
@@ -3580,9 +3583,9 @@ export default function CarDetailPage() {
                   <div style={{ width:60, height:60, borderRadius:'50%', background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.2)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
                     <Check size={26} color="#4ade80" strokeWidth={2.5} />
                   </div>
-                  <h3 style={{ fontSize:18, fontWeight:700, color:th.text, margin:'0 0 8px', fontFamily:"'DM Sans',sans-serif" }}>Viewing Confirmed</h3>
-                  <p style={{ fontSize:13, color:th.textMuted, margin:'0 0 4px', fontFamily:"'DM Sans',sans-serif" }}>Your appointment is scheduled.</p>
-                  <p style={{ fontSize:13, color:th.textMuted, margin:'0 0 32px', fontFamily:"'DM Sans',sans-serif" }}>We'll send you a WhatsApp confirmation shortly.</p>
+                  <h3 style={{ fontSize:18, fontWeight:700, color:th.text, margin:'0 0 8px', fontFamily:"'DM Sans',sans-serif" }}>Viewing Requested</h3>
+                  <p style={{ fontSize:13, color:th.textMuted, margin:'0 0 4px', fontFamily:"'DM Sans',sans-serif" }}>Your slot is held, pending the seller's confirmation.</p>
+                  <p style={{ fontSize:13, color:th.textMuted, margin:'0 0 32px', fontFamily:"'DM Sans',sans-serif" }}>They'll confirm on WhatsApp shortly — please keep the time free.</p>
                   <button
                     onClick={() => setShowBookingModal(false)}
                     style={{ background:'#dc2626', color:'white', border:'none', borderRadius:10, padding:'12px 36px', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", letterSpacing:'0.02em' }}
@@ -3602,21 +3605,15 @@ export default function CarDetailPage() {
                       onFocus={() => setFocused('bk_phone')} onBlur={() => setFocused(null)}
                       style={inputStyle(focusedField === 'bk_phone', th)} />
                   </div>
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:0 }}>
-                    <input type="date" aria-label="Preferred date" required min={today} value={form.date}
-                      onChange={e => setForm(f => ({...f, date: e.target.value}))}
-                      onFocus={() => setFocused('bk_date')} onBlur={() => setFocused(null)}
-                      style={{ ...inputStyle(focusedField === 'bk_date', th), colorScheme: isXdrive ? 'light' : 'dark' }} />
-                    <select aria-label="Preferred time" value={form.time}
-                      onChange={e => setForm(f => ({...f, time: e.target.value}))}
-                      onFocus={() => setFocused('bk_time')} onBlur={() => setFocused(null)}
-                      style={{ ...inputStyle(focusedField === 'bk_time', th), cursor:'pointer' }}>
-                      {['09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'].map(t => (
-                        <option key={t} value={t} style={{ background: th.card }}>
-                          {parseInt(t) < 12 ? `${parseInt(t)}:00 AM` : parseInt(t) === 12 ? '12:00 PM' : `${parseInt(t)-12}:00 PM`}
-                        </option>
-                      ))}
-                    </select>
+                  <div style={{ margin:'4px 0 8px' }}>
+                    <BookingCalendar
+                      carId={car.id}
+                      refSlug={getRef() || null}
+                      th={th}
+                      isXdrive={isXdrive}
+                      value={{ date: form.date, time: form.time }}
+                      onChange={({ date, time }) => setForm(f => ({ ...f, date, time }))}
+                    />
                   </div>
                   <select aria-label="When are you looking to buy?" required value={form.timeline}
                     onChange={e => setForm(f => ({...f, timeline: e.target.value}))}
@@ -3651,7 +3648,7 @@ export default function CarDetailPage() {
                         {bookingConsent.appear && <Check size={11} color="white" strokeWidth={3} />}
                       </div>
                       <span style={{ fontSize:12, color:th.textSec, fontFamily:"'DM Sans',sans-serif", lineHeight:1.5 }}>
-                        I confirm I will appear for the scheduled viewing
+                        This is a real commitment — I will show up for this viewing at the time I picked
                       </span>
                     </label>
                     <label
@@ -3669,25 +3666,25 @@ export default function CarDetailPage() {
 
                   <button
                     type="submit"
-                    disabled={submitting || !bookingConsent.appear || !bookingConsent.whatsapp}
+                    disabled={submitting || !bookReady}
                     style={{
                       width:'100%',
-                      background: (!bookingConsent.appear || !bookingConsent.whatsapp) ? (isXdrive ? '#e5e7eb' : 'rgba(255,255,255,0.06)') : '#dc2626',
-                      color: (!bookingConsent.appear || !bookingConsent.whatsapp) ? th.textMuted : 'white',
+                      background: !bookReady ? (isXdrive ? '#e5e7eb' : 'rgba(255,255,255,0.06)') : '#dc2626',
+                      color: !bookReady ? th.textMuted : 'white',
                       border:'none',
-                      borderTop: (!bookingConsent.appear || !bookingConsent.whatsapp) ? 'none' : '2px solid #b91c1c',
+                      borderTop: !bookReady ? 'none' : '2px solid #b91c1c',
                       borderRadius:10,
                       padding:'14px',
                       fontWeight:700,
                       fontSize:14,
-                      cursor: (submitting || !bookingConsent.appear || !bookingConsent.whatsapp) ? 'not-allowed' : 'pointer',
+                      cursor: (submitting || !bookReady) ? 'not-allowed' : 'pointer',
                       fontFamily:"'DM Sans',sans-serif",
                       letterSpacing:'0.02em',
                       transition:'all 0.2s',
-                      boxShadow: (!bookingConsent.appear || !bookingConsent.whatsapp) ? 'none' : '0 4px 20px rgba(220,38,38,0.25)',
+                      boxShadow: !bookReady ? 'none' : '0 4px 20px rgba(220,38,38,0.25)',
                     }}
                   >
-                    {submitting ? 'Confirming…' : 'Confirm Viewing'}
+                    {submitting ? 'Requesting…' : (!form.date || !form.time) ? 'Pick a date & time' : 'Request This Viewing'}
                   </button>
                 </form>
               )}
