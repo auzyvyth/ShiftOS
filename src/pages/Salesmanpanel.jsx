@@ -11,6 +11,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import { hasFeature } from "../lib/permissions";
 import OutreachHub from "../components/crm/OutreachHub";
 import CustomersTab from "../components/crm/CustomersTab";
+import AvailabilityEditor from "../components/AvailabilityEditor";
 import { usePresence } from "../hooks/usePresence";
 import PostSaleBoard from "../components/postsale/PostSaleBoard";
 import PostSaleChecklist from "../components/postsale/PostSaleChecklist";
@@ -6748,6 +6749,10 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <p style={{ margin: '5px 0 0', fontSize: 11, color: '#374151' }}>Shown as a progress bar on your Dashboard and Analytics.</p>
  </div>
  </div>
+ </div>
+
+ <div style={cardStyle}>
+ <AvailabilityEditor ownerId={userId} dealerId={getDealerIdFromProfile(profile)} dark />
  </div>
 
  <div style={cardStyle}>

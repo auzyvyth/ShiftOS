@@ -73,37 +73,55 @@ export default async function handler(req, res) {
     ? `Intent: ${intentLabel}${cleanNotes ? ` — ${cleanNotes}` : ''}`.substring(0, 560)
     : cleanNotes;
 
+  // Create the pipeline lead FIRST so the appointment can link back to it via
+  // lead_id. A linked lead means an aimless (unassigned) booking that lands in
+  // the open pool is claimed WHOLE — the lead and its actual viewing slot —
+  // when a rep taps claim (claim_lead grabs both). Non-fatal: a lead failure
+  // must not block the booking itself. Stage 'viewing_booked' labels it as a
+  // buyer who wants to view (not a generic "new" enquiry).
+  let leadId = null;
+  const { data: leadRow, error: leadErr } = await supabase
+    .from('leads')
+    .insert({
+      dealer_id: listing.dealer_id,
+      salesman_id: salesmanId,
+      car_listing_id: carId,
+      buyer_name: name.trim().substring(0, 100),
+      phone: phoneClean,
+      buyer_state: state || null,
+      lead_source: 'enquiry',
+      stage: 'viewing_booked',
+      notes: notesWithIntent,
+    })
+    .select('id')
+    .maybeSingle();
+  if (leadErr) {
+    console.error('[api/booking] lead:', leadErr.message);
+  } else {
+    leadId = leadRow?.id || null;
+  }
+
+  // The booking arrives as 'pending' — the seller must approve it before the
+  // slot is real. This is the commitment gate: a window-shopper tap no longer
+  // silently books a confirmed viewing; the seller confirms genuine buyers.
   const { error: bookErr } = await supabase.from('appointments').insert({
     dealer_id: listing.dealer_id,
     salesman_id: salesmanId,
+    lead_id: leadId,
     car_listing_id: carId,
     buyer_name: name.trim().substring(0, 100),
     buyer_phone: phoneClean,
+    buyer_state: state || null,
     appointment_date: dt.toISOString(),
     booking_type: 'viewing',
     notes: notesWithIntent,
-    status: 'confirmed',
+    status: 'pending',
   });
 
   if (bookErr) {
     console.error('[api/booking]', bookErr.message);
     return res.status(500).json({ error: 'Booking failed. Please try again.' });
   }
-
-  // Non-fatal: create lead for heatmap / CRM. A completed viewing booking lands
-  // straight in the 'viewing_booked' pipeline stage so it's clearly labelled as
-  // a buyer who wants to view the car (not a generic "new" enquiry).
-  await supabase.from('leads').insert({
-    dealer_id: listing.dealer_id,
-    salesman_id: salesmanId,
-    car_listing_id: carId,
-    buyer_name: name.trim().substring(0, 100),
-    phone: phoneClean,
-    buyer_state: state || null,
-    lead_source: 'enquiry',
-    stage: 'viewing_booked',
-    notes: notesWithIntent,
-  });
 
   // Non-fatal: record a completed-booking analytics event so it shows in the
   // dealer's Listing Performance chart (booking_click only tracks button clicks).

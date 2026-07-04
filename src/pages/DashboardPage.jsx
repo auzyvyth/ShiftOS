@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useMemo, useCallback, startTransiti
 import DOMPurify from "dompurify";
 import SuspendedBanner from "../components/SuspendedBanner";
 import ReportBugButton from "../components/ReportBugButton";
+import AvailabilityEditor from "../components/AvailabilityEditor";
 import ShareMenu from "../components/ShareMenu";
 import { cdnImg } from "../utils/img";
 import { buildCaption } from "../utils/sharePack";
@@ -1362,6 +1363,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
       { key: 'commission', icon: DollarSign, label: 'Commission', desc: 'Sales commission structure' },
       { key: 'costs', icon: Calculator, label: 'Cost Floor', desc: 'Overhead, runner & holding costs' },
       { key: 'dealsheet', icon: FileText, label: 'Deal Sheet', desc: 'Customer proposal settings' },
+      { key: 'availability', icon: Clock, label: 'Viewing Hours', desc: 'When buyers can book viewings' },
       { key: 'services', icon: Package, label: 'Services', desc: 'Products & add-on catalogue' },
       { key: 'handover_ops', icon: ClipboardCheck, label: 'Handover', desc: 'Road tax & insurance handling' },
     ]},
@@ -1380,6 +1382,14 @@ function SettingsTab({ profile, onProfileUpdate }) {
 
   const sectionContent = (
     <div className="space-y-4 max-w-2xl">
+      {effectiveNav === 'availability' && (
+        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '20px 24px' }}>
+          <AvailabilityEditor ownerId={profile?.id} dealerId={profile?.id} />
+          <p style={{ margin: '18px 0 0', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
+            This is your dealership's house schedule — it applies to cars not assigned to a specific salesman. Assigned reps set their own hours in their panel.
+          </p>
+        </div>
+      )}
       {(effectiveNav === 'plan') && planUsage && (
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '20px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
