@@ -52,13 +52,20 @@ function buildSitemap(baseUrl, staticRoutes, cars, isSubdomain) {
         ? new Date(updated_at).toISOString().split("T")[0]
         : today;
       const title = xmlEscape([year, brand, model].filter(Boolean).join(" "));
-      const imageTag = images?.[0]
-        ? `
+      // Expose up to 15 photos per car (was only the first) so Google Images can
+      // discover the whole gallery. Google now only reads image:loc, but title is
+      // kept as a harmless hint.
+      const imageTag = (Array.isArray(images) ? images : [])
+        .filter(Boolean)
+        .slice(0, 15)
+        .map(
+          (img) => `
     <image:image>
-      <image:loc>${xmlEscape(images[0])}</image:loc>
+      <image:loc>${xmlEscape(img)}</image:loc>
       <image:title>${title}</image:title>
-    </image:image>`
-        : "";
+    </image:image>`,
+        )
+        .join("");
       return `
   <url>
     <loc>${xmlEscape(baseUrl + carBase + slug)}</loc>

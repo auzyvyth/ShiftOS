@@ -56,7 +56,7 @@ async function sbFetch(path) {
 // 404'd for crawlers. The view exposes the same columns and is granted to anon.
 async function getListingData(slug) {
   const [car] = await sbFetch(
-    `public_car_listings?slug=eq.${encodeURIComponent(slug)}&select=brand,model,variant,year,selling_price,mileage,colour,transmission,fuel_type,body_type,engine_cc,images,status,city,state,slug,is_recon,auction_grade,dealer_id&limit=1`,
+    `public_car_listings?slug=eq.${encodeURIComponent(slug)}&select=brand,model,variant,year,selling_price,mileage,colour,transmission,fuel_type,body_type,engine_cc,images,status,city,state,slug,is_recon,auction_grade,dealer_id,options,features,specs&limit=1`,
   );
   return car ?? null;
 }
@@ -117,14 +117,43 @@ ${body}
 </html>`;
 }
 
+// Feature tags a buyer might search by ("bucket seats", "carbon pack", "360
+// camera"). Prefer the structured options/features columns; fall back to specs
+// only when it's a short, clean comma list, not a multi-line WhatsApp/emoji
+// spec-sheet blob. De-duped and capped so alt/description stay natural.
+function parseTags(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.map((s) => String(s).trim()).filter(Boolean);
+  return String(raw).split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
+}
+function carFeatures(car) {
+  let tags = [...parseTags(car.options), ...parseTags(car.features)];
+  if (!tags.length) {
+    const s = (car.specs || "").trim();
+    if (s && s.length <= 200 && !/[\n\r]|[─-➿]|[\u{1F000}-\u{1FAFF}]/u.test(s)) {
+      tags = parseTags(s);
+    }
+  }
+  const seen = new Set();
+  return tags
+    .filter((t) => {
+      const k = t.toLowerCase();
+      if (seen.has(k) || t.length > 40) return false;
+      seen.add(k);
+      return true;
+    })
+    .slice(0, 12);
+}
+
 // ── Car detail ────────────────────────────────────────────────────────────────
-function buildCarSchema(car, dealer, canonicalUrl) {
+function buildCarSchema(car, dealer, canonicalUrl, feats = []) {
   const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
   const dealerUrl = dealer?.subdomain ? `https://${dealer.subdomain}.${ROOT_DOMAIN}` : SITE_URL;
   return JSON.parse(JSON.stringify({
     "@context": "https://schema.org",
     "@type": "Car",
     name,
+    description: `${name}${car.colour ? ` in ${car.colour}` : ""} for sale in Malaysia${feats.length ? `. Features: ${feats.join(", ")}` : ""}.`,
     brand: { "@type": "Brand", name: car.brand },
     model: car.model,
     vehicleModelDate: String(car.year ?? ""),
@@ -167,6 +196,18 @@ function buildCarHtml(car, dealer, canonical, baseUrl, carBase) {
     car.colour, car.transmission, car.fuel_type,
     car.engine_cc ? `${Number(car.engine_cc).toLocaleString()} cc` : null,
   ].filter(Boolean).join(" · ");
+  const feats = carFeatures(car);
+  const featShort = feats.slice(0, 3).join(", ");
+  // Natural, query-shaped alt: make/model/year + colour + top features +
+  // location, e.g. "2024 BMW M4 Competition in Frozen Black with Carbon Racing
+  // Seats, 360 Camera for sale in Selangor, Malaysia". Capped so it never spams.
+  const heroAlt = `${name}${car.colour ? ` in ${car.colour}` : ""}${featShort ? ` with ${featShort}` : ""} for sale in ${location}`;
+  // Expose up to 6 photos to Google Images (was only the first); rest get
+  // numbered alts so the whole gallery is discoverable.
+  const gallery = (car.images || []).filter(Boolean).slice(0, 6);
+  const imgs = (gallery.length ? gallery : [image]).map((src, i) =>
+    `<img src="${esc(src)}" alt="${esc(i === 0 ? heroAlt : `${name} — photo ${i + 1} — for sale in ${location}`)}" width="1200" height="630" loading="${i === 0 ? "eager" : "lazy"}" />`,
+  ).join("\n    ");
   const rows = [
     ["Year", car.year], ["Brand", car.brand], ["Model", car.model], ["Variant", car.variant],
     ["Mileage", car.mileage ? `${Number(car.mileage).toLocaleString()} km` : null],
@@ -178,19 +219,20 @@ function buildCarHtml(car, dealer, canonical, baseUrl, carBase) {
   const body = `  <main>
     <h1>${esc(name)}</h1>
     <p><strong>${esc(priceFormatted)}</strong></p>
-    ${image ? `<img src="${esc(image)}" alt="${esc(name)}" width="1200" height="630" />` : ""}
+    ${imgs}
     <p>${esc([priceFormatted, specs, location].filter(Boolean).join(" · "))}</p>
     <ul>
       ${rows}
     </ul>
+    ${feats.length ? `<p>Options &amp; features: ${esc(feats.join(", "))}.</p>` : ""}
     ${dealer?.dealership ? `<p>Sold by ${esc(dealer.dealership)}.</p>` : ""}
     <p><a href="${baseUrl}${carBase}">Browse more used cars on xdrive.my</a></p>
   </main>`;
   return htmlShell({
     title: `${name} — ${priceFormatted} | xdrive.my`,
-    description: `${name} for ${priceFormatted}. ${specs}. Located in ${location}. Browse on xdrive.my.`,
+    description: `${name} for ${priceFormatted}. ${specs}.${feats.length ? ` Features: ${feats.slice(0, 6).join(", ")}.` : ""} Located in ${location}. Browse on xdrive.my.`,
     canonical, image,
-    jsonLd: [buildCarSchema(car, dealer, canonical)],
+    jsonLd: [buildCarSchema(car, dealer, canonical, feats)],
     body,
   });
 }
