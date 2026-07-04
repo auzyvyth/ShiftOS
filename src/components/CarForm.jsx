@@ -3214,25 +3214,32 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               label="Features & options"
               hint="What buyers search for on Google — tap to add, or type your own. The more you list, the more searches this car shows up in."
             >
-              <div className="flex flex-wrap gap-2 mb-2.5">
-                {COMMON_FEATURES.map((f) => {
-                  const on = isSel(f);
-                  return (
-                    <button
-                      key={f}
-                      type="button"
-                      onClick={() => toggleFeature(f)}
-                      className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                        on
-                          ? "bg-blue-600 border-blue-600 text-white"
-                          : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
-                      }`}
-                    >
-                      {on && <Check className="w-3.5 h-3.5" />}
-                      {f}
-                    </button>
-                  );
-                })}
+              {/* Chips: max 4 rows tall, flowing into columns that scroll/drag
+                  horizontally so the free-text box below stays reachable (mobile-first). */}
+              <div className="overflow-x-auto pb-2 mb-2.5" style={{ WebkitOverflowScrolling: "touch" }}>
+                <div
+                  className="grid grid-flow-col justify-items-start gap-2"
+                  style={{ gridTemplateRows: "repeat(4, auto)", gridAutoColumns: "max-content" }}
+                >
+                  {COMMON_FEATURES.map((f) => {
+                    const on = isSel(f);
+                    return (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => toggleFeature(f)}
+                        className={`inline-flex items-center gap-1 whitespace-nowrap px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                          on
+                            ? "bg-blue-600 border-blue-600 text-white"
+                            : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
+                        }`}
+                      >
+                        {on && <Check className="w-3.5 h-3.5" />}
+                        {f}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <textarea
                 name="features"
