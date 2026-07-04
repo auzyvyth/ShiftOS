@@ -63,13 +63,19 @@ export default function ResetPasswordPage() {
     const isRecovery =
       window.location.href.includes('type=recovery') ||
       window.location.hash.includes('type=recovery');
+    // Dealer-created salesmen arrive here via the emailed setup link
+    // (?flow=setup). Hand them to the branded /salesman-setup welcome page once
+    // the recovery session is live, instead of the generic reset form.
+    const isSetup = window.location.href.includes('flow=setup');
 
     supabase.auth.getSession().then(({ data, error: err }) => {
       if (err || !data.session) {
         setPhase('expired');
         return;
       }
-      if (isRecovery) {
+      if (isSetup) {
+        navigate('/salesman-setup');
+      } else if (isRecovery) {
         setPhase('reset');
       } else {
         redirectByRole(data.session, navigate);

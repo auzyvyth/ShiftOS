@@ -197,7 +197,10 @@ serve(async (req) => {
         const { data: linkData } = await adminClient.auth.admin.generateLink({
           type: "recovery",
           email,
-          options: { redirectTo: "https://xdrive.my/reset-password" },
+          // Route through /reset-password (a known-allowlisted redirect URL) with a
+          // flow marker; ResetPasswordPage hands a first-time salesman off to the
+          // /salesman-setup welcome page once the recovery session is established.
+          options: { redirectTo: "https://xdrive.my/reset-password?flow=setup" },
         });
         const actionLink = linkData?.properties?.action_link;
         if (actionLink) {
