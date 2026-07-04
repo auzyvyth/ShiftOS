@@ -722,11 +722,13 @@ const HomePage = () => {
         .stats-flex { display:flex; }
 
         /* Dealer trust + quick-contact strip */
-        .dealer-strip { display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; }
+        .dealer-strip { display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; margin-top:-15px; }
         .dealer-strip-stats { display:flex; align-items:center; gap:0; flex-wrap:wrap; }
+        .dealer-strip-nums { display:flex; align-items:center; }
         .dealer-strip-stat { padding:0 22px; border-right:1px solid rgba(255,255,255,0.08); }
         .dealer-strip-stat:first-child { padding-left:0; }
         .dealer-strip-stat:last-child { border-right:none; }
+        .dealer-strip-loc { display:flex; align-items:center; gap:7px; padding-left:22px; border-left:1px solid rgba(255,255,255,0.08); }
         .dealer-strip-actions { display:flex; gap:10px; flex-wrap:wrap; }
 
         /* Inventory toolbar (search inside Our Cars) */
@@ -755,7 +757,12 @@ const HomePage = () => {
           .stats-flex > div   { border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.05) !important; }
           .for-dealers-inner  { flex-direction: column !important; align-items: flex-start !important; }
           .sec-pad { padding: 48px 0 !important; }
-          .dealer-strip       { flex-direction: column !important; align-items: stretch !important; gap: 18px !important; }
+          .dealer-strip       { flex-direction: column !important; align-items: stretch !important; gap: 18px !important; margin-top: 0 !important; }
+          .dealer-strip-stats { flex-direction: column !important; align-items: stretch !important; gap: 12px !important; width: 100% !important; }
+          .dealer-strip-loc   { order: -1 !important; padding-left: 0 !important; border-left: none !important; }
+          .dealer-strip-nums  { width: 100% !important; }
+          .dealer-strip-nums .dealer-strip-stat { flex: 1 !important; padding: 0 12px !important; }
+          .dealer-strip-nums .dealer-strip-stat:first-child { padding-left: 0 !important; }
           .dealer-strip-actions a { flex: 1 !important; justify-content: center !important; }
           .inv-toolbar .inv-search { min-width: 0 !important; width: 100% !important; }
         }
@@ -828,34 +835,36 @@ const HomePage = () => {
         <div style={{ ...wrap, padding: "18px 20px" }}>
           <div className="dealer-strip">
             <div className="dealer-strip-stats">
-              {tenant?.stat_years > 0 && (
+              <div className="dealer-strip-nums">
+                {tenant?.stat_years > 0 && (
+                  <div className="dealer-strip-stat">
+                    <p style={{ color: "#F0F0F0", fontSize: 20, fontWeight: 700, lineHeight: 1, margin: "0 0 4px" }}>
+                      {tenant.stat_years}+
+                    </p>
+                    <p style={{ color: "#52525A", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", margin: 0, fontWeight: 600 }}>
+                      Years in Business
+                    </p>
+                  </div>
+                )}
                 <div className="dealer-strip-stat">
                   <p style={{ color: "#F0F0F0", fontSize: 20, fontWeight: 700, lineHeight: 1, margin: "0 0 4px" }}>
-                    {tenant.stat_years}+
+                    {stock != null ? String(stock) : "—"}
                   </p>
                   <p style={{ color: "#52525A", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", margin: 0, fontWeight: 600 }}>
-                    Years in Business
+                    Cars in Stock
                   </p>
                 </div>
-              )}
-              <div className="dealer-strip-stat">
-                <p style={{ color: "#F0F0F0", fontSize: 20, fontWeight: 700, lineHeight: 1, margin: "0 0 4px" }}>
-                  {stock != null ? String(stock) : "—"}
-                </p>
-                <p style={{ color: "#52525A", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", margin: 0, fontWeight: 600 }}>
-                  Cars in Stock
-                </p>
-              </div>
-              <div className="dealer-strip-stat">
-                <p style={{ color: "#F0F0F0", fontSize: 20, fontWeight: 700, lineHeight: 1, margin: "0 0 4px" }}>
-                  {soldDisplay}
-                </p>
-                <p style={{ color: "#52525A", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", margin: 0, fontWeight: 600 }}>
-                  Cars Sold
-                </p>
+                <div className="dealer-strip-stat">
+                  <p style={{ color: "#F0F0F0", fontSize: 20, fontWeight: 700, lineHeight: 1, margin: "0 0 4px" }}>
+                    {soldDisplay}
+                  </p>
+                  <p style={{ color: "#52525A", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", margin: 0, fontWeight: 600 }}>
+                    Cars Sold
+                  </p>
+                </div>
               </div>
               {(tenant?.city || tenant?.state) && (
-                <div className="dealer-strip-stat" style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <div className="dealer-strip-loc">
                   <MapPin size={14} style={{ color: "#C4A265", flexShrink: 0 }} />
                   <span style={{ color: "#C0C0C6", fontSize: 13, fontWeight: 600 }}>
                     {[tenant?.city, tenant?.state].filter(Boolean).join(", ")}
