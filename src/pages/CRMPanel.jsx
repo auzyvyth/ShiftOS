@@ -1517,15 +1517,20 @@ function BookingsTab({ userId, listings, salesmen }) {
   });
 
   const todayStr = new Date().toDateString();
+  // Pending = a buyer requested this viewing but nobody has approved it yet.
+  // Surfaced in its own top section so a genuine buyer never sits unconfirmed.
+  const pendingBookings = bookings.filter((b) => b.status === "pending");
   const todaysBookings = bookings.filter(
     (b) =>
+      b.status !== "pending" &&
       b.appointment_date &&
       new Date(b.appointment_date).toDateString() === todayStr,
   );
   const otherBookings = bookings.filter(
     (b) =>
-      !b.appointment_date ||
-      new Date(b.appointment_date).toDateString() !== todayStr,
+      b.status !== "pending" &&
+      (!b.appointment_date ||
+        new Date(b.appointment_date).toDateString() !== todayStr),
   );
 
   const scheduleReminder = async (b) => {
@@ -1765,6 +1770,16 @@ function BookingsTab({ userId, listings, salesmen }) {
           <p style={{ padding: "32px", textAlign: "center", color: "#4b5563", fontSize: 13 }}>No bookings yet.</p>
         ) : view === "list" ? (
           <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+            {pendingBookings.length > 0 && (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0 8px" }}>
+                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#d97706", boxShadow: "0 0 6px rgba(217,119,6,0.6)", animation: "hotpulse 1.5s ease-in-out infinite", flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#d97706", letterSpacing: "0.12em", textTransform: "uppercase" }}>Needs approval · {pendingBookings.length}</span>
+                </div>
+                {pendingBookings.map(b => renderBookingRow(b))}
+                {(todaysBookings.length > 0 || otherBookings.length > 0) && <div style={{ height: 1, background: "#f3f4f6", margin: "4px 0" }} />}
+              </>
+            )}
             {todaysBookings.length > 0 && (
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0 8px" }}>
