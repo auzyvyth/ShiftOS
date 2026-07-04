@@ -66,6 +66,17 @@ import {
   CheckCircle,
   BookOpen,
 } from "lucide-react";
+import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
+
+// Price visual weight — a RM45k car and a RM2.4M car shouldn't read at the
+// same size/color; scale the price figure up for higher tiers so the card
+// itself signals value at a glance.
+function priceStyle(sellingPrice) {
+  const sp = Number(sellingPrice) || 0;
+  if (sp >= 1000000) return { fontSize: 18, fontWeight: 800, color: "#fbbf24" };
+  if (sp >= HIGH_VALUE_THRESHOLD) return { fontSize: 16, fontWeight: 800, color: "#93c5fd" };
+  return { fontSize: 14, fontWeight: 700, color: "#60a5fa" };
+}
 
 function useWindowSize() {
   const [w, setW] = useState(window.innerWidth);
@@ -1957,23 +1968,68 @@ export default function SalesmanLite() {
       display: "flex", alignItems: "center", justifyContent: "space-between",
     };
 
+    // Live portfolio value — sum of currently-available listings' asking price.
+    // Distinct from soldThisMonth (realized commission) and the "Revenue (Sales)"
+    // figure further down (sold cars only) — this is "what you're carrying right
+    // now," the number that makes the landing page feel like a real book of stock.
+    const portfolioValue = available.reduce((sum, c) => sum + (Number(c.selling_price) || 0), 0);
+    const topCar = available.length > 0
+      ? available.reduce((best, c) => (Number(c.selling_price) || 0) > (Number(best.selling_price) || 0) ? c : best, available[0])
+      : null;
+    const greetingWord = (() => {
+      const h = new Date().getHours();
+      return h < 12 ? t("salesmanLite.greeting.morning") : h < 17 ? t("salesmanLite.greeting.afternoon") : t("salesmanLite.greeting.evening");
+    })();
+    const personalizedLine = isNewUser
+      ? "Add your first car to start building your portfolio."
+      : staleLeads.length > 0
+      ? `${staleLeads.length} buyer${staleLeads.length !== 1 ? "s" : ""} waiting on a follow-up — don't let a hot lead go cold.`
+      : todayAppts > 0
+      ? `You've got ${todayAppts} appointment${todayAppts !== 1 ? "s" : ""} today. Make ${todayAppts !== 1 ? "them" : "it"} count.`
+      : activeLeads.length > 0
+      ? `${activeLeads.length} deal${activeLeads.length !== 1 ? "s" : ""} in motion right now.`
+      : "Pipeline's clear — good time to feature a car or reach out to a past buyer.";
+
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-        {/* ── Greeting ── */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.3px" }}>
-              {(() => { const h = new Date().getHours(); return h < 12 ? t("salesmanLite.greeting.morning") : h < 17 ? t("salesmanLite.greeting.afternoon") : t("salesmanLite.greeting.evening"); })()}, {profile?.full_name?.split(" ")[0] || "there"}.
-            </p>
-            <p style={{ margin: "2px 0 0", fontSize: 12, color: "#475569" }}>
-              {new Date().toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" })}
-            </p>
+        {/* ── Hero: greeting + live portfolio value ── */}
+        <div style={{ ...CARD, position: "relative", overflow: "hidden", padding: isMobile ? "20px 18px" : "26px 28px", background: "linear-gradient(135deg, #0d1117 0%, #161b22 100%)" }}>
+          <div style={{ position: "absolute", top: -50, right: -50, width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(220,38,38,0.14) 0%, transparent 70%)", pointerEvents: "none" }} />
+          <div style={{ position: "relative", display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.3px" }}>
+                {greetingWord}, {profile?.full_name?.split(" ")[0] || "there"}.
+              </p>
+              <p style={{ margin: "5px 0 0", fontSize: 13, color: "#94a3b8", maxWidth: 440 }}>
+                {personalizedLine}
+              </p>
+            </div>
+            {staleLeads.length > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 99, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.18)", flexShrink: 0 }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", flexShrink: 0 }} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#ef4444" }}>{staleLeads.length} {t("salesmanLite.kpi.overdue")}</span>
+              </div>
+            )}
           </div>
-          {staleLeads.length > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 99, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.18)" }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", flexShrink: 0 }} />
-              <span style={{ fontSize: 11, fontWeight: 600, color: "#ef4444" }}>{staleLeads.length} {t("salesmanLite.kpi.overdue")}</span>
+          {portfolioValue > 0 && (
+            <div style={{ position: "relative", marginTop: 20 }}>
+              <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                Live portfolio value
+              </p>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                <p style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: isMobile ? 38 : 50, color: "#fbbf24", letterSpacing: 1, lineHeight: 1 }}>
+                  RM {portfolioValue.toLocaleString("en-MY")}
+                </p>
+                <span style={{ fontSize: 12, color: "#475569" }}>
+                  across {available.length} live listing{available.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+              {topCar && (
+                <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b" }}>
+                  Headlined by your {topCar.year} {topCar.brand} {topCar.model}{topCar.variant ? ` ${topCar.variant}` : ""} — RM {Number(topCar.selling_price).toLocaleString("en-MY")}
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -3229,8 +3285,8 @@ export default function SalesmanLite() {
                       </div>
                     </div>
 
-                    {/* Price */}
-                    <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: isSold ? "#4b5563" : "#60a5fa" }}>
+                    {/* Price — scaled by tier so higher-value cars read heavier */}
+                    <p style={{ margin: "0 0 6px", lineHeight: 1, ...(isSold ? { fontSize: 14, fontWeight: 700, color: "#4b5563" } : priceStyle(car.selling_price)) }}>
                       {price}
                     </p>
 
@@ -3483,8 +3539,7 @@ export default function SalesmanLite() {
     const sp = car.selling_price || 0;
     const op = car.original_price || null;
     const saving = op && op > sp ? op - sp : 0;
-    const monthly =
-      sp > 0 ? Math.round((sp * 0.9 * (1 + (3.5 / 100) * 7)) / (7 * 12)) : null;
+    const monthly = calcMonthly(sp);
     const stats = carStatsMap[car.id] ?? {};
     const views = stats.views || 0;
     const enqs = stats.enquiries || 0;
@@ -3863,12 +3918,16 @@ export default function SalesmanLite() {
                       </span>
                     </div>
                   )}
-                  {monthly > 0 && (
+                  {monthly > 0 ? (
                     <p style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
                       Est. RM {monthly.toLocaleString()}/mo · 90% loan · 7yr ·
                       3.5% p.a.
                     </p>
-                  )}
+                  ) : sp > HIGH_VALUE_THRESHOLD ? (
+                    <p style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+                      Financing available on request
+                    </p>
+                  ) : null}
                 </div>
 
                 {/* Specs strip */}
