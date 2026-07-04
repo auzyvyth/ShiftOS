@@ -17,17 +17,9 @@ function corsHeaders(origin: string | null) {
   return {
     "Access-Control-Allow-Origin": allowed,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, baggage, sentry-trace",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
   };
-}
-
-// Keep a plain CORS object for the OPTIONS shortcut
-const CORS = corsHeaders(null);
-
-function json(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...CORS, "Content-Type": "application/json" },
-  });
 }
 
 function generatePassword(length = 10): string {
@@ -40,8 +32,20 @@ function generatePassword(length = 10): string {
 }
 
 serve(async (req) => {
+  // Echo the caller's real origin so dealer subdomains (*.xdrive.my) pass the
+  // browser CORS check. Reusing a null-origin header set here hardcoded the
+  // allow-origin to https://xdrive.my, so every request from a dealer
+  // storefront subdomain was blocked pre-flight -> "Server unreachable".
+  const origin = req.headers.get("Origin");
+  const cors = corsHeaders(origin);
+  const json = (data: unknown, status = 200) =>
+    new Response(JSON.stringify(data), {
+      status,
+      headers: { ...cors, "Content-Type": "application/json" },
+    });
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: CORS });
+    return new Response("ok", { headers: cors });
   }
 
   try {
@@ -128,6 +132,11 @@ serve(async (req) => {
             ? undefined  // will be set by the dealer's own dealership value below
             : undefined,
           is_active: true,
+          // Dealer-created salesmen are fully provisioned here (tier, name, slug,
+          // dealership all set by the dealer), so they must NOT be sent through the
+          // self-serve tier-picker onboarding on first login. Mark them onboarded;
+          // the emailed setup link below lets them set their own password.
+          onboarding_complete: true,
         })
         .eq("id", newUserId);
 
@@ -150,6 +159,7 @@ serve(async (req) => {
         phone: phone ?? null,
         slug: slug ?? null,
         is_active: true,
+        onboarding_complete: true,
       });
       if (insertErr) {
         // Best-effort cleanup: delete auth user so no orphan is left
@@ -160,6 +170,7 @@ serve(async (req) => {
     }
 
     // Propagate dealership name from parent dealer
+    let dealershipName = full_name;
     if (dealer_id) {
       const { data: dealerRow } = await adminClient
         .from("profiles")
@@ -167,11 +178,70 @@ serve(async (req) => {
         .eq("id", dealer_id)
         .maybeSingle();
       if (dealerRow?.dealership) {
+        dealershipName = dealerRow.dealership;
         await adminClient
           .from("profiles")
           .update({ dealership: dealerRow.dealership })
           .eq("id", newUserId);
       }
+    }
+
+    // Email the salesman a one-time link to set their own password, so they don't
+    // depend on the dealer relaying the temp password. Uses the SAME Resend channel
+    // as send-document (RESEND_API_KEY) — NOT Supabase Auth SMTP. Non-fatal: if the
+    // key is unset or Resend errors, the dealer still gets temp_password to share.
+    let emailSent = false;
+    try {
+      const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+      if (RESEND_API_KEY) {
+        const { data: linkData } = await adminClient.auth.admin.generateLink({
+          type: "recovery",
+          email,
+          // Route through /reset-password (a known-allowlisted redirect URL) with a
+          // flow marker; ResetPasswordPage hands a first-time salesman off to the
+          // /salesman-setup welcome page once the recovery session is established.
+          options: { redirectTo: "https://xdrive.my/reset-password?flow=setup" },
+        });
+        const actionLink = linkData?.properties?.action_link;
+        if (actionLink) {
+          const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
+          const html = `<!DOCTYPE html><html><body style="margin:0;padding:24px 0;background:#f4f4f5;font-family:'Helvetica Neue',Arial,sans-serif;">
+<div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.08);">
+  <div style="background:#111827;padding:28px 32px;color:#fff;">
+    <p style="margin:0 0 4px;font-size:12px;color:#9ca3af;">${dealershipName}</p>
+    <h1 style="margin:0;font-size:22px;font-weight:700;">Welcome to the team</h1>
+  </div>
+  <div style="padding:28px 32px;color:#374151;font-size:14px;line-height:1.6;">
+    <p style="margin:0 0 16px;">Hi ${full_name}, ${dealershipName} has created your salesman account on ShiftOS.</p>
+    <p style="margin:0 0 24px;">Set your password to finish setting up and access your dashboard:</p>
+    <a href="${actionLink}" style="display:inline-block;background:#dc2626;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:13px 28px;border-radius:8px;">Set your password</a>
+    <p style="margin:24px 0 0;font-size:12px;color:#9ca3af;">This link expires in 24 hours. If it expires, use "Forgot password" on the ShiftOS login page.</p>
+  </div>
+  <div style="background:#f9fafb;padding:18px 32px;border-top:1px solid #e5e7eb;text-align:center;">
+    <p style="margin:0;font-size:11px;color:#9ca3af;">Sent by ${dealershipName} via ShiftOS · xdrive.my</p>
+  </div>
+</div></body></html>`;
+          const resendRes = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${RESEND_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: `${dealershipName} <${fromEmail}>`,
+              to: [email],
+              subject: `Set up your ${dealershipName} salesman account`,
+              html,
+            }),
+          });
+          emailSent = resendRes.ok;
+          if (!resendRes.ok) {
+            console.error("[create-salesman] Resend error:", await resendRes.text());
+          }
+        }
+      }
+    } catch (e) {
+      console.error("[create-salesman] setup email failed:", e);
     }
 
     const { data: finalProfile } = await adminClient
@@ -184,6 +254,7 @@ serve(async (req) => {
       success: true,
       user_id: newUserId,
       temp_password: tempPassword,
+      email_sent: emailSent,
       profile: finalProfile,
     });
   } catch (e) {

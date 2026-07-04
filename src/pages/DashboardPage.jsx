@@ -4115,7 +4115,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
           return;
         }
         setShowAddForm(false);
-        setCreatedAccount({ full_name: n, email: e, temp_password: data.temp_password });
+        setCreatedAccount({ full_name: n, email: e, temp_password: data.temp_password, email_sent: data.email_sent });
         await fetchTeam();
         resetForm();
       } else {
@@ -4772,7 +4772,11 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 text-sm">Account Created</h3>
-                  <p className="text-gray-500 text-xs mt-0.5">Share these credentials with your salesman</p>
+                  <p className="text-gray-500 text-xs mt-0.5">
+                    {createdAccount.email_sent
+                      ? "A setup link was emailed to them"
+                      : "Share these credentials with your salesman"}
+                  </p>
                 </div>
               </div>
               <button
@@ -4782,6 +4786,18 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {createdAccount.email_sent && (
+              <div
+                className="rounded-xl px-3.5 py-2.5 mb-4 flex items-start gap-2.5"
+                style={{ background: "#f0fdf4", border: "1px solid #86efac" }}
+              >
+                <Check className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                <p className="text-emerald-700 text-xs leading-relaxed">
+                  We emailed <span className="font-semibold">{createdAccount.email}</span> a link to set their own password and finish setup. The temporary password below is a backup if the email doesn't arrive.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-3 mb-4">
               <div className="rounded-xl px-3.5 py-3" style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}>
@@ -5085,6 +5101,9 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                         autoComplete="off"
                         className={inputCls}
                       />
+                      <p className="text-[11px] text-gray-500 mt-1">
+                        Please use a real email — password reset and account recovery links are sent here.
+                      </p>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

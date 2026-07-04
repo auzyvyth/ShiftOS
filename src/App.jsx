@@ -44,6 +44,7 @@ const SalesmanProfilePage= lazy(() => import("./pages/SalesmanProfilePage"));
 const AuthConfirmPage    = lazy(() => import("./pages/AuthConfirmPage"));
 const AuthCallbackPage   = lazy(() => import("./pages/AuthCallbackPage"));
 const ResetPasswordPage  = lazy(() => import("./pages/ResetPasswordPage"));
+const SalesmanSetup      = lazy(() => import("./pages/SalesmanSetup"));
 const ImportStockPage    = lazy(() => import("./pages/ImportStockPage"));
 const ComparePage        = lazy(() => import("./pages/ComparePage"));
 const AccountPage        = lazy(() => import("./pages/AccountPage"));
@@ -133,6 +134,7 @@ function App() {
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/auth/reset" element={<ResetPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/salesman-setup" element={<SalesmanSetup />} />
 
           {/* Protected — XDrive */}
           <Route path="/dashboard" element={<DashboardPage />} />

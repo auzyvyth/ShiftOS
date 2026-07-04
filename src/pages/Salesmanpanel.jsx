@@ -2086,6 +2086,26 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  (e) => e.created_at && new Date(e.created_at) >= monthStart,
  ).length;
 
+ // Live portfolio + performance — mirrors the Salesman Lite dashboard numbers
+ const availableCars = myListings.filter((c) => c.status === "available");
+ const portfolioValue = availableCars.reduce((s, c) => s + (Number(c.selling_price) || 0), 0);
+ const topCar = availableCars.length
+ ? availableCars.reduce((b, c) => ((Number(c.selling_price) || 0) > (Number(b.selling_price) || 0) ? c : b), availableCars[0])
+ : null;
+ const perfStats = myListings.map((car) => {
+ const st = carStatsMap[car.id] || {};
+ const views = st.views || 0;
+ const waTaps = st.enquiries || 0;
+ const cvr = views > 0 ? (waTaps / views) * 100 : null;
+ return { car, views, waTaps, cvr };
+ });
+ const perfViews = Object.values(carStatsMap).reduce((s, v) => s + (v.views || 0), 0);
+ const perfWA = Object.values(carStatsMap).reduce((s, v) => s + (v.enquiries || 0), 0);
+ const perfCVR = perfViews > 0 ? ((perfWA / perfViews) * 100).toFixed(1) : null;
+ const perfName = (car) => [car.year, car.brand, car.model].filter(Boolean).join(" ");
+ const cvrColor = (cvr) => (cvr >= 10 ? "#22c55e" : cvr >= 5 ? "#eab308" : "#ef4444");
+ const greetingWord = (() => { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; })();
+
  const SUBTABS_UI = (
  <div
  style={{
@@ -2129,6 +2149,62 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  if (subTab === "overview")
  return (
  <>
+
+ {/* Hero — greeting + live portfolio value (Salesman Lite parity) */}
+ <div style={{ ...CARD, position: "relative", overflow: "hidden", padding: isMobile ? "18px 16px" : "24px 26px", background: "linear-gradient(135deg,#0d1117,#161b22)", marginBottom: 16 }}>
+ <div style={{ position: "absolute", top: -50, right: -50, width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle,rgba(220,38,38,0.14) 0%,transparent 70%)", pointerEvents: "none" }} />
+ <p style={{ margin: 0, fontSize: 19, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.3px" }}>
+ {greetingWord}, {profile?.full_name?.split(" ")[0] || "there"}.
+ </p>
+ {portfolioValue > 0 ? (
+ <div style={{ position: "relative", marginTop: 16 }}>
+ <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em" }}>Live portfolio value</p>
+ <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+ <p style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: isMobile ? 36 : 48, color: "#fbbf24", letterSpacing: 1, lineHeight: 1 }}>RM {portfolioValue.toLocaleString("en-MY")}</p>
+ <span style={{ fontSize: 12, color: "#475569" }}>across {availableCars.length} live listing{availableCars.length !== 1 ? "s" : ""}</span>
+ </div>
+ {topCar && (
+ <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b" }}>Headlined by your {topCar.year} {topCar.brand} {topCar.model} — RM {Number(topCar.selling_price).toLocaleString("en-MY")}</p>
+ )}
+ </div>
+ ) : (
+ <p style={{ margin: "8px 0 0", fontSize: 13, color: "#94a3b8" }}>Feature a car from your dealer's inventory to start building your portfolio.</p>
+ )}
+ </div>
+
+ {/* My Performance — Views / WA Taps / CVR (Salesman Lite parity) */}
+ <div style={{ ...CARD, padding: 0, overflow: "hidden", marginBottom: 16 }}>
+ <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "#475569", fontWeight: 700, display: "flex", justifyContent: "space-between" }}>
+ <span>My Performance</span><span>30 days</span>
+ </div>
+ <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)" }}>
+ {[{ label: "Views", value: perfViews }, { label: "WA Taps", value: perfWA }, { label: "CVR", value: perfCVR !== null ? `${perfCVR}%` : "—" }].map(({ label, value }, i, arr) => (
+ <div key={label} style={{ padding: "15px 16px", borderRight: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
+ <p style={{ margin: "0 0 4px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
+ <p style={{ margin: 0, fontSize: 23, fontWeight: 700, color: "#f1f5f9", lineHeight: 1 }}>{value}</p>
+ </div>
+ ))}
+ </div>
+ {perfStats.some((s) => s.views > 0) ? (
+ <>
+ <div style={{ display: "grid", gridTemplateColumns: "1fr 50px 50px 66px", padding: "8px 16px", borderTop: "1px solid rgba(255,255,255,0.06)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+ {["Listing", "Views", "WA", "CVR"].map((h, i) => (
+ <p key={h} style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: i > 0 ? "center" : "left" }}>{h}</p>
+ ))}
+ </div>
+ {[...perfStats].sort((a, b) => (b.cvr ?? -1) - (a.cvr ?? -1)).slice(0, 6).map(({ car, views, waTaps, cvr }, idx, arr) => (
+ <div key={car.id} style={{ display: "grid", gridTemplateColumns: "1fr 50px 50px 66px", padding: "10px 16px", alignItems: "center", borderBottom: idx < arr.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+ <p style={{ margin: 0, fontSize: 12, color: "#d1d5db", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{perfName(car)}</p>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", textAlign: "center" }}>{views}</p>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", textAlign: "center" }}>{waTaps}</p>
+ <div style={{ textAlign: "center" }}>{cvr !== null ? <span style={{ fontSize: 11, fontWeight: 700, color: cvrColor(cvr) }}>{cvr.toFixed(1)}%</span> : <span style={{ fontSize: 11, color: "#374151" }}>—</span>}</div>
+ </div>
+ ))}
+ </>
+ ) : (
+ <p style={{ margin: 0, padding: "14px 16px", fontSize: 12, color: "#475569", borderTop: "1px solid rgba(255,255,255,0.06)" }}>No listing views yet — feature a car to start tracking.</p>
+ )}
+ </div>
 
  {/* Dealer connection banner — makes it clear this panel is linked to the dealer dashboard */}
  {profile?.dealer_id && (
