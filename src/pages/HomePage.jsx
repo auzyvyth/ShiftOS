@@ -79,7 +79,7 @@ const isHotDeal = (c) => {
 };
 
 // ── FadeIn ────────────────────────────────────────────────────────────────────
-function FadeIn({ children, delay = 0, style = {} }) {
+function FadeIn({ children, delay = 0, from = "up", className, style = {} }) {
   const ref = useRef(null);
   const [v, setV] = useState(false);
   useEffect(() => {
@@ -97,12 +97,19 @@ function FadeIn({ children, delay = 0, style = {} }) {
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
+  const hidden =
+    from === "left"
+      ? "translateX(-40px)"
+      : from === "right"
+        ? "translateX(40px)"
+        : "translateY(20px)";
   return (
     <div
       ref={ref}
+      className={className}
       style={{
         opacity: v ? 1 : 0,
-        transform: v ? "translateY(0)" : "translateY(20px)",
+        transform: v ? "translate(0,0)" : hidden,
         transition: `opacity 0.7s ease ${delay}s, transform 0.7s ease ${delay}s`,
         ...style,
       }}
@@ -649,6 +656,50 @@ const HomePage = () => {
           line-height: 1.1;
         }
 
+        /* How it works — alternating rows, icon on the outer edge, no center line */
+        .how-list { display:flex; flex-direction:column; gap:18px; overflow-x:clip; }
+        .how-step { display:flex; }
+        .how-step:nth-child(odd)  { justify-content:flex-start; }
+        .how-step:nth-child(even) { justify-content:flex-end; }
+        .how-card {
+          display:flex; align-items:center; gap:20px; width:min(560px,100%);
+          background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.08);
+          border-radius:16px; padding:20px 24px;
+          transition:border-color .2s ease, background .2s ease;
+        }
+        .how-card:hover { border-color:rgba(196,162,101,0.40); background:rgba(255,255,255,0.045); }
+        .how-step:nth-child(even) .how-card { flex-direction:row-reverse; text-align:right; }
+        .how-ico {
+          flex-shrink:0; width:54px; height:54px; border-radius:14px; display:grid; place-items:center;
+          color:#C4A265; background:rgba(196,162,101,0.12); border:1px solid rgba(196,162,101,0.35);
+          box-shadow:0 0 22px rgba(196,162,101,0.12);
+        }
+        .how-k { font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:#C4A265; margin:0 0 6px; }
+        .how-t { font-size:18px; font-weight:600; letter-spacing:-.01em; color:#F0F0F0; margin:0 0 5px; }
+        .how-d { font-size:15px; line-height:1.6; color:rgba(255,255,255,0.62); margin:0; }
+        @media(max-width:720px){
+          .how-step, .how-step:nth-child(odd), .how-step:nth-child(even) { justify-content:stretch; }
+          .how-card, .how-step:nth-child(even) .how-card {
+            width:100%; flex-direction:row; text-align:left; gap:16px; padding:18px;
+          }
+        }
+
+        /* Why — readable 2-up cards */
+        .why-grid2 { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+        .why-card {
+          height:100%; background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.08);
+          border-radius:16px; padding:26px 26px 24px;
+          transition:transform .2s ease, border-color .2s ease;
+        }
+        .why-card:hover { transform:translateY(-3px); border-color:rgba(220,38,38,0.35); }
+        .why-ico {
+          width:44px; height:44px; border-radius:11px; display:grid; place-items:center;
+          color:#DC2626; background:rgba(220,38,38,0.10); border:1px solid rgba(220,38,38,0.28); margin-bottom:16px;
+        }
+        .why-t { font-size:17px; font-weight:600; color:#F0F0F0; margin:0 0 7px; }
+        .why-d { font-size:15px; line-height:1.6; color:rgba(255,255,255,0.62); margin:0; }
+        @media(max-width:640px){ .why-grid2 { grid-template-columns:1fr; } }
+
         /* Car grid */
         .car-grid-hp { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
         @media(max-width:640px) {
@@ -920,67 +971,21 @@ const HomePage = () => {
               <h2 className="sec-title">{whyTitle}</h2>
             </div>
           </FadeIn>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
-              gap: "1px",
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.06)",
-              borderRadius: "6px",
-              overflow: "hidden",
-            }}
-          >
-            {benefits.map((b, i) => (
-              <FadeIn key={i} delay={i * 0.07}>
-                <div
-                  className="card-hover"
-                  style={{
-                    background: "#0C0C0E",
-                    padding: "32px 28px",
-                    height: "100%",
-                    borderRight: "none",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: "36px",
-                      height: "36px",
-                      borderRadius: "3px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "rgba(220,38,38,0.08)",
-                      border: "1px solid rgba(220,38,38,0.15)",
-                      marginBottom: "18px",
-                    }}
-                  >
-                    <b.icon size={16} style={{ color: "#DC2626" }} />
+          <div className="why-grid2">
+            {benefits.map((b, i) => {
+              const Icon = b.icon;
+              return (
+                <FadeIn key={i} delay={i * 0.06}>
+                  <div className="why-card card-hover">
+                    <div className="why-ico">
+                      {Icon && <Icon size={20} strokeWidth={2} />}
+                    </div>
+                    <h3 className="why-t">{b.title}</h3>
+                    <p className="why-d">{b.desc}</p>
                   </div>
-                  <h3
-                    style={{
-                      color: "#F0F0F0",
-                      fontSize: "14px",
-                      fontWeight: "600",
-                      margin: "0 0 8px 0",
-                      letterSpacing: "-0.01em",
-                    }}
-                  >
-                    {b.title}
-                  </h3>
-                  <p
-                    style={{
-                      color: "#52525A",
-                      fontSize: "13px",
-                      lineHeight: "1.7",
-                      margin: 0,
-                    }}
-                  >
-                    {b.desc}
-                  </p>
-                </div>
-              </FadeIn>
-            ))}
+                </FadeIn>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -1233,77 +1238,30 @@ const HomePage = () => {
               <h2 className="sec-title">{howTitle}</h2>
             </div>
           </FadeIn>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))",
-              gap: "16px",
-            }}
-          >
-            {steps.map((s, i) => (
-              <FadeIn key={i} delay={i * 0.09}>
-                <div
-                  className="card-hover"
-                  style={{
-                    ...glassCard,
-                    padding: "28px",
-                    position: "relative",
-                    overflow: "hidden",
-                    height: "100%",
-                  }}
+          <div className="how-list">
+            {steps.map((s, i) => {
+              const Icon = s.icon;
+              const right = i % 2 === 1;
+              return (
+                <FadeIn
+                  key={i}
+                  className="how-step"
+                  from={right ? "right" : "left"}
+                  delay={i * 0.05}
                 >
-                  <span
-                    style={{
-                      position: "absolute",
-                      top: "12px",
-                      right: "16px",
-                      fontFamily: "'Outfit', sans-serif",
-                      fontSize: "3.5rem",
-                      lineHeight: 1,
-                      color: "rgba(196,162,101,0.07)",
-                      userSelect: "none",
-                      pointerEvents: "none",
-                      fontWeight: "800",
-                    }}
-                  >
-                    {s.n}
-                  </span>
-                  <p
-                    style={{
-                      color: "#C4A265",
-                      fontSize: "11px",
-                      fontWeight: "700",
-                      letterSpacing: "0.14em",
-                      textTransform: "uppercase",
-                      margin: "0 0 14px 0",
-                    }}
-                  >
-                    {s.n}
-                  </p>
-                  <h3
-                    style={{
-                      color: "#F0F0F0",
-                      fontSize: "14px",
-                      fontWeight: "600",
-                      margin: "0 0 8px 0",
-                      letterSpacing: "-0.01em",
-                    }}
-                  >
-                    {s.t}
-                  </h3>
-                  <p
-                    style={{
-                      color: "#52525A",
-                      fontSize: "13px",
-                      lineHeight: "1.7",
-                      margin: 0,
-                    }}
-                  >
-                    {s.d}
-                  </p>
-                </div>
-              </FadeIn>
-            ))}
+                  <div className="how-card">
+                    <div className="how-ico">
+                      {Icon && <Icon size={24} strokeWidth={2} />}
+                    </div>
+                    <div>
+                      <p className="how-k">Step {s.n}</p>
+                      <h3 className="how-t">{s.t}</h3>
+                      <p className="how-d">{s.d}</p>
+                    </div>
+                  </div>
+                </FadeIn>
+              );
+            })}
           </div>
         </div>
       </section>
