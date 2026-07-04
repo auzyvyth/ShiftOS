@@ -37,22 +37,45 @@ export default defineConfig({
 				],
 			},
 			workbox: {
-				navigateFallback: '/index.html',
-				// Deploy-staleness guard: without these, an old service worker keeps
-				// serving a cached index.html that references chunk hashes the newer
-				// Vercel deploy already purged (vendor-charts/pdf/motion/dnd 404 -> the
-				// SPA rewrite returns index.html -> "Failed to load module script" MIME
-				// error -> white screen). cleanupOutdatedCaches purges stale precache
-				// buckets; skipWaiting + clientsClaim make the fresh SW take control on
-				// the next load so the reload guard in main.jsx can recover in one bounce.
+				// MUST be explicitly `null` (workbox only accepts null|string here), not
+				// just omitted — vite-plugin-pwa's own resolver hardcodes a
+				// `navigateFallback: 'index.html'` default that silently backfills any
+				// unset key, so leaving this key out entirely (as an earlier version of
+				// this config did) does NOT disable it.
+				navigateFallback: null,
+				// index.html / the main entry bundle are deliberately EXCLUDED below
+				// (globIgnores) rather than precached.
+				// These two files change on every single deploy — precaching them (as
+				// this config used to, via navigateFallback + '**/index-*.js') meant a
+				// still-installed OLD service worker kept serving its OLD index.html on
+				// the very next navigation after a push, which then requested the OLD
+				// entry chunk hash. Vercel deletes old hashed assets on each deploy, so
+				// that request 404s -> the SPA catch-all rewrite returns index.html
+				// content for a .js request -> MIME-type mismatch -> the module fails
+				// to load BEFORE React ever mounts (a dark blank page, not even the
+				// error fallback renders) -> the recovery reload can hit the SAME
+				// still-stale worker again, needing several reloads before the new
+				// worker finally wins the race.
+				// vercel.json already sets Cache-Control: max-age=0, must-revalidate on
+				// index.html and the JS entry, so the browser fetches them fresh from
+				// network on every navigation as long as nothing intercepts that
+				// request. Letting the service worker touch neither file removes the
+				// entire staleness race for the two things that change every push.
+				// cleanupOutdatedCaches purges old precache buckets from prior SW
+				// versions; skipWaiting + clientsClaim still make a fresh worker take
+				// over the instant it's ready, for the vendor assets it still precaches.
 				cleanupOutdatedCaches: true,
 				skipWaiting: true,
 				clientsClaim: true,
-				// Only precache critical public assets. Dealer-only JS chunks
-				// (Dashboard, Salesman, Import, PDF/XLSX/charts) are excluded so
-				// a public visitor's first load doesn't pull 5.6 MB of admin code.
-				globPatterns: ['**/*.{css,html,ico,png,svg}', '**/vendor-react*', '**/vendor-supabase*', '**/vendor-ui*', '**/index-*.js'],
+				// Only precache genuinely immutable, content-hashed vendor chunks — if
+				// their content changes, Vite gives them a NEW filename, so there is no
+				// staleness risk in caching them aggressively. Dealer-only JS chunks
+				// (Dashboard, Salesman, Import, PDF/XLSX/charts) are excluded so a
+				// public visitor's first load doesn't pull 5.6 MB of admin code, and are
+				// fetched live from the network same as index.html / the entry bundle.
+				globPatterns: ['**/*.{css,ico,png,svg}', '**/vendor-react*', '**/vendor-supabase*', '**/vendor-ui*'],
 				globIgnores: [
+					'**/index.html', '**/index-*.js',
 					'**/DashboardPage*', '**/Salesmanpanel*', '**/SalesmanLite*',
 					'**/SalesmanPremium*', '**/SalesmanOnboarding*', '**/ImportStockPage*',
 					'**/AccountantPanel*', '**/AdminPanel*', '**/AdminPage*',
