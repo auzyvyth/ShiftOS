@@ -35,6 +35,7 @@ import { getCategoryCfg } from "../utils/serviceCategories";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { useProfile, getDealerIdFromProfile } from "../hooks/useProfile";
 import { lookupMYCar, isMYBrand } from "../data/malayCars";
+import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 const initialListing = {
@@ -592,20 +593,23 @@ export function buildCopyText(l) {
     : 0;
   const isHot = discountPct >= 3;
 
-  // Auto hashtags
+  // Auto hashtags — luxury/exotic listings get premium tags instead of budget
+  // ones ("#keretamurah" = "cheap car", "#jualbeli" = "buy-sell") that read as
+  // mismatched/damaging against a RM1m+ asking price.
   const brand = (l.brand || "").toLowerCase().replace(/\s+/g, "");
   const model = (l.model || "").toLowerCase().replace(/\s+/g, "");
   const state = (l.state || "").toLowerCase().replace(/\s+/g, "");
   const cond = (l.condition || "").toLowerCase();
+  const isHighValue = Number(l.selling_price) > HIGH_VALUE_THRESHOLD;
   const tags = [
-    "#keretamurah",
-    "#keretamalaysia",
+    isHighValue ? "#supercar" : "#keretamurah",
+    isHighValue ? "#exoticcarsmalaysia" : "#keretamalaysia",
     `#${brand}`,
     `#${model}`,
     state ? `#kereta${state}` : "",
     `#${cond}`,
-    "#keretabekas",
-    "#jualbeli",
+    isHighValue ? "" : "#keretabekas",
+    isHighValue ? "" : "#jualbeli",
   ]
     .filter(Boolean)
     .join(" ");
@@ -686,7 +690,11 @@ export function buildCopyText(l) {
   }
 
   lines.push(`📞 DM or WhatsApp to enquire!`);
-  lines.push(`Loan available ✅ Trade-in welcome ✅`);
+  lines.push(
+    isHighValue
+      ? `Viewing by appointment · Bank financing available`
+      : `Loan available ✅ Trade-in welcome ✅`,
+  );
   lines.push("");
   lines.push(tags);
   lines.push(`━━━━━━━━━━━━━━━━━━━━`);

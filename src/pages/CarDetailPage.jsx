@@ -49,7 +49,7 @@ import { captureRef, getRef } from "../utils/refTracking";
 import { isSubdomain } from "../hooks/useTenant";
 import { trackEvent, getSlugFromURL } from "../utils/analytics";
 import { useMarketplaceTracking } from "../hooks/useMarketplaceTracking";
-import { calcMonthly } from "../utils/financing";
+import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { cdnImg } from "../utils/img";
 import { toast } from "sonner";
 
@@ -1788,11 +1788,13 @@ export default function CarDetailPage() {
             <p style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'2.6rem', color: th.text, lineHeight:1, margin:0 }}>
               {fmtPrice(car.selling_price)}
             </p>
-            {calcMonthly(car.selling_price) && (
+            {calcMonthly(car.selling_price) ? (
               <span style={{ fontSize:12, color:'#475569' }}>
                 ~<span style={{ color:'#64748b' }}>RM {fmt(calcMonthly(car.selling_price))}</span>/mo
               </span>
-            )}
+            ) : car.selling_price > HIGH_VALUE_THRESHOLD ? (
+              <span style={{ fontSize:12, color:'#475569' }}>Financing available on request</span>
+            ) : null}
           </div>
           )}
           {!isSambungCar(car) && <MarketPriceTag car={car} isXdrive={isXdrive} th={th} />}
@@ -3256,9 +3258,11 @@ export default function CarDetailPage() {
               ) : (
                 <>
                   <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(2.4rem,3.5vw,3rem)', color: th.text, lineHeight: 1 }}>{fmtPrice(car.selling_price)}</p>
-                  {calcMonthly(car.selling_price) && (
+                  {calcMonthly(car.selling_price) ? (
                     <p style={{ fontSize: 12, color: th.textMuted, marginTop: 4 }}>~RM {fmt(calcMonthly(car.selling_price))}/mo</p>
-                  )}
+                  ) : car.selling_price > HIGH_VALUE_THRESHOLD ? (
+                    <p style={{ fontSize: 12, color: th.textMuted, marginTop: 4 }}>Financing available on request</p>
+                  ) : null}
                   {isHot && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
                       <span style={{ fontSize: 13, color: '#1e293b', textDecoration: 'line-through' }}>{fmtPrice(car.original_price)}</span>

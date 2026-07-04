@@ -11,7 +11,7 @@ import { isSubdomain } from '../hooks/useTenant';
 import ContactGate from './ContactGate';
 import { useSavedCars } from '../hooks/useSavedCars';
 import { useCompare } from '../hooks/useCompare';
-import { calcMonthly } from '../utils/financing';
+import { calcMonthly, HIGH_VALUE_THRESHOLD } from '../utils/financing';
 
 const getAgeDays = (createdAt) => {
   if (!createdAt) return null;
@@ -605,6 +605,21 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
                   lineHeight:   1,
                 }}>
                   est. RM {monthly.toLocaleString('en-MY')}/mo
+                </span>
+              ) : price > HIGH_VALUE_THRESHOLD ? (
+                <span className="cc-monthly-pill" style={{
+                  display:      'inline-flex',
+                  alignItems:   'center',
+                  fontSize:     10,
+                  fontWeight:   600,
+                  color:        xd.monthlyColor,
+                  background:   xd.monthlyBg,
+                  border:       xd.monthlyBdr,
+                  padding:      '3px 8px',
+                  borderRadius: 20,
+                  lineHeight:   1,
+                }}>
+                  Financing available on request
                 </span>
               ) : <span />}
             </div>
