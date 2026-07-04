@@ -5085,6 +5085,9 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                         autoComplete="off"
                         className={inputCls}
                       />
+                      <p className="text-[11px] text-gray-500 mt-1">
+                        Please use a real email — password reset and account recovery links are sent here.
+                      </p>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

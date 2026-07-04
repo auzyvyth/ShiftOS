@@ -17,17 +17,9 @@ function corsHeaders(origin: string | null) {
   return {
     "Access-Control-Allow-Origin": allowed,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, baggage, sentry-trace",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
   };
-}
-
-// Keep a plain CORS object for the OPTIONS shortcut
-const CORS = corsHeaders(null);
-
-function json(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...CORS, "Content-Type": "application/json" },
-  });
 }
 
 function generatePassword(length = 10): string {
@@ -40,8 +32,20 @@ function generatePassword(length = 10): string {
 }
 
 serve(async (req) => {
+  // Echo the caller's real origin so dealer subdomains (*.xdrive.my) pass the
+  // browser CORS check. Reusing a null-origin header set here hardcoded the
+  // allow-origin to https://xdrive.my, so every request from a dealer
+  // storefront subdomain was blocked pre-flight -> "Server unreachable".
+  const origin = req.headers.get("Origin");
+  const cors = corsHeaders(origin);
+  const json = (data: unknown, status = 200) =>
+    new Response(JSON.stringify(data), {
+      status,
+      headers: { ...cors, "Content-Type": "application/json" },
+    });
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: CORS });
+    return new Response("ok", { headers: cors });
   }
 
   try {
