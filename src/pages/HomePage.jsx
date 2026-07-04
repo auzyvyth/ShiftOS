@@ -828,6 +828,16 @@ const HomePage = () => {
         <div style={{ ...wrap, padding: "18px 20px" }}>
           <div className="dealer-strip">
             <div className="dealer-strip-stats">
+              {tenant?.stat_years > 0 && (
+                <div className="dealer-strip-stat">
+                  <p style={{ color: "#F0F0F0", fontSize: 20, fontWeight: 700, lineHeight: 1, margin: "0 0 4px" }}>
+                    {tenant.stat_years}+
+                  </p>
+                  <p style={{ color: "#52525A", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", margin: 0, fontWeight: 600 }}>
+                    Years in Business
+                  </p>
+                </div>
+              )}
               <div className="dealer-strip-stat">
                 <p style={{ color: "#F0F0F0", fontSize: 20, fontWeight: 700, lineHeight: 1, margin: "0 0 4px" }}>
                   {stock != null ? String(stock) : "—"}

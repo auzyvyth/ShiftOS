@@ -560,13 +560,14 @@ const HC_CSS = `
   }
 
   /* ════════════════
-     COMPACT variant — shorter banner so the search bar below it stays above the
-     fold on first land. Overrides the tall 100vh defaults without touching them.
+     COMPACT variant — desktop fills the viewport below the 58px header with the
+     content vertically centred (equal top/bottom margin); the image card is
+     enlarged to match. Mobile keeps a content-defined height (overridden below).
   ════════════════ */
-  .hc-compact { min-height: clamp(440px, 62vh, 600px) !important; }
-  .hc-compact .hc-content-wrap { padding: clamp(96px,14vh,128px) 48px clamp(40px,6vh,64px) !important; gap: clamp(18px,3vh,30px) !important; }
-  .hc-compact .hc-glass-card { max-height: clamp(320px,44vh,460px); }
-  .hc-compact .hc-card-spacer { min-height: clamp(300px,40vh,440px); max-height: clamp(320px,44vh,460px); }
+  .hc-compact { min-height: calc(100vh - 58px) !important; }
+  .hc-compact .hc-content-wrap { padding: clamp(56px,8vh,104px) 48px clamp(56px,8vh,104px) !important; justify-content: center !important; gap: clamp(28px,4vh,52px) !important; }
+  .hc-compact .hc-glass-card { max-height: clamp(360px,52vh,540px); }
+  .hc-compact .hc-card-spacer { min-height: clamp(340px,48vh,500px); max-height: clamp(360px,52vh,540px); }
   /* No counter / dots / progress in the compact hero (user request).
      Keep .hc-progress in the layout (opacity:0, not display:none) so its CSS
      animation still runs and onAnimationEnd keeps auto-advancing the slides. */
@@ -577,7 +578,7 @@ const HC_CSS = `
        breathing room between the title / image / meta / price. */
     .hc-compact { min-height: clamp(420px, 60svh, 560px) !important; }
     .hc-compact .hc-content { position: relative; }
-    .hc-compact .hc-content-wrap { padding: 92px 20px 44px !important; gap: 16px !important; }
+    .hc-compact .hc-content-wrap { padding: 92px 20px 44px !important; gap: 16px !important; justify-content: flex-end !important; }
     .hc-compact .hc-glass-card { max-height: 190px; }
     .hc-compact .hc-card-spacer { min-height: 165px; max-height: 190px; }
   }
