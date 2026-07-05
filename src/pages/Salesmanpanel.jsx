@@ -39,6 +39,7 @@ import {
  TrendingUp,
  ChevronRight,
  ChevronLeft,
+ ExternalLink,
  Plus,
  User,
  Phone,
@@ -2174,6 +2175,32 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <p style={{ margin: "8px 0 0", fontSize: 13, color: "#94a3b8" }}>Feature a car from your dealer's inventory to start building your portfolio.</p>
  )}
  </div>
+
+ {/* Your mini page — public storefront link (Salesman Lite parity) */}
+ {profile?.slug && (
+ <div style={{ ...CARD, display: "flex", flexDirection: isMobile ? "column" : "row", gap: 10, alignItems: isMobile ? "stretch" : "center", marginBottom: 16 }}>
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>Your mini page</p>
+ <p style={{ margin: "3px 0 0", fontSize: 13, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>xdrive.my/s/{profile.slug}</p>
+ </div>
+ <div style={{ display: "flex", gap: 8 }}>
+ <button
+ onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success("Mini page link copied — share it with buyers!"); }}
+ style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: isMobile ? 1 : "none", fontSize: 12, padding: "8px 14px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontWeight: 500, fontFamily: "inherit" }}
+ >
+ <Copy size={12} /> Copy
+ </button>
+ <a
+ href={`https://xdrive.my/s/${profile.slug}`}
+ target="_blank"
+ rel="noopener noreferrer"
+ style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: isMobile ? 1 : "none", fontSize: 12, padding: "8px 14px", borderRadius: 8, background: "rgba(37,99,235,0.1)", border: "1px solid rgba(37,99,235,0.25)", color: "#93c5fd", textDecoration: "none", fontWeight: 600, fontFamily: "inherit" }}
+ >
+ <ExternalLink size={12} /> View my page <ChevronRight size={12} style={{ opacity: 0.5 }} />
+ </a>
+ </div>
+ </div>
+ )}
 
  {/* My Performance — Views / WA Taps / CVR (Salesman Lite parity) */}
  <div style={{ ...CARD, padding: 0, overflow: "hidden", marginBottom: 16 }}>
