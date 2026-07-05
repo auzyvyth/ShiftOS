@@ -44,13 +44,17 @@ export default function SalesmanProfilePage() {
       if (!p) { setNotFound(true); setLoading(false); return; }
       setProfile(p);
 
-      const [ownedRes, assignedRes, soldOwnedRes, soldAssignedRes] = await Promise.all([
+      const [ownedRes, assignedRes, featuredRes, soldOwnedRes, soldAssignedRes] = await Promise.all([
         supabase.from('public_car_listings')
           .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour')
           .eq('dealer_id', p.id).in('status', ['available', 'reserved']).order('created_at', { ascending: false }),
         supabase.from('public_car_listings')
           .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour')
           .eq('assigned_to', p.id).in('status', ['available', 'reserved']).order('created_at', { ascending: false }),
+        // Linked salesmen feature dealer cars via salesman_listings (car stays
+        // owned by the dealer, assigned_to null) — the two queries above miss
+        // those, so pull them via a SECURITY DEFINER RPC.
+        supabase.rpc('get_salesman_featured_listings', { p_salesman_id: p.id }),
         supabase.from('public_car_listings').select('id', { count: 'exact', head: true }).eq('dealer_id', p.id).eq('status', 'sold'),
         supabase.from('public_car_listings').select('id', { count: 'exact', head: true }).eq('assigned_to', p.id).eq('status', 'sold'),
       ]);
@@ -63,7 +67,7 @@ export default function SalesmanProfilePage() {
       }
 
       const seen = new Set();
-      const lst = [...(ownedRes.data || []), ...(assignedRes.data || [])].filter(c => {
+      const lst = [...(ownedRes.data || []), ...(assignedRes.data || []), ...(featuredRes.data || [])].filter(c => {
         if (seen.has(c.id)) return false;
         seen.add(c.id);
         return true;
