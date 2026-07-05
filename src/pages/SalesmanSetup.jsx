@@ -84,6 +84,9 @@ export default function SalesmanSetup() {
       pdpa_consent: true,
       pdpa_consent_at: new Date().toISOString(),
       onboarding_complete: true,
+      // Marks the account fully activated — the dealer's Team tab keys its
+      // "pending setup / resend email" state off this flag.
+      setup_complete: true,
     }).eq('id', userId);
     if (profErr) { setError(profErr.message); setLoading(false); return; }
     setPhase('done');
