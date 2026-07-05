@@ -15,6 +15,23 @@
 
 ---
 
+### SESSION 2026-07-05 — ROLES & STOREFRONT FIXES (adding roles under dealer)
+
+#### CRITICAL — do first
+- [x] **RF-C1: "Server unreachable" when creating non-salesman roles** — FIXED + DEPLOYED (invites v15). Root cause confirmed: deployed `invites` (v14) was missing `baggage, sentry-trace` in Access-Control-Allow-Headers, so the browser CORS preflight failed on every request (Sentry adds those headers) → "server unreachable". Source already had the fix but was never redeployed (DASH-5 debt). Redeployed with the fix + `Vary: Origin` + proper CORS on the 500 catch. NOTE: `send-telegram` and `ai-proxy` still carry the same un-redeployed CORS debt (not part of role creation; redeploy when convenient).
+- [~] **RF-C2: Newly created salesman has no available cars from dealer** — NOT A CODE BUG (verified). Available Inventory query, dealer_id resolution (owner→profile.id), and RLS (`public_read_listings` allows authenticated read) all correct. Live data: Sentimas has 4 available open-pool cars (would show); "Fast" + "99test" dealers have 0 available cars; AiryMotors (solo) has 2 but both assigned. So an empty pool = that dealer genuinely has no available/unassigned cars, not a bug. NEEDS USER: confirm which dealer+salesman showed empty so the exact state can be checked. Possible UX follow-up: default a brand-new linked salesman to the "Available Inventory" tab (not empty "My Listings") + clearer empty-state copy.
+- [~] **RF-C3: Sign-up email confirmation not working** — NOT GLOBALLY BROKEN (verified). Real email-click confirmations work (suemarine2000@gmail.com confirmed 238s after signup, 2026-07-03). The failing test used a Gmail `+`-alias (fasttrackautos+@gmail.com) which Supabase rejects as `email_address_invalid` (seen in auth logs) — test artifact, not a pipeline failure. USER ACTION for scale: default Supabase SMTP is rate-limited/not-for-production; configure custom SMTP via Resend (host smtp.resend.com, user `resend`, pass = RESEND_API_KEY, verified xdrive.my sender) in Supabase → Auth → SMTP for reliable delivery at volume. Test with a real (non-`+`) email.
+
+#### NON-CRITICAL — after criticals
+- [ ] **RF-1: Storefront changeable dealer logo** — Homepage/storefront needs a settable dealer logo (site_logo_url is stored but not rendered in header per SF-3). Add upload + render.
+- [ ] **RF-2: Center the "About / Get to know us" section** — On the dealer storefront the About block (site_name + about_text) should be centered.
+- [ ] **RF-3: Floating WhatsApp button — mobile scroll behavior** — Hide the floating WhatsApp button on load; only reveal after the user scrolls down (mobile).
+- [ ] **RF-4: Dealer Compare page invisible text/icons** — Some text and icons are invisible (white-on-white / black-on-black) on the dealer-side compare page. Fix contrast to match surface theme.
+- [ ] **RF-5: New salesman shows "Inactive 30d+" badge** — A just-added salesman incorrectly shows the ENT-13 inactivity badge; should read active (0 days). Badge should key off created_at as a floor, not treat never-active as stale.
+- [ ] **RF-6: Auto-logout after 1 day inactivity** — Add an idle/inactivity limit: >24h without activity auto-signs-out the session.
+
+---
+
 ### BILLING / PAYMENTS
 
 - [ ] **PAY-1: Salesman Premium payment gate (QR + approval)** — Salesman Premium
