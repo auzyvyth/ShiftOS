@@ -960,7 +960,7 @@ const HomePage = () => {
         <section className="sec-pad" style={secB}>
           <div style={wrap}>
             <FadeIn>
-              <div style={{ marginBottom: "24px" }}>
+              <div style={{ marginBottom: "24px", textAlign: "center" }}>
                 <p className="sec-eyebrow">About {siteName}</p>
                 <h2 className="sec-title">Get to know us</h2>
               </div>
@@ -970,7 +970,8 @@ const HomePage = () => {
                   fontSize: "15px",
                   lineHeight: "1.9",
                   maxWidth: "760px",
-                  margin: 0,
+                  margin: "0 auto",
+                  textAlign: "center",
                   whiteSpace: "pre-line",
                 }}
               >
