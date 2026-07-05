@@ -4509,8 +4509,12 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                         {s.is_active !== false ? "Active" : "Inactive"}
                       </span>
                       {(() => {
-                        const last = lastActivityMap[s.id];
-                        if (last && (Date.now() - new Date(last)) / 86400000 <= 30) return null;
+                        // "Inactive 30d+" only if their most recent touchpoint is
+                        // older than 30 days. A brand-new hire has no activity yet, so
+                        // fall back to created_at as the floor — otherwise a
+                        // 5-minute-old account wrongly showed as stale.
+                        const ref = lastActivityMap[s.id] || s.created_at;
+                        if (!ref || (Date.now() - new Date(ref)) / 86400000 <= 30) return null;
                         return <span style={{ fontSize: 10, fontWeight: 700, color: '#f97316', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 10, padding: '1px 7px' }}>Inactive 30d+</span>;
                       })()}
                     </div>

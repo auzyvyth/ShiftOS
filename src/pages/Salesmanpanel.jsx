@@ -7040,6 +7040,10 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  { tab: "enquiries", label: "Bookings", icon: <Calendar size={18} /> },
  { tab: "loans", label: "Loans", icon: <Banknote size={18} /> },
  { tab: "handover", label: "Handover", icon: <ClipboardCheck size={18} /> },
+ // Owner-granted extras — must be gated the same as the desktop sidebar, or a
+ // salesman on mobile has no way to open a tab the dealer switched on.
+ ...(showOutreach ? [{ tab: "outreach", label: "Outreach", icon: <Megaphone size={18} /> }] : []),
+ ...(showCustomers ? [{ tab: "customers", label: "Customers", icon: <UserCheck size={18} /> }] : []),
  { tab: "team", label: "Team", icon: <Users size={18} /> },
  { tab: "settings", label: "Settings", icon: <Settings size={18} /> },
  { tab: "help", label: "Manual", icon: <BookOpen size={18} /> },
