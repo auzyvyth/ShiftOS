@@ -39,6 +39,76 @@ function generatePassword(length = 10): string {
 
 const ALLOWED_ROLES = ["manager", "accountant", "fi_officer", "admin"];
 
+const ROLE_LABELS: Record<string, string> = {
+  manager: "manager",
+  admin: "admin",
+  accountant: "accountant",
+  fi_officer: "F&I officer",
+};
+
+// Emails a newly-invited back-office team member a one-time link to set their
+// own password. Uses the SAME Resend channel as create-salesman/send-document
+// (RESEND_API_KEY) — NOT Supabase Auth SMTP. Routes to /reset-password (the
+// standard set-a-new-password page); once set they log in and are redirected by
+// role. Returns whether the email actually sent so the caller can fall back to
+// the temp password.
+async function sendTeamSetupEmail(
+  adminClient: any,
+  email: string,
+  fullName: string,
+  dealershipName: string,
+  roleLabel: string,
+): Promise<boolean> {
+  try {
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    if (!RESEND_API_KEY) return false;
+    const { data: linkData } = await adminClient.auth.admin.generateLink({
+      type: "recovery",
+      email,
+      options: { redirectTo: "https://xdrive.my/reset-password" },
+    });
+    const actionLink = linkData?.properties?.action_link;
+    if (!actionLink) return false;
+    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
+    const html = `<!DOCTYPE html><html><body style="margin:0;padding:24px 0;background:#f4f4f5;font-family:'Helvetica Neue',Arial,sans-serif;">
+<div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.08);">
+  <div style="background:#111827;padding:28px 32px;color:#fff;">
+    <p style="margin:0 0 4px;font-size:12px;color:#9ca3af;">${dealershipName}</p>
+    <h1 style="margin:0;font-size:22px;font-weight:700;">Welcome to the team</h1>
+  </div>
+  <div style="padding:28px 32px;color:#374151;font-size:14px;line-height:1.6;">
+    <p style="margin:0 0 16px;">Hi ${fullName}, ${dealershipName} has created your ${roleLabel} account on ShiftOS.</p>
+    <p style="margin:0 0 24px;">Set your password to finish setting up and access your dashboard:</p>
+    <a href="${actionLink}" style="display:inline-block;background:#dc2626;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:13px 28px;border-radius:8px;">Set your password</a>
+    <p style="margin:24px 0 0;font-size:12px;color:#9ca3af;">This link expires in 24 hours. If it expires, use "Forgot password" on the ShiftOS login page.</p>
+  </div>
+  <div style="background:#f9fafb;padding:18px 32px;border-top:1px solid #e5e7eb;text-align:center;">
+    <p style="margin:0;font-size:11px;color:#9ca3af;">Sent by ${dealershipName} via ShiftOS</p>
+  </div>
+</div></body></html>`;
+    const resendRes = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: `${dealershipName} <${fromEmail}>`,
+        to: [email],
+        subject: `Set up your ${dealershipName} ${roleLabel} account`,
+        html,
+      }),
+    });
+    if (!resendRes.ok) {
+      console.error("[invites] Resend error:", await resendRes.text());
+    }
+    return resendRes.ok;
+  } catch (e) {
+    console.error("[invites] setup email failed:", e);
+    return false;
+  }
+}
+
 serve(async (req) => {
   const origin = req.headers.get("Origin");
   if (req.method === "OPTIONS") {
@@ -161,13 +231,21 @@ serve(async (req) => {
       }
     }
 
+    // Email the new team member a link to set their own password (parity with
+    // the salesman flow). Non-fatal: if Resend is unset/errors, the dealer still
+    // gets temp_password to relay.
+    const dealershipName = dealership || callerProfile.dealership || "Your dealership";
+    const emailSent = await sendTeamSetupEmail(
+      adminClient, email, full_name, dealershipName, ROLE_LABELS[role] || "team",
+    );
+
     const { data: finalProfile } = await adminClient
       .from("profiles")
       .select("*")
       .eq("id", newUserId)
       .maybeSingle();
 
-    return json({ success: true, invite: finalProfile, temp_password: pw }, 200, origin);
+    return json({ success: true, invite: finalProfile, temp_password: pw, email_sent: emailSent }, 200, origin);
   } catch (e) {
     console.error("invites error:", e);
     // Return CORS for the caller's real origin so a dealer subdomain surfaces the
