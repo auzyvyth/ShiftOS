@@ -127,6 +127,11 @@ serve(async (req) => {
           plan,
           dealer_id: dealer_id ?? null,
           phone: phone ?? null,
+          // Seed whatsapp_number from the dealer-entered phone — the salesman
+          // panel Settings, storefront and enquiry buttons all read
+          // whatsapp_number, so without this the dealer's number never surfaces.
+          // The salesman can confirm/change it in the /salesman-setup onboarding.
+          whatsapp_number: phone ?? null,
           slug: slug ?? null,
           dealership: callerProfile.role !== "superadmin"
             ? undefined  // will be set by the dealer's own dealership value below
@@ -157,6 +162,7 @@ serve(async (req) => {
         plan,
         dealer_id: dealer_id ?? null,
         phone: phone ?? null,
+        whatsapp_number: phone ?? null,
         slug: slug ?? null,
         is_active: true,
         onboarding_complete: true,
