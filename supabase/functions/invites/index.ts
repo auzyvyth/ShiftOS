@@ -17,6 +17,7 @@ function corsHeaders(origin: string | null) {
     "Access-Control-Allow-Origin": allowed,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, baggage, sentry-trace",
     "Access-Control-Allow-Methods": "POST, DELETE, OPTIONS",
+    "Vary": "Origin",
   };
 }
 
@@ -169,6 +170,8 @@ serve(async (req) => {
     return json({ success: true, invite: finalProfile, temp_password: pw }, 200, origin);
   } catch (e) {
     console.error("invites error:", e);
-    return json({ error: "internal_error" }, 500, null);
+    // Return CORS for the caller's real origin so a dealer subdomain surfaces the
+    // actual 500 instead of a browser CORS block masquerading as "server unreachable".
+    return json({ error: "internal_error" }, 500, req.headers.get("Origin"));
   }
 });
