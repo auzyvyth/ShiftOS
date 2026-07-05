@@ -14,29 +14,22 @@ export default function StickyWhatsAppButton({ phoneNumber, message }) {
   const ctaCtx = useCTAContext();
   const [gateOpen, setGateOpen] = useState(false);
 
-  // On mobile the button is distracting when it floats over the hero, so it only
-  // shows once the user scrolls down, and hides again when scrolling back up or
-  // near the top. On desktop (>=768px) it stays put.
-  const [visible, setVisible] = useState(true);
+  // On mobile the button is distracting floating over the hero, so it stays gone
+  // until the user scrolls down past the hero (>140px), then stays put while
+  // they're scrolled in. Desktop (>=768px) always shows it. Initial state is
+  // derived from the viewport so it doesn't flash in on a mobile page load.
+  const [visible, setVisible] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 768);
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const isMobile = () => window.innerWidth < 768;
-    if (!isMobile()) { setVisible(true); return; }
-    let last = window.scrollY;
-    setVisible(window.scrollY > 140);
-    const onScroll = () => {
-      if (!isMobile()) { setVisible(true); return; }
-      const y = window.scrollY;
-      if (y < 140) setVisible(false);
-      else if (y > last + 4) setVisible(true);
-      else if (y < last - 4) setVisible(false);
-      last = y;
+    const update = () => {
+      setVisible(window.innerWidth >= 768 ? true : window.scrollY > 140);
     };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll, { passive: true });
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update, { passive: true });
     return () => {
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
     };
   }, []);
 

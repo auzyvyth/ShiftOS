@@ -25,12 +25,12 @@
 - [x] **RF-C4: Pending-setup salesman state + resend email (Team tab)** — DONE. A dealer-created salesman appeared as a normal (usable) team member the instant the account was created, even before they clicked the emailed link and finished /salesman-setup. Added `profiles.setup_complete` (default false; backfilled true for all pre-existing rows so only new accounts start pending). SalesmanSetup.finish() sets it true. Team tab now renders a "Pending setup — {email} hasn't finished setting up their account" state with a Resend email + Remove buttons for any salesman where `!setup_complete`. Resend regenerates a fresh recovery link via the new `create-salesman` `resend_setup` action (v16) — the original link expires. Deployed: create-salesman v16.
 
 #### NON-CRITICAL — after criticals
-- [ ] **RF-1: Storefront changeable dealer logo** — Homepage/storefront needs a settable dealer logo (site_logo_url is stored but not rendered in header per SF-3). Add upload + render.
-- [ ] **RF-2: Center the "About / Get to know us" section** — On the dealer storefront the About block (site_name + about_text) should be centered.
-- [ ] **RF-3: Floating WhatsApp button — mobile scroll behavior** — Hide the floating WhatsApp button on load; only reveal after the user scrolls down (mobile).
-- [ ] **RF-4: Dealer Compare page invisible text/icons** — Some text and icons are invisible (white-on-white / black-on-black) on the dealer-side compare page. Fix contrast to match surface theme.
-- [ ] **RF-5: New salesman shows "Inactive 30d+" badge** — A just-added salesman incorrectly shows the ENT-13 inactivity badge; should read active (0 days). Badge should key off created_at as a floor, not treat never-active as stale.
-- [ ] **RF-6: Auto-logout after 1 day inactivity** — Add an idle/inactivity limit: >24h without activity auto-signs-out the session.
+- [x] **RF-1: Storefront changeable dealer logo** — DONE. Added a "Dealership Logo" upload in Settings → Dealership Identity (uploads to the avatars bucket, saves site_logo_url immediately, clears the site-profile cache). Header now renders the logo with object-fit:contain at a fixed 30px height + capped/responsive width instead of cropping it into a 32px circle, so any square or wide logo fits snugly.
+- [x] **RF-2: Center the "About / Get to know us" section** — DONE. Storefront About block (eyebrow + "Get to know us" title + about_text) centered (HomePage.jsx).
+- [x] **RF-3: Floating WhatsApp button — mobile scroll behavior** — DONE. StickyWhatsAppButton already hid on scroll (#138) but flashed in on mobile load and hid jitterily on any upward scroll. Simplified to a clean threshold: hidden <140px, shown once scrolled down (stays put), desktop always on; initial state derived from viewport so no load flash.
+- [x] **RF-4: Dealer Compare page invisible text/icons** — DONE (PR #149). Theme-aware text/chips on the dark subdomain; corner heart/remove buttons given dark pills (PR pending on branch).
+- [x] **RF-5: New salesman shows "Inactive 30d+" badge** — DONE (PR #147). Badge now falls back to created_at as the floor so a brand-new hire isn't flagged stale.
+- [x] **RF-6: Auto-logout after 1 day inactivity** — DONE. New `src/hooks/useIdleLogout.js` mounted in App: tracks last activity in localStorage (shared across tabs, survives reload); on mount / tab focus / every minute it checks the stored timestamp and, if >24h idle with a live session, signs out (scope:local) and redirects to /login?timeout=1. Strict by design — returning to a tab idle >24h logs out rather than resetting the clock.
 
 ---
 

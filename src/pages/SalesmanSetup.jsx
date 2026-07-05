@@ -13,15 +13,21 @@ function normalizePhone(raw) {
 }
 const validIC = (ic) => /^\d{12}$/.test((ic || '').replace(/-/g, ''));
 
+const MY_STATES = [
+  'Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan', 'Pahang',
+  'Pulau Pinang', 'Perak', 'Perlis', 'Sabah', 'Sarawak', 'Selangor',
+  'Terengganu', 'Kuala Lumpur', 'Labuan', 'Putrajaya',
+];
+
 // Onboarding page for a dealer-created salesman who clicked the emailed setup
 // link. The link is a Supabase recovery action link, so a session is already
 // live by the time this mounts. The dealer pre-filled name / phone / slug, so
-// this collects only what's still missing: password, a WhatsApp number buyers
-// can reach (pre-filled from the dealer's entry), IC for identity, and consent.
+// this collects: a password, the public-page basics buyers see (photo, title,
+// bio) and the personal details (WhatsApp, location, IC) + PDPA consent.
 export default function SalesmanSetup() {
   const navigate = useNavigate();
   const [phase, setPhase] = useState('loading'); // loading | setup | expired | done
-  const [step, setStep] = useState(0);           // 0 = password, 1 = details
+  const [step, setStep] = useState(0);           // 0 = password, 1 = public page, 2 = details
   const [userId, setUserId] = useState(null);
   const [dealership, setDealership] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -29,7 +35,17 @@ export default function SalesmanSetup() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPw, setShowPw] = useState(false);
+
+  // Public page (Step 2)
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [jobTitle, setJobTitle] = useState('');
+  const [bio, setBio] = useState('');
+
+  // Details (Step 3)
   const [whatsapp, setWhatsapp] = useState('+60');
+  const [city, setCity] = useState('');
+  const [stateVal, setStateVal] = useState('');
   const [ic, setIc] = useState('');
   const [consent, setConsent] = useState(false);
 
@@ -43,13 +59,18 @@ export default function SalesmanSetup() {
       setUserId(data.session.user.id);
       const { data: profile } = await supabase
         .from('profiles')
-        .select('full_name, dealership, phone, whatsapp_number, ic_number')
+        .select('full_name, dealership, phone, whatsapp_number, ic_number, avatar_url, job_title, bio, city, state')
         .eq('id', data.session.user.id)
         .maybeSingle();
       setDealership(profile?.dealership || '');
       setFirstName((profile?.full_name || '').split(' ')[0] || '');
       setWhatsapp(profile?.whatsapp_number || profile?.phone || '+60');
       if (profile?.ic_number) setIc(profile.ic_number);
+      if (profile?.avatar_url) setAvatarUrl(profile.avatar_url);
+      if (profile?.job_title) setJobTitle(profile.job_title);
+      if (profile?.bio) setBio(profile.bio);
+      if (profile?.city) setCity(profile.city);
+      if (profile?.state) setStateVal(profile.state);
       setPhase('setup');
     };
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
@@ -62,15 +83,42 @@ export default function SalesmanSetup() {
     return () => { subscription.unsubscribe(); clearTimeout(t); };
   }, []);
 
-  const goDetails = () => {
+  const handleAvatarPick = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { setError('Image must be under 5 MB.'); return; }
+    if (!file.type.startsWith('image/')) { setError('Please select an image file.'); return; }
+    if (!userId) { setError('Still connecting — try again in a moment.'); return; }
+    setError('');
+    setAvatarUploading(true);
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `${userId}/avatar.${ext}`;
+    const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+    if (upErr) { setError('Upload failed: ' + upErr.message); setAvatarUploading(false); return; }
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+    setAvatarUrl(`${publicUrl}?t=${Date.now()}`); // bust cache on re-upload (same path)
+    setAvatarUploading(false);
+  };
+
+  const goPublic = () => {
     if (!STRONG_PW.test(password)) { setError('8+ chars · uppercase · lowercase · number · special char'); return; }
     if (password !== confirm) { setError("Passwords don't match"); return; }
     setError('');
     setStep(1);
   };
 
+  const goDetails = () => {
+    if (!avatarUrl) { setError('Add a profile photo so buyers can see who they’re dealing with.'); return; }
+    if (jobTitle.trim().length < 2) { setError('Enter your job title (e.g. Sales Consultant).'); return; }
+    if (bio.trim().length < 10) { setError('Write a short bio — at least a sentence.'); return; }
+    setError('');
+    setStep(2);
+  };
+
   const finish = async () => {
     if (whatsapp.replace(/\D/g, '').length < 9) { setError('Enter a valid WhatsApp number.'); return; }
+    if (!city.trim()) { setError('Enter the city you’re based in.'); return; }
+    if (!stateVal) { setError('Select your state.'); return; }
     if (!validIC(ic)) { setError('Enter a valid 12-digit IC number (e.g. 901231-10-1234).'); return; }
     if (!consent) { setError('Please agree to the Terms & Privacy Policy to continue.'); return; }
     setError('');
@@ -78,8 +126,13 @@ export default function SalesmanSetup() {
     const { error: pwErr } = await supabase.auth.updateUser({ password });
     if (pwErr) { setError(pwErr.message); setLoading(false); return; }
     const { error: profErr } = await supabase.from('profiles').update({
+      avatar_url: avatarUrl,
+      job_title: jobTitle.trim(),
+      bio: bio.trim(),
       whatsapp_number: normalizePhone(whatsapp),
       phone: normalizePhone(whatsapp),
+      city: city.trim(),
+      state: stateVal,
       ic_number: ic.replace(/-/g, ''),
       pdpa_consent: true,
       pdpa_consent_at: new Date().toISOString(),
@@ -138,14 +191,14 @@ export default function SalesmanSetup() {
         <div style={S.card}>
           {/* Step indicator */}
           <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
-            {[0, 1].map((i) => (
+            {[0, 1, 2].map((i) => (
               <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= step ? '#dc2626' : 'rgba(255,255,255,0.1)' }} />
             ))}
           </div>
 
           {step === 0 && (
             <>
-              <p style={S.eyebrow}>{dealership ? `Welcome to ${dealership}` : 'Welcome'} · Step 1 of 2</p>
+              <p style={S.eyebrow}>{dealership ? `Welcome to ${dealership}` : 'Welcome'} · Step 1 of 3</p>
               <h2 style={S.heading}>{firstName ? `HI ${firstName.toUpperCase()},` : 'SET YOUR PASSWORD'}</h2>
               <p style={S.body}>First, choose a password for your account.</p>
 
@@ -160,25 +213,77 @@ export default function SalesmanSetup() {
 
               <div style={{ marginBottom: 18 }}>
                 <label style={S.label}>CONFIRM PASSWORD</label>
-                <input type={showPw ? 'text' : 'password'} value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Repeat your password" style={S.input} autoComplete="new-password" onKeyDown={e => { if (e.key === 'Enter') goDetails(); }} />
+                <input type={showPw ? 'text' : 'password'} value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Repeat your password" style={S.input} autoComplete="new-password" onKeyDown={e => { if (e.key === 'Enter') goPublic(); }} />
                 {confirm && confirm !== password && <p style={S.verr}>Passwords don't match</p>}
               </div>
 
               {error && <div style={S.errorBox}>⚠ {error}</div>}
-              <button style={S.btn} onClick={goDetails}>CONTINUE</button>
+              <button style={S.btn} onClick={goPublic}>CONTINUE</button>
             </>
           )}
 
           {step === 1 && (
             <>
-              <p style={S.eyebrow}>Almost there · Step 2 of 2</p>
-              <h2 style={S.heading}>YOUR DETAILS</h2>
-              <p style={S.body}>These finish your profile so buyers can reach you and your account is verified.</p>
+              <p style={S.eyebrow}>Your public page · Step 2 of 3</p>
+              <h2 style={S.heading}>HOW BUYERS SEE YOU</h2>
+              <p style={S.body}>This is what appears on your listings and personal page. A real photo and a line about you win trust.</p>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+                <div style={S.avatarWrap}>
+                  {avatarUrl
+                    ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5"><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 4-6 8-6s8 2 8 6" /></svg>}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <label style={{ ...S.uploadBtn, opacity: avatarUploading ? 0.5 : 1 }}>
+                    {avatarUploading ? 'Uploading…' : (avatarUrl ? 'Change photo' : 'Upload photo')}
+                    <input type="file" accept="image/*" onChange={handleAvatarPick} disabled={avatarUploading} style={{ display: 'none' }} />
+                  </label>
+                  <p style={S.hint}>A clear headshot. JPG or PNG, max 5 MB.</p>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={S.label}>JOB TITLE</label>
+                <input type="text" value={jobTitle} maxLength={40} onChange={e => setJobTitle(e.target.value)} placeholder="e.g. Sales Consultant" style={S.input} />
+              </div>
+
+              <div style={{ marginBottom: 18 }}>
+                <label style={S.label}>SHORT BIO</label>
+                <textarea value={bio} maxLength={220} onChange={e => setBio(e.target.value)} placeholder="One or two lines — who you are and what you help buyers with." style={{ ...S.input, minHeight: 72, resize: 'vertical', paddingRight: 14 }} />
+                <p style={S.hint}>{bio.length}/220</p>
+              </div>
+
+              {error && <div style={S.errorBox}>⚠ {error}</div>}
+              <button style={S.btn} onClick={goDetails}>CONTINUE</button>
+              <button style={S.ghost} onClick={() => { setError(''); setStep(0); }}>BACK</button>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              <p style={S.eyebrow}>Your details · Step 3 of 3</p>
+              <h2 style={S.heading}>ALMOST THERE</h2>
+              <p style={S.body}>How buyers reach you and where you’re based — plus identity verification.</p>
 
               <div style={{ marginBottom: 16 }}>
                 <label style={S.label}>WHATSAPP NUMBER</label>
                 <input type="tel" value={whatsapp} onChange={e => setWhatsapp(e.target.value)} placeholder="+60123456789" style={S.input} autoComplete="tel" />
                 <p style={S.hint}>Shown to buyers on your listings. Pre-filled by your dealer — edit if needed.</p>
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <label style={S.label}>CITY</label>
+                  <input type="text" value={city} maxLength={40} onChange={e => setCity(e.target.value)} placeholder="e.g. Petaling Jaya" style={S.input} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <label style={S.label}>STATE</label>
+                  <select value={stateVal} onChange={e => setStateVal(e.target.value)} style={{ ...S.input, appearance: 'none', cursor: 'pointer', paddingRight: 14 }}>
+                    <option value="" disabled>Select…</option>
+                    {MY_STATES.map(s => <option key={s} value={s} style={{ color: '#000' }}>{s}</option>)}
+                  </select>
+                </div>
               </div>
 
               <div style={{ marginBottom: 16 }}>
@@ -198,7 +303,7 @@ export default function SalesmanSetup() {
               <button style={{ ...S.btn, opacity: loading ? 0.5 : 1, cursor: loading ? 'not-allowed' : 'pointer' }} onClick={finish} disabled={loading}>
                 {loading ? 'SETTING UP…' : 'ENTER MY DASHBOARD'}
               </button>
-              <button style={S.ghost} onClick={() => { setError(''); setStep(0); }} disabled={loading}>BACK</button>
+              <button style={S.ghost} onClick={() => { setError(''); setStep(1); }} disabled={loading}>BACK</button>
             </>
           )}
         </div>
@@ -228,6 +333,8 @@ const S = {
   ghost: { width: '100%', padding: '12px', marginTop: 10, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'rgba(255,255,255,0.45)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, letterSpacing: 2, cursor: 'pointer' },
   expiredIcon: { width: 52, height: 52, background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' },
   successIcon: { width: 48, height: 48, background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' },
+  avatarWrap: { width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  uploadBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#E8EDF5', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
 };
 
 const CSS = `

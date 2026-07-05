@@ -943,6 +943,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
 
   const [subdomain, setSubdomain] = useState(profile?.subdomain || '');
   const [subdomainStatus, setSubdomainStatus] = useState(null); // 'checking' | 'taken' | 'available' | 'unchanged'
+  const [logoUrl, setLogoUrl] = useState(profile?.site_logo_url || '');
+  const [logoBusy, setLogoBusy] = useState(false);
   const [planUsage, setPlanUsage] = useState(null);
   const [settingsLastChange, setSettingsLastChange] = useState(null);
 
@@ -1030,6 +1032,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setTgAutoPost(profile.telegram_auto_post || false);
     setSubdomain(profile.subdomain || "");
     setSubdomainStatus(null);
+    setLogoUrl(profile.site_logo_url || "");
     setSfWhy({ ...defaultSfWhy, ...(profile.storefront_why || {}), items: (profile.storefront_why?.items || defaultSfWhy.items).map(i => ({...i})) });
     setSfHow({ ...defaultSfHow, ...(profile.storefront_how || {}), steps: (profile.storefront_how?.steps || defaultSfHow.steps).map(s => ({...s})) });
     setSfTestimonials((profile.storefront_testimonials || defaultSfTestimonials).map(t => ({...t})));
@@ -1132,6 +1135,46 @@ function SettingsTab({ profile, onProfileUpdate }) {
         setSettingsLastChange({ actor_name: profile?.full_name || profile?.email, actor_role: profile?.role, created_at: new Date().toISOString(), summary: `Settings updated: ${changes.join('; ')}` });
       }
     }
+  };
+
+  // Dealership logo — uploaded to the shared avatars bucket under the uploader's
+  // own folder (RLS-safe) and saved to site_logo_url immediately. clearSiteProfileCache
+  // makes the storefront header pick it up on next load.
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) { toast.error("Logo must be under 3 MB"); return; }
+    if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
+    setLogoBusy(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const ext = (file.name.split(".").pop() || "png").toLowerCase();
+      const path = `${user.id}/dealer-logo.${ext}`;
+      const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+      if (upErr) { toast.error("Upload failed: " + upErr.message); setLogoBusy(false); return; }
+      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+      const busted = `${publicUrl}?t=${Date.now()}`;
+      const { data, error } = await supabase.from("profiles").update({ site_logo_url: busted, settings_updated_at: new Date().toISOString() }).eq("id", user.id).select().single();
+      if (error) { toast.error("Save failed"); setLogoBusy(false); return; }
+      onProfileUpdate(data);
+      clearSiteProfileCache();
+      setLogoUrl(busted);
+      toast.success("Logo updated");
+    } catch (err) { toast.error(err.message || "Upload failed"); }
+    setLogoBusy(false);
+  };
+  const removeLogo = async () => {
+    setLogoBusy(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data, error } = await supabase.from("profiles").update({ site_logo_url: null }).eq("id", user.id).select().single();
+      if (error) { toast.error("Remove failed"); setLogoBusy(false); return; }
+      onProfileUpdate(data);
+      clearSiteProfileCache();
+      setLogoUrl("");
+      toast.success("Logo removed");
+    } catch (err) { toast.error(err.message || "Remove failed"); }
+    setLogoBusy(false);
   };
 
   // Save enables on ANY single change (name OR site name OR subdomain) —
@@ -1543,6 +1586,27 @@ function SettingsTab({ profile, onProfileUpdate }) {
             placeholder="e.g. Auto City — Used Cars Penang"
             className={iCls}
           />
+        </SettingsField>
+
+        <SettingsField label="Dealership Logo" hint="Shown in your storefront header">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div style={{ width: 84, height: 48, borderRadius: 10, background: '#f9fafb', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+              {logoUrl
+                ? <img src={logoUrl} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                : <Building2 className="w-5 h-5 text-gray-400" />}
+            </div>
+            <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer" style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#374151', opacity: logoBusy ? 0.5 : 1 }}>
+              <Upload className="w-3.5 h-3.5" />
+              {logoBusy ? 'Uploading…' : (logoUrl ? 'Change logo' : 'Upload logo')}
+              <input type="file" accept="image/*" onChange={handleLogoUpload} disabled={logoBusy} style={{ display: 'none' }} />
+            </label>
+            {logoUrl && (
+              <button type="button" onClick={removeLogo} disabled={logoBusy} className="text-xs font-medium px-2.5 py-1.5 rounded-lg" style={{ color: '#6b7280', border: '1px solid #e5e7eb' }}>
+                Remove
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 mt-1.5">Transparent PNG works best. It scales to fit the header automatically — square or wide both work. Max 3 MB.</p>
         </SettingsField>
 
         <ErrMsg k="identity" errors={errors} />

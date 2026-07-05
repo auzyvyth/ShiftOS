@@ -200,9 +200,22 @@ export default function ComparePage() {
   const [scrolled, setScrolled] = useState(false);
   const [diffOnly, setDiffOnly] = useState(false);
 
+  // Hysteresis: collapse the strip only once scrolled well past where it sticks
+  // (~82px), and re-expand only near the top. A single threshold at the sticky
+  // boundary made collapsing shift the layout back across it → expand → collapse
+  // in an infinite flicker. The dead zone (110–220) breaks that feedback loop.
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 80);
+    let ticking = false;
+    const evaluate = () => {
+      ticking = false;
+      const y = window.scrollY;
+      setScrolled(prev => (prev ? y > 110 : y > 220));
+    };
+    const onScroll = () => {
+      if (!ticking) { ticking = true; window.requestAnimationFrame(evaluate); }
+    };
     window.addEventListener('scroll', onScroll, { passive: true });
+    evaluate();
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
@@ -458,9 +471,11 @@ export default function ComparePage() {
                           <span style={{ color: 'white', fontSize: 9, fontWeight: 700 }}>Best Value</span>
                         </div>
                       )}
+                      {/* Dark translucent pills so the heart + remove icons stay
+                          legible over any photo (white-on-white was invisible). */}
                       <div style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 3 }}>
-                        <HeartButton listingId={car.id} size={11} style={{ background: 'rgba(255,255,255,0.9)', borderRadius: 5, padding: '3px 5px', backdropFilter: 'blur(4px)' }} />
-                        <button onClick={() => removeCar(car.id)} style={{ background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: 5, color: 'var(--cp-muted,#6b7280)', cursor: 'pointer', padding: '3px 5px', display: 'flex', backdropFilter: 'blur(4px)' }}>
+                        <HeartButton listingId={car.id} size={11} idleColor="rgba(255,255,255,0.92)" style={{ background: 'rgba(0,0,0,0.5)', borderRadius: 5, padding: '3px 5px', backdropFilter: 'blur(4px)' }} />
+                        <button onClick={() => removeCar(car.id)} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: 5, color: 'rgba(255,255,255,0.9)', cursor: 'pointer', padding: '3px 5px', display: 'flex', backdropFilter: 'blur(4px)' }}>
                           <X size={10} />
                         </button>
                       </div>
