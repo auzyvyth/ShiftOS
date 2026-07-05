@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Heart } from 'lucide-react';
 import { useSavedCars } from '../hooks/useSavedCars';
 
-export default function HeartButton({ listingId, size = 20, style }) {
+export default function HeartButton({ listingId, size = 20, style, idleColor = 'rgba(255,255,255,0.5)' }) {
   const { isSaved, toggleSave } = useSavedCars();
   const [bounce, setBounce] = useState(false);
   const saved = isSaved(listingId);
@@ -39,7 +39,7 @@ export default function HeartButton({ listingId, size = 20, style }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: saved ? '#dc2626' : 'rgba(255,255,255,0.5)',
+          color: saved ? '#dc2626' : idleColor,
           transition: 'color 0.18s',
           lineHeight: 1,
           ...style,
