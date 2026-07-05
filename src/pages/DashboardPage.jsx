@@ -170,6 +170,7 @@ import {
   SlidersHorizontal,
   Download,
   ClipboardCheck,
+  Mail,
 } from "lucide-react";
 
 const SERVER_URL = "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1";
@@ -4771,11 +4772,11 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                   <Check className="w-5 h-5 text-emerald-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 text-sm">Account Created</h3>
+                  <h3 className="font-semibold text-gray-900 text-sm">Salesman Added</h3>
                   <p className="text-gray-500 text-xs mt-0.5">
                     {createdAccount.email_sent
-                      ? "A setup link was emailed to them"
-                      : "Share these credentials with your salesman"}
+                      ? "Setup email sent"
+                      : "Email couldn't be sent — share credentials"}
                   </p>
                 </div>
               </div>
@@ -4787,57 +4788,54 @@ function TeamTab({ managerDealership, dealerId, profile }) {
               </button>
             </div>
 
-            {createdAccount.email_sent && (
-              <div
-                className="rounded-xl px-3.5 py-2.5 mb-4 flex items-start gap-2.5"
-                style={{ background: "#f0fdf4", border: "1px solid #86efac" }}
-              >
-                <Check className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-                <p className="text-emerald-700 text-xs leading-relaxed">
-                  We emailed <span className="font-semibold">{createdAccount.email}</span> a link to set their own password and finish setup. The temporary password below is a backup if the email doesn't arrive.
-                </p>
-              </div>
-            )}
-
-            <div className="space-y-3 mb-4">
-              <div className="rounded-xl px-3.5 py-3" style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Name</p>
-                <p className="text-gray-900 text-sm font-medium">{createdAccount.full_name}</p>
-              </div>
-              <div className="rounded-xl px-3.5 py-3" style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Email</p>
-                <p className="text-gray-900 text-sm font-medium">{createdAccount.email}</p>
-              </div>
-              <div className="rounded-xl px-3.5 py-3" style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}>
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">Temporary Password</p>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(createdAccount.temp_password);
-                      setCopiedPw(true);
-                      setTimeout(() => setCopiedPw(false), 2000);
-                    }}
-                    className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg transition-all"
-                    style={copiedPw
-                      ? { color: "#34d399", background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.2)" }
-                      : { color: "#6b7280", background: "#f3f4f6", border: "1px solid #e5e7eb" }}
-                  >
-                    {copiedPw ? <><Check className="w-3 h-3" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
-                  </button>
+            {createdAccount.email_sent ? (
+              /* Happy path: setup link emailed — no password to relay. */
+              <>
+                <div
+                  className="rounded-xl px-4 py-4 mb-4 text-center"
+                  style={{ background: "#f0fdf4", border: "1px solid #86efac" }}
+                >
+                  <Mail className="w-7 h-7 text-emerald-600 mx-auto mb-2.5" />
+                  <p className="text-gray-900 text-sm font-semibold mb-1">Email sent to {createdAccount.full_name}</p>
+                  <p className="text-emerald-700 text-xs leading-relaxed">
+                    We emailed <span className="font-semibold">{createdAccount.email}</span> a link to set their password and finish setup. Tell your salesman to check their inbox (and spam) to activate their account.
+                  </p>
                 </div>
-                <p className="text-gray-900 text-base font-mono font-bold tracking-widest">{createdAccount.temp_password}</p>
-              </div>
-            </div>
-
-            <div
-              className="rounded-xl px-3.5 py-2.5 mb-4 flex items-start gap-2.5"
-              style={{ background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.16)" }}
-            >
-              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-              <p className="text-amber-700 text-xs leading-relaxed">
-                This password will <span className="font-semibold text-amber-800">not be shown again</span>. Share it securely with your salesman now.
-              </p>
-            </div>
+              </>
+            ) : (
+              /* Fallback: email delivery failed — fall back to sharing the temp
+                 password so the salesman is never stranded. */
+              <>
+                <div
+                  className="rounded-xl px-3.5 py-2.5 mb-4 flex items-start gap-2.5"
+                  style={{ background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.16)" }}
+                >
+                  <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-amber-700 text-xs leading-relaxed">
+                    We couldn't send the setup email. Share this temporary password with <span className="font-semibold">{createdAccount.email}</span> — it <span className="font-semibold text-amber-800">won't be shown again</span>. They can change it from Settings after signing in.
+                  </p>
+                </div>
+                <div className="rounded-xl px-3.5 py-3 mb-4" style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider">Temporary Password</p>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(createdAccount.temp_password);
+                        setCopiedPw(true);
+                        setTimeout(() => setCopiedPw(false), 2000);
+                      }}
+                      className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg transition-all"
+                      style={copiedPw
+                        ? { color: "#34d399", background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.2)" }
+                        : { color: "#6b7280", background: "#f3f4f6", border: "1px solid #e5e7eb" }}
+                    >
+                      {copiedPw ? <><Check className="w-3 h-3" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
+                    </button>
+                  </div>
+                  <p className="text-gray-900 text-base font-mono font-bold tracking-widest">{createdAccount.temp_password}</p>
+                </div>
+              </>
+            )}
 
             <button
               onClick={() => setCreatedAccount(null)}
