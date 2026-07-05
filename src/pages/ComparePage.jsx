@@ -171,6 +171,21 @@ export default function ComparePage() {
     '--cp-imgbg': '#f3f4f6', '--cp-win': '#16a34a', '--cp-winbg': 'rgba(22,163,74,0.04)',
     '--cp-hover': '#f9fafb',
   };
+  // Tinted pills (strength chips, market signal, verdict) carry dark text on a
+  // faint tint — which is unreadable on the dark storefront. Brighten both the
+  // tint and the text on subdomains so the dark-on-dark doesn't vanish.
+  const chipWin = sub
+    ? { bg: 'rgba(74,222,128,0.16)', color: '#4ade80' }
+    : { bg: 'rgba(22,163,74,0.1)',   color: '#15803d' };
+  const marketCfg = sub ? {
+    below: { bg: 'rgba(74,222,128,0.16)', color: '#4ade80', label: '▼ Below Market' },
+    fair:  { bg: 'rgba(96,165,250,0.16)', color: '#60a5fa', label: '● Fair Price'   },
+    above: { bg: 'rgba(251,191,36,0.16)', color: '#fbbf24', label: '▲ Above Market' },
+  } : {
+    below: { bg: 'rgba(22,163,74,0.1)',  color: '#15803d', label: '▼ Below Market' },
+    fair:  { bg: 'rgba(37,99,235,0.08)', color: '#1d4ed8', label: '● Fair Price'   },
+    above: { bg: 'rgba(217,119,6,0.1)',  color: '#b45309', label: '▲ Above Market' },
+  };
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   // Enter guided compare mode: jump to the showroom; CompareBar will bounce the
@@ -384,9 +399,9 @@ export default function ComparePage() {
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '7px 13px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                background: copied ? 'rgba(22,163,74,0.08)' : 'white',
+                background: copied ? 'rgba(22,163,74,0.08)' : 'var(--cp-surface,#fff)',
                 border: `1px solid ${copied ? 'rgba(22,163,74,0.3)' : 'var(--cp-border,#DDE3EC)'}`,
-                color: copied ? '#16a34a' : '#6b7280', cursor: 'pointer', transition: 'all 0.2s',
+                color: copied ? 'var(--cp-win,#16a34a)' : 'var(--cp-muted,#6b7280)', cursor: 'pointer', transition: 'all 0.2s',
               }}
             >
               {copied ? <Check size={12} /> : <Share2 size={12} />}
@@ -455,7 +470,7 @@ export default function ComparePage() {
                       {car.year} {car.model}
                     </p>
                     {pct && <p style={{ fontSize: 9, color: 'var(--cp-muted,#9ca3af)', textDecoration: 'line-through', margin: '0 0 1px' }}>{fmtRM(car.original_price)}</p>}
-                    <p style={{ fontSize: 'clamp(11px,1.8vw,13px)', fontWeight: 700, color: pct ? '#dc2626' : '#111827', margin: 0 }}>{fmtRM(car.selling_price)}</p>
+                    <p style={{ fontSize: 'clamp(11px,1.8vw,13px)', fontWeight: 700, color: pct ? '#dc2626' : 'var(--cp-text,#111827)', margin: 0 }}>{fmtRM(car.selling_price)}</p>
                     {monthly && <p style={{ fontSize: 9, color: 'var(--cp-muted,#9ca3af)', margin: '1px 0 3px' }}>~RM {monthly.toLocaleString()}/mo</p>}
                     {(() => {
                       const chips = carStrengths(car, cars);
@@ -463,7 +478,7 @@ export default function ComparePage() {
                       return (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, margin: '0 0 4px' }}>
                           {chips.map(t => (
-                            <span key={t} style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.02em', padding: '2px 5px', borderRadius: 4, background: 'rgba(22,163,74,0.1)', color: '#15803d', whiteSpace: 'nowrap' }}>{t}</span>
+                            <span key={t} style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.02em', padding: '2px 5px', borderRadius: 4, background: chipWin.bg, color: chipWin.color, whiteSpace: 'nowrap' }}>{t}</span>
                           ))}
                         </div>
                       );
@@ -525,7 +540,7 @@ export default function ComparePage() {
                       <p style={{ margin: 0, fontSize: 'clamp(9px,1.4vw,11px)', fontWeight: 700, color: 'var(--cp-text,#111827)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>
                         {car.year} {car.model}
                       </p>
-                      <p style={{ margin: 0, fontSize: 'clamp(9px,1.3vw,11px)', color: isVerdict ? '#dc2626' : '#6b7280', fontWeight: 600 }}>
+                      <p style={{ margin: 0, fontSize: 'clamp(9px,1.3vw,11px)', color: isVerdict ? '#dc2626' : 'var(--cp-muted,#6b7280)', fontWeight: 600 }}>
                         {fmtRM(car.selling_price)}
                       </p>
                     </div>
@@ -585,12 +600,8 @@ export default function ComparePage() {
                     : c.selling_price >= c.market_avg_price * 1.07 ? 'above' : 'fair',
                   fmt: v => v || '—',
                   cell: val => {
-                    if (!val || val === '—') return <span style={{ color: '#d1d5db' }}>—</span>;
-                    const cfg = {
-                      below: { bg: 'rgba(22,163,74,0.1)',  color: '#15803d', label: '▼ Below Market' },
-                      fair:  { bg: 'rgba(37,99,235,0.08)', color: '#1d4ed8', label: '● Fair Price'   },
-                      above: { bg: 'rgba(217,119,6,0.1)',  color: '#b45309', label: '▲ Above Market' },
-                    }[val];
+                    if (!val || val === '—') return <span style={{ color: 'var(--cp-muted,#d1d5db)' }}>—</span>;
+                    const cfg = marketCfg[val];
                     return <span style={{ display:'inline-flex', fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:20, background:cfg.bg, color:cfg.color }}>{cfg.label}</span>;
                   },
                 },
@@ -638,7 +649,7 @@ export default function ComparePage() {
                     const score = getValueScore(cars[i], cars);
                     return (
                       <div style={{ width: '100%', minWidth: 0 }}>
-                        <span style={{ fontSize: 'clamp(10px,1.6vw,12px)', fontWeight: win ? 700 : 400, color: win ? '#dc2626' : '#374151' }}>{score}</span>
+                        <span style={{ fontSize: 'clamp(10px,1.6vw,12px)', fontWeight: win ? 700 : 400, color: win ? '#dc2626' : 'var(--cp-text,#374151)' }}>{score}</span>
                         <div style={{ height: 3, background: 'var(--cp-line,#f1f5f9)', borderRadius: 2, marginTop: 3 }}>
                           <div style={{ height: '100%', width: `${score}%`, background: win ? '#dc2626' : '#d1d5db', borderRadius: 2, transition: 'width 0.4s' }} />
                         </div>
@@ -706,9 +717,9 @@ export default function ComparePage() {
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: 5,
                       padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                      background: car.id === verdict.car.id ? 'rgba(220,38,38,0.06)' : '#f3f4f6',
+                      background: car.id === verdict.car.id ? 'rgba(220,38,38,0.06)' : (sub ? 'rgba(255,255,255,0.06)' : '#f3f4f6'),
                       border: `1px solid ${car.id === verdict.car.id ? 'rgba(220,38,38,0.25)' : 'var(--cp-border,#e5e7eb)'}`,
-                      color: car.id === verdict.car.id ? '#dc2626' : '#6b7280',
+                      color: car.id === verdict.car.id ? '#dc2626' : 'var(--cp-muted,#6b7280)',
                       textDecoration: 'none',
                     }}
                   >
