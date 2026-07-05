@@ -8,6 +8,7 @@ import * as Sentry from "@sentry/react";
 const SentryRoutes = Sentry.withSentryReactRouterV7Routing(Routes);
 import ScrollToTop from "./components/ScrollToTop";
 import CompareBar from "./components/CompareBar";
+import { useIdleLogout } from "./hooks/useIdleLogout";
 import "./i18n/config";
 
 // Eager — only true above-the-fold entry points
@@ -75,6 +76,7 @@ function CompareBarGate() {
 }
 
 function App() {
+  useIdleLogout(); // sign out after 24h of inactivity
   return (
     <Router>
       <ScrollToTop />

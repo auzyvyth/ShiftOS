@@ -91,6 +91,17 @@ const HDR_CSS = `
   .hdr-logo:hover .hdr-mark {
     box-shadow: 0 0 0 1px rgba(220,38,38,0.55), 0 6px 22px rgba(220,38,38,0.35);
   }
+  /* Uploaded dealer logo: show the whole thing (contain), fixed height, width
+     capped so a wide wordmark can't blow out the header — scales down on mobile. */
+  .hdr-logo-img {
+    height: 30px; width: auto;
+    max-width: 150px; max-height: 30px;
+    object-fit: contain; object-position: left center;
+    display: block; flex-shrink: 0;
+  }
+  @media (max-width: 1024px) {
+    .hdr-logo-img { max-width: 108px; }
+  }
   .hdr-logo-text { display: flex; flex-direction: column; min-width: 0; }
   .hdr-logo-name {
     font-family: 'Outfit', sans-serif;
@@ -460,12 +471,7 @@ export default function Header() {
           {/* Logo */}
           <Link to="/" className="hdr-logo">
             {siteLogoUrl ? (
-              <img
-                src={siteLogoUrl}
-                alt={siteName}
-                className="hdr-mark"
-                style={{ objectFit: "cover", padding: 0 }}
-              />
+              <img src={siteLogoUrl} alt={siteName} className="hdr-logo-img" />
             ) : (
               <div className="hdr-mark">{siteInitial}</div>
             )}
