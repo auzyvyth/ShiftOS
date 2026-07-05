@@ -4117,7 +4117,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
           return;
         }
         setShowAddForm(false);
-        setCreatedAccount({ full_name: n, email: e, temp_password: data.temp_password, email_sent: data.email_sent });
+        setCreatedAccount({ full_name: n, email: e, temp_password: data.temp_password, email_sent: data.email_sent, role: 'salesman' });
         await fetchTeam();
         resetForm();
       } else {
@@ -4145,10 +4145,12 @@ function TeamTab({ managerDealership, dealerId, profile }) {
           setAddLoading(false);
           return;
         }
-        setSalespeople((prev) => [data.invite, ...prev]);
-        setAddSuccess(`${n} added successfully.`);
-        resetForm();
         setShowAddForm(false);
+        // Same confirmation modal as salesman: shows "email sent" when the
+        // invites function emailed a setup link, else the temp password to relay.
+        setCreatedAccount({ full_name: n, email: e, temp_password: data.temp_password, email_sent: data.email_sent, role: newRole });
+        setSalespeople((prev) => [data.invite, ...prev]);
+        resetForm();
       }
     } catch {
       setAddError("Server unreachable.");
@@ -4845,7 +4847,9 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                   <Check className="w-5 h-5 text-emerald-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 text-sm">Salesman Added</h3>
+                  <h3 className="font-semibold text-gray-900 text-sm">
+                    {({ salesman: 'Salesman', manager: 'Manager', admin: 'Admin', accountant: 'Accountant', fi_officer: 'F&I Officer' }[createdAccount.role] || 'Team member')} Added
+                  </h3>
                   <p className="text-gray-500 text-xs mt-0.5">
                     {createdAccount.email_sent
                       ? "Setup email sent"
@@ -4871,7 +4875,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                   <Mail className="w-7 h-7 text-emerald-600 mx-auto mb-2.5" />
                   <p className="text-gray-900 text-sm font-semibold mb-1">Email sent to {createdAccount.full_name}</p>
                   <p className="text-emerald-700 text-xs leading-relaxed">
-                    We emailed <span className="font-semibold">{createdAccount.email}</span> a link to set their password and finish setup. Tell your salesman to check their inbox (and spam) to activate their account.
+                    We emailed <span className="font-semibold">{createdAccount.email}</span> a link to set their password and finish setup. Tell them to check their inbox (and spam) to activate their account.
                   </p>
                 </div>
               </>
