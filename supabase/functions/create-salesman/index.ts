@@ -31,6 +31,70 @@ function generatePassword(length = 10): string {
   return pw;
 }
 
+// Emails the salesman a one-time recovery link to set their own password and
+// finish onboarding. Uses the SAME Resend channel as send-document
+// (RESEND_API_KEY) — NOT Supabase Auth SMTP. Returns whether the email was
+// actually sent so the caller can fall back to a temp password. Shared by the
+// create flow and the "resend setup email" action from the dealer Team tab.
+async function sendSetupEmail(
+  adminClient: any,
+  email: string,
+  fullName: string,
+  dealershipName: string,
+): Promise<boolean> {
+  try {
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    if (!RESEND_API_KEY) return false;
+    const { data: linkData } = await adminClient.auth.admin.generateLink({
+      type: "recovery",
+      email,
+      // Route through /reset-password (a known-allowlisted redirect URL) with a
+      // flow marker; ResetPasswordPage hands a first-time salesman off to the
+      // /salesman-setup welcome page once the recovery session is established.
+      options: { redirectTo: "https://xdrive.my/reset-password?flow=setup" },
+    });
+    const actionLink = linkData?.properties?.action_link;
+    if (!actionLink) return false;
+    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
+    const html = `<!DOCTYPE html><html><body style="margin:0;padding:24px 0;background:#f4f4f5;font-family:'Helvetica Neue',Arial,sans-serif;">
+<div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.08);">
+  <div style="background:#111827;padding:28px 32px;color:#fff;">
+    <p style="margin:0 0 4px;font-size:12px;color:#9ca3af;">${dealershipName}</p>
+    <h1 style="margin:0;font-size:22px;font-weight:700;">Welcome to the team</h1>
+  </div>
+  <div style="padding:28px 32px;color:#374151;font-size:14px;line-height:1.6;">
+    <p style="margin:0 0 16px;">Hi ${fullName}, ${dealershipName} has created your salesman account on ShiftOS.</p>
+    <p style="margin:0 0 24px;">Set your password to finish setting up and access your dashboard:</p>
+    <a href="${actionLink}" style="display:inline-block;background:#dc2626;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:13px 28px;border-radius:8px;">Set your password</a>
+    <p style="margin:24px 0 0;font-size:12px;color:#9ca3af;">This link expires in 24 hours. If it expires, use "Forgot password" on the ShiftOS login page.</p>
+  </div>
+  <div style="background:#f9fafb;padding:18px 32px;border-top:1px solid #e5e7eb;text-align:center;">
+    <p style="margin:0;font-size:11px;color:#9ca3af;">Sent by ${dealershipName} via ShiftOS</p>
+  </div>
+</div></body></html>`;
+    const resendRes = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: `${dealershipName} <${fromEmail}>`,
+        to: [email],
+        subject: `Set up your ${dealershipName} salesman account`,
+        html,
+      }),
+    });
+    if (!resendRes.ok) {
+      console.error("[create-salesman] Resend error:", await resendRes.text());
+    }
+    return resendRes.ok;
+  } catch (e) {
+    console.error("[create-salesman] setup email failed:", e);
+    return false;
+  }
+}
+
 serve(async (req) => {
   // Echo the caller's real origin so dealer subdomains (*.xdrive.my) pass the
   // browser CORS check. Reusing a null-origin header set here hardcoded the
@@ -69,7 +133,7 @@ serve(async (req) => {
     );
     const { data: callerProfile } = await adminClient
       .from("profiles")
-      .select("role, id")
+      .select("role, id, dealership")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -79,6 +143,31 @@ serve(async (req) => {
 
     // ── Parse body ──────────────────────────────────────────────────────────
     const body = await req.json().catch(() => ({}));
+
+    // ── Resend setup email (no new account) ─────────────────────────────────
+    // The dealer's Team tab calls this when a salesman hasn't finished setup and
+    // their emailed link has expired. Regenerates a fresh recovery link and
+    // re-sends it; creates nothing.
+    if (body.action === "resend_setup") {
+      const targetEmail = body.email;
+      if (!targetEmail) return json({ error: "invalid_input" }, 400);
+      const { data: target } = await adminClient
+        .from("profiles")
+        .select("id, email, full_name, dealership, dealer_id, role")
+        .eq("email", targetEmail)
+        .maybeSingle();
+      if (!target) return json({ error: "not_found" }, 404);
+      // Authz: superadmin, or the salesman belongs to the caller's dealership
+      // (owner/dealer are their own dealer, so their id IS the dealer_id).
+      const isSuper = callerProfile.role === "superadmin";
+      if (!isSuper && target.dealer_id !== callerProfile.id) {
+        return json({ error: "forbidden" }, 403);
+      }
+      const dealershipName = target.dealership || callerProfile.dealership || target.full_name || "Your dealership";
+      const sent = await sendSetupEmail(adminClient, targetEmail, target.full_name || "there", dealershipName);
+      return json({ success: true, email_sent: sent });
+    }
+
     const { email, full_name, dealer_id, plan, phone, slug } = body;
 
     if (!email || !full_name || !plan) {
@@ -193,62 +282,9 @@ serve(async (req) => {
     }
 
     // Email the salesman a one-time link to set their own password, so they don't
-    // depend on the dealer relaying the temp password. Uses the SAME Resend channel
-    // as send-document (RESEND_API_KEY) — NOT Supabase Auth SMTP. Non-fatal: if the
+    // depend on the dealer relaying the temp password. Non-fatal: if the Resend
     // key is unset or Resend errors, the dealer still gets temp_password to share.
-    let emailSent = false;
-    try {
-      const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-      if (RESEND_API_KEY) {
-        const { data: linkData } = await adminClient.auth.admin.generateLink({
-          type: "recovery",
-          email,
-          // Route through /reset-password (a known-allowlisted redirect URL) with a
-          // flow marker; ResetPasswordPage hands a first-time salesman off to the
-          // /salesman-setup welcome page once the recovery session is established.
-          options: { redirectTo: "https://xdrive.my/reset-password?flow=setup" },
-        });
-        const actionLink = linkData?.properties?.action_link;
-        if (actionLink) {
-          const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
-          const html = `<!DOCTYPE html><html><body style="margin:0;padding:24px 0;background:#f4f4f5;font-family:'Helvetica Neue',Arial,sans-serif;">
-<div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.08);">
-  <div style="background:#111827;padding:28px 32px;color:#fff;">
-    <p style="margin:0 0 4px;font-size:12px;color:#9ca3af;">${dealershipName}</p>
-    <h1 style="margin:0;font-size:22px;font-weight:700;">Welcome to the team</h1>
-  </div>
-  <div style="padding:28px 32px;color:#374151;font-size:14px;line-height:1.6;">
-    <p style="margin:0 0 16px;">Hi ${full_name}, ${dealershipName} has created your salesman account on ShiftOS.</p>
-    <p style="margin:0 0 24px;">Set your password to finish setting up and access your dashboard:</p>
-    <a href="${actionLink}" style="display:inline-block;background:#dc2626;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:13px 28px;border-radius:8px;">Set your password</a>
-    <p style="margin:24px 0 0;font-size:12px;color:#9ca3af;">This link expires in 24 hours. If it expires, use "Forgot password" on the ShiftOS login page.</p>
-  </div>
-  <div style="background:#f9fafb;padding:18px 32px;border-top:1px solid #e5e7eb;text-align:center;">
-    <p style="margin:0;font-size:11px;color:#9ca3af;">Sent by ${dealershipName} via ShiftOS · xdrive.my</p>
-  </div>
-</div></body></html>`;
-          const resendRes = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${RESEND_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              from: `${dealershipName} <${fromEmail}>`,
-              to: [email],
-              subject: `Set up your ${dealershipName} salesman account`,
-              html,
-            }),
-          });
-          emailSent = resendRes.ok;
-          if (!resendRes.ok) {
-            console.error("[create-salesman] Resend error:", await resendRes.text());
-          }
-        }
-      }
-    } catch (e) {
-      console.error("[create-salesman] setup email failed:", e);
-    }
+    const emailSent = await sendSetupEmail(adminClient, email, full_name, dealershipName);
 
     const { data: finalProfile } = await adminClient
       .from("profiles")

@@ -3812,6 +3812,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const [slug, setSlug] = useState("");
   const [tempPw, setTempPw] = useState("");
   const [createdAccount, setCreatedAccount] = useState(null); // one-time password modal
+  const [resendingId, setResendingId] = useState(null); // salesman id whose setup email is resending
   const [teamSoldCount, setTeamSoldCount] = useState(0);
   const [analyticsMap, setAnalyticsMap] = useState({});
   const [soldMap, setSoldMap] = useState({});
@@ -4185,6 +4186,30 @@ function TeamTab({ managerDealership, dealerId, profile }) {
     if (res.ok) setSalespeople((p) => p.filter((x) => x.id !== id));
     setDeleteConfirmId(null);
   };
+  // Re-send the account-setup email to a salesman who hasn't finished onboarding.
+  // The recovery link in the original email expires, so this regenerates a fresh
+  // one via create-salesman's resend_setup action (no new account is created).
+  const resendSetup = async (s) => {
+    setResendingId(s.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${SERVER_URL}/create-salesman`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ action: "resend_setup", email: s.email }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.email_sent) toast.success(`Setup email resent to ${s.email}`);
+      else if (res.ok) toast.error("Couldn't send the email — check the email address or try again.");
+      else toast.error(data.error === "not_found" ? "Account not found." : "Resend failed.");
+    } catch {
+      toast.error("Server unreachable. Try again.");
+    }
+    setResendingId(null);
+  };
 
   const ROLE_COLORS = {
     salesman:   '#3b82f6',
@@ -4406,7 +4431,51 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                       No {ROLE_TABS.find(t => t.role === teamTab)?.label} yet.
                     </div>
                   )}
-                  {filteredTeam.map((s) => (
+                  {filteredTeam.map((s) => {
+              // A dealer-created salesman shows in the team list the instant the
+              // account exists, but until they click the emailed link and finish
+              // /salesman-setup they aren't really usable. Show a distinct pending
+              // state with a resend button (the setup link expires) instead of the
+              // normal card, so the dealer knows the account isn't active yet.
+              const pendingSetup = s.role === 'salesman' && !s.setup_complete;
+              if (pendingSetup) return (
+                <div key={s.id} className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#fff7ed', border: '1px solid #fed7aa' }}>
+                      <Mail className="w-4 h-4" style={{ color: '#ea580c' }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <p className="font-semibold text-gray-900 truncate">{s.full_name}</p>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa' }}>Pending setup</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mb-3">
+                        <span className="font-medium text-gray-700 break-all">{s.email}</span> hasn't finished setting up their account.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => resendSetup(s)}
+                          disabled={resendingId === s.id}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-50"
+                          style={{ background: '#dc2626' }}
+                        >
+                          <Mail className="w-3.5 h-3.5" />
+                          {resendingId === s.id ? 'Sending…' : 'Resend email'}
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirmId(s.id)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:text-gray-900 transition-all"
+                          style={{ border: '1px solid #e5e7eb' }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+              return (
               <div
                 key={s.id}
                 className={`p-4 transition-colors ${s.is_active === false ? "opacity-50" : "hover:bg-gray-50"}`}
@@ -4705,7 +4774,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                   </div>
                 </div>
               </div>
-            ))}
+            ); })}
                 </>
               );
             })()}
