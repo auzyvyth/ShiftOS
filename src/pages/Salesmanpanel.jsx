@@ -519,9 +519,12 @@ export default function SalesmanPanel() {
  ])];
 
  if (myCarIds.length > 0) {
- // Analytics: server-side aggregation via RPC — one row per car
+ // Analytics MUST be scoped to THIS salesman's own attribution (their ref-link /
+ // mini-page slug), not the car's total. Featuring a dealer car would otherwise
+ // inherit the dealer's whole storefront/marketplace view history. Only events
+ // stamped with the salesman's slug count as views they brought.
  const { data: analyticsRows, error: analyticsErr } = await supabase
- .rpc("get_car_analytics", { p_car_ids: myCarIds });
+ .rpc("get_salesman_slug_analytics", { p_car_ids: myCarIds, p_slug: profileData.slug || "" });
  if (analyticsErr) console.error("fetchAnalytics:", analyticsErr);
  const map = {};
  (analyticsRows || []).forEach(row => {
