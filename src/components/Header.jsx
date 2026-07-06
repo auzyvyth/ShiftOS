@@ -255,7 +255,10 @@ const HDR_CSS = `
     top: 82px;
     left: 16px;
     right: 16px;
-    z-index: 40;
+    /* Above the header (50) and any page content (sticky strips etc. sit at ~40),
+       so an open menu is never painted over by the page — only true modals
+       (portalled at 9999) sit above it. */
+    z-index: 60;
     border-radius: 18px;
     background: rgba(9, 9, 14, 0.52);
     backdrop-filter: blur(40px) saturate(180%) brightness(1.08);
