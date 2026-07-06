@@ -39,6 +39,7 @@ const AccountantPanel    = lazy(() => import("./pages/AccountantPanel"));
 const FIPanel            = lazy(() => import("./pages/FIPanel"));
 const AccountsPanel      = lazy(() => import("./pages/AccountsPanel"));
 const ShiftOSPage        = lazy(() => import("./pages/ShiftOSPage"));
+const SalesmanLiteLanding = lazy(() => import("./pages/SalesmanLiteLanding"));
 const MindMapPage        = lazy(() => import("./pages/MindMapPage"));
 const DealerSlugRedirect = lazy(() => import("./pages/DealerSlugRedirect"));
 const SalesmanProfilePage= lazy(() => import("./pages/SalesmanProfilePage"));
@@ -154,6 +155,7 @@ function App() {
 
           {/* Public — ShiftOS marketing */}
           <Route path="/shiftos" element={<ShiftOSPage />} />
+          <Route path="/for-salesmen" element={<SalesmanLiteLanding />} />
           <Route path="/mindmap" element={<MindMapPage />} />
           <Route path="/waitlist" element={<WaitlistPage />} />
           <Route path="/terms" element={<TermsPage />} />
