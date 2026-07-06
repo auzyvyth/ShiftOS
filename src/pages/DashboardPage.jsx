@@ -1110,9 +1110,11 @@ function SettingsTab({ profile, onProfileUpdate }) {
       return;
     }
     const dealershipChanged = !dealershipLocked && dealership.trim() !== (profile?.dealership || "");
+    const logoChanged = (logoUrl || "") !== (profile?.site_logo_url || "");
     const payload = {
       site_name: siteName.trim() || (profile?.dealership || dealership.trim() || ""),
       subdomain,
+      ...(logoChanged && { site_logo_url: logoUrl || null }),
       ...(dealershipChanged && {
         dealership: dealership.trim(),
         dealership_change_count: changeCount + 1,
@@ -1137,9 +1139,11 @@ function SettingsTab({ profile, onProfileUpdate }) {
     }
   };
 
-  // Dealership logo — uploaded to the shared avatars bucket under the uploader's
-  // own folder (RLS-safe) and saved to site_logo_url immediately. clearSiteProfileCache
-  // makes the storefront header pick it up on next load.
+  // Dealership logo — the file is uploaded to the avatars bucket immediately (so
+  // we have a URL to preview), but it is only STAGED in local state. It is not
+  // written to the profile until the Save button is clicked (saveDealership),
+  // exactly like the name / subdomain / site-name fields — so the change marks
+  // the form dirty and unlocks Save instead of silently persisting.
   const handleLogoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1153,36 +1157,20 @@ function SettingsTab({ profile, onProfileUpdate }) {
       const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
       if (upErr) { toast.error("Upload failed: " + upErr.message); setLogoBusy(false); return; }
       const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
-      const busted = `${publicUrl}?t=${Date.now()}`;
-      const { data, error } = await supabase.from("profiles").update({ site_logo_url: busted, settings_updated_at: new Date().toISOString() }).eq("id", user.id).select().single();
-      if (error) { toast.error("Save failed"); setLogoBusy(false); return; }
-      onProfileUpdate(data);
-      clearSiteProfileCache();
-      setLogoUrl(busted);
-      toast.success("Logo updated");
+      setLogoUrl(`${publicUrl}?t=${Date.now()}`); // stage only — persisted on Save
     } catch (err) { toast.error(err.message || "Upload failed"); }
     setLogoBusy(false);
   };
-  const removeLogo = async () => {
-    setLogoBusy(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data, error } = await supabase.from("profiles").update({ site_logo_url: null }).eq("id", user.id).select().single();
-      if (error) { toast.error("Remove failed"); setLogoBusy(false); return; }
-      onProfileUpdate(data);
-      clearSiteProfileCache();
-      setLogoUrl("");
-      toast.success("Logo removed");
-    } catch (err) { toast.error(err.message || "Remove failed"); }
-    setLogoBusy(false);
-  };
+  // Stage removal only — cleared from the profile when Save is clicked.
+  const removeLogo = () => setLogoUrl("");
 
   // Save enables on ANY single change (name OR site name OR subdomain) —
   // the name lock no longer gates the button.
   const identityDirty =
     (!dealershipLocked && dealership.trim() !== (profile?.dealership || "")) ||
     (siteName.trim() || "") !== (profile?.site_name || "") ||
-    subdomain !== (profile?.subdomain || "");
+    subdomain !== (profile?.subdomain || "") ||
+    (logoUrl || "") !== (profile?.site_logo_url || "");
 
   const saveContact = () =>
     saveSection("contact", {
@@ -1606,7 +1594,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
               </button>
             )}
           </div>
-          <p className="text-xs text-gray-500 mt-1.5">Transparent PNG works best. It scales to fit the header automatically — square or wide both work. Max 3 MB.</p>
+          <p className="text-xs text-gray-500 mt-1.5">Transparent PNG works best; scales to fit the header (square or wide). Max 3 MB. Click <span className="font-medium text-gray-700">Save</span> below to apply.</p>
         </SettingsField>
 
         <ErrMsg k="identity" errors={errors} />
