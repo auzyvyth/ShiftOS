@@ -2781,6 +2781,20 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
       getListingAge(l.created_at) >= 30 && (l.status || 'available') === 'available',
   );
 
+  // A listing is "incomplete" when it's missing what a buyer needs to see —
+  // photos, a price, or mileage. Bulk/AI import leaves these blank, so these are
+  // the cars to finish before they can actually sell. Sold cars are excluded.
+  const listingGaps = (l) => {
+    const g = [];
+    if (!Array.isArray(l.images) || l.images.length === 0) g.push('photos');
+    if (!l.selling_price || Number(l.selling_price) <= 0) g.push('price');
+    if (!l.mileage || Number(l.mileage) <= 0) g.push('mileage');
+    return g;
+  };
+  const incomplete = listings.filter(
+    (l) => (l.status || 'available') !== 'sold' && listingGaps(l).length > 0,
+  );
+
   const exportAnalyticsCSV = () => {
     const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const toCSV = (rows) => rows.map(r => r.map(esc).join(',')).join('\n');
@@ -2948,6 +2962,68 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
         const adjustedStale = stale.filter(l => (adjustedStaleIds || new Set()).has(l.id));
         return (
           <>
+            {incomplete.length > 0 && (
+              <div
+                className="rounded-xl p-4"
+                style={{
+                  background: "rgba(239,68,68,0.04)",
+                  border: "1px solid rgba(239,68,68,0.14)",
+                }}
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertCircle className="w-4 h-4 text-red-400" />
+                  <p className="text-red-700 text-sm font-semibold">
+                    {incomplete.length} listing{incomplete.length > 1 ? "s" : ""} incomplete — missing photos, price or mileage
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {incomplete.slice(0, 8).map((l) => {
+                    const gaps = listingGaps(l);
+                    return (
+                      <div
+                        key={l.id}
+                        className="flex items-center justify-between py-2 gap-3"
+                        style={{ borderBottom: "1px solid rgba(239,68,68,0.08)" }}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          {l.images?.[0] ? (
+                            <img src={l.images[0]} alt="" className="w-8 h-8 rounded-lg object-cover bg-gray-100 flex-shrink-0" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-lg bg-gray-100 flex-shrink-0" />
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-gray-900 text-sm font-medium truncate">
+                              {l.brand} {l.model} {l.year || ""}
+                            </p>
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {gaps.map((g) => (
+                                <span key={g} className="text-red-700 text-[10px] font-semibold bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
+                                  No {g}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        {onEditListing && (
+                          <button
+                            onClick={() => onEditListing(l)}
+                            className="text-xs font-semibold px-3 py-1 rounded-lg transition-all flex-shrink-0"
+                            style={{ background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)", color: "#dc2626" }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(220,38,38,0.2)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(220,38,38,0.1)"; }}
+                          >
+                            Finish
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {incomplete.length > 8 && (
+                    <p className="text-xs text-gray-500 pt-1">+{incomplete.length - 8} more incomplete</p>
+                  )}
+                </div>
+              </div>
+            )}
             {visibleStale.length > 0 && (
               <div
                 className="rounded-xl p-4"
