@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import {
   ArrowRight, Check, Globe, Car, MessageCircle, LineChart,
-  Link2, Wallet, ChevronDown, Share2, ShieldCheck,
+  Link2, Wallet, ChevronDown, Share2, ShieldCheck, X as XIcon,
+  Smartphone, Zap, Lock, Eye,
 } from "lucide-react";
 import MarketplaceHeader from "../components/MarketplaceHeader";
 import MarketplaceFooter from "../components/MarketplaceFooter";
@@ -22,17 +23,19 @@ const SEO_KEYWORDS = [
 
 const FAQS = [
   { q: "Is Salesman Lite really free?",
-    a: "Yes. Salesman Lite costs RM0 — no credit card, no contract. You get up to 10 active car listings, your own page on the XDrive marketplace, and direct WhatsApp enquiries at no cost." },
-  { q: "Do I need my own website?",
-    a: "No. The moment you sign up you get a ready-made page at xdrive.my/s/yourname with all your cars on it — nothing to build or host." },
+    a: "Yes. Salesman Lite costs RM0 — no credit card, no contract, no trial that quietly bills you later. You get up to 10 active car listings, your own page on the XDrive marketplace, and direct WhatsApp enquiries at no cost. If you outgrow it, Premium is there — but plenty of agents never need to." },
+  { q: "Do I need to build a website?",
+    a: "No. The moment you sign up you get a ready-made page at xdrive.my/s/yourname with all your cars on it. No hosting, no domain, no design work — just add your cars and share the link." },
   { q: "How do buyers contact me?",
-    a: "Every listing has a WhatsApp button that messages you directly. No middleman and no shared inbox — the lead is yours." },
+    a: "Every listing has a WhatsApp button that opens a chat straight to you. No shared inbox, no platform sitting in the middle, no lead sold to three other agents. The enquiry is yours." },
   { q: "Can I still use Mudah and Carlist?",
-    a: "Yes. Salesman Lite works alongside Mudah and Carlist. The difference is this page is yours, it's on Malaysia's XDrive marketplace, and it's free." },
-  { q: "What if I have more than 10 cars?",
-    a: "Upgrade to Salesman Premium (RM50/month) for unlimited listings, priority placement, a full lead CRM, commission tracking and a custom subdomain." },
+    a: "Absolutely. Salesman Lite works alongside them. The difference is this page is yours, it lives on Malaysia's XDrive marketplace, and it doesn't charge you per listing." },
+  { q: "What happens when I have more than 10 cars?",
+    a: "Upgrade to Salesman Premium (RM50/month) for unlimited listings, priority marketplace placement, a full lead CRM and pipeline, commission tracking, advanced analytics and a custom subdomain. Your Lite page and cars carry straight over." },
+  { q: "How long does setup take?",
+    a: "About two minutes. Enter your name, phone and a link name, add your first car with a few photos, and you're live on the marketplace." },
   { q: "Apa itu Salesman Lite?",
-    a: "Salesman Lite ialah akaun percuma untuk salesman dan ejen kereta di Malaysia. Anda dapat page sendiri di xdrive.my, senaraikan sehingga 10 kereta, dan terima enquiry pembeli terus di WhatsApp — tanpa sebarang kos." },
+    a: "Salesman Lite ialah akaun percuma untuk salesman dan ejen kereta di Malaysia. Anda dapat page sendiri di xdrive.my, senaraikan sehingga 10 kereta, dan terima enquiry pembeli terus di WhatsApp — tanpa sebarang kos atau kad kredit." },
 ];
 
 const SOFTWARE_LD = {
@@ -55,19 +58,39 @@ const FAQ_LD = {
   })),
 };
 
+const PAINS = [
+  "Your best cars sit buried under 200 others on Mudah.",
+  "You pay per listing — then the platform keeps the lead, not you.",
+  "Buyers ask \"got other cars?\" and you're forwarding photos one by one.",
+  "You've got no page to send anyone. Just screenshots in a chat.",
+];
+
 const FEATURES = [
-  { Icon: Globe, title: "Your own car page", body: "A shareable profile at xdrive.my/s/yourname with every car you sell — live in minutes, nothing to build." },
-  { Icon: Car, title: "List up to 10 cars", body: "Photos, price and specs, published straight onto Malaysia's XDrive marketplace." },
-  { Icon: MessageCircle, title: "Direct WhatsApp leads", body: "Buyers tap and message you directly from any listing. The enquiry is yours, not a shared inbox." },
-  { Icon: LineChart, title: "See what's working", body: "Basic analytics — views and WhatsApp taps, per listing — so you know which cars pull." },
-  { Icon: Link2, title: "One link for everything", body: "Drop your page link in your WhatsApp status, bio or ads. Everything a buyer needs, one tap away." },
-  { Icon: Wallet, title: "Free, forever", body: "RM0. No credit card, no contract. Upgrade only when you want more." },
+  { Icon: Globe, title: "A page that's actually yours", body: "A clean profile at xdrive.my/s/yourname with every car you're selling. Send it once — buyers see your whole stock, your name, your number." },
+  { Icon: Car, title: "List up to 10 cars, free", body: "Photos, price and specs, published straight onto Malaysia's XDrive marketplace. No per-listing fee, no bidding for placement." },
+  { Icon: MessageCircle, title: "Leads land in your WhatsApp", body: "Every car has a WhatsApp button that messages you directly. No shared inbox, no lead resold to three other agents." },
+  { Icon: LineChart, title: "See which cars pull", body: "Basic analytics show views and WhatsApp taps per listing — so you know what buyers actually want, and reprice what's gone cold." },
+  { Icon: Link2, title: "One link for everything", body: "Drop it in your WhatsApp status, Instagram bio, or under your Mudah ad. Every buyer, one tap from your entire stock." },
+  { Icon: Wallet, title: "Free, and it stays free", body: "RM0 forever on Lite. No credit card to start, no trial timer. Upgrade to Premium only when your business asks for it." },
+];
+
+const WHY = [
+  { Icon: Smartphone, title: "Built for your phone", body: "Add a car, snap photos, publish — all from the phone that's already in your hand at the lot." },
+  { Icon: Zap, title: "Live in minutes", body: "No website, no designer, no waiting. Sign up and your first car is on the marketplace the same day." },
+  { Icon: Eye, title: "You look established", body: "A proper page beats a folder of screenshots. Buyers trust an agent with a real presence." },
+  { Icon: Lock, title: "Yours to keep", body: "Your page, your link, your leads. Move up to Premium and everything comes with you." },
 ];
 
 const STEPS = [
-  { n: "01", title: "Sign up free", body: "Email, phone and a name for your link. Two minutes, no card." },
-  { n: "02", title: "Add your cars", body: "Upload photos and set your price. They go live on XDrive instantly." },
-  { n: "03", title: "Share & sell", body: "Send your link. Buyers browse your cars and WhatsApp you directly." },
+  { n: "01", title: "Sign up free", body: "Email, phone and a name for your link. Two minutes, no card, no catch." },
+  { n: "02", title: "Add your cars", body: "Upload photos and set your price. Each car goes live on XDrive the moment you publish." },
+  { n: "03", title: "Share & sell", body: "Send your one link. Buyers browse your stock and WhatsApp you straight away." },
+];
+
+const SHOWCASE_CARS = [
+  { name: "2019 Honda Civic 1.5 TC-P", price: "RM 98,800", tag: "Low mileage" },
+  { name: "2021 Perodua Ativa 1.0 AV", price: "RM 62,500", tag: "Under warranty" },
+  { name: "2018 Toyota Vellfire 2.5", price: "RM 218,000", tag: "1 owner" },
 ];
 
 function Faq({ q, a }) {
@@ -108,35 +131,53 @@ export default function SalesmanLiteLanding() {
         {/* ── Hero ── */}
         <section className="sll-hero">
           <div className="sll-wrap">
-            <span className="sll-eyebrow">Salesman Lite · <span className="sll-red">Free</span></span>
+            <span className="sll-eyebrow">Salesman Lite · <span className="sll-red">Free forever</span></span>
             <h1 className="sll-h1">
-              Sell more cars.<br />Look professional.<br /><span className="sll-red">Zero cost.</span>
+              One link.<br />All your cars.<br /><span className="sll-red">Zero ringgit.</span>
             </h1>
             <p className="sll-lead">
-              A free storefront on XDrive for every Malaysian car agent. List your cars,
-              share one link, and get buyers on WhatsApp — no website, no fees, no credit card.
+              Salesman Lite is a free page on XDrive built for Malaysian car agents.
+              List your stock, share one link, and let buyers WhatsApp you directly —
+              no website to build, nothing to pay, no lead sold out from under you.
             </p>
             <div className="sll-cta-row">
               <Link to="/salesman-onboarding/lite" className="sll-btn sll-btn-red">
-                Start free <ArrowRight size={17} />
+                Sign up free <ArrowRight size={17} />
               </Link>
               <a href="#how" className="sll-btn sll-btn-ghost">See how it works</a>
             </div>
             <p className="sll-microtrust">
-              <Check size={14} /> Free forever &nbsp;·&nbsp; <Check size={14} /> Up to 10 listings &nbsp;·&nbsp; <Check size={14} /> Live in 2 minutes
+              <Check size={14} /> Free forever &nbsp;·&nbsp; <Check size={14} /> No credit card &nbsp;·&nbsp; <Check size={14} /> Live in 2 minutes
             </p>
           </div>
         </section>
 
-        {/* ── Marketplace line ── */}
+        {/* ── Marketplace band ── */}
         <div className="sll-band-line">
           <div className="sll-wrap">
             Your cars, live on Malaysia's car marketplace — <strong>xdrive.my</strong>
           </div>
         </div>
 
-        {/* ── Features ── */}
+        {/* ── Pain ── */}
         <section className="sll-section">
+          <div className="sll-wrap">
+            <p className="sll-kicker">Sound familiar?</p>
+            <h2 className="sll-h2">Selling cars online shouldn't cost you the lead.</h2>
+            <div className="sll-pains">
+              {PAINS.map((p) => (
+                <div key={p} className="sll-pain">
+                  <span className="sll-pain-x"><XIcon size={15} /></span>
+                  <span>{p}</span>
+                </div>
+              ))}
+            </div>
+            <p className="sll-pain-fix">Salesman Lite fixes all four — for free.</p>
+          </div>
+        </section>
+
+        {/* ── Features ── */}
+        <section className="sll-section sll-section-alt">
           <div className="sll-wrap">
             <p className="sll-kicker">What you get</p>
             <h2 className="sll-h2">Everything to sell online. Nothing to pay.</h2>
@@ -146,6 +187,48 @@ export default function SalesmanLiteLanding() {
                   <div className="sll-card-ic"><f.Icon size={20} /></div>
                   <h3 className="sll-card-t">{f.title}</h3>
                   <p className="sll-card-b">{f.body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Page showcase ── */}
+        <section className="sll-section">
+          <div className="sll-wrap sll-showcase">
+            <div className="sll-showcase-copy">
+              <p className="sll-kicker">Your page does the selling</p>
+              <h2 className="sll-h2">Send one link. They see everything.</h2>
+              <p className="sll-showcase-lead">
+                No more forwarding photos car by car. Your XDrive page shows your whole
+                stock, your prices and a WhatsApp button on every listing — open on any
+                phone, ready to share the second a buyer asks.
+              </p>
+              <ul className="sll-showcase-list">
+                <li><Check size={16} className="sll-tick" /> Your name and number, front and centre</li>
+                <li><Check size={16} className="sll-tick" /> Every car with photos, price and specs</li>
+                <li><Check size={16} className="sll-tick" /> Tap-to-WhatsApp on each listing</li>
+              </ul>
+            </div>
+            <div className="sll-phone">
+              <div className="sll-phone-top">
+                <span className="sll-phone-url">xdrive.my/s/<strong>ahmad</strong></span>
+              </div>
+              <div className="sll-phone-hero">
+                <div className="sll-phone-avatar">A</div>
+                <div>
+                  <div className="sll-phone-name">Ahmad · Car Agent</div>
+                  <div className="sll-phone-sub">Klang Valley · 24 cars sold</div>
+                </div>
+              </div>
+              {SHOWCASE_CARS.map((c) => (
+                <div key={c.name} className="sll-phone-car">
+                  <div className="sll-phone-thumb" />
+                  <div className="sll-phone-carinfo">
+                    <div className="sll-phone-cn">{c.name}</div>
+                    <div className="sll-phone-cp">{c.price} <span>· {c.tag}</span></div>
+                  </div>
+                  <div className="sll-phone-wa"><MessageCircle size={14} /></div>
                 </div>
               ))}
             </div>
@@ -174,8 +257,40 @@ export default function SalesmanLiteLanding() {
           </div>
         </section>
 
-        {/* ── Lite vs Premium ── */}
+        {/* ── Why it works ── */}
         <section className="sll-section">
+          <div className="sll-wrap">
+            <p className="sll-kicker">Built for how you actually sell</p>
+            <h2 className="sll-h2">Made for agents, not office desks.</h2>
+            <div className="sll-why">
+              {WHY.map((w) => (
+                <div key={w.title} className="sll-why-item">
+                  <div className="sll-why-ic"><w.Icon size={18} /></div>
+                  <div>
+                    <h3 className="sll-why-t">{w.title}</h3>
+                    <p className="sll-why-b">{w.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Mid CTA band ── */}
+        <section className="sll-midcta">
+          <div className="sll-wrap sll-midcta-inner">
+            <div>
+              <h3 className="sll-midcta-h">Ready when you are.</h3>
+              <p className="sll-midcta-p">Your free page takes two minutes and costs nothing.</p>
+            </div>
+            <Link to="/salesman-onboarding/lite" className="sll-btn sll-btn-red">
+              Sign up free <ArrowRight size={17} />
+            </Link>
+          </div>
+        </section>
+
+        {/* ── Lite vs Premium ── */}
+        <section className="sll-section sll-section-alt">
           <div className="sll-wrap">
             <p className="sll-kicker">Start free, grow later</p>
             <h2 className="sll-h2">Lite is free. Premium when you're ready.</h2>
@@ -190,7 +305,7 @@ export default function SalesmanLiteLanding() {
                     <li key={x}><Check size={15} className="sll-tick" /> {x}</li>
                   ))}
                 </ul>
-                <Link to="/salesman-onboarding/lite" className="sll-btn sll-btn-red sll-btn-block">Start free</Link>
+                <Link to="/salesman-onboarding/lite" className="sll-btn sll-btn-red sll-btn-block">Sign up free</Link>
               </div>
               <div className="sll-plan sll-plan-alt">
                 <div className="sll-plan-head">
@@ -198,7 +313,7 @@ export default function SalesmanLiteLanding() {
                   <span className="sll-plan-price">RM50<span>/month</span></span>
                 </div>
                 <ul className="sll-plan-list">
-                  {["Unlimited listings", "Priority marketplace placement", "Full CRM + lead pipeline", "Commission tracking", "Advanced analytics", "Custom profile subdomain"].map((x) => (
+                  {["Everything in Lite", "Unlimited listings", "Priority marketplace placement", "Full CRM + lead pipeline", "Commission tracking", "Advanced analytics + custom subdomain"].map((x) => (
                     <li key={x}><Check size={15} className="sll-tick" /> {x}</li>
                   ))}
                 </ul>
@@ -223,9 +338,10 @@ export default function SalesmanLiteLanding() {
         <section className="sll-final">
           <div className="sll-wrap">
             <h2 className="sll-final-h">Your free car-sales page<br />is two minutes away.</h2>
+            <p className="sll-final-p">Join the Malaysian agents putting their whole stock behind one link.</p>
             <div className="sll-cta-row sll-cta-center">
-              <Link to="/salesman-onboarding/lite" className="sll-btn sll-btn-red">
-                Start free <ArrowRight size={17} />
+              <Link to="/salesman-onboarding/lite" className="sll-btn sll-btn-red sll-btn-lg">
+                Sign up free <ArrowRight size={18} />
               </Link>
             </div>
             <p className="sll-microtrust sll-center">
@@ -251,11 +367,12 @@ const CSS = `
   .sll-hero { padding: 84px 0 60px; border-bottom: 1px solid #eceaea; }
   .sll-eyebrow { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #6b7280; margin-bottom: 22px; }
   .sll-h1 { font-size: clamp(40px, 7vw, 76px); font-weight: 900; line-height: 0.98; letter-spacing: -0.03em; margin: 0 0 22px; }
-  .sll-lead { font-size: clamp(15px, 2vw, 18px); line-height: 1.65; color: #4b5563; max-width: 560px; margin: 0 0 30px; }
+  .sll-lead { font-size: clamp(15px, 2vw, 18px); line-height: 1.65; color: #4b5563; max-width: 580px; margin: 0 0 30px; }
   .sll-cta-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
   .sll-cta-center { justify-content: center; }
   .sll-btn { display: inline-flex; align-items: center; gap: 8px; font-family: inherit; font-size: 15px; font-weight: 700; padding: 14px 26px; border-radius: 10px; text-decoration: none; cursor: pointer; border: none; transition: transform .15s, box-shadow .15s, background .15s; }
   .sll-btn:hover { transform: translateY(-1px); }
+  .sll-btn-lg { font-size: 16px; padding: 16px 32px; }
   .sll-btn-red { background: #dc2626; color: #fff; box-shadow: 0 8px 24px rgba(220,38,38,0.28); }
   .sll-btn-red:hover { background: #c11f1f; box-shadow: 0 10px 30px rgba(220,38,38,0.38); }
   .sll-btn-dark { background: #0a0a0a; color: #fff; }
@@ -267,15 +384,22 @@ const CSS = `
   .sll-microtrust svg { color: #dc2626; }
   .sll-center { justify-content: center; }
 
-  .sll-band-line { background: #0a0a0a; color: #fff; padding: 15px 0; font-size: 14px; font-weight: 500; letter-spacing: 0.01em; text-align: center; }
+  .sll-band-line { background: #0a0a0a; color: #fff; padding: 15px 0; font-size: 14px; font-weight: 500; text-align: center; }
   .sll-band-line strong { color: #fff; font-weight: 800; }
 
   /* Sections */
   .sll-section { padding: 74px 0; }
+  .sll-section-alt { background: #fafafa; border-top: 1px solid #eceaea; border-bottom: 1px solid #eceaea; }
   .sll-kicker { font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #dc2626; margin: 0 0 12px; }
   .sll-kicker-light { color: #f87171; }
   .sll-h2 { font-size: clamp(28px, 4.5vw, 44px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; margin: 0 0 40px; }
   .sll-h2-light { color: #fff; }
+
+  /* Pain */
+  .sll-pains { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 26px; }
+  .sll-pain { display: flex; gap: 12px; align-items: flex-start; font-size: 16px; font-weight: 500; color: #1f2733; line-height: 1.5; padding: 18px 20px; border: 1px solid #eceaea; border-radius: 12px; }
+  .sll-pain-x { width: 26px; height: 26px; border-radius: 7px; background: #fef2f2; color: #dc2626; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .sll-pain-fix { font-size: clamp(18px, 2.4vw, 24px); font-weight: 800; letter-spacing: -0.01em; margin: 0; }
 
   /* Features grid */
   .sll-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
@@ -284,6 +408,29 @@ const CSS = `
   .sll-card-ic { width: 44px; height: 44px; border-radius: 12px; background: #0a0a0a; color: #fff; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
   .sll-card-t { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 8px; }
   .sll-card-b { font-size: 14px; line-height: 1.6; color: #4b5563; margin: 0; }
+
+  /* Showcase */
+  .sll-showcase { display: grid; grid-template-columns: 1fr 340px; gap: 48px; align-items: center; }
+  .sll-showcase-copy .sll-h2 { margin-bottom: 18px; }
+  .sll-showcase-lead { font-size: 16px; line-height: 1.65; color: #4b5563; margin: 0 0 20px; }
+  .sll-showcase-list { list-style: none; padding: 0; margin: 0; }
+  .sll-showcase-list li { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; color: #1f2733; padding: 7px 0; }
+  .sll-phone { border: 1px solid #e5e7eb; border-radius: 22px; padding: 14px; background: #fff; box-shadow: 0 24px 60px rgba(10,10,10,0.10); }
+  .sll-phone-top { text-align: center; padding: 4px 0 12px; }
+  .sll-phone-url { font-size: 12px; color: #9ca3af; background: #f3f4f6; padding: 5px 12px; border-radius: 20px; }
+  .sll-phone-url strong { color: #0a0a0a; }
+  .sll-phone-hero { display: flex; align-items: center; gap: 11px; padding: 6px 4px 14px; border-bottom: 1px solid #f0f0f0; margin-bottom: 10px; }
+  .sll-phone-avatar { width: 40px; height: 40px; border-radius: 50%; background: #dc2626; color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .sll-phone-name { font-size: 14px; font-weight: 700; color: #0a0a0a; }
+  .sll-phone-sub { font-size: 11px; color: #9ca3af; }
+  .sll-phone-car { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 12px; }
+  .sll-phone-car:hover { background: #fafafa; }
+  .sll-phone-thumb { width: 52px; height: 40px; border-radius: 8px; background: linear-gradient(135deg,#e5e7eb,#d1d5db); flex-shrink: 0; }
+  .sll-phone-carinfo { flex: 1; min-width: 0; }
+  .sll-phone-cn { font-size: 12px; font-weight: 700; color: #0a0a0a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sll-phone-cp { font-size: 12px; font-weight: 700; color: #dc2626; }
+  .sll-phone-cp span { color: #9ca3af; font-weight: 500; }
+  .sll-phone-wa { width: 30px; height: 30px; border-radius: 8px; background: #25D366; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
   /* Dark how-it-works */
   .sll-dark { background: #0a0a0a; color: #fff; padding: 74px 0; }
@@ -294,9 +441,22 @@ const CSS = `
   .sll-step-b { font-size: 14px; line-height: 1.6; color: rgba(255,255,255,0.6); margin: 0; }
   .sll-dark-cta { margin-top: 44px; }
 
+  /* Why */
+  .sll-why { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px 40px; }
+  .sll-why-item { display: flex; gap: 15px; align-items: flex-start; }
+  .sll-why-ic { width: 40px; height: 40px; border-radius: 10px; background: #fef2f2; color: #dc2626; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .sll-why-t { font-size: 17px; font-weight: 700; margin: 2px 0 6px; }
+  .sll-why-b { font-size: 14px; line-height: 1.6; color: #4b5563; margin: 0; }
+
+  /* Mid CTA */
+  .sll-midcta { background: #0a0a0a; color: #fff; padding: 40px 0; }
+  .sll-midcta-inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+  .sll-midcta-h { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 4px; color: #fff; }
+  .sll-midcta-p { font-size: 15px; color: rgba(255,255,255,0.6); margin: 0; }
+
   /* Plans */
   .sll-plans { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
-  .sll-plan { border: 1px solid #eceaea; border-radius: 18px; padding: 30px 28px; display: flex; flex-direction: column; }
+  .sll-plan { border: 1px solid #eceaea; border-radius: 18px; padding: 30px 28px; display: flex; flex-direction: column; background: #fff; }
   .sll-plan-alt { border: 1.5px solid #0a0a0a; }
   .sll-plan-head { margin-bottom: 22px; }
   .sll-plan-name { display: block; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }
@@ -311,15 +471,18 @@ const CSS = `
   .sll-faqs { border-top: 1px solid #e5e7eb; }
   .sll-faq { border-bottom: 1px solid #e5e7eb; }
   .sll-faq-q { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: none; border: none; cursor: pointer; font-family: inherit; text-align: left; font-size: 16px; font-weight: 700; color: #0a0a0a; padding: 20px 2px; }
-  .sll-faq-a { font-size: 14.5px; line-height: 1.7; color: #4b5563; margin: 0 2px 20px; max-width: 640px; }
+  .sll-faq-a { font-size: 14.5px; line-height: 1.7; color: #4b5563; margin: 0 2px 20px; max-width: 660px; }
 
   /* Final CTA */
   .sll-final { background: #0a0a0a; color: #fff; padding: 88px 0; text-align: center; }
-  .sll-final-h { font-size: clamp(30px, 5vw, 52px); font-weight: 900; letter-spacing: -0.03em; line-height: 1.02; margin: 0 0 30px; color: #fff; }
-  .sll-final .sll-microtrust { color: rgba(255,255,255,0.5); }
+  .sll-final-h { font-size: clamp(30px, 5vw, 52px); font-weight: 900; letter-spacing: -0.03em; line-height: 1.02; margin: 0 0 16px; color: #fff; }
+  .sll-final-p { font-size: 16px; color: rgba(255,255,255,0.6); margin: 0 0 30px; }
+  .sll-final .sll-microtrust { color: rgba(255,255,255,0.5); justify-content: center; }
 
   @media (max-width: 860px) {
-    .sll-grid, .sll-steps, .sll-plans { grid-template-columns: 1fr; }
+    .sll-grid, .sll-steps, .sll-plans, .sll-pains, .sll-why, .sll-showcase { grid-template-columns: 1fr; }
     .sll-hero { padding: 64px 0 48px; }
+    .sll-phone { max-width: 340px; margin: 0 auto; }
+    .sll-midcta-inner { flex-direction: column; align-items: flex-start; }
   }
 `;
