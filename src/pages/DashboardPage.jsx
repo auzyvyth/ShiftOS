@@ -301,6 +301,112 @@ function getListingAge(createdAt) {
   return Math.floor((Date.now() - new Date(createdAt)) / 86400000);
 }
 
+const PROC_SOURCES = ["Auction", "Direct Owner", "Trade-in", "Consignment", "Repossession", "Import", "Other"];
+const ENCUMBRANCE_OPTS = [
+  { value: "clear",    label: "Clear (no loan)" },
+  { value: "under_hp", label: "Under HP / loan" },
+  { value: "unknown",  label: "Unknown" },
+];
+
+// Cost & procurement tab in the Edit Listing modal — edits the car's private
+// stock_unit (purchase/recon/source/encumbrance/B5) that drives P&L, without
+// touching the public listing (that's the CarForm tab). Auto-creates the stock
+// row if one doesn't exist yet (e.g. legacy/imported listings).
+function CostProcurementForm({ listing, dealerId, onClose }) {
+  const [row, setRow] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    purchase_price: "", recon_cost: "", purchase_date: "", purchase_source: "Auction",
+    encumbrance_status: "unknown", puspakom_b5_date: "", notes: "",
+  });
+
+  useEffect(() => {
+    let cancel = false;
+    setLoading(true);
+    supabase.from("stock_units").select("*").eq("listing_id", listing.id).maybeSingle()
+      .then(({ data }) => {
+        if (cancel) return;
+        setRow(data || null);
+        if (data) setForm({
+          purchase_price: data.purchase_price ?? "",
+          recon_cost: data.recon_cost ?? "",
+          purchase_date: data.purchase_date || "",
+          purchase_source: data.purchase_source || "Auction",
+          encumbrance_status: data.encumbrance_status || "unknown",
+          puspakom_b5_date: data.puspakom_b5_date || "",
+          notes: data.notes || "",
+        });
+        setLoading(false);
+      });
+    return () => { cancel = true; };
+  }, [listing.id]);
+
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const save = async () => {
+    setSaving(true);
+    const payload = {
+      purchase_price: Number(form.purchase_price) || 0,
+      recon_cost: Number(form.recon_cost) || 0,
+      purchase_date: form.purchase_date || null,
+      purchase_source: form.purchase_source || null,
+      encumbrance_status: form.encumbrance_status,
+      puspakom_b5_date: form.puspakom_b5_date || null,
+      notes: form.notes || null,
+    };
+    let error;
+    if (row) {
+      ({ error } = await supabase.from("stock_units").update(payload).eq("id", row.id));
+    } else {
+      ({ error } = await supabase.from("stock_units").insert({
+        ...payload, listing_id: listing.id, dealer_id: dealerId,
+        brand: listing.brand, model: listing.model, year: listing.year,
+        status: listing.status === "sold" ? "sold" : "in_stock",
+      }));
+    }
+    setSaving(false);
+    if (error) { toast.error("Save failed: " + error.message); return; }
+    toast.success("Cost & procurement saved");
+    onClose?.();
+  };
+
+  if (loading) return <div style={{ padding: 24, textAlign: "center", color: "#6b7280", fontSize: 13 }}>Loading…</div>;
+
+  const costBasis = (Number(form.purchase_price) || 0) + (Number(form.recon_cost) || 0);
+  const ask = Number(listing.selling_price) || 0;
+  const lbl = { display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 };
+  const inp = { width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 14, color: "#111827", background: "#fff", outline: "none", boxSizing: "border-box" };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <p style={{ fontSize: 13, color: "#6b7280", margin: 0 }}>
+        These figures stay private and drive your P&amp;L — buyers never see them. Public specs, photos and price are on the Listing details tab.
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div><label style={lbl}>Purchase price (RM)</label><input type="number" value={form.purchase_price} onChange={set("purchase_price")} placeholder="0" style={inp} /></div>
+        <div><label style={lbl}>Recon cost (RM)</label><input type="number" value={form.recon_cost} onChange={set("recon_cost")} placeholder="0" style={inp} /></div>
+        <div><label style={lbl}>Purchase date</label><input type="date" value={form.purchase_date} onChange={set("purchase_date")} style={inp} /></div>
+        <div><label style={lbl}>Source</label><select value={form.purchase_source} onChange={set("purchase_source")} style={inp}>{PROC_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
+        <div><label style={lbl}>Encumbrance</label><select value={form.encumbrance_status} onChange={set("encumbrance_status")} style={inp}>{ENCUMBRANCE_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
+        <div><label style={lbl}>Puspakom B5 date</label><input type="date" value={form.puspakom_b5_date} onChange={set("puspakom_b5_date")} style={inp} /></div>
+      </div>
+      <div><label style={lbl}>Notes</label><textarea value={form.notes} onChange={set("notes")} placeholder="Condition notes, seller info…" style={{ ...inp, minHeight: 64, resize: "vertical" }} /></div>
+      {costBasis > 0 && (
+        <div style={{ display: "flex", gap: 18, flexWrap: "wrap", padding: "10px 14px", borderRadius: 10, background: "#f9fafb", border: "1px solid #e5e7eb", fontSize: 13 }}>
+          <span style={{ color: "#6b7280" }}>Cost basis <strong style={{ color: "#111827" }}>RM {costBasis.toLocaleString()}</strong></span>
+          {ask > 0 && <span style={{ color: "#6b7280" }}>Asking <strong style={{ color: "#111827" }}>RM {ask.toLocaleString()}</strong></span>}
+          {ask > 0 && <span style={{ color: ask - costBasis >= 0 ? "#16a34a" : "#dc2626", fontWeight: 700 }}>Spread RM {(ask - costBasis).toLocaleString()}</span>}
+        </div>
+      )}
+      {!row && <p style={{ fontSize: 12, color: "#b45309", margin: 0 }}>No stock record yet — saving will create one linked to this car.</p>}
+      <button onClick={save} disabled={saving} style={{ alignSelf: "flex-start", padding: "10px 20px", borderRadius: 8, background: "#dc2626", color: "#fff", border: "none", fontSize: 14, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1 }}>
+        {saving ? "Saving…" : "Save cost & procurement"}
+      </button>
+    </div>
+  );
+}
+
 const AgeBadge = React.memo(function AgeBadge({ createdAt }) {
   const d = getListingAge(createdAt);
   if (d < 15)
@@ -2781,6 +2887,20 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
       getListingAge(l.created_at) >= 30 && (l.status || 'available') === 'available',
   );
 
+  // A listing is "incomplete" when it's missing what a buyer needs to see —
+  // photos, a price, or mileage. Bulk/AI import leaves these blank, so these are
+  // the cars to finish before they can actually sell. Sold cars are excluded.
+  const listingGaps = (l) => {
+    const g = [];
+    if (!Array.isArray(l.images) || l.images.length === 0) g.push('photos');
+    if (!l.selling_price || Number(l.selling_price) <= 0) g.push('price');
+    if (!l.mileage || Number(l.mileage) <= 0) g.push('mileage');
+    return g;
+  };
+  const incomplete = listings.filter(
+    (l) => (l.status || 'available') !== 'sold' && listingGaps(l).length > 0,
+  );
+
   const exportAnalyticsCSV = () => {
     const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const toCSV = (rows) => rows.map(r => r.map(esc).join(',')).join('\n');
@@ -2948,6 +3068,68 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
         const adjustedStale = stale.filter(l => (adjustedStaleIds || new Set()).has(l.id));
         return (
           <>
+            {incomplete.length > 0 && (
+              <div
+                className="rounded-xl p-4"
+                style={{
+                  background: "rgba(239,68,68,0.04)",
+                  border: "1px solid rgba(239,68,68,0.14)",
+                }}
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertCircle className="w-4 h-4 text-red-400" />
+                  <p className="text-red-700 text-sm font-semibold">
+                    {incomplete.length} listing{incomplete.length > 1 ? "s" : ""} incomplete — missing photos, price or mileage
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {incomplete.slice(0, 8).map((l) => {
+                    const gaps = listingGaps(l);
+                    return (
+                      <div
+                        key={l.id}
+                        className="flex items-center justify-between py-2 gap-3"
+                        style={{ borderBottom: "1px solid rgba(239,68,68,0.08)" }}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          {l.images?.[0] ? (
+                            <img src={l.images[0]} alt="" className="w-8 h-8 rounded-lg object-cover bg-gray-100 flex-shrink-0" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-lg bg-gray-100 flex-shrink-0" />
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-gray-900 text-sm font-medium truncate">
+                              {l.brand} {l.model} {l.year || ""}
+                            </p>
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {gaps.map((g) => (
+                                <span key={g} className="text-red-700 text-[10px] font-semibold bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
+                                  No {g}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        {onEditListing && (
+                          <button
+                            onClick={() => onEditListing(l)}
+                            className="text-xs font-semibold px-3 py-1 rounded-lg transition-all flex-shrink-0"
+                            style={{ background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)", color: "#dc2626" }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(220,38,38,0.2)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(220,38,38,0.1)"; }}
+                          >
+                            Finish
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {incomplete.length > 8 && (
+                    <p className="text-xs text-gray-500 pt-1">+{incomplete.length - 8} more incomplete</p>
+                  )}
+                </div>
+              </div>
+            )}
             {visibleStale.length > 0 && (
               <div
                 className="rounded-xl p-4"
@@ -8919,6 +9101,9 @@ export default function DashboardPage() {
   const [dealerSubdomain, setDealerSubdomain] = useState(null); // parent dealer's subdomain (used for manager/admin roles)
   const [updatingStatus, setUpdatingStatus] = useState(null);
   const [editListing, setEditListing] = useState(null);
+  const [editTab, setEditTab] = useState('listing'); // 'listing' (CarForm) | 'cost' (procurement)
+  // Every time a different listing is opened, start on the Listing details tab.
+  useEffect(() => { if (editListing) setEditTab('listing'); }, [editListing?.id]);
   const [adjustedStaleIds, setAdjustedStaleIds] = useState(new Set());
   const handleStaleAdjusted = (id) => setAdjustedStaleIds(prev => new Set([...prev, id]));
   const [searchQuery, setSearchQuery] = useState("");
@@ -11215,12 +11400,44 @@ export default function DashboardPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
+            {/* Tabs: public listing details (CarForm) vs cost/procurement (stock unit) */}
+            <div className="flex gap-1 px-5 flex-shrink-0" style={{ borderBottom: '1px solid #e5e7eb' }}>
+              {[
+                { key: 'listing', label: 'Listing details' },
+                { key: 'cost',    label: 'Cost & procurement' },
+              ].map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setEditTab(t.key)}
+                  className="text-sm font-semibold px-3 py-2.5 transition-colors"
+                  style={{
+                    color: editTab === t.key ? '#dc2626' : '#6b7280',
+                    borderBottom: `2px solid ${editTab === t.key ? '#dc2626' : 'transparent'}`,
+                    marginBottom: -1,
+                    background: 'none', border: 'none', borderBottomWidth: 2,
+                    borderBottomStyle: 'solid',
+                    borderBottomColor: editTab === t.key ? '#dc2626' : 'transparent',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
             <div className="overflow-y-auto flex-1 p-5">
-              <CarForm
-                listing={editListing}
-                onUpdate={handleUpdate}
-                onCreate={() => {}}
-              />
+              {editTab === 'listing' ? (
+                <CarForm
+                  listing={editListing}
+                  onUpdate={handleUpdate}
+                  onCreate={() => {}}
+                />
+              ) : (
+                <CostProcurementForm
+                  listing={editListing}
+                  dealerId={getDealerIdFromProfile(profile)}
+                  onClose={() => setEditListing(null)}
+                />
+              )}
             </div>
           </div>
         </div>
