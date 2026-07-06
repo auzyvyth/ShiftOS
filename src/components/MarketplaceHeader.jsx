@@ -247,6 +247,7 @@ export default function MarketplaceHeader() {
             <MegaNav id="browse" label="Browse Cars" items={BROWSE} accent={{ eyebrow:'XDrive', title:'10,000+ cars, one place', sub:'New, used and recon from trusted dealers across Malaysia.', to:'/showroom', cta:'Browse all' }} />
             <a href="/marketplace?hot_deals=true" className={`mh-nav-link hot${isHotDeals ? ' active' : ''}`}><Flame size={15} /> Hot Deals</a>
             <Link to="/compare" className="mh-nav-link"><GitCompare size={15} /> Compare</Link>
+            <Link to="/for-salesmen" className="mh-nav-link">Salesman Lite</Link>
             <MegaNav id="dealers" label="For Dealers" items={DEALERS} accent={{ eyebrow:'ShiftOS DMS', title:'Run your dealership', sub:'Listings, leads CRM, F&I and revenue analytics in one system.', to:'/shiftos', cta:'Start free trial' }} />
             <MegaNav id="guides" label="Panduan & Artikel" items={GUIDES} />
           </nav>
@@ -347,6 +348,9 @@ export default function MarketplaceHeader() {
           </a>
           <Link to="/compare" className="mh-m-link" onClick={() => setMenuOpen(false)}>
             <span style={{ display:'flex', alignItems:'center', gap:10 }}><GitCompare size={17} /> Compare Cars</span>
+          </Link>
+          <Link to="/for-salesmen" className="mh-m-link" onClick={() => setMenuOpen(false)}>
+            <span style={{ display:'flex', alignItems:'center', gap:10 }}><Store size={17} /> Salesman Lite</span>
           </Link>
           <button className="mh-m-link" onClick={() => { setMenuOpen(false); setSavedOpen(true); }}>
             <span style={{ display:'flex', alignItems:'center', gap:10, color: savedIds.size > 0 ? '#dc2626' : '#1f2733' }}>
