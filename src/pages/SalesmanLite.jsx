@@ -2045,7 +2045,100 @@ export default function SalesmanLite() {
           )}
         </div>
 
-        {/* ── My Performance ── */}
+        {/* Actionable items first — follow-ups and today's agenda are what the
+            salesman should act on right now; portfolio value/stats below are
+            context, not action items, so they no longer sit above these. */}
+
+        {/* ── Follow-up Needed ── */}
+        {staleLeads.length > 0 && (
+          <div style={CARD}>
+            <div style={CARD_HEADER}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444" }} />
+                <span>Follow-up Needed</span>
+                <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 18, height: 18, borderRadius: 99, background: "rgba(239,68,68,0.15)", color: "#ef4444", fontSize: 10, fontWeight: 800, padding: "0 5px" }}>{staleLeads.length}</span>
+              </div>
+              {staleLeads.some(l => l.phone) && (
+                <button onClick={() => { setBatchWALeads(staleLeads.filter(l => l.phone)); setBatchWAIdx(0); }}
+                  style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", cursor: "pointer", fontWeight: 700, fontFamily: "inherit", textTransform: "none", letterSpacing: 0 }}>
+                  WA All
+                </button>
+              )}
+            </div>
+            <div>
+              {staleLeads.map((lead, i) => {
+                const car = lead.car_listings;
+                const daysSince = Math.floor((Date.now() - new Date(lead.updated_at)) / 86400000);
+                return (
+                  <div key={lead.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 18px", borderBottom: i < staleLeads.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", background: i % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent" }}>
+                    <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#94a3b8", flexShrink: 0 }}>
+                      {(lead.buyer_name || "?")[0].toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.buyer_name || "—"}</p>
+                      <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{car ? `${car.brand} ${car.model}` : "No car"}</p>
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: 99, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", flexShrink: 0 }}>{daysSince}d ago</span>
+                    {lead.phone && (
+                      <button onClick={() => pingWA(lead)} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", cursor: "pointer", fontWeight: 600, flexShrink: 0, fontFamily: "inherit" }}>WA</button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {!notifBannerDismissed && browserNotifPerm === 'default' && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px", borderTop: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}>
+                <p style={{ margin: 0, fontSize: 11, color: "#475569", flex: 1 }}>Get notified when leads go cold</p>
+                <button onClick={requestBrowserNotif} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)", color: "#818cf8", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>Enable</button>
+                <button onClick={dismissNotifBanner} style={{ fontSize: 14, padding: "0 4px", background: "none", border: "none", color: "#374151", cursor: "pointer", lineHeight: 1, flexShrink: 0 }}>×</button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Today's Agenda ── */}
+        {hasAgenda && (
+          <div style={CARD}>
+            <div style={CARD_HEADER}>
+              <span>Today's Agenda</span>
+              <span>{new Date().toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })}</span>
+            </div>
+            <div style={{ padding: "6px 0" }}>
+              {agendaAppts.map((a) => (
+                <div key={a.id} onClick={() => { switchTab("enquiries"); setInboxSubTab("bookings"); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#3b82f6", flexShrink: 0, boxShadow: "0 0 0 3px rgba(59,130,246,0.15)" }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{a.buyer_name || "—"}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>Test drive</p>
+                  </div>
+                  <span style={{ fontSize: 11, color: "#3b82f6", fontWeight: 600, flexShrink: 0 }}>{a.appointment_date ? new Date(a.appointment_date).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "—"}</span>
+                </div>
+              ))}
+              {agendaFollowUps.map((l) => (
+                <div key={l.id} onClick={() => setActiveTab("leads")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#eab308", flexShrink: 0, boxShadow: "0 0 0 3px rgba(234,179,8,0.15)" }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{l.buyer_name || "—"}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>Scheduled follow-up · {l.car_listings ? `${l.car_listings.brand} ${l.car_listings.model}` : "no car"}</p>
+                  </div>
+                  <span style={{ fontSize: 11, color: "#eab308", fontWeight: 600, flexShrink: 0 }}>Today</span>
+                </div>
+              ))}
+              {agendaStale.slice(0, 3).map((l) => (
+                <div key={l.id} onClick={() => pingWA(l)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ef4444", flexShrink: 0, boxShadow: "0 0 0 3px rgba(239,68,68,0.15)" }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{l.buyer_name || "—"}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>No contact · {timeAgo(l.updated_at)}</p>
+                  </div>
+                  <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 600, flexShrink: 0 }}>WA</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── My Performance (context, not action) ── */}
         <div style={CARD}>
           <div style={CARD_HEADER}>
             <span>My Performance</span>
@@ -2077,8 +2170,11 @@ export default function SalesmanLite() {
                   <div key={car.id} style={{ display: "grid", gridTemplateColumns: "1fr 50px 50px 70px", padding: "11px 18px", alignItems: "center", borderBottom: idx < arr.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", background: idx % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                       <p style={{ margin: 0, fontSize: 12, color: "#d1d5db", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{perfCarName(car)}</p>
-                      {isHot && <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)", flexShrink: 0 }}>HOT</span>}
-                      {isWarm && <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "rgba(234,179,8,0.1)", color: "#eab308", border: "1px solid rgba(234,179,8,0.2)", flexShrink: 0 }}>WARM</span>}
+                      {/* "TOP VIEWS"/"RISING" (ad performance), not "HOT"/"WARM" — those words
+                          already mean buyer urgency on lead cards (red/amber there); reusing
+                          them here in green/yellow for a different metric reads as contradictory. */}
+                      {isHot && <span title="High views and click-through — one of your best-performing ads" style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)", flexShrink: 0 }}>TOP VIEWS</span>}
+                      {isWarm && <span title="Views and click-through picking up" style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "rgba(234,179,8,0.1)", color: "#eab308", border: "1px solid rgba(234,179,8,0.2)", flexShrink: 0 }}>RISING</span>}
                     </div>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", textAlign: "center" }}>{views}</p>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", textAlign: "center" }}>{waTaps}</p>
@@ -2275,95 +2371,6 @@ export default function SalesmanLite() {
         </div>
 
         {/* Earnings Target card removed — merged into the single Monthly Goal (commission) above */}
-
-        {/* ── Follow-up Needed ── */}
-        {staleLeads.length > 0 && (
-          <div style={CARD}>
-            <div style={CARD_HEADER}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444" }} />
-                <span>Follow-up Needed</span>
-                <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 18, height: 18, borderRadius: 99, background: "rgba(239,68,68,0.15)", color: "#ef4444", fontSize: 10, fontWeight: 800, padding: "0 5px" }}>{staleLeads.length}</span>
-              </div>
-              {staleLeads.some(l => l.phone) && (
-                <button onClick={() => { setBatchWALeads(staleLeads.filter(l => l.phone)); setBatchWAIdx(0); }}
-                  style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", cursor: "pointer", fontWeight: 700, fontFamily: "inherit", textTransform: "none", letterSpacing: 0 }}>
-                  WA All
-                </button>
-              )}
-            </div>
-            <div>
-              {staleLeads.map((lead, i) => {
-                const car = lead.car_listings;
-                const daysSince = Math.floor((Date.now() - new Date(lead.updated_at)) / 86400000);
-                return (
-                  <div key={lead.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 18px", borderBottom: i < staleLeads.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", background: i % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent" }}>
-                    <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#94a3b8", flexShrink: 0 }}>
-                      {(lead.buyer_name || "?")[0].toUpperCase()}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.buyer_name || "—"}</p>
-                      <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{car ? `${car.brand} ${car.model}` : "No car"}</p>
-                    </div>
-                    <span style={{ fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: 99, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", flexShrink: 0 }}>{daysSince}d ago</span>
-                    {lead.phone && (
-                      <button onClick={() => pingWA(lead)} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", cursor: "pointer", fontWeight: 600, flexShrink: 0, fontFamily: "inherit" }}>WA</button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            {!notifBannerDismissed && browserNotifPerm === 'default' && (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px", borderTop: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}>
-                <p style={{ margin: 0, fontSize: 11, color: "#475569", flex: 1 }}>Get notified when leads go cold</p>
-                <button onClick={requestBrowserNotif} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)", color: "#818cf8", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>Enable</button>
-                <button onClick={dismissNotifBanner} style={{ fontSize: 14, padding: "0 4px", background: "none", border: "none", color: "#374151", cursor: "pointer", lineHeight: 1, flexShrink: 0 }}>×</button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Today's Agenda ── */}
-        {hasAgenda && (
-          <div style={CARD}>
-            <div style={CARD_HEADER}>
-              <span>Today's Agenda</span>
-              <span>{new Date().toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })}</span>
-            </div>
-            <div style={{ padding: "6px 0" }}>
-              {agendaAppts.map((a) => (
-                <div key={a.id} onClick={() => { switchTab("enquiries"); setInboxSubTab("bookings"); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
-                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#3b82f6", flexShrink: 0, boxShadow: "0 0 0 3px rgba(59,130,246,0.15)" }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{a.buyer_name || "—"}</p>
-                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>Test drive</p>
-                  </div>
-                  <span style={{ fontSize: 11, color: "#3b82f6", fontWeight: 600, flexShrink: 0 }}>{a.appointment_date ? new Date(a.appointment_date).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "—"}</span>
-                </div>
-              ))}
-              {agendaFollowUps.map((l) => (
-                <div key={l.id} onClick={() => setActiveTab("leads")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
-                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#eab308", flexShrink: 0, boxShadow: "0 0 0 3px rgba(234,179,8,0.15)" }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{l.buyer_name || "—"}</p>
-                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>Scheduled follow-up · {l.car_listings ? `${l.car_listings.brand} ${l.car_listings.model}` : "no car"}</p>
-                  </div>
-                  <span style={{ fontSize: 11, color: "#eab308", fontWeight: 600, flexShrink: 0 }}>Today</span>
-                </div>
-              ))}
-              {agendaStale.slice(0, 3).map((l) => (
-                <div key={l.id} onClick={() => pingWA(l)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
-                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ef4444", flexShrink: 0, boxShadow: "0 0 0 3px rgba(239,68,68,0.15)" }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{l.buyer_name || "—"}</p>
-                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>No contact · {timeAgo(l.updated_at)}</p>
-                  </div>
-                  <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 600, flexShrink: 0 }}>WA</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* ── This Month Analytics ── */}
         {commissionData.count > 0 && (
@@ -2840,6 +2847,17 @@ export default function SalesmanLite() {
       return new Date(b.car.created_at) - new Date(a.car.created_at); // newest (default)
     });
 
+    // Two cars can share the exact same year/brand/model/variant (e.g. two
+    // identical trims bought in one batch) and be visually indistinguishable
+    // in the grid. Only surface a disambiguator (colour / plate) on cards
+    // whose title actually collides with a sibling — no point cluttering
+    // every card with extra text when names are already unique.
+    const nameCounts = {};
+    sorted.forEach(({ car }) => {
+      const n = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
+      nameCounts[n] = (nameCounts[n] || 0) + 1;
+    });
+
     const SEL_STYLE = (active) => ({
       fontSize: 11,
       padding: "5px 11px",
@@ -3130,6 +3148,9 @@ export default function SalesmanLite() {
               const price = car.selling_price
                 ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
                 : "—";
+              const disambiguator = nameCounts[name] > 1
+                ? [car.colour, car.plate_number ? `Plate …${car.plate_number.slice(-4)}` : null].filter(Boolean).join(" · ")
+                : null;
               const cvrLabel   = cvr !== null ? cvr.toFixed(1) : "0";
               const isHovering = cvrHover === car.id;
               const openDetail = () => { setSelectedCar(car); setCarDetailImgIdx(0); setCarDetailTab("specs"); };
@@ -3255,6 +3276,11 @@ export default function SalesmanLite() {
                         }}
                       >
                         {name}
+                        {disambiguator && (
+                          <span style={{ display: "block", fontSize: 10, fontWeight: 400, color: "#6b7280", marginTop: 2 }}>
+                            {disambiguator}
+                          </span>
+                        )}
                       </p>
                       <div style={{ position: "relative", flexShrink: 0 }}>
                         <button
@@ -3484,6 +3510,8 @@ export default function SalesmanLite() {
                       <div style={{ position: "relative", flexShrink: 0 }}>
                         <button
                           onClick={(e) => { e.stopPropagation(); setActionMenuCarId(actionMenuCarId === car.id ? null : car.id); setConfirmDeleteId(null); }}
+                          title="More actions"
+                          aria-label="More actions"
                           style={{ width: 30, height: 30, borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, letterSpacing: 1 }}
                         >
                           ···
@@ -4532,7 +4560,7 @@ export default function SalesmanLite() {
                   <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {lead.buyer_name || "—"}
                   </p>
-                  <span style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", flexShrink: 0, fontWeight: 600 }}>
+                  <span title="Buyer urgency — based on pipeline stage and how recently this lead moved" style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", flexShrink: 0, fontWeight: 600 }}>
                     {heat.label}
                   </span>
                 </div>
@@ -4624,6 +4652,8 @@ export default function SalesmanLite() {
             ) : null}
             <button
               onClick={() => setDrawerLeadId(lead.id)}
+              title="Open lead details"
+              aria-label="Open lead details"
               style={{ flexShrink: 0, fontSize: 13, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", letterSpacing: "0.05em", lineHeight: 1 }}
             >
               ···
@@ -4775,14 +4805,21 @@ export default function SalesmanLite() {
           </>
         ) : (
           /* Desktop: horizontal kanban scroll */
-          <div
-            style={{
-              display: "flex",
-              gap: 12,
-              overflowX: "auto",
-              paddingBottom: 8,
-            }}
-          >
+          <>
+            {activeStages.length > 3 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 6, fontSize: 10, color: "#4b5563" }}>
+                <span>{activeStages.length} stages — scroll right for more</span>
+                <ChevronRight size={12} />
+              </div>
+            )}
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                overflowX: "auto",
+                paddingBottom: 8,
+              }}
+            >
             {activeStages.map((stage) => {
               const sc = STAGE_COLOR[stage] || {};
               const stageLeads = searchedLeads
@@ -4812,7 +4849,8 @@ export default function SalesmanLite() {
                 </div>
               );
             })}
-          </div>
+            </div>
+          </>
         )}
 
         {lostLeads.length > 0 && (
@@ -6645,16 +6683,16 @@ export default function SalesmanLite() {
   // ── TOUR ─────────────────────────────────────────────────────────────────
 
   const TOUR_STEPS = [
-    { icon: Zap,          title: "Selamat Datang ke ShiftOS Lite", body: "Lawatan ringkas 30 saat. Setiap langkah akan membawa anda terus ke bahagian panel — boleh tengok sendiri dalam masa nyata." },
-    { icon: LayoutGrid,   title: "Papan Pemuka",    body: "Pusat kawalan anda — KPI, amaran susulan tertunggak, prestasi iklan, dan aktiviti terkini semuanya dalam satu paparan." },
-    { icon: Car,          title: "Iklan Saya",      body: "Tambah kereta anda di sini. Setiap kad menunjukkan tontonan, ketukan WA, dan bar penukaran. Kereta yang mendapat banyak klik akan terpapar jelas." },
-    { icon: Users,        title: "Bakal Pelanggan", body: "Jejak setiap pembeli: Baru → Dihubungi → Test Drive → Menang. Skor panas menunjukkan siapa yang perlu perhatian. Hantar mesej terus ke WhatsApp." },
-    { icon: MessageSquare, title: "Pertanyaan",    body: "Pembeli yang menghantar mesej melalui kad iklan anda akan masuk di sini. Balas dengan templat atau tukar kepada lead dalam satu ketikan." },
-    { icon: Calendar,     title: "Tempahan",        body: "Janji temu tontonan kereta dipaparkan di sini. Sahkan, batalkan, atau hantar peringatan WA tanpa keluar dari aplikasi." },
-    { icon: BarChart2,    title: "Prestasi",        body: "Statistik jualan anda — komisen diperoleh, unit terjual, dan prestasi setiap iklan dari semasa ke semasa. Tahu apa yang berkesan." },
-    { icon: GitMerge,     title: "Sertai Pengedar", body: "Ada kod jemputan dari pengedar anda? Masukkan di sini untuk buka panel penuh — stok dikongsi, lead bersama, penjejak komisen dan lebih banyak lagi." },
-    { icon: Settings,     title: "Tetapan",         body: "Kemas kini nombor WhatsApp, foto profil, lokasi dan pautan media sosial. Nombor WhatsApp penting — di situlah pembeli menghubungi anda." },
-    { icon: BookOpen,     title: "Bantuan",         body: "Panduan langkah demi langkah, tip jualan dan soalan lazim. Rujuk di sini bila-bila masa anda tersekat." },
+    { icon: Zap,          title: t("salesmanLite.tour.steps.welcome.title"),     body: t("salesmanLite.tour.steps.welcome.body") },
+    { icon: LayoutGrid,   title: t("salesmanLite.tour.steps.dashboard.title"),   body: t("salesmanLite.tour.steps.dashboard.body") },
+    { icon: Car,          title: t("salesmanLite.tour.steps.listings.title"),    body: t("salesmanLite.tour.steps.listings.body") },
+    { icon: Users,        title: t("salesmanLite.tour.steps.leads.title"),       body: t("salesmanLite.tour.steps.leads.body") },
+    { icon: MessageSquare, title: t("salesmanLite.tour.steps.inbox.title"),      body: t("salesmanLite.tour.steps.inbox.body") },
+    { icon: Calendar,     title: t("salesmanLite.tour.steps.bookings.title"),    body: t("salesmanLite.tour.steps.bookings.body") },
+    { icon: BarChart2,    title: t("salesmanLite.tour.steps.performance.title"), body: t("salesmanLite.tour.steps.performance.body") },
+    { icon: GitMerge,     title: t("salesmanLite.tour.steps.merge.title"),       body: t("salesmanLite.tour.steps.merge.body") },
+    { icon: Settings,     title: t("salesmanLite.tour.steps.settings.title"),    body: t("salesmanLite.tour.steps.settings.body") },
+    { icon: BookOpen,     title: t("salesmanLite.tour.steps.help.title"),        body: t("salesmanLite.tour.steps.help.body") },
   ];
 
   const dismissTour = async () => {
@@ -6785,7 +6823,7 @@ export default function SalesmanLite() {
               </div>
               <div>
                 <p style={{ margin: 0, fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.07em" }}>
-                  {tourStep + 1} / {TOUR_STEPS.length}
+                  {t("salesmanLite.tour.progress", { current: tourStep + 1, total: TOUR_STEPS.length })}
                 </p>
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{step.title}</p>
               </div>
@@ -6808,18 +6846,18 @@ export default function SalesmanLite() {
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             {tourStep > 0 && (
               <button onClick={() => setTourStep((s) => s - 1)} style={{ padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer" }}>
-                Kembali
+                {t("salesmanLite.tour.back")}
               </button>
             )}
             <div style={{ flex: 1 }} />
             <button onClick={dismissTour} style={{ background: "none", border: "none", color: "#4b5563", fontSize: 11, cursor: "pointer", padding: "7px 6px" }}>
-              Langkau
+              {t("salesmanLite.tour.skip")}
             </button>
             <button
               onClick={() => isLast ? dismissTour() : setTourStep((s) => s + 1)}
               style={{ padding: "7px 16px", borderRadius: 7, background: "#dc2626", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
             >
-              {isLast ? "Faham" : "Seterusnya"}
+              {isLast ? t("salesmanLite.tour.done") : t("salesmanLite.tour.next")}
             </button>
           </div>
         </div>
@@ -7151,6 +7189,8 @@ export default function SalesmanLite() {
             </div>
             <button
               onClick={handleLogout}
+              title="Log out"
+              aria-label="Log out"
               style={{
                 background: "transparent",
                 border: "none",
@@ -7225,6 +7265,8 @@ export default function SalesmanLite() {
               <div style={{ flex: 1 }} />
               <button
                 onClick={() => setNotifOpen((v) => !v)}
+                title="Notifications"
+                aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : "Notifications"}
                 style={{
                   position: "relative",
                   background: "rgba(255,255,255,0.04)",
@@ -7257,6 +7299,7 @@ export default function SalesmanLite() {
               <button
                 onClick={() => setTourStep(0)}
                 title="Show tour"
+                aria-label="Show tour"
                 style={{
                   background: "rgba(255,255,255,0.04)",
                   border: "1px solid rgba(255,255,255,0.08)",
@@ -7273,6 +7316,8 @@ export default function SalesmanLite() {
               </button>
               <button
                 onClick={handleLogout}
+                title="Log out"
+                aria-label="Log out"
                 style={{
                   background: "rgba(255,255,255,0.04)",
                   border: "1px solid rgba(255,255,255,0.08)",
@@ -7327,6 +7372,8 @@ export default function SalesmanLite() {
               </div>
               <button
                 onClick={() => setNotifOpen((v) => !v)}
+                title="Notifications"
+                aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : "Notifications"}
                 style={{
                   position: "relative",
                   background: "rgba(255,255,255,0.04)",
