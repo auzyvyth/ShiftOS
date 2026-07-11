@@ -1315,7 +1315,11 @@ export default function SalesmanLite() {
         console.error("handleMarkWon car listing:", carErr);
         toast.error("Lead won, but failed to mark listing as sold");
       } else {
-        setMyListings(p => p.filter(c => c.id !== lead.car_listing_id));
+        // Mark sold in place (not remove) — the Monthly Goal panel counts
+        // myListings rows with status:'sold' + sold_at this calendar month;
+        // filtering the row out here made every win invisible to that count
+        // until the next full reload refetched it from the DB.
+        setMyListings(p => p.map(c => c.id === lead.car_listing_id ? { ...c, status: "sold", sold_at: now } : c));
         await refreshCommissionData();
       }
     }
@@ -1902,7 +1906,13 @@ export default function SalesmanLite() {
     const activeLeads = leads.filter(
       (l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won" && l.stage !== "won",
     );
-    const wonLeads = leads.filter((l) => l.stage === "won" || l.stage === "closed_won");
+    // "Ditutup"/Closed KPI is documented (SalesmanLiteHelp) as leads marked won
+    // OR lost THIS CALENDAR MONTH — it must not silently become an all-time count.
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const closedThisMonth = leads.filter((l) =>
+      ["won", "closed_won", "lost", "closed_lost"].includes(l.stage) &&
+      l.updated_at && new Date(l.updated_at) >= monthStart,
+    );
     const todayAppts = appointments.filter((a) => {
       if (!a.appointment_date) return false;
       const d = new Date(a.appointment_date);
@@ -2096,7 +2106,7 @@ export default function SalesmanLite() {
               { label: t("salesmanLite.kpi.liveListings"), value: myListings.filter(c => c.status === "available").length, accent: "#22c55e" },
               { label: t("salesmanLite.kpi.followUps"), value: staleLeads.length, accent: staleLeads.length > 0 ? "#ef4444" : "#475569" },
               { label: t("salesmanLite.kpi.todayAppts"), value: todayAppts, accent: "#3b82f6" },
-              { label: t("salesmanLite.kpi.closed"), value: wonLeads.length, accent: "#22c55e" },
+              { label: t("salesmanLite.kpi.closed"), value: closedThisMonth.length, accent: "#22c55e" },
             ].map(({ label, value, accent, first }, i, arr) => (
               <div key={label} style={{
                 padding: "18px 20px", position: "relative",
@@ -4448,19 +4458,25 @@ export default function SalesmanLite() {
         })
       : leads;
 
-    // lead source breakdown
-    const srcMap = { enquiry: 0, manual: 0, booking: 0, xdrive: 0 };
+    // Lead source breakdown — bucket by whatever lead_source values actually
+    // appear (not a fixed whitelist), so sources outside an old hardcoded list
+    // (e.g. real 'whatsapp'/'walk_in'/'referral'/'drevo_enquiry' rows) aren't
+    // silently dropped from the total. Mirrors the dynamic bucketing already
+    // used for the Prestasi lead-source card below.
+    const SRC_LABELS = { whatsapp: "WhatsApp", enquiry: "XDrive Enquiry", drevo_enquiry: "XDrive Enquiry", walk_in: "Walk-In", referral: "Referral", manual: "Manual" };
+    const SRC_COLORS = { whatsapp: "#4ade80", enquiry: "#f87171", drevo_enquiry: "#f87171", walk_in: "#a78bfa", referral: "#fbbf24", manual: "#6b7280" };
+    const FALLBACK_COLORS = ["#60a5fa", "#f472b6", "#fb923c", "#34d399"];
+    const srcMap = {};
     leads.forEach(l => {
       const s = l.lead_source || "manual";
       srcMap[s] = (srcMap[s] || 0) + 1;
     });
     const srcTotal = leads.length;
-    const srcCfg = [
-      { key: "enquiry",  label: "WhatsApp",  color: "#4ade80" },
-      { key: "booking",  label: "Booking",   color: "#60a5fa" },
-      { key: "xdrive",   label: "XDrive",    color: "#f87171" },
-      { key: "manual",   label: "Manual",    color: "#6b7280" },
-    ].filter(s => srcMap[s.key] > 0);
+    const srcCfg = Object.keys(srcMap).map((key, i) => ({
+      key,
+      label: SRC_LABELS[key] || key,
+      color: SRC_COLORS[key] || FALLBACK_COLORS[i % FALLBACK_COLORS.length],
+    }));
 
     // pre-compute heat scores once — avoids O(n log n) recomputation inside sort comparators
     const heatMap = new Map(searchedLeads.map((l) => [l.id, getHeatScore(l)]));
@@ -5339,6 +5355,13 @@ export default function SalesmanLite() {
       rescheduled: { bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.3)", tx: "#c084fc" },
       cancelled:   { bg: "rgba(239,68,68,0.12)",   border: "rgba(239,68,68,0.3)",   tx: "#f87171" },
       completed:   { bg: "rgba(107,114,128,0.12)", border: "rgba(107,114,128,0.3)", tx: "#9ca3af" },
+      no_show:     { bg: "rgba(251,146,60,0.12)",  border: "rgba(251,146,60,0.3)",  tx: "#fb923c" },
+    };
+
+    const setAptStatus = async (apt, status) => {
+      const { error } = await supabase.from("appointments").update({ status }).eq("id", apt.id);
+      if (error) { toast.error("Failed to update booking"); return; }
+      setAppointments((p) => p.map((a) => a.id === apt.id ? { ...a, status } : a));
     };
 
     const buildReminderMessage = (apt) => {
@@ -5364,7 +5387,7 @@ export default function SalesmanLite() {
 
     const todayApts = appointments.filter((a) => aptIsToday(a.appointment_date) && a.status !== "cancelled").sort(asc);
     const upcomingApts = appointments.filter((a) => {
-      if (!a.appointment_date) return false;
+      if (!a.appointment_date || a.status === "cancelled") return false;
       const d = new Date(a.appointment_date);
       return !isNaN(d) && !aptIsToday(a.appointment_date) && d > new Date();
     }).sort(newestBooked);
@@ -5679,6 +5702,10 @@ export default function SalesmanLite() {
                   const { dateStr, timeStr } = fmtAptDate(apt.appointment_date);
                   const sc = statusColors[apt.status] || statusColors.pending;
                   const carPhone = [car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null, apt.buyer_phone ? `📞 ${apt.buyer_phone}` : null].filter(Boolean).join("  ·  ");
+                  // A past booking left in an open status (pending/confirmed/rescheduled)
+                  // has no automatic terminal state — it would otherwise say "Confirmed"
+                  // forever. Offer the two real outcomes explicitly.
+                  const needsOutcome = !["cancelled", "completed", "no_show"].includes(apt.status);
                   return (
                     <div key={apt.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 10, padding: "10px 14px", opacity: 0.65 }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 2 }}>
@@ -5686,7 +5713,7 @@ export default function SalesmanLite() {
                           {apt.buyer_name || "—"}
                         </p>
                         <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
-                          {apt.status}
+                          {apt.status === "no_show" ? "No-show" : apt.status}
                         </span>
                       </div>
                       <p style={{ margin: "0 0 2px", fontSize: 12, color: "#6b7280" }}>
@@ -5694,6 +5721,22 @@ export default function SalesmanLite() {
                       </p>
                       {carPhone && (
                         <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>{carPhone}</p>
+                      )}
+                      {needsOutcome && (
+                        <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                          <button
+                            onClick={() => setAptStatus(apt, "completed")}
+                            style={{ fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 6, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.25)", color: "#4ade80", cursor: "pointer", fontFamily: "inherit" }}
+                          >
+                            Mark Completed
+                          </button>
+                          <button
+                            onClick={() => setAptStatus(apt, "no_show")}
+                            style={{ fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 6, background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.25)", color: "#fb923c", cursor: "pointer", fontFamily: "inherit" }}
+                          >
+                            No-show
+                          </button>
+                        </div>
                       )}
                     </div>
                   );
