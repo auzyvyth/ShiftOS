@@ -8,6 +8,7 @@ import { supabase } from "../supabaseClient";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { normalizePhone } from "../lib/phone";
 import CarForm from "../components/CarForm";
+import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import SalesmanLiteHelp from "../components/SalesmanLiteHelp";
 import ReportBugButton from "../components/ReportBugButton";
@@ -279,6 +280,7 @@ export default function SalesmanLite() {
   const [myListings, setMyListings] = useState([]);
   const [listingCopied, setListingCopied] = useState({});
   const [showAddForm, setShowAddForm] = useState(false);
+  const [commissionConfig, setCommissionConfig] = useState(null); // dealer's commission rule, same source CarForm uses
 
   // leads
   const [leads, setLeads] = useState([]);
@@ -990,6 +992,52 @@ export default function SalesmanLite() {
       if (channelRef.current) supabase.removeChannel(channelRef.current);
     };
   }, []);
+
+  // Dealer's commission rule — same source CarForm's "Suggested commission" reads,
+  // via the canonical dealer-id resolver (must mirror getDealerIdFromProfile /
+  // get_my_dealer_id() exactly — see CLAUDE.md; a hand-rolled dealerId here has
+  // bitten this app twice before).
+  useEffect(() => {
+    const dealerId = getDealerIdFromProfile(profile);
+    if (!dealerId) return;
+    supabase.from("profiles").select("commission_config").eq("id", dealerId).maybeSingle()
+      .then(({ data }) => setCommissionConfig(data?.commission_config || null));
+  }, [profile?.id, profile?.dealer_id, profile?.role]);
+
+  // Mirrors CarForm's "Suggested commission" formula exactly (flat / % of sale /
+  // % of margin over base price), defaulting to 10% of margin like CarForm does
+  // when no explicit commission_config row exists.
+  const suggestedCommission = (car) => {
+    const base = Number(car.base_price);
+    const sell = Number(car.selling_price);
+    const margin = !isNaN(base) && !isNaN(sell) && sell > base ? sell - base : null;
+    const cfg = commissionConfig || { type: "percent_gross", value: 10 };
+    if (cfg.type === "flat" && cfg.value > 0) return Math.round(cfg.value);
+    if (cfg.type === "percent_sale" && !isNaN(sell) && sell > 0 && cfg.value > 0) return Math.round(sell * cfg.value / 100 / 50) * 50;
+    if (margin && cfg.value > 0) return Math.round(margin * cfg.value / 100 / 50) * 50;
+    return null;
+  };
+
+  // Auto-fill commission on any listing missing it — the manual "My commission"
+  // box was the only way to set this, so unfilled boxes silently zeroed out
+  // Monthly Goal / commission stats on real wins. Never touches a listing that
+  // already has a value (including an intentional 0 — that's a real decision,
+  // not a gap). Tracks processed ids so it fires once per listing, not on every
+  // myListings state update.
+  const commissionBackfilledRef = useRef(new Set());
+  useEffect(() => {
+    const toFill = myListings.filter(c => c.commission_amount == null && !commissionBackfilledRef.current.has(c.id));
+    toFill.forEach(car => {
+      commissionBackfilledRef.current.add(car.id);
+      const suggested = suggestedCommission(car);
+      if (suggested == null) return;
+      supabase.from("car_listings").update({ commission_amount: suggested }).eq("id", car.id)
+        .then(({ error }) => {
+          if (error) return;
+          setMyListings(prev => prev.map(c => c.id === car.id ? { ...c, commission_amount: suggested } : c));
+        });
+    });
+  }, [myListings, commissionConfig]);
 
   useEffect(() => {
     if (tourStep === null) { setTourTarget(null); return; }
@@ -1967,11 +2015,18 @@ export default function SalesmanLite() {
     const commissionOnDay = (dateKey) => soldWithCommission
       .filter(c => c.sold_at.slice(0, 10) === dateKey)
       .reduce((s, c) => s + (Number(c.commission_amount) || 0), 0);
+    // Cumulative running total, not raw daily commission — sales are sparse
+    // (mostly-zero days with the odd spike), so a per-day chart is a jagged
+    // comb, not a trend line. Cumulative is monotonically non-decreasing, which
+    // is what actually reads as a smooth "premium" sparkline (and is the same
+    // convention the reference screenshot uses).
+    let runningCommission = 0;
     const commissionTrend = Array.from({ length: 14 }, (_, i) => {
       const key = new Date(todayMidnight.getTime() - (13 - i) * DAY_MS).toISOString().slice(0, 10);
-      return { d: key, val: commissionOnDay(key) };
+      runningCommission += commissionOnDay(key);
+      return { d: key, val: runningCommission };
     });
-    const trendTotal = commissionTrend.reduce((s, p) => s + p.val, 0);
+    const trendTotal = commissionTrend.length ? commissionTrend[commissionTrend.length - 1].val : 0;
     const prevTrendTotal = Array.from({ length: 14 }, (_, i) =>
       commissionOnDay(new Date(todayMidnight.getTime() - (27 - i) * DAY_MS).toISOString().slice(0, 10)),
     ).reduce((s, v) => s + v, 0);
@@ -2105,7 +2160,7 @@ export default function SalesmanLite() {
                     labelStyle={{ color: "#94a3b8" }}
                     itemStyle={{ color: "#f87171" }}
                     labelFormatter={(v) => new Date(v).toLocaleDateString("en-MY", { day: "numeric", month: "short" })}
-                    formatter={(v) => [`RM ${Number(v).toLocaleString("en-MY")}`, "Commission"]}
+                    formatter={(v) => [`RM ${Number(v).toLocaleString("en-MY")}`, "Cumulative"]}
                   />
                   <Area type="monotone" dataKey="val" stroke="#f87171" strokeWidth={2} fill="url(#sliteCommissionFill)" dot={false} activeDot={{ r: 4, fill: "#f87171" }} />
                 </AreaChart>
@@ -3397,6 +3452,7 @@ export default function SalesmanLite() {
                       <div style={{ display: "flex", alignItems: "center", gap: 0, flex: 1 }}>
                         <span style={{ fontSize: 10, color: "#6b7280", padding: "3px 5px 3px 7px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRight: "none", borderRadius: "5px 0 0 5px", lineHeight: 1 }}>RM</span>
                         <input
+                          key={`comm-${car.id}-${car.commission_amount ?? "x"}`}
                           type="number"
                           min="0"
                           step="100"
