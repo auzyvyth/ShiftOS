@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Helmet } from 'react-helmet';
-import { RotateCcw, Car, Users, SlidersHorizontal, Search, ArrowLeftRight, ArrowRight, X } from 'lucide-react';
+import { RotateCcw, Car, Users, SlidersHorizontal, Search, ArrowLeftRight, ArrowRight, X, ShieldCheck, FileCheck2, Ban } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
 import MarketplaceFooter from '../components/MarketplaceFooter';
 import CarCard from '@/components/CarCard';
@@ -693,9 +693,9 @@ export default function MarketplacePage() {
         .mp-hero-tabs::-webkit-scrollbar { display: none }
 
         /* Trust strip */
-        .mp-trust-strip { padding: 10px 0; border-top: 1px solid rgba(255,255,255,.07); flex-shrink: 0; position: relative; z-index: 1; }
-        .mp-trust-grid  { max-width: 1360px; margin: 0 auto; padding: 0 16px; display: grid; grid-template-columns: 1fr 1fr; }
-        .mp-trust-item  { padding: 4px 10px; }
+        .mp-trust-strip { padding: 16px 0; border-top: 1px solid rgba(255,255,255,.07); flex-shrink: 0; position: relative; z-index: 1; }
+        .mp-trust-grid  { max-width: 1360px; margin: 0 auto; padding: 0 16px; display: grid; grid-template-columns: 1fr 1fr; row-gap: 12px; }
+        .mp-trust-item  { padding: 4px 10px; display: flex; align-items: center; gap: 10px; }
 
         /* Budget cards */
         .mp-budget-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
@@ -721,8 +721,8 @@ export default function MarketplacePage() {
           .mp-hero-left     { flex: 1; min-width: 0; width: auto; }
           .mp-hero-right    { flex: 1; min-width: 0; margin-top: 0; }
           .mp-hero-tabs     { width: fit-content; overflow-x: visible; }
-          .mp-trust-strip   { padding: 16px 0; }
-          .mp-trust-grid    { grid-template-columns: repeat(4,1fr); padding: 0 clamp(20px,4vw,48px); }
+          .mp-trust-strip   { padding: 20px 0; }
+          .mp-trust-grid    { grid-template-columns: repeat(4,1fr); padding: 0 clamp(20px,4vw,48px); row-gap: 0; }
           .mp-trust-item    { padding: 0 28px; }
           .mp-budget-grid   { gap: 10px; }
           .mp-budget-icon   { height: 80px; }
@@ -844,6 +844,11 @@ export default function MarketplacePage() {
                     <SlidersHorizontal size={11}/> More filters
                   </button>
                 </div>
+
+                <p style={{ display:'flex', alignItems:'center', gap:'6px', margin:'14px 0 0', fontSize:'11px', color:'rgba(255,255,255,0.4)', fontFamily:"'Outfit',sans-serif", fontWeight:500 }}>
+                  <ShieldCheck size={13} color="#dc2626" style={{ flexShrink:0 }} />
+                  Every listing verified. Every dealer certified. Zero phantom listings.
+                </p>
               </div>
             </div>
 
@@ -874,18 +879,29 @@ export default function MarketplacePage() {
 
           </div>
 
-          {/* ── Trust strip — bottom of hero ── */}
+          {/* ── Trust strip — bottom of hero. This is the page's entire differentiator
+                (verified/safe marketplace), so it gets real visual weight here instead
+                of living as small type — real stats where we have them (listings,
+                dealers), the two hard guarantees otherwise. No per-card "Verified"
+                badge — there's no per-listing verification flag in the data yet, and
+                stamping every card identically would be a badge with no information
+                behind it. ── */}
           <div className="mp-trust-strip">
             <div className="mp-trust-grid">
               {[
-                { number: stats.listings != null ? stats.listings.toLocaleString() + '+' : '—', label:'Cars listed' },
-                { number: stats.dealers  != null ? stats.dealers + '+'                  : '—', label:'Verified dealers' },
-                { number:'100%', label:'Docs required' },
-                { number:'0', label:'Phantom listings' },
-              ].map((s,i) => (
-                <div key={s.label} className="mp-trust-item" style={{ borderRight: i < 3 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
-                  <div style={{ fontSize:'clamp(15px,3vw,20px)', fontWeight:'500', color:'#ffffff', lineHeight:1, marginBottom:'2px', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.02em' }}>{s.number}</div>
-                  <div style={{ fontSize:'9px', color:'rgba(255,255,255,0.35)', fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.07em', fontFamily:"'Outfit',sans-serif" }}>{s.label}</div>
+                { icon: Car,         number: stats.listings != null ? stats.listings.toLocaleString() + '+' : '—', label:'Cars listed' },
+                { icon: ShieldCheck, number: stats.dealers  != null ? stats.dealers + '+'                  : '—', label:'Verified dealers' },
+                { icon: FileCheck2,  number:'100%', label:'Docs required' },
+                { icon: Ban,         number:'0', label:'Phantom listings' },
+              ].map(({ icon: Icon, number, label }, i) => (
+                <div key={label} className="mp-trust-item" style={{ borderRight: i < 3 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
+                  <div style={{ width:34, height:34, borderRadius:9, background:'rgba(220,38,38,0.12)', border:'1px solid rgba(220,38,38,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <Icon size={16} color="#f87171" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize:'clamp(17px,3.4vw,24px)', fontWeight:'500', color:'#ffffff', lineHeight:1, marginBottom:'2px', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.02em' }}>{number}</div>
+                    <div style={{ fontSize:'10px', color:'rgba(255,255,255,0.5)', fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.06em', fontFamily:"'Outfit',sans-serif" }}>{label}</div>
+                  </div>
                 </div>
               ))}
             </div>
