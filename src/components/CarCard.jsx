@@ -374,6 +374,14 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
                 background:    'linear-gradient(to top, rgba(0,0,0,0.42), transparent)',
                 pointerEvents: 'none',
               }} />
+              {/* Top gradient — keeps the heart/compare icons legible over any photo
+                  (bright sky, white cars, phone-flash shots) and gives every card the
+                  same subtle frame regardless of how the source photo was shot. */}
+              <div style={{
+                position:      'absolute', top: 0, left: 0, right: 0, height: 46,
+                background:    'linear-gradient(to bottom, rgba(0,0,0,0.28), transparent)',
+                pointerEvents: 'none',
+              }} />
 
             </>
           ) : (

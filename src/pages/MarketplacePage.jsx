@@ -509,8 +509,8 @@ export default function MarketplacePage() {
       display: 'flex',
       flexWrap: 'wrap',
       justifyContent: 'center',
-      gap: '20px',
-      paddingBottom: '40px',
+      gap: '24px',
+      paddingBottom: '48px',
     },
     emptyState: {
       textAlign: 'center',
@@ -908,8 +908,14 @@ export default function MarketplacePage() {
           </div>
         </section>
 
+        {/* Seam accent — the hero is intentionally dark (brand statement) and the body
+            intentionally light (browsing surface, per DESIGN.md); the hard cut between
+            them read as two stapled-together templates rather than one product. A
+            single brand-red line ties them together without touching either palette. */}
+        <div style={{ height: 3, background: 'linear-gradient(90deg, transparent, #dc2626, transparent)' }} />
+
         {/* ── Quick-filter strip ── */}
-        <section style={{ background: '#F7F6F2', padding: '16px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+        <section style={{ background: '#F7F6F2', padding: '20px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
           <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '0 clamp(20px, 4vw, 48px)' }}>
             <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', paddingBottom: '2px' }}>
               {[
@@ -957,7 +963,7 @@ export default function MarketplacePage() {
         </section>
 
         {/* ── Body Type Carousels — lazy loaded ── */}
-        <section ref={carouselSectionRef} style={{ background: '#EDEAE3', padding: '32px 0 40px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+        <section ref={carouselSectionRef} style={{ background: '#EDEAE3', padding: '48px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
           <style>{`
             .btc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px 28px; }
             .btc-scroll::-webkit-scrollbar { display: none; }
@@ -990,7 +996,7 @@ export default function MarketplacePage() {
 
         <div style={S.wrap}>
           {/* Two-column layout */}
-          <div className="mp-cars-layout" style={{ display:'flex', gap:'28px', alignItems:'flex-start', paddingTop:'24px' }}>
+          <div className="mp-cars-layout" style={{ display:'flex', gap:'28px', alignItems:'flex-start', paddingTop:'40px' }}>
 
             {/* Left: results */}
             <div id="mp-results" style={{ flex:1, minWidth:0 }}>
