@@ -66,6 +66,7 @@ import {
   CheckCircle,
   BookOpen,
 } from "lucide-react";
+import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip } from "recharts";
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import AvailabilityEditor from "../components/AvailabilityEditor";
 
@@ -1955,6 +1956,28 @@ export default function SalesmanLite() {
       const now = new Date();
       return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
     }).length;
+
+    // Sales Overview sparkline — commission earned per day, trailing 14 days,
+    // compared against the 14 days before that (rolling window, not calendar
+    // month, so the trend line and % delta stay meaningful on day 1 of a month).
+    const DAY_MS = 86400000;
+    const todayMidnight = new Date();
+    todayMidnight.setHours(0, 0, 0, 0);
+    const soldWithCommission = myListings.filter(c => c.status === "sold" && c.sold_at);
+    const commissionOnDay = (dateKey) => soldWithCommission
+      .filter(c => c.sold_at.slice(0, 10) === dateKey)
+      .reduce((s, c) => s + (Number(c.commission_amount) || 0), 0);
+    const commissionTrend = Array.from({ length: 14 }, (_, i) => {
+      const key = new Date(todayMidnight.getTime() - (13 - i) * DAY_MS).toISOString().slice(0, 10);
+      return { d: key, val: commissionOnDay(key) };
+    });
+    const trendTotal = commissionTrend.reduce((s, p) => s + p.val, 0);
+    const prevTrendTotal = Array.from({ length: 14 }, (_, i) =>
+      commissionOnDay(new Date(todayMidnight.getTime() - (27 - i) * DAY_MS).toISOString().slice(0, 10)),
+    ).reduce((s, v) => s + v, 0);
+    const trendDelta = prevTrendTotal > 0
+      ? Math.round(((trendTotal - prevTrendTotal) / prevTrendTotal) * 100)
+      : (trendTotal > 0 ? 100 : null);
     const available = myListings.filter(c => c.status === "available");
     const daysLeft = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate();
     const pct = goal.target > 0 ? Math.min((soldThisMonth / goal.target) * 100, 100) : 0;
@@ -2044,6 +2067,52 @@ export default function SalesmanLite() {
             </div>
           )}
         </div>
+
+        {/* ── Sales Overview — commission trend, gradient sparkline ── */}
+        {trendTotal > 0 && (
+          <div style={{ ...CARD, padding: isMobile ? "18px 16px 8px" : "22px 24px 10px" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 4 }}>
+              <div>
+                <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                  Commission — last 14 days
+                </p>
+                <p style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: isMobile ? 32 : 40, color: "#f1f5f9", letterSpacing: 0.5, lineHeight: 1 }}>
+                  RM {trendTotal.toLocaleString("en-MY")}
+                </p>
+              </div>
+              {trendDelta !== null && (
+                <span style={{
+                  display: "flex", alignItems: "center", gap: 3, marginTop: 4, padding: "4px 9px", borderRadius: 99, fontSize: 11, fontWeight: 700, flexShrink: 0,
+                  background: trendDelta >= 0 ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)",
+                  color: trendDelta >= 0 ? "#4ade80" : "#f87171",
+                }}>
+                  {trendDelta >= 0 ? "↑" : "↓"} {Math.abs(trendDelta)}%
+                </span>
+              )}
+            </div>
+            <div style={{ height: 90, margin: "8px -8px -6px" }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={commissionTrend} margin={{ top: 6, right: 8, bottom: 0, left: 8 }}>
+                  <defs>
+                    <linearGradient id="sliteCommissionFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#dc2626" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#dc2626" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <RTooltip
+                    cursor={{ stroke: "rgba(255,255,255,0.1)" }}
+                    contentStyle={{ background: "#161b22", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 11 }}
+                    labelStyle={{ color: "#94a3b8" }}
+                    itemStyle={{ color: "#f87171" }}
+                    labelFormatter={(v) => new Date(v).toLocaleDateString("en-MY", { day: "numeric", month: "short" })}
+                    formatter={(v) => [`RM ${Number(v).toLocaleString("en-MY")}`, "Commission"]}
+                  />
+                  <Area type="monotone" dataKey="val" stroke="#f87171" strokeWidth={2} fill="url(#sliteCommissionFill)" dot={false} activeDot={{ r: 4, fill: "#f87171" }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
 
         {/* Actionable items first — follow-ups and today's agenda are what the
             salesman should act on right now; portfolio value/stats below are
@@ -2157,64 +2226,59 @@ export default function SalesmanLite() {
             ))}
           </div>
           {listingStats.length > 0 && (
-            <>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 50px 50px 70px", padding: "8px 18px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                {["Listing", "Views", "WA", "CVR"].map((h, i) => (
-                  <p key={h} style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: i > 0 ? "center" : "left" }}>{h}</p>
-                ))}
-              </div>
+            <div>
               {[...listingStats].sort((a, b) => (b.cvr ?? -1) - (a.cvr ?? -1)).map(({ car, views, waTaps, cvr }, idx, arr) => {
                 const isHot = views > 20 && cvr >= 10;
                 const isWarm = !isHot && views > 5 && cvr >= 5;
+                const img = car.images?.[0];
                 return (
-                  <div key={car.id} style={{ display: "grid", gridTemplateColumns: "1fr 50px 50px 70px", padding: "11px 18px", alignItems: "center", borderBottom: idx < arr.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", background: idx % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 12, color: "#d1d5db", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{perfCarName(car)}</p>
+                  <div key={car.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 18px", borderBottom: idx < arr.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                    {img ? (
+                      <img src={img} alt="" style={{ width: 40, height: 40, borderRadius: 9, objectFit: "cover", flexShrink: 0 }} />
+                    ) : (
+                      <div style={{ width: 40, height: 40, borderRadius: 9, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <Car size={16} color="#374151" />
+                      </div>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{perfCarName(car)}</p>
+                      <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{views} view{views !== 1 ? "s" : ""} · {waTaps} WA tap{waTaps !== 1 ? "s" : ""}</p>
+                    </div>
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 700, color: cvr !== null ? cvrColor(cvr) : "#374151" }}>
+                        {cvr !== null ? `${cvr.toFixed(1)}%` : "—"}
+                      </p>
                       {/* "TOP VIEWS"/"RISING" (ad performance), not "HOT"/"WARM" — those words
                           already mean buyer urgency on lead cards (red/amber there); reusing
                           them here in green/yellow for a different metric reads as contradictory. */}
-                      {isHot && <span title="High views and click-through — one of your best-performing ads" style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)", flexShrink: 0 }}>TOP VIEWS</span>}
-                      {isWarm && <span title="Views and click-through picking up" style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "rgba(234,179,8,0.1)", color: "#eab308", border: "1px solid rgba(234,179,8,0.2)", flexShrink: 0 }}>RISING</span>}
-                    </div>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", textAlign: "center" }}>{views}</p>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", textAlign: "center" }}>{waTaps}</p>
-                    <div style={{ textAlign: "center" }}>
-                      {cvr !== null
-                        ? <span style={{ fontSize: 11, fontWeight: 700, color: cvrColor(cvr) }}>{cvr.toFixed(1)}%</span>
-                        : <span style={{ fontSize: 11, color: "#374151" }}>—</span>
-                      }
+                      {isHot && <span title="High views and click-through — one of your best-performing ads" style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)", whiteSpace: "nowrap" }}>TOP VIEWS</span>}
+                      {isWarm && <span title="Views and click-through picking up" style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "rgba(234,179,8,0.1)", color: "#eab308", border: "1px solid rgba(234,179,8,0.2)", whiteSpace: "nowrap" }}>RISING</span>}
                     </div>
                   </div>
                 );
               })}
-            </>
+            </div>
           )}
           {listingStats.length === 0 && (
             <p style={{ margin: 0, padding: "16px 18px", fontSize: 12, color: "#475569" }}>No listing data yet — publish a car to start tracking.</p>
           )}
         </div>
 
-        {/* ── KPI strip ── */}
-        <div style={{ ...CARD, overflow: "visible" }}>
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)" }}>
-            {[
-              { label: t("salesmanLite.kpi.pipeline"), value: activeLeads.length, accent: "#3b82f6", first: true },
-              { label: t("salesmanLite.kpi.liveListings"), value: myListings.filter(c => c.status === "available").length, accent: "#22c55e" },
-              { label: t("salesmanLite.kpi.followUps"), value: staleLeads.length, accent: staleLeads.length > 0 ? "#ef4444" : "#475569" },
-              { label: t("salesmanLite.kpi.todayAppts"), value: todayAppts, accent: "#3b82f6" },
-              { label: t("salesmanLite.kpi.closed"), value: closedThisMonth.length, accent: "#22c55e" },
-            ].map(({ label, value, accent, first }, i, arr) => (
-              <div key={label} style={{
-                padding: "18px 20px", position: "relative",
-                borderRight: !isMobile && i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
-                borderBottom: isMobile && i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
-              }}>
-                {first && <div style={{ position: "absolute", left: 0, top: "22%", bottom: "22%", width: 3, borderRadius: "0 3px 3px 0", background: "#3b82f6" }} />}
-                <p style={{ margin: "0 0 5px", fontSize: 28, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</p>
-                <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
-              </div>
-            ))}
-          </div>
+        {/* ── KPI strip — separated stat tiles ── */}
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: 10 }}>
+          {[
+            { label: t("salesmanLite.kpi.pipeline"), value: activeLeads.length, accent: "#3b82f6" },
+            { label: t("salesmanLite.kpi.liveListings"), value: myListings.filter(c => c.status === "available").length, accent: "#22c55e" },
+            { label: t("salesmanLite.kpi.followUps"), value: staleLeads.length, accent: staleLeads.length > 0 ? "#ef4444" : "#475569" },
+            { label: t("salesmanLite.kpi.todayAppts"), value: todayAppts, accent: "#3b82f6" },
+            { label: t("salesmanLite.kpi.closed"), value: closedThisMonth.length, accent: "#22c55e" },
+          ].map(({ label, value, accent }) => (
+            <div key={label} style={{ ...CARD, padding: "14px 14px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: accent, boxShadow: `0 0 0 3px ${accent}22` }} />
+              <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.03em", lineHeight: 1 }}>{value}</p>
+              <p style={{ margin: 0, fontSize: 9.5, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</p>
+            </div>
+          ))}
         </div>
 
         {/* ── Goal + Marketplace Pulse ── */}
