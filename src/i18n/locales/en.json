@@ -318,6 +318,25 @@
       "closed": "Closed",
       "overdue": "overdue"
     },
+    "tour": {
+      "progress": "{{current}} / {{total}}",
+      "back": "Back",
+      "skip": "Skip",
+      "next": "Next",
+      "done": "Got it",
+      "steps": {
+        "welcome": { "title": "Welcome to ShiftOS Lite", "body": "A quick 30-second tour. Each step jumps you straight to that part of the panel — you'll see it live." },
+        "dashboard": { "title": "Dashboard", "body": "Your control centre — KPIs, overdue follow-up alerts, ad performance, and recent activity all in one view." },
+        "listings": { "title": "My Listings", "body": "Add your cars here. Each card shows views, WA taps, and a conversion bar. Cars getting lots of clicks stand out clearly." },
+        "leads": { "title": "Leads", "body": "Track every buyer: New → Contacted → Test Drive → Won. The heat score shows who needs attention. Message them straight on WhatsApp." },
+        "inbox": { "title": "Inbox", "body": "Buyers who message through your ad cards land here. Reply with a template or convert to a lead in one tap." },
+        "bookings": { "title": "Bookings", "body": "Viewing appointments show up here. Confirm, cancel, or send a WA reminder without leaving the app." },
+        "performance": { "title": "Performance", "body": "Your sales stats — commission earned, units sold, and ad performance over time. Know what's working." },
+        "merge": { "title": "Join Dealership", "body": "Have an invite code from your dealer? Enter it here to unlock the full panel — shared stock, shared leads, commission tracker and more." },
+        "settings": { "title": "Settings", "body": "Update your WhatsApp number, profile photo, location and social links. Your WhatsApp number matters most — that's how buyers reach you." },
+        "help": { "title": "Help", "body": "Step-by-step guides, sales tips and FAQs. Come back here any time you're stuck." }
+      }
+    },
     "inbox": {
       "enquiries": "Enquiries",
       "bookings": "Bookings"

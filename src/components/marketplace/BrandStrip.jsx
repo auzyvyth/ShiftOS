@@ -27,7 +27,7 @@ const COAL_ACTIVE = `${NOISE}, radial-gradient(120% 120% at 30% 20%, #3a1d1f 0%,
 
 export default function BrandStrip({ activeBrand = '', hrefFor }) {
   return (
-    <section style={{ background: '#EDEAE3', borderBottom: '1px solid rgba(0,0,0,0.06)', padding: '28px 0 32px' }}>
+    <section style={{ background: '#EDEAE3', borderBottom: '1px solid rgba(0,0,0,0.06)', padding: '32px 0 40px' }}>
       <div style={{ maxWidth: 1380, margin: '0 auto', padding: '0 clamp(16px, 4vw, 44px)' }}>
         <p style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.16em', color: '#9b7d3a', fontFamily: "'Outfit',sans-serif" }}>Browse by Brand</p>
         <div className="bs-grid">

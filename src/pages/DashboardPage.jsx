@@ -9609,10 +9609,15 @@ export default function DashboardPage() {
     if (!l || publishingId) return;
     setPublishingId(l.id);
     try {
+      // Guard on the server-side current status, not the (possibly stale) local
+      // `l.status` the button rendered off — e.g. a lead won elsewhere just flipped
+      // this car to 'sold' but the dashboard listings array hasn't refetched yet.
+      // Without this .eq, a stale click here silently re-lists an already-sold car.
       const { data, error } = await supabase
         .from("car_listings")
         .update({ status: "available" })
         .eq("id", l.id)
+        .eq("status", "unpublished")
         .select();
       if (error) {
         if (error.message?.includes('listing_cap_exceeded')) {
@@ -9622,7 +9627,20 @@ export default function DashboardPage() {
         }
         throw error;
       }
-      const updated = data?.[0] ?? { ...l, status: "available" };
+      if (!data?.length) {
+        // Row didn't match status='unpublished' anymore — someone/something else
+        // (e.g. a won-lead sale) already moved it on. Refetch the real row instead
+        // of trusting local state.
+        const { data: fresh } = await supabase.from("car_listings").select("*").eq("id", l.id).single();
+        if (fresh) {
+          setListings((p) => p.map((x) => (x.id === fresh.id ? fresh : x)));
+          if (detailListing?.id === fresh.id) setDetailListing(fresh);
+        }
+        toast.error(`${l.brand} ${l.model} ${l.year} is no longer unpublished (status: ${fresh?.status || 'unknown'}) — refreshed.`);
+        setPublishingId(null);
+        return;
+      }
+      const updated = data[0];
       logActivity({ dealerId: userId, actor: profile, tableName: 'car_listings', recordId: l.id, action: 'published', summary: `Published to marketplace — ${l.brand} ${l.model} ${l.year}` });
       setListings((p) => p.map((x) => (x.id === updated.id ? updated : x)));
       if (detailListing?.id === updated.id) setDetailListing(updated);

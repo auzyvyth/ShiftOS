@@ -8,6 +8,7 @@ import { supabase } from "../supabaseClient";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { normalizePhone } from "../lib/phone";
 import CarForm from "../components/CarForm";
+import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import SalesmanLiteHelp from "../components/SalesmanLiteHelp";
 import ReportBugButton from "../components/ReportBugButton";
@@ -66,6 +67,7 @@ import {
   CheckCircle,
   BookOpen,
 } from "lucide-react";
+import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip } from "recharts";
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import AvailabilityEditor from "../components/AvailabilityEditor";
 
@@ -278,6 +280,7 @@ export default function SalesmanLite() {
   const [myListings, setMyListings] = useState([]);
   const [listingCopied, setListingCopied] = useState({});
   const [showAddForm, setShowAddForm] = useState(false);
+  const [commissionConfig, setCommissionConfig] = useState(null); // dealer's commission rule, same source CarForm uses
 
   // leads
   const [leads, setLeads] = useState([]);
@@ -500,6 +503,19 @@ export default function SalesmanLite() {
 
   // mobile lead stage filter
   const [mobileLeadStage, setMobileLeadStage] = useState("new");
+
+  // Pipeline "glow" — briefly highlights the leads that triggered a jump here
+  // (from a stage pill/header, or the dashboard's Overdue button) so the user's
+  // eye lands on exactly which cards need a follow-up, not just "somewhere in
+  // this stage/tab."
+  const [glowLeadIds, setGlowLeadIds] = useState(() => new Set());
+  const glowTimeoutRef = useRef(null);
+  const triggerGlow = (ids) => {
+    if (!ids || ids.length === 0) return;
+    if (glowTimeoutRef.current) clearTimeout(glowTimeoutRef.current);
+    setGlowLeadIds(new Set(ids));
+    glowTimeoutRef.current = setTimeout(() => setGlowLeadIds(new Set()), 1000);
+  };
 
   // link car to lead
   const [linkCarLeadId, setLinkCarLeadId] = useState(null);
@@ -990,6 +1006,52 @@ export default function SalesmanLite() {
     };
   }, []);
 
+  // Dealer's commission rule — same source CarForm's "Suggested commission" reads,
+  // via the canonical dealer-id resolver (must mirror getDealerIdFromProfile /
+  // get_my_dealer_id() exactly — see CLAUDE.md; a hand-rolled dealerId here has
+  // bitten this app twice before).
+  useEffect(() => {
+    const dealerId = getDealerIdFromProfile(profile);
+    if (!dealerId) return;
+    supabase.from("profiles").select("commission_config").eq("id", dealerId).maybeSingle()
+      .then(({ data }) => setCommissionConfig(data?.commission_config || null));
+  }, [profile?.id, profile?.dealer_id, profile?.role]);
+
+  // Mirrors CarForm's "Suggested commission" formula exactly (flat / % of sale /
+  // % of margin over base price), defaulting to 10% of margin like CarForm does
+  // when no explicit commission_config row exists.
+  const suggestedCommission = (car) => {
+    const base = Number(car.base_price);
+    const sell = Number(car.selling_price);
+    const margin = !isNaN(base) && !isNaN(sell) && sell > base ? sell - base : null;
+    const cfg = commissionConfig || { type: "percent_gross", value: 10 };
+    if (cfg.type === "flat" && cfg.value > 0) return Math.round(cfg.value);
+    if (cfg.type === "percent_sale" && !isNaN(sell) && sell > 0 && cfg.value > 0) return Math.round(sell * cfg.value / 100 / 50) * 50;
+    if (margin && cfg.value > 0) return Math.round(margin * cfg.value / 100 / 50) * 50;
+    return null;
+  };
+
+  // Auto-fill commission on any listing missing it — the manual "My commission"
+  // box was the only way to set this, so unfilled boxes silently zeroed out
+  // Monthly Goal / commission stats on real wins. Never touches a listing that
+  // already has a value (including an intentional 0 — that's a real decision,
+  // not a gap). Tracks processed ids so it fires once per listing, not on every
+  // myListings state update.
+  const commissionBackfilledRef = useRef(new Set());
+  useEffect(() => {
+    const toFill = myListings.filter(c => c.commission_amount == null && !commissionBackfilledRef.current.has(c.id));
+    toFill.forEach(car => {
+      commissionBackfilledRef.current.add(car.id);
+      const suggested = suggestedCommission(car);
+      if (suggested == null) return;
+      supabase.from("car_listings").update({ commission_amount: suggested }).eq("id", car.id)
+        .then(({ error }) => {
+          if (error) return;
+          setMyListings(prev => prev.map(c => c.id === car.id ? { ...c, commission_amount: suggested } : c));
+        });
+    });
+  }, [myListings, commissionConfig]);
+
   useEffect(() => {
     if (tourStep === null) { setTourTarget(null); return; }
     // Index-aligned with TOUR_STEPS. "bookings" resolves to the enquiries tab's
@@ -1315,7 +1377,11 @@ export default function SalesmanLite() {
         console.error("handleMarkWon car listing:", carErr);
         toast.error("Lead won, but failed to mark listing as sold");
       } else {
-        setMyListings(p => p.filter(c => c.id !== lead.car_listing_id));
+        // Mark sold in place (not remove) — the Monthly Goal panel counts
+        // myListings rows with status:'sold' + sold_at this calendar month;
+        // filtering the row out here made every win invisible to that count
+        // until the next full reload refetched it from the DB.
+        setMyListings(p => p.map(c => c.id === lead.car_listing_id ? { ...c, status: "sold", sold_at: now } : c));
         await refreshCommissionData();
       }
     }
@@ -1902,7 +1968,13 @@ export default function SalesmanLite() {
     const activeLeads = leads.filter(
       (l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won" && l.stage !== "won",
     );
-    const wonLeads = leads.filter((l) => l.stage === "won" || l.stage === "closed_won");
+    // "Ditutup"/Closed KPI is documented (SalesmanLiteHelp) as leads marked won
+    // OR lost THIS CALENDAR MONTH — it must not silently become an all-time count.
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const closedThisMonth = leads.filter((l) =>
+      ["won", "closed_won", "lost", "closed_lost"].includes(l.stage) &&
+      l.updated_at && new Date(l.updated_at) >= monthStart,
+    );
     const todayAppts = appointments.filter((a) => {
       if (!a.appointment_date) return false;
       const d = new Date(a.appointment_date);
@@ -1945,6 +2017,35 @@ export default function SalesmanLite() {
       const now = new Date();
       return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
     }).length;
+
+    // Sales Overview sparkline — commission earned per day, trailing 14 days,
+    // compared against the 14 days before that (rolling window, not calendar
+    // month, so the trend line and % delta stay meaningful on day 1 of a month).
+    const DAY_MS = 86400000;
+    const todayMidnight = new Date();
+    todayMidnight.setHours(0, 0, 0, 0);
+    const soldWithCommission = myListings.filter(c => c.status === "sold" && c.sold_at);
+    const commissionOnDay = (dateKey) => soldWithCommission
+      .filter(c => c.sold_at.slice(0, 10) === dateKey)
+      .reduce((s, c) => s + (Number(c.commission_amount) || 0), 0);
+    // Cumulative running total, not raw daily commission — sales are sparse
+    // (mostly-zero days with the odd spike), so a per-day chart is a jagged
+    // comb, not a trend line. Cumulative is monotonically non-decreasing, which
+    // is what actually reads as a smooth "premium" sparkline (and is the same
+    // convention the reference screenshot uses).
+    let runningCommission = 0;
+    const commissionTrend = Array.from({ length: 14 }, (_, i) => {
+      const key = new Date(todayMidnight.getTime() - (13 - i) * DAY_MS).toISOString().slice(0, 10);
+      runningCommission += commissionOnDay(key);
+      return { d: key, val: runningCommission };
+    });
+    const trendTotal = commissionTrend.length ? commissionTrend[commissionTrend.length - 1].val : 0;
+    const prevTrendTotal = Array.from({ length: 14 }, (_, i) =>
+      commissionOnDay(new Date(todayMidnight.getTime() - (27 - i) * DAY_MS).toISOString().slice(0, 10)),
+    ).reduce((s, v) => s + v, 0);
+    const trendDelta = prevTrendTotal > 0
+      ? Math.round(((trendTotal - prevTrendTotal) / prevTrendTotal) * 100)
+      : (trendTotal > 0 ? 100 : null);
     const available = myListings.filter(c => c.status === "available");
     const daysLeft = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate();
     const pct = goal.target > 0 ? Math.min((soldThisMonth / goal.target) * 100, 100) : 0;
@@ -2007,10 +2108,22 @@ export default function SalesmanLite() {
               </p>
             </div>
             {staleLeads.length > 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 99, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.18)", flexShrink: 0 }}>
+              <button
+                onClick={() => {
+                  // Jump straight to whichever stage actually has an overdue
+                  // lead (mobile shows one stage at a time), then glow them
+                  // so the eye lands on exactly which cards need attention.
+                  const activeStageOrder = LEAD_STAGES.filter((s) => !["lost", "closed_lost", "closed_won"].includes(s));
+                  const firstStaleStage = activeStageOrder.find((s) => staleLeads.some((l) => l.stage === s));
+                  if (firstStaleStage) setMobileLeadStage(firstStaleStage);
+                  switchTab("leads");
+                  triggerGlow(staleLeads.map((l) => l.id));
+                }}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 99, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.18)", flexShrink: 0, cursor: "pointer", fontFamily: "inherit" }}
+              >
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", flexShrink: 0 }} />
                 <span style={{ fontSize: 11, fontWeight: 600, color: "#ef4444" }}>{staleLeads.length} {t("salesmanLite.kpi.overdue")}</span>
-              </div>
+              </button>
             )}
           </div>
           {portfolioValue > 0 && (
@@ -2035,7 +2148,146 @@ export default function SalesmanLite() {
           )}
         </div>
 
-        {/* ── My Performance ── */}
+        {/* ── Sales Overview — commission trend, gradient sparkline ── */}
+        {trendTotal > 0 && (
+          <div style={{ ...CARD, padding: isMobile ? "18px 16px 8px" : "22px 24px 10px" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 4 }}>
+              <div>
+                <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                  Commission — last 14 days
+                </p>
+                <p style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: isMobile ? 32 : 40, color: "#f1f5f9", letterSpacing: 0.5, lineHeight: 1 }}>
+                  RM {trendTotal.toLocaleString("en-MY")}
+                </p>
+              </div>
+              {trendDelta !== null && (
+                <span style={{
+                  display: "flex", alignItems: "center", gap: 3, marginTop: 4, padding: "4px 9px", borderRadius: 99, fontSize: 11, fontWeight: 700, flexShrink: 0,
+                  background: trendDelta >= 0 ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)",
+                  color: trendDelta >= 0 ? "#4ade80" : "#f87171",
+                }}>
+                  {trendDelta >= 0 ? "↑" : "↓"} {Math.abs(trendDelta)}%
+                </span>
+              )}
+            </div>
+            <div style={{ height: 90, margin: "8px -8px -6px" }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={commissionTrend} margin={{ top: 6, right: 8, bottom: 0, left: 8 }}>
+                  <defs>
+                    <linearGradient id="sliteCommissionFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#dc2626" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#dc2626" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <RTooltip
+                    cursor={{ stroke: "rgba(255,255,255,0.1)" }}
+                    contentStyle={{ background: "#161b22", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 11 }}
+                    labelStyle={{ color: "#94a3b8" }}
+                    itemStyle={{ color: "#f87171" }}
+                    labelFormatter={(v) => new Date(v).toLocaleDateString("en-MY", { day: "numeric", month: "short" })}
+                    formatter={(v) => [`RM ${Number(v).toLocaleString("en-MY")}`, "Cumulative"]}
+                  />
+                  <Area type="monotone" dataKey="val" stroke="#f87171" strokeWidth={2} fill="url(#sliteCommissionFill)" dot={false} activeDot={{ r: 4, fill: "#f87171" }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* Actionable items first — follow-ups and today's agenda are what the
+            salesman should act on right now; portfolio value/stats below are
+            context, not action items, so they no longer sit above these. */}
+
+        {/* ── Follow-up Needed ── */}
+        {staleLeads.length > 0 && (
+          <div style={CARD}>
+            <div style={CARD_HEADER}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444" }} />
+                <span>Follow-up Needed</span>
+                <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 18, height: 18, borderRadius: 99, background: "rgba(239,68,68,0.15)", color: "#ef4444", fontSize: 10, fontWeight: 800, padding: "0 5px" }}>{staleLeads.length}</span>
+              </div>
+              {staleLeads.some(l => l.phone) && (
+                <button onClick={() => { setBatchWALeads(staleLeads.filter(l => l.phone)); setBatchWAIdx(0); }}
+                  style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", cursor: "pointer", fontWeight: 700, fontFamily: "inherit", textTransform: "none", letterSpacing: 0 }}>
+                  WA All
+                </button>
+              )}
+            </div>
+            <div>
+              {staleLeads.map((lead, i) => {
+                const car = lead.car_listings;
+                const daysSince = Math.floor((Date.now() - new Date(lead.updated_at)) / 86400000);
+                return (
+                  <div key={lead.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 18px", borderBottom: i < staleLeads.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", background: i % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent" }}>
+                    <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#94a3b8", flexShrink: 0 }}>
+                      {(lead.buyer_name || "?")[0].toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.buyer_name || "—"}</p>
+                      <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{car ? `${car.brand} ${car.model}` : "No car"}</p>
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: 99, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", flexShrink: 0 }}>{daysSince}d ago</span>
+                    {lead.phone && (
+                      <button onClick={() => pingWA(lead)} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", cursor: "pointer", fontWeight: 600, flexShrink: 0, fontFamily: "inherit" }}>WA</button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {!notifBannerDismissed && browserNotifPerm === 'default' && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px", borderTop: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}>
+                <p style={{ margin: 0, fontSize: 11, color: "#475569", flex: 1 }}>Get notified when leads go cold</p>
+                <button onClick={requestBrowserNotif} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)", color: "#818cf8", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>Enable</button>
+                <button onClick={dismissNotifBanner} style={{ fontSize: 14, padding: "0 4px", background: "none", border: "none", color: "#374151", cursor: "pointer", lineHeight: 1, flexShrink: 0 }}>×</button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Today's Agenda ── */}
+        {hasAgenda && (
+          <div style={CARD}>
+            <div style={CARD_HEADER}>
+              <span>Today's Agenda</span>
+              <span>{new Date().toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })}</span>
+            </div>
+            <div style={{ padding: "6px 0" }}>
+              {agendaAppts.map((a) => (
+                <div key={a.id} onClick={() => { switchTab("enquiries"); setInboxSubTab("bookings"); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#3b82f6", flexShrink: 0, boxShadow: "0 0 0 3px rgba(59,130,246,0.15)" }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{a.buyer_name || "—"}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>Test drive</p>
+                  </div>
+                  <span style={{ fontSize: 11, color: "#3b82f6", fontWeight: 600, flexShrink: 0 }}>{a.appointment_date ? new Date(a.appointment_date).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "—"}</span>
+                </div>
+              ))}
+              {agendaFollowUps.map((l) => (
+                <div key={l.id} onClick={() => setActiveTab("leads")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#eab308", flexShrink: 0, boxShadow: "0 0 0 3px rgba(234,179,8,0.15)" }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{l.buyer_name || "—"}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>Scheduled follow-up · {l.car_listings ? `${l.car_listings.brand} ${l.car_listings.model}` : "no car"}</p>
+                  </div>
+                  <span style={{ fontSize: 11, color: "#eab308", fontWeight: 600, flexShrink: 0 }}>Today</span>
+                </div>
+              ))}
+              {agendaStale.slice(0, 3).map((l) => (
+                <div key={l.id} onClick={() => pingWA(l)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ef4444", flexShrink: 0, boxShadow: "0 0 0 3px rgba(239,68,68,0.15)" }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{l.buyer_name || "—"}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>No contact · {timeAgo(l.updated_at)}</p>
+                  </div>
+                  <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 600, flexShrink: 0 }}>WA</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── My Performance (context, not action) ── */}
         <div style={CARD}>
           <div style={CARD_HEADER}>
             <span>My Performance</span>
@@ -2054,61 +2306,59 @@ export default function SalesmanLite() {
             ))}
           </div>
           {listingStats.length > 0 && (
-            <>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 50px 50px 70px", padding: "8px 18px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                {["Listing", "Views", "WA", "CVR"].map((h, i) => (
-                  <p key={h} style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: i > 0 ? "center" : "left" }}>{h}</p>
-                ))}
-              </div>
+            <div>
               {[...listingStats].sort((a, b) => (b.cvr ?? -1) - (a.cvr ?? -1)).map(({ car, views, waTaps, cvr }, idx, arr) => {
                 const isHot = views > 20 && cvr >= 10;
                 const isWarm = !isHot && views > 5 && cvr >= 5;
+                const img = car.images?.[0];
                 return (
-                  <div key={car.id} style={{ display: "grid", gridTemplateColumns: "1fr 50px 50px 70px", padding: "11px 18px", alignItems: "center", borderBottom: idx < arr.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", background: idx % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 12, color: "#d1d5db", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{perfCarName(car)}</p>
-                      {isHot && <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)", flexShrink: 0 }}>HOT</span>}
-                      {isWarm && <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "rgba(234,179,8,0.1)", color: "#eab308", border: "1px solid rgba(234,179,8,0.2)", flexShrink: 0 }}>WARM</span>}
+                  <div key={car.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 18px", borderBottom: idx < arr.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                    {img ? (
+                      <img src={img} alt="" style={{ width: 40, height: 40, borderRadius: 9, objectFit: "cover", flexShrink: 0 }} />
+                    ) : (
+                      <div style={{ width: 40, height: 40, borderRadius: 9, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <Car size={16} color="#374151" />
+                      </div>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{perfCarName(car)}</p>
+                      <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{views} view{views !== 1 ? "s" : ""} · {waTaps} WA tap{waTaps !== 1 ? "s" : ""}</p>
                     </div>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", textAlign: "center" }}>{views}</p>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", textAlign: "center" }}>{waTaps}</p>
-                    <div style={{ textAlign: "center" }}>
-                      {cvr !== null
-                        ? <span style={{ fontSize: 11, fontWeight: 700, color: cvrColor(cvr) }}>{cvr.toFixed(1)}%</span>
-                        : <span style={{ fontSize: 11, color: "#374151" }}>—</span>
-                      }
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 700, color: cvr !== null ? cvrColor(cvr) : "#374151" }}>
+                        {cvr !== null ? `${cvr.toFixed(1)}%` : "—"}
+                      </p>
+                      {/* "TOP VIEWS"/"RISING" (ad performance), not "HOT"/"WARM" — those words
+                          already mean buyer urgency on lead cards (red/amber there); reusing
+                          them here in green/yellow for a different metric reads as contradictory. */}
+                      {isHot && <span title="High views and click-through — one of your best-performing ads" style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)", whiteSpace: "nowrap" }}>TOP VIEWS</span>}
+                      {isWarm && <span title="Views and click-through picking up" style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "rgba(234,179,8,0.1)", color: "#eab308", border: "1px solid rgba(234,179,8,0.2)", whiteSpace: "nowrap" }}>RISING</span>}
                     </div>
                   </div>
                 );
               })}
-            </>
+            </div>
           )}
           {listingStats.length === 0 && (
             <p style={{ margin: 0, padding: "16px 18px", fontSize: 12, color: "#475569" }}>No listing data yet — publish a car to start tracking.</p>
           )}
         </div>
 
-        {/* ── KPI strip ── */}
-        <div style={{ ...CARD, overflow: "visible" }}>
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)" }}>
-            {[
-              { label: t("salesmanLite.kpi.pipeline"), value: activeLeads.length, accent: "#3b82f6", first: true },
-              { label: t("salesmanLite.kpi.liveListings"), value: myListings.filter(c => c.status === "available").length, accent: "#22c55e" },
-              { label: t("salesmanLite.kpi.followUps"), value: staleLeads.length, accent: staleLeads.length > 0 ? "#ef4444" : "#475569" },
-              { label: t("salesmanLite.kpi.todayAppts"), value: todayAppts, accent: "#3b82f6" },
-              { label: t("salesmanLite.kpi.closed"), value: wonLeads.length, accent: "#22c55e" },
-            ].map(({ label, value, accent, first }, i, arr) => (
-              <div key={label} style={{
-                padding: "18px 20px", position: "relative",
-                borderRight: !isMobile && i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
-                borderBottom: isMobile && i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
-              }}>
-                {first && <div style={{ position: "absolute", left: 0, top: "22%", bottom: "22%", width: 3, borderRadius: "0 3px 3px 0", background: "#3b82f6" }} />}
-                <p style={{ margin: "0 0 5px", fontSize: 28, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</p>
-                <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
-              </div>
-            ))}
-          </div>
+        {/* ── KPI strip — separated stat tiles ── */}
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: 10 }}>
+          {[
+            { label: t("salesmanLite.kpi.pipeline"), value: activeLeads.length, accent: "#3b82f6" },
+            { label: t("salesmanLite.kpi.liveListings"), value: myListings.filter(c => c.status === "available").length, accent: "#22c55e" },
+            { label: t("salesmanLite.kpi.followUps"), value: staleLeads.length, accent: staleLeads.length > 0 ? "#ef4444" : "#475569" },
+            { label: t("salesmanLite.kpi.todayAppts"), value: todayAppts, accent: "#3b82f6" },
+            { label: t("salesmanLite.kpi.closed"), value: closedThisMonth.length, accent: "#22c55e" },
+          ].map(({ label, value, accent }) => (
+            <div key={label} style={{ ...CARD, padding: "14px 14px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: accent, boxShadow: `0 0 0 3px ${accent}22` }} />
+              <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.03em", lineHeight: 1 }}>{value}</p>
+              <p style={{ margin: 0, fontSize: 9.5, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</p>
+            </div>
+          ))}
         </div>
 
         {/* ── Goal + Marketplace Pulse ── */}
@@ -2265,95 +2515,6 @@ export default function SalesmanLite() {
         </div>
 
         {/* Earnings Target card removed — merged into the single Monthly Goal (commission) above */}
-
-        {/* ── Follow-up Needed ── */}
-        {staleLeads.length > 0 && (
-          <div style={CARD}>
-            <div style={CARD_HEADER}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444" }} />
-                <span>Follow-up Needed</span>
-                <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 18, height: 18, borderRadius: 99, background: "rgba(239,68,68,0.15)", color: "#ef4444", fontSize: 10, fontWeight: 800, padding: "0 5px" }}>{staleLeads.length}</span>
-              </div>
-              {staleLeads.some(l => l.phone) && (
-                <button onClick={() => { setBatchWALeads(staleLeads.filter(l => l.phone)); setBatchWAIdx(0); }}
-                  style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", cursor: "pointer", fontWeight: 700, fontFamily: "inherit", textTransform: "none", letterSpacing: 0 }}>
-                  WA All
-                </button>
-              )}
-            </div>
-            <div>
-              {staleLeads.map((lead, i) => {
-                const car = lead.car_listings;
-                const daysSince = Math.floor((Date.now() - new Date(lead.updated_at)) / 86400000);
-                return (
-                  <div key={lead.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 18px", borderBottom: i < staleLeads.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", background: i % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent" }}>
-                    <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#94a3b8", flexShrink: 0 }}>
-                      {(lead.buyer_name || "?")[0].toUpperCase()}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.buyer_name || "—"}</p>
-                      <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{car ? `${car.brand} ${car.model}` : "No car"}</p>
-                    </div>
-                    <span style={{ fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: 99, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", flexShrink: 0 }}>{daysSince}d ago</span>
-                    {lead.phone && (
-                      <button onClick={() => pingWA(lead)} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", cursor: "pointer", fontWeight: 600, flexShrink: 0, fontFamily: "inherit" }}>WA</button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            {!notifBannerDismissed && browserNotifPerm === 'default' && (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px", borderTop: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}>
-                <p style={{ margin: 0, fontSize: 11, color: "#475569", flex: 1 }}>Get notified when leads go cold</p>
-                <button onClick={requestBrowserNotif} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)", color: "#818cf8", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>Enable</button>
-                <button onClick={dismissNotifBanner} style={{ fontSize: 14, padding: "0 4px", background: "none", border: "none", color: "#374151", cursor: "pointer", lineHeight: 1, flexShrink: 0 }}>×</button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Today's Agenda ── */}
-        {hasAgenda && (
-          <div style={CARD}>
-            <div style={CARD_HEADER}>
-              <span>Today's Agenda</span>
-              <span>{new Date().toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })}</span>
-            </div>
-            <div style={{ padding: "6px 0" }}>
-              {agendaAppts.map((a) => (
-                <div key={a.id} onClick={() => { switchTab("enquiries"); setInboxSubTab("bookings"); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
-                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#3b82f6", flexShrink: 0, boxShadow: "0 0 0 3px rgba(59,130,246,0.15)" }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{a.buyer_name || "—"}</p>
-                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>Test drive</p>
-                  </div>
-                  <span style={{ fontSize: 11, color: "#3b82f6", fontWeight: 600, flexShrink: 0 }}>{a.appointment_date ? new Date(a.appointment_date).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "—"}</span>
-                </div>
-              ))}
-              {agendaFollowUps.map((l) => (
-                <div key={l.id} onClick={() => setActiveTab("leads")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
-                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#eab308", flexShrink: 0, boxShadow: "0 0 0 3px rgba(234,179,8,0.15)" }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{l.buyer_name || "—"}</p>
-                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>Scheduled follow-up · {l.car_listings ? `${l.car_listings.brand} ${l.car_listings.model}` : "no car"}</p>
-                  </div>
-                  <span style={{ fontSize: 11, color: "#eab308", fontWeight: 600, flexShrink: 0 }}>Today</span>
-                </div>
-              ))}
-              {agendaStale.slice(0, 3).map((l) => (
-                <div key={l.id} onClick={() => pingWA(l)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
-                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ef4444", flexShrink: 0, boxShadow: "0 0 0 3px rgba(239,68,68,0.15)" }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{l.buyer_name || "—"}</p>
-                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>No contact · {timeAgo(l.updated_at)}</p>
-                  </div>
-                  <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 600, flexShrink: 0 }}>WA</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* ── This Month Analytics ── */}
         {commissionData.count > 0 && (
@@ -2830,6 +2991,17 @@ export default function SalesmanLite() {
       return new Date(b.car.created_at) - new Date(a.car.created_at); // newest (default)
     });
 
+    // Two cars can share the exact same year/brand/model/variant (e.g. two
+    // identical trims bought in one batch) and be visually indistinguishable
+    // in the grid. Only surface a disambiguator (colour / plate) on cards
+    // whose title actually collides with a sibling — no point cluttering
+    // every card with extra text when names are already unique.
+    const nameCounts = {};
+    sorted.forEach(({ car }) => {
+      const n = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
+      nameCounts[n] = (nameCounts[n] || 0) + 1;
+    });
+
     const SEL_STYLE = (active) => ({
       fontSize: 11,
       padding: "5px 11px",
@@ -3120,6 +3292,9 @@ export default function SalesmanLite() {
               const price = car.selling_price
                 ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
                 : "—";
+              const disambiguator = nameCounts[name] > 1
+                ? [car.colour, car.plate_number ? `Plate …${car.plate_number.slice(-4)}` : null].filter(Boolean).join(" · ")
+                : null;
               const cvrLabel   = cvr !== null ? cvr.toFixed(1) : "0";
               const isHovering = cvrHover === car.id;
               const openDetail = () => { setSelectedCar(car); setCarDetailImgIdx(0); setCarDetailTab("specs"); };
@@ -3245,6 +3420,11 @@ export default function SalesmanLite() {
                         }}
                       >
                         {name}
+                        {disambiguator && (
+                          <span style={{ display: "block", fontSize: 10, fontWeight: 400, color: "#6b7280", marginTop: 2 }}>
+                            {disambiguator}
+                          </span>
+                        )}
                       </p>
                       <div style={{ position: "relative", flexShrink: 0 }}>
                         <button
@@ -3297,6 +3477,7 @@ export default function SalesmanLite() {
                       <div style={{ display: "flex", alignItems: "center", gap: 0, flex: 1 }}>
                         <span style={{ fontSize: 10, color: "#6b7280", padding: "3px 5px 3px 7px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRight: "none", borderRadius: "5px 0 0 5px", lineHeight: 1 }}>RM</span>
                         <input
+                          key={`comm-${car.id}-${car.commission_amount ?? "x"}`}
                           type="number"
                           min="0"
                           step="100"
@@ -3474,6 +3655,8 @@ export default function SalesmanLite() {
                       <div style={{ position: "relative", flexShrink: 0 }}>
                         <button
                           onClick={(e) => { e.stopPropagation(); setActionMenuCarId(actionMenuCarId === car.id ? null : car.id); setConfirmDeleteId(null); }}
+                          title="More actions"
+                          aria-label="More actions"
                           style={{ width: 30, height: 30, borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, letterSpacing: 1 }}
                         >
                           ···
@@ -4448,22 +4631,29 @@ export default function SalesmanLite() {
         })
       : leads;
 
-    // lead source breakdown
-    const srcMap = { enquiry: 0, manual: 0, booking: 0, xdrive: 0 };
+    // Lead source breakdown — bucket by whatever lead_source values actually
+    // appear (not a fixed whitelist), so sources outside an old hardcoded list
+    // (e.g. real 'whatsapp'/'walk_in'/'referral'/'drevo_enquiry' rows) aren't
+    // silently dropped from the total. Mirrors the dynamic bucketing already
+    // used for the Prestasi lead-source card below.
+    const SRC_LABELS = { whatsapp: "WhatsApp", enquiry: "XDrive Enquiry", drevo_enquiry: "XDrive Enquiry", walk_in: "Walk-In", referral: "Referral", manual: "Manual" };
+    const SRC_COLORS = { whatsapp: "#4ade80", enquiry: "#f87171", drevo_enquiry: "#f87171", walk_in: "#a78bfa", referral: "#fbbf24", manual: "#6b7280" };
+    const FALLBACK_COLORS = ["#60a5fa", "#f472b6", "#fb923c", "#34d399"];
+    const srcMap = {};
     leads.forEach(l => {
       const s = l.lead_source || "manual";
       srcMap[s] = (srcMap[s] || 0) + 1;
     });
     const srcTotal = leads.length;
-    const srcCfg = [
-      { key: "enquiry",  label: "WhatsApp",  color: "#4ade80" },
-      { key: "booking",  label: "Booking",   color: "#60a5fa" },
-      { key: "xdrive",   label: "XDrive",    color: "#f87171" },
-      { key: "manual",   label: "Manual",    color: "#6b7280" },
-    ].filter(s => srcMap[s.key] > 0);
+    const srcCfg = Object.keys(srcMap).map((key, i) => ({
+      key,
+      label: SRC_LABELS[key] || key,
+      color: SRC_COLORS[key] || FALLBACK_COLORS[i % FALLBACK_COLORS.length],
+    }));
 
     // pre-compute heat scores once — avoids O(n log n) recomputation inside sort comparators
     const heatMap = new Map(searchedLeads.map((l) => [l.id, getHeatScore(l)]));
+    const staleIdSet = new Set(staleLeads.map((l) => l.id));
 
     const activeStages = LEAD_STAGES.filter(
       (s) => s !== "lost" && s !== "closed_lost" && s !== "closed_won",
@@ -4497,6 +4687,7 @@ export default function SalesmanLite() {
       return (
         <div
           key={lead.id}
+          className={glowLeadIds.has(lead.id) ? "slite-lead-glow" : undefined}
           style={{
             background: "#0d1117",
             border: "1px solid rgba(255,255,255,0.07)",
@@ -4516,7 +4707,7 @@ export default function SalesmanLite() {
                   <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {lead.buyer_name || "—"}
                   </p>
-                  <span style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", flexShrink: 0, fontWeight: 600 }}>
+                  <span title="Buyer urgency — based on pipeline stage and how recently this lead moved" style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", flexShrink: 0, fontWeight: 600 }}>
                     {heat.label}
                   </span>
                 </div>
@@ -4608,6 +4799,8 @@ export default function SalesmanLite() {
             ) : null}
             <button
               onClick={() => setDrawerLeadId(lead.id)}
+              title="Open lead details"
+              aria-label="Open lead details"
               style={{ flexShrink: 0, fontSize: 13, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", letterSpacing: "0.05em", lineHeight: 1 }}
             >
               ···
@@ -4619,6 +4812,14 @@ export default function SalesmanLite() {
 
     return (
       <div>
+        <style>{`
+          @keyframes slite-lead-glow {
+            0%   { box-shadow: 0 0 0 0 rgba(220,38,38,0.55); border-color: rgba(220,38,38,0.7); }
+            70%  { box-shadow: 0 0 0 12px rgba(220,38,38,0); border-color: rgba(220,38,38,0.7); }
+            100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); border-color: rgba(255,255,255,0.07); }
+          }
+          .slite-lead-glow { animation: slite-lead-glow 1s ease-out; }
+        `}</style>
         <div
           style={{
             display: "flex",
@@ -4694,16 +4895,26 @@ export default function SalesmanLite() {
 
         {isMobile ? (
           <>
-            {/* Mobile: pill filter row */}
-            <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", padding: "2px 0 10px", marginBottom: 12 }}>
+            {/* Mobile: pill filter row — wraps onto a second row instead of
+                scrolling sideways, so every stage is visible without a swipe.
+                Each pill's count badge turns red with a "!" when that stage
+                has a lead needing follow-up, so you don't have to click into
+                every stage to find out. */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "2px 0 10px", marginBottom: 12 }}>
               {activeStages.map((stage) => {
                 const sc = STAGE_COLOR[stage] || {};
-                const count = searchedLeads.filter((l) => l.stage === stage).length;
+                const stageLeadsForPill = searchedLeads.filter((l) => l.stage === stage);
+                const count = stageLeadsForPill.length;
+                const staleInStage = stageLeadsForPill.filter((l) => staleIdSet.has(l.id));
+                const needsFollowUp = staleInStage.length > 0;
                 const isActive = mobileLeadStage === stage;
                 return (
                   <button
                     key={stage}
-                    onClick={() => setMobileLeadStage(stage)}
+                    onClick={() => {
+                      setMobileLeadStage(stage);
+                      triggerGlow(staleInStage.map((l) => l.id));
+                    }}
                     style={{
                       flexShrink: 0,
                       display: "flex",
@@ -4725,13 +4936,14 @@ export default function SalesmanLite() {
                     <span style={{
                       fontSize: 10,
                       fontWeight: 700,
-                      color: isActive ? (sc.tx || "#f87171") : "#374151",
-                      background: isActive ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.06)",
+                      color: needsFollowUp ? "#f87171" : isActive ? (sc.tx || "#f87171") : "#374151",
+                      background: needsFollowUp ? "rgba(239,68,68,0.18)" : isActive ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.06)",
+                      border: needsFollowUp ? "1px solid rgba(239,68,68,0.4)" : "none",
                       borderRadius: 99,
                       padding: "0px 6px",
                       lineHeight: 1.6,
                     }}>
-                      {count}
+                      {count}{needsFollowUp ? "!" : ""}
                     </span>
                   </button>
                 );
@@ -4759,30 +4971,50 @@ export default function SalesmanLite() {
           </>
         ) : (
           /* Desktop: horizontal kanban scroll */
-          <div
-            style={{
-              display: "flex",
-              gap: 12,
-              overflowX: "auto",
-              paddingBottom: 8,
-            }}
-          >
+          <>
+            {activeStages.length > 3 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 6, fontSize: 10, color: "#4b5563" }}>
+                <span>{activeStages.length} stages — scroll right for more</span>
+                <ChevronRight size={12} />
+              </div>
+            )}
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                overflowX: "auto",
+                paddingBottom: 8,
+              }}
+            >
             {activeStages.map((stage) => {
               const sc = STAGE_COLOR[stage] || {};
               const stageLeads = searchedLeads
                 .filter((l) => l.stage === stage)
                 .sort((a, b) => (heatMap.get(b.id)?.score ?? 0) - (heatMap.get(a.id)?.score ?? 0));
+              const staleInStage = stageLeads.filter((l) => staleIdSet.has(l.id));
+              const needsFollowUp = staleInStage.length > 0;
               return (
                 <div
                   key={stage}
                   style={{ minWidth: stageLeads.length === 0 ? 80 : 200, flexShrink: 0 }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                  <div
+                    onClick={() => triggerGlow(staleInStage.map((l) => l.id))}
+                    title={needsFollowUp ? `${staleInStage.length} needs follow-up` : undefined}
+                    style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, cursor: needsFollowUp ? "pointer" : "default" }}
+                  >
                     <span style={{ fontSize: 11, fontWeight: 600, color: sc.tx || "#9ca3af", textTransform: "capitalize" }}>
                       {stage.replace(/_/g, " ")}
                     </span>
-                    <span style={{ fontSize: 10, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, borderRadius: 99, padding: "1px 6px" }}>
-                      {stageLeads.length}
+                    <span style={{
+                      fontSize: 10,
+                      background: needsFollowUp ? "rgba(239,68,68,0.18)" : sc.bg,
+                      border: `1px solid ${needsFollowUp ? "rgba(239,68,68,0.4)" : sc.border}`,
+                      color: needsFollowUp ? "#f87171" : sc.tx,
+                      borderRadius: 99,
+                      padding: "1px 6px",
+                    }}>
+                      {stageLeads.length}{needsFollowUp ? "!" : ""}
                     </span>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -4796,7 +5028,8 @@ export default function SalesmanLite() {
                 </div>
               );
             })}
-          </div>
+            </div>
+          </>
         )}
 
         {lostLeads.length > 0 && (
@@ -5339,6 +5572,13 @@ export default function SalesmanLite() {
       rescheduled: { bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.3)", tx: "#c084fc" },
       cancelled:   { bg: "rgba(239,68,68,0.12)",   border: "rgba(239,68,68,0.3)",   tx: "#f87171" },
       completed:   { bg: "rgba(107,114,128,0.12)", border: "rgba(107,114,128,0.3)", tx: "#9ca3af" },
+      no_show:     { bg: "rgba(251,146,60,0.12)",  border: "rgba(251,146,60,0.3)",  tx: "#fb923c" },
+    };
+
+    const setAptStatus = async (apt, status) => {
+      const { error } = await supabase.from("appointments").update({ status }).eq("id", apt.id);
+      if (error) { toast.error("Failed to update booking"); return; }
+      setAppointments((p) => p.map((a) => a.id === apt.id ? { ...a, status } : a));
     };
 
     const buildReminderMessage = (apt) => {
@@ -5364,7 +5604,7 @@ export default function SalesmanLite() {
 
     const todayApts = appointments.filter((a) => aptIsToday(a.appointment_date) && a.status !== "cancelled").sort(asc);
     const upcomingApts = appointments.filter((a) => {
-      if (!a.appointment_date) return false;
+      if (!a.appointment_date || a.status === "cancelled") return false;
       const d = new Date(a.appointment_date);
       return !isNaN(d) && !aptIsToday(a.appointment_date) && d > new Date();
     }).sort(newestBooked);
@@ -5679,6 +5919,10 @@ export default function SalesmanLite() {
                   const { dateStr, timeStr } = fmtAptDate(apt.appointment_date);
                   const sc = statusColors[apt.status] || statusColors.pending;
                   const carPhone = [car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null, apt.buyer_phone ? `📞 ${apt.buyer_phone}` : null].filter(Boolean).join("  ·  ");
+                  // A past booking left in an open status (pending/confirmed/rescheduled)
+                  // has no automatic terminal state — it would otherwise say "Confirmed"
+                  // forever. Offer the two real outcomes explicitly.
+                  const needsOutcome = !["cancelled", "completed", "no_show"].includes(apt.status);
                   return (
                     <div key={apt.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 10, padding: "10px 14px", opacity: 0.65 }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 2 }}>
@@ -5686,7 +5930,7 @@ export default function SalesmanLite() {
                           {apt.buyer_name || "—"}
                         </p>
                         <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
-                          {apt.status}
+                          {apt.status === "no_show" ? "No-show" : apt.status}
                         </span>
                       </div>
                       <p style={{ margin: "0 0 2px", fontSize: 12, color: "#6b7280" }}>
@@ -5694,6 +5938,22 @@ export default function SalesmanLite() {
                       </p>
                       {carPhone && (
                         <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>{carPhone}</p>
+                      )}
+                      {needsOutcome && (
+                        <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                          <button
+                            onClick={() => setAptStatus(apt, "completed")}
+                            style={{ fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 6, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.25)", color: "#4ade80", cursor: "pointer", fontFamily: "inherit" }}
+                          >
+                            Mark Completed
+                          </button>
+                          <button
+                            onClick={() => setAptStatus(apt, "no_show")}
+                            style={{ fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 6, background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.25)", color: "#fb923c", cursor: "pointer", fontFamily: "inherit" }}
+                          >
+                            No-show
+                          </button>
+                        </div>
                       )}
                     </div>
                   );
@@ -6602,16 +6862,16 @@ export default function SalesmanLite() {
   // ── TOUR ─────────────────────────────────────────────────────────────────
 
   const TOUR_STEPS = [
-    { icon: Zap,          title: "Selamat Datang ke ShiftOS Lite", body: "Lawatan ringkas 30 saat. Setiap langkah akan membawa anda terus ke bahagian panel — boleh tengok sendiri dalam masa nyata." },
-    { icon: LayoutGrid,   title: "Papan Pemuka",    body: "Pusat kawalan anda — KPI, amaran susulan tertunggak, prestasi iklan, dan aktiviti terkini semuanya dalam satu paparan." },
-    { icon: Car,          title: "Iklan Saya",      body: "Tambah kereta anda di sini. Setiap kad menunjukkan tontonan, ketukan WA, dan bar penukaran. Kereta yang mendapat banyak klik akan terpapar jelas." },
-    { icon: Users,        title: "Bakal Pelanggan", body: "Jejak setiap pembeli: Baru → Dihubungi → Test Drive → Menang. Skor panas menunjukkan siapa yang perlu perhatian. Hantar mesej terus ke WhatsApp." },
-    { icon: MessageSquare, title: "Pertanyaan",    body: "Pembeli yang menghantar mesej melalui kad iklan anda akan masuk di sini. Balas dengan templat atau tukar kepada lead dalam satu ketikan." },
-    { icon: Calendar,     title: "Tempahan",        body: "Janji temu tontonan kereta dipaparkan di sini. Sahkan, batalkan, atau hantar peringatan WA tanpa keluar dari aplikasi." },
-    { icon: BarChart2,    title: "Prestasi",        body: "Statistik jualan anda — komisen diperoleh, unit terjual, dan prestasi setiap iklan dari semasa ke semasa. Tahu apa yang berkesan." },
-    { icon: GitMerge,     title: "Sertai Pengedar", body: "Ada kod jemputan dari pengedar anda? Masukkan di sini untuk buka panel penuh — stok dikongsi, lead bersama, penjejak komisen dan lebih banyak lagi." },
-    { icon: Settings,     title: "Tetapan",         body: "Kemas kini nombor WhatsApp, foto profil, lokasi dan pautan media sosial. Nombor WhatsApp penting — di situlah pembeli menghubungi anda." },
-    { icon: BookOpen,     title: "Bantuan",         body: "Panduan langkah demi langkah, tip jualan dan soalan lazim. Rujuk di sini bila-bila masa anda tersekat." },
+    { icon: Zap,          title: t("salesmanLite.tour.steps.welcome.title"),     body: t("salesmanLite.tour.steps.welcome.body") },
+    { icon: LayoutGrid,   title: t("salesmanLite.tour.steps.dashboard.title"),   body: t("salesmanLite.tour.steps.dashboard.body") },
+    { icon: Car,          title: t("salesmanLite.tour.steps.listings.title"),    body: t("salesmanLite.tour.steps.listings.body") },
+    { icon: Users,        title: t("salesmanLite.tour.steps.leads.title"),       body: t("salesmanLite.tour.steps.leads.body") },
+    { icon: MessageSquare, title: t("salesmanLite.tour.steps.inbox.title"),      body: t("salesmanLite.tour.steps.inbox.body") },
+    { icon: Calendar,     title: t("salesmanLite.tour.steps.bookings.title"),    body: t("salesmanLite.tour.steps.bookings.body") },
+    { icon: BarChart2,    title: t("salesmanLite.tour.steps.performance.title"), body: t("salesmanLite.tour.steps.performance.body") },
+    { icon: GitMerge,     title: t("salesmanLite.tour.steps.merge.title"),       body: t("salesmanLite.tour.steps.merge.body") },
+    { icon: Settings,     title: t("salesmanLite.tour.steps.settings.title"),    body: t("salesmanLite.tour.steps.settings.body") },
+    { icon: BookOpen,     title: t("salesmanLite.tour.steps.help.title"),        body: t("salesmanLite.tour.steps.help.body") },
   ];
 
   const dismissTour = async () => {
@@ -6742,7 +7002,7 @@ export default function SalesmanLite() {
               </div>
               <div>
                 <p style={{ margin: 0, fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.07em" }}>
-                  {tourStep + 1} / {TOUR_STEPS.length}
+                  {t("salesmanLite.tour.progress", { current: tourStep + 1, total: TOUR_STEPS.length })}
                 </p>
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{step.title}</p>
               </div>
@@ -6765,18 +7025,18 @@ export default function SalesmanLite() {
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             {tourStep > 0 && (
               <button onClick={() => setTourStep((s) => s - 1)} style={{ padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer" }}>
-                Kembali
+                {t("salesmanLite.tour.back")}
               </button>
             )}
             <div style={{ flex: 1 }} />
             <button onClick={dismissTour} style={{ background: "none", border: "none", color: "#4b5563", fontSize: 11, cursor: "pointer", padding: "7px 6px" }}>
-              Langkau
+              {t("salesmanLite.tour.skip")}
             </button>
             <button
               onClick={() => isLast ? dismissTour() : setTourStep((s) => s + 1)}
               style={{ padding: "7px 16px", borderRadius: 7, background: "#dc2626", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
             >
-              {isLast ? "Faham" : "Seterusnya"}
+              {isLast ? t("salesmanLite.tour.done") : t("salesmanLite.tour.next")}
             </button>
           </div>
         </div>
@@ -7108,6 +7368,8 @@ export default function SalesmanLite() {
             </div>
             <button
               onClick={handleLogout}
+              title="Log out"
+              aria-label="Log out"
               style={{
                 background: "transparent",
                 border: "none",
@@ -7182,6 +7444,8 @@ export default function SalesmanLite() {
               <div style={{ flex: 1 }} />
               <button
                 onClick={() => setNotifOpen((v) => !v)}
+                title="Notifications"
+                aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : "Notifications"}
                 style={{
                   position: "relative",
                   background: "rgba(255,255,255,0.04)",
@@ -7214,6 +7478,7 @@ export default function SalesmanLite() {
               <button
                 onClick={() => setTourStep(0)}
                 title="Show tour"
+                aria-label="Show tour"
                 style={{
                   background: "rgba(255,255,255,0.04)",
                   border: "1px solid rgba(255,255,255,0.08)",
@@ -7230,6 +7495,8 @@ export default function SalesmanLite() {
               </button>
               <button
                 onClick={handleLogout}
+                title="Log out"
+                aria-label="Log out"
                 style={{
                   background: "rgba(255,255,255,0.04)",
                   border: "1px solid rgba(255,255,255,0.08)",
@@ -7284,6 +7551,8 @@ export default function SalesmanLite() {
               </div>
               <button
                 onClick={() => setNotifOpen((v) => !v)}
+                title="Notifications"
+                aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : "Notifications"}
                 style={{
                   position: "relative",
                   background: "rgba(255,255,255,0.04)",

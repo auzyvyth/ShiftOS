@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 /* ── Grade colour map ──────────────────────────────────────── */
 const GRADE_CFG = {
@@ -25,49 +25,73 @@ const FALLBACK = { bg: 'rgba(255,255,255,0.08)', border: 'rgba(255,255,255,0.18)
  *   size          "sm" (default) | "lg"
  */
 export default function GradeBadge({ auctionGrade, interiorGrade, size = 'sm' }) {
+  const [tipOpen, setTipOpen] = useState(false);
   if (!auctionGrade && !interiorGrade) return null;
 
   const cfg   = auctionGrade ? (GRADE_CFG[auctionGrade] || FALLBACK) : FALLBACK;
   const isLg  = size === 'lg';
 
   return (
-    <div
-      title={cfg.tip || ''}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: isLg ? '7px' : '4px',
-        background: cfg.bg,
-        border: `1px solid ${cfg.border}`,
-        borderRadius: isLg ? '9px' : '6px',
-        padding: isLg ? '6px 12px' : '3px 7px',
-        backdropFilter: 'blur(6px)',
-        lineHeight: 1,
-      }}
-    >
-      {auctionGrade && (
-        <span style={{
-          color: cfg.text,
-          fontSize: isLg ? '15px' : '11px',
-          fontWeight: '800',
-          letterSpacing: '0.02em',
-          fontFamily: "'DM Sans',sans-serif",
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+      <div
+        title={cfg.tip || ''}
+        onClick={(e) => {
+          // Native title tooltips never fire on touch devices — most buyers
+          // are on mobile, so without a tap affordance this grade is
+          // unexplained on every card. stopPropagation: the badge sits
+          // inside a whole-card click-to-navigate area.
+          if (!cfg.tip) return;
+          e.stopPropagation();
+          setTipOpen((o) => !o);
+          setTimeout(() => setTipOpen(false), 2500);
+        }}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: isLg ? '7px' : '4px',
+          background: cfg.bg,
+          border: `1px solid ${cfg.border}`,
+          borderRadius: isLg ? '9px' : '6px',
+          padding: isLg ? '6px 12px' : '3px 7px',
+          backdropFilter: 'blur(6px)',
+          lineHeight: 1,
+          cursor: cfg.tip ? 'pointer' : 'default',
+        }}
+      >
+        {auctionGrade && (
+          <span style={{
+            color: cfg.text,
+            fontSize: isLg ? '15px' : '11px',
+            fontWeight: '800',
+            letterSpacing: '0.02em',
+            fontFamily: "'DM Sans',sans-serif",
+          }}>
+            {auctionGrade}
+          </span>
+        )}
+        {auctionGrade && interiorGrade && (
+          <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: isLg ? '13px' : '9px' }}>│</span>
+        )}
+        {interiorGrade && (
+          <span style={{
+            color: '#d1d5db',
+            fontSize: isLg ? '13px' : '10px',
+            fontWeight: '700',
+            fontFamily: "'DM Sans',sans-serif",
+          }}>
+            {interiorGrade}
+          </span>
+        )}
+      </div>
+      {tipOpen && cfg.tip && (
+        <div style={{
+          position: 'absolute', bottom: '100%', left: 0, marginBottom: 6,
+          background: '#111827', color: '#f3f4f6', fontSize: 11, fontWeight: 600,
+          padding: '5px 9px', borderRadius: 6, whiteSpace: 'nowrap', zIndex: 20,
+          boxShadow: '0 4px 14px rgba(0,0,0,0.3)', fontFamily: "'DM Sans',sans-serif",
         }}>
-          {auctionGrade}
-        </span>
-      )}
-      {auctionGrade && interiorGrade && (
-        <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: isLg ? '13px' : '9px' }}>│</span>
-      )}
-      {interiorGrade && (
-        <span style={{
-          color: '#d1d5db',
-          fontSize: isLg ? '13px' : '10px',
-          fontWeight: '700',
-          fontFamily: "'DM Sans',sans-serif",
-        }}>
-          {interiorGrade}
-        </span>
+          Grade {auctionGrade || interiorGrade}: {cfg.tip}
+        </div>
       )}
     </div>
   );
