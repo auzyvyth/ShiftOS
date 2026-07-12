@@ -2094,9 +2094,18 @@ export default function SalesmanLite() {
     const DAY_MS = 86400000;
     const todayMidnight = new Date();
     todayMidnight.setHours(0, 0, 0, 0);
+    // Local calendar date on both sides of the comparison. sold_at is a UTC
+    // timestamp; deriving the day-key via `local midnight -> toISOString()`
+    // converts back to UTC and silently shifts the date back a day for any
+    // timezone ahead of UTC (e.g. MYT, UTC+8) — a same-day sale then never
+    // matches its own key, the running total stays 0, and the whole card
+    // (gated on trendTotal > 0) disappears. Using getFullYear/Month/Date on
+    // both the generated key and the parsed sold_at keeps them in the same
+    // (local) calendar, regardless of timezone.
+    const toLocalDateKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const soldWithCommission = myListings.filter(c => c.status === "sold" && c.sold_at);
     const commissionOnDay = (dateKey) => soldWithCommission
-      .filter(c => c.sold_at.slice(0, 10) === dateKey)
+      .filter(c => toLocalDateKey(new Date(c.sold_at)) === dateKey)
       .reduce((s, c) => s + (Number(c.commission_amount) || 0), 0);
     // Cumulative running total, not raw daily commission — sales are sparse
     // (mostly-zero days with the odd spike), so a per-day chart is a jagged
@@ -2105,13 +2114,13 @@ export default function SalesmanLite() {
     // convention the reference screenshot uses).
     let runningCommission = 0;
     const commissionTrend = Array.from({ length: 14 }, (_, i) => {
-      const key = new Date(todayMidnight.getTime() - (13 - i) * DAY_MS).toISOString().slice(0, 10);
+      const key = toLocalDateKey(new Date(todayMidnight.getTime() - (13 - i) * DAY_MS));
       runningCommission += commissionOnDay(key);
       return { d: key, val: runningCommission };
     });
     const trendTotal = commissionTrend.length ? commissionTrend[commissionTrend.length - 1].val : 0;
     const prevTrendTotal = Array.from({ length: 14 }, (_, i) =>
-      commissionOnDay(new Date(todayMidnight.getTime() - (27 - i) * DAY_MS).toISOString().slice(0, 10)),
+      commissionOnDay(toLocalDateKey(new Date(todayMidnight.getTime() - (27 - i) * DAY_MS))),
     ).reduce((s, v) => s + v, 0);
     const trendDelta = prevTrendTotal > 0
       ? Math.round(((trendTotal - prevTrendTotal) / prevTrendTotal) * 100)
