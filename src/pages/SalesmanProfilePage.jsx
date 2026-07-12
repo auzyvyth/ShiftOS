@@ -139,10 +139,25 @@ export default function SalesmanProfilePage() {
         .social-btn:hover { border-color: rgba(255,255,255,0.22) !important; color: #e5e7eb !important; }
       `}</style>
 
-      <div style={{ minHeight: '100vh', background: '#05070e', fontFamily: "'DM Sans',sans-serif", color: '#fff' }}>
+      <div style={{ minHeight: '100vh', position: 'relative', background: '#05070e', fontFamily: "'DM Sans',sans-serif", color: '#fff', overflowX: 'hidden' }}>
+
+        {/* Decorative backdrop — fixed to the viewport (not the scrollable
+            document) so the orange spot + waves stay put relative to the
+            screen instead of stretching across the full page height and
+            landing off-screen on a long listings page. */}
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
+          background: `
+            radial-gradient(ellipse 520px 440px at 92% 90%, rgba(251,146,60,0.20) 0%, rgba(234,88,12,0.08) 38%, transparent 65%),
+            repeating-linear-gradient(315deg, rgba(251,146,60,0.05) 0px, rgba(251,146,60,0.05) 1.5px, transparent 1.5px, transparent 90px),
+            linear-gradient(160deg, #05070e 0%, #0a0d14 55%, #05070e 100%)
+          `,
+        }} />
+
+        <div style={{ position: 'relative', zIndex: 1 }}>
 
         {/* ── Hero ── */}
-        <div style={{ maxWidth: 640, margin: '0 auto', padding: '60px 24px 32px', textAlign: 'center' }}>
+        <div style={{ maxWidth: 640, margin: '0 auto', padding: '60px clamp(14px, 5vw, 24px) 32px', textAlign: 'center' }}>
 
           {/* Avatar */}
           {profile.avatar_url ? (
@@ -194,8 +209,11 @@ export default function SalesmanProfilePage() {
             </div>
           )}
 
-          {/* Stats strip */}
-          <div style={{ display: 'inline-flex', gap: 0, background: '#0d1117', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden', marginBottom: (profile.about_text || profile.bio) ? 18 : 22 }}>
+          {/* Stats strip — flexWrap + maxWidth so a long dealership name or all
+              three cells present can't force the whole page wider than the
+              viewport (this was the actual cause of the side-margin/overflow
+              on narrow phones — inline-flex with no wrap has no ceiling). */}
+          <div style={{ display: 'inline-flex', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '100%', gap: 0, background: '#0d1117', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden', marginBottom: (profile.about_text || profile.bio) ? 18 : 22 }}>
             <div style={{ padding: '10px 20px', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
               <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#f1f5f9', lineHeight: 1 }}>{listings.length}</p>
               <p style={{ margin: '3px 0 0', fontSize: 9, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Available</p>
@@ -303,13 +321,13 @@ export default function SalesmanProfilePage() {
         </div>
 
         {/* ── Divider ── */}
-        <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 24px' }}>
+        <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 clamp(14px, 5vw, 24px)' }}>
           <div style={{ height: 1, background: 'rgba(255,255,255,0.05)' }} />
         </div>
 
         {/* ── Featured Listing ── */}
         {featured && (
-          <div style={{ maxWidth: 640, margin: '0 auto', padding: '28px 24px 0' }}>
+          <div style={{ maxWidth: 640, margin: '0 auto', padding: '28px clamp(14px, 5vw, 24px) 0' }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 12 }}>Featured</p>
             <Link to={`/showroom/${featured.slug}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
               <div className="sp-card" style={{ background: '#0d1117', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, overflow: 'hidden' }}>
@@ -351,7 +369,7 @@ export default function SalesmanProfilePage() {
         )}
 
         {/* ── All Listings ── */}
-        <div style={{ maxWidth: 1080, margin: '0 auto', padding: '28px 24px 80px' }}>
+        <div style={{ maxWidth: 1080, margin: '0 auto', padding: '28px clamp(14px, 5vw, 24px) 80px' }}>
           {rest.length > 0 && (
             <>
               <p style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 14 }}>
@@ -414,6 +432,7 @@ export default function SalesmanProfilePage() {
           </a>
         </div>
 
+        </div>
       </div>
     </>
   );
