@@ -150,7 +150,9 @@ export default function SalesmanLiteLanding() {
               <a href="#how" className="sll-btn sll-btn-ghost">See how it works</a>
             </div>
             <p className="sll-microtrust">
-              <Check size={14} /> Free forever &nbsp;·&nbsp; <Check size={14} /> No credit card &nbsp;·&nbsp; <Check size={14} /> Live in 2 minutes
+              <span className="sll-microtrust-item"><Check size={14} /> Free forever</span>
+              <span className="sll-microtrust-item"><Check size={14} /> No credit card</span>
+              <span className="sll-microtrust-item"><Check size={14} /> Live in 2 minutes</span>
             </p>
           </div>
         </section>
@@ -351,7 +353,9 @@ export default function SalesmanLiteLanding() {
               </Link>
             </div>
             <p className="sll-microtrust sll-center">
-              <ShieldCheck size={14} /> PDPA 2010 compliant &nbsp;·&nbsp; <Share2 size={14} /> One shareable link &nbsp;·&nbsp; <Wallet size={14} /> RM0
+              <span className="sll-microtrust-item"><ShieldCheck size={14} /> PDPA 2010 compliant</span>
+              <span className="sll-microtrust-item"><Share2 size={14} /> One shareable link</span>
+              <span className="sll-microtrust-item"><Wallet size={14} /> RM0</span>
             </p>
           </div>
         </section>
@@ -386,8 +390,9 @@ const CSS = `
   .sll-btn-ghost { background: #fff; color: #0a0a0a; border: 1.5px solid #0a0a0a; }
   .sll-btn-ghost:hover { background: #0a0a0a; color: #fff; }
   .sll-btn-block { display: flex; justify-content: center; width: 100%; margin-top: 4px; }
-  .sll-microtrust { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #6b7280; margin: 24px 0 0; }
-  .sll-microtrust svg { color: #dc2626; }
+  .sll-microtrust { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; font-size: 13px; font-weight: 600; color: #6b7280; margin: 24px 0 0; }
+  .sll-microtrust-item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .sll-microtrust svg { color: #dc2626; flex-shrink: 0; }
   .sll-center { justify-content: center; }
 
   .sll-band-line { background: #0a0a0a; color: #fff; padding: 15px 0; font-size: 14px; font-weight: 500; text-align: center; }
@@ -467,7 +472,11 @@ const CSS = `
   /* Coming-soon premium card: dimmed content, disabled CTA, corner ribbon */
   .sll-plan-soon { position: relative; overflow: hidden; }
   .sll-plan-soon .sll-plan-dim { opacity: 0.5; filter: grayscale(0.2); }
-  .sll-soon-ribbon { position: absolute; top: 20px; right: -46px; transform: rotate(45deg); background: #dc2626; color: #fff; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; padding: 6px 54px; box-shadow: 0 4px 14px rgba(0,0,0,0.22); z-index: 2; }
+  /* Fixed width + text-align:center so the text sits centered on the diagonal
+     strip itself — shrink-to-fit content with only symmetric padding still
+     left it reading off-corner because the strip wasn't long enough to span
+     the actual corner it's meant to sit across. */
+  .sll-soon-ribbon { position: absolute; top: 22px; right: -58px; width: 200px; transform: rotate(45deg); background: #dc2626; color: #fff; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; text-align: center; padding: 6px 0; box-shadow: 0 4px 14px rgba(0,0,0,0.22); z-index: 2; }
   .sll-btn-disabled { background: #9ca3af; color: #fff; cursor: not-allowed; pointer-events: none; box-shadow: none; }
   .sll-plan-head { margin-bottom: 22px; }
   .sll-plan-name { display: block; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }
@@ -495,5 +504,10 @@ const CSS = `
     .sll-hero { padding: 64px 0 48px; }
     .sll-phone { max-width: 340px; margin: 0 auto; }
     .sll-midcta-inner { flex-direction: column; align-items: flex-start; }
+    /* Three items in one wrapped inline row read as clanky on narrow screens
+       (a checkmark stranding itself on the next line from its own text) —
+       one clean item per line instead. */
+    .sll-microtrust { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .sll-final .sll-microtrust { align-items: center; }
   }
 `;
