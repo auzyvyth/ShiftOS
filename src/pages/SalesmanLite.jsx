@@ -504,6 +504,19 @@ export default function SalesmanLite() {
   // mobile lead stage filter
   const [mobileLeadStage, setMobileLeadStage] = useState("new");
 
+  // Pipeline "glow" — briefly highlights the leads that triggered a jump here
+  // (from a stage pill/header, or the dashboard's Overdue button) so the user's
+  // eye lands on exactly which cards need a follow-up, not just "somewhere in
+  // this stage/tab."
+  const [glowLeadIds, setGlowLeadIds] = useState(() => new Set());
+  const glowTimeoutRef = useRef(null);
+  const triggerGlow = (ids) => {
+    if (!ids || ids.length === 0) return;
+    if (glowTimeoutRef.current) clearTimeout(glowTimeoutRef.current);
+    setGlowLeadIds(new Set(ids));
+    glowTimeoutRef.current = setTimeout(() => setGlowLeadIds(new Set()), 1000);
+  };
+
   // link car to lead
   const [linkCarLeadId, setLinkCarLeadId] = useState(null);
 
@@ -2095,10 +2108,22 @@ export default function SalesmanLite() {
               </p>
             </div>
             {staleLeads.length > 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 99, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.18)", flexShrink: 0 }}>
+              <button
+                onClick={() => {
+                  // Jump straight to whichever stage actually has an overdue
+                  // lead (mobile shows one stage at a time), then glow them
+                  // so the eye lands on exactly which cards need attention.
+                  const activeStageOrder = LEAD_STAGES.filter((s) => !["lost", "closed_lost", "closed_won"].includes(s));
+                  const firstStaleStage = activeStageOrder.find((s) => staleLeads.some((l) => l.stage === s));
+                  if (firstStaleStage) setMobileLeadStage(firstStaleStage);
+                  switchTab("leads");
+                  triggerGlow(staleLeads.map((l) => l.id));
+                }}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 99, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.18)", flexShrink: 0, cursor: "pointer", fontFamily: "inherit" }}
+              >
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", flexShrink: 0 }} />
                 <span style={{ fontSize: 11, fontWeight: 600, color: "#ef4444" }}>{staleLeads.length} {t("salesmanLite.kpi.overdue")}</span>
-              </div>
+              </button>
             )}
           </div>
           {portfolioValue > 0 && (
@@ -4628,6 +4653,7 @@ export default function SalesmanLite() {
 
     // pre-compute heat scores once — avoids O(n log n) recomputation inside sort comparators
     const heatMap = new Map(searchedLeads.map((l) => [l.id, getHeatScore(l)]));
+    const staleIdSet = new Set(staleLeads.map((l) => l.id));
 
     const activeStages = LEAD_STAGES.filter(
       (s) => s !== "lost" && s !== "closed_lost" && s !== "closed_won",
@@ -4661,6 +4687,7 @@ export default function SalesmanLite() {
       return (
         <div
           key={lead.id}
+          className={glowLeadIds.has(lead.id) ? "slite-lead-glow" : undefined}
           style={{
             background: "#0d1117",
             border: "1px solid rgba(255,255,255,0.07)",
@@ -4785,6 +4812,14 @@ export default function SalesmanLite() {
 
     return (
       <div>
+        <style>{`
+          @keyframes slite-lead-glow {
+            0%   { box-shadow: 0 0 0 0 rgba(220,38,38,0.55); border-color: rgba(220,38,38,0.7); }
+            70%  { box-shadow: 0 0 0 12px rgba(220,38,38,0); border-color: rgba(220,38,38,0.7); }
+            100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); border-color: rgba(255,255,255,0.07); }
+          }
+          .slite-lead-glow { animation: slite-lead-glow 1s ease-out; }
+        `}</style>
         <div
           style={{
             display: "flex",
@@ -4860,16 +4895,26 @@ export default function SalesmanLite() {
 
         {isMobile ? (
           <>
-            {/* Mobile: pill filter row */}
-            <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", padding: "2px 0 10px", marginBottom: 12 }}>
+            {/* Mobile: pill filter row — wraps onto a second row instead of
+                scrolling sideways, so every stage is visible without a swipe.
+                Each pill's count badge turns red with a "!" when that stage
+                has a lead needing follow-up, so you don't have to click into
+                every stage to find out. */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "2px 0 10px", marginBottom: 12 }}>
               {activeStages.map((stage) => {
                 const sc = STAGE_COLOR[stage] || {};
-                const count = searchedLeads.filter((l) => l.stage === stage).length;
+                const stageLeadsForPill = searchedLeads.filter((l) => l.stage === stage);
+                const count = stageLeadsForPill.length;
+                const staleInStage = stageLeadsForPill.filter((l) => staleIdSet.has(l.id));
+                const needsFollowUp = staleInStage.length > 0;
                 const isActive = mobileLeadStage === stage;
                 return (
                   <button
                     key={stage}
-                    onClick={() => setMobileLeadStage(stage)}
+                    onClick={() => {
+                      setMobileLeadStage(stage);
+                      triggerGlow(staleInStage.map((l) => l.id));
+                    }}
                     style={{
                       flexShrink: 0,
                       display: "flex",
@@ -4891,13 +4936,14 @@ export default function SalesmanLite() {
                     <span style={{
                       fontSize: 10,
                       fontWeight: 700,
-                      color: isActive ? (sc.tx || "#f87171") : "#374151",
-                      background: isActive ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.06)",
+                      color: needsFollowUp ? "#f87171" : isActive ? (sc.tx || "#f87171") : "#374151",
+                      background: needsFollowUp ? "rgba(239,68,68,0.18)" : isActive ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.06)",
+                      border: needsFollowUp ? "1px solid rgba(239,68,68,0.4)" : "none",
                       borderRadius: 99,
                       padding: "0px 6px",
                       lineHeight: 1.6,
                     }}>
-                      {count}
+                      {count}{needsFollowUp ? "!" : ""}
                     </span>
                   </button>
                 );
@@ -4945,17 +4991,30 @@ export default function SalesmanLite() {
               const stageLeads = searchedLeads
                 .filter((l) => l.stage === stage)
                 .sort((a, b) => (heatMap.get(b.id)?.score ?? 0) - (heatMap.get(a.id)?.score ?? 0));
+              const staleInStage = stageLeads.filter((l) => staleIdSet.has(l.id));
+              const needsFollowUp = staleInStage.length > 0;
               return (
                 <div
                   key={stage}
                   style={{ minWidth: stageLeads.length === 0 ? 80 : 200, flexShrink: 0 }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                  <div
+                    onClick={() => triggerGlow(staleInStage.map((l) => l.id))}
+                    title={needsFollowUp ? `${staleInStage.length} needs follow-up` : undefined}
+                    style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, cursor: needsFollowUp ? "pointer" : "default" }}
+                  >
                     <span style={{ fontSize: 11, fontWeight: 600, color: sc.tx || "#9ca3af", textTransform: "capitalize" }}>
                       {stage.replace(/_/g, " ")}
                     </span>
-                    <span style={{ fontSize: 10, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, borderRadius: 99, padding: "1px 6px" }}>
-                      {stageLeads.length}
+                    <span style={{
+                      fontSize: 10,
+                      background: needsFollowUp ? "rgba(239,68,68,0.18)" : sc.bg,
+                      border: `1px solid ${needsFollowUp ? "rgba(239,68,68,0.4)" : sc.border}`,
+                      color: needsFollowUp ? "#f87171" : sc.tx,
+                      borderRadius: 99,
+                      padding: "1px 6px",
+                    }}>
+                      {stageLeads.length}{needsFollowUp ? "!" : ""}
                     </span>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
