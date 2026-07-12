@@ -18,7 +18,7 @@ const ROLE_ROUTES = {
   fi_officer: '/fi', admin: '/admin',
 };
 
-export default function MarketplaceHeader() {
+export default function MarketplaceHeader({ hideAnnouncement = false }) {
   const [scrolled, setScrolled]     = useState(false);
   const [menuOpen, setMenuOpen]     = useState(false);
   const [mSection, setMSection]     = useState(null);   // mobile accordion open section
@@ -144,7 +144,7 @@ export default function MarketplaceHeader() {
 
   return (
     <>
-      <AnnouncementBar />
+      {!hideAnnouncement && <AnnouncementBar />}
       <style>{`
         .mh-root { position:sticky; top:0; z-index:100; background:#fff; border-bottom:1px solid #ECEAE3; transition:box-shadow .25s,border-color .25s; font-family:'Outfit',sans-serif; }
         .mh-root.scrolled { box-shadow:0 1px 0 rgba(0,0,0,.03), 0 10px 30px rgba(15,23,42,.08); border-bottom-color:#E5E7EB; }

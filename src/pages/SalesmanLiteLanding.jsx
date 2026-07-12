@@ -125,7 +125,10 @@ export default function SalesmanLiteLanding() {
       </Helmet>
 
       <style>{CSS}</style>
-      <MarketplaceHeader />
+      {/* This is a salesman-recruitment page, not the buyer marketplace — the
+          global announcement bar carries buyer-facing copy ("Buy your next
+          car, safely...") that's out of place here. */}
+      <MarketplaceHeader hideAnnouncement />
 
       <main className="sll">
         {/* ── Hero ── */}
