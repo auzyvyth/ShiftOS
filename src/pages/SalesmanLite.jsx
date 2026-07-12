@@ -248,6 +248,55 @@ function CarFormModal({ title, subtitle, onClose, children }) {
   );
 }
 
+// Previous-month commission popup — standalone component (not a plain function
+// called mid-render) because it needs its own useEffect for the body-scroll
+// lock; renderDashboard() below is only invoked when the dashboard tab is
+// active, so a hook inside it would violate the Rules of Hooks. Own overlay-
+// click / × close, so per the app's overlay rules it does NOT register
+// useModalHistory — that's reserved for primary drawers.
+function PrevMonthModal({ open, onClose, monthLabel, commission, count, trendPct, trendLabel }) {
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: 24, maxWidth: 340, width: "100%", fontFamily: "'DM Sans',sans-serif" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+          <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{monthLabel}</p>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 4, display: "flex" }}>
+            <X size={16} />
+          </button>
+        </div>
+        <p style={{ margin: "0 0 4px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>Commission earned</p>
+        <p style={{ margin: "0 0 6px", fontSize: 32, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.03em", lineHeight: 1 }}>
+          RM {commission.toLocaleString("en-MY")}
+        </p>
+        <p style={{ margin: "0 0 16px", fontSize: 12, color: "#6b7280" }}>{count} car{count !== 1 ? "s" : ""} sold</p>
+        {trendPct !== null ? (
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 99, background: trendPct >= 0 ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: trendPct >= 0 ? "#4ade80" : "#f87171" }}>{trendPct >= 0 ? "↑" : "↓"} {Math.abs(trendPct)}%</span>
+            <span style={{ fontSize: 11, color: "#6b7280" }}>vs {trendLabel}</span>
+          </div>
+        ) : (
+          <p style={{ margin: 0, fontSize: 11, color: "#374151" }}>No data from {trendLabel} to compare against.</p>
+        )}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export default function SalesmanLite() {
   const navigate = useNavigate();
   const isMobile = useWindowSize() < 768;
@@ -337,6 +386,7 @@ export default function SalesmanLite() {
   const [goal, setGoal] = useState({ target: 0, focusCarId: null, earningsTarget: 0 });
   const [goalEditing, setGoalEditing] = useState(false);
   const [goalDraft, setGoalDraft] = useState(0);
+  const [showPrevMonth, setShowPrevMonth] = useState(false);
   const saveGoal = (patch) => {
     const next = { ...goal, ...patch };
     setGoal(next);
@@ -2018,6 +2068,26 @@ export default function SalesmanLite() {
       return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
     }).length;
 
+    // Previous-month commission — the Monthly Goal card only ever shows THIS
+    // calendar month (by design — it resets with the month, same as the "Xd
+    // left in <month>" label), which reads as a bug the moment a sale lands
+    // near a month boundary. This feeds the "Previous month" popup so that
+    // history is one tap away instead of just disappearing.
+    const soldInMonth = (year, month) => myListings.filter(c => {
+      if (c.status !== "sold" || !c.sold_at) return false;
+      const d = new Date(c.sold_at);
+      return d.getFullYear() === year && d.getMonth() === month;
+    });
+    const prevMonthDate = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
+    const twoMonthsAgoDate = new Date(new Date().getFullYear(), new Date().getMonth() - 2, 1);
+    const prevMonthSold = soldInMonth(prevMonthDate.getFullYear(), prevMonthDate.getMonth());
+    const twoMonthsAgoSold = soldInMonth(twoMonthsAgoDate.getFullYear(), twoMonthsAgoDate.getMonth());
+    const prevMonthCommission = prevMonthSold.reduce((s, c) => s + (Number(c.commission_amount) || 0), 0);
+    const twoMonthsAgoCommission = twoMonthsAgoSold.reduce((s, c) => s + (Number(c.commission_amount) || 0), 0);
+    const prevMonthTrendPct = twoMonthsAgoCommission > 0
+      ? Math.round(((prevMonthCommission - twoMonthsAgoCommission) / twoMonthsAgoCommission) * 100)
+      : (prevMonthCommission > 0 ? 100 : null);
+
     // Sales Overview sparkline — commission earned per day, trailing 14 days,
     // compared against the 14 days before that (rolling window, not calendar
     // month, so the trend line and % delta stay meaningful on day 1 of a month).
@@ -2367,7 +2437,16 @@ export default function SalesmanLite() {
           <div style={CARD}>
             <div style={CARD_HEADER}>
               <span>Monthly Goal</span>
-              <span>{daysLeft}d left in {new Date().toLocaleDateString("en-MY",{month:"short"})}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span>{daysLeft}d left in {new Date().toLocaleDateString("en-MY",{month:"short"})}</span>
+                <button
+                  onClick={() => setShowPrevMonth(true)}
+                  title="This card only tracks the current month — see history"
+                  style={{ fontSize: 9, fontWeight: 700, padding: "3px 8px", borderRadius: 99, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit", textTransform: "none", letterSpacing: 0 }}
+                >
+                  Previous month
+                </button>
+              </div>
             </div>
             <div style={{ padding: 18 }}>
               {goalEditing ? (
@@ -2586,6 +2665,16 @@ export default function SalesmanLite() {
             Enter Code →
           </button>
         </div>
+
+        <PrevMonthModal
+          open={showPrevMonth}
+          onClose={() => setShowPrevMonth(false)}
+          monthLabel={prevMonthDate.toLocaleDateString("en-MY", { month: "long", year: "numeric" })}
+          commission={prevMonthCommission}
+          count={prevMonthSold.length}
+          trendPct={prevMonthTrendPct}
+          trendLabel={twoMonthsAgoDate.toLocaleDateString("en-MY", { month: "short" })}
+        />
 
       </div>
     );
