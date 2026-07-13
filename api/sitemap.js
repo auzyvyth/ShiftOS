@@ -94,10 +94,56 @@ async function fetchJson(url) {
   return Array.isArray(data) ? data : [];
 }
 
+function buildSitemapIndex(locs, lastmod) {
+  const entries = locs
+    .map(
+      (loc) => `
+  <sitemap>
+    <loc>${xmlEscape(loc)}</loc>
+    <lastmod>${lastmod}</lastmod>
+  </sitemap>`,
+    )
+    .join("");
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${entries}
+</sitemapindex>`;
+}
+
 export default async function handler(req) {
+  const url = new URL(req.url);
+  const isMain = url.searchParams.get("main") === "1";
   const host = req.headers.get("host") ?? ROOT_DOMAIN;
   const subdomain = getSubdomain(host);
   const baseUrl = `https://${host}`;
+
+  // Root host → serve a sitemap INDEX that points Google at the root content
+  // sitemap (/sitemap-main.xml) PLUS every tenant subdomain's own sitemap. The
+  // root sitemap/site never linked to the subdomains, so a dealer storefront
+  // like sentimas.xdrive.my had no discovery path and stayed unindexed. The
+  // actual root URL list lives at /sitemap-main.xml (?main=1) below.
+  if (!subdomain && !isMain) {
+    let subs = [];
+    try {
+      subs = await fetchJson(
+        `${SUPABASE_URL}/rest/v1/profiles?subdomain=not.is.null&select=subdomain`,
+      );
+    } catch (_) {}
+    const today = new Date().toISOString().split("T")[0];
+    const locs = [
+      `https://${ROOT_DOMAIN}/sitemap-main.xml`,
+      ...subs
+        .map((s) => (s.subdomain || "").trim())
+        .filter(Boolean)
+        .map((sd) => `https://${sd}.${ROOT_DOMAIN}/sitemap.xml`),
+    ];
+    return new Response(buildSitemapIndex(locs, today), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/xml; charset=utf-8",
+        "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+      },
+    });
+  }
 
   const staticRoutes = subdomain
     ? [
