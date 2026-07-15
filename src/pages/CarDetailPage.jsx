@@ -143,7 +143,6 @@ const SpecHighlights = ({ car, th }) => {
   if (tags.length === 0) return null;
   return (
     <div style={{ marginBottom: 20 }}>
-      <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.16em', color: th.textMuted, fontWeight: 700, marginBottom: 10 }}>Spec Highlights</p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
         {tags.map((tag, i) => (
           <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', border: `1px solid ${th.border}`, borderRadius: 6, fontSize: 12, color: th.text, background: th.card2, fontWeight: 500 }}>
@@ -176,19 +175,21 @@ const WarrantyBanner = ({ car, isXdrive }) => {
    ("Japan Spec", "Unregistered", "Auction Grade 4.5"). */
 const ReconTrust = ({ car, isXdrive }) => {
   if (!car.is_recon) return null;
-  const amber = isXdrive ? '#b45309' : '#fbbf24';
+  const chipBg = isXdrive ? 'rgba(15,23,42,0.04)' : 'rgba(255,255,255,0.05)';
+  const chipBorder = isXdrive ? 'rgba(15,23,42,0.09)' : 'rgba(255,255,255,0.08)';
+  const chipText = isXdrive ? '#0F172A' : '#e2e8f0';
   const origin = car.import_country ? `${car.import_country} Spec` : 'Recon Unit';
   const chips = [
     { label: origin },
     car.local_reg_date ? null : { label: 'Unregistered' },
-    car.auction_grade ? { label: `Auction Grade ${car.auction_grade}` } : null,
-    car.interior_grade ? { label: `Interior ${car.interior_grade}` } : null,
+    car.auction_grade ? { label: `Grade ${car.auction_grade} exterior` } : null,
+    car.interior_grade ? { label: `Grade ${car.interior_grade} interior` } : null,
   ].filter(Boolean);
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 16 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 7 }}>
       {chips.map((c, i) => (
-        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 6, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', color: amber, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.28)' }}>
-          <BadgeCheck size={12} style={{ flexShrink: 0 }} /> {c.label}
+        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 500, color: chipText, background: chipBg, border: `1px solid ${chipBorder}` }}>
+          <BadgeCheck size={12} strokeWidth={2.5} style={{ color: '#dc2626', flexShrink: 0 }} /> {c.label}
         </span>
       ))}
     </div>
@@ -266,14 +267,14 @@ const inputStyle = (focused, th) => ({
 /* ─── skeleton ─── */
 function Skeleton() {
   const isXdrive = !isSubdomain();
-  const pageBg    = isXdrive ? '#F7F6F2' : '#060c14';
+  const pageBg    = isXdrive ? '#F6F7F9' : '#060c14';
   const card      = isXdrive ? '#ffffff' : '#0a1220';
   const shimmerGr = isXdrive
-    ? 'linear-gradient(90deg,#e8e6e0 25%,#f0eeea 50%,#e8e6e0 75%)'
+    ? 'linear-gradient(90deg,#e7eaef 25%,#f1f3f6 50%,#e7eaef 75%)'
     : 'linear-gradient(90deg,#0a1220 25%,#111e30 50%,#0a1220 75%)';
-  const border    = isXdrive ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.06)';
-  const headerBg  = isXdrive ? 'rgba(247,246,242,0.95)' : 'rgba(6,12,20,0.93)';
-  const mosaicGap = isXdrive ? '#ddd9d0' : '#000';
+  const border    = isXdrive ? 'rgba(15,23,42,0.07)' : 'rgba(255,255,255,0.06)';
+  const headerBg  = isXdrive ? 'rgba(246,247,249,0.9)' : 'rgba(6,12,20,0.93)';
+  const mosaicGap = isXdrive ? '#e2e6ec' : '#000';
 
   return (
     <div style={{ background: pageBg, minHeight: '100vh' }}>
@@ -449,17 +450,17 @@ export default function CarDetailPage() {
 
   /* ── Light-theme colour tokens (xdrive.my only) ── */
   const th = isXdrive ? {
-    pageBg:    '#F7F6F2',
+    pageBg:    '#F6F7F9',
     card:      '#ffffff',
-    card2:     '#F0EEE8',
-    text:      '#111827',
-    textSec:   '#4b5563',
-    textMuted: '#6b7280',
-    border:    'rgba(0,0,0,0.08)',
-    borderSec: 'rgba(0,0,0,0.06)',
+    card2:     '#EEF1F5',
+    text:      '#0F172A',
+    textSec:   '#475569',
+    textMuted: '#64748b',
+    border:    'rgba(15,23,42,0.08)',
+    borderSec: 'rgba(15,23,42,0.05)',
     inputBg:   '#ffffff',
-    inputBorder:'rgba(0,0,0,0.12)',
-    shimmer:   'linear-gradient(90deg,#e8e6e0 25%,#f0eeea 50%,#e8e6e0 75%)',
+    inputBorder:'rgba(15,23,42,0.12)',
+    shimmer:   'linear-gradient(90deg,#e7eaef 25%,#f1f3f6 50%,#e7eaef 75%)',
   } : {
     pageBg:    '#060c14',
     card:      '#0a1220',
@@ -1149,21 +1150,23 @@ export default function CarDetailPage() {
           const origin = typeof window !== 'undefined' ? window.location.origin : 'https://xdrive.my';
           const img = car?.images?.[0] || `${origin}/og-default.jpg`;
           const url = car ? `${origin}/showroom/${car.slug}` : origin;
-          return <>
-            <meta name="description" content={desc} />
-            <meta property="og:type" content="website" />
-            <meta property="og:locale" content="en_MY" />
-            <meta property="og:site_name" content="XDrive" />
-            <meta property="og:title" content={car ? `${car.year} ${car.brand} ${car.model} | ${siteName}` : siteName} />
-            <meta property="og:description" content={desc} />
-            <meta property="og:image" content={img} />
-            <meta property="og:url" content={url} />
-            <meta name="twitter:card" content="summary_large_image" />
-            <meta name="twitter:title" content={car ? `${car.year} ${car.brand} ${car.model} | ${siteName}` : siteName} />
-            <meta name="twitter:description" content={desc} />
-            <meta name="twitter:image" content={img} />
-            {car && <link rel="canonical" href={url} />}
-          </>;
+          // react-helmet can't traverse a Fragment child (dev invariant crash,
+          // tags dropped) — return a flat keyed array instead.
+          return [
+            <meta key="d" name="description" content={desc} />,
+            <meta key="ot" property="og:type" content="website" />,
+            <meta key="ol" property="og:locale" content="en_MY" />,
+            <meta key="os" property="og:site_name" content="XDrive" />,
+            <meta key="oti" property="og:title" content={car ? `${car.year} ${car.brand} ${car.model} | ${siteName}` : siteName} />,
+            <meta key="od" property="og:description" content={desc} />,
+            <meta key="oi" property="og:image" content={img} />,
+            <meta key="ou" property="og:url" content={url} />,
+            <meta key="tc" name="twitter:card" content="summary_large_image" />,
+            <meta key="tt" name="twitter:title" content={car ? `${car.year} ${car.brand} ${car.model} | ${siteName}` : siteName} />,
+            <meta key="td" name="twitter:description" content={desc} />,
+            <meta key="ti" name="twitter:image" content={img} />,
+            car ? <link key="c" rel="canonical" href={url} /> : null,
+          ].filter(Boolean);
         })()}
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",
@@ -1364,27 +1367,27 @@ export default function CarDetailPage() {
 
       {/* ── XDrive light-theme overrides ── */}
       {isXdrive && <style>{`
-        body { background: #F7F6F2 !important; }
-        .cdp-root { background: #F7F6F2 !important; color: #111827 !important; }
-        .cdp-header { background: rgba(247,246,242,0.95) !important; border-bottom-color: rgba(0,0,0,0.08) !important; }
-        .cdp-back-btn { color: #6b7280 !important; }
-        .cdp-back-btn:hover { color: #111827 !important; }
-        .cdp-header-title { color: #111827 !important; }
-        .cdp-img-shimmer { background: linear-gradient(90deg,#e8e6e0 25%,#f0eeea 50%,#e8e6e0 75%) !important; background-size: 400px 100% !important; }
-        .sk { background: linear-gradient(90deg,#e8e6e0 25%,#f0eeea 50%,#e8e6e0 75%) !important; background-size: 600px 100% !important; }
-        .cdp-mosaic-grid { background: #ddd9d0 !important; }
-        .cdp-mosaic-mobile { background: #F0EEE8 !important; }
-        .cdp-arrow { background: rgba(247,246,242,0.9) !important; border-color: rgba(0,0,0,0.14) !important; color: #374151 !important; }
+        body { background: #F6F7F9 !important; }
+        .cdp-root { background: #F6F7F9 !important; color: #0F172A !important; }
+        .cdp-header { background: rgba(246,247,249,0.85) !important; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom-color: rgba(15,23,42,0.07) !important; }
+        .cdp-back-btn { color: #64748b !important; }
+        .cdp-back-btn:hover { color: #0F172A !important; }
+        .cdp-header-title { color: #0F172A !important; }
+        .cdp-img-shimmer { background: linear-gradient(90deg,#e7eaef 25%,#f1f3f6 50%,#e7eaef 75%) !important; background-size: 400px 100% !important; }
+        .sk { background: linear-gradient(90deg,#e7eaef 25%,#f1f3f6 50%,#e7eaef 75%) !important; background-size: 600px 100% !important; }
+        .cdp-mosaic-grid { background: #e2e6ec !important; }
+        .cdp-mosaic-mobile { background: #EEF1F5 !important; }
+        .cdp-arrow { background: rgba(246,247,249,0.92) !important; border-color: rgba(15,23,42,0.12) !important; color: #334155 !important; }
         .cdp-arrow:hover { background: rgba(220,38,38,0.1) !important; border-color: rgba(220,38,38,0.3) !important; color: #dc2626 !important; }
-        .cdp-stats-grid { border-color: rgba(0,0,0,0.08) !important; background: #F0EEE8 !important; }
-        .cdp-stat-cell { background: #ffffff !important; border-right-color: rgba(0,0,0,0.07) !important; }
-        .cdp-stat-cell:hover { background: rgba(220,38,38,0.04) !important; }
-        .cdp-row { border-bottom-color: rgba(0,0,0,0.07) !important; }
-        .cdp-row:hover { background: rgba(220,38,38,0.04) !important; }
-        .cdp-sidebar { background: #ffffff !important; border-color: rgba(0,0,0,0.09) !important; box-shadow: 0 4px 24px rgba(0,0,0,0.08) !important; }
-        .cdp-mobile-bar { background: rgba(247,246,242,0.98) !important; border-top-color: rgba(0,0,0,0.08) !important; }
-        .cdp-mobile-bar-wa { border-color: rgba(34,197,94,0.35) !important; background: rgba(34,197,94,0.07) !important; }
-        .cdp-header-redline { background: linear-gradient(to right, #dc2626, rgba(220,38,38,0.3), transparent) !important; }
+        .cdp-stats-grid { border-color: rgba(15,23,42,0.07) !important; background: rgba(15,23,42,0.06) !important; }
+        .cdp-stat-cell { background: #ffffff !important; border-right-color: rgba(15,23,42,0.06) !important; }
+        .cdp-stat-cell:hover { background: rgba(220,38,38,0.035) !important; }
+        .cdp-row { border-bottom-color: rgba(15,23,42,0.06) !important; }
+        .cdp-row:hover { background: rgba(220,38,38,0.03) !important; }
+        .cdp-sidebar { background: #ffffff !important; border-color: rgba(15,23,42,0.08) !important; box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 8px 32px rgba(15,23,42,0.06) !important; }
+        .cdp-mobile-bar { background: rgba(246,247,249,0.9) !important; border-top-color: rgba(15,23,42,0.07) !important; }
+        .cdp-mobile-bar-wa { border-color: rgba(22,163,74,0.3) !important; background: rgba(22,163,74,0.06) !important; color: #16a34a !important; }
+        .cdp-header-redline { background: linear-gradient(to right, #dc2626, rgba(220,38,38,0.25), transparent) !important; }
       `}</style>}
 
       <div className="cdp-root">
@@ -1759,27 +1762,27 @@ export default function CarDetailPage() {
         {/* M2 — Identity block */}
         <div className="cdp-mobile-only" style={{ padding:'20px 18px 0' }}>
           {(isRecon || isReserved || isHot || hasDocuments) && (
-            <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:14 }}>
-              {isReserved && <span style={{ background:'rgba(245,158,11,0.12)', border:'1px solid rgba(245,158,11,0.3)', color:'#f59e0b', fontSize:'10px', padding:'3px 10px', borderRadius:'4px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 }}>Reserved</span>}
-              {isRecon && <span style={{ background:'rgba(168,85,247,0.1)', border:'1px solid rgba(168,85,247,0.25)', color:'#c084fc', fontSize:'10px', padding:'3px 10px', borderRadius:'4px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 }}>Recon</span>}
-              {isHot   && <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.28)', color:'#f87171', fontSize:'10px', padding:'3px 10px', borderRadius:'4px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 }}>Hot Deal</span>}
-              {hasDocuments && <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.28)', color:'#4ade80', fontSize:'10px', padding:'3px 10px', borderRadius:'4px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 }}><BadgeCheck size={11} /> Verified Docs</span>}
+            <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:16 }}>
+              {isReserved && <span style={{ background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.22)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Reserved</span>}
+              {isRecon && <span style={{ background:'rgba(15,23,42,0.05)', border:'1px solid rgba(15,23,42,0.1)', color:'#334155', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Recon</span>}
+              {isHot   && <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.28)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Hot Deal</span>}
+              {hasDocuments && <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(22,163,74,0.08)', border:'1px solid rgba(22,163,74,0.25)', color:'#16a34a', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}><BadgeCheck size={11} /> Verified Docs</span>}
             </div>
           )}
-          <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.26em', color:'#dc2626', fontWeight:700, marginBottom:4 }}>{car.brand}</p>
-          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(2.4rem,9vw,3.2rem)', color: th.text, lineHeight:0.95, letterSpacing:'0.03em', marginBottom:8 }}>
-            {car.year} {car.brand} {car.model}{car.variant ? ' '+car.variant : ''}
+          <p style={{ fontSize:11, textTransform:'uppercase', letterSpacing:'0.32em', color:'#dc2626', fontWeight:700, marginBottom:6 }}>{car.brand}</p>
+          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(2.6rem,10vw,3.4rem)', color: th.text, lineHeight:0.98, letterSpacing:'0.01em', marginBottom:10 }}>
+            {car.year} {car.model}{car.variant ? ' '+car.variant : ''}
           </h1>
-          <p style={{ fontSize:12, color:'#475569', letterSpacing:'0.04em', marginBottom:6 }}>
-            {[car.year, car.body_type, car.transmission].filter(Boolean).join('  ·  ')}
+          <p style={{ fontSize:12, color: th.textMuted, letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:600, marginBottom:6 }}>
+            {[car.body_type, car.transmission, car.fuel_type].filter(Boolean).join('  ·  ')}
           </p>
           {dealer?.subdomain && !isSubdomain() && (
             <a
               href={`https://${dealer.subdomain}.xdrive.my`}
               target="_blank" rel="noopener noreferrer"
-              style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, color:'#60a5fa', textDecoration:'none', marginBottom:16, letterSpacing:'0.04em' }}
+              style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:12, color: th.textSec, textDecoration:'none', marginBottom:16, letterSpacing:'0.02em', fontWeight:600, borderBottom:'1px solid rgba(220,38,38,0.4)', paddingBottom:1, width:'fit-content' }}
             >
-              {dealer.site_name || dealer.dealership} ↗
+              {dealer.site_name || dealer.dealership} <ExternalLink size={11} style={{ color:'#dc2626' }} />
             </a>
           )}
           {isSambungCar(car) ? (
@@ -1827,12 +1830,9 @@ export default function CarDetailPage() {
               { label:'Owners',       value: car.previous_owners != null ? car.previous_owners+' owner'+(car.previous_owners!==1?'s':'') : '—' },
               { label:'Road Tax',     value: car.road_tax_expiry ? new Date(car.road_tax_expiry).toLocaleDateString('en-MY',{month:'short',year:'numeric'}) : '—' },
               { label:'Financing',    value: fmtFinancing(car) },
-              ...(car.horsepower ? [{ label:'Power', value:`${car.horsepower} bhp` }] : []),
               ...(car.cylinders ? [{ label:'Cylinders', value:`${car.cylinders}-cyl` }] : []),
               ...(car.fuel_consumption ? [{ label:'Fuel Economy', value:`${car.fuel_consumption} km/L` }] : []),
-              ...(car.doors ? [{ label:'Doors', value:`${car.doors} doors` }] : []),
-              ...(car.seats ? [{ label:'Seats', value:`${car.seats} seats` }] : []),
-            ].map(({ label, value }) => (
+            ].filter(({ value }) => value && value !== '—').map(({ label, value }) => (
               <div key={label} style={{ padding:'14px', background: th.card, borderRight:`1px solid ${th.borderSec}`, borderBottom:`1px solid ${th.borderSec}` }}>
                 <p style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.14em', color: th.textMuted, fontWeight:700, marginBottom:5 }}>{label}</p>
                 <p style={{ fontSize:13, color: th.text, fontWeight:500, margin:0 }}>{value}</p>
@@ -1866,18 +1866,19 @@ export default function CarDetailPage() {
             {car.deposit_amount > 0 && (
               <p style={{ fontSize:11, color:'#475569', marginTop:8, textAlign:'center' }}>RM {fmt(car.deposit_amount)} deposit to reserve</p>
             )}
-            <button onClick={() => setCalcOpen(true)}
-              style={{ width:'100%', background:'rgba(220,38,38,0.06)', border:'1px solid rgba(220,38,38,0.22)', color:'#dc2626', borderRadius:10, padding:'11px', display:'flex', alignItems:'center', justifyContent:'center', gap:7, fontSize:12, fontWeight:700, letterSpacing:'0.04em', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", marginTop:8, transition:'all .2s' }}
-              onMouseEnter={e => { e.currentTarget.style.background='rgba(220,38,38,0.1)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.4)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background='rgba(220,38,38,0.06)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.22)'; }}>
-              <Calculator size={14} /> Financing Calculator
-            </button>
-            {sellerPageUrl && !isSubdomain() && (
-              <a href={sellerPageUrl} target="_blank" rel="noopener noreferrer"
-                style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, width:'100%', marginTop:8, background: th.card2, border:`1px solid ${th.border}`, color: th.textSec, borderRadius:10, padding:'10px', fontSize:12, letterSpacing:'0.05em', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", textDecoration:'none', boxSizing:'border-box' }}>
-                <ExternalLink size={13} /> {sellerPageLabel}
-              </a>
-            )}
+            {/* Tertiary actions — quiet text links, not more buttons */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:18, marginTop:14, flexWrap:'wrap' }}>
+              <button onClick={() => setCalcOpen(true)}
+                style={{ background:'none', border:'none', padding:'0 0 2px', display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:600, color: th.textSec, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", borderBottom:'1px solid rgba(220,38,38,0.35)' }}>
+                <Calculator size={13} style={{ color:'#dc2626' }} /> Financing calculator
+              </button>
+              {sellerPageUrl && !isSubdomain() && (
+                <a href={sellerPageUrl} target="_blank" rel="noopener noreferrer"
+                  style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:600, color: th.textSec, textDecoration:'none', fontFamily:"'DM Sans',sans-serif", borderBottom:`1px solid ${th.border}`, paddingBottom:2 }}>
+                  <ExternalLink size={13} /> {sellerPageLabel}
+                </a>
+              )}
+            </div>
             <div style={{ height:1, background: th.border, margin:'14px 0' }} />
             {/* Dealer row */}
             {(() => {
@@ -1894,18 +1895,18 @@ export default function CarDetailPage() {
                   }
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ fontSize:13, color: th.text, fontWeight:600, marginBottom:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{displayName}</p>
-                    <p style={{ fontSize:11, color: isAgent ? '#60a5fa' : '#334155' }}>
+                    <p style={{ fontSize:11, color: th.textSec }}>
                       {isAgent ? 'Independent Agent' : dealer ? (
                         <span style={{ display:'inline-flex', alignItems:'center', gap:5 }}>
-                          <span style={{ width:6, height:6, borderRadius:'50%', background:'#4ade80', display:'inline-block', animation:'cdp-pulse 2s ease infinite' }} />
+                          <span style={{ width:6, height:6, borderRadius:'50%', background: isXdrive ? '#16a34a' : '#4ade80', display:'inline-block' }} />
                           Verified Dealer
                         </span>
                       ) : 'Seller'}
                     </p>
                   </div>
                   <div style={{ textAlign:'right' }}>
-                    {listedDays !== null && <p style={{ fontSize:10, color:'#1e293b' }}>{listedDays}d ago</p>}
-                    {viewCount > 0 && <p style={{ fontSize:10, color:'#1e293b', display:'flex', alignItems:'center', gap:3 }}><Eye size={10} /> {viewCount}</p>}
+                    {listedDays !== null && <p style={{ fontSize:10, color: th.textMuted }}>{listedDays}d ago</p>}
+                    {viewCount > 0 && <p style={{ fontSize:10, color: th.textMuted, display:'flex', alignItems:'center', gap:3 }}><Eye size={10} /> {viewCount}</p>}
                   </div>
                 </div>
               );
@@ -1916,7 +1917,7 @@ export default function CarDetailPage() {
         {/* M5 — Description + tabs + sections */}
         <div className="cdp-mobile-only" style={{ padding:'0 18px', marginBottom:32 }}>
           <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.2em', color: th.textMuted, fontWeight:700, marginBottom:12 }}>About this car</p>
-          <p style={{ fontSize:14, color:'#64748b', lineHeight:1.9, marginBottom:28 }}>
+          <p style={{ fontSize:14, color: th.textSec, lineHeight:1.85, marginBottom:28 }}>
             {car.specs || `${car.year} ${car.brand} ${car.model}, ${fmt(car.mileage)} km, ${car.transmission}, ${car.fuel_type}, ${car.colour}.`}
           </p>
           {/* Tabs */}
@@ -1952,10 +1953,8 @@ export default function CarDetailPage() {
                       ...(isRecon ? [
                         { key:'Import Country', val: car.import_country || '—' },
                         { key:'Auction House',  val: car.auction_house  || '—' },
-                        { key:'Exterior Grade', val: car.auction_grade  || '—' },
-                        { key:'Interior Grade', val: car.interior_grade || '—' },
                       ] : []),
-                    ].map(({ key, val }) => (
+                    ].filter(({ val }) => val !== '—').map(({ key, val }) => (
                       <div key={key} className="cdp-row">
                         <span style={{ fontSize:'13px', color: th.textSec }}>{key}</span>
                         <span style={{ fontSize:'13px', color: th.text, textAlign:'right' }}>{val}</span>
@@ -2005,7 +2004,7 @@ export default function CarDetailPage() {
                 })}
               </div>
               {car.included_services_cost > 0 && (
-                <p style={{ fontSize:11, color: th.textMuted, marginTop:12 }}>Estimated add-on value: <span style={{ color:'#60a5fa', fontWeight:700 }}>RM {Number(car.included_services_cost).toLocaleString()}</span></p>
+                <p style={{ fontSize:11, color: th.textMuted, marginTop:12 }}>Estimated add-on value: <span style={{ color:'#dc2626', fontWeight:700 }}>RM {Number(car.included_services_cost).toLocaleString()}</span></p>
               )}
             </div>
           )}
@@ -2021,10 +2020,11 @@ export default function CarDetailPage() {
             </div>
           )}
 
-          {/* Car History */}
+          {/* Car History — only when there's at least one real signal to show */}
+          {(car.car_documents?.length > 0 || car.puspakom_b5_date || car.puspakom_b7_date || car.previous_owners != null || car.warranty_months > 0 || (Array.isArray(car.dealer_perks) && car.dealer_perks.length > 0)) && (
           <div style={{ marginTop:32, paddingTop:28, borderTop:`1px solid ${th.border}` }}>
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
-              <Shield size={13} style={{ color:'#60a5fa' }} />
+              <Shield size={13} style={{ color:'#dc2626' }} />
               <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color: th.textMuted, fontWeight:700 }}>Car History</p>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
@@ -2040,6 +2040,7 @@ export default function CarDetailPage() {
                 const b7 = isPusp ? car.puspakom_b7_date : null;
                 const byDate = isPusp && (b5 || b7);
                 const available = !!doc || byDate;
+                if (!available) return null;
                 const rk = `m-${key}`;
                 const isOpen = openDocKey === rk;
                 const asImage = isImageUrl(doc?.url);
@@ -2117,24 +2118,28 @@ export default function CarDetailPage() {
                   </div>
                 );
               })}
+              {car.previous_owners != null && (
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background: th.card, border:`1px solid ${th.border}`, borderRadius:9 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <Star size={13} style={{ color:'#fbbf24' }} />
                   <p style={{ fontSize:12, color: th.text, fontWeight:500, margin:0 }}>Previous Owners</p>
                 </div>
                 <span style={{ fontSize:12, color: th.text, fontWeight:600 }}>
-                  {car.previous_owners != null ? `${car.previous_owners} owner${car.previous_owners!==1?'s':''}` : '—'}
+                  {`${car.previous_owners} owner${car.previous_owners!==1?'s':''}`}
                 </span>
               </div>
+              )}
+              {car.warranty_months > 0 && (
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background: th.card, border:`1px solid ${th.border}`, borderRadius:9 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <Shield size={13} style={{ color: car.warranty_months > 0 ? '#34d399' : '#334155' }} />
+                  <Shield size={13} style={{ color:'#34d399' }} />
                   <p style={{ fontSize:12, color: th.text, fontWeight:500, margin:0 }}>Warranty</p>
                 </div>
-                <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background: car.warranty_months>0?'rgba(52,211,153,0.1)':'rgba(100,116,139,0.08)', border:`1px solid ${car.warranty_months>0?'rgba(52,211,153,0.3)':'rgba(100,116,139,0.15)'}`, color: car.warranty_months>0?'#34d399':'#475569' }}>
-                  {car.warranty_months > 0 ? `${car.warranty_months} months` : 'No Warranty'}
+                <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'rgba(52,211,153,0.1)', border:'1px solid rgba(52,211,153,0.3)', color:'#34d399' }}>
+                  {`${car.warranty_months} months`}
                 </span>
               </div>
+              )}
               {Array.isArray(car.dealer_perks) && car.dealer_perks.length > 0 && (() => {
                 const PC = [
                   { key:'part_exchange',    label:'Part Exchange',      color:'#60a5fa' },
@@ -2159,6 +2164,7 @@ export default function CarDetailPage() {
               })()}
             </div>
           </div>
+          )}
 
           {/* Performance */}
           {(car.horsepower || car.acceleration || car.top_speed || car.boot_size || car.doors || car.seats) && (
@@ -2207,7 +2213,7 @@ export default function CarDetailPage() {
                   <div style={{ marginBottom:10, padding:'12px 14px', background: th.card, border:`1px solid ${th.border}`, borderRadius:10 }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:3 }}>
                       <span style={{ fontSize:12, color: th.textSec }}>Road Tax (est.)</span>
-                      <span style={{ fontSize:14, color: th.text, fontWeight:600 }}>RM {roadTax}/yr</span>
+                      <span style={{ fontSize:14, color: th.text, fontWeight:600 }}>RM {fmt(roadTax)}/yr</span>
                     </div>
                     {cc > 0 && <p style={{ fontSize:10, color: th.textMuted, margin:0 }}>JPJ private saloon rate — {fmt(cc)}cc</p>}
                   </div>
@@ -2311,7 +2317,7 @@ export default function CarDetailPage() {
                   </a>
                 )}
                 {salesmanProfile.slug && (
-                  <Link to={`/s/${salesmanProfile.slug}`} style={{ display:'block', textAlign:'center', marginTop:10, fontSize:12, color:'#60a5fa', textDecoration:'none' }}>
+                  <Link to={`/s/${salesmanProfile.slug}`} style={{ display:'block', textAlign:'center', marginTop:10, fontSize:12, color: th.textSec, fontWeight:600, textDecoration:'none' }}>
                     View all listings →
                   </Link>
                 )}
@@ -2362,23 +2368,25 @@ export default function CarDetailPage() {
                 fontFamily: "'Bebas Neue',sans-serif",
                 fontSize: "clamp(3rem,5vw,4.4rem)",
                 color: th.text,
-                lineHeight: 0.95,
-                letterSpacing: "0.04em",
-                marginBottom: 10,
+                lineHeight: 0.98,
+                letterSpacing: "0.01em",
+                marginBottom: 12,
               }}
             >
-              {car.year} {car.brand} {car.model}
+              {car.year} {car.model}
               {car.variant ? " " + car.variant : ""}
             </h1>
             <p
               style={{
-                fontSize: 13,
+                fontSize: 12,
                 color: th.textMuted,
-                letterSpacing: "0.05em",
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                fontWeight: 600,
                 marginBottom: 20,
               }}
             >
-              {[car.year, car.body_type, car.transmission]
+              {[car.body_type, car.transmission, car.fuel_type]
                 .filter(Boolean)
                 .join("  ·  ")}
             </p>
@@ -2394,15 +2402,15 @@ export default function CarDetailPage() {
                 {isReserved && (
                   <span
                     style={{
-                      background: "rgba(245,158,11,0.12)",
-                      border: "1px solid rgba(245,158,11,0.3)",
-                      color: "#f59e0b",
+                      background: "rgba(220,38,38,0.08)",
+                      border: "1px solid rgba(220,38,38,0.22)",
+                      color: "#dc2626",
                       fontSize: "10px",
-                      padding: "3px 10px",
-                      borderRadius: "4px",
+                      padding: "4px 10px",
+                      borderRadius: "5px",
                       letterSpacing: "0.12em",
                       textTransform: "uppercase",
-                      fontWeight: 600,
+                      fontWeight: 700,
                     }}
                   >
                     Reserved
@@ -2411,15 +2419,15 @@ export default function CarDetailPage() {
                 {isRecon && (
                   <span
                     style={{
-                      background: "rgba(168,85,247,0.1)",
-                      border: "1px solid rgba(168,85,247,0.25)",
-                      color: "#c084fc",
+                      background: isXdrive ? "rgba(15,23,42,0.05)" : "rgba(255,255,255,0.06)",
+                      border: `1px solid ${isXdrive ? "rgba(15,23,42,0.1)" : "rgba(255,255,255,0.12)"}`,
+                      color: isXdrive ? "#334155" : "#cbd5e1",
                       fontSize: "10px",
-                      padding: "3px 10px",
-                      borderRadius: "4px",
+                      padding: "4px 10px",
+                      borderRadius: "5px",
                       letterSpacing: "0.12em",
                       textTransform: "uppercase",
-                      fontWeight: 600,
+                      fontWeight: 700,
                     }}
                   >
                     Recon
@@ -2430,13 +2438,13 @@ export default function CarDetailPage() {
                     style={{
                       background: "rgba(220,38,38,0.1)",
                       border: "1px solid rgba(220,38,38,0.28)",
-                      color: "#f87171",
+                      color: "#dc2626",
                       fontSize: "10px",
-                      padding: "3px 10px",
-                      borderRadius: "4px",
+                      padding: "4px 10px",
+                      borderRadius: "5px",
                       letterSpacing: "0.12em",
                       textTransform: "uppercase",
-                      fontWeight: 600,
+                      fontWeight: 700,
                     }}
                   >
                     Hot Deal
@@ -2448,15 +2456,15 @@ export default function CarDetailPage() {
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 5,
-                      background: "rgba(34,197,94,0.08)",
-                      border: "1px solid rgba(34,197,94,0.28)",
-                      color: "#4ade80",
+                      background: "rgba(22,163,74,0.08)",
+                      border: "1px solid rgba(22,163,74,0.25)",
+                      color: isXdrive ? "#16a34a" : "#4ade80",
                       fontSize: "10px",
-                      padding: "3px 10px",
-                      borderRadius: "4px",
+                      padding: "4px 10px",
+                      borderRadius: "5px",
                       letterSpacing: "0.12em",
                       textTransform: "uppercase",
-                      fontWeight: 600,
+                      fontWeight: 700,
                     }}
                   >
                     <BadgeCheck size={11} /> Verified Docs
@@ -2509,12 +2517,9 @@ export default function CarDetailPage() {
                   label: "Financing",
                   value: fmtFinancing(car),
                 },
-                ...(car.horsepower ? [{ label: "Power", value: `${car.horsepower} bhp` }] : []),
                 ...(car.cylinders ? [{ label: "Cylinders", value: `${car.cylinders}-cyl` }] : []),
                 ...(car.fuel_consumption ? [{ label: "Fuel Economy", value: `${car.fuel_consumption} km/L` }] : []),
-                ...(car.doors ? [{ label: "Doors", value: `${car.doors} doors` }] : []),
-                ...(car.seats ? [{ label: "Seats", value: `${car.seats} seats` }] : []),
-              ].map(({ label, value }) => (
+              ].filter(({ value }) => value && value !== "—").map(({ label, value }) => (
                 <div key={label} className="cdp-stat-cell">
                   <p
                     style={{
@@ -2707,17 +2712,9 @@ export default function CarDetailPage() {
                                 key: "Auction House",
                                 val: car.auction_house || "—",
                               },
-                              {
-                                key: "Exterior Grade",
-                                val: car.auction_grade || "—",
-                              },
-                              {
-                                key: "Interior Grade",
-                                val: car.interior_grade || "—",
-                              },
                             ]
                           : []),
-                      ].map(({ key, val }) => (
+                      ].filter(({ val }) => val !== "—").map(({ key, val }) => (
                         <div key={key} className="cdp-row">
                           <span style={{ fontSize: "13px", color: th.textMuted }}>
                             {key}
@@ -2876,7 +2873,7 @@ export default function CarDetailPage() {
                       style={{ fontSize: 11, color: "#334155", marginTop: 12 }}
                     >
                       Estimated add-on value:{" "}
-                      <span style={{ color: "#60a5fa", fontWeight: 700 }}>
+                      <span style={{ color: "#dc2626", fontWeight: 700 }}>
                         RM {Number(car.included_services_cost).toLocaleString()}
                       </span>
                     </p>
@@ -2896,11 +2893,12 @@ export default function CarDetailPage() {
               </div>
             )}
 
-            {/* ── CAR HISTORY ── */}
-            <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            {/* ── CAR HISTORY — only when there's at least one real signal to show ── */}
+            {(car.car_documents?.length > 0 || car.puspakom_b5_date || car.puspakom_b7_date || car.previous_owners != null || car.warranty_months > 0 || (Array.isArray(car.dealer_perks) && car.dealer_perks.length > 0)) && (
+            <div style={{ marginTop: 40, paddingTop: 32, borderTop: `1px solid ${th.borderSec}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-                <Shield size={13} style={{ color: '#60a5fa' }} />
-                <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700 }}>Car History</p>
+                <Shield size={13} style={{ color: '#dc2626' }} />
+                <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: th.textMuted, fontWeight: 700 }}>Car History</p>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[
@@ -2915,6 +2913,7 @@ export default function CarDetailPage() {
                   const b7 = isPusp ? car.puspakom_b7_date : null;
                   const byDate = isPusp && (b5 || b7);
                   const available = !!doc || byDate;
+                  if (!available) return null;
                   const rk = `d-${key}`;
                   const isOpen = openDocKey === rk;
                   const asImage = doc && isImageUrl(doc.url);
@@ -2992,30 +2991,34 @@ export default function CarDetailPage() {
                     </div>
                   );
                 })}
+                {car.previous_owners != null && (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: th.card, border: `1px solid ${th.borderSec}`, borderRadius: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Star size={15} style={{ color: '#fbbf24' }} />
                     <div>
                       <p style={{ fontSize: 13, color: th.textSec, fontWeight: 500, margin: 0 }}>Previous Owners</p>
-                      {(car.registration_date || car.local_reg_date) && <p style={{ fontSize: 11, color: '#334155', margin: '2px 0 0' }}>Registered {new Date(car.registration_date || car.local_reg_date).toLocaleDateString('en-MY', { month: 'short', year: 'numeric' })}</p>}
+                      {(car.registration_date || car.local_reg_date) && <p style={{ fontSize: 11, color: th.textMuted, margin: '2px 0 0' }}>Registered {new Date(car.registration_date || car.local_reg_date).toLocaleDateString('en-MY', { month: 'short', year: 'numeric' })}</p>}
                     </div>
                   </div>
                   <span style={{ fontSize: 13, color: th.text, fontWeight: 600 }}>
-                    {car.previous_owners != null ? `${car.previous_owners} owner${car.previous_owners !== 1 ? 's' : ''}` : '—'}
+                    {`${car.previous_owners} owner${car.previous_owners !== 1 ? 's' : ''}`}
                   </span>
                 </div>
+                )}
+                {car.warranty_months > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: th.card, border: `1px solid ${th.borderSec}`, borderRadius: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Shield size={15} style={{ color: car.warranty_months > 0 ? '#34d399' : '#334155' }} />
+                    <Shield size={15} style={{ color: '#34d399' }} />
                     <div>
                       <p style={{ fontSize: 13, color: th.textSec, fontWeight: 500, margin: 0 }}>Warranty</p>
-                      <p style={{ fontSize: 11, color: '#334155', margin: '2px 0 0' }}>Included with purchase</p>
+                      <p style={{ fontSize: 11, color: th.textMuted, margin: '2px 0 0' }}>Included with purchase</p>
                     </div>
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: car.warranty_months > 0 ? 'rgba(52,211,153,0.1)' : 'rgba(100,116,139,0.08)', border: `1px solid ${car.warranty_months > 0 ? 'rgba(52,211,153,0.3)' : 'rgba(100,116,139,0.15)'}`, color: car.warranty_months > 0 ? '#34d399' : '#475569' }}>
-                    {car.warranty_months > 0 ? `${car.warranty_months} months` : 'No Warranty'}
+                  <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)', color: '#34d399' }}>
+                    {`${car.warranty_months} months`}
                   </span>
                 </div>
+                )}
                 {Array.isArray(car.dealer_perks) && car.dealer_perks.length > 0 && (() => {
                   const PERK_CFG = [
                     { key: 'part_exchange',    label: 'Part Exchange',      color: '#60a5fa' },
@@ -3040,11 +3043,12 @@ export default function CarDetailPage() {
                 })()}
               </div>
             </div>
+            )}
 
             {/* ── PERFORMANCE & DETAILS ── */}
             {(car.horsepower || car.acceleration || car.top_speed || car.boot_size || car.doors || car.seats || car.co2_emissions || car.insurance_group || car.safety_rating) && (
-              <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, marginBottom: 20 }}>Performance &amp; Details</p>
+              <div style={{ marginTop: 40, paddingTop: 32, borderTop: `1px solid ${th.borderSec}` }}>
+                <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: th.textMuted, fontWeight: 700, marginBottom: 20 }}>Performance &amp; Details</p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, border: `1px solid ${th.borderSec}`, borderRadius: 12, overflow: 'hidden' }}>
                   {[
                     { label: 'Power', value: car.horsepower ? `${Number(car.horsepower).toLocaleString()} bhp` : null },
@@ -3083,9 +3087,12 @@ export default function CarDetailPage() {
               })();
               const co2 = car.co2_emissions;
               const insGrp = car.insurance_group ? Number(car.insurance_group) : null;
-              const consumption = car.fuel_consumption || (cc <= 1600 ? 8 : cc <= 2000 ? 10 : 13);
+              // fuel_consumption is km/L (CarForm's "Fuel Economy" field) — the old
+              // L/100km math here disagreed with the mobile layout's estimate for
+              // the same car and inverted dealer-entered values.
+              const consumption = car.fuel_consumption || (cc <= 1600 ? 14 : cc <= 2000 ? 10 : 7);
               const petrolPrice = 2.05;
-              const totalFuelCost = Math.round(fuelDist * (consumption / 100) * petrolPrice);
+              const totalFuelCost = Math.round((fuelDist / consumption) * petrolPrice);
               return (
                 <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                   <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, marginBottom: 24 }}>Running Costs</p>
@@ -3093,7 +3100,7 @@ export default function CarDetailPage() {
                     <div style={{ marginBottom: 24, padding: '16px 18px', background: th.card, border: `1px solid ${th.borderSec}`, borderRadius: 12 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                         <span style={{ fontSize: 13, color: th.textSec }}>Road Tax (estimated)</span>
-                        <span style={{ fontSize: 15, color: th.text, fontWeight: 600 }}>RM {roadTax} / year</span>
+                        <span style={{ fontSize: 15, color: th.text, fontWeight: 600 }}>RM {fmt(roadTax)} / year</span>
                       </div>
                       <p style={{ fontSize: 11, color: '#334155', margin: 0 }}>JPJ private saloon rate — {fmt(cc)}cc</p>
                     </div>
@@ -3154,7 +3161,7 @@ export default function CarDetailPage() {
                       <span>10 km</span><span>500 km</span><span>1,000 km</span>
                     </div>
                     <p style={{ fontSize: 11, color: '#334155', marginTop: 10 }}>
-                      {car.fuel_consumption ? `${car.fuel_consumption}L/100km (manufacturer figure)` : `~${consumption}L/100km estimated from engine size`}
+                      {car.fuel_consumption ? `${car.fuel_consumption} km/L (manufacturer figure)` : `~${consumption} km/L estimated from engine size`}
                     </p>
                   </div>
                 </div>
@@ -3213,7 +3220,7 @@ export default function CarDetailPage() {
               const displayName = isAgent ? (salesmanProfile?.full_name || 'Agent') : (dealer ? dealerName : 'Seller');
               const avatarSrc = isAgent ? salesmanProfile?.avatar_url : (dealer?.site_logo_url || dealer?.avatar_url);
               return (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, paddingBottom: 16, borderBottom: `1px solid ${th.borderSec}` }}>
                   {avatarSrc
                     ? <img src={avatarSrc} alt={displayName} style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
                     : <div style={{ width: 32, height: 32, borderRadius: '50%', background: isAgent ? '#1d4ed8' : '#111e2e', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', border: `1px solid ${th.border}` }}>
@@ -3222,22 +3229,18 @@ export default function CarDetailPage() {
                   }
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 13, color: th.text, fontWeight: 600, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</p>
-                    <p style={{ fontSize: 11, color: isAgent ? '#60a5fa' : '#334155' }}>
+                    <p style={{ fontSize: 11, color: th.textSec }}>
                       {isAgent ? 'Independent Agent' : dealer ? (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ade80', display: 'inline-block', animation: 'cdp-pulse 2s ease infinite' }} />
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: isXdrive ? '#16a34a' : '#4ade80', display: 'inline-block' }} />
                           Verified Dealer
                         </span>
                       ) : 'Seller'}
                     </p>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 20, padding: '2px 8px', marginBottom: 4 }}>
-                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#4ade80', display: 'inline-block', animation: 'cdp-pulse 2s ease infinite' }} />
-                      <span style={{ fontSize: 9, color: '#4ade80', fontWeight: 600, letterSpacing: '0.08em' }}>ONLINE</span>
-                    </div>
-                    {listedDays !== null && <p style={{ fontSize: 10, color: '#1e293b' }}>{listedDays}d ago</p>}
-                  </div>
+                  {listedDays !== null && (
+                    <p style={{ fontSize: 10, color: th.textMuted, textAlign: 'right' }}>{listedDays}d ago</p>
+                  )}
                 </div>
               );
             })()}
@@ -3245,12 +3248,12 @@ export default function CarDetailPage() {
             {/* PRICE BLOCK */}
             <div style={{ marginBottom: 4 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, margin: 0 }}>Asking Price</p>
+                <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.18em', color: th.textMuted, fontWeight: 700, margin: 0 }}>Asking Price</p>
                 {sellerPageUrl && !isSubdomain() && (
                   <a
                     href={sellerPageUrl}
                     target="_blank" rel="noopener noreferrer"
-                    style={{ fontSize: 11, color: '#60a5fa', textDecoration: 'none', letterSpacing: '0.03em' }}
+                    style={{ fontSize: 11, color: th.textSec, fontWeight: 600, textDecoration: 'none', letterSpacing: '0.02em', borderBottom: '1px solid rgba(220,38,38,0.4)', paddingBottom: 1 }}
                   >
                     {dealer?.site_name || dealer?.dealership || salesmanProfile?.full_name || 'Seller'} ↗
                   </a>
@@ -3281,14 +3284,6 @@ export default function CarDetailPage() {
             </div>
             )}
             <div style={{ height: 1, background: 'linear-gradient(to right, rgba(220,38,38,0.35), transparent)', margin: '14px 0 16px' }} />
-
-            {/* TRUST BADGES */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
-              {isReserved && <span style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>Reserved</span>}
-              {isRecon && <span style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.25)', color: '#c084fc', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>Recon</span>}
-              {isHot && <span style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.28)', color: '#f87171', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>Hot Deal</span>}
-              {hasDocuments && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.28)', color: '#4ade80', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}><BadgeCheck size={11} /> Verified Docs</span>}
-            </div>
             <WarrantyBanner car={car} isXdrive={isXdrive} />
             {car.deposit_amount > 0 && (
               <p style={{ fontSize: 11, color: th.textMuted, marginBottom: 8, textAlign: 'center' }}>RM {fmt(car.deposit_amount)} deposit to reserve</p>
@@ -3316,18 +3311,19 @@ export default function CarDetailPage() {
               )}
             </div>
 
-            <button onClick={() => setCalcOpen(true)}
-              style={{ width: '100%', background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.22)', color: '#dc2626', borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, fontSize: 12, fontWeight: 700, letterSpacing: '0.04em', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", marginTop: 8, transition: 'all .2s' }}
-              onMouseEnter={e => { e.currentTarget.style.background='rgba(220,38,38,0.1)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.4)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background='rgba(220,38,38,0.06)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.22)'; }}>
-              <Calculator size={14} /> Financing Calculator
-            </button>
-            {sellerPageUrl && !isSubdomain() && (
-              <a href={sellerPageUrl} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', marginTop: 8, background: th.inputBg, border: `1px solid ${th.border}`, color: th.textSec, borderRadius: 10, padding: 10, fontSize: 12, letterSpacing: '0.05em', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", textDecoration: 'none', boxSizing: 'border-box', transition: 'all .2s' }}>
-                <ExternalLink size={13} /> {sellerPageLabel}
-              </a>
-            )}
+            {/* Tertiary actions — quiet text links, not more buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, marginTop: 14 }}>
+              <button onClick={() => setCalcOpen(true)}
+                style={{ background: 'none', border: 'none', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: th.textSec, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", borderBottom: '1px solid rgba(220,38,38,0.35)', paddingBottom: 2 }}>
+                <Calculator size={13} style={{ color: '#dc2626' }} /> Financing calculator
+              </button>
+              {sellerPageUrl && !isSubdomain() && (
+                <a href={sellerPageUrl} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: th.textSec, textDecoration: 'none', fontFamily: "'DM Sans',sans-serif", borderBottom: `1px solid ${th.border}`, paddingBottom: 2 }}>
+                  <ExternalLink size={13} /> {sellerPageLabel}
+                </a>
+              )}
+            </div>
 
             {/* SALESMAN CARD */}
             {salesmanProfile && (() => {
@@ -3356,7 +3352,7 @@ export default function CarDetailPage() {
                     </a>
                   )}
                   {salesmanProfile.slug && (
-                    <Link to={`/s/${salesmanProfile.slug}`} style={{ display: 'block', textAlign: 'center', marginTop: 10, fontSize: 12, color: '#60a5fa', textDecoration: 'none' }}>
+                    <Link to={`/s/${salesmanProfile.slug}`} style={{ display: 'block', textAlign: 'center', marginTop: 10, fontSize: 12, color: th.textSec, fontWeight: 600, textDecoration: 'none' }}>
                       View all listings →
                     </Link>
                   )}

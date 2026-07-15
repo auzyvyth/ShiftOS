@@ -775,7 +775,7 @@ function PickerField({ label, value, onChange, options, placeholder = "Select…
         type="button"
         onClick={() => !disabled && setOpen(true)}
         disabled={disabled}
-        className="w-full flex items-center justify-between gap-2 px-4 py-3 bg-white border border-gray-200 rounded-xl text-left transition-colors hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-full flex items-center justify-between gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-none text-left transition-colors hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <span className={`truncate text-sm ${value ? "text-gray-900 font-medium" : "text-gray-400"}`}>
           {selected ? selected.label : value || placeholder}
@@ -1010,10 +1010,32 @@ function Field({ label, required, hint, children }) {
   );
 }
 
+// Progressive disclosure — keeps each step to its ~5 core inputs by default and
+// tucks the optional/secondary fields behind a toggle. Only OPTIONAL fields go
+// inside (no step validation depends on them being mounted), so collapsing never
+// blocks the wizard. State lives here because renderSectionContent is a plain
+// function call, not a component (Rules of Hooks).
+function MoreDetails({ children, label = "More details (optional)" }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+      >
+        {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        {label}
+      </button>
+      {open && <div className="mt-4 space-y-4">{children}</div>}
+    </div>
+  );
+}
+
 const inputCls =
-  "w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors";
+  "w-full px-4 py-2.5 bg-white border border-gray-200 rounded-none text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors";
 const textareaCls =
-  "w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors resize-none";
+  "w-full px-4 py-2.5 bg-white border border-gray-200 rounded-none text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors resize-none";
 
 function VideoPreview({ url }) {
   const embedUrl = getEmbedUrl(url);
@@ -2292,48 +2314,35 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         </div>
       );
       case 2: return (
-        <div className="space-y-5">
+        <div className="space-y-4">
           {intakeDone && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
               <Check size={12} />
               {form.year} {form.brand} {form.model} — identity carried over from Core Details
             </div>
           )}
+          {/* Core inputs — one per row */}
           {!intakeDone && (
           <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Brand" required>
-              <PickerField
-                label="Select Brand"
-                value={form.brand}
-                onChange={(v) =>
-                  setForm((f) => ({ ...f, brand: v, model: "" }))
-                }
-                options={ALL_BRANDS}
-                placeholder="Select brand"
-                allowCustom
-              />
-            </Field>
-            <Field label="Model" required>
-              <PickerField
-                label="Select Model"
-                value={form.model}
-                onChange={(v) => set("model", v)}
-                options={modelOptions}
-                placeholder={form.brand ? "Select model" : "Pick brand first"}
-                disabled={!form.brand}
-                allowCustom
-              />
-            </Field>
-          </div>
-          <Field label="Variant">
-            <input
-              name="variant"
-              value={form.variant}
-              onChange={handleChange}
-              placeholder="e.g. 1.5 G"
-              enterKeyHint="next"
-              className={inputCls}
+          <Field label="Brand" required>
+            <PickerField
+              label="Select Brand"
+              value={form.brand}
+              onChange={(v) => setForm((f) => ({ ...f, brand: v, model: "" }))}
+              options={ALL_BRANDS}
+              placeholder="Select brand"
+              allowCustom
+            />
+          </Field>
+          <Field label="Model" required>
+            <PickerField
+              label="Select Model"
+              value={form.model}
+              onChange={(v) => set("model", v)}
+              options={modelOptions}
+              placeholder={form.brand ? "Select model" : "Pick brand first"}
+              disabled={!form.brand}
+              allowCustom
             />
           </Field>
           <Field label="Year" required>
@@ -2349,6 +2358,28 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               className={inputCls}
             />
           </Field>
+          <Field label="Mileage (km)" required>
+            <input
+              type="number"
+              name="mileage"
+              value={form.mileage}
+              onChange={handleChange}
+              placeholder="e.g. 45000"
+              min="0"
+              enterKeyHint="next"
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Colour" required>
+            <input
+              name="colour"
+              value={form.colour}
+              onChange={handleChange}
+              placeholder="e.g. Pearl White"
+              enterKeyHint="next"
+              className={inputCls}
+            />
+          </Field>
           </>
           )}
           {autoFilled && (
@@ -2357,82 +2388,59 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               Specs auto-filled — review Technical section and adjust if needed
             </div>
           )}
-          <Field label="Condition" required>
-            <PillSelect
-              options={CONDITIONS}
-              value={form.condition}
-              onChange={(v) => set("condition", v)}
-            />
-          </Field>
-          {!intakeDone && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Mileage (km)" required>
+
+          <MoreDetails>
+            {!intakeDone && (
+              <Field label="Variant">
+                <input
+                  name="variant"
+                  value={form.variant}
+                  onChange={handleChange}
+                  placeholder="e.g. 1.5 G"
+                  enterKeyHint="next"
+                  className={inputCls}
+                />
+              </Field>
+            )}
+            <Field label="Registration Date">
               <input
-                type="number"
-                name="mileage"
-                value={form.mileage}
+                type="date"
+                name="registrationDate"
+                value={form.registrationDate}
                 onChange={handleChange}
-                placeholder="e.g. 45000"
-                min="0"
-                enterKeyHint="next"
                 className={inputCls}
               />
             </Field>
-            <Field label="Colour" required>
+            {!intakeDone && (
+            <>
+            <Field label="Plate Number" hint="Optional — vehicle registration plate">
               <input
-                name="colour"
-                value={form.colour}
+                name="plate_number"
+                value={form.plate_number}
                 onChange={handleChange}
-                placeholder="e.g. Pearl White"
-                enterKeyHint="next"
+                onBlur={e => checkDuplicate('plate', e.target.value)}
+                placeholder="e.g. WXY 1234"
                 className={inputCls}
               />
+              {dupWarning.plate && (
+                <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.plate}</p>
+              )}
             </Field>
-          </div>
-          )}
-          <Field label="Registration Date">
-            <input
-              type="date"
-              name="registrationDate"
-              value={form.registrationDate}
-              onChange={handleChange}
-              className={inputCls}
-            />
-          </Field>
-          {!intakeDone && (
-          <>
-          <Field
-            label="Plate Number"
-            hint="Optional — vehicle registration plate"
-          >
-            <input
-              name="plate_number"
-              value={form.plate_number}
-              onChange={handleChange}
-              onBlur={e => checkDuplicate('plate', e.target.value)}
-              placeholder="e.g. WXY 1234"
-              className={inputCls}
-            />
-            {dupWarning.plate && (
-              <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.plate}</p>
+            <Field label="VIN Number" hint="Vehicle Identification Number">
+              <input
+                name="vin_number"
+                value={form.vin_number}
+                onChange={handleChange}
+                onBlur={e => checkDuplicate('vin', e.target.value)}
+                placeholder="e.g. JN1CA31D1XT000001"
+                className={inputCls}
+              />
+              {dupWarning.vin && (
+                <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.vin}</p>
+              )}
+            </Field>
+            </>
             )}
-          </Field>
-          <Field label="VIN Number" hint="Vehicle Identification Number">
-            <input
-              name="vin_number"
-              value={form.vin_number}
-              onChange={handleChange}
-              onBlur={e => checkDuplicate('vin', e.target.value)}
-              placeholder="e.g. JN1CA31D1XT000001"
-              className={inputCls}
-            />
-            {dupWarning.vin && (
-              <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.vin}</p>
-            )}
-          </Field>
-          </>
-          )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Previous Owners">
               <input
                 type="number"
@@ -2454,7 +2462,16 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 className={inputCls}
               />
             </Field>
-          </div>
+          </MoreDetails>
+
+          {/* Pills — below everything */}
+          <Field label="Condition" required>
+            <PillSelect
+              options={CONDITIONS}
+              value={form.condition}
+              onChange={(v) => set("condition", v)}
+            />
+          </Field>
           <Field label="Loan Eligible">
             <PillSelect
               options={["Yes", "No"]}
@@ -2465,38 +2482,14 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         </div>
       );
       case 3: return (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {intakeDone && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
               <Check size={12} />
               {[form.bodyType, form.fuelType, form.transmission, form.engineCc && `${form.engineCc}cc`].filter(Boolean).join(" · ")} — carried over from Core Details
             </div>
           )}
-          {!intakeDone && (
-          <>
-          <Field label="Body Type" required>
-            <PillSelect
-              options={BODY_TYPES}
-              value={form.bodyType}
-              onChange={(v) => set("bodyType", v)}
-            />
-          </Field>
-          <Field label="Fuel Type" required>
-            <PillSelect
-              options={FUEL_TYPES}
-              value={form.fuelType}
-              onChange={(v) => set("fuelType", v)}
-            />
-          </Field>
-          <Field label="Transmission">
-            <PillSelect
-              options={["Auto", "Manual"]}
-              value={form.transmission}
-              onChange={(v) => set("transmission", v)}
-            />
-          </Field>
-          </>
-          )}
+          {/* Core input */}
           {!intakeDone && (
           <Field
             label="Engine Displacement (CC)"
@@ -2534,7 +2527,119 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
             </div>
           </Field>
           )}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+
+          {/* Recon toggle — mode switch, stays visible */}
+          <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-2xl">
+            <div>
+              <p className="text-gray-900 font-semibold text-sm">
+                Recon / Grey Import Vehicle
+              </p>
+              <p className="text-gray-500 text-xs mt-0.5">
+                Enable if this car was imported from overseas
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => set("isRecon", !form.isRecon)}
+              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors flex-shrink-0 ${form.isRecon ? "bg-blue-600" : "bg-gray-300"}`}
+            >
+              <span
+                className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${form.isRecon ? "translate-x-6" : "translate-x-1"}`}
+              />
+            </button>
+          </div>
+
+          {form.isRecon && (
+            <div className="space-y-4">
+              <Field
+                label="Auction Grade"
+                hint={`Suggested: ${suggestedGrade}`}
+              >
+                <PickerField
+                  label="Auction Grade"
+                  value={form.auctionGrade}
+                  onChange={(v) => set("auctionGrade", v)}
+                  options={["S", "5", "4.5", "4", "3.5", "3", "R", "RA", "2", "1"].map((g) => ({
+                    value: g,
+                    label: g === suggestedGrade ? `${g}  ★ suggested` : g,
+                  }))}
+                  placeholder="Select grade"
+                />
+                {!form.auctionGrade && (
+                  <button
+                    type="button"
+                    onClick={() => set("auctionGrade", suggestedGrade)}
+                    className="mt-1.5 text-xs text-blue-600 hover:text-blue-700 transition-colors"
+                  >
+                    Use suggested: {suggestedGrade}
+                  </button>
+                )}
+              </Field>
+              <Field label="Interior Grade">
+                <PickerField
+                  label="Interior Grade"
+                  value={form.interiorGrade}
+                  onChange={(v) => set("interiorGrade", v)}
+                  options={["A", "B", "C", "D"]}
+                  placeholder="Select"
+                />
+              </Field>
+              <Field label="Import Country">
+                <PickerField
+                  label="Import Country"
+                  value={form.importCountry}
+                  onChange={(v) => set("importCountry", v)}
+                  options={["Japan", "UK", "Australia", "Other"]}
+                  placeholder="Select"
+                />
+              </Field>
+              <Field label="Auction House" hint="e.g. USS, TAA, JAA">
+                <input
+                  name="auctionHouse"
+                  value={form.auctionHouse}
+                  onChange={handleChange}
+                  placeholder="e.g. USS Tokyo"
+                  className={inputCls}
+                />
+              </Field>
+              <Field
+                label="Local Reg Date"
+                hint="When first registered in MY"
+              >
+                <input
+                  type="date"
+                  name="localRegDate"
+                  value={form.localRegDate}
+                  onChange={handleChange}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Chassis Status">
+                <PickerField
+                  label="Chassis Status"
+                  value={form.chassisStatus}
+                  onChange={(v) => set("chassisStatus", v)}
+                  options={[
+                    { value: "clean", label: "Clean" },
+                    { value: "repaired", label: "Repaired" },
+                    { value: "written_off", label: "Written Off" },
+                  ]}
+                  placeholder="Select"
+                />
+              </Field>
+              <Field label="Damage Map" hint="Click car to mark damage areas">
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl">
+                  <DamageMap
+                    value={form.damageMap}
+                    onChange={(v) => set("damageMap", v)}
+                  />
+                </div>
+              </Field>
+            </div>
+          )}
+
+          {/* More details — optional specs, one per row */}
+          <MoreDetails>
             <Field label="Power (bhp)">
               <div className="relative">
                 <input
@@ -2576,8 +2681,6 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-xs font-medium pointer-events-none">km/L</span>
               </div>
             </Field>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Doors">
               <input
                 type="number"
@@ -2602,128 +2705,33 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 className={inputCls}
               />
             </Field>
-          </div>
-          {/* Toggle */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-2xl">
-            <div>
-              <p className="text-gray-900 font-semibold text-sm">
-                Recon / Grey Import Vehicle
-              </p>
-              <p className="text-gray-500 text-xs mt-0.5">
-                Enable if this car was imported from overseas
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => set("isRecon", !form.isRecon)}
-              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors flex-shrink-0 ${form.isRecon ? "bg-blue-600" : "bg-gray-300"}`}
-            >
-              <span
-                className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${form.isRecon ? "translate-x-6" : "translate-x-1"}`}
-              />
-            </button>
-          </div>
+          </MoreDetails>
 
-          {form.isRecon && (
-            <div className="space-y-5">
-              {/* Grade row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field
-                  label="Auction Grade"
-                  hint={`Suggested: ${suggestedGrade}`}
-                >
-                  <PickerField
-                    label="Auction Grade"
-                    value={form.auctionGrade}
-                    onChange={(v) => set("auctionGrade", v)}
-                    options={["S", "5", "4.5", "4", "3.5", "3", "R", "RA", "2", "1"].map((g) => ({
-                      value: g,
-                      label: g === suggestedGrade ? `${g}  ★ suggested` : g,
-                    }))}
-                    placeholder="Select grade"
-                  />
-                  {!form.auctionGrade && (
-                    <button
-                      type="button"
-                      onClick={() => set("auctionGrade", suggestedGrade)}
-                      className="mt-1.5 text-xs text-blue-600 hover:text-blue-700 transition-colors"
-                    >
-                      Use suggested: {suggestedGrade}
-                    </button>
-                  )}
-                </Field>
-                <Field label="Interior Grade">
-                  <PickerField
-                    label="Interior Grade"
-                    value={form.interiorGrade}
-                    onChange={(v) => set("interiorGrade", v)}
-                    options={["A", "B", "C", "D"]}
-                    placeholder="Select"
-                  />
-                </Field>
-              </div>
-
-              {/* Import country + auction house */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Import Country">
-                  <PickerField
-                    label="Import Country"
-                    value={form.importCountry}
-                    onChange={(v) => set("importCountry", v)}
-                    options={["Japan", "UK", "Australia", "Other"]}
-                    placeholder="Select"
-                  />
-                </Field>
-                <Field label="Auction House" hint="e.g. USS, TAA, JAA">
-                  <input
-                    name="auctionHouse"
-                    value={form.auctionHouse}
-                    onChange={handleChange}
-                    placeholder="e.g. USS Tokyo"
-                    className={inputCls}
-                  />
-                </Field>
-              </div>
-
-              {/* Local reg date + chassis status */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field
-                  label="Local Reg Date"
-                  hint="When first registered in MY"
-                >
-                  <input
-                    type="date"
-                    name="localRegDate"
-                    value={form.localRegDate}
-                    onChange={handleChange}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Chassis Status">
-                  <PickerField
-                    label="Chassis Status"
-                    value={form.chassisStatus}
-                    onChange={(v) => set("chassisStatus", v)}
-                    options={[
-                      { value: "clean", label: "Clean" },
-                      { value: "repaired", label: "Repaired" },
-                      { value: "written_off", label: "Written Off" },
-                    ]}
-                    placeholder="Select"
-                  />
-                </Field>
-              </div>
-
-              {/* Damage map */}
-              <Field label="Damage Map" hint="Click car to mark damage areas">
-                <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl">
-                  <DamageMap
-                    value={form.damageMap}
-                    onChange={(v) => set("damageMap", v)}
-                  />
-                </div>
-              </Field>
-            </div>
+          {/* Pills — below everything */}
+          {!intakeDone && (
+          <>
+          <Field label="Body Type" required>
+            <PillSelect
+              options={BODY_TYPES}
+              value={form.bodyType}
+              onChange={(v) => set("bodyType", v)}
+            />
+          </Field>
+          <Field label="Fuel Type" required>
+            <PillSelect
+              options={FUEL_TYPES}
+              value={form.fuelType}
+              onChange={(v) => set("fuelType", v)}
+            />
+          </Field>
+          <Field label="Transmission">
+            <PillSelect
+              options={["Auto", "Manual"]}
+              value={form.transmission}
+              onChange={(v) => set("transmission", v)}
+            />
+          </Field>
+          </>
           )}
         </div>
       );
@@ -2780,7 +2788,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           {form.payment_type === "sambung_bayar" && (
             <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 space-y-4">
               <p className="text-xs font-semibold text-amber-700">Sambung Bayar details — what buyers see first</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <Field label="Monthly (Ansuran)" required hint="Buyer's monthly payment">
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">RM</span>
@@ -2969,7 +2977,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           </Field>
           </>
           )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <MoreDetails>
             <Field
               label="Deposit to Reserve (RM)"
               hint="Amount needed to hold this unit"
@@ -3002,7 +3010,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               />
             </Field>
             )}
-          </div>
+          </MoreDetails>
 
           {/* ── Included Services & Add-ons ── */}
           {!intakeDone && (

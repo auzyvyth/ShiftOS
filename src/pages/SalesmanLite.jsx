@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { normalizePhone } from "../lib/phone";
+import { cdnImg } from "../utils/img";
 import CarForm from "../components/CarForm";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { getCategoryCfg } from "../utils/serviceCategories";
@@ -119,32 +120,22 @@ const LEAD_STAGES = [
   "closed_lost",
 ];
 
+// One neutral chip for every in-flight stage — progression is encoded by the
+// card's progress bar + position counter, not a rainbow (the old 6-hue map
+// collided with heat/outcome/action colors and taught nothing). Color is
+// reserved for meaning: green = money stages (deposit/won), gray = lost,
+// red = attention (stale "!") — applied at the render sites, not here.
+const STAGE_NEUTRAL = {
+  bg: "rgba(255,255,255,0.06)",
+  border: "rgba(255,255,255,0.12)",
+  tx: "#cbd5e1",
+};
 const STAGE_COLOR = {
-  new: {
-    bg: "rgba(96,165,250,0.12)",
-    border: "rgba(96,165,250,0.3)",
-    tx: "#93c5fd",
-  },
-  contacted: {
-    bg: "rgba(251,191,36,0.12)",
-    border: "rgba(251,191,36,0.3)",
-    tx: "#fbbf24",
-  },
-  viewing_booked: {
-    bg: "rgba(167,139,250,0.12)",
-    border: "rgba(167,139,250,0.3)",
-    tx: "#c084fc",
-  },
-  test_drive: {
-    bg: "rgba(52,211,153,0.12)",
-    border: "rgba(52,211,153,0.3)",
-    tx: "#34d399",
-  },
-  negotiating: {
-    bg: "rgba(251,146,60,0.12)",
-    border: "rgba(251,146,60,0.3)",
-    tx: "#fb923c",
-  },
+  new: STAGE_NEUTRAL,
+  contacted: STAGE_NEUTRAL,
+  viewing_booked: STAGE_NEUTRAL,
+  test_drive: STAGE_NEUTRAL,
+  negotiating: STAGE_NEUTRAL,
   deposit_taken: {
     bg: "rgba(34,197,94,0.12)",
     border: "rgba(34,197,94,0.3)",
@@ -194,6 +185,45 @@ const getHeatScore = (lead) => {
 };
 
 const LOST_REASONS = ["Price", "Timing", "Competitor", "Ghost"];
+
+// Human car age from registration year, for the lead drawer's car block.
+const carAgeLabel = (year) => {
+  const y = Number(year);
+  if (!y || y < 1950) return null;
+  const age = new Date().getFullYear() - y;
+  if (age <= 0) return "Brand new";
+  return `${age} year${age !== 1 ? "s" : ""} old`;
+};
+
+// First-contact WhatsApp message for a NEW lead — pre-fills the full car detail
+// they enquired on (name, price, mileage, transmission, VIN, plate) so the
+// salesman can send a complete, professional reply in one tap instead of
+// re-typing it. Bahasa-rojak to match the other pipeline templates.
+const buildNewLeadWa = (lead, car) => {
+  const name = lead.buyer_name || "kawan";
+  if (!car) {
+    return `Hi ${name}! Terima kasih sebab enquire. Boleh saya tahu kereta mana yang you berkenan? Saya boleh bagi full details, harga & arrange viewing. 😊`;
+  }
+  const rm = (n) => `RM ${Number(n).toLocaleString("en-MY")}`;
+  const title = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
+  const specLine = [
+    car.mileage ? `${Number(car.mileage).toLocaleString("en-MY")} km` : null,
+    car.transmission,
+    car.fuel_type,
+  ].filter(Boolean).join(" · ");
+  const lines = [
+    `Hi ${name}! Terima kasih sebab enquire tentang kereta ni 👇`,
+    "",
+    `🚗 ${title}`,
+  ];
+  if (car.selling_price) lines.push(`💰 ${rm(car.selling_price)}`);
+  if (specLine) lines.push(`📊 ${specLine}`);
+  if (car.plate_number) lines.push(`🔖 Plate: ${car.plate_number}`);
+  if (car.vin_number) lines.push(`🔑 VIN: ${car.vin_number}`);
+  lines.push("");
+  lines.push("Kereta ni masih available. Bila you free untuk viewing atau test drive? Saya boleh arrange terus. 😊");
+  return lines.join("\n");
+};
 
 function StatusBadge({ status }) {
   const styles = {
@@ -842,7 +872,7 @@ export default function SalesmanLite() {
       // fetch leads
       supabase
         .from("leads")
-        .select("*, car_listings(brand, model, year, selling_price)")
+        .select("*, car_listings(brand, model, year, variant, selling_price, images, vin_number, mileage, transmission, fuel_type, plate_number, slug)")
         .eq("salesman_id", uid)
         .or("is_deleted.eq.false,is_deleted.is.null")
         .order("updated_at", { ascending: false })
@@ -4802,26 +4832,28 @@ export default function SalesmanLite() {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {lead.buyer_name || "—"}
                   </p>
-                  <span title="Buyer urgency — based on pipeline stage and how recently this lead moved" style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", flexShrink: 0, fontWeight: 600 }}>
+                  <span title="Buyer urgency — based on pipeline stage and how recently this lead moved" style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", flexShrink: 0, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                     {heat.label}
                   </span>
                 </div>
                 {(carName || carPrice) && (
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 2, gap: 8 }}>
-                    {carName && <p style={{ margin: 0, fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carName}</p>}
-                    {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#60a5fa", flexShrink: 0 }}>{carPrice}</p>}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 3, gap: 8 }}>
+                    {carName && <p style={{ margin: 0, fontSize: 12, color: "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carName}</p>}
+                    {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#e5e7eb", flexShrink: 0 }}>{carPrice}</p>}
                   </div>
                 )}
                 {lead.updated_at && (
-                  <p style={{ margin: "2px 0 0", fontSize: 10, color: Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000 ? "#fb923c" : "#374151" }}>
+                  <p style={{ margin: "3px 0 0", fontSize: 11, color: Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000 ? "#fb923c" : "#6b7280" }}>
                     Last contact: {timeAgo(lead.updated_at)}
                   </p>
                 )}
                 {lead.last_call_outcome && (() => {
-                  const OUTCOME = { answered: { icon: CheckCircle, label: "Answered", color: "#4ade80" }, no_answer: { icon: PhoneOff, label: "No Answer", color: "#f87171" }, callback_requested: { icon: RefreshCw, label: "Callback", color: "#fbbf24" }, voicemail: { icon: Voicemail, label: "Voicemail", color: "#94a3b8" } };
+                  // Outcomes are information, not alarms — neutral chips with the icon
+                  // carrying the distinction. Green only for the positive one.
+                  const OUTCOME = { answered: { icon: CheckCircle, label: "Answered", color: "#4ade80" }, no_answer: { icon: PhoneOff, label: "No Answer", color: "#9ca3af" }, callback_requested: { icon: RefreshCw, label: "Callback", color: "#9ca3af" }, voicemail: { icon: Voicemail, label: "Voicemail", color: "#9ca3af" } };
                   const o = OUTCOME[lead.last_call_outcome];
                   if (!o) return null;
                   return (
@@ -4833,16 +4865,17 @@ export default function SalesmanLite() {
               </div>
             </div>
 
-            {/* Progress bar — 7 segments */}
+            {/* Progress bar — 7 segments; filled = brand red so deal progress is
+                the card's one colored data element (gray-then-white read as disabled) */}
             <div style={{ marginBottom: followUpOverdue ? 8 : 12 }}>
-              <div style={{ display: "flex", gap: 3, marginBottom: 4 }}>
+              <div style={{ display: "flex", gap: 3, marginBottom: 5 }}>
                 {progressStages.map((s, i) => (
-                  <div key={s} style={{ flex: 1, height: 3, borderRadius: 99, background: i < currentProgressIdx ? "#9ca3af" : i === currentProgressIdx ? "#f1f5f9" : "rgba(255,255,255,0.08)" }} />
+                  <div key={s} style={{ flex: 1, height: 3, borderRadius: 99, background: i < currentProgressIdx ? "rgba(220,38,38,0.55)" : i === currentProgressIdx ? "#dc2626" : "rgba(255,255,255,0.08)" }} />
                 ))}
               </div>
-              <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>
-                Stage: <span style={{ color: "#9ca3af", fontWeight: 600 }}>{(normalizedStage || "new").replace(/_/g, " ")}</span>
-                {currentProgressIdx >= 0 && <span style={{ color: "#374151" }}> · {currentProgressIdx + 1}/{progressStages.length}</span>}
+              <p style={{ margin: 0, fontSize: 11, color: "#6b7280" }}>
+                Stage: <span style={{ color: "#e5e7eb", fontWeight: 600, textTransform: "capitalize" }}>{(normalizedStage || "new").replace(/_/g, " ")}</span>
+                {currentProgressIdx >= 0 && <span style={{ color: "#6b7280" }}> · {currentProgressIdx + 1}/{progressStages.length}</span>}
               </p>
             </div>
 
@@ -4859,7 +4892,7 @@ export default function SalesmanLite() {
             {lead.stage !== "won" && lead.stage !== "closed_won" && (
               <button
                 onClick={() => advanceLeadStage(lead, nextStage)}
-                style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", textAlign: "center" }}
+                style={{ flex: 1, fontSize: 11, fontWeight: 600, padding: "6px 12px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", textAlign: "center", textTransform: "capitalize" }}
               >
                 → {(nextStage || "won").replace(/_/g, " ")}
               </button>
@@ -4867,9 +4900,11 @@ export default function SalesmanLite() {
             {lead.phone && (
               <a
                 href={`tel:${(lead.phone || "").replace(/\D/g, "")}`}
-                style={{ flexShrink: 0, fontSize: 11, padding: "6px 10px", borderRadius: 7, background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
+                title="Call"
+                aria-label="Call lead"
+                style={{ flexShrink: 0, fontSize: 11, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
               >
-                📞
+                <Phone size={13} />
               </a>
             )}
             {lead.phone ? (
@@ -4877,22 +4912,27 @@ export default function SalesmanLite() {
                 onClick={() => {
                   const waCarName = car ? `${car.brand} ${car.model}` : "kereta tu";
                   const isStale = lead.updated_at && Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000;
-                  const msg = isStale
+                  // New leads get a full first-contact message with all the car
+                  // details they enquired on; later stages keep the short nudges.
+                  const isNew = lead.stage === "new";
+                  const msg = isNew
+                    ? buildNewLeadWa(lead, car)
+                    : isStale
                     ? `Hi ${lead.buyer_name || "kawan"}! Ada orang lain tengah tanya pasal ${waCarName} ni — kalau you still interested, jom lock dulu sebelum terlambat 🔒`
                     : `Hi ${lead.buyer_name || "kawan"}! Macam mana, still interested dalam ${waCarName} tu? Jom kita discuss lagi 😊`;
                   setWaModalMessage(msg);
                   setWaModalLead(lead);
                 }}
-                style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", textAlign: "center" }}
+                style={{ flex: 1, fontSize: 11, fontWeight: 600, padding: "6px 12px", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", textAlign: "center" }}
               >
-                WA
+                WhatsApp
               </button>
             ) : !lead.car_listing_id ? (
               <button
                 onClick={() => setLinkCarLeadId(lead.id)}
-                style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", textAlign: "center" }}
+                style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
               >
-                🚗 Link Car
+                <Car size={12} /> Link Car
               </button>
             ) : null}
             <button
@@ -4968,7 +5008,7 @@ export default function SalesmanLite() {
               {srcCfg.map(({ key, label, color }) => (
                 <div key={key} style={{ display: "flex", alignItems: "center", gap: 5 }}>
                   <span style={{ width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 10, color: "#6b7280" }}>{label} <strong style={{ color: "#9ca3af" }}>{srcMap[key]}</strong></span>
+                  <span style={{ fontSize: 11, color: "#6b7280" }}>{label} <strong style={{ color: "#e5e7eb" }}>{srcMap[key]}</strong></span>
                 </div>
               ))}
             </div>
@@ -5000,7 +5040,6 @@ export default function SalesmanLite() {
                 every stage to find out. */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "2px 0 10px", marginBottom: 12 }}>
               {activeStages.map((stage) => {
-                const sc = STAGE_COLOR[stage] || {};
                 const stageLeadsForPill = searchedLeads.filter((l) => l.stage === stage);
                 const count = stageLeadsForPill.length;
                 const staleInStage = stageLeadsForPill.filter((l) => staleIdSet.has(l.id));
@@ -5025,7 +5064,7 @@ export default function SalesmanLite() {
                       cursor: "pointer",
                       background: isActive ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.04)",
                       border: isActive ? "1px solid rgba(220,38,38,0.3)" : "1px solid rgba(255,255,255,0.08)",
-                      color: isActive ? "#f87171" : "#4b5563",
+                      color: isActive ? "#f87171" : "#9ca3af",
                       textTransform: "capitalize",
                       whiteSpace: "nowrap",
                     }}
@@ -5034,7 +5073,7 @@ export default function SalesmanLite() {
                     <span style={{
                       fontSize: 10,
                       fontWeight: 700,
-                      color: needsFollowUp ? "#f87171" : isActive ? (sc.tx || "#f87171") : "#374151",
+                      color: needsFollowUp ? "#f87171" : isActive ? "#f87171" : "#6b7280",
                       background: needsFollowUp ? "rgba(239,68,68,0.18)" : isActive ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.06)",
                       border: needsFollowUp ? "1px solid rgba(239,68,68,0.4)" : "none",
                       borderRadius: 99,
@@ -5071,7 +5110,7 @@ export default function SalesmanLite() {
           /* Desktop: horizontal kanban scroll */
           <>
             {activeStages.length > 3 && (
-              <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 6, fontSize: 10, color: "#4b5563" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 6, fontSize: 11, color: "#6b7280" }}>
                 <span>{activeStages.length} stages — scroll right for more</span>
                 <ChevronRight size={12} />
               </div>
@@ -5355,10 +5394,44 @@ export default function SalesmanLite() {
                   </div>
                 </div>
 
-                {/* price strip */}
-                {plCarPrice && (
-                  <div style={{ padding: "8px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)" }}>
-                    <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#60a5fa" }}>{plCarPrice}</p>
+                {/* Car enquired-on block — image, name, price, and the specs a
+                    salesman needs to answer fast (age, mileage, VIN, plate). */}
+                {plCar ? (
+                  <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)", display: "flex", gap: 12 }}>
+                    {(() => {
+                      const img = Array.isArray(plCar.images) ? plCar.images.find(Boolean) : null;
+                      return img ? (
+                        <img
+                          src={cdnImg(img, 200)}
+                          alt={plCarName || "Car"}
+                          onClick={() => plCar.slug && window.open(`/cars/${plCar.slug}`, "_blank")}
+                          style={{ width: 88, height: 66, borderRadius: 8, objectFit: "cover", flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)", cursor: plCar.slug ? "pointer" : "default" }}
+                        />
+                      ) : (
+                        <div style={{ width: 88, height: 66, borderRadius: 8, flexShrink: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <Car size={22} style={{ color: "#4b5563" }} />
+                        </div>
+                      );
+                    })()}
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {[plCar.year, plCar.brand, plCar.model, plCar.variant].filter(Boolean).join(" ") || plCarName}
+                      </p>
+                      {plCarPrice && <p style={{ margin: "3px 0 0", fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>{plCarPrice}</p>}
+                      <p style={{ margin: "5px 0 0", fontSize: 11, color: "#9ca3af" }}>
+                        {[carAgeLabel(plCar.year), plCar.mileage ? `${Number(plCar.mileage).toLocaleString("en-MY")} km` : null, plCar.transmission].filter(Boolean).join(" · ")}
+                      </p>
+                      {(plCar.vin_number || plCar.plate_number) && (
+                        <p style={{ margin: "3px 0 0", fontSize: 10, color: "#6b7280", fontFamily: "monospace" }}>
+                          {[plCar.plate_number && `Plate ${plCar.plate_number}`, plCar.vin_number && `VIN ${plCar.vin_number}`].filter(Boolean).join("  ·  ")}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ padding: "10px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)", display: "flex", alignItems: "center", gap: 8 }}>
+                    <Car size={14} style={{ color: "#4b5563" }} />
+                    <span style={{ fontSize: 12, color: "#6b7280" }}>No car linked to this lead</span>
                   </div>
                 )}
 
@@ -5414,7 +5487,7 @@ export default function SalesmanLite() {
                       </button>
                     )}
                     <button onClick={() => setLinkCarLeadId(pl.id)} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
-                      🚗 {pl.car_listing_id ? "Change Car" : "Link Car"}
+                      <Car size={12} /> {pl.car_listing_id ? "Change Car" : "Link Car"}
                     </button>
                   </div>
 
