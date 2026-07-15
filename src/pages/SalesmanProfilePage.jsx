@@ -96,14 +96,14 @@ export default function SalesmanProfilePage() {
   const locationStr = [locationCity, locationState].filter(Boolean).join(', ');
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#05070e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100vh', background: '#0b0e15', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.08)', borderTopColor: '#2563eb', animation: 'spin 0.8s linear infinite' }} />
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 
   if (notFound) return (
-    <div style={{ minHeight: '100vh', background: '#05070e', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans',sans-serif", padding: '0 24px', textAlign: 'center' }}>
+    <div style={{ minHeight: '100vh', background: '#0b0e15', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans',sans-serif", padding: '0 24px', textAlign: 'center' }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600&display=swap');`}</style>
       <p style={{ fontSize: 14, color: '#4b5563', marginBottom: 8 }}>Agent not found</p>
       <p style={{ fontSize: 13, color: '#374151' }}>This page doesn't exist or has been removed.</p>
@@ -132,25 +132,29 @@ export default function SalesmanProfilePage() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        .sp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-        @media (max-width: 640px) { .sp-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
+        /* minmax(0,1fr) — not plain 1fr — so a long non-wrapping car name can't
+           blow a column past its share and push the grid wider than the screen
+           (that overflow, clipped by the page's overflowX:hidden, was cutting
+           the right-hand cards). Columns stay exactly equal. */
+        .sp-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+        @media (max-width: 640px) { .sp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
         .sp-card { transition: border-color 0.18s, transform 0.18s; }
         .sp-card:hover { border-color: rgba(255,255,255,0.18) !important; transform: translateY(-2px); }
         .social-btn:hover { border-color: rgba(255,255,255,0.22) !important; color: #e5e7eb !important; }
       `}</style>
 
-      <div style={{ minHeight: '100vh', position: 'relative', background: '#05070e', fontFamily: "'DM Sans',sans-serif", color: '#fff', overflowX: 'hidden' }}>
+      <div style={{ minHeight: '100vh', position: 'relative', background: '#0b0e15', fontFamily: "'DM Sans',sans-serif", color: '#fff', overflowX: 'hidden' }}>
 
-        {/* Decorative backdrop — fixed to the viewport (not the scrollable
-            document) so the orange spot + waves stay put relative to the
-            screen instead of stretching across the full page height and
-            landing off-screen on a long listings page. */}
+        {/* Decorative backdrop — soft warm-gold glow in the top-left melting into
+            a cool dark slate, matching the reference. Fixed to the viewport so it
+            stays put on a long listings page. Pure gradients = naturally soft, no
+            hard lines. */}
         <div style={{
           position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
           background: `
-            radial-gradient(ellipse 520px 440px at 92% 90%, rgba(251,146,60,0.20) 0%, rgba(234,88,12,0.08) 38%, transparent 65%),
-            repeating-linear-gradient(315deg, rgba(251,146,60,0.05) 0px, rgba(251,146,60,0.05) 1.5px, transparent 1.5px, transparent 90px),
-            linear-gradient(160deg, #05070e 0%, #0a0d14 55%, #05070e 100%)
+            radial-gradient(ellipse 95% 78% at 2% -12%, rgba(216,178,94,0.42) 0%, rgba(178,150,90,0.14) 33%, transparent 62%),
+            radial-gradient(ellipse 90% 70% at 104% 106%, rgba(12,16,24,0.65) 0%, transparent 55%),
+            linear-gradient(150deg, #1b202b 0%, #141822 46%, #0b0e15 100%)
           `,
         }} />
 
@@ -379,7 +383,7 @@ export default function SalesmanProfilePage() {
                 {rest.map(car => {
                   const img = Array.isArray(car.images) ? car.images[0] : null;
                   return (
-                    <Link key={car.id} to={`/showroom/${car.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <Link key={car.id} to={`/showroom/${car.slug}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block', minWidth: 0 }}>
                       <div className="sp-card"
                         style={{ background: '#0d1117', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden' }}>
                         <div style={{ position: 'relative', paddingTop: '65%', background: '#0a0e18', overflow: 'hidden' }}>
