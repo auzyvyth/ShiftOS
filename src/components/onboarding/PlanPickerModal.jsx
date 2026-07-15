@@ -14,9 +14,9 @@ const SALESMAN_PLANS = [
     features: ['Auto-published to xdrive.my', 'Direct WhatsApp enquiries', 'Basic performance analytics', 'No credit card required'],
   },
   {
-    tier: 'premium', route: '/salesman-onboarding/premium', label: 'Salesman Premium',
-    price: 'RM 50', priceSub: '/month', caps: ['Up to 20 listings', '1 user'],
-    features: ['Priority marketplace placement', 'Full CRM + lead pipeline', 'Commission tracking', 'Advanced analytics', 'Custom profile subdomain'],
+    tier: 'premium', route: '/salesman-onboarding/premium', label: 'Salesman Premium', soon: true,
+    price: 'RM 50', priceSub: '/month', caps: ['Unlimited listings', '1 user'],
+    features: ['Priority marketplace placement', 'Advanced CRM automation', 'Commission tracking', 'Advanced analytics', 'Custom profile subdomain'],
   },
 ];
 
@@ -45,9 +45,13 @@ function PlanCard({ plan, current, onSelect }) {
       background: current ? 'rgba(220,38,38,0.06)' : 'rgba(255,255,255,0.02)',
       border: `1px solid ${current ? 'rgba(220,38,38,0.4)' : plan.popular ? 'rgba(220,38,38,0.25)' : 'rgba(255,255,255,0.08)'}`,
       borderRadius: 14, padding: '20px 18px',
+      opacity: plan.soon ? 0.62 : 1,
     }}>
       {plan.popular && !current && (
         <span style={{ position: 'absolute', top: -9, left: 18, background: '#dc2626', color: '#fff', fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4 }}>Most popular</span>
+      )}
+      {plan.soon && (
+        <span style={{ position: 'absolute', top: -9, left: 18, background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4 }}>Coming soon</span>
       )}
       <p style={{ fontSize: 13, fontWeight: 600, color: '#E8EDF5', letterSpacing: '0.04em' }}>{plan.label}</p>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, margin: '8px 0 2px' }}>
@@ -69,16 +73,16 @@ function PlanCard({ plan, current, onSelect }) {
         ))}
       </div>
       <button
-        onClick={() => !current && onSelect(plan.route)}
-        disabled={current}
+        onClick={() => !current && !plan.soon && onSelect(plan.route)}
+        disabled={current || plan.soon}
         style={{
-          height: 42, borderRadius: 8, border: current ? '1px solid rgba(255,255,255,0.12)' : 'none',
-          background: current ? 'transparent' : '#dc2626', color: current ? 'rgba(255,255,255,0.4)' : '#fff',
+          height: 42, borderRadius: 8, border: (current || plan.soon) ? '1px solid rgba(255,255,255,0.12)' : 'none',
+          background: (current || plan.soon) ? 'transparent' : '#dc2626', color: (current || plan.soon) ? 'rgba(255,255,255,0.4)' : '#fff',
           fontFamily: "'DM Sans',sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
-          cursor: current ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          cursor: (current || plan.soon) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         }}
       >
-        {current ? 'Current plan' : 'Select plan'}
+        {plan.soon ? 'Coming soon' : current ? 'Current plan' : 'Select plan'}
       </button>
     </div>
   );
