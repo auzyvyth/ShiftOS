@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { normalizePhone } from "../lib/phone";
+import { cdnImg } from "../utils/img";
 import CarForm from "../components/CarForm";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { getCategoryCfg } from "../utils/serviceCategories";
@@ -184,6 +185,45 @@ const getHeatScore = (lead) => {
 };
 
 const LOST_REASONS = ["Price", "Timing", "Competitor", "Ghost"];
+
+// Human car age from registration year, for the lead drawer's car block.
+const carAgeLabel = (year) => {
+  const y = Number(year);
+  if (!y || y < 1950) return null;
+  const age = new Date().getFullYear() - y;
+  if (age <= 0) return "Brand new";
+  return `${age} year${age !== 1 ? "s" : ""} old`;
+};
+
+// First-contact WhatsApp message for a NEW lead — pre-fills the full car detail
+// they enquired on (name, price, mileage, transmission, VIN, plate) so the
+// salesman can send a complete, professional reply in one tap instead of
+// re-typing it. Bahasa-rojak to match the other pipeline templates.
+const buildNewLeadWa = (lead, car) => {
+  const name = lead.buyer_name || "kawan";
+  if (!car) {
+    return `Hi ${name}! Terima kasih sebab enquire. Boleh saya tahu kereta mana yang you berkenan? Saya boleh bagi full details, harga & arrange viewing. 😊`;
+  }
+  const rm = (n) => `RM ${Number(n).toLocaleString("en-MY")}`;
+  const title = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
+  const specLine = [
+    car.mileage ? `${Number(car.mileage).toLocaleString("en-MY")} km` : null,
+    car.transmission,
+    car.fuel_type,
+  ].filter(Boolean).join(" · ");
+  const lines = [
+    `Hi ${name}! Terima kasih sebab enquire tentang kereta ni 👇`,
+    "",
+    `🚗 ${title}`,
+  ];
+  if (car.selling_price) lines.push(`💰 ${rm(car.selling_price)}`);
+  if (specLine) lines.push(`📊 ${specLine}`);
+  if (car.plate_number) lines.push(`🔖 Plate: ${car.plate_number}`);
+  if (car.vin_number) lines.push(`🔑 VIN: ${car.vin_number}`);
+  lines.push("");
+  lines.push("Kereta ni masih available. Bila you free untuk viewing atau test drive? Saya boleh arrange terus. 😊");
+  return lines.join("\n");
+};
 
 function StatusBadge({ status }) {
   const styles = {
@@ -832,7 +872,7 @@ export default function SalesmanLite() {
       // fetch leads
       supabase
         .from("leads")
-        .select("*, car_listings(brand, model, year, selling_price)")
+        .select("*, car_listings(brand, model, year, variant, selling_price, images, vin_number, mileage, transmission, fuel_type, plate_number, slug)")
         .eq("salesman_id", uid)
         .or("is_deleted.eq.false,is_deleted.is.null")
         .order("updated_at", { ascending: false })
@@ -4872,7 +4912,12 @@ export default function SalesmanLite() {
                 onClick={() => {
                   const waCarName = car ? `${car.brand} ${car.model}` : "kereta tu";
                   const isStale = lead.updated_at && Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000;
-                  const msg = isStale
+                  // New leads get a full first-contact message with all the car
+                  // details they enquired on; later stages keep the short nudges.
+                  const isNew = lead.stage === "new";
+                  const msg = isNew
+                    ? buildNewLeadWa(lead, car)
+                    : isStale
                     ? `Hi ${lead.buyer_name || "kawan"}! Ada orang lain tengah tanya pasal ${waCarName} ni — kalau you still interested, jom lock dulu sebelum terlambat 🔒`
                     : `Hi ${lead.buyer_name || "kawan"}! Macam mana, still interested dalam ${waCarName} tu? Jom kita discuss lagi 😊`;
                   setWaModalMessage(msg);
@@ -5349,10 +5394,44 @@ export default function SalesmanLite() {
                   </div>
                 </div>
 
-                {/* price strip */}
-                {plCarPrice && (
-                  <div style={{ padding: "8px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)" }}>
-                    <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#60a5fa" }}>{plCarPrice}</p>
+                {/* Car enquired-on block — image, name, price, and the specs a
+                    salesman needs to answer fast (age, mileage, VIN, plate). */}
+                {plCar ? (
+                  <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)", display: "flex", gap: 12 }}>
+                    {(() => {
+                      const img = Array.isArray(plCar.images) ? plCar.images.find(Boolean) : null;
+                      return img ? (
+                        <img
+                          src={cdnImg(img, 200)}
+                          alt={plCarName || "Car"}
+                          onClick={() => plCar.slug && window.open(`/cars/${plCar.slug}`, "_blank")}
+                          style={{ width: 88, height: 66, borderRadius: 8, objectFit: "cover", flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)", cursor: plCar.slug ? "pointer" : "default" }}
+                        />
+                      ) : (
+                        <div style={{ width: 88, height: 66, borderRadius: 8, flexShrink: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <Car size={22} style={{ color: "#4b5563" }} />
+                        </div>
+                      );
+                    })()}
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {[plCar.year, plCar.brand, plCar.model, plCar.variant].filter(Boolean).join(" ") || plCarName}
+                      </p>
+                      {plCarPrice && <p style={{ margin: "3px 0 0", fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>{plCarPrice}</p>}
+                      <p style={{ margin: "5px 0 0", fontSize: 11, color: "#9ca3af" }}>
+                        {[carAgeLabel(plCar.year), plCar.mileage ? `${Number(plCar.mileage).toLocaleString("en-MY")} km` : null, plCar.transmission].filter(Boolean).join(" · ")}
+                      </p>
+                      {(plCar.vin_number || plCar.plate_number) && (
+                        <p style={{ margin: "3px 0 0", fontSize: 10, color: "#6b7280", fontFamily: "monospace" }}>
+                          {[plCar.plate_number && `Plate ${plCar.plate_number}`, plCar.vin_number && `VIN ${plCar.vin_number}`].filter(Boolean).join("  ·  ")}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ padding: "10px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)", display: "flex", alignItems: "center", gap: 8 }}>
+                    <Car size={14} style={{ color: "#4b5563" }} />
+                    <span style={{ fontSize: 12, color: "#6b7280" }}>No car linked to this lead</span>
                   </div>
                 )}
 
@@ -5408,7 +5487,7 @@ export default function SalesmanLite() {
                       </button>
                     )}
                     <button onClick={() => setLinkCarLeadId(pl.id)} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
-                      🚗 {pl.car_listing_id ? "Change Car" : "Link Car"}
+                      <Car size={12} /> {pl.car_listing_id ? "Change Car" : "Link Car"}
                     </button>
                   </div>
 
