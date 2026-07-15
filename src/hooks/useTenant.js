@@ -141,16 +141,38 @@ export default function useTenant() {
       // RPC (SECURITY DEFINER) — public_dealer_profiles is security_invoker and
       // subject to profiles RLS, which has no anon-read policy for dealer rows.
       // Anonymous storefront visitors must go through this narrow lookup instead.
+      // Look up the dealer for this subdomain, retrying on transient RPC
+      // failures. A backgrounded mobile tab re-mounts and fires this while the
+      // network is still waking up — a FAILED request must never overwrite a
+      // shown/cached storefront with "this dealer doesn't exist". Only a clean
+      // response that returns no row is a real miss. On persistent failure fall
+      // back to the cached tenant (what was showing before) instead of null.
       let profile = null;
-      try {
-        const { data } = await supabase
-          .rpc("get_dealer_profile_by_subdomain", { p_subdomain: subdomain })
-          .maybeSingle();
-        profile = data || null;
-      } catch (e) {
-        profile = null;
+      let rpcErrored = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const { data, error } = await supabase
+            .rpc("get_dealer_profile_by_subdomain", { p_subdomain: subdomain })
+            .maybeSingle();
+          if (error) {
+            rpcErrored = true;
+          } else {
+            profile = data || null;
+            rpcErrored = false;
+            break; // clean response (row or genuine miss) — stop retrying
+          }
+        } catch (e) {
+          rpcErrored = true;
+        }
+        if (attempt < 2) await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
       }
       clearTimeout(timer);
+      if (rpcErrored && !profile) {
+        // Transient failure — degrade to the cached storefront rather than a
+        // false "not found". Don't cache or subscribe off a failed lookup.
+        settle(cachedTenantRef.current || null);
+        return;
+      }
       settle(profile);
       // Don't cache a miss — a transient RPC failure shouldn't make the
       // storefront remember "not found" past this one bad request.

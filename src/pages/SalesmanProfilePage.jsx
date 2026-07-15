@@ -36,10 +36,28 @@ export default function SalesmanProfilePage() {
   const [bioOverflows, setBioOverflows] = useState(false);
 
   useEffect(() => {
-    async function load() {
-      const { data: p } = await supabase
+    let cancelled = false;
+
+    // Look up the agent, retrying on transient RPC failures. A mobile tab woken
+    // from the background re-mounts this page and fires the RPC while the
+    // network is still coming back — a FAILED request must not be shown as
+    // "Agent not found". That verdict is only correct for a clean lookup that
+    // returns no row. Retry a few times before giving up; a manual refresh used
+    // to be the only way out of the false not-found.
+    async function load(attempt = 0) {
+      const { data: p, error } = await supabase
         .rpc('get_salesman_by_slug', { p_slug: slug })
         .maybeSingle();
+      if (cancelled) return;
+
+      if (error) {
+        if (attempt < 3) {
+          setTimeout(() => { if (!cancelled) load(attempt + 1); }, 1000 * (attempt + 1));
+        }
+        // else: leave the loader up rather than a wrong "not found"; a later
+        // refresh / tab-focus re-mount retries.
+        return;
+      }
 
       if (!p) { setNotFound(true); setLoading(false); return; }
       setProfile(p);
@@ -58,11 +76,13 @@ export default function SalesmanProfilePage() {
         supabase.from('public_car_listings').select('id', { count: 'exact', head: true }).eq('dealer_id', p.id).eq('status', 'sold'),
         supabase.from('public_car_listings').select('id', { count: 'exact', head: true }).eq('assigned_to', p.id).eq('status', 'sold'),
       ]);
+      if (cancelled) return;
 
       if (p.dealer_id) {
         const { data: d } = await supabase
           .rpc('get_dealer_profile_by_id', { p_dealer_id: p.dealer_id })
           .maybeSingle();
+        if (cancelled) return;
         setDealer(d);
       }
 
@@ -78,6 +98,7 @@ export default function SalesmanProfilePage() {
       setLoading(false);
     }
     load();
+    return () => { cancelled = true; };
   }, [slug]);
 
   useEffect(() => {
