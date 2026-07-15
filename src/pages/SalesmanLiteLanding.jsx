@@ -4,7 +4,7 @@ import { Helmet } from "react-helmet";
 import {
   ArrowRight, Check, Globe, Car, MessageCircle, LineChart,
   Link2, Wallet, ChevronDown, Share2, ShieldCheck, X as XIcon,
-  Smartphone, Zap, Lock, Eye,
+  Smartphone, Zap, Lock, Eye, ListChecks,
 } from "lucide-react";
 import MarketplaceHeader from "../components/MarketplaceHeader";
 import MarketplaceFooter from "../components/MarketplaceFooter";
@@ -23,7 +23,7 @@ const SEO_KEYWORDS = [
 
 const FAQS = [
   { q: "Is Salesman Lite really free?",
-    a: "Yes. Salesman Lite costs RM0 — no credit card, no contract, no trial that quietly bills you later. You get up to 10 active car listings, your own page on the XDrive marketplace, and direct WhatsApp enquiries at no cost. If you outgrow it, Premium is there — but plenty of agents never need to." },
+    a: "Yes. Salesman Lite costs RM0 — no credit card, no contract, no trial that quietly bills you later. You get up to 10 active car listings, your own page on the XDrive marketplace, a lead pipeline to track enquiries, and direct WhatsApp enquiries at no cost. Premium is coming soon for when you outgrow it — but plenty of agents never need to." },
   { q: "Do I need to build a website?",
     a: "No. The moment you sign up you get a ready-made page at xdrive.my/s/yourname with all your cars on it. No hosting, no domain, no design work — just add your cars and share the link." },
   { q: "How do buyers contact me?",
@@ -31,9 +31,9 @@ const FAQS = [
   { q: "Can I still use Mudah and Carlist?",
     a: "Absolutely. Salesman Lite works alongside them. The difference is this page is yours, it lives on Malaysia's XDrive marketplace, and it doesn't charge you per listing." },
   { q: "What happens when I have more than 10 cars?",
-    a: "Upgrade to Salesman Premium (RM50/month) for unlimited listings, priority marketplace placement, a full lead CRM and pipeline, commission tracking, advanced analytics and a custom subdomain. Your Lite page and cars carry straight over." },
+    a: "Salesman Premium (RM50/month) is coming soon — it lifts the 10-car cap and adds priority marketplace placement, commission tracking, advanced analytics and a custom subdomain. Your Lite page and cars carry straight over. Until then, Lite's 10 listings and lead pipeline are yours free." },
   { q: "How long does setup take?",
-    a: "About two minutes. Enter your name, phone and a link name, add your first car with a few photos, and you're live on the marketplace." },
+    a: "A few minutes. Sign up with email or Google, add your phone and a link name, and you're in your panel — add your first car with a few photos to go live. IC verification can wait until just before your listings appear on the marketplace, so nothing holds up getting started." },
   { q: "Apa itu Salesman Lite?",
     a: "Salesman Lite ialah akaun percuma untuk salesman dan ejen kereta di Malaysia. Anda dapat page sendiri di xdrive.my, senaraikan sehingga 10 kereta, dan terima enquiry pembeli terus di WhatsApp — tanpa sebarang kos atau kad kredit." },
 ];
@@ -69,6 +69,7 @@ const FEATURES = [
   { Icon: Globe, title: "A page that's actually yours", body: "A clean profile at xdrive.my/s/yourname with every car you're selling. Send it once — buyers see your whole stock, your name, your number." },
   { Icon: Car, title: "List up to 10 cars, free", body: "Photos, price and specs, published straight onto Malaysia's XDrive marketplace. No per-listing fee, no bidding for placement." },
   { Icon: MessageCircle, title: "Leads land in your WhatsApp", body: "Every car has a WhatsApp button that messages you directly. No shared inbox, no lead resold to three other agents." },
+  { Icon: ListChecks, title: "A pipeline, not a lost chat", body: "Every enquiry becomes a tracked lead — drag through stages, set follow-up reminders, log calls, send ready-made WhatsApp replies. The CRM other apps charge for, free on Lite." },
   { Icon: LineChart, title: "See which cars pull", body: "Basic analytics show views and WhatsApp taps per listing — so you know what buyers actually want, and reprice what's gone cold." },
   { Icon: Link2, title: "One link for everything", body: "Drop it in your WhatsApp status, Instagram bio, or under your Mudah ad. Every buyer, one tap from your entire stock." },
   { Icon: Wallet, title: "Free, and it stays free", body: "RM0 forever on Lite. No credit card to start, no trial timer. Upgrade to Premium only when your business asks for it." },
@@ -82,7 +83,7 @@ const WHY = [
 ];
 
 const STEPS = [
-  { n: "01", title: "Sign up free", body: "Email, phone and a name for your link. Two minutes, no card, no catch." },
+  { n: "01", title: "Sign up free", body: "Email or Google, your phone, and a name for your link. No card, no catch — IC verification can wait until you publish." },
   { n: "02", title: "Add your cars", body: "Upload photos and set your price. Each car goes live on XDrive the moment you publish." },
   { n: "03", title: "Share & sell", body: "Send your one link. Buyers browse your stock and WhatsApp you straight away." },
 ];
@@ -152,7 +153,7 @@ export default function SalesmanLiteLanding() {
             <p className="sll-microtrust">
               <span className="sll-microtrust-item"><Check size={14} /> Free forever</span>
               <span className="sll-microtrust-item"><Check size={14} /> No credit card</span>
-              <span className="sll-microtrust-item"><Check size={14} /> Live in 2 minutes</span>
+              <span className="sll-microtrust-item"><Check size={14} /> Live in minutes</span>
             </p>
           </div>
         </section>
@@ -286,7 +287,7 @@ export default function SalesmanLiteLanding() {
           <div className="sll-wrap sll-midcta-inner">
             <div>
               <h3 className="sll-midcta-h">Ready when you are.</h3>
-              <p className="sll-midcta-p">Your free page takes two minutes and costs nothing.</p>
+              <p className="sll-midcta-p">Your free page takes minutes and costs nothing.</p>
             </div>
             <Link to="/salesman-onboarding/lite" className="sll-btn sll-btn-red">
               Sign up free <ArrowRight size={17} />
@@ -306,7 +307,7 @@ export default function SalesmanLiteLanding() {
                   <span className="sll-plan-price">RM0<span>/forever</span></span>
                 </div>
                 <ul className="sll-plan-list">
-                  {["Up to 10 active listings", "Your page on the XDrive marketplace", "Direct WhatsApp enquiries", "Basic performance analytics", "No credit card required"].map((x) => (
+                  {["Up to 10 active listings", "Your page on the XDrive marketplace", "Direct WhatsApp enquiries", "Lead pipeline + follow-up reminders", "Basic performance analytics", "No credit card required"].map((x) => (
                     <li key={x}><Check size={15} className="sll-tick" /> {x}</li>
                   ))}
                 </ul>
@@ -320,7 +321,7 @@ export default function SalesmanLiteLanding() {
                     <span className="sll-plan-price">RM50<span>/month</span></span>
                   </div>
                   <ul className="sll-plan-list">
-                    {["Everything in Lite", "Unlimited listings", "Priority marketplace placement", "Full CRM + lead pipeline", "Commission tracking", "Advanced analytics + custom subdomain"].map((x) => (
+                    {["Everything in Lite", "Unlimited listings", "Priority marketplace placement", "Advanced CRM automation", "Commission tracking", "Advanced analytics + custom subdomain"].map((x) => (
                       <li key={x}><Check size={15} className="sll-tick" /> {x}</li>
                     ))}
                   </ul>
@@ -345,7 +346,7 @@ export default function SalesmanLiteLanding() {
         {/* ── Final CTA ── */}
         <section className="sll-final">
           <div className="sll-wrap">
-            <h2 className="sll-final-h">Your free car-sales page<br />is two minutes away.</h2>
+            <h2 className="sll-final-h">Your free car-sales page<br />is minutes away.</h2>
             <p className="sll-final-p">Join the Malaysian agents putting their whole stock behind one link.</p>
             <div className="sll-cta-row sll-cta-center">
               <Link to="/salesman-onboarding/lite" className="sll-btn sll-btn-red sll-btn-lg">

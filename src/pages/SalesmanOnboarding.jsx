@@ -84,7 +84,7 @@ const CSS = `
 const STEPS = [
   { label: 'TERMS', sub: 'Required agreement' },
   { label: 'ACCOUNT', sub: 'Email or Google' },
-  { label: 'IDENTITY', sub: 'IC verification' },
+  { label: 'DETAILS', sub: 'Name · IC optional' },
   { label: 'PHONE', sub: 'Contact number' },
   { label: 'PROFILE', sub: 'Your public page' },
   { label: 'ACTIVATE', sub: 'Go live' },
@@ -378,6 +378,32 @@ export default function SalesmanOnboarding() {
     }
   };
 
+  // Defer IC verification — let the salesman reach their live panel and build a
+  // page first (national ID upfront was the biggest cold-signup drop-off). IC is
+  // collected later, before listings go public. Full name is still saved (it's
+  // their display identity, low-sensitivity).
+  const skipIdentity = async () => {
+    setErr('');
+    if (!form.fullName.trim()) { setErr('Full name is required'); return; }
+    setLoading(true);
+    try {
+      if (userId) {
+        const { error } = await supabase.from('profiles').upsert({
+          id: userId,
+          full_name: form.fullName.trim(),
+          role: 'salesman',
+          onboarding_complete: false,
+        }, { onConflict: 'id' });
+        if (error) throw error;
+      }
+      setStep(3);
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const checkSlug = async (slug) => {
     if (!slug || slug.length < 3) { setSlugTaken(false); return; }
     setSlugChecking(true);
@@ -411,7 +437,10 @@ export default function SalesmanOnboarding() {
         // read whatsapp_number — the onboarding phone is useless unless we also
         // seed it here, otherwise buyers get "dealer hasn't added a WhatsApp number".
         whatsapp_number: normalizePhone(form.phone),
-        ic_number: form.icNumber.replace(/-/g, ''),
+        // IC is deferred-friendly: signing up no longer requires it. When skipped
+        // we store null and stamp a soft deadline (verification is required before
+        // listings go live on the public marketplace, not to use the panel).
+        ic_number: form.icNumber ? form.icNumber.replace(/-/g, '') : null,
         role: 'salesman',
         slug: form.slug,
         dealership: (form.brand || form.fullName).trim(),
@@ -422,7 +451,7 @@ export default function SalesmanOnboarding() {
         plan: tier === 'premium' ? 'salesman_full' : 'salesman_lite',
         pdpa_consent: true,
         pdpa_consent_at: new Date().toISOString(),
-        ic_deadline: null,
+        ic_deadline: form.icNumber ? null : new Date(Date.now() + 7 * 86400000).toISOString(),
       }, { onConflict: 'id' });
       if (error) throw error;
       sessionStorage.removeItem('ob_agreed');
@@ -614,20 +643,24 @@ export default function SalesmanOnboarding() {
 
             {step === 2 && (
               <>
-                <p className="eo-eyebrow">IDENTITY VERIFICATION — REQUIRED</p>
-                <div className="eo-heading">Verify Your Identity</div>
-                <p className="eo-sub">Your IC number is required before your listings appear on the xdrive.my marketplace.</p>
+                <p className="eo-eyebrow">STEP 3 OF {STEPS.length}</p>
+                <div className="eo-heading">Your Details</div>
+                <p className="eo-sub">Your name is what buyers see. IC verification keeps the marketplace trusted — add it now, or later before your listings go live. Your choice.</p>
                 <label className="eo-label">FULL LEGAL NAME (AS PER IC)</label>
                 <input className="eo-inp" type="text" placeholder="Ahmad bin Abdullah" value={form.fullName}
                   onChange={e => upd('fullName')(e.target.value)} autoComplete="name" />
-                <label className="eo-label">IC NUMBER (MYKAD)</label>
+                <label className="eo-label">IC NUMBER (MYKAD) <span style={{ color: 'rgba(255,255,255,0.28)', fontWeight: 400 }}>— OPTIONAL FOR NOW</span></label>
                 <input className="eo-inp" type="text" placeholder="901231-10-1234" maxLength={14} value={form.icNumber}
                   onChange={e => upd('icNumber')(e.target.value.replace(/[^\d-]/g, ''))} />
-                <p className="eo-hint">Format: YYMMDD-NN-XXXX (12 digits). Stored encrypted. Used for account verification only.</p>
+                <p className="eo-hint">Format: YYMMDD-NN-XXXX (12 digits). Stored encrypted, used for verification only. Required before your listings appear on xdrive.my — not to use your panel.</p>
                 {err && <div className="eo-error">{err}</div>}
                 <button className="eo-btn" onClick={saveIdentity}
                   disabled={loading || !form.fullName.trim() || !validateIC(form.icNumber)}>
                   {loading ? 'SAVING…' : 'SAVE & CONTINUE'}
+                </button>
+                <button className="eo-ghost" onClick={skipIdentity}
+                  disabled={loading || !form.fullName.trim()}>
+                  ADD IC LATER — GET TO MY PANEL
                 </button>
               </>
             )}
@@ -700,7 +733,7 @@ export default function SalesmanOnboarding() {
                     ['PLAN', (TIERS[tier] || TIERS.lite).label + ' — ' + (TIERS[tier] || TIERS.lite).price],
                     ['NAME', form.fullName],
                     ['EMAIL', userEmail],
-                    ['IC NUMBER', form.icNumber ? '••••••-••-' + form.icNumber.replace(/-/g, '').slice(-4) : '—'],
+                    ['IC NUMBER', form.icNumber ? '••••••-••-' + form.icNumber.replace(/-/g, '').slice(-4) : 'Add later'],
                     ['PHONE', normalizePhone(form.phone)],
                     ['PROFILE URL', 'xdrive.my/s/' + form.slug],
                     ['STATE', form.state || '—'],
