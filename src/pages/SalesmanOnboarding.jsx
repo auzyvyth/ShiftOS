@@ -59,6 +59,10 @@ const CSS = `
 .eo-legal-scroll{flex:1;overflow-y:auto;padding:20px;scrollbar-width:thin;scrollbar-color:rgba(220,38,38,0.25) transparent;}
 .eo-legal-foot{padding:10px 20px;border-top:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);font-size:10px;color:rgba(255,255,255,0.28);letter-spacing:0.1em;text-transform:uppercase;}
 .eo-legal-foot-ok{color:rgba(74,222,128,0.6);}
+.eo-check{display:flex;gap:11px;align-items:flex-start;margin-top:14px;cursor:pointer;font-size:12.5px;line-height:1.55;color:rgba(255,255,255,0.55);}
+.eo-check input{width:17px;height:17px;margin-top:1px;flex-shrink:0;accent-color:#dc2626;cursor:pointer;}
+.eo-check a{color:rgba(220,38,38,0.85);text-decoration:none;}
+.eo-check a:hover{text-decoration:underline;}
 .eo-review-wrap{border:1px solid rgba(255,255,255,0.07);border-radius:10px;overflow:hidden;margin:20px 0;}
 .eo-review-row{display:flex;justify-content:space-between;align-items:center;padding:13px 20px;border-bottom:1px solid rgba(255,255,255,0.05);}
 .eo-review-row:last-child{border-bottom:none;}
@@ -84,7 +88,7 @@ const CSS = `
 const STEPS = [
   { label: 'TERMS', sub: 'Required agreement' },
   { label: 'ACCOUNT', sub: 'Email or Google' },
-  { label: 'IDENTITY', sub: 'IC verification' },
+  { label: 'DETAILS', sub: 'Name · IC optional' },
   { label: 'PHONE', sub: 'Contact number' },
   { label: 'PROFILE', sub: 'Your public page' },
   { label: 'ACTIVATE', sub: 'Go live' },
@@ -194,7 +198,12 @@ function LeftPanel({ step, tier, onChangePlan }) {
 export default function SalesmanOnboarding() {
   const navigate = useNavigate();
   const { tier: tierParam } = useParams();
-  const tier = ['lite', 'premium'].includes(tierParam) ? tierParam : 'lite';
+  // Premium isn't for sale yet (landing shows it "coming soon"). Any request for
+  // the premium tier — direct URL, old redirect, plan picker — falls back to lite
+  // so nobody can onboard onto a plan we're not selling. Flip to re-enable.
+  const PREMIUM_ENABLED = false;
+  const requestedTier = ['lite', 'premium'].includes(tierParam) ? tierParam : 'lite';
+  const tier = requestedTier === 'premium' && !PREMIUM_ENABLED ? 'lite' : requestedTier;
 
   const [step, setStep] = useState(0);
   const [showPlans, setShowPlans] = useState(false);
@@ -202,7 +211,8 @@ export default function SalesmanOnboarding() {
   const [err, setErr] = useState('');
   const [userId, setUserId] = useState(null);
   const [userEmail, setUserEmail] = useState('');
-  const [legalScrolled, setLegalScrolled] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreePdpa, setAgreePdpa] = useState(false);
   const [showResumeChoice, setShowResumeChoice] = useState(false);
   const [awaitingConfirm, setAwaitingConfirm] = useState(false);
   const [resendMsg, setResendMsg] = useState('');
@@ -218,7 +228,6 @@ export default function SalesmanOnboarding() {
     brand: '', slug: '', state: '', city: '',
   });
 
-  const legalRef = useRef(null);
   const slugTimer = useRef(null);
 
   const upd = (k) => (val) => setForm(p => ({ ...p, [k]: val }));
@@ -272,13 +281,8 @@ export default function SalesmanOnboarding() {
     init();
   }, []);
 
-  const handleLegalScroll = () => {
-    const el = legalRef.current;
-    if (!el) return;
-    if (el.scrollHeight - el.scrollTop - el.clientHeight < 50) setLegalScrolled(true);
-  };
-
   const agreeLegal = () => {
+    if (!agreeTerms || !agreePdpa) return;
     sessionStorage.setItem('ob_agreed', '1');
     setErr('');
     setStep(1);
@@ -378,6 +382,32 @@ export default function SalesmanOnboarding() {
     }
   };
 
+  // Defer IC verification — let the salesman reach their live panel and build a
+  // page first (national ID upfront was the biggest cold-signup drop-off). IC is
+  // collected later, before listings go public. Full name is still saved (it's
+  // their display identity, low-sensitivity).
+  const skipIdentity = async () => {
+    setErr('');
+    if (!form.fullName.trim()) { setErr('Full name is required'); return; }
+    setLoading(true);
+    try {
+      if (userId) {
+        const { error } = await supabase.from('profiles').upsert({
+          id: userId,
+          full_name: form.fullName.trim(),
+          role: 'salesman',
+          onboarding_complete: false,
+        }, { onConflict: 'id' });
+        if (error) throw error;
+      }
+      setStep(3);
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const checkSlug = async (slug) => {
     if (!slug || slug.length < 3) { setSlugTaken(false); return; }
     setSlugChecking(true);
@@ -411,7 +441,10 @@ export default function SalesmanOnboarding() {
         // read whatsapp_number — the onboarding phone is useless unless we also
         // seed it here, otherwise buyers get "dealer hasn't added a WhatsApp number".
         whatsapp_number: normalizePhone(form.phone),
-        ic_number: form.icNumber.replace(/-/g, ''),
+        // IC is deferred-friendly: signing up no longer requires it. When skipped
+        // we store null and stamp a soft deadline (verification is required before
+        // listings go live on the public marketplace, not to use the panel).
+        ic_number: form.icNumber ? form.icNumber.replace(/-/g, '') : null,
         role: 'salesman',
         slug: form.slug,
         dealership: (form.brand || form.fullName).trim(),
@@ -422,7 +455,7 @@ export default function SalesmanOnboarding() {
         plan: tier === 'premium' ? 'salesman_full' : 'salesman_lite',
         pdpa_consent: true,
         pdpa_consent_at: new Date().toISOString(),
-        ic_deadline: null,
+        ic_deadline: form.icNumber ? null : new Date(Date.now() + 30 * 86400000).toISOString(),
       }, { onConflict: 'id' });
       if (error) throw error;
       sessionStorage.removeItem('ob_agreed');
@@ -539,16 +572,21 @@ export default function SalesmanOnboarding() {
               <>
                 <p className="eo-eyebrow">PDPA 2010 — REQUIRED</p>
                 <div className="eo-heading">Terms &amp; Conditions</div>
-                <p className="eo-sub">Read our Terms of Service, Privacy Policy, and Data Processing Agreement before continuing.</p>
+                <p className="eo-sub">Review our Terms of Service, Privacy Policy and Data Processing Agreement, then confirm below.</p>
                 <div className="eo-legal-wrap">
-                  <div className="eo-legal-scroll" ref={legalRef} onScroll={handleLegalScroll}>
+                  <div className="eo-legal-scroll">
                     <LegalContent />
                   </div>
-                  <div className={`eo-legal-foot ${legalScrolled ? 'eo-legal-foot-ok' : ''}`}>
-                    {legalScrolled ? 'Reviewed — you may now accept and continue' : 'Scroll to the bottom to enable the accept button'}
-                  </div>
                 </div>
-                <button className="eo-btn" onClick={agreeLegal} disabled={!legalScrolled}>
+                <label className="eo-check">
+                  <input type="checkbox" checked={agreeTerms} onChange={e => setAgreeTerms(e.target.checked)} />
+                  <span>I have read and agree to the <a href="/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a>, <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a> and Data Processing Agreement.</span>
+                </label>
+                <label className="eo-check">
+                  <input type="checkbox" checked={agreePdpa} onChange={e => setAgreePdpa(e.target.checked)} />
+                  <span>I consent to XDrive collecting and processing my personal data (including my IC) for account verification and marketplace listings, in accordance with the PDPA 2010.</span>
+                </label>
+                <button className="eo-btn" onClick={agreeLegal} disabled={!agreeTerms || !agreePdpa}>
                   I AGREE — CONTINUE
                 </button>
               </>
@@ -614,20 +652,24 @@ export default function SalesmanOnboarding() {
 
             {step === 2 && (
               <>
-                <p className="eo-eyebrow">IDENTITY VERIFICATION — REQUIRED</p>
-                <div className="eo-heading">Verify Your Identity</div>
-                <p className="eo-sub">Your IC number is required before your listings appear on the xdrive.my marketplace.</p>
+                <p className="eo-eyebrow">STEP 3 OF {STEPS.length}</p>
+                <div className="eo-heading">Your Details</div>
+                <p className="eo-sub">Your name is what buyers see. IC verification keeps the marketplace trusted — add it now, or later before your listings go live. Your choice.</p>
                 <label className="eo-label">FULL LEGAL NAME (AS PER IC)</label>
                 <input className="eo-inp" type="text" placeholder="Ahmad bin Abdullah" value={form.fullName}
                   onChange={e => upd('fullName')(e.target.value)} autoComplete="name" />
-                <label className="eo-label">IC NUMBER (MYKAD)</label>
+                <label className="eo-label">IC NUMBER (MYKAD) <span style={{ color: 'rgba(255,255,255,0.28)', fontWeight: 400 }}>— OPTIONAL FOR NOW</span></label>
                 <input className="eo-inp" type="text" placeholder="901231-10-1234" maxLength={14} value={form.icNumber}
                   onChange={e => upd('icNumber')(e.target.value.replace(/[^\d-]/g, ''))} />
-                <p className="eo-hint">Format: YYMMDD-NN-XXXX (12 digits). Stored encrypted. Used for account verification only.</p>
+                <p className="eo-hint">Format: YYMMDD-NN-XXXX (12 digits). Stored encrypted, used for verification only. Required before your listings appear on xdrive.my — not to use your panel.</p>
                 {err && <div className="eo-error">{err}</div>}
                 <button className="eo-btn" onClick={saveIdentity}
                   disabled={loading || !form.fullName.trim() || !validateIC(form.icNumber)}>
                   {loading ? 'SAVING…' : 'SAVE & CONTINUE'}
+                </button>
+                <button className="eo-ghost" onClick={skipIdentity}
+                  disabled={loading || !form.fullName.trim()}>
+                  ADD IC LATER — GET TO MY PANEL
                 </button>
               </>
             )}
@@ -700,7 +742,7 @@ export default function SalesmanOnboarding() {
                     ['PLAN', (TIERS[tier] || TIERS.lite).label + ' — ' + (TIERS[tier] || TIERS.lite).price],
                     ['NAME', form.fullName],
                     ['EMAIL', userEmail],
-                    ['IC NUMBER', form.icNumber ? '••••••-••-' + form.icNumber.replace(/-/g, '').slice(-4) : '—'],
+                    ['IC NUMBER', form.icNumber ? '••••••-••-' + form.icNumber.replace(/-/g, '').slice(-4) : 'Add later'],
                     ['PHONE', normalizePhone(form.phone)],
                     ['PROFILE URL', 'xdrive.my/s/' + form.slug],
                     ['STATE', form.state || '—'],

@@ -17,6 +17,7 @@ import {
   LogOut,
   Copy,
   Check,
+  ShieldCheck,
   Car,
   Plus,
   User,
@@ -348,11 +349,44 @@ export default function SalesmanLite() {
       toast("Add your first listing to unlock this tab", {
         description: "Publish a car first — leads and performance data flow from your listings.",
       });
-      setShowAddForm(true);
+      openAddListing();
       setActiveTab("listings");
       return;
     }
     setActiveTab(tab);
+  }
+
+  // Gate every "add a listing" entry point on IC being on file — a car can't be
+  // listed anonymously. If IC is missing, prompt for it inline instead of opening
+  // the form.
+  function openAddListing() {
+    if (profile && !profile.ic_number) {
+      setIcGateVal("");
+      setIcGateOpen(true);
+      return;
+    }
+    setShowAddForm(true);
+  }
+
+  async function saveIcAndList() {
+    const digits = (icGateVal || "").replace(/\D/g, "");
+    if (digits.length !== 12) { toast.error("Enter a valid 12-digit IC number"); return; }
+    setIcGateSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ ic_number: digits, ic_deadline: null })
+        .eq("id", userId);
+      if (error) throw error;
+      setProfile((p) => ({ ...p, ic_number: digits, ic_deadline: null }));
+      setIcGateOpen(false);
+      setShowAddForm(true);
+      toast.success("Verified — you can list cars now");
+    } catch (e) {
+      toast.error(e.message || "Could not save IC");
+    } finally {
+      setIcGateSaving(false);
+    }
   }
 
   // listings
@@ -360,6 +394,12 @@ export default function SalesmanLite() {
   const [listingCopied, setListingCopied] = useState({});
   const [showAddForm, setShowAddForm] = useState(false);
   const [commissionConfig, setCommissionConfig] = useState(null); // dealer's commission rule, same source CarForm uses
+  // IC gate — no anonymous selling: a car can't be listed until the seller's IC
+  // is on file. IC is optional at signup (30-day grace) but this blocks the
+  // actual listing action until verified.
+  const [icGateOpen, setIcGateOpen] = useState(false);
+  const [icGateVal, setIcGateVal] = useState("");
+  const [icGateSaving, setIcGateSaving] = useState(false);
 
   // leads
   const [leads, setLeads] = useState([]);
@@ -2670,7 +2710,7 @@ export default function SalesmanLite() {
             <div style={{ padding: 18 }}>
               <p style={{ margin: "0 0 16px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Here's how to make your first sale:</p>
               {[
-                { num: 1, done: myListings.length > 0, title: "Add your first listing", sub: "Upload photos, set price, publish to XDrive marketplace.", ctaLabel: "Add Listing →", ctaAction: () => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }, locked: false },
+                { num: 1, done: myListings.length > 0, title: "Add your first listing", sub: "Upload photos, set price, publish to XDrive marketplace.", ctaLabel: "Add Listing →", ctaAction: () => { switchTab("listings"); setTimeout(openAddListing, 100); }, locked: false },
                 { num: 2, done: myListings.length > 0, title: "Share your listing link", sub: "Blast it on WhatsApp groups, Facebook, TikTok.", ctaLabel: "Go to Listings →", ctaAction: () => switchTab("listings"), locked: myListings.length === 0 },
                 { num: 3, done: leads.length > 0, title: "Track your leads", sub: "Every enquiry auto-converts to a lead.", ctaLabel: "View Pipeline →", ctaAction: () => switchTab("leads"), locked: myListings.length === 0 },
               ].map((step, idx) => (
@@ -3165,7 +3205,7 @@ export default function SalesmanLite() {
             My Listings ({myListings.length})
           </p>
           <button
-            onClick={() => setShowAddForm((v) => !v)}
+            onClick={() => (showAddForm ? setShowAddForm(false) : openAddListing())}
             style={{
               display: "flex",
               alignItems: "center",
@@ -3374,7 +3414,7 @@ export default function SalesmanLite() {
               Add your first car using the button above.
             </p>
             <button
-              onClick={() => setShowAddForm(true)}
+              onClick={openAddListing}
               style={{ marginTop: 14, fontSize: 13, fontWeight: 600, padding: "9px 20px", borderRadius: 9, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer" }}
             >
               + Add Listing
@@ -7854,6 +7894,52 @@ export default function SalesmanLite() {
       {renderWAModal()}
       {renderLogCallModal()}
       {renderBatchWAModal()}
+
+      {/* IC gate — required before a car can be listed (no anonymous sellers) */}
+      {icGateOpen && (
+        <div
+          onClick={() => !icGateSaving && setIcGateOpen(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px" }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 12, width: "90%", maxWidth: 420, padding: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(220,38,38,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <ShieldCheck size={18} style={{ color: "#f87171" }} />
+              </div>
+              <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Verify your IC to list cars</p>
+            </div>
+            <p style={{ margin: "0 0 16px", fontSize: 13, color: "#9ca3af", lineHeight: 1.6 }}>
+              Buyers need to know they're dealing with a real, accountable seller. Enter your MyKad IC once — it's stored securely and only used for verification. This is required before any car goes live on xdrive.my.
+            </p>
+            <label style={{ display: "block", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b7280", marginBottom: 7 }}>IC Number (MyKad)</label>
+            <input
+              autoFocus
+              value={icGateVal}
+              onChange={(e) => setIcGateVal(e.target.value.replace(/[^\d-]/g, ""))}
+              placeholder="901231-10-1234"
+              maxLength={14}
+              onKeyDown={(e) => { if (e.key === "Enter") saveIcAndList(); }}
+              style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#e5e7eb", fontSize: 15, padding: "11px 13px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+            />
+            <p style={{ margin: "7px 0 0", fontSize: 11, color: "#6b7280" }}>12 digits · stored encrypted, verification only.</p>
+            <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+              <button
+                onClick={saveIcAndList}
+                disabled={icGateSaving || icGateVal.replace(/\D/g, "").length !== 12}
+                style={{ flex: 1, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", opacity: icGateSaving || icGateVal.replace(/\D/g, "").length !== 12 ? 0.5 : 1 }}
+              >
+                {icGateSaving ? "Verifying…" : "Verify & continue"}
+              </button>
+              <button
+                onClick={() => !icGateSaving && setIcGateOpen(false)}
+                style={{ fontSize: 13, fontWeight: 600, padding: "11px 16px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}
+              >
+                Later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Test Drive outcome confirmation ── */}
       {testDriveConfirm && (() => {
