@@ -52,6 +52,7 @@ import { trackEvent, getSlugFromURL } from "../utils/analytics";
 import { useMarketplaceTracking } from "../hooks/useMarketplaceTracking";
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { estimateRoadTax } from "../utils/roadTax";
+import ReviewsSection from "../components/reviews/ReviewsSection";
 import { cdnImg } from "../utils/img";
 import { toast } from "sonner";
 
@@ -2303,6 +2304,9 @@ export default function CarDetailPage() {
             </div>
           )}
 
+          {/* Reviews (mobile) */}
+          <ReviewsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} isXdrive={isXdrive} />
+
         </div>
 
 
@@ -3209,6 +3213,9 @@ export default function CarDetailPage() {
                 <p style={{ fontSize: 11, color: '#334155', marginTop: 8 }}>Approximate area only — confirm address when enquiring.</p>
               </div>
             )}
+
+            {/* ── REVIEWS (desktop) ── */}
+            <ReviewsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} isXdrive={isXdrive} />
 
             {/* BOOKING ANCHOR */}
             <div ref={bookingRef} id="booking-form" style={{ marginTop: 56 }} />
