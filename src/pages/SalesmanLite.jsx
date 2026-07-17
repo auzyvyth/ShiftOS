@@ -2825,6 +2825,7 @@ export default function SalesmanLite() {
 
     // Lead aging — active leads by days in pipeline
     const leadAging = activeLeads.map(l => ({
+      id: l.id,
       name: l.buyer_name || "—",
       stage: l.stage,
       days: Math.floor((now - new Date(l.created_at).getTime()) / 86400000),
@@ -3094,7 +3095,7 @@ export default function SalesmanLite() {
               const stageC = STAGE_COLOR[l.stage] || { bg: "rgba(148,163,184,0.1)", border: "rgba(148,163,184,0.2)", tx: "#94a3b8" };
               const ageColor = l.days > 21 ? "#ef4444" : l.days > 10 ? "#eab308" : "#94a3b8";
               return (
-                <div key={idx} onClick={() => setActiveTab("leads")} style={{ display: "grid", gridTemplateColumns: "1fr 80px 70px 60px", padding: "11px 18px", alignItems: "center", borderBottom: idx < Math.min(leadAging.length, 8) - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", background: idx % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent", cursor: "pointer" }}>
+                <div key={idx} onClick={() => { setActiveTab("leads"); setMobileLeadStage(l.stage); triggerGlow([l.id]); }} style={{ display: "grid", gridTemplateColumns: "1fr 80px 70px 60px", padding: "11px 18px", alignItems: "center", borderBottom: idx < Math.min(leadAging.length, 8) - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", background: idx % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent", cursor: "pointer" }}>
                   <div style={{ minWidth: 0 }}>
                     <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</p>
                     {l.car && <p style={{ margin: 0, fontSize: 10, color: "#475569", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.car.brand} {l.car.model}</p>}
@@ -5627,12 +5628,41 @@ export default function SalesmanLite() {
 
   // ── RENDER ENQUIRIES ─────────────────────────────────────────────────────
 
-  const renderEnquiries = () => (
+  const renderEnquiries = () => {
+    // History log: every lead this salesman has, not just the ones that
+    // originated from a tracked WhatsApp button click. Enquiries rows are
+    // matched to their live lead by phone so the badge reflects the lead's
+    // CURRENT stage — previously it froze at "Converted → Lead" forever,
+    // even after the lead moved to negotiating/won/lost.
+    const leadByPhone = new Map();
+    leads.forEach((l) => {
+      const p = normalizePhone(l.phone);
+      if (p && !leadByPhone.has(p)) leadByPhone.set(p, l);
+    });
+    const enqPhones = new Set(enquiries.map((e) => normalizePhone(e.buyer_phone)).filter(Boolean));
+    const leadOnlyItems = leads
+      .filter((l) => {
+        const p = normalizePhone(l.phone);
+        return !p || !enqPhones.has(p);
+      })
+      .map((l) => ({
+        id: `lead_${l.id}`,
+        buyer_name: l.buyer_name,
+        buyer_phone: l.phone,
+        buyer_message: l.notes,
+        status: "has_lead",
+        created_at: l.created_at,
+        car_listings: l.car_listings,
+        _lead: l,
+      }));
+    const historyItems = [...enquiries, ...leadOnlyItems];
+
+    return (
     <div>
       <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
-        Enquiries ({enquiries.length})
+        Enquiries ({historyItems.length})
       </p>
-      {enquiries.length === 0 && (
+      {historyItems.length === 0 && (
         <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
           <MessageSquare size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
           <p style={{ margin: 0, fontSize: 13 }}>No enquiries yet.</p>
@@ -5643,9 +5673,12 @@ export default function SalesmanLite() {
         </div>
       )}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {[...enquiries].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).map((enq) => {
+        {[...historyItems].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).map((enq) => {
           const car = enq.car_listings;
           const isNew = enq.status === "new";
+          const matchedLead = enq._lead || leadByPhone.get(normalizePhone(enq.buyer_phone));
+          const liveStage = matchedLead?.stage;
+          const stageC = liveStage ? (STAGE_COLOR[liveStage] || STAGE_NEUTRAL) : null;
           const isExpanded = expandedEnqId === enq.id;
           return (
             <div
@@ -5668,6 +5701,10 @@ export default function SalesmanLite() {
                 {isNew ? (
                   <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd" }}>
                     New
+                  </span>
+                ) : liveStage ? (
+                  <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: stageC.bg, border: `1px solid ${stageC.border}`, color: stageC.tx, textTransform: "capitalize" }}>
+                    {liveStage.replace(/_/g, " ")}
                   </span>
                 ) : (
                   <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", textTransform: "capitalize" }}>
@@ -5765,7 +5802,8 @@ export default function SalesmanLite() {
         })}
       </div>
     </div>
-  );
+    );
+  };
 
   // ── RENDER BOOKINGS ───────────────────────────────────────────────────────
 
@@ -5813,13 +5851,19 @@ export default function SalesmanLite() {
     const newestBooked = (a, b) => new Date(b.created_at) - new Date(a.created_at);
     const newestApt = (a, b) => new Date(b.appointment_date) - new Date(a.appointment_date);
 
-    const todayApts = appointments.filter((a) => aptIsToday(a.appointment_date) && a.status !== "cancelled").sort(asc);
-    const upcomingApts = appointments.filter((a) => {
-      if (!a.appointment_date || a.status === "cancelled") return false;
+    // Pending bookings are requests, not commitments yet — a window-shopper
+    // tap shouldn't sit on the calendar next to real confirmed viewings. They
+    // get their own always-visible section (any date) so the salesman can
+    // still act on them; only once confirmed do they join Today/Upcoming/Past.
+    const pendingApts = appointments.filter((a) => a.status === "pending").sort(newestBooked);
+    const confirmedApts = appointments.filter((a) => a.status !== "pending" && a.status !== "cancelled");
+    const todayApts = confirmedApts.filter((a) => aptIsToday(a.appointment_date)).sort(asc);
+    const upcomingApts = confirmedApts.filter((a) => {
+      if (!a.appointment_date) return false;
       const d = new Date(a.appointment_date);
       return !isNaN(d) && !aptIsToday(a.appointment_date) && d > new Date();
     }).sort(newestBooked);
-    const pastApts = appointments.filter((a) => {
+    const pastApts = confirmedApts.filter((a) => {
       if (!a.appointment_date) return false;
       const d = new Date(a.appointment_date);
       return !isNaN(d) && !aptIsToday(a.appointment_date) && d < new Date();
@@ -6077,7 +6121,7 @@ export default function SalesmanLite() {
     return (
       <div>
         <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
-          Bookings ({appointments.length})
+          Bookings ({confirmedApts.length})
         </p>
         {appointments.length === 0 && (
           <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
@@ -6087,6 +6131,17 @@ export default function SalesmanLite() {
             <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer" }}>
               Share a Listing →
             </button>
+          </div>
+        )}
+        {/* Awaiting Confirmation — requests, not yet real bookings */}
+        {pendingApts.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
+              <Clock size={11} color="#fbbf24" /> Awaiting Confirmation ({pendingApts.length})
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {pendingApts.map(renderApptCard)}
+            </div>
           </div>
         )}
         {/* Today */}
