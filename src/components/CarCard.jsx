@@ -519,16 +519,19 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
           style={{ padding: '11px 13px 13px', display: 'flex', flexDirection: 'column', flex: 1 }}
         >
 
-          {/* Name */}
+          {/* Name — wraps to a 2nd line on narrow cards instead of truncating
+              mid-variant; two lines are reserved so cards stay aligned. */}
           <h3 className="cc-name" style={{
-            color:        xd.title,
-            fontSize:     13,
-            fontWeight:   700,
-            lineHeight:   1.3,
-            whiteSpace:   'nowrap',
-            overflow:     'hidden',
-            textOverflow: 'ellipsis',
-            margin:       '0 0 2px',
+            color:            xd.title,
+            fontSize:         13,
+            fontWeight:       700,
+            lineHeight:       1.3,
+            display:          '-webkit-box',
+            WebkitLineClamp:  2,
+            WebkitBoxOrient:  'vertical',
+            overflow:         'hidden',
+            minHeight:        34,
+            margin:           '0 0 2px',
           }}>
             {[year, brand, model, variant].filter(Boolean).join(' ')}
           </h3>
@@ -550,9 +553,10 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
           {/* ── Price block ── */}
           <div style={{ marginBottom: 10 }}>
 
-            {/* Strikethrough + save — 16px reserved. For sambung bayar this slot
-                carries the "Sambung Bayar" tag instead (no strike price applies). */}
-            <div style={{ height: 16, display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
+            {/* Strikethrough + save — only reserves height when it has content
+                (discount or sambung); collapsed otherwise so the price sits
+                tight under the details and the card stays short/impactful. */}
+            <div style={{ height: (isSambung || hasDiscount) ? 16 : 0, display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
               {isSambung ? (
                 <span style={{
                   fontSize: 9, fontWeight: 700, lineHeight: 1, flexShrink: 0, letterSpacing: '0.04em',
