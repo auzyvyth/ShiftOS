@@ -60,8 +60,24 @@ export default function BrandStrip({ activeBrand = '', hrefFor }) {
           background-blend-mode: overlay; transition: transform .16s ease, border-color .2s, box-shadow .2s, color .2s;
         }
         .bs-tile:hover { transform: translateY(-3px); border-color: rgba(220,38,38,0.45) !important; color: #fff !important; }
-        @media (max-width: 1100px) { .bs-grid { grid-template-columns: repeat(4, 1fr); } }
-        @media (max-width: 460px)  { .bs-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; } .bs-tile { min-height: 52px; font-size: 12px; border-radius: 11px; } }
+        /* Below desktop, a 3-4 col grid stacks 16 brands into 5-6 tall rows.
+           Switch to two fixed rows that scroll sideways so the strip stays short. */
+        @media (max-width: 1100px) {
+          .bs-grid {
+            grid-template-columns: none;
+            grid-template-rows: repeat(2, 1fr);
+            grid-auto-flow: column;
+            grid-auto-columns: 120px;
+            overflow-x: auto;
+            scroll-snap-type: x proximity;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            padding-bottom: 6px;
+          }
+          .bs-grid::-webkit-scrollbar { display: none; }
+          .bs-tile { scroll-snap-align: start; }
+        }
+        @media (max-width: 460px)  { .bs-grid { grid-auto-columns: 108px; gap: 8px; } .bs-tile { min-height: 52px; font-size: 12px; border-radius: 11px; } }
       `}</style>
     </section>
   );

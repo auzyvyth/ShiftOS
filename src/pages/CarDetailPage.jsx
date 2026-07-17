@@ -1134,6 +1134,17 @@ export default function CarDetailPage() {
   // otherwise the badge honestly reads "Docs on File" (a file merely exists).
   const docsVerified = !!car.docs_verified;
   const carTitle = `${car.year} ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""}`;
+  // Display nameplate: model, then trim, then engine size (derived from cc so it
+  // reads "6.5L" not the raw "6.5" baked into the variant), then year — e.g.
+  // "812 Superfast 6.5L 2021". The variant often carries a leading displacement
+  // ("6.5 Superfast"); strip it when we already show the litre token to avoid
+  // "6.5 Superfast 6.5L".
+  const engineL = car.engine_cc ? (car.engine_cc / 1000).toFixed(1) : null;
+  const variantTrim = car.variant
+    ? (engineL ? car.variant.replace(/^\s*\d\.\d\s*/, "").trim() : car.variant)
+    : "";
+  const nameplate = [car.model, variantTrim, engineL ? `${engineL}L` : "", car.year]
+    .filter(Boolean).join(" ");
   const dealerName =
     dealer?.site_name || dealer?.dealership || dealer?.full_name || "Dealer";
   // Seller mini-page link: dealer subdomain/slug, or the standalone agent's /s/slug.
@@ -1786,8 +1797,9 @@ export default function CarDetailPage() {
 
         {/* M2 — Identity block */}
         <div className="cdp-mobile-only" style={{ padding:'20px 18px 0' }}>
-          {(isRecon || isReserved || isHot || hasDocuments) && (
-            <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:16 }}>
+          {/* Badge row — badges left, financing calculator shortcut on the right */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:16 }}>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:6, minWidth:0 }}>
               {isReserved && <span style={{ background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.22)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Reserved</span>}
               {isRecon && <span style={{ background:'rgba(15,23,42,0.05)', border:'1px solid rgba(15,23,42,0.1)', color:'#334155', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Recon</span>}
               {isHot   && <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.28)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Hot Deal</span>}
@@ -1796,19 +1808,26 @@ export default function CarDetailPage() {
                 : <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(148,163,184,0.1)', border:'1px solid rgba(148,163,184,0.25)', color: isXdrive ? '#475569' : '#94a3b8', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}><FileText size={11} /> Docs on File</span>
               )}
             </div>
-          )}
-          <p style={{ fontSize:11, textTransform:'uppercase', letterSpacing:'0.32em', color:'#dc2626', fontWeight:700, marginBottom:6 }}>{car.brand}</p>
-          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(2.6rem,10vw,3.4rem)', color: th.text, lineHeight:0.98, letterSpacing:'0.01em', marginBottom:10 }}>
-            {car.year} {car.model}{car.variant ? ' '+car.variant : ''}
+            <Link
+              to={`/calculator?carPrice=${Math.round(car.selling_price||0)}${car.engine_cc?`&engineCc=${car.engine_cc}`:''}${car.body_type?`&bodyType=${encodeURIComponent(car.body_type)}`:''}`}
+              aria-label="Open financing calculator"
+              title="Financing calculator"
+              style={{ flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', width:38, height:38, borderRadius:10, background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.25)', color:'#dc2626' }}
+            >
+              <Calculator size={18} />
+            </Link>
+          </div>
+          {/* Brand — centered + larger */}
+          <p style={{ fontSize:14, textAlign:'center', textTransform:'uppercase', letterSpacing:'0.34em', color:'#dc2626', fontWeight:700, margin:'0 0 8px' }}>{car.brand}</p>
+          {/* Nameplate — model, variant, engine size, year */}
+          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(3rem,11vw,3.9rem)', color: th.text, lineHeight:0.98, letterSpacing:'0.01em', textAlign:'center', margin:'0 0 14px' }}>
+            {nameplate}
           </h1>
-          <p style={{ fontSize:12, color: th.textMuted, letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:600, marginBottom:6 }}>
-            {[car.body_type, car.transmission, car.fuel_type].filter(Boolean).join('  ·  ')}
-          </p>
           {dealer?.subdomain && !isSubdomain() && (
             <a
               href={`https://${dealer.subdomain}.xdrive.my`}
               target="_blank" rel="noopener noreferrer"
-              style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:12, color: th.textSec, textDecoration:'none', marginBottom:16, letterSpacing:'0.02em', fontWeight:600, borderBottom:'1px solid rgba(220,38,38,0.4)', paddingBottom:1, width:'fit-content' }}
+              style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:12, color: th.textSec, textDecoration:'none', marginBottom:12, letterSpacing:'0.02em', fontWeight:600, borderBottom:'1px solid rgba(220,38,38,0.4)', paddingBottom:1, width:'fit-content' }}
             >
               {dealer.site_name || dealer.dealership} <ExternalLink size={11} style={{ color:'#dc2626' }} />
             </a>
@@ -1833,11 +1852,15 @@ export default function CarDetailPage() {
           )}
           {!isSambungCar(car) && <MarketPriceTag car={car} isXdrive={isXdrive} th={th} />}
           {!isSambungCar(car) && isHot && (
-            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
               <span style={{ fontSize:13, color:'#1e293b', textDecoration:'line-through' }}>{fmtPrice(car.original_price)}</span>
               <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.2)', color:'#f87171', fontSize:'11px', padding:'2px 10px', borderRadius:'20px', fontWeight:600, letterSpacing:'0.04em' }}>SAVE {fmtPrice(saving)}</span>
             </div>
           )}
+          {/* Mini details — sits below the price, per layout */}
+          <p style={{ fontSize:12, color: th.textMuted, letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:600, margin:'0 0 6px' }}>
+            {[car.body_type, car.transmission, car.fuel_type].filter(Boolean).join('  ·  ')}
+          </p>
           <div style={{ marginTop:16 }}>
             <WarrantyBanner car={car} isXdrive={isXdrive} />
             <ReconTrust car={car} isXdrive={isXdrive} />
@@ -2394,8 +2417,7 @@ export default function CarDetailPage() {
                 marginBottom: 12,
               }}
             >
-              {car.year} {car.model}
-              {car.variant ? " " + car.variant : ""}
+              {nameplate}
             </h1>
             <p
               style={{

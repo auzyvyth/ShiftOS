@@ -482,8 +482,10 @@ export default function CarListingPage() {
   const resetAll = () => { setSearchInput(''); setDraft({}); setSearchParams({}, { replace:true }); };
 
   /* ── Fetch ── */
+  const reqSeq = useRef(0);
   const fetchCars = useCallback(async () => {
     if (!isMarketplace && tenantLoading) return;
+    const myReq = ++reqSeq.current;
     if (initialLoad.current) { setLoading(true); } else { setFetching(true); }
     setError(null);
     try {
@@ -527,11 +529,18 @@ export default function CarListingPage() {
       else                           query = query.order('created_at', { ascending:false });
 
       query = query.range(from, to);
-      const { data, error:err, count } = await query;
+      // Hard timeout: on a flaky mobile / in-app-webview connection a request can
+      // neither resolve nor reject, leaving the spinner up forever. Race the query
+      // against a timeout so it always settles into either data or the retry state.
+      const { data, error:err, count } = await Promise.race([
+        query,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000)),
+      ]);
       if (err) throw err;
+      if (myReq !== reqSeq.current) return; // a newer fetch superseded this one
       setCars(data||[]); setTotal(count||0);
-    } catch { setError('Failed to load listings. Please try again.'); }
-    finally { setLoading(false); setFetching(false); initialLoad.current = false; }
+    } catch { if (myReq === reqSeq.current) setError('Failed to load listings. Please try again.'); }
+    finally { if (myReq === reqSeq.current) { setLoading(false); setFetching(false); initialLoad.current = false; } }
   }, [page, brand, model, variant, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, fuelType, colour, sellerType, sort, isMarketplace, tenant?.id, tenantLoading]); // eslint-disable-line
 
   useEffect(() => { fetchCars(); }, [fetchCars]);

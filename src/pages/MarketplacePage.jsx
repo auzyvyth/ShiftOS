@@ -5,7 +5,7 @@ import { Helmet } from 'react-helmet';
 import { RotateCcw, Car, Users, SlidersHorizontal, Search, ArrowLeftRight, ArrowRight, X, ShieldCheck, FileCheck2, Ban } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
 import MarketplaceFooter from '../components/MarketplaceFooter';
-import CarCard from '@/components/CarCard';
+import ShowroomCard, { ShowroomCardSkeleton } from '@/components/ShowroomCard';
 import MarketplaceHeader from '../components/MarketplaceHeader';
 import GoogleOneTap from '../components/GoogleOneTap';
 import { useCTAContext } from '../hooks/useCTAContext';
@@ -506,16 +506,15 @@ export default function MarketplacePage() {
       color: '#111827',
     },
     carsGrid: {
-      display: 'flex',
-      flexWrap: 'wrap',
-      justifyContent: 'center',
-      gap: '24px',
+      display: 'grid',
+      gridTemplateColumns: 'repeat(2, 1fr)',
+      gap: '16px',
       paddingBottom: '48px',
     },
     emptyState: {
       textAlign: 'center',
       padding: '80px 20px',
-      flexBasis: '100%',
+      gridColumn: '1 / -1',
       maxWidth: '100%',
     },
     paginationWrap: {
@@ -638,10 +637,10 @@ export default function MarketplacePage() {
         .mp-adv-modal::-webkit-scrollbar { width:4px }
         .mp-adv-modal::-webkit-scrollbar-thumb { background:rgba(255,255,255,.15);border-radius:2px }
 
-        /* Cars grid — flex-wrap centered so sparse rows / few results stay centered
-           instead of hugging the left (auto-fill reserved empty tracks). Cards
-           fill full rows (grow) but stay bounded so they never balloon. */
-        .mp-cars-grid > * { flex: 1 1 280px; max-width: 340px; min-width: 0; }
+        /* Cars grid — showroom-style horizontal cards, two columns on desktop and
+           a single column on phones (matches /showroom). */
+        .mp-cars-grid > * { min-width: 0; }
+        @media (max-width: 900px) { .mp-cars-grid { grid-template-columns: 1fr !important; } }
 
         /* ── Featured cards ── */
         .mp-feat-card { transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease }
@@ -1045,7 +1044,7 @@ export default function MarketplacePage() {
               {!error && (
                 <div className="mp-cars-grid" style={S.carsGrid}>
                   {loading
-                    ? Array.from({ length: PER_PAGE }).map((_, i) => <SkeletonCard key={i} variant="light" />)
+                    ? Array.from({ length: PER_PAGE }).map((_, i) => <ShowroomCardSkeleton key={i} />)
                     : cars.length === 0
                       ? (
                         <div style={S.emptyState}>
@@ -1055,35 +1054,21 @@ export default function MarketplacePage() {
                           <button onClick={resetAll} style={{ background:'#dc2626', color:'#fff', border:'none', padding:'14px 32px', borderRadius:'10px', fontSize:'16px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>Browse All Cars</button>
                         </div>
                       )
-                      : cars.map(car => {
+                      : cars.map((car, i) => {
                           const inCompare = isInCompare(car.id);
                           const compareFull = compareIds.length >= 4 && !inCompare;
-                          // seller_role comes from the public_car_listings view (anon-safe);
-                          // car.dealer is an RLS-blocked profiles join for logged-out
-                          // visitors, which made every card fall back to "Dealer".
-                          const sellerRole = car.seller_role || car.dealer?.role;
-                          const isAgent = sellerRole === 'salesman';
-                          const sellerLabel = isAgent ? 'Agent' : 'Dealer';
-                          const sellerColor = isAgent
-                            ? { bg:'rgba(251,146,60,0.15)', border:'rgba(251,146,60,0.35)', color:'#fb923c' }
-                            : { bg:'rgba(59,130,246,0.15)', border:'rgba(59,130,246,0.35)', color:'#60a5fa' };
+                          // ShowroomCard renders its own seller (Agent/Dealer) badge and
+                          // compare control, so no wrapping overlays are needed here.
                           return (
-                            <div key={car.id} style={{ position:'relative' }}>
-                              <CarCard car={car} ctaContext={ctaCtx} />
-                              {/* Seller badge — bottom-right of image (image is 170px tall; top:136 = 34px above image bottom, clear of photo count at bottom-left) */}
-                              <div style={{ position:'absolute', top:'136px', right:'10px', zIndex:10, display:'flex', alignItems:'center', gap:'4px', background: sellerColor.bg, border:`1px solid ${sellerColor.border}`, borderRadius:'6px', padding:'3px 8px', backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)', pointerEvents:'none' }}>
-                                <Users size={9} color={sellerColor.color}/>
-                                <span style={{ fontSize:'10px', fontWeight:'700', color: sellerColor.color, fontFamily:"'Outfit',sans-serif", letterSpacing:'0.03em' }}>{sellerLabel}</span>
-                              </div>
-                              <button
-                                onClick={e => { e.stopPropagation(); if (compareFull) { toast.error('Compare is full — remove a car first (max 4)', { duration:2500 }); return; } inCompare ? removeFromCompare(car.id) : addToCompare(car.id); }}
-                                title={compareFull ? 'Compare full (max 4)' : inCompare ? 'Remove from compare' : 'Add to compare'}
-                                style={{ position:'absolute', top:'10px', right:'10px', zIndex:10, display:'flex', alignItems:'center', gap:'5px', background: inCompare ? 'rgba(220,38,38,0.85)' : 'rgba(0,0,0,0.72)', border:`1px solid ${inCompare ? '#dc2626' : 'rgba(255,255,255,0.2)'}`, borderRadius:'8px', padding:'6px 10px', color:'#fff', fontSize:'11px', fontWeight:'700', cursor:'pointer', backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)', fontFamily:"'Outfit',sans-serif", letterSpacing:'0.02em', transition:'all 0.15s' }}
-                              >
-                                <ArrowLeftRight size={11} />
-                                {inCompare ? 'Added' : 'Compare'}
-                              </button>
-                            </div>
+                            <ShowroomCard
+                              key={car.id}
+                              car={car}
+                              ctaContext={ctaCtx}
+                              inCompare={inCompare}
+                              compareFull={compareFull}
+                              onCompare={() => { inCompare ? removeFromCompare(car.id) : addToCompare(car.id); }}
+                              priority={i === 0}
+                            />
                           );
                         })
                   }

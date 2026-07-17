@@ -519,16 +519,19 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
           style={{ padding: '11px 13px 13px', display: 'flex', flexDirection: 'column', flex: 1 }}
         >
 
-          {/* Name */}
+          {/* Name — wraps to a 2nd line on narrow cards instead of truncating
+              mid-variant; two lines are reserved so cards stay aligned. */}
           <h3 className="cc-name" style={{
-            color:        xd.title,
-            fontSize:     13,
-            fontWeight:   700,
-            lineHeight:   1.3,
-            whiteSpace:   'nowrap',
-            overflow:     'hidden',
-            textOverflow: 'ellipsis',
-            margin:       '0 0 2px',
+            color:            xd.title,
+            fontSize:         13,
+            fontWeight:       700,
+            lineHeight:       1.3,
+            display:          '-webkit-box',
+            WebkitLineClamp:  2,
+            WebkitBoxOrient:  'vertical',
+            overflow:         'hidden',
+            minHeight:        34,
+            margin:           '0 0 2px',
           }}>
             {[year, brand, model, variant].filter(Boolean).join(' ')}
           </h3>
