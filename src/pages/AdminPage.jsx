@@ -256,6 +256,7 @@ export default function AdminPage() {
       .select(`id, year, brand, model, variant, mileage, colour, condition, auction_grade, interior_grade,
         is_recon, import_country, plate_number, vin_number, vin, selling_price, original_price, previous_price,
         payment_type, images, status, created_at, rejection_reason, admin_notes, dealer_id, city, state,
+        car_documents, docs_verified,
         profiles!car_listings_dealer_id_fkey(full_name, slug, dealership, phone, whatsapp_number, ic_submitted, created_at, listing_count_cache, city, state)`)
       .eq("status", "pending_approval")
       .order("created_at", { ascending: true });
@@ -306,6 +307,15 @@ export default function AdminPage() {
       flashSaved(id);
       setDealers(prev => prev.map(d => d.id === id ? { ...d, [field]: value } : d));
     }
+  }
+
+  // Mark a listing's uploaded documents as reviewed by the platform. Superadmin
+  // only (enforced in the RPC + a protective trigger on car_listings).
+  async function toggleListingDocsVerified(listing) {
+    const next = !listing.docs_verified;
+    const { error } = await supabase.rpc("set_listing_docs_verified", { p_listing_id: listing.id, p_verified: next });
+    if (error) { alert("Error: " + error.message); return; }
+    setPendingListings(p => p.map(l => l.id === listing.id ? { ...l, docs_verified: next } : l));
   }
 
   // Verify / unverify a dealer's business identity (SSM + IC reviewed).
@@ -784,6 +794,17 @@ export default function AdminPage() {
                               {" · "}{listing._rejectionCount || 0} rejection{(listing._rejectionCount || 0) === 1 ? "" : "s"}
                               {accountAgeHrs !== null && <> · account {accountAgeHrs < 24 ? `${Math.round(accountAgeHrs)}h` : `${Math.round(accountAgeHrs / 24)}d`} old</>}
                             </p>
+                            <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                              <span style={{ fontSize: 10, color: "#6b7280" }}>
+                                {Array.isArray(listing.car_documents) && listing.car_documents.length > 0
+                                  ? `${listing.car_documents.length} document${listing.car_documents.length === 1 ? "" : "s"} attached`
+                                  : "No documents attached"}
+                              </span>
+                              <label style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10, color: listing.docs_verified ? "#4ade80" : "#6b7280", cursor: "pointer", fontWeight: 600 }}>
+                                <input type="checkbox" checked={!!listing.docs_verified} onChange={() => toggleListingDocsVerified(listing)} style={{ accentColor: "#22c55e", cursor: "pointer" }} />
+                                {listing.docs_verified ? "Documents verified" : "Mark documents verified"}
+                              </label>
+                            </div>
                           </div>
 
                           {/* Action buttons */}

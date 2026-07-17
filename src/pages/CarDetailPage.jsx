@@ -698,7 +698,7 @@ export default function CarDetailPage() {
       // for agent-vs-dealer below — without it in the select, carData.seller_role is
       // always undefined and the get_salesman_by_id lookup never fires, so a Salesman
       // Lite listing silently falls through to a nameless "Seller" with no mini-page link.
-      const PUBLIC_FIELDS = "id,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,plate_number,video_url,salesman_slug,car_documents,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,included_services_cost,vin,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating,cylinders,market_avg_price,market_sample_count,puspakom_b5_date,puspakom_b7_date,seller_role,payment_type,sambung_monthly,sambung_months_left,sambung_balance,sambung_deposit,sambung_bank";
+      const PUBLIC_FIELDS = "id,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,plate_number,video_url,salesman_slug,car_documents,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,included_services_cost,vin,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating,cylinders,market_avg_price,market_sample_count,puspakom_b5_date,puspakom_b7_date,seller_role,payment_type,sambung_monthly,sambung_months_left,sambung_balance,sambung_deposit,sambung_bank,docs_verified";
       let { data: carData, error } = await supabase
         .from("public_car_listings")
         .select(PUBLIC_FIELDS)
@@ -1129,6 +1129,9 @@ export default function CarDetailPage() {
   const hasDocuments =
     (Array.isArray(car.car_documents) && car.car_documents.length > 0) ||
     !!(car.puspakom_b5_date || car.puspakom_b7_date);
+  // Only claim "Verified" when a superadmin actually reviewed the paperwork;
+  // otherwise the badge honestly reads "Docs on File" (a file merely exists).
+  const docsVerified = !!car.docs_verified;
   const carTitle = `${car.year} ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""}`;
   const dealerName =
     dealer?.site_name || dealer?.dealership || dealer?.full_name || "Dealer";
@@ -1787,7 +1790,10 @@ export default function CarDetailPage() {
               {isReserved && <span style={{ background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.22)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Reserved</span>}
               {isRecon && <span style={{ background:'rgba(15,23,42,0.05)', border:'1px solid rgba(15,23,42,0.1)', color:'#334155', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Recon</span>}
               {isHot   && <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.28)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Hot Deal</span>}
-              {hasDocuments && <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(22,163,74,0.08)', border:'1px solid rgba(22,163,74,0.25)', color:'#16a34a', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}><BadgeCheck size={11} /> Verified Docs</span>}
+              {hasDocuments && (docsVerified
+                ? <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(22,163,74,0.08)', border:'1px solid rgba(22,163,74,0.25)', color:'#16a34a', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}><BadgeCheck size={11} /> Verified Docs</span>
+                : <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(148,163,184,0.1)', border:'1px solid rgba(148,163,184,0.25)', color: isXdrive ? '#475569' : '#94a3b8', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}><FileText size={11} /> Docs on File</span>
+              )}
             </div>
           )}
           <p style={{ fontSize:11, textTransform:'uppercase', letterSpacing:'0.32em', color:'#dc2626', fontWeight:700, marginBottom:6 }}>{car.brand}</p>
@@ -2461,7 +2467,7 @@ export default function CarDetailPage() {
                     Hot Deal
                   </span>
                 )}
-                {hasDocuments && (
+                {hasDocuments && (docsVerified ? (
                   <span
                     style={{
                       display: "inline-flex",
@@ -2480,7 +2486,26 @@ export default function CarDetailPage() {
                   >
                     <BadgeCheck size={11} /> Verified Docs
                   </span>
-                )}
+                ) : (
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 5,
+                      background: "rgba(148,163,184,0.1)",
+                      border: "1px solid rgba(148,163,184,0.25)",
+                      color: isXdrive ? "#475569" : "#94a3b8",
+                      fontSize: "10px",
+                      padding: "4px 10px",
+                      borderRadius: "5px",
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase",
+                      fontWeight: 700,
+                    }}
+                  >
+                    <FileText size={11} /> Docs on File
+                  </span>
+                ))}
               </div>
             )}
             <div
