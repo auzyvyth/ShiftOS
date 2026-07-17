@@ -58,26 +58,54 @@ const calcSaloonGross = (sum) => {
 
 const calcInsurance = (sum, ncd, vehicleType, cc) => {
   if (!sum || sum <= 0) return null;
-  let gross;
+  let grossRaw;
   if (vehicleType === 'Non-Saloon') {
     const ccNum = parseFloat(cc) || 0;
     const tier = VEHICLE_TYPE_NON_SALOON_RATES.find(t => ccNum <= t.maxCc);
-    gross = tier ? tier.rate : 2097;
+    grossRaw = tier ? tier.rate : 2097;
   } else {
-    gross = calcSaloonGross(sum);
+    grossRaw = calcSaloonGross(sum);
   }
-  const netPremium = gross * (1 - ncd / 100);
-  const sst        = netPremium * 0.08;
+  // Round each line item first, then sum the rounded values — so the
+  // displayed rows (gross − NCD savings + SST + stamp duty) always foot
+  // exactly to the displayed total instead of drifting by RM1.
+  const gross      = Math.round(grossRaw);
+  const netPremium = Math.round(gross * (1 - ncd / 100));
+  const sst        = Math.round(netPremium * 0.08);
   const stampDuty  = 10;
   const total      = netPremium + sst + stampDuty;
   return {
-    gross:      Math.round(gross),
-    netPremium: Math.round(netPremium),
-    sst:        Math.round(sst),
+    gross,
+    netPremium,
+    sst,
     stampDuty,
-    total:      Math.round(total),
-    net:        Math.round(total), // keeps existing .net usage working
+    total,
+    net: total, // keeps existing .net usage working
   };
+};
+
+// ─── Flat rate → EIR (reducing balance) ────────────────────────────────────
+// Malaysian HP loans are quoted as a flat rate but banks charge on a reducing
+// balance; the true annualized rate (EIR) solves:
+//   (1 - (1+i)^-n) / i = n / (1 + rFlat * n/12)
+// i (monthly rate) has no closed form, so solve it with Newton-Raphson then
+// annualize: EIR = (1+i)^12 - 1.
+const calcEIR = (flatRatePct, months) => {
+  const rFlat = flatRatePct / 100;
+  const n = months;
+  if (n <= 0 || rFlat <= 0) return 0;
+  const Pf = 1 + rFlat * (n / 12);
+  let i = rFlat / 12; // initial guess: nominal monthly rate
+  for (let iter = 0; iter < 100; iter++) {
+    const f      = 1 - Math.pow(1 + i, -n) - (n * i) / Pf;
+    const fPrime = n * Math.pow(1 + i, -(n + 1)) - n / Pf;
+    if (fPrime === 0) break;
+    const iNext = i - f / fPrime;
+    if (!Number.isFinite(iNext) || iNext <= -1) break;
+    if (Math.abs(iNext - i) < 1e-10) { i = iNext; break; }
+    i = iNext;
+  }
+  return +(((Math.pow(1 + i, 12) - 1) * 100).toFixed(2));
 };
 
 const BODY_TYPES = ['Sedan', 'Hatchback', 'Coupe', 'SUV', 'MPV', 'Pickup'];
@@ -231,7 +259,7 @@ const generateQuotationPDF = async ({ dealer, salesman, carDetails, calc, fmt })
     ['Loan Amount',          `RM ${fmt(calc.loanAmt)}`],
     ['Loan Tenure',          `${calc.loanTerm} years`],
     ['Interest Rate (flat)', `${calc.intRate}% p.a.`],
-    ['EIR (approx.)',        `${calc.eir}% p.a.`],
+    ['EIR (est.)',           `${calc.eir}% p.a.`],
     ['Total Interest',       `RM ${fmt(calc.interest)}`],
     ['Total Loan Repayment', `RM ${fmt(calc.totalLoan)}`],
     ['Monthly Installment',  `RM ${fmt(calc.monthly, 2)}/month`],
@@ -359,10 +387,12 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
   const loanAmt     = Math.max(0, carPrice - downPayment);
   const interest    = loanAmt * (intRate / 100) * loanTerm;
   const totalLoan   = loanAmt + interest;
-  const monthly     = loanTerm > 0 ? totalLoan / (loanTerm * 12) : 0;
+  // Banks never round installments down (they can't undercollect) — ceiling
+  // to the nearest cent so the figure shown matches real HP quotes.
+  const monthlyRaw  = loanTerm > 0 ? totalLoan / (loanTerm * 12) : 0;
+  const monthly     = Math.ceil(monthlyRaw * 100) / 100;
 
-  // EIR approximation: EIR ≈ flat rate × 1.85 for standard tenures
-  const eir = +(intRate * 1.85).toFixed(2);
+  const eir = calcEIR(intRate, loanTerm * 12);
 
   const roadTax  = calcRoadTax(Number(rtCc));
   const insCalc  = calcInsurance(insSum || carPrice, insNcd, vehicleType, rtCc);
@@ -745,7 +775,7 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
                   <p style={{ color: isValid ? c.monthly : '#9ca3af', fontSize: 38, fontWeight: 800, margin: 0, lineHeight: 1 }}>
                     {isValid ? <>
                       <span style={{ fontSize: 16, color: '#9ca3af', fontWeight: 600, marginRight: 3 }}>RM</span>
-                      {fmt(monthly, 0)}
+                      {fmt(monthly, 2)}
                       <span style={{ fontSize: 14, color: '#9ca3af', fontWeight: 500, marginLeft: 3 }}>/mo</span>
                     </> : '—'}
                   </p>
@@ -758,7 +788,7 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
                 <ResultRow label="Down Payment"      value={isValid ? `RM ${fmt(downPayment)}` : '—'} />
                 <ResultRow label="Total Interest"    value={isValid ? `RM ${fmt(interest)}` : '—'} />
                 <ResultRow label="Total Repayment"   value={isValid ? `RM ${fmt(totalLoan)}` : '—'} highlight />
-                <ResultRow label="EIR (approx.)"     value={isValid ? `${eir}% p.a.` : '—'}         muted />
+                <ResultRow label="EIR (est.)"        value={isValid ? `${eir}% p.a.` : '—'}         muted />
               </div>
 
               {/* Road tax + insurance */}
