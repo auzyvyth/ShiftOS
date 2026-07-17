@@ -236,10 +236,13 @@ export default function ImportStockPage() {
       if (!user) { setPlanChecked(true); return; }
       const { data: p } = await supabase
         .from("profiles")
-        .select("plan")
+        .select("role")
         .eq("id", user.id)
         .maybeSingle();
-      setPlanAllowed(p?.plan === "dealer_growth" || p?.plan === "dealer_pro");
+      // Open to every dealer-tier plan (incl. trial/Starter) — new dealers need
+      // to bulk-import their existing inventory during onboarding, not just
+      // Growth/Pro accounts. Still role-gated so salesmen can't hit this route.
+      setPlanAllowed(["dealer", "owner", "superadmin"].includes(p?.role));
       setPlanChecked(true);
     });
   }, []);
@@ -300,7 +303,7 @@ export default function ImportStockPage() {
           model:          r.model || null,
           variant:        r.variant || null,
           year:           r.year ? Number(r.year) : null,
-          selling_price:  null,
+          selling_price:  r.price ? Number(r.price) : null,
           mileage:        r.mileage ? Number(r.mileage) : null,
           colour:         r.color || null,
           transmission:   r.transmission || null,
@@ -347,7 +350,10 @@ export default function ImportStockPage() {
         auction_grade:  listing.auction_grade,
         interior_grade: listing.interior_grade,
         vin:            listing.vin,
-        purchase_price: rows[i]?.price ? Number(rows[i].price) : null,
+        // purchase_price is deliberately left null — the extracted "price" is the
+        // dealer's advertised/selling price (now mirrored below), not their cost.
+        // A stocklist sheet has no cost column; the dealer fills this in later.
+        purchase_price: null,
         asking_price:   listing.selling_price,
         status:         'available',
         created_at:     now,
@@ -374,7 +380,7 @@ export default function ImportStockPage() {
         >
           <h1 className="text-xl font-bold text-white mb-2">AI Stock Import is locked</h1>
           <p className="text-sm text-gray-500 mb-5">
-            This feature is available on Dealer Growth and Dealer Pro plans. Upgrade your plan to unlock AI-powered stock import.
+            This feature is available to dealer accounts. Sign in with a dealer account to unlock AI-powered stock import.
           </p>
           <button
             onClick={() => navigate("/dashboard")}

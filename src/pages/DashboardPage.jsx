@@ -7030,6 +7030,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
             <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvFile} />
             <button onClick={() => { setShowVendors(true); fetchVendors(); }} className="flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-lg" style={{ background: 'rgba(107,114,128,0.08)', border: '1px solid rgba(107,114,128,0.2)', color: '#6b7280' }}><Wrench className="w-3.5 h-3.5" />Vendors</button>
             <button onClick={() => { setShowCsvImport(true); setCsvRows([]); setCsvError(''); }} className="flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-lg" style={{ background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.3)', color: '#f87171' }}><Upload className="w-3.5 h-3.5" />Import CSV</button>
+            <button onClick={() => navigate('/dashboard/import-stock')} className="flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-lg" style={{ background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.3)', color: '#f87171' }} title="Upload a messy stocklist (spreadsheet or PDF) and let AI extract the cars"><Bot className="w-3.5 h-3.5" />AI Import</button>
             <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><PlusCircle className="w-3.5 h-3.5" />Add Stock</button>
           </div>
         </div>
