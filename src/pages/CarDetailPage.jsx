@@ -51,6 +51,7 @@ import { isSubdomain } from "../hooks/useTenant";
 import { trackEvent, getSlugFromURL } from "../utils/analytics";
 import { useMarketplaceTracking } from "../hooks/useMarketplaceTracking";
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
+import { estimateRoadTax } from "../utils/roadTax";
 import { cdnImg } from "../utils/img";
 import { toast } from "sonner";
 
@@ -2211,18 +2212,7 @@ export default function CarDetailPage() {
           {/* Running Costs */}
           {(() => {
             const cc = car.engine_cc || 0;
-            const roadTax = (() => {
-              if (!cc || cc <= 0) return null;
-              if (cc <= 1000) return 20;
-              if (cc <= 1200) return 55;
-              if (cc <= 1400) return 70;
-              if (cc <= 1600) return 90;
-              if (cc <= 1800) return Math.round(200 + (cc - 1600) * 0.40);
-              if (cc <= 2000) return Math.round(280 + (cc - 1800) * 0.50);
-              if (cc <= 2500) return Math.round(380 + (cc - 2000) * 1.00);
-              if (cc <= 3000) return Math.round(880 + (cc - 2500) * 2.50);
-              return Math.round(2130 + (cc - 3000) * 4.50);
-            })();
+            const roadTax = estimateRoadTax(cc);
             const insGrp = car.insurance_group ? Number(car.insurance_group) : null;
             const { pricePerLiter, fuelLabel, consumption, totalCost: totalFuelCost } = estimateFuelCost(cc, car.fuel_consumption, fuelDist);
             return (
@@ -3092,18 +3082,7 @@ export default function CarDetailPage() {
             {/* ── RUNNING COSTS ── */}
             {(() => {
               const cc = car.engine_cc || 0;
-              const roadTax = (() => {
-                if (!cc || cc <= 0) return null;
-                if (cc <= 1000) return 20;
-                if (cc <= 1200) return 55;
-                if (cc <= 1400) return 70;
-                if (cc <= 1600) return 90;
-                if (cc <= 1800) return Math.round(200 + (cc - 1600) * 0.40);
-                if (cc <= 2000) return Math.round(280 + (cc - 1800) * 0.50);
-                if (cc <= 2500) return Math.round(380 + (cc - 2000) * 1.00);
-                if (cc <= 3000) return Math.round(880 + (cc - 2500) * 2.50);
-                return Math.round(2130 + (cc - 3000) * 4.50);
-              })();
+              const roadTax = estimateRoadTax(cc);
               const co2 = car.co2_emissions;
               const insGrp = car.insurance_group ? Number(car.insurance_group) : null;
               // fuel_consumption is km/L (CarForm's "Fuel Economy" field) — the old

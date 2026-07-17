@@ -5,21 +5,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import AmortizationSchedule from './AmortizationSchedule';
 import { supabase } from '../supabaseClient';
-
-// ─── Road tax (JPJ, private, Peninsular Malaysia — Saloon) ────────────────────
-const calcRoadTax = (cc) => {
-  const c = parseFloat(cc);
-  if (!c || c <= 0) return null;
-  if (c <= 1000) return 20;
-  if (c <= 1200) return 55;
-  if (c <= 1400) return 70;
-  if (c <= 1600) return 90;
-  if (c <= 1800) return 200 + (c - 1600) * 0.40;
-  if (c <= 2000) return 280 + (c - 1800) * 1.00;
-  if (c <= 2500) return 480 + (c - 2000) * 2.00;
-  if (c <= 3000) return 1480 + (c - 2500) * 3.00;
-  return 2980 + (c - 3000) * 4.00;
-};
+import { estimateRoadTax } from '../utils/roadTax';
 
 // ─── Insurance estimate ───────────────────────────────────────────────────────
 const NCD_TIERS = [0, 25, 30, 38.33, 45, 55];
@@ -394,7 +380,7 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
 
   const eir = calcEIR(intRate, loanTerm * 12);
 
-  const roadTax  = calcRoadTax(Number(rtCc));
+  const roadTax  = estimateRoadTax(rtCc);
   const insCalc  = calcInsurance(insSum || carPrice, insNcd, vehicleType, rtCc);
 
   const onRoadPrice = carPrice + (roadTax != null ? Math.round(roadTax) : 0) + (insCalc?.net || 0);
