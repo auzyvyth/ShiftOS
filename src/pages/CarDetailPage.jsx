@@ -58,6 +58,26 @@ import { toast } from "sonner";
 const fmt = (n) => Number(n).toLocaleString("en-MY");
 const fmtPrice = (n) => `RM ${fmt(n)}`;
 
+/* Range-calculator fuel estimate — shared by the mobile and desktop Running
+   Costs blocks so the formula can't drift between the two layouts again.
+   RON95 subsidy pricing doesn't realistically apply above ~2,500cc; larger
+   performance/luxury engines are estimated on RON97 at market price. */
+const FUEL_PRICE_RON95 = 2.05;
+const FUEL_PRICE_RON97 = 3.15;
+const estimateFuelCost = (cc, dealerConsumption, distanceKm) => {
+  const isPerformance = cc > 2500;
+  const pricePerLiter = isPerformance ? FUEL_PRICE_RON97 : FUEL_PRICE_RON95;
+  const fuelLabel = isPerformance ? "RON97" : "RON95";
+  const consumption = dealerConsumption || (
+    cc <= 1600 ? 14 :
+    cc <= 2000 ? 10 :
+    cc <= 2500 ? 7 :
+    cc <= 4000 ? 5 : 3.5
+  );
+  const totalCost = Math.round((distanceKm / consumption) * pricePerLiter);
+  return { pricePerLiter, fuelLabel, consumption, totalCost };
+};
+
 /* Market-price position indicator — a meter (not a pill): the marker dot
    encodes where this car's asking price sits on the cheap→expensive spectrum
    relative to the market average for similar cars. */
@@ -2204,8 +2224,7 @@ export default function CarDetailPage() {
               return Math.round(2130 + (cc - 3000) * 4.50);
             })();
             const insGrp = car.insurance_group ? Number(car.insurance_group) : null;
-            const consumption = car.fuel_consumption || (cc <= 1600 ? 14 : cc <= 2000 ? 10 : 7);
-            const totalFuelCost = Math.round((fuelDist / consumption) * 2.05);
+            const { pricePerLiter, fuelLabel, consumption, totalCost: totalFuelCost } = estimateFuelCost(cc, car.fuel_consumption, fuelDist);
             return (
               <div style={{ marginTop:32, paddingTop:28, borderTop:`1px solid ${th.border}` }}>
                 <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color: th.textMuted, fontWeight:700, marginBottom:16 }}>Running Costs</p>
@@ -2250,7 +2269,7 @@ export default function CarDetailPage() {
                 <div style={{ background: th.card, border:`1px solid ${th.border}`, borderRadius:10, padding:'14px 16px' }}>
                   <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
                     <span style={{ fontSize:12, color: th.textSec }}>Range Calculator</span>
-                    <span style={{ fontSize:10, color: th.textMuted }}>RON95 @ RM2.05/L</span>
+                    <span style={{ fontSize:10, color: th.textMuted }}>{fuelLabel} @ RM{pricePerLiter}/L</span>
                   </div>
                   <div style={{ display:'flex', alignItems:'baseline', gap:8, marginBottom:12 }}>
                     <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'1.8rem', color: th.text, lineHeight:1 }}>RM {totalFuelCost}</span>
@@ -3090,9 +3109,7 @@ export default function CarDetailPage() {
               // fuel_consumption is km/L (CarForm's "Fuel Economy" field) — the old
               // L/100km math here disagreed with the mobile layout's estimate for
               // the same car and inverted dealer-entered values.
-              const consumption = car.fuel_consumption || (cc <= 1600 ? 14 : cc <= 2000 ? 10 : 7);
-              const petrolPrice = 2.05;
-              const totalFuelCost = Math.round((fuelDist / consumption) * petrolPrice);
+              const { pricePerLiter: petrolPrice, fuelLabel, consumption, totalCost: totalFuelCost } = estimateFuelCost(cc, car.fuel_consumption, fuelDist);
               return (
                 <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                   <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, marginBottom: 24 }}>Running Costs</p>
@@ -3147,7 +3164,7 @@ export default function CarDetailPage() {
                   <div style={{ background: th.card, border: `1px solid ${th.borderSec}`, borderRadius: 12, padding: '18px 20px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                       <span style={{ fontSize: 13, color: th.textSec }}>Range Calculator</span>
-                      <span style={{ fontSize: 10, color: '#334155' }}>RON95 @ RM {petrolPrice}/L</span>
+                      <span style={{ fontSize: 10, color: '#334155' }}>{fuelLabel} @ RM {petrolPrice}/L</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 14 }}>
                       <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: '2rem', color: th.text, lineHeight: 1 }}>RM {totalFuelCost}</span>
