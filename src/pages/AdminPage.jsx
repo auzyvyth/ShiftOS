@@ -191,7 +191,7 @@ export default function AdminPage() {
     const { data: dealerData } = await supabase
       .from("profiles")
       .select("id, full_name, email, dealership, subdomain, role, subscription_status, trial_ends_at, created_at, is_active, city, state, whatsapp_number, business_type, payment_status, plan, is_verified, ssm_number, ic_number")
-      .eq("role", "dealer")
+      .in("role", ["dealer", "owner", "superadmin"])
       .order("created_at", { ascending: false });
 
     const dealers = dealerData || [];
