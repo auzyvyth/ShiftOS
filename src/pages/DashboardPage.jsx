@@ -96,6 +96,7 @@ import CustomersTab from "../components/crm/CustomersTab";
 import { getPlanConfig, nextDealerPlan } from "../utils/planConfig";
 import { color, border, radius, font } from "../theme/tokens";
 import { getEmbedUrl } from "../utils/videoEmbed";
+import { getListingGaps } from "../utils/listingCompleteness";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
 import {
   Car,
@@ -2887,16 +2888,12 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
       getListingAge(l.created_at) >= 30 && (l.status || 'available') === 'available',
   );
 
-  // A listing is "incomplete" when it's missing what a buyer needs to see —
-  // photos, a price, or mileage. Bulk/AI import leaves these blank, so these are
-  // the cars to finish before they can actually sell. Sold cars are excluded.
-  const listingGaps = (l) => {
-    const g = [];
-    if (!Array.isArray(l.images) || l.images.length === 0) g.push('photos');
-    if (!l.selling_price || Number(l.selling_price) <= 0) g.push('price');
-    if (!l.mileage || Number(l.mileage) <= 0) g.push('mileage');
-    return g;
-  };
+  // A listing is "incomplete" when it's missing info a buyer needs to trust
+  // it. Bulk/AI import leaves several of these blank, so these are the cars
+  // to finish before they can actually sell. Sold cars are excluded.
+  // (Shared with the Inventory tab badge and CarForm's publish gate — see
+  // utils/listingCompleteness.js — so "complete" means the same thing everywhere.)
+  const listingGaps = getListingGaps;
   const incomplete = listings.filter(
     (l) => (l.status || 'available') !== 'sold' && listingGaps(l).length > 0,
   );
@@ -3079,7 +3076,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                 <div className="flex items-center gap-2 mb-3">
                   <AlertCircle className="w-4 h-4 text-red-400" />
                   <p className="text-red-700 text-sm font-semibold">
-                    {incomplete.length} listing{incomplete.length > 1 ? "s" : ""} incomplete — missing photos, price or mileage
+                    {incomplete.length} listing{incomplete.length > 1 ? "s" : ""} incomplete — missing key info buyers need to see
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -10806,6 +10803,19 @@ export default function DashboardPage() {
                                 {/* Status */}
                                 <td style={{ padding: '12px 16px' }} onClick={e => e.stopPropagation()}>
                                   <StatusBadge listing={l} />
+                                  {!isSold && (() => {
+                                    const gaps = getListingGaps(l);
+                                    if (gaps.length === 0) return null;
+                                    return (
+                                      <span
+                                        title={`Missing: ${gaps.join(', ')}`}
+                                        style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, fontSize: 10, fontWeight: 700, color: '#dc2626', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 5, padding: '3px 8px', whiteSpace: 'nowrap', width: 'fit-content', cursor: 'default' }}
+                                      >
+                                        <AlertCircle style={{ width: 10, height: 10 }} />
+                                        Incomplete
+                                      </span>
+                                    );
+                                  })()}
                                   {l.status === 'unpublished' && (
                                     <button
                                       onClick={e => { e.stopPropagation(); handlePublishListing(l); }}
@@ -10896,6 +10906,15 @@ export default function DashboardPage() {
                                 );
                               })()}
                               <AgeBadge createdAt={l.created_at} />
+                              {!isSold && (() => {
+                                const gaps = getListingGaps(l);
+                                if (gaps.length === 0) return null;
+                                return (
+                                  <span title={`Missing: ${gaps.join(', ')}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 700, color: '#dc2626', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 4, padding: '1px 6px' }}>
+                                    <AlertCircle style={{ width: 9, height: 9 }} />Incomplete
+                                  </span>
+                                );
+                              })()}
                               {(() => {
                                 const rtD = l.road_tax_expiry ? (new Date(l.road_tax_expiry) - Date.now()) / 86400000 : null;
                                 if (rtD === null || rtD > 30) return null;

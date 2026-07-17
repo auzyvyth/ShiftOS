@@ -26,6 +26,7 @@ import {
   Upload,
   GripVertical,
   Maximize2,
+  AlertTriangle,
 } from "lucide-react";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
@@ -36,6 +37,7 @@ import { getEmbedUrl } from "../utils/videoEmbed";
 import { useProfile, getDealerIdFromProfile } from "../hooks/useProfile";
 import { lookupMYCar, isMYBrand } from "../data/malayCars";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
+import { getListingGaps } from "../utils/listingCompleteness";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 const initialListing = {
@@ -1081,6 +1083,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   const [draftBanner, setDraftBanner] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [gapConfirm, setGapConfirm] = useState(null); // array of missing-field labels awaiting "post anyway" confirmation
   const [previews, setPreviews] = useState([]);
   const [copied, setCopied] = useState(false);
   const [draggingIndex, setDraggingIndex] = useState(null);
@@ -1228,6 +1231,11 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     document.body.style.overflow = photosFull ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [photosFull]);
+  // Lock body scroll while the completeness-gap confirmation is open.
+  useEffect(() => {
+    document.body.style.overflow = gapConfirm ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [gapConfirm]);
   useEffect(
     () => () => {
       previewUrlsRef.current.forEach((p) => {
@@ -1786,7 +1794,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     return urls;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (skipGapCheck = false) => {
     if (!form.images.length) {
       toast.error("Please add at least 1 photo");
       return;
@@ -1828,6 +1836,29 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     if (originalPrice !== null && originalPrice <= sellingPrice) {
       toast.error("Original price must be higher than the selling price");
       return;
+    }
+
+    // Soft gate — buyer-facing gaps (missing transmission, VIN, etc.) don't
+    // block the form the way a bad price/year does, but a listing this thin
+    // won't sell well or read as trustworthy. Surface it once and let the
+    // dealer choose to fix it or post anyway, rather than silently letting
+    // an incomplete listing go live.
+    if (!skipGapCheck && !isSambung) {
+      const gaps = getListingGaps({
+        images: form.images,
+        selling_price: sellingPrice,
+        mileage,
+        transmission: form.transmission,
+        fuel_type: form.fuelType,
+        vin_number: form.vin_number,
+        colour: form.colour,
+        condition: form.condition,
+        state: form.state,
+      });
+      if (gaps.length > 0) {
+        setGapConfirm(gaps);
+        return;
+      }
     }
 
     setUploading(true);
@@ -3490,7 +3521,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                     )}
                     <button
                       type="button"
-                      onClick={handleSubmit}
+                      onClick={() => handleSubmit()}
                       disabled={uploading}
                       title="Save changes (any step)"
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600 text-white hover:bg-red-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
@@ -3543,7 +3574,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         ) : (
           <button
             type="button"
-            onClick={handleSubmit}
+            onClick={() => handleSubmit()}
             disabled={uploading || capError || !(form.images.length > 0 && form.brand && form.model && form.year && form.state && form.city && (form.payment_type === "sambung_bayar" ? (Number(form.sambungMonthly) > 0 && Number(form.sambungDeposit) > 0) : (form.basePrice && form.sellingPrice)))}
             className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
@@ -3555,6 +3586,40 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           </button>
         )}
       </div>
+
+      {gapConfirm && createPortal(
+        <div className="fixed inset-0 z-[300] flex items-end sm:items-center sm:justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setGapConfirm(null)} />
+          <div className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-xl p-6">
+            <div className="flex items-start gap-3 mb-3">
+              <div className="w-9 h-9 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-4.5 h-4.5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Make sure your listing is well informed to post</p>
+                <p className="text-xs text-gray-500 mt-1">Buyers won't see this listing's {gapConfirm.join(", ")}. Complete listings sell faster and build more trust.</p>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-5">
+              <button
+                type="button"
+                onClick={() => setGapConfirm(null)}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
+              >
+                Go Back &amp; Fix
+              </button>
+              <button
+                type="button"
+                onClick={() => { setGapConfirm(null); handleSubmit(true); }}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors"
+              >
+                Post Anyway
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 
