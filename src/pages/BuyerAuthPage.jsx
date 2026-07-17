@@ -165,9 +165,9 @@ export default function BuyerAuthPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
         *, *::before, *::after { box-sizing: border-box; }
-        .ba { min-height: 100vh; display: flex; background: #080C14; font-family: 'DM Sans', sans-serif; }
+        .ba { min-height: 100vh; display: flex; background: #080C14; font-family: system-ui, sans-serif; }
 
         .ba-left { flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding: 48px 52px; background: #080C14; border-right: 1px solid rgba(255,255,255,0.05); position: relative; overflow: hidden; }
         .ba-left::before { content: ''; position: absolute; top: -120px; left: -120px; width: 480px; height: 480px; background: radial-gradient(circle, rgba(220,38,38,0.12) 0%, transparent 70%); pointer-events: none; }
@@ -197,14 +197,14 @@ export default function BuyerAuthPage() {
         .ba-back:hover { color: rgba(255,255,255,0.6); }
 
         .ba-toggle { display: flex; gap: 6px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 4px; margin-bottom: 26px; }
-        .ba-toggle-btn { flex: 1; padding: 9px 0; border-radius: 9px; border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; background: transparent; color: rgba(255,255,255,0.45); transition: background .15s, color .15s; }
+        .ba-toggle-btn { flex: 1; padding: 9px 0; border-radius: 9px; border: none; cursor: pointer; font-family: system-ui, sans-serif; font-size: 13px; font-weight: 600; background: transparent; color: rgba(255,255,255,0.45); transition: background .15s, color .15s; }
         .ba-toggle-btn.on { background: #dc2626; color: #fff; }
 
         .ba-head { margin-bottom: 22px; }
         .ba-head-title { font-family: 'Bebas Neue', sans-serif; font-size: 34px; color: #fff; letter-spacing: 2px; line-height: 1; }
         .ba-head-sub { font-size: 13px; color: rgba(255,255,255,0.32); margin-top: 6px; }
 
-        .ba-google { width: 100%; padding: 13px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09); border-radius: 10px; color: #e2e8f0; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; transition: background .18s, border-color .18s; }
+        .ba-google { width: 100%; padding: 13px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09); border-radius: 10px; color: #e2e8f0; font-family: system-ui, sans-serif; font-size: 14px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; transition: background .18s, border-color .18s; }
         .ba-google:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.16); }
 
         .ba-or { display: flex; align-items: center; gap: 12px; margin: 18px 0; }
@@ -214,10 +214,10 @@ export default function BuyerAuthPage() {
         .ba-field { margin-bottom: 14px; }
         .ba-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
         .ba-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.3); font-weight: 600; }
-        .ba-forgot { font-size: 11px; color: rgba(255,255,255,0.25); background: none; border: none; cursor: pointer; padding: 0; font-family: 'DM Sans', sans-serif; }
+        .ba-forgot { font-size: 11px; color: rgba(255,255,255,0.25); background: none; border: none; cursor: pointer; padding: 0; font-family: system-ui, sans-serif; }
         .ba-forgot:hover { color: rgba(255,255,255,0.55); }
         .ba-input-wrap { position: relative; }
-        .ba-input { width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 12px 14px; color: #fff; font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none; transition: border-color .2s, background .2s; }
+        .ba-input { width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 12px 14px; color: #fff; font-family: system-ui, sans-serif; font-size: 14px; outline: none; transition: border-color .2s, background .2s; }
         .ba-input::placeholder { color: rgba(255,255,255,0.12); }
         .ba-input:focus { border-color: rgba(220,38,38,0.5); background: rgba(220,38,38,0.03); }
         .ba-input.pr { padding-right: 42px; }
@@ -247,7 +247,7 @@ export default function BuyerAuthPage() {
         .ba-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .ba-foot { margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,0.05); text-align: center; font-size: 13px; color: rgba(255,255,255,0.3); }
-        .ba-foot-link { color: #f87171; font-weight: 600; background: none; border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 13px; }
+        .ba-foot-link { color: #f87171; font-weight: 600; background: none; border: none; cursor: pointer; font-family: system-ui, sans-serif; font-size: 13px; }
         .ba-foot-link:hover { color: #fca5a5; }
         .ba-seller { margin-top: 14px; text-align: center; font-size: 12px; color: rgba(255,255,255,0.22); }
         .ba-seller a { color: rgba(255,255,255,0.5); text-decoration: underline; }

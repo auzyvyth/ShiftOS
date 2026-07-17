@@ -58,7 +58,7 @@
   body {
     background-color: #080C14 !important;
     color: #f9fafb;
-    font-family: 'DM Sans', sans-serif;
+    font-family: system-ui, sans-serif;
     overflow-x: clip;
   }
 

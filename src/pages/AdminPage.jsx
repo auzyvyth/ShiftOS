@@ -454,15 +454,15 @@ export default function AdminPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: #0a0a0f; }
-        .adm-root { min-height: 100vh; background: #0a0a0f; font-family: 'DM Sans', sans-serif; color: #f5f5f5; }
-        .adm-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); color: white; font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 5px 9px; border-radius: 6px; outline: none; }
+        .adm-root { min-height: 100vh; background: #0a0a0f; font-family: system-ui, sans-serif; color: #f5f5f5; }
+        .adm-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); color: white; font-family: system-ui, sans-serif; font-size: 12px; padding: 5px 9px; border-radius: 6px; outline: none; }
         .adm-input:focus { border-color: rgba(220,38,38,0.5); }
-        .adm-select { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); color: white; font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 5px 9px; border-radius: 6px; outline: none; cursor: pointer; }
+        .adm-select { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); color: white; font-family: system-ui, sans-serif; font-size: 12px; padding: 5px 9px; border-radius: 6px; outline: none; cursor: pointer; }
         .adm-select:focus { border-color: rgba(220,38,38,0.5); }
-        .adm-btn { font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 6px; cursor: pointer; border: none; transition: all 0.15s; }
+        .adm-btn { font-family: system-ui, sans-serif; font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 6px; cursor: pointer; border: none; transition: all 0.15s; }
         .adm-row:hover { background: rgba(255,255,255,0.015) !important; }
         .adm-expand { background: rgba(220,38,38,0.04); border-top: 1px solid rgba(220,38,38,0.08); }
         ::-webkit-scrollbar { width: 4px; height: 4px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
@@ -559,7 +559,7 @@ export default function AdminPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
             <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 20, letterSpacing: 3 }}>
               Shift<span style={{ color: "#dc2626" }}>OS</span>{" "}
-              <span style={{ color: "#374151", fontSize: 13, fontFamily: "'DM Sans',sans-serif", fontWeight: 500, letterSpacing: 1 }}>Superadmin</span>
+              <span style={{ color: "#374151", fontSize: 13, fontFamily: "system-ui,sans-serif", fontWeight: 500, letterSpacing: 1 }}>Superadmin</span>
             </span>
             <button onClick={() => navigate("/dashboard")}
               style={{ background: "none", border: "none", color: "#6b7280", fontSize: 12, cursor: "pointer" }}>
@@ -659,7 +659,7 @@ export default function AdminPage() {
                     onChange={e => setBulkRejectReason(e.target.value)}
                     placeholder="e.g. Incomplete details / suspected duplicates…"
                     rows={2}
-                    style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", resize: "vertical", fontFamily: "'DM Sans', sans-serif", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
+                    style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", resize: "vertical", fontFamily: "system-ui, sans-serif", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
                   />
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => setBulkRejectOpen(false)} style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
@@ -842,7 +842,7 @@ export default function AdminPage() {
                               onChange={e => setRejectReason(e.target.value)}
                               placeholder="e.g. Price seems too high, missing photos, suspected duplicate listing…"
                               rows={2}
-                              style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", resize: "vertical", fontFamily: "'DM Sans', sans-serif", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
+                              style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", resize: "vertical", fontFamily: "system-ui, sans-serif", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
                             />
                             <div style={{ display: "flex", gap: 8 }}>
                               <button
@@ -878,7 +878,7 @@ export default function AdminPage() {
                                 onChange={e => setNoteVal(e.target.value)}
                                 placeholder="Internal note — only superadmins see this"
                                 rows={2}
-                                style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 12, padding: "8px 10px", resize: "vertical", fontFamily: "'DM Sans', sans-serif", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
+                                style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 12, padding: "8px 10px", resize: "vertical", fontFamily: "system-ui, sans-serif", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
                               />
                               <div style={{ display: "flex", gap: 8 }}>
                                 <button onClick={() => { setNoteEditId(null); setNoteVal(""); }} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>

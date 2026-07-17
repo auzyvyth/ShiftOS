@@ -394,7 +394,7 @@ export default function SalesmanPanelHelp() {
   const isFaq = active === 'faq';
 
   return (
-    <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', fontFamily: "system-ui, sans-serif" }}>
 
       {/* ── Sidebar nav (desktop) ── */}
       <div style={{ width: 200, flexShrink: 0, position: 'sticky', top: 20, display: 'none' }} className="sph-sidebar">

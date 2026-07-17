@@ -84,7 +84,7 @@ export default function AuthConfirmPage() {
   }, []);
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24, padding: '24px 16px', background: '#0a0a0c', fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24, padding: '24px 16px', background: '#0a0a0c', fontFamily: "system-ui, sans-serif" }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#fff' }}>
         <span style={{ width: 30, height: 30, background: '#dc2626', borderRadius: 999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1 }}>S</span>
         <span style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 3, fontSize: 28 }}>ShiftOS</span>

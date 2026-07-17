@@ -34,7 +34,7 @@ const CSS = `
   background: #080C14;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  font-family: 'DM Sans', sans-serif;
+  font-family: system-ui, sans-serif;
   overflow: hidden;
 }
 .sfl-grid {

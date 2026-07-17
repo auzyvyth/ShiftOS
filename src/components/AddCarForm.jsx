@@ -378,7 +378,7 @@ export default function AddCarForm({ onPublished, onStocked, mode, onBack, onCon
 
   return (
     <FormCtx.Provider value={{ form, setVal }}>
-    <div ref={rootRef} onKeyDown={handleKeyDown} style={{ fontFamily: "'DM Sans',sans-serif" }}>
+    <div ref={rootRef} onKeyDown={handleKeyDown} style={{ fontFamily: "system-ui,sans-serif" }}>
       {/* Header: Back button (left) + circle progress strip (right) */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
         {onBack && (

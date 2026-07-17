@@ -325,7 +325,7 @@ export default function OverviewTab({ dealerId, onNavigate }) {
   const onlineCount = teamRows.filter(r => r.isActive).length;
 
   return (
-    <div style={{ fontFamily: "'DM Sans', sans-serif", color: '#111827', display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ fontFamily: "system-ui, sans-serif", color: '#111827', display: 'flex', flexDirection: 'column', gap: 14 }}>
       <style>{`
         @media (max-width: 768px) {
           .ov-kpi-grid   { grid-template-columns: 1fr 1fr !important; }

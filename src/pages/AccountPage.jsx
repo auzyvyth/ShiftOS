@@ -85,13 +85,13 @@ export default function AccountPage() {
   const signOut = async () => { await supabase.auth.signOut(); window.location.href = '/'; };
 
   if (checking) {
-    return <div style={{ minHeight: '100vh', background: '#F7F6F2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontFamily: "'DM Sans',sans-serif", fontSize: 14 }}>Loading…</div>;
+    return <div style={{ minHeight: '100vh', background: '#F7F6F2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontFamily: "system-ui,sans-serif", fontSize: 14 }}>Loading…</div>;
   }
 
   const email = session?.user?.email || 'Your account';
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F7F6F2', fontFamily: "'DM Sans',sans-serif", color: '#111827' }}>
+    <div style={{ minHeight: '100vh', background: '#F7F6F2', fontFamily: "system-ui,sans-serif", color: '#111827' }}>
       {/* Minimal top bar — just "back to marketplace", like the car detail page */}
       <div style={{ background: '#fff', borderBottom: '1px solid #e5e7eb', position: 'sticky', top: 0, zIndex: 10 }}>
         <div style={{ padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, maxWidth: 1100, margin: '0 auto' }}>

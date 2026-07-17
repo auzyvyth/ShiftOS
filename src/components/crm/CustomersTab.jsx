@@ -200,7 +200,7 @@ export default function CustomersTab({ dealerId, salesmanId = null }) {
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-        <table className="w-full border-collapse" style={{ fontFamily: "'DM Sans',sans-serif" }}>
+        <table className="w-full border-collapse" style={{ fontFamily: "system-ui,sans-serif" }}>
           <thead>
             <tr className="border-b border-gray-100">
               {["Customer", "Phone", "Car Bought", "Purchase Date", "Road Tax", "Insurance", "Handover", ""].map(h => (

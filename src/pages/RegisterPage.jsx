@@ -11,10 +11,10 @@ const MALAYSIAN_STATES = [
 const BIZ_TYPES = ['Sole Proprietorship','Sdn Bhd','Partnership','Enterprise','Other'];
 
 const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  .reg-root { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 32px 16px 48px; background: #09090b; font-family: 'DM Sans', sans-serif; overflow-x: hidden; }
+  .reg-root { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 32px 16px 48px; background: #09090b; font-family: system-ui, sans-serif; overflow-x: hidden; }
   .reg-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
   .reg-brand-icon { width: 30px; height: 30px; background: linear-gradient(135deg,#dc2626,#7c3aed); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: #fff; }
   .reg-brand-text { font-family: 'Bebas Neue', sans-serif; letter-spacing: 3px; font-size: 26px; color: #fff; }
@@ -43,7 +43,7 @@ const STYLES = `
 
   .rfield { margin-bottom: 16px; }
   .rfield label { display: block; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 7px; font-weight: 500; }
-  .rfield input, .rfield select, .rfield textarea { width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09); border-radius: 10px; padding: 11px 14px; color: #fff; font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none; transition: border-color 0.2s, background 0.2s; appearance: none; }
+  .rfield input, .rfield select, .rfield textarea { width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09); border-radius: 10px; padding: 11px 14px; color: #fff; font-family: system-ui, sans-serif; font-size: 14px; outline: none; transition: border-color 0.2s, background 0.2s; appearance: none; }
   .rfield select { cursor: pointer; padding-right: 34px; }
   .rfield select option { background: #1a1a1e; color: #fff; }
   .rfield textarea { resize: none; line-height: 1.5; }
@@ -88,7 +88,7 @@ const STYLES = `
   .btn-shimmer { position: absolute; top: 0; left: -80%; width: 50%; height: 100%; background: linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent); animation: shimmer 2.2s infinite; }
   @keyframes shimmer { from { left: -60%; } to { left: 130%; } }
 
-  .btn-ghost { width: 100%; padding: 10px; background: none; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: rgba(255,255,255,0.4); font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+  .btn-ghost { width: 100%; padding: 10px; background: none; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: rgba(255,255,255,0.4); font-family: system-ui, sans-serif; font-size: 13px; cursor: pointer; transition: all 0.2s; }
   .btn-ghost:hover { border-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.7); }
 
   .done-card { text-align: center; padding: 40px 32px 32px; }
@@ -98,7 +98,7 @@ const STYLES = `
   .done-url-box { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09); border-radius: 10px; padding: 12px 16px; margin-bottom: 24px; }
   .done-url-label { font-size: 10px; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
   .done-url { font-size: 15px; color: #60a5fa; font-weight: 600; word-break: break-all; }
-  .done-copy-btn { display: inline-flex; align-items: center; gap: 6px; background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.25); border-radius: 7px; padding: 6px 12px; color: #93c5fd; font-size: 12px; font-weight: 500; cursor: pointer; margin-top: 8px; transition: all 0.2s; font-family: 'DM Sans', sans-serif; }
+  .done-copy-btn { display: inline-flex; align-items: center; gap: 6px; background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.25); border-radius: 7px; padding: 6px 12px; color: #93c5fd; font-size: 12px; font-weight: 500; cursor: pointer; margin-top: 8px; transition: all 0.2s; font-family: system-ui, sans-serif; }
   .done-copy-btn:hover { background: rgba(96,165,250,0.18); }
 
   .confetti-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; }

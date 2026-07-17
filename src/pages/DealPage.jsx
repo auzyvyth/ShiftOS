@@ -18,8 +18,8 @@ function ExpiredView() {
         <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
           <svg width="24" height="24" fill="none" stroke="#ef4444" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         </div>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 8, fontFamily: 'DM Sans, sans-serif' }}>This deal sheet has expired</h2>
-        <p style={{ color: '#6b7280', fontSize: 14, lineHeight: 1.6, fontFamily: 'DM Sans, sans-serif' }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 8, fontFamily: 'system-ui, sans-serif' }}>This deal sheet has expired</h2>
+        <p style={{ color: '#6b7280', fontSize: 14, lineHeight: 1.6, fontFamily: 'system-ui, sans-serif' }}>
           Ask your salesman to send you a fresh link.
         </p>
       </div>
@@ -104,7 +104,7 @@ export default function DealPage() {
     <>
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
+        body { font-family: system-ui, sans-serif; background: #f1f5f9; }
         @media print {
           body { background: white; }
           .no-print { display: none !important; }

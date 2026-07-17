@@ -43,8 +43,8 @@ export default function DealerPendingApproval({ planKey, dealershipName, email, 
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#070A12', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 16px', fontFamily: "'DM Sans', sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap');`}</style>
+    <div style={{ minHeight: '100vh', background: '#070A12', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 16px', fontFamily: "system-ui, sans-serif" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');`}</style>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 26 }}>
         <div style={{ width: 30, height: 30, background: '#dc2626', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 16 }}>X</div>

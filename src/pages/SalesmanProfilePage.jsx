@@ -124,8 +124,7 @@ export default function SalesmanProfilePage() {
   );
 
   if (notFound) return (
-    <div style={{ minHeight: '100vh', background: '#0b0e15', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans',sans-serif", padding: '0 24px', textAlign: 'center' }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600&display=swap');`}</style>
+    <div style={{ minHeight: '100vh', background: '#0b0e15', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "system-ui,sans-serif", padding: '0 24px', textAlign: 'center' }}>
       <p style={{ fontSize: 14, color: '#4b5563', marginBottom: 8 }}>Agent not found</p>
       <p style={{ fontSize: 13, color: '#374151' }}>This page doesn't exist or has been removed.</p>
     </div>
@@ -151,7 +150,7 @@ export default function SalesmanProfilePage() {
         {profile.avatar_url && <meta property="og:image" content={profile.avatar_url} />}
       </Helmet>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         /* minmax(0,1fr) — not plain 1fr — so a long non-wrapping car name can't
            blow a column past its share and push the grid wider than the screen
@@ -164,7 +163,7 @@ export default function SalesmanProfilePage() {
         .social-btn:hover { border-color: rgba(255,255,255,0.22) !important; color: #e5e7eb !important; }
       `}</style>
 
-      <div style={{ minHeight: '100vh', position: 'relative', background: '#0b0e15', fontFamily: "'DM Sans',sans-serif", color: '#fff', overflowX: 'hidden' }}>
+      <div style={{ minHeight: '100vh', position: 'relative', background: '#0b0e15', fontFamily: "system-ui,sans-serif", color: '#fff', overflowX: 'hidden' }}>
 
         {/* Decorative backdrop — soft warm-gold glow in the top-left melting into
             a cool dark slate, matching the reference. Fixed to the viewport so it

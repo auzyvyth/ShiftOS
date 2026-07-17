@@ -100,7 +100,7 @@ const CC_QUICK   = [1000, 1300, 1500, 1600, 1800, 2000, 2500, 3000];
 // ─── Shared styled primitives ─────────────────────────────────────────────────
 
 const Label = ({ children }) => (
-  <p style={{ color: '#6b7280', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 6px 0', fontFamily: "'DM Sans',sans-serif" }}>
+  <p style={{ color: '#6b7280', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 6px 0', fontFamily: "system-ui,sans-serif" }}>
     {children}
   </p>
 );
@@ -114,7 +114,7 @@ const InputBase = ({ prefix, suffix, ...props }) => (
         width: '100%', background: 'var(--fc-input-bg)', border: '1px solid var(--fc-input-border)',
         borderRadius: 10, color: 'var(--fc-input-color)', fontSize: 14, fontWeight: 600, outline: 'none',
         padding: prefix ? '10px 12px 10px 32px' : suffix ? '10px 32px 10px 12px' : '10px 12px',
-        fontFamily: "'DM Sans',sans-serif", transition: 'border-color 0.15s',
+        fontFamily: "system-ui,sans-serif", transition: 'border-color 0.15s',
         ...props.style,
       }}
       onFocus={e => { e.target.style.borderColor = 'rgba(220,38,38,0.5)'; }}
@@ -132,7 +132,7 @@ const SelectBase = ({ children, ...props }) => (
         width: '100%', background: 'var(--fc-input-bg)', border: '1px solid var(--fc-input-border)',
         borderRadius: 10, color: 'var(--fc-input-color)', fontSize: 14, fontWeight: 600, outline: 'none',
         padding: '10px 32px 10px 12px', appearance: 'none', cursor: 'pointer',
-        fontFamily: "'DM Sans',sans-serif",
+        fontFamily: "system-ui,sans-serif",
       }}
     >
       {children}
@@ -488,7 +488,7 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
   const sectionTitle = (label) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
       <div style={{ width: 3, height: 16, background: '#dc2626', borderRadius: 2, flexShrink: 0 }} />
-      <p style={{ color: c.sectionTitle, fontSize: 13, fontWeight: 700, margin: 0, fontFamily: "'DM Sans',sans-serif" }}>{label}</p>
+      <p style={{ color: c.sectionTitle, fontSize: 13, fontWeight: 700, margin: 0, fontFamily: "system-ui,sans-serif" }}>{label}</p>
     </div>
   );
 
@@ -498,10 +498,10 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
         .calc-input::placeholder { color: #9ca3af; }
         .calc-input::-webkit-inner-spin-button,
         .calc-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        .calc-pill { cursor:pointer; border-radius:8px; padding:7px 12px; font-size:12px; font-weight:600; transition:all 0.15s; border:1px solid ${c.pillBorder}; background:${c.pillBg}; color:${c.pillColor}; font-family:'DM Sans',sans-serif; }
+        .calc-pill { cursor:pointer; border-radius:8px; padding:7px 12px; font-size:12px; font-weight:600; transition:all 0.15s; border:1px solid ${c.pillBorder}; background:${c.pillBg}; color:${c.pillColor}; font-family:system-ui,sans-serif; }
         .calc-pill:hover { border-color:rgba(220,38,38,0.35); color:${light ? '#dc2626' : 'white'}; }
         .calc-pill.active { background:rgba(220,38,38,0.12); border-color:rgba(220,38,38,0.45); color:${light ? '#dc2626' : '#f87171'}; }
-        .calc-body-pill { cursor:pointer; border-radius:20px; padding:5px 12px; font-size:11px; font-weight:600; transition:all 0.15s; border:1px solid ${c.pillBorder}; background:${c.pillBg}; color:${c.pillColor}; font-family:'DM Sans',sans-serif; }
+        .calc-body-pill { cursor:pointer; border-radius:20px; padding:5px 12px; font-size:11px; font-weight:600; transition:all 0.15s; border:1px solid ${c.pillBorder}; background:${c.pillBg}; color:${c.pillColor}; font-family:system-ui,sans-serif; }
         .calc-body-pill:hover { border-color:rgba(220,38,38,0.35); }
         .calc-body-pill.active { background:rgba(220,38,38,0.12); border-color:rgba(220,38,38,0.45); color:${light ? '#dc2626' : '#f87171'}; }
         select.calc-select option { background:${c.selectOption}; color:${light ? '#111827' : 'white'}; }
@@ -512,7 +512,7 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
       `}</style>
 
       <div style={{
-        fontFamily: "'DM Sans',sans-serif", maxWidth: 1024, margin: '0 auto',
+        fontFamily: "system-ui,sans-serif", maxWidth: 1024, margin: '0 auto',
         '--fc-input-bg': c.inputBg,
         '--fc-input-border': light ? '#DDE3EC' : 'rgba(255,255,255,0.08)',
         '--fc-input-color': c.inputColor,
@@ -812,7 +812,7 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
                     border: 'none', borderRadius: 10, color: 'white', fontSize: 13, fontWeight: 700,
                     padding: '11px', cursor: pdfLoading ? 'not-allowed' : 'pointer',
                     boxShadow: '0 2px 12px rgba(220,38,38,0.3)', transition: 'all 0.2s',
-                    fontFamily: "'DM Sans',sans-serif",
+                    fontFamily: "system-ui,sans-serif",
                   }}
                 >
                   <Download size={14} />
@@ -825,7 +825,7 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
                     background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.25)',
                     borderRadius: 10, color: '#25D366', fontSize: 13, fontWeight: 700,
                     padding: '11px', textDecoration: 'none', transition: 'all 0.2s',
-                    fontFamily: "'DM Sans',sans-serif",
+                    fontFamily: "system-ui,sans-serif",
                   }}
                 >
                   <MessageCircle size={14} /> Get Pre-Approved
@@ -837,7 +837,7 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
                     background: c.browseBg, border: `1px solid ${c.browseBorder}`,
                     borderRadius: 10, color: c.browseColor, fontSize: 13, fontWeight: 600,
                     padding: '11px', textDecoration: 'none', transition: 'all 0.2s',
-                    fontFamily: "'DM Sans',sans-serif",
+                    fontFamily: "system-ui,sans-serif",
                   }}
                 >
                   <Search size={14} /> Browse Cars in Budget
@@ -847,7 +847,7 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                     background: 'none', border: 'none', color: '#4b5563', fontSize: 12, cursor: 'pointer',
-                    padding: '6px', fontFamily: "'DM Sans',sans-serif",
+                    padding: '6px', fontFamily: "system-ui,sans-serif",
                   }}
                 >
                   <RefreshCw size={12} /> Reset All

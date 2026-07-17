@@ -9,14 +9,14 @@ import DealerPendingApproval from '../components/DealerPendingApproval';
 // Same design system CSS as SalesmanOnboarding (eo- prefix)
 const CSS = `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-.eo-root{display:flex;height:100vh;overflow:hidden;background:#070A12;font-family:'DM Sans',sans-serif;}
+.eo-root{display:flex;height:100vh;overflow:hidden;background:#070A12;font-family:system-ui,sans-serif;}
 .eo-left{width:380px;min-width:380px;background:#0C1120;border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;padding:40px 36px;overflow-y:auto;flex-shrink:0;}
 .eo-right{flex:1;min-width:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 48px;position:relative;}
 .eo-logo{display:flex;align-items:center;gap:10px;margin-bottom:32px;}
 .eo-logo-icon{width:30px;height:30px;background:#dc2626;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;font-family:'Bebas Neue',cursive;letter-spacing:1px;}
 .eo-logo-text{font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:4px;color:#E8EDF5;}
 .eo-plan-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:rgba(220,38,38,0.12);border:1px solid rgba(220,38,38,0.25);border-radius:4px;font-size:10px;letter-spacing:0.2em;color:rgba(220,38,38,0.9);text-transform:uppercase;margin-bottom:10px;width:fit-content;}
-.eo-changeplan{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:6px 11px;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.5);cursor:pointer;margin-bottom:32px;font-family:'DM Sans',sans-serif;transition:border-color 0.15s,color 0.15s;}
+.eo-changeplan{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:6px 11px;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.5);cursor:pointer;margin-bottom:32px;font-family:system-ui,sans-serif;transition:border-color 0.15s,color 0.15s;}
 .eo-changeplan:hover{border-color:rgba(220,38,38,0.45);color:rgba(255,255,255,0.8);}
 .eo-step-list{display:flex;flex-direction:column;gap:0;flex:1;}
 .eo-step{display:flex;align-items:flex-start;gap:14px;position:relative;}
@@ -41,15 +41,15 @@ const CSS = `
 .eo-heading{font-family:'Bebas Neue',cursive;font-size:clamp(28px,4vw,40px);letter-spacing:3px;color:#E8EDF5;line-height:1;margin-bottom:10px;}
 .eo-sub{font-size:14px;color:rgba(255,255,255,0.32);line-height:1.65;margin-bottom:24px;}
 .eo-label{display:block;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.35);margin-bottom:7px;margin-top:16px;}
-.eo-inp{width:100%;height:48px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:#E8EDF5;font-family:'DM Sans',sans-serif;font-size:15px;padding:0 14px;outline:none;transition:border-color 0.15s,background 0.15s;}
+.eo-inp{width:100%;height:48px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:#E8EDF5;font-family:system-ui,sans-serif;font-size:15px;padding:0 14px;outline:none;transition:border-color 0.15s,background 0.15s;}
 .eo-inp:focus{border-color:rgba(220,38,38,0.45);background:rgba(255,255,255,0.055);}
 .eo-inp::placeholder{color:rgba(255,255,255,0.18);}
-.eo-select{width:100%;height:48px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:#E8EDF5;font-family:'DM Sans',sans-serif;font-size:15px;padding:0 14px;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.3)' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;}
+.eo-select{width:100%;height:48px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:#E8EDF5;font-family:system-ui,sans-serif;font-size:15px;padding:0 14px;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.3)' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;}
 .eo-select:focus{border-color:rgba(220,38,38,0.45);}
-.eo-btn{width:100%;height:48px;background:#dc2626;border:none;border-radius:8px;color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;transition:background 0.15s,opacity 0.15s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:24px;}
+.eo-btn{width:100%;height:48px;background:#dc2626;border:none;border-radius:8px;color:#fff;font-family:system-ui,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;transition:background 0.15s,opacity 0.15s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:24px;}
 .eo-btn:hover:not(:disabled){background:#ef4444;}
 .eo-btn:disabled{opacity:0.35;cursor:not-allowed;}
-.eo-ghost{width:100%;height:48px;background:transparent;border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:rgba(255,255,255,0.45);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:border-color 0.15s,color 0.15s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;}
+.eo-ghost{width:100%;height:48px;background:transparent;border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:rgba(255,255,255,0.45);font-family:system-ui,sans-serif;font-size:13px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:border-color 0.15s,color 0.15s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;}
 .eo-ghost:hover:not(:disabled){border-color:rgba(255,255,255,0.18);color:rgba(255,255,255,0.65);}
 .eo-ghost:disabled{opacity:0.3;cursor:not-allowed;}
 .eo-divider{display:flex;align-items:center;gap:14px;margin:18px 0;color:rgba(255,255,255,0.15);font-size:10px;letter-spacing:0.12em;}

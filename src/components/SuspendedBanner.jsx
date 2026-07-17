@@ -57,7 +57,7 @@ export default function SuspendedBanner() {
         </p>
         <p
           style={{
-            fontFamily: "'DM Sans', sans-serif",
+            fontFamily: "system-ui, sans-serif",
             fontSize: 14,
             color: "#9ca3af",
             lineHeight: 1.6,
@@ -79,7 +79,7 @@ export default function SuspendedBanner() {
             borderRadius: 8,
             padding: "10px 24px",
             fontSize: 13,
-            fontFamily: "'DM Sans', sans-serif",
+            fontFamily: "system-ui, sans-serif",
             fontWeight: 600,
             textDecoration: "none",
             marginBottom: 12,
@@ -97,7 +97,7 @@ export default function SuspendedBanner() {
             border: "none",
             color: "#4b5563",
             fontSize: 12,
-            fontFamily: "'DM Sans', sans-serif",
+            fontFamily: "system-ui, sans-serif",
             cursor: "pointer",
             marginTop: 8,
           }}

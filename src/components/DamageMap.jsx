@@ -67,12 +67,12 @@ export default function DamageMap({ value = [], onChange, readOnly = false }) {
     fontSize: '11px',
     fontWeight: '700',
     cursor: 'pointer',
-    fontFamily: "'DM Sans',sans-serif",
+    fontFamily: "system-ui,sans-serif",
     transition: 'all 0.15s',
   });
 
   return (
-    <div style={{ fontFamily: "'DM Sans',sans-serif", userSelect: 'none' }}>
+    <div style={{ fontFamily: "system-ui,sans-serif", userSelect: 'none' }}>
       {/* ── Container (SVG + popover side-by-side on desktop) ── */}
       <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
 
@@ -132,11 +132,11 @@ export default function DamageMap({ value = [], onChange, readOnly = false }) {
             <rect x="158" y="267" width="26" height="68" rx="9" fill="#111827" stroke="#6b7280" strokeWidth="1.5"/>
 
             {/* Zone labels */}
-            <text x="100" y="22"  textAnchor="middle" fill="#4b5563" fontSize="9" fontFamily="DM Sans,sans-serif">FRONT</text>
-            <text x="100" y="410" textAnchor="middle" fill="#4b5563" fontSize="9" fontFamily="DM Sans,sans-serif">REAR</text>
-            <text x="10"  y="200" fill="#4b5563" fontSize="8" fontFamily="DM Sans,sans-serif"
+            <text x="100" y="22"  textAnchor="middle" fill="#4b5563" fontSize="9" fontFamily="system-ui,sans-serif">FRONT</text>
+            <text x="100" y="410" textAnchor="middle" fill="#4b5563" fontSize="9" fontFamily="system-ui,sans-serif">REAR</text>
+            <text x="10"  y="200" fill="#4b5563" fontSize="8" fontFamily="system-ui,sans-serif"
               transform="rotate(-90,10,200)" textAnchor="middle">LEFT</text>
-            <text x="190" y="200" fill="#4b5563" fontSize="8" fontFamily="DM Sans,sans-serif"
+            <text x="190" y="200" fill="#4b5563" fontSize="8" fontFamily="system-ui,sans-serif"
               transform="rotate(90,190,200)" textAnchor="middle">RIGHT</text>
 
             {/* ── Existing markers ── */}
@@ -153,7 +153,7 @@ export default function DamageMap({ value = [], onChange, readOnly = false }) {
                   <circle cx={cx} cy={cy} r={r} fill={mc.color} opacity="0.88"/>
                   <text x={cx} y={cy + parseFloat(fSz) / 2} textAnchor="middle"
                     fill="rgba(0,0,0,0.8)" fontSize={fSz} fontWeight="800"
-                    fontFamily="DM Sans,sans-serif" style={{ pointerEvents: 'none' }}>
+                    fontFamily="system-ui,sans-serif" style={{ pointerEvents: 'none' }}>
                     {m.type}
                   </text>
                 </g>
@@ -199,7 +199,7 @@ export default function DamageMap({ value = [], onChange, readOnly = false }) {
                     borderRadius: '8px',
                     color: selType === t.code ? t.color : '#6b7280',
                     fontSize: '12px', cursor: 'pointer',
-                    fontFamily: "'DM Sans',sans-serif",
+                    fontFamily: "system-ui,sans-serif",
                   }}>
                   <span style={{ fontWeight: '800', marginRight: '6px' }}>({t.code})</span>{t.label}
                 </button>
@@ -226,11 +226,11 @@ export default function DamageMap({ value = [], onChange, readOnly = false }) {
             {/* Actions */}
             <div style={{ display: 'flex', gap: '6px' }}>
               <button onClick={e => { e.stopPropagation(); confirmMarker(); }}
-                style={{ flex: 1, padding: '8px', background: '#dc2626', border: 'none', borderRadius: '8px', color: 'white', fontSize: '12px', fontWeight: '700', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>
+                style={{ flex: 1, padding: '8px', background: '#dc2626', border: 'none', borderRadius: '8px', color: 'white', fontSize: '12px', fontWeight: '700', cursor: 'pointer', fontFamily: "system-ui,sans-serif" }}>
                 Add
               </button>
               <button onClick={e => { e.stopPropagation(); setPending(null); }}
-                style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>
+                style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', fontFamily: "system-ui,sans-serif" }}>
                 ✕
               </button>
             </div>

@@ -14,7 +14,7 @@ const S = {
     padding: "11px 13px", background: "rgba(255,255,255,0.05)",
     border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10,
     color: "#e5e7eb", fontSize: 14, width: "100%", outline: "none",
-    boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif",
+    boxSizing: "border-box", fontFamily: "system-ui, sans-serif",
     WebkitAppearance: "none", appearance: "none",
   },
   label: { fontSize: 11, fontWeight: 600, color: "#6b7280", display: "block", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.06em" },
@@ -101,7 +101,7 @@ export default function CarFormFast({ onCreate }) {
   };
 
   return (
-    <div style={{ fontFamily: "'DM Sans', sans-serif", color: "#e5e7eb" }}>
+    <div style={{ fontFamily: "system-ui, sans-serif", color: "#e5e7eb" }}>
 
       {/* Progress bar */}
       <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>

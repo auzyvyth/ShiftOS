@@ -118,7 +118,7 @@ export default function HeroSlidesPage({ userId, profile }) {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ fontFamily: "'DM Sans',sans-serif" }}>
+    <div style={{ fontFamily: "system-ui,sans-serif" }}>
 
       {/* ── Top bar ── */}
       <div style={{
@@ -155,7 +155,7 @@ export default function HeroSlidesPage({ userId, profile }) {
               }),
               borderRadius: 11, padding: '9px 18px', fontSize: 14, fontWeight: 600,
               display: 'flex', alignItems: 'center', gap: 7,
-              transition: 'all 0.2s', fontFamily: "'DM Sans',sans-serif",
+              transition: 'all 0.2s', fontFamily: "system-ui,sans-serif",
             }}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -219,7 +219,7 @@ export default function HeroSlidesPage({ userId, profile }) {
               ...btnRed, border: 'none', borderRadius: 11, color: 'white',
               padding: '9px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: 7,
-              fontFamily: "'DM Sans',sans-serif",
+              fontFamily: "system-ui,sans-serif",
             }}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">

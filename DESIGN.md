@@ -16,7 +16,7 @@ invent a new one.
 - **Use the scales below.** No arbitrary one-off paddings/sizes. If a value
   isn't on a scale, you're guessing — pick the nearest scale step.
 - **One headline system.** Display = Bebas Neue, everything else = Outfit (or
-  DM Sans on car detail/card). Never introduce a third UI font.
+  system-ui on car detail/card). Never introduce a third UI font.
 - **Color by role, exact hex.** No washed-out light-on-light. Pick the token
   for the surface you're on (light vs dark) — see Color.
 - **Restrained elevation.** Two shadow levels only (resting + hover). No unique
@@ -29,7 +29,7 @@ invent a new one.
   line-height (0.92–1.0), letter-spacing ~0.02em. Hero h1 `clamp(38px,10vw,96px)`.
   Section h2 `clamp(22px,3vw,44px)`.
 - **Body / UI:** `'Outfit', sans-serif`. Card/detail bodies may use
-  `'DM Sans', sans-serif` (CarCard, CarDetailPage) — keep per-surface consistency.
+  `system-ui, sans-serif` (CarCard, CarDetailPage) — keep per-surface consistency.
 - **Roles:** eyebrow 10–11px / 700 / uppercase / letter-spacing 0.12–0.18em;
   body 13–15px / 400–500; label 13px / 600; price (card) 20px / 800.
 

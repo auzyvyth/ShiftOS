@@ -27,7 +27,7 @@ export const border = {
 };
 export const radius = { md: 7, lg: 12 };
 export const font = {
-  family: "'DM Sans', sans-serif",
+  family: "system-ui, sans-serif",
   size: { xs: 10, sm: 13, base: 14, lg: 15, xl: 20, '2xl': 26, '3xl': 34 },
   weight: { regular: 400, medium: 500, semibold: 600, bold: 700 },
 };

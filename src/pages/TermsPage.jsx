@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
 
 const S = {
-  page: { minHeight: "100vh", background: "#080C14", fontFamily: "'DM Sans', sans-serif", color: "#e8edf5" },
+  page: { minHeight: "100vh", background: "#080C14", fontFamily: "system-ui, sans-serif", color: "#e8edf5" },
   header: { borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "#080C14", zIndex: 10 },
   brand: { display: "flex", alignItems: "center", gap: 10, textDecoration: "none" },
   dot: { width: 28, height: 28, background: "#dc2626", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, color: "#fff" },
@@ -28,7 +28,7 @@ export default function TermsPage() {
 
   return (
     <>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');`}</style>
       <div style={S.page}>
         <header style={S.header}>
           <Link to="/" style={S.brand}>

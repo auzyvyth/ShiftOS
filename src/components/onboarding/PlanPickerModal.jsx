@@ -78,7 +78,7 @@ function PlanCard({ plan, current, onSelect }) {
         style={{
           height: 42, borderRadius: 8, border: (current || plan.soon) ? '1px solid rgba(255,255,255,0.12)' : 'none',
           background: (current || plan.soon) ? 'transparent' : '#dc2626', color: (current || plan.soon) ? 'rgba(255,255,255,0.4)' : '#fff',
-          fontFamily: "'DM Sans',sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
+          fontFamily: "system-ui,sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
           cursor: (current || plan.soon) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         }}
       >
@@ -112,7 +112,7 @@ export default function PlanPickerModal({ currentTier, onClose }) {
   return createPortal(
     <div
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(4,6,12,0.82)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '40px 16px', fontFamily: "'DM Sans',sans-serif" }}
+      style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(4,6,12,0.82)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '40px 16px', fontFamily: "system-ui,sans-serif" }}
     >
       <style>{`@media(max-width:760px){.ppm-grid{grid-template-columns:1fr !important;}}`}</style>
       <div style={{ width: '100%', maxWidth: 940, background: '#0C1120', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 18, padding: '26px 26px 22px', boxShadow: '0 30px 80px rgba(0,0,0,0.6)' }}>

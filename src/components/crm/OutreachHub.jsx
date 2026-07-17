@@ -184,7 +184,7 @@ export default function OutreachHub({ dealerId, salesmanId = null }) {
   ];
 
   return (
-    <div style={{ fontFamily:"'DM Sans',sans-serif" }}>
+    <div style={{ fontFamily:"system-ui,sans-serif" }}>
       {/* Pulse bar */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:12, marginBottom:20 }}>
         {STATS.map(({ label, val, sub, color, Icon, pulse }) => (
@@ -210,7 +210,7 @@ export default function OutreachHub({ dealerId, salesmanId = null }) {
               const active = segment === key;
               return (
                 <button key={key} onClick={() => setSegment(key)}
-                  style={{ padding:'10px 6px 12px', background:'none', border:'none', borderBottom: active ? `2px solid ${seg.color}` : '2px solid transparent', color: active ? seg.color : '#374151', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, marginBottom:-1, fontFamily:"'DM Sans',sans-serif" }}>
+                  style={{ padding:'10px 6px 12px', background:'none', border:'none', borderBottom: active ? `2px solid ${seg.color}` : '2px solid transparent', color: active ? seg.color : '#374151', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, marginBottom:-1, fontFamily:"system-ui,sans-serif" }}>
                   <seg.Icon size={14} />
                   <span style={{ fontSize:10, fontWeight: active ? 700 : 500 }}>{seg.label}</span>
                   <span style={{ fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:4, background: active ? `${seg.color}18` : '#f3f4f6', color: active ? seg.color : '#374151' }}>{count}</span>
@@ -263,7 +263,7 @@ export default function OutreachHub({ dealerId, salesmanId = null }) {
           </div>
           <div style={{ borderTop:'1px solid #e5e7eb', padding:'8px 12px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
             <span style={{ fontSize:11, color:'#1e293b' }}>{scored.length} active contacts</span>
-            <button onClick={() => setRefreshKey(k => k + 1)} style={{ background:'none', border:'none', color:'#374151', cursor:'pointer', display:'flex', alignItems:'center', gap:4, fontSize:11, fontFamily:"'DM Sans',sans-serif" }}>
+            <button onClick={() => setRefreshKey(k => k + 1)} style={{ background:'none', border:'none', color:'#374151', cursor:'pointer', display:'flex', alignItems:'center', gap:4, fontSize:11, fontFamily:"system-ui,sans-serif" }}>
               <RefreshCw size={11} /> Refresh
             </button>
           </div>
@@ -326,7 +326,7 @@ export default function OutreachHub({ dealerId, salesmanId = null }) {
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
                   {Object.entries(TEMPLATES).map(([key, tpl]) => (
                     <button key={key} onClick={() => setTemplate(key)}
-                      style={{ padding:'9px 12px', borderRadius:9, background: template===key ? '#EFF6FF' : '#f9fafb', border: template===key ? '1px solid #93c5fd' : '1px solid #e5e7eb', color: template===key ? '#2563eb' : '#6b7280', fontSize:12, fontWeight: template===key ? 600 : 400, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', gap:6, textAlign:'left' }}>
+                      style={{ padding:'9px 12px', borderRadius:9, background: template===key ? '#EFF6FF' : '#f9fafb', border: template===key ? '1px solid #93c5fd' : '1px solid #e5e7eb', color: template===key ? '#2563eb' : '#6b7280', fontSize:12, fontWeight: template===key ? 600 : 400, cursor:'pointer', fontFamily:"system-ui,sans-serif", display:'flex', alignItems:'center', gap:6, textAlign:'left' }}>
                       <span>{tpl.icon}</span> {tpl.label}
                     </button>
                   ))}
@@ -336,17 +336,17 @@ export default function OutreachHub({ dealerId, salesmanId = null }) {
               <div style={{ flex:1 }}>
                 <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.14em', color:'#374151', fontWeight:700, marginBottom:8 }}>Preview · editable</p>
                 <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={6}
-                  style={{ width:'100%', boxSizing:'border-box', background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:10, padding:'14px 16px', minHeight:120, maxHeight:240, fontSize:13, color:'#1f2937', lineHeight:1.75, fontFamily:"'DM Sans',sans-serif", resize:'vertical', outline:'none' }} />
+                  style={{ width:'100%', boxSizing:'border-box', background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:10, padding:'14px 16px', minHeight:120, maxHeight:240, fontSize:13, color:'#1f2937', lineHeight:1.75, fontFamily:"system-ui,sans-serif", resize:'vertical', outline:'none' }} />
               </div>
 
               <button onClick={() => openWA(selected, draft || TEMPLATES[template].gen(selected))}
-                style={{ width:'100%', padding:'14px', borderRadius:12, background:'linear-gradient(135deg,#22c55e,#16a34a)', border:'none', boxShadow:'0 4px 20px rgba(34,197,94,0.3)', color:'white', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                style={{ width:'100%', padding:'14px', borderRadius:12, background:'linear-gradient(135deg,#22c55e,#16a34a)', border:'none', boxShadow:'0 4px 20px rgba(34,197,94,0.3)', color:'white', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:"system-ui,sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
                 <MessageCircle size={16} /> Open WhatsApp — {(selected.buyer_name || 'Lead').split(' ')[0]}
               </button>
 
               {selected.stage === 'enquiry' ? (
                 <button onClick={() => promoteToPipeline(selected)} disabled={pushing}
-                  style={{ width:'100%', padding:'11px', borderRadius:12, background:'#fff', border:'1px solid #93c5fd', color:'#2563eb', fontSize:13, fontWeight:600, cursor: pushing ? 'wait' : 'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:7, opacity: pushing ? 0.6 : 1 }}>
+                  style={{ width:'100%', padding:'11px', borderRadius:12, background:'#fff', border:'1px solid #93c5fd', color:'#2563eb', fontSize:13, fontWeight:600, cursor: pushing ? 'wait' : 'pointer', fontFamily:"system-ui,sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:7, opacity: pushing ? 0.6 : 1 }}>
                   <ArrowRight size={14} /> {pushing ? 'Adding…' : 'Add to Pipeline'}
                 </button>
               ) : (
@@ -370,11 +370,11 @@ export default function OutreachHub({ dealerId, salesmanId = null }) {
         </div>
         <div style={{ display:'flex', gap:8, flexShrink:0 }}>
           <select value={template} onChange={e => setTemplate(e.target.value)}
-            style={{ padding:'9px 12px', background:'#fff', border:'1px solid #e5e7eb', borderRadius:9, color:'#374151', fontSize:12, fontFamily:"'DM Sans',sans-serif", cursor:'pointer', outline:'none' }}>
+            style={{ padding:'9px 12px', background:'#fff', border:'1px solid #e5e7eb', borderRadius:9, color:'#374151', fontSize:12, fontFamily:"system-ui,sans-serif", cursor:'pointer', outline:'none' }}>
             {Object.entries(TEMPLATES).map(([k, tpl]) => <option key={k} value={k}>{tpl.icon} {tpl.label}</option>)}
           </select>
           <button onClick={launchCampaign}
-            style={{ padding:'9px 20px', borderRadius:9, background:'rgba(167,139,250,0.18)', border:'1px solid rgba(167,139,250,0.35)', color:'#6d28d9', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', gap:7, whiteSpace:'nowrap' }}>
+            style={{ padding:'9px 20px', borderRadius:9, background:'rgba(167,139,250,0.18)', border:'1px solid rgba(167,139,250,0.35)', color:'#6d28d9', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"system-ui,sans-serif", display:'flex', alignItems:'center', gap:7, whiteSpace:'nowrap' }}>
             <Send size={13} /> Contact All ({visibleLeads.length})
           </button>
         </div>
@@ -383,7 +383,7 @@ export default function OutreachHub({ dealerId, salesmanId = null }) {
       {/* Guided campaign — one contact per click, counter ticks down */}
       {campaignIds && createPortal(
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', backdropFilter:'blur(2px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:10000, padding:16 }}>
-          <div style={{ background:'#fff', borderRadius:16, maxWidth:420, width:'100%', padding:24, fontFamily:"'DM Sans',sans-serif", boxShadow:'0 20px 60px rgba(0,0,0,0.3)' }}>
+          <div style={{ background:'#fff', borderRadius:16, maxWidth:420, width:'100%', padding:24, fontFamily:"system-ui,sans-serif", boxShadow:'0 20px 60px rgba(0,0,0,0.3)' }}>
             {campaignDone ? (
               <div style={{ textAlign:'center', padding:'12px 4px' }}>
                 <div style={{ width:56, height:56, borderRadius:'50%', background:'#f0fdf4', border:'1px solid #86efac', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px' }}>
@@ -392,7 +392,7 @@ export default function OutreachHub({ dealerId, salesmanId = null }) {
                 <h3 style={{ fontSize:17, fontWeight:700, color:'#111827', margin:'0 0 6px' }}>Campaign complete</h3>
                 <p style={{ fontSize:13, color:'#6b7280', margin:'0 0 20px' }}>You contacted {campaignIds.length} {campaignIds.length === 1 ? 'lead' : 'leads'}.</p>
                 <button onClick={endCampaign}
-                  style={{ width:'100%', padding:'12px', borderRadius:10, border:'none', background:'#111827', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}>
+                  style={{ width:'100%', padding:'12px', borderRadius:10, border:'none', background:'#111827', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"system-ui,sans-serif" }}>
                   Done
                 </button>
               </div>
@@ -424,16 +424,16 @@ export default function OutreachHub({ dealerId, salesmanId = null }) {
                   Tap to open WhatsApp, send your message, then come back and continue.
                 </p>
                 <button onClick={contactCurrent}
-                  style={{ width:'100%', padding:'14px', borderRadius:12, background:'linear-gradient(135deg,#22c55e,#16a34a)', border:'none', boxShadow:'0 4px 20px rgba(34,197,94,0.3)', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:10 }}>
+                  style={{ width:'100%', padding:'14px', borderRadius:12, background:'linear-gradient(135deg,#22c55e,#16a34a)', border:'none', boxShadow:'0 4px 20px rgba(34,197,94,0.3)', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:"system-ui,sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:10 }}>
                   <MessageCircle size={16} /> Open WhatsApp — {(campaignCurrent?.buyer_name || 'Lead').split(' ')[0]}
                 </button>
                 <div style={{ display:'flex', gap:10 }}>
                   <button onClick={() => setCampaignIdx(i => i + 1)}
-                    style={{ flex:1, padding:'10px', borderRadius:10, border:'1px solid #e5e7eb', background:'#fff', color:'#6b7280', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}>
+                    style={{ flex:1, padding:'10px', borderRadius:10, border:'1px solid #e5e7eb', background:'#fff', color:'#6b7280', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif" }}>
                     Skip
                   </button>
                   <button onClick={endCampaign}
-                    style={{ flex:1, padding:'10px', borderRadius:10, border:'1px solid #fecaca', background:'#fff', color:'#dc2626', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}>
+                    style={{ flex:1, padding:'10px', borderRadius:10, border:'1px solid #fecaca', background:'#fff', color:'#dc2626', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif" }}>
                     End campaign
                   </button>
                 </div>

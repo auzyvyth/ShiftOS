@@ -334,7 +334,7 @@ export default function LoginPage() {
 
   if (mfaRequired) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, padding: "24px 16px", background: "#0a0a0c", fontFamily: "'DM Sans', sans-serif" }}>
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, padding: "24px 16px", background: "#0a0a0c", fontFamily: "system-ui, sans-serif" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#fff" }}>
           <span style={{ width: 30, height: 30, background: "#dc2626", borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1 }}>S</span>
           <span style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 3, fontSize: 28 }}>ShiftOS</span>
@@ -358,7 +358,7 @@ export default function LoginPage() {
             }}
             onKeyDown={(e) => { if (e.key === "Enter") handleMfaVerify(); }}
             placeholder="000000"
-            style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "14px", color: "#fff", fontSize: 24, letterSpacing: "0.4em", textAlign: "center", outline: "none", marginBottom: 16, fontFamily: "'DM Sans', sans-serif" }}
+            style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "14px", color: "#fff", fontSize: 24, letterSpacing: "0.4em", textAlign: "center", outline: "none", marginBottom: 16, fontFamily: "system-ui, sans-serif" }}
           />
           {error && <p style={{ fontSize: 12, color: "#f87171", marginBottom: 14 }}>⚠ {error}</p>}
           <button
@@ -389,7 +389,7 @@ export default function LoginPage() {
           gap: 24,
           padding: "24px 16px",
           background: "#0a0a0c",
-          fontFamily: "'DM Sans', sans-serif",
+          fontFamily: "system-ui, sans-serif",
         }}
       >
         <div
@@ -537,11 +537,11 @@ export default function LoginPage() {
   return (
 <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         /* Layout */
-        .lr { min-height: 100vh; display: flex; background: #080C14; font-family: 'DM Sans', sans-serif; }
+        .lr { min-height: 100vh; display: flex; background: #080C14; font-family: system-ui, sans-serif; }
 
         /* Left panel — branding */
         .lr-left {
@@ -635,7 +635,7 @@ export default function LoginPage() {
         .lr-form-title { font-family: 'Bebas Neue', sans-serif; font-size: 36px; color: #fff; letter-spacing: 2px; line-height: 1; }
         .lr-form-sub { font-size: 13px; color: rgba(255,255,255,0.3); margin-top: 6px; }
 
-        .lr-google { width: 100%; padding: 13px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09); border-radius: 10px; color: #e2e8f0; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; transition: background .18s, border-color .18s; }
+        .lr-google { width: 100%; padding: 13px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09); border-radius: 10px; color: #e2e8f0; font-family: system-ui, sans-serif; font-size: 14px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; transition: background .18s, border-color .18s; }
         .lr-google:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.16); }
 
         .lr-or { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
@@ -645,12 +645,12 @@ export default function LoginPage() {
         .lr-field { margin-bottom: 16px; }
         .lr-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
         .lr-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.3); font-weight: 600; }
-        .lr-forgot { font-size: 11px; color: rgba(255,255,255,0.25); background: none; border: none; cursor: pointer; padding: 0; transition: color .15s; font-family: 'DM Sans', sans-serif; }
+        .lr-forgot { font-size: 11px; color: rgba(255,255,255,0.25); background: none; border: none; cursor: pointer; padding: 0; transition: color .15s; font-family: system-ui, sans-serif; }
         .lr-forgot:hover { color: rgba(255,255,255,0.55); }
         .lr-forgot.active { color: #dc2626; }
 
         .lr-input-wrap { position: relative; }
-        .lr-input { width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 12px 14px; color: #fff; font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none; transition: border-color .2s, background .2s; appearance: none; }
+        .lr-input { width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 12px 14px; color: #fff; font-family: system-ui, sans-serif; font-size: 14px; outline: none; transition: border-color .2s, background .2s; appearance: none; }
         .lr-input::placeholder { color: rgba(255,255,255,0.1); }
         .lr-input:focus { border-color: rgba(220,38,38,0.5); background: rgba(220,38,38,0.03); }
         .lr-input.pr { padding-right: 42px; }
@@ -662,7 +662,7 @@ export default function LoginPage() {
         .lr-magic { background: rgba(251,191,36,0.05); border: 1px solid rgba(251,191,36,0.15); border-radius: 8px; padding: 14px; margin-bottom: 14px; }
         .lr-magic-title { font-size: 12px; color: rgba(251,191,36,0.9); font-weight: 600; margin-bottom: 4px; }
         .lr-magic-body { font-size: 11.5px; color: rgba(251,191,36,0.55); line-height: 1.55; margin-bottom: 10px; }
-        .lr-magic-input { width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 6px; padding: 9px 12px; color: #fff; font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; margin-bottom: 8px; }
+        .lr-magic-input { width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 6px; padding: 9px 12px; color: #fff; font-family: system-ui, sans-serif; font-size: 13px; outline: none; margin-bottom: 8px; }
         .lr-magic-btn { width: 100%; padding: 10px; background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.22); border-radius: 6px; color: #fbbf24; font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 2px; cursor: pointer; transition: background .15s; }
         .lr-magic-btn:hover:not(:disabled) { background: rgba(251,191,36,0.18); }
         .lr-magic-btn:disabled { opacity: 0.5; cursor: not-allowed; }

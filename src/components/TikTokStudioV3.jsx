@@ -1869,7 +1869,7 @@ function PInput({ value, onChange, placeholder }) {
         border: "1px solid rgba(255,255,255,0.08)",
         borderRadius: 10,
         color: "rgba(255,255,255,0.9)",
-        fontFamily: "'DM Sans',sans-serif",
+        fontFamily: "system-ui,sans-serif",
         fontSize: 12,
         outline: "none",
         boxSizing: "border-box",
@@ -3062,7 +3062,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 border: "1px solid rgba(255,255,255,0.08)",
                 borderRadius: 7,
                 color: "#fff",
-                fontFamily: "'DM Sans',sans-serif",
+                fontFamily: "system-ui,sans-serif",
                 fontSize: 11,
                 outline: "none",
                 boxSizing: "border-box",
@@ -3092,7 +3092,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 border: "1px solid rgba(255,255,255,0.08)",
                 borderRadius: 7,
                 color: "#fff",
-                fontFamily: "'DM Sans',sans-serif",
+                fontFamily: "system-ui,sans-serif",
                 fontSize: 11,
                 outline: "none",
                 boxSizing: "border-box",
@@ -3987,7 +3987,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
             border: "1px solid rgba(220,38,38,0.22)",
             borderRadius: 9,
             color: "#fff",
-            fontFamily: "'DM Sans',sans-serif",
+            fontFamily: "system-ui,sans-serif",
             fontSize: 12,
             outline: "none",
             opacity: aiAtLimit ? 0.4 : 1,
@@ -4222,7 +4222,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
           border: "1px solid rgba(255,255,255,0.08)",
           borderRadius: 8,
           color: "#fff",
-          fontFamily: "'DM Sans',sans-serif",
+          fontFamily: "system-ui,sans-serif",
           fontSize: 12,
           outline: "none",
           boxSizing: "border-box",
@@ -4457,7 +4457,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
             flex: 1,
             padding: "8px 2px",
             border: "none",
-            fontFamily: "'DM Sans',sans-serif",
+            fontFamily: "system-ui,sans-serif",
             borderBottom: `2px solid ${activeTab === t.id ? "#2563eb" : "transparent"}`,
             background: "transparent",
             color: activeTab === t.id ? "#60a5fa" : "rgba(255,255,255,0.35)",
@@ -4818,7 +4818,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 border: "1px solid rgba(255,255,255,0.1)",
                 borderRadius: 8,
                 color: "rgba(255,255,255,0.9)",
-                fontFamily: "'DM Sans',sans-serif",
+                fontFamily: "system-ui,sans-serif",
                 fontSize: 12,
                 outline: "none",
               }}
@@ -4854,7 +4854,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
           background: "#131620",
           display: "flex",
           flexDirection: "column",
-          fontFamily: "'DM Sans',sans-serif",
+          fontFamily: "system-ui,sans-serif",
           overflow: "hidden",
           touchAction: "pan-y",
         }}
@@ -5182,7 +5182,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 letterSpacing: "0.04em",
                 transition: "color 0.15s, background 0.15s",
                 padding: 0,
-                fontFamily: "'DM Sans',sans-serif",
+                fontFamily: "system-ui,sans-serif",
               }}
             >
               {item.icon}
@@ -5221,7 +5221,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
             "0 32px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.07)",
           display: "flex",
           flexDirection: "column",
-          fontFamily: "'DM Sans',sans-serif",
+          fontFamily: "system-ui,sans-serif",
         }}
       >
         {/* ── TOP HEADER ─────────────────────────────────────────── */}

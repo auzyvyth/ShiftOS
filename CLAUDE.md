@@ -47,7 +47,7 @@ Project ID: lemdkdizdlcirhbzqlos
 ## Design system
 - Background: #080C14 / bg-gray-950
 - Accent: red-600 / #dc2626
-- Font: DM Sans (body), Bebas Neue (display)
+- Font: system-ui (body — native OS font, no webfont), Bebas Neue (display)
 - Cards: bg-gray-900, border-gray-800
 - Public marketplace surfaces: read `DESIGN.md` (tokens, scales, grid, anti-slop rules) before any public-facing UI change.
 

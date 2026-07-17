@@ -314,7 +314,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-      style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(4px)', fontFamily: "'DM Sans',sans-serif" }}
+      style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(4px)', fontFamily: "system-ui,sans-serif" }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div
@@ -427,7 +427,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                           background: selectedListing?.id === l.id ? 'rgba(220,38,38,0.08)' : 'none',
                           border: 'none',
                           borderBottom: i < filteredResults.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
-                          cursor: 'pointer', fontFamily: "'DM Sans',sans-serif",
+                          cursor: 'pointer', fontFamily: "system-ui,sans-serif",
                         }}
                         onMouseEnter={e => { if (selectedListing?.id !== l.id) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
                         onMouseLeave={e => { if (selectedListing?.id !== l.id) e.currentTarget.style.background = 'none'; }}
@@ -567,7 +567,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                       background: !form.badge ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)',
                       border: `1px solid ${!form.badge ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)'}`,
                       color: !form.badge ? 'white' : '#6b7280',
-                      cursor: 'pointer', fontFamily: "'DM Sans',sans-serif",
+                      cursor: 'pointer', fontFamily: "system-ui,sans-serif",
                     }}
                   >
                     None
@@ -584,7 +584,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                           background: active ? bs.bg : 'rgba(255,255,255,0.04)',
                           border: `1px solid ${active ? bs.border : 'rgba(255,255,255,0.08)'}`,
                           color: active ? bs.color : '#6b7280',
-                          cursor: 'pointer', fontFamily: "'DM Sans',sans-serif",
+                          cursor: 'pointer', fontFamily: "system-ui,sans-serif",
                         }}
                       >
                         {b}
@@ -629,7 +629,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                       <button
                         onClick={() => setImageOverride(true)}
                         className="text-xs text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg"
-                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
+                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', fontFamily: "system-ui,sans-serif" }}
                       >
                         Change
                       </button>
@@ -719,7 +719,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                     border: `1px dashed ${form.stats.length >= 6 ? 'rgba(255,255,255,0.06)' : 'rgba(220,38,38,0.3)'}`,
                     color: form.stats.length >= 6 ? '#1f2937' : '#ef4444',
                     cursor: form.stats.length >= 6 ? 'not-allowed' : 'pointer',
-                    fontFamily: "'DM Sans',sans-serif",
+                    fontFamily: "system-ui,sans-serif",
                   }}
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -750,7 +750,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
           <button
             onClick={onClose}
             className="flex-1 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all"
-            style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'none', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
+            style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'none', cursor: 'pointer', fontFamily: "system-ui,sans-serif" }}
           >
             Cancel
           </button>
@@ -762,7 +762,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
               flex: 2,
               background: (saving || (attempted && !isValid)) ? 'rgba(220,38,38,0.35)' : 'linear-gradient(135deg,#dc2626,#b91c1c)',
               boxShadow: (saving || (attempted && !isValid)) ? 'none' : '0 2px 10px rgba(220,38,38,0.28)',
-              border: 'none', cursor: saving ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans',sans-serif",
+              border: 'none', cursor: saving ? 'not-allowed' : 'pointer', fontFamily: "system-ui,sans-serif",
             }}
           >
             {saving ? (

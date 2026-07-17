@@ -109,7 +109,7 @@ export default function AISalesManager({ snapshot, dealerName }) {
   }
 
   return (
-    <div style={{ fontFamily: 'DM Sans, sans-serif', color: '#e5e7eb', background: '#0B1016', border: '1px solid #1c232e', borderRadius: 16, padding: 'clamp(14px, 3vw, 22px)' }}>
+    <div style={{ fontFamily: 'system-ui, sans-serif', color: '#e5e7eb', background: '#0B1016', border: '1px solid #1c232e', borderRadius: 16, padding: 'clamp(14px, 3vw, 22px)' }}>
       {/* Header */}
       <div
         style={{
@@ -356,7 +356,7 @@ export default function AISalesManager({ snapshot, dealerName }) {
             color: '#f9fafb',
             resize: 'none',
             outline: 'none',
-            fontFamily: 'DM Sans, sans-serif',
+            fontFamily: 'system-ui, sans-serif',
           }}
         />
         <button

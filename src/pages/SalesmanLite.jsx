@@ -301,7 +301,7 @@ function PrevMonthModal({ open, onClose, monthLabel, commission, count, trendPct
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: 24, maxWidth: 340, width: "100%", fontFamily: "'DM Sans',sans-serif" }}
+        style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: 24, maxWidth: 340, width: "100%", fontFamily: "system-ui,sans-serif" }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
           <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{monthLabel}</p>
@@ -3309,7 +3309,7 @@ export default function SalesmanLite() {
                       padding: "10px 13px",
                       fontSize: 13,
                       fontWeight: filterStatus === key ? 600 : 400,
-                      fontFamily: "'DM Sans', sans-serif",
+                      fontFamily: "system-ui, sans-serif",
                       color: filterStatus === key ? "#f9fafb" : "#4b5563",
                       borderBottom: filterStatus === key ? "2px solid #dc2626" : "2px solid transparent",
                       marginBottom: -1,
@@ -3956,7 +3956,7 @@ export default function SalesmanLite() {
           display: "flex",
           alignItems: "center",
           gap: 8,
-          fontFamily: "'DM Sans', sans-serif",
+          fontFamily: "system-ui, sans-serif",
         }}
       >
         {label}
@@ -3992,7 +3992,7 @@ export default function SalesmanLite() {
               overflow: "hidden",
               display: "flex",
               flexDirection: "column",
-              fontFamily: "'DM Sans', sans-serif",
+              fontFamily: "system-ui, sans-serif",
             }}
           >
             <button
@@ -4384,7 +4384,7 @@ export default function SalesmanLite() {
                             ? "2px solid #ef4444"
                             : "2px solid transparent",
                         cursor: "pointer",
-                        fontFamily: "'DM Sans', sans-serif",
+                        fontFamily: "system-ui, sans-serif",
                       }}
                     >
                       {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -5415,7 +5415,7 @@ export default function SalesmanLite() {
               {/* backdrop */}
               <div onClick={close} style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
               {/* panel */}
-              <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 50, width: 400, maxWidth: "100vw", background: "#0d1117", borderLeft: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", fontFamily: "'DM Sans', sans-serif" }}>
+              <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 50, width: 400, maxWidth: "100vw", background: "#0d1117", borderLeft: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", fontFamily: "system-ui, sans-serif" }}>
 
                 {/* header */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
@@ -5953,7 +5953,7 @@ export default function SalesmanLite() {
                 type="datetime-local"
                 value={rescheduleDate}
                 onChange={(e) => setRescheduleDate(e.target.value)}
-                style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", marginBottom: 8 }}
+                style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "system-ui, sans-serif", marginBottom: 8 }}
               />
               <div style={{ display: "flex", gap: 6 }}>
                 <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }}
@@ -6245,7 +6245,7 @@ export default function SalesmanLite() {
       padding: "10px 12px",
       outline: "none",
       boxSizing: "border-box",
-      fontFamily: "'DM Sans', sans-serif",
+      fontFamily: "system-ui, sans-serif",
     };
 
     // Strip the country code AND any leading trunk 0 — a MY mobile under +60 is
@@ -6572,7 +6572,7 @@ export default function SalesmanLite() {
             padding: "10px 12px",
             outline: "none",
             boxSizing: "border-box",
-            fontFamily: "'DM Sans', sans-serif",
+            fontFamily: "system-ui, sans-serif",
           }}
         />
         <button
@@ -6751,7 +6751,7 @@ export default function SalesmanLite() {
                       padding: "9px 12px",
                       outline: "none",
                       boxSizing: "border-box",
-                      fontFamily: "'DM Sans', sans-serif",
+                      fontFamily: "system-ui, sans-serif",
                     }}
                   />
                 </div>
@@ -6763,7 +6763,7 @@ export default function SalesmanLite() {
                 <select
                   value={addLeadForm.car_listing_id}
                   onChange={(e) => setAddLeadForm((p) => ({ ...p, car_listing_id: e.target.value }))}
-                  style={{ width: "100%", background: "#111827", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "9px 12px", outline: "none", fontFamily: "'DM Sans', sans-serif" }}
+                  style={{ width: "100%", background: "#111827", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "9px 12px", outline: "none", fontFamily: "system-ui, sans-serif" }}
                 >
                   <option value="">— no car selected —</option>
                   {myListings.filter((c) => c.status !== "sold").map((c) => (
@@ -6798,7 +6798,7 @@ export default function SalesmanLite() {
                     fontSize: 13,
                     padding: "9px 12px",
                     outline: "none",
-                    fontFamily: "'DM Sans', sans-serif",
+                    fontFamily: "system-ui, sans-serif",
                   }}
                 >
                   <option value="">— select state —</option>
@@ -7055,7 +7055,7 @@ export default function SalesmanLite() {
               padding: "10px 12px",
               outline: "none",
               boxSizing: "border-box",
-              fontFamily: "'DM Sans', sans-serif",
+              fontFamily: "system-ui, sans-serif",
               resize: "vertical",
               lineHeight: 1.5,
             }}
@@ -7364,7 +7364,7 @@ export default function SalesmanLite() {
         display: "flex",
         flexDirection: isMobile ? "column" : "row",
         minHeight: "100vh",
-        fontFamily: "'DM Sans', sans-serif",
+        fontFamily: "system-ui, sans-serif",
         color: "#fff",
       }}
     >
@@ -7372,7 +7372,7 @@ export default function SalesmanLite() {
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
         @keyframes pulse-green{ 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.45;transform:scale(0.8)} }
         @keyframes live-glow{ 0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.4)} 50%{box-shadow:0 0 0 5px rgba(16,185,129,0)} }
       `}</style>
@@ -8127,7 +8127,7 @@ export default function SalesmanLite() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: 24, maxWidth: 340, width: "100%", fontFamily: "'DM Sans', sans-serif" }}
+            style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: 24, maxWidth: 340, width: "100%", fontFamily: "system-ui, sans-serif" }}
           >
             {/* Header */}
             <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 16 }}>
@@ -8371,7 +8371,7 @@ export default function SalesmanLite() {
         const name = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : "this listing";
         return (
           <div onClick={() => setBoostCarId(null)} style={{ position: "fixed", inset: 0, zIndex: 9000, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-            <div onClick={e => e.stopPropagation()} style={{ background: "#0d1117", border: "1px solid rgba(168,85,247,0.3)", borderRadius: 16, padding: 24, maxWidth: 320, width: "100%", fontFamily: "'DM Sans',sans-serif" }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: "#0d1117", border: "1px solid rgba(168,85,247,0.3)", borderRadius: 16, padding: 24, maxWidth: 320, width: "100%", fontFamily: "system-ui,sans-serif" }}>
               <div style={{ textAlign: "center", marginBottom: 16 }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>⚡</div>
                 <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#e5e7eb" }}>Boost this listing</p>

@@ -15,7 +15,7 @@ export default function DarkSelect({ value, onChange, options, placeholder }) {
           fontSize: '12px', fontWeight: '500',
           appearance: 'none', WebkitAppearance: 'none',
           cursor: 'pointer', outline: 'none',
-          fontFamily: "'DM Sans',sans-serif",
+          fontFamily: "system-ui,sans-serif",
         }}
       >
         <option value="">{placeholder}</option>

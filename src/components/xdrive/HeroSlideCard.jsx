@@ -34,7 +34,7 @@ export default function HeroSlideCard({ slide, onEdit, onDelete, onToggle }) {
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 14,
-    fontFamily: "'DM Sans',sans-serif",
+    fontFamily: "system-ui,sans-serif",
     zIndex: isDragging ? 10 : 'auto',
   };
 
@@ -217,7 +217,7 @@ export default function HeroSlideCard({ slide, onEdit, onDelete, onToggle }) {
                 background: '#fff', border: '1px solid #e5e7eb',
                 color: '#6b7280', borderRadius: 6, padding: '2px 9px', fontSize: 12,
                 cursor: 'pointer', transition: 'color 0.12s, border-color 0.12s',
-                fontFamily: "'DM Sans',sans-serif",
+                fontFamily: "system-ui,sans-serif",
               }}
               onMouseEnter={e => { e.currentTarget.style.color = '#111827'; e.currentTarget.style.borderColor = '#d1d5db'; }}
               onMouseLeave={e => { e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.borderColor = '#e5e7eb'; }}
@@ -230,7 +230,7 @@ export default function HeroSlideCard({ slide, onEdit, onDelete, onToggle }) {
                 background: 'linear-gradient(135deg,#dc2626,#b91c1c)', border: 'none',
                 color: 'white', borderRadius: 6, padding: '2px 9px',
                 fontSize: 12, cursor: 'pointer', fontWeight: 600,
-                fontFamily: "'DM Sans',sans-serif",
+                fontFamily: "system-ui,sans-serif",
               }}
             >
               Confirm

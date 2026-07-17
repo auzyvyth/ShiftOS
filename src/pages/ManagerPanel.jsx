@@ -45,7 +45,7 @@ const S = {
     fontSize: 13,
     color: "#f0f2f5",
     outline: "none",
-    fontFamily: "'DM Sans',sans-serif",
+    fontFamily: "system-ui,sans-serif",
     width: "100%",
     boxSizing: "border-box",
   },
@@ -58,7 +58,7 @@ const S = {
     fontWeight: 600,
     color: ACCENT,
     cursor: "pointer",
-    fontFamily: "'DM Sans',sans-serif",
+    fontFamily: "system-ui,sans-serif",
     display: "inline-flex",
     alignItems: "center",
     gap: 5,
@@ -72,7 +72,7 @@ const S = {
     fontWeight: 600,
     color: "#fff",
     cursor: "pointer",
-    fontFamily: "'DM Sans',sans-serif",
+    fontFamily: "system-ui,sans-serif",
     display: "inline-flex",
     alignItems: "center",
     gap: 6,
@@ -443,7 +443,7 @@ export default function ManagerPanel() {
         style={{
           width: "100%",
           borderCollapse: "collapse",
-          fontFamily: "'DM Sans',sans-serif",
+          fontFamily: "system-ui,sans-serif",
         }}
       >
         <thead>
@@ -629,7 +629,7 @@ export default function ManagerPanel() {
                           border: "1px solid rgba(74,222,128,0.2)",
                           color: "#4ade80",
                           cursor: "pointer",
-                          fontFamily: "'DM Sans',sans-serif",
+                          fontFamily: "system-ui,sans-serif",
                         }}
                       >
                         Confirm
@@ -646,7 +646,7 @@ export default function ManagerPanel() {
                           border: "1px solid rgba(107,114,128,0.18)",
                           color: "#6b7280",
                           cursor: "pointer",
-                          fontFamily: "'DM Sans',sans-serif",
+                          fontFamily: "system-ui,sans-serif",
                         }}
                       >
                         Cancel
@@ -695,7 +695,7 @@ export default function ManagerPanel() {
           justifyContent: "center",
         }}
       >
-        <p style={{ color: "#6b7280", fontFamily: "'DM Sans',sans-serif" }}>
+        <p style={{ color: "#6b7280", fontFamily: "system-ui,sans-serif" }}>
           Loading...
         </p>
       </div>
@@ -707,7 +707,7 @@ export default function ManagerPanel() {
       style={{
         minHeight: "100vh",
         background: "#05070e",
-        fontFamily: "'DM Sans',sans-serif",
+        fontFamily: "system-ui,sans-serif",
         color: "#f0f2f5",
       }}
     >
@@ -833,7 +833,7 @@ export default function ManagerPanel() {
                   border: "1px solid rgba(255,255,255,0.08)",
                   borderRadius: 12,
                   boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
-                  fontFamily: "'DM Sans',sans-serif",
+                  fontFamily: "system-ui,sans-serif",
                 }}
               >
                 <div
@@ -977,7 +977,7 @@ export default function ManagerPanel() {
               fontSize: 13,
               fontWeight: activeNav === id ? 600 : 400,
               cursor: "pointer",
-              fontFamily: "'DM Sans',sans-serif",
+              fontFamily: "system-ui,sans-serif",
               display: "flex",
               alignItems: "center",
               gap: 6,
@@ -1358,7 +1358,7 @@ export default function ManagerPanel() {
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  fontFamily: "'DM Sans',sans-serif",
+                  fontFamily: "system-ui,sans-serif",
                 }}
               >
                 <thead>
@@ -1551,7 +1551,7 @@ export default function ManagerPanel() {
                                   border: "1px solid rgba(255,255,255,0.08)",
                                   color: assignee ? "#f0f2f5" : "#4b5563",
                                   cursor: "pointer",
-                                  fontFamily: "'DM Sans',sans-serif",
+                                  fontFamily: "system-ui,sans-serif",
                                 }}
                               >
                                 {assignee ? assignee.full_name : "Unassigned"}
@@ -1594,7 +1594,7 @@ export default function ManagerPanel() {
                                           fontSize: 12,
                                           cursor: "pointer",
                                           textAlign: "left",
-                                          fontFamily: "'DM Sans',sans-serif",
+                                          fontFamily: "system-ui,sans-serif",
                                           display: "flex",
                                           alignItems: "center",
                                           gap: 6,
@@ -1623,7 +1623,7 @@ export default function ManagerPanel() {
                                           fontSize: 12,
                                           cursor: "pointer",
                                           textAlign: "left",
-                                          fontFamily: "'DM Sans',sans-serif",
+                                          fontFamily: "system-ui,sans-serif",
                                         }}
                                       >
                                         {s.full_name}
@@ -2043,7 +2043,7 @@ export default function ManagerPanel() {
                                     borderRadius: 4,
                                     padding: "1px 4px",
                                     outline: "none",
-                                    fontFamily: "'DM Sans',sans-serif",
+                                    fontFamily: "system-ui,sans-serif",
                                     cursor: "pointer",
                                     flex: 1,
                                     minWidth: 0,
@@ -2081,7 +2081,7 @@ export default function ManagerPanel() {
                                       border: "1px solid rgba(249,115,22,0.2)",
                                       color: ACCENT,
                                       cursor: "pointer",
-                                      fontFamily: "'DM Sans',sans-serif",
+                                      fontFamily: "system-ui,sans-serif",
                                     }}
                                   >
                                     → {nextStage.replace("_", " ")}
@@ -2099,7 +2099,7 @@ export default function ManagerPanel() {
                                     border: "1px solid rgba(74,222,128,0.2)",
                                     color: "#4ade80",
                                     cursor: "pointer",
-                                    fontFamily: "'DM Sans',sans-serif",
+                                    fontFamily: "system-ui,sans-serif",
                                   }}
                                 >
                                   Won
@@ -2116,7 +2116,7 @@ export default function ManagerPanel() {
                                     border: "1px solid rgba(107,114,128,0.18)",
                                     color: "#6b7280",
                                     cursor: "pointer",
-                                    fontFamily: "'DM Sans',sans-serif",
+                                    fontFamily: "system-ui,sans-serif",
                                   }}
                                 >
                                   Lost
@@ -2224,7 +2224,7 @@ export default function ManagerPanel() {
                   style={{
                     width: "100%",
                     borderCollapse: "collapse",
-                    fontFamily: "'DM Sans',sans-serif",
+                    fontFamily: "system-ui,sans-serif",
                   }}
                 >
                   <thead>
@@ -2469,7 +2469,7 @@ export default function ManagerPanel() {
                               <button
                                 onClick={() => handleReject(listing.id)}
                                 disabled={!rejectReason.trim() || isActioning}
-                                style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 700, background: rejectReason.trim() ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.04)", border: rejectReason.trim() ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(255,255,255,0.08)", color: rejectReason.trim() ? "#f87171" : "#374151", cursor: rejectReason.trim() ? "pointer" : "not-allowed", fontFamily: "'DM Sans',sans-serif", opacity: isActioning ? 0.6 : 1 }}
+                                style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 700, background: rejectReason.trim() ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.04)", border: rejectReason.trim() ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(255,255,255,0.08)", color: rejectReason.trim() ? "#f87171" : "#374151", cursor: rejectReason.trim() ? "pointer" : "not-allowed", fontFamily: "system-ui,sans-serif", opacity: isActioning ? 0.6 : 1 }}
                               >
                                 Confirm Reject
                               </button>
@@ -2489,7 +2489,7 @@ export default function ManagerPanel() {
                           </button>
                           <button
                             onClick={() => setRejectingId(listing.id)}
-                            style={{ fontSize: 12, fontWeight: 600, padding: "7px 14px", borderRadius: 8, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171", cursor: "pointer", fontFamily: "'DM Sans',sans-serif", display: "inline-flex", alignItems: "center", gap: 5 }}
+                            style={{ fontSize: 12, fontWeight: 600, padding: "7px 14px", borderRadius: 8, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171", cursor: "pointer", fontFamily: "system-ui,sans-serif", display: "inline-flex", alignItems: "center", gap: 5 }}
                           >
                             <X style={{ width: 12, height: 12 }} />
                             Reject
@@ -2530,7 +2530,7 @@ export default function ManagerPanel() {
 
             {/* Table */}
             <div style={{ ...S.card, overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "'DM Sans',sans-serif" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "system-ui,sans-serif" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                     {["Customer", "Phone", "Car Bought", "Purchase Date", "Road Tax", "Insurance", "Actions"].map(h => (
@@ -2599,7 +2599,7 @@ export default function ManagerPanel() {
             {/* Edit drawer */}
             {editingCustomer && (
               <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 20 }}>
-                <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 24, width: "100%", maxWidth: 440, fontFamily: "'DM Sans',sans-serif" }}>
+                <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 24, width: "100%", maxWidth: 440, fontFamily: "system-ui,sans-serif" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                     <p style={{ fontSize: 15, fontWeight: 600, color: "#f0f2f5", margin: 0 }}>{editingCustomer.name}</p>
                     <button onClick={() => setEditingCustomer(null)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer" }}><X style={{ width: 18, height: 18 }} /></button>
@@ -2633,7 +2633,7 @@ export default function ManagerPanel() {
                     />
                   </div>
                   <div style={{ display: "flex", gap: 10 }}>
-                    <button onClick={() => setEditingCustomer(null)} style={{ flex: 1, padding: 10, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>Cancel</button>
+                    <button onClick={() => setEditingCustomer(null)} style={{ flex: 1, padding: 10, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", fontFamily: "system-ui,sans-serif" }}>Cancel</button>
                     <button onClick={handleSaveCustomer} disabled={customerSaving} style={{ ...S.btnPrimary, flex: 1, justifyContent: "center", opacity: customerSaving ? 0.6 : 1 }}>
                       {customerSaving ? "Saving…" : "Save"}
                     </button>
@@ -2668,7 +2668,7 @@ export default function ManagerPanel() {
               padding: 24,
               width: "100%",
               maxWidth: 420,
-              fontFamily: "'DM Sans',sans-serif",
+              fontFamily: "system-ui,sans-serif",
             }}
           >
             <div
@@ -2722,7 +2722,7 @@ export default function ManagerPanel() {
                   border: "1px solid rgba(255,255,255,0.08)",
                   color: "#9ca3af",
                   cursor: "pointer",
-                  fontFamily: "'DM Sans',sans-serif",
+                  fontFamily: "system-ui,sans-serif",
                 }}
               >
                 Cancel
@@ -2743,7 +2743,7 @@ export default function ManagerPanel() {
                   color: "#fff",
                   fontWeight: 600,
                   cursor: "pointer",
-                  fontFamily: "'DM Sans',sans-serif",
+                  fontFamily: "system-ui,sans-serif",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -2812,7 +2812,7 @@ export default function ManagerPanel() {
                   fontWeight: 600,
                   color: "#f0f2f5",
                   margin: 0,
-                  fontFamily: "'DM Sans',sans-serif",
+                  fontFamily: "system-ui,sans-serif",
                 }}
               >
                 Add New Listing
