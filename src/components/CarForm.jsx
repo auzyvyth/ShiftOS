@@ -1089,6 +1089,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   const [draftId, setDraftId] = useState(null);
   const [imgProgress, setImgProgress] = useState([]);
   const [dupWarning, setDupWarning] = useState({ plate: null, vin: null });
+  // Cross-dealer clone signal: same VIN/plate live on another dealer's listing.
+  const [conflictWarning, setConflictWarning] = useState({ plate: null, vin: null });
   const [capError, setCapError] = useState(false);
   // entry shape: { name: string, status: 'uploading'|'done'|'error' }
   const DEFAULT_ORDER = STEPS.map((s) => s.id);
@@ -1102,12 +1104,25 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   // ── Duplicate plate/VIN detection ───────────────────────────────────────
   const checkDuplicate = async (field, value) => {
     const trimmed = value.trim().toUpperCase();
-    if (!trimmed || !dealerId) { setDupWarning(p => ({ ...p, [field]: null })); return; }
+    if (!trimmed || !dealerId) {
+      setDupWarning(p => ({ ...p, [field]: null }));
+      setConflictWarning(p => ({ ...p, [field]: null }));
+      return;
+    }
     const col = field === 'plate' ? 'plate_number' : 'vin_number';
     const query = supabase.from('car_listings').select('id, brand, model, year').eq('dealer_id', dealerId).ilike(col, trimmed);
     if (listing?.id) query.neq('id', listing.id);
     const { data } = await query.maybeSingle();
     setDupWarning(p => ({ ...p, [field]: data ? `Already exists: ${[data.brand, data.model, data.year].filter(Boolean).join(' ')}` : null }));
+
+    // Cross-dealer clone check: same VIN/plate live on a DIFFERENT dealer.
+    const { data: otherCount } = await supabase.rpc('count_other_dealer_vin_plate', {
+      p_field: field,
+      p_value: trimmed,
+      p_dealer_id: dealerId,
+      p_exclude_listing: listing?.id ?? null,
+    });
+    setConflictWarning(p => ({ ...p, [field]: (otherCount || 0) > 0 }));
   };
 
   // ── Draft save (new listings only, not edits) ────────────────────────────
@@ -2425,6 +2440,9 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               {dupWarning.plate && (
                 <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.plate}</p>
               )}
+              {conflictWarning.plate && (
+                <p className="text-xs text-red-600 mt-1 font-semibold">This plate is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
+              )}
             </Field>
             <Field label="VIN Number" hint="Vehicle Identification Number">
               <input
@@ -2437,6 +2455,9 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               />
               {dupWarning.vin && (
                 <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.vin}</p>
+              )}
+              {conflictWarning.vin && (
+                <p className="text-xs text-red-600 mt-1 font-semibold">This VIN is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
               )}
             </Field>
             </>
