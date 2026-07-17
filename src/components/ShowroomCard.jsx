@@ -217,10 +217,11 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
           </div>
         )}
 
-        {/* Price — vertically centred over the black image column (no gradient) */}
-        <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', padding: '0 8px', pointerEvents: 'none' }}>
-          {hasDiscount && <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.55)', textDecoration: 'line-through', lineHeight: 1, marginBottom: '2px', textShadow: '0 1px 3px rgba(0,0,0,0.7)' }}>RM {origPrice.toLocaleString('en-MY')}</div>}
-          <div style={{ fontSize: '15px', fontWeight: '800', color: isHot ? '#fca5a5' : '#ffffff', lineHeight: 1.05, letterSpacing: '-0.02em', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
+        {/* Price — solid black bar at the bottom of the image column, price
+            centred within the bar (Carlist-style), not floating over the car. */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, minHeight: 42, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 12px', background: '#000000', pointerEvents: 'none' }}>
+          {hasDiscount && <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.55)', textDecoration: 'line-through', lineHeight: 1, marginBottom: '2px' }}>RM {origPrice.toLocaleString('en-MY')}</div>}
+          <div style={{ fontSize: '15px', fontWeight: '800', color: isHot ? '#fca5a5' : '#ffffff', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
             {price ? 'RM ' + price.toLocaleString('en-MY') : 'P.O.R'}
           </div>
         </div>
