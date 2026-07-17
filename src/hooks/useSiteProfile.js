@@ -9,6 +9,7 @@ export function useSiteProfile() {
   const siteName = tenant?.site_name || tenant?.dealership || 'XDrive';
   const siteInitial = siteName.charAt(0).toUpperCase();
   const siteLogoUrl = tenant?.site_logo_url || '';
+  const isVerified = !!tenant?.is_verified;
 
   const waUrl = (msg) => {
     const phone = tenant?.whatsapp_number
@@ -17,5 +18,5 @@ export function useSiteProfile() {
     return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
   };
 
-  return { siteName, siteInitial, siteLogoUrl, waUrl, profile: tenant };
+  return { siteName, siteInitial, siteLogoUrl, isVerified, waUrl, profile: tenant };
 }

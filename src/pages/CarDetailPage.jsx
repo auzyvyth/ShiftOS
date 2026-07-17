@@ -1918,10 +1918,12 @@ export default function CarDetailPage() {
                     <p style={{ fontSize:13, color: th.text, fontWeight:600, marginBottom:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{displayName}</p>
                     <p style={{ fontSize:11, color: th.textSec }}>
                       {isAgent ? 'Independent Agent' : dealer ? (
-                        <span style={{ display:'inline-flex', alignItems:'center', gap:5 }}>
-                          <span style={{ width:6, height:6, borderRadius:'50%', background: isXdrive ? '#16a34a' : '#4ade80', display:'inline-block' }} />
-                          Verified Dealer
-                        </span>
+                        dealer.is_verified ? (
+                          <span style={{ display:'inline-flex', alignItems:'center', gap:4 }}>
+                            <ShieldCheck size={12} strokeWidth={2.5} style={{ color: isXdrive ? '#2563eb' : '#60a5fa' }} />
+                            Verified Dealer
+                          </span>
+                        ) : 'Dealer'
                       ) : 'Seller'}
                     </p>
                   </div>
@@ -3227,10 +3229,12 @@ export default function CarDetailPage() {
                     <p style={{ fontSize: 13, color: th.text, fontWeight: 600, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</p>
                     <p style={{ fontSize: 11, color: th.textSec }}>
                       {isAgent ? 'Independent Agent' : dealer ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: isXdrive ? '#16a34a' : '#4ade80', display: 'inline-block' }} />
-                          Verified Dealer
-                        </span>
+                        dealer.is_verified ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <ShieldCheck size={12} strokeWidth={2.5} style={{ color: isXdrive ? '#2563eb' : '#60a5fa' }} />
+                            Verified Dealer
+                          </span>
+                        ) : 'Dealer'
                       ) : 'Seller'}
                     </p>
                   </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, MessageCircle, Sparkles, Crown, ChevronDown, User, Store } from "lucide-react";
+import { Menu, X, MessageCircle, Sparkles, Crown, ChevronDown, User, Store, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useSiteProfile } from "../hooks/useSiteProfile";
@@ -339,7 +339,7 @@ export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
-  const { siteName, siteInitial, siteLogoUrl, waUrl } = useSiteProfile();
+  const { siteName, siteInitial, siteLogoUrl, isVerified, waUrl } = useSiteProfile();
 
   const isDashboard =
     location.pathname.startsWith("/dashboard") ||
@@ -479,10 +479,13 @@ export default function Header() {
               <div className="hdr-mark">{siteInitial}</div>
             )}
             <div className="hdr-logo-text">
-              <span className="hdr-logo-name">
+              <span className="hdr-logo-name" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                 {siteName}<span style={{ color: "#DC2626" }}>.</span>
+                {isVerified && (
+                  <ShieldCheck size={15} strokeWidth={2.5} style={{ color: "#60a5fa", flexShrink: 0 }} aria-label="Verified Dealer" />
+                )}
               </span>
-              <span className="hdr-logo-sub">Trusted Auto</span>
+              <span className="hdr-logo-sub">{isVerified ? "Verified Dealer" : "Trusted Auto"}</span>
             </div>
           </Link>
 
