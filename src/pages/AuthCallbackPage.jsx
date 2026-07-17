@@ -153,10 +153,10 @@ export default function AuthCallbackPage() {
       alignItems: 'center',
       justifyContent: 'center',
       gap: 20,
-      fontFamily: "'DM Sans', sans-serif",
+      fontFamily: "system-ui, sans-serif",
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
         @keyframes cb-pulse {
           0%, 100% { box-shadow: 0 0 20px rgba(220,38,38,0.4); }
           50% { box-shadow: 0 0 36px rgba(220,38,38,0.75), 0 0 60px rgba(220,38,38,0.15); }

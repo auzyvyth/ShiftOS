@@ -40,7 +40,7 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
   };
 
   return createPortal(
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, fontFamily: "'DM Sans',sans-serif" }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, fontFamily: "system-ui,sans-serif" }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 380, background: '#fff', borderRadius: 16, padding: '22px 20px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
         <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#111827' }}>Before you chat</p>
         <p style={{ margin: '4px 0 16px', fontSize: 13, color: '#6b7280', lineHeight: 1.5 }}>

@@ -101,7 +101,7 @@ function EngagementTooltip({ active, payload, label }) {
   const row = payload[0]?.payload || {};
   const total = ENG_SERIES.reduce((s, x) => s + (Number(row[x.key]) || 0), 0);
   return (
-    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 12px', boxShadow: '0 6px 24px rgba(15,23,42,0.12)', fontFamily: "'DM Sans',sans-serif", minWidth: 180 }}>
+    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 12px', boxShadow: '0 6px 24px rgba(15,23,42,0.12)', fontFamily: "system-ui,sans-serif", minWidth: 180 }}>
       <p style={{ fontSize: 12, fontWeight: 700, color: '#111827', margin: '0 0 8px' }}>{label}</p>
       {ENG_SERIES.map((s) => (
         <div key={s.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '2px 0' }}>
@@ -270,7 +270,7 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
   }, [slugStats]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, fontFamily: "'DM Sans',sans-serif", minWidth: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, fontFamily: "system-ui,sans-serif", minWidth: 0 }}>
 
       {/* ── Engagement Overview (chart on top) ─────────────────────────────────── */}
       <SectionShell>

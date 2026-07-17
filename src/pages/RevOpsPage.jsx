@@ -500,7 +500,7 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
   return (
     <div
       className="w-full space-y-6"
-      style={{ fontFamily: "'DM Sans',sans-serif" }}
+      style={{ fontFamily: "system-ui,sans-serif" }}
     >
       {/* Header */}
       <div>

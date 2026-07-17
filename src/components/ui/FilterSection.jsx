@@ -14,7 +14,7 @@ export default function FilterSection({ title, children, defaultOpen = true }) {
           background: 'none', border: 'none', cursor: 'pointer',
           padding: '14px 0 10px', color: 'white', fontSize: '12px', fontWeight: '700',
           textTransform: 'uppercase', letterSpacing: '0.1em',
-          fontFamily: "'DM Sans',sans-serif",
+          fontFamily: "system-ui,sans-serif",
         }}
       >
         {title}

@@ -88,7 +88,7 @@ function App() {
             background: "#111118",
             border: "1px solid rgba(255,255,255,0.08)",
             color: "#fff",
-            fontFamily: "'DM Sans',sans-serif",
+            fontFamily: "system-ui,sans-serif",
           },
         }}
       />

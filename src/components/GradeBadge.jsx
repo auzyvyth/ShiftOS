@@ -64,7 +64,7 @@ export default function GradeBadge({ auctionGrade, interiorGrade, size = 'sm' })
             fontSize: isLg ? '15px' : '11px',
             fontWeight: '800',
             letterSpacing: '0.02em',
-            fontFamily: "'DM Sans',sans-serif",
+            fontFamily: "system-ui,sans-serif",
           }}>
             {auctionGrade}
           </span>
@@ -77,7 +77,7 @@ export default function GradeBadge({ auctionGrade, interiorGrade, size = 'sm' })
             color: '#d1d5db',
             fontSize: isLg ? '13px' : '10px',
             fontWeight: '700',
-            fontFamily: "'DM Sans',sans-serif",
+            fontFamily: "system-ui,sans-serif",
           }}>
             {interiorGrade}
           </span>
@@ -88,7 +88,7 @@ export default function GradeBadge({ auctionGrade, interiorGrade, size = 'sm' })
           position: 'absolute', bottom: '100%', left: 0, marginBottom: 6,
           background: '#111827', color: '#f3f4f6', fontSize: 11, fontWeight: 600,
           padding: '5px 9px', borderRadius: 6, whiteSpace: 'nowrap', zIndex: 20,
-          boxShadow: '0 4px 14px rgba(0,0,0,0.3)', fontFamily: "'DM Sans',sans-serif",
+          boxShadow: '0 4px 14px rgba(0,0,0,0.3)', fontFamily: "system-ui,sans-serif",
         }}>
           Grade {auctionGrade || interiorGrade}: {cfg.tip}
         </div>

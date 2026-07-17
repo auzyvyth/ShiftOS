@@ -268,7 +268,7 @@ export default function LeadsPage() {
   const hasFilters = search || filterSource || filterAssigned;
 
   return (
-    <div className="flex flex-col" style={{ fontFamily: "'DM Sans',sans-serif" }}>
+    <div className="flex flex-col" style={{ fontFamily: "system-ui,sans-serif" }}>
       <style>{`
         .lp-filter-bar::-webkit-scrollbar { display: none; }
         .lp-stage-tabs::-webkit-scrollbar { display: none; }

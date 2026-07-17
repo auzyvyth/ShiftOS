@@ -819,7 +819,7 @@ export default function MindMapPage() {
         overflow: "hidden",
         cursor: "grab",
         userSelect: "none",
-        fontFamily: "'DM Sans', sans-serif",
+        fontFamily: "system-ui, sans-serif",
         position: "relative",
       }}
       onMouseDown={onMouseDown}
@@ -989,7 +989,7 @@ export default function MindMapPage() {
                   style={{
                     fontFamily: isRoot
                       ? "'Bebas Neue', sans-serif"
-                      : "'DM Sans', sans-serif",
+                      : "system-ui, sans-serif",
                     letterSpacing: isRoot ? 1 : 0,
                     pointerEvents: "none",
                   }}

@@ -594,7 +594,7 @@ export default function CarListingPage() {
     return (
       <>
         <Header />
-        <div style={{ background:'#F7F6F2', minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', fontFamily:"'DM Sans',sans-serif" }}>
+        <div style={{ background:'#F7F6F2', minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', fontFamily:"system-ui,sans-serif" }}>
           <Car size={36} color="#d1d5db" style={{ marginBottom:16 }}/>
           <p style={{ color:'#6b7280', fontSize:15, margin:'0 0 12px' }}>This dealer page doesn't exist.</p>
           <a href="https://xdrive.my" style={{ color:'#dc2626', fontSize:13, fontWeight:'600' }}>Browse all cars on XDrive</a>

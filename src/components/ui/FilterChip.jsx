@@ -14,7 +14,7 @@ export default function FilterChip({ label, active, onClick }) {
         fontSize: '12px', fontWeight: active ? '700' : '500',
         padding: '6px 12px', borderRadius: '8px', cursor: 'pointer',
         transition: 'all 0.15s ease',
-        fontFamily: "'DM Sans',sans-serif",
+        fontFamily: "system-ui,sans-serif",
       }}
     >
       {active && <Check size={10} />}

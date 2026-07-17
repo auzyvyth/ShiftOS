@@ -182,7 +182,7 @@ const STYLES = `
 
   *, *::before, *::after { box-sizing: border-box; }
 
-  body { background: #F7F8FA; color: #0F172A; font-family: 'DM Sans', sans-serif; }
+  body { background: #F7F8FA; color: #0F172A; font-family: system-ui, sans-serif; }
 
   /* ── Sidebar nav ── */
   .nav-item { border-left: 2px solid transparent; transition: all 0.15s; border-radius: 7px; }
@@ -2510,7 +2510,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
                       background: active ? '#f9fafb' : 'transparent',
                       color: active ? '#dc2626' : '#4b5563',
                       borderLeft: active ? '2px solid #dc2626' : '2px solid transparent',
-                      fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: active ? 600 : 400,
+                      fontFamily: 'system-ui, sans-serif', fontSize: 13, fontWeight: active ? 600 : 400,
                       transition: 'all 0.12s',
                     }}
                   >
@@ -3313,7 +3313,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
             {can('export_data') && <button
               onClick={exportAnalyticsCSV}
               disabled={eventsLoading || carStatsRows.length === 0}
-              style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, fontWeight:600, color:'#374151', background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:7, padding:'5px 10px', cursor: eventsLoading || carStatsRows.length === 0 ? 'not-allowed' : 'pointer', opacity: eventsLoading || carStatsRows.length === 0 ? 0.5 : 1, fontFamily:"'DM Sans',sans-serif" }}
+              style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, fontWeight:600, color:'#374151', background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:7, padding:'5px 10px', cursor: eventsLoading || carStatsRows.length === 0 ? 'not-allowed' : 'pointer', opacity: eventsLoading || carStatsRows.length === 0 ? 0.5 : 1, fontFamily:"system-ui,sans-serif" }}
               title="Export listing performance + salesman leaderboard as CSV"
             >
               <Download style={{ width:12, height:12 }} />
@@ -3332,7 +3332,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
             value={lpSearch}
             onChange={e => { setLpSearch(e.target.value); setLpVisible(20); }}
             placeholder="Search brand, model, variant, VIN, price or date…"
-            style={{ width:'100%', boxSizing:'border-box', paddingLeft:38, paddingRight:12, paddingTop:8, paddingBottom:8, border:'1px solid #e5e7eb', borderRadius:8, fontSize:13, color:'#111827', background:'#f9fafb', outline:'none', fontFamily:"'DM Sans',sans-serif" }}
+            style={{ width:'100%', boxSizing:'border-box', paddingLeft:38, paddingRight:12, paddingTop:8, paddingBottom:8, border:'1px solid #e5e7eb', borderRadius:8, fontSize:13, color:'#111827', background:'#f9fafb', outline:'none', fontFamily:"system-ui,sans-serif" }}
           />
         </div>
 
@@ -3565,13 +3565,13 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                 <div style={{ padding:'14px 20px', textAlign:'center', borderTop:'1px solid #f3f4f6', display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
                   <button
                     onClick={() => setLpVisible(v => v + 40)}
-                    style={{ padding:'8px 24px', borderRadius:8, background:'#f9fafb', border:'1px solid #e5e7eb', color:'#374151', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}
+                    style={{ padding:'8px 24px', borderRadius:8, background:'#f9fafb', border:'1px solid #e5e7eb', color:'#374151', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif" }}
                   >
                     Load more ({filtered.length - lpVisible} remaining)
                   </button>
                   <button
                     onClick={() => setLpVisible(filtered.length)}
-                    style={{ padding:'8px 24px', borderRadius:8, background:'#fff', border:'1px solid #e5e7eb', color:'#dc2626', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}
+                    style={{ padding:'8px 24px', borderRadius:8, background:'#fff', border:'1px solid #e5e7eb', color:'#dc2626', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif" }}
                   >
                     Show all {filtered.length}
                   </button>
@@ -4541,7 +4541,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                   background: 'none',
                   color: teamTab === role ? '#111827' : '#6b7280',
                   borderBottom: teamTab === role ? `2px solid ${color}` : '2px solid transparent',
-                  fontFamily: "'DM Sans', sans-serif",
+                  fontFamily: "system-ui, sans-serif",
                   transition: 'color 0.15s',
                   display: 'flex',
                   alignItems: 'center',
@@ -5214,7 +5214,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                         background: msgTarget === value ? `${color}18` : '#f9fafb',
                         color: msgTarget === value ? color : '#6b7280',
                         fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                        fontFamily: "'DM Sans',sans-serif",
+                        fontFamily: "system-ui,sans-serif",
                         display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.15s',
                       }}
                     >
@@ -5253,7 +5253,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                   width: '100%', boxSizing: 'border-box', resize: 'vertical',
                   background: '#f9fafb', border: '1px solid #e5e7eb',
                   borderRadius: 10, padding: '10px 12px', color: '#111827', fontSize: 13,
-                  fontFamily: "'DM Sans',sans-serif", outline: 'none', lineHeight: 1.6,
+                  fontFamily: "system-ui,sans-serif", outline: 'none', lineHeight: 1.6,
                   marginBottom: 12,
                 }}
               />
@@ -5264,7 +5264,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                   padding: '11px 16px', borderRadius: 10, cursor: 'pointer',
-                  fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 600,
+                  fontFamily: "system-ui,sans-serif", fontSize: 14, fontWeight: 600,
                   border: 'none', transition: 'all 0.15s',
                   ...(msgDone
                     ? { background: '#ecfdf5', color: '#15803d', border: '1px solid #86efac' }
@@ -5368,7 +5368,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                             border: `1px solid ${newRole === role ? color : '#e5e7eb'}`,
                             background: newRole === role ? `${color}18` : '#f9fafb',
                             cursor: 'pointer',
-                            fontFamily: "'DM Sans',sans-serif",
+                            fontFamily: "system-ui,sans-serif",
                             transition: 'all 0.15s',
                           }}
                         >
@@ -5590,28 +5590,28 @@ function DrawerDamageMap({ damageMap }) {
     <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'flex-start', marginTop: 16 }}>
       <svg viewBox="0 0 170 220" width={150} height={220} style={{ flexShrink: 0 }}>
         <rect x="42" y="6"   width="86" height="44" rx="6" fill={fill('hood')}        stroke={stroke('hood')}        strokeWidth="1.3"/>
-        <text x="85" y="33"  textAnchor="middle" fontSize="10" fill="#9ca3af" fontFamily="DM Sans,sans-serif">Hood</text>
+        <text x="85" y="33"  textAnchor="middle" fontSize="10" fill="#9ca3af" fontFamily="system-ui,sans-serif">Hood</text>
         <rect x="6"  y="6"   width="34" height="44" rx="5" fill={fill('front-left')}  stroke={stroke('front-left')}  strokeWidth="1.3"/>
-        <text x="23" y="23"  textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="DM Sans,sans-serif">FL</text>
-        <text x="23" y="34"  textAnchor="middle" fontSize="7" fill="#6b7280" fontFamily="DM Sans,sans-serif">Fender</text>
+        <text x="23" y="23"  textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="system-ui,sans-serif">FL</text>
+        <text x="23" y="34"  textAnchor="middle" fontSize="7" fill="#6b7280" fontFamily="system-ui,sans-serif">Fender</text>
         <rect x="130" y="6"  width="34" height="44" rx="5" fill={fill('front-right')} stroke={stroke('front-right')} strokeWidth="1.3"/>
-        <text x="147" y="23" textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="DM Sans,sans-serif">FR</text>
-        <text x="147" y="34" textAnchor="middle" fontSize="7" fill="#6b7280" fontFamily="DM Sans,sans-serif">Fender</text>
+        <text x="147" y="23" textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="system-ui,sans-serif">FR</text>
+        <text x="147" y="34" textAnchor="middle" fontSize="7" fill="#6b7280" fontFamily="system-ui,sans-serif">Fender</text>
         <rect x="6"  y="54"  width="32" height="80" rx="4" fill={fill('left')}        stroke={stroke('left')}        strokeWidth="1.3"/>
-        <text x="22" y="97"  textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="DM Sans,sans-serif" transform="rotate(-90,22,97)">Left</text>
+        <text x="22" y="97"  textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="system-ui,sans-serif" transform="rotate(-90,22,97)">Left</text>
         <rect x="132" y="54" width="32" height="80" rx="4" fill={fill('right')}       stroke={stroke('right')}       strokeWidth="1.3"/>
-        <text x="148" y="97" textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="DM Sans,sans-serif" transform="rotate(90,148,97)">Right</text>
+        <text x="148" y="97" textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="system-ui,sans-serif" transform="rotate(90,148,97)">Right</text>
         <rect x="40" y="54"  width="90" height="80" rx="4" fill={fill('roof')}        stroke={stroke('roof')}        strokeWidth="1.3"/>
-        <text x="85" y="98"  textAnchor="middle" fontSize="11" fill="#9ca3af" fontFamily="DM Sans,sans-serif">Roof</text>
+        <text x="85" y="98"  textAnchor="middle" fontSize="11" fill="#9ca3af" fontFamily="system-ui,sans-serif">Roof</text>
         <rect x="6"  y="138" width="32" height="36" rx="4" fill={fill('rear-left')}   stroke={stroke('rear-left')}   strokeWidth="1.3"/>
-        <text x="22" y="155" textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="DM Sans,sans-serif">RL</text>
-        <text x="22" y="166" textAnchor="middle" fontSize="7" fill="#6b7280" fontFamily="DM Sans,sans-serif">Qtr</text>
+        <text x="22" y="155" textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="system-ui,sans-serif">RL</text>
+        <text x="22" y="166" textAnchor="middle" fontSize="7" fill="#6b7280" fontFamily="system-ui,sans-serif">Qtr</text>
         <rect x="132" y="138" width="32" height="36" rx="4" fill={fill('rear-right')} stroke={stroke('rear-right')} strokeWidth="1.3"/>
-        <text x="148" y="155" textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="DM Sans,sans-serif">RR</text>
-        <text x="148" y="166" textAnchor="middle" fontSize="7" fill="#6b7280" fontFamily="DM Sans,sans-serif">Qtr</text>
+        <text x="148" y="155" textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="system-ui,sans-serif">RR</text>
+        <text x="148" y="166" textAnchor="middle" fontSize="7" fill="#6b7280" fontFamily="system-ui,sans-serif">Qtr</text>
         <rect x="40" y="138" width="90" height="36" rx="4" fill={fill('trunk')}       stroke={stroke('trunk')}       strokeWidth="1.3"/>
-        <text x="85" y="161" textAnchor="middle" fontSize="11" fill="#9ca3af" fontFamily="DM Sans,sans-serif">Trunk</text>
-        <text x="85" y="192" textAnchor="middle" fontSize="8" fill="#374151" fontFamily="DM Sans,sans-serif">▲ FRONT · REAR ▼</text>
+        <text x="85" y="161" textAnchor="middle" fontSize="11" fill="#9ca3af" fontFamily="system-ui,sans-serif">Trunk</text>
+        <text x="85" y="192" textAnchor="middle" fontSize="8" fill="#374151" fontFamily="system-ui,sans-serif">▲ FRONT · REAR ▼</text>
       </svg>
       <div style={{ flex: 1, minWidth: 140 }}>
         <p style={{ fontSize: 10, color: '#374151', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Legend</p>
@@ -5685,7 +5685,7 @@ function ListingDetailDrawer({
   const tabs = ['specs', 'features', 'options', ...(listing.is_recon ? ['recon'] : [])];
   const tabLabel = { specs: 'Specifications', features: 'Features', options: 'Options', recon: 'Recon', owner: 'Owner · P&L' };
 
-  const btnBase = { width: '100%', background: '#ffffff', borderRadius: 6, padding: '11px 14px', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.2s, border-color 0.2s', border: '1px solid #e5e7eb', fontFamily: "'DM Sans', sans-serif", color: '#374151' };
+  const btnBase = { width: '100%', background: '#ffffff', borderRadius: 6, padding: '11px 14px', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.2s, border-color 0.2s', border: '1px solid #e5e7eb', fontFamily: "system-ui, sans-serif", color: '#374151' };
 
   const specRows = [
     { k: 'Year',              v: listing.year || '—' },
@@ -5705,7 +5705,7 @@ function ListingDetailDrawer({
       >
         {/* Panel */}
         <div
-          style={{ position: 'relative', margin: isMobile ? 0 : '24px auto', maxWidth: isMobile ? '100vw' : 1100, width: isMobile ? '100vw' : 'calc(100vw - 48px)', height: isMobile ? '100dvh' : undefined, maxHeight: isMobile ? '100dvh' : 'calc(100vh - 48px)', background: '#FFFFFF', border: '1px solid #EAECF0', borderRadius: isMobile ? 0 : 8, overflow: 'hidden', display: 'flex', flexDirection: 'column', fontFamily: "'DM Sans', sans-serif" }}
+          style={{ position: 'relative', margin: isMobile ? 0 : '24px auto', maxWidth: isMobile ? '100vw' : 1100, width: isMobile ? '100vw' : 'calc(100vw - 48px)', height: isMobile ? '100dvh' : undefined, maxHeight: isMobile ? '100dvh' : 'calc(100vh - 48px)', background: '#FFFFFF', border: '1px solid #EAECF0', borderRadius: isMobile ? 0 : 8, overflow: 'hidden', display: 'flex', flexDirection: 'column', fontFamily: "system-ui, sans-serif" }}
           onClick={e => e.stopPropagation()}
         >
           {/* Close */}
@@ -5728,7 +5728,7 @@ function ListingDetailDrawer({
                     const on = key === 'owner' ? drawerTab === 'owner' : drawerTab !== 'owner';
                     return (
                       <button key={key} onClick={() => setDrawerTab(key === 'owner' ? 'owner' : 'specs')}
-                        style={{ flex: 1, padding: '8px 10px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: "'DM Sans',sans-serif", background: on ? '#fff' : 'transparent', color: on ? '#111827' : '#6b7280', boxShadow: on ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.15s' }}>
+                        style={{ flex: 1, padding: '8px 10px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: "system-ui,sans-serif", background: on ? '#fff' : 'transparent', color: on ? '#111827' : '#6b7280', boxShadow: on ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.15s' }}>
                         {label}
                       </button>
                     );
@@ -5837,7 +5837,7 @@ function ListingDetailDrawer({
                   <button
                     key={tab}
                     onClick={() => setDrawerTab(tab)}
-                    style={{ padding: '8px 16px', fontSize: 12, color: drawerTab === tab ? '#111827' : '#6b7280', borderBottom: drawerTab === tab ? '2px solid #ef4444' : '2px solid transparent', background: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'color 0.15s' }}
+                    style={{ padding: '8px 16px', fontSize: 12, color: drawerTab === tab ? '#111827' : '#6b7280', borderBottom: drawerTab === tab ? '2px solid #ef4444' : '2px solid transparent', background: 'none', cursor: 'pointer', fontFamily: "system-ui, sans-serif", transition: 'color 0.15s' }}
                   >
                     {tabLabel[tab]}
                   </button>
@@ -6094,7 +6094,7 @@ function ListingDetailDrawer({
       {calcOpen && (
         <div
           onClick={e => { if (e.target === e.currentTarget) setCalcOpen(false); }}
-          className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "'DM Sans',sans-serif" }}
+          className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "system-ui,sans-serif" }}
         >
           <div style={{ width: '100%', maxWidth: 860, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -7049,7 +7049,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                 background: 'none',
                 color: stockView === id ? '#f3f4f6' : '#6b7280',
                 borderBottom: stockView === id ? '2px solid #3b82f6' : '2px solid transparent',
-                fontFamily: "'DM Sans', sans-serif",
+                fontFamily: "system-ui, sans-serif",
                 transition: 'color 0.15s',
                 display: 'flex',
                 alignItems: 'center',
@@ -7075,13 +7075,13 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
               <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
                 <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: '#9ca3af', pointerEvents: 'none' }} />
                 <input value={stockSearch} onChange={e => setStockSearch(e.target.value)} placeholder="Search brand, model, plate, VIN…"
-                  style={{ width: '100%', padding: '8px 28px 8px 32px', fontSize: 13, borderRadius: 8, border: '1px solid #e5e7eb', outline: 'none', background: '#fff', color: '#111827', fontFamily: "'DM Sans',sans-serif" }} />
+                  style={{ width: '100%', padding: '8px 28px 8px 32px', fontSize: 13, borderRadius: 8, border: '1px solid #e5e7eb', outline: 'none', background: '#fff', color: '#111827', fontFamily: "system-ui,sans-serif" }} />
                 {stockSearch && (
                   <button onClick={() => setStockSearch('')} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', width: 18, height: 18, borderRadius: '50%', border: 'none', background: '#f3f4f6', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}><X style={{ width: 11, height: 11 }} /></button>
                 )}
               </div>
               <select value={stockSort} onChange={e => setStockSort(e.target.value)}
-                style={{ flexShrink: 0, padding: '8px 10px', fontSize: 12, fontWeight: 600, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#374151', cursor: 'pointer', outline: 'none', fontFamily: "'DM Sans',sans-serif", maxWidth: 150 }}>
+                style={{ flexShrink: 0, padding: '8px 10px', fontSize: 12, fontWeight: 600, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#374151', cursor: 'pointer', outline: 'none', fontFamily: "system-ui,sans-serif", maxWidth: 150 }}>
                 {STOCK_SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
@@ -7090,14 +7090,14 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                 const active = stockFilters.has(c.key);
                 return (
                   <button key={c.key} onClick={() => toggleStockFilter(c.key)}
-                    style={{ flexShrink: 0, fontSize: 11, fontWeight: 600, padding: '5px 11px', borderRadius: 14, cursor: 'pointer', border: `1px solid ${active ? '#dc2626' : '#e5e7eb'}`, background: active ? '#FEF2F2' : '#fff', color: active ? '#dc2626' : '#6b7280', whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif" }}>
+                    style={{ flexShrink: 0, fontSize: 11, fontWeight: 600, padding: '5px 11px', borderRadius: 14, cursor: 'pointer', border: `1px solid ${active ? '#dc2626' : '#e5e7eb'}`, background: active ? '#FEF2F2' : '#fff', color: active ? '#dc2626' : '#6b7280', whiteSpace: 'nowrap', fontFamily: "system-ui,sans-serif" }}>
                     {c.label}
                   </button>
                 );
               })}
               {(stockFilters.size > 0 || stockSearch) && (
                 <button onClick={() => { setStockFilters(new Set()); setStockSearch(''); }}
-                  style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '5px 11px', borderRadius: 14, cursor: 'pointer', border: '1px solid #e5e7eb', background: '#f9fafb', color: '#6b7280', whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif" }}>
+                  style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '5px 11px', borderRadius: 14, cursor: 'pointer', border: '1px solid #e5e7eb', background: '#f9fafb', color: '#6b7280', whiteSpace: 'nowrap', fontFamily: "system-ui,sans-serif" }}>
                   Clear all
                 </button>
               )}
@@ -7252,7 +7252,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
 
         const ACTION_BTN = (label, desc, color, bg, border, onClick) => (
           <button onClick={onClick}
-            style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', background: bg, border: `1px solid ${border}`, borderRadius: 10, cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: "'DM Sans',sans-serif", transition: 'opacity 0.15s' }}
+            style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', background: bg, border: `1px solid ${border}`, borderRadius: 10, cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: "system-ui,sans-serif", transition: 'opacity 0.15s' }}
             onMouseEnter={e => e.currentTarget.style.opacity = '0.8'} onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: 13, fontWeight: 700, color, margin: 0 }}>{label}</p>
@@ -7294,7 +7294,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                 maxHeight: isMobile ? '88vh' : '90vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
                 overscrollBehavior: 'contain',
                 boxShadow: '0 24px 80px rgba(0,0,0,0.28)',
-                fontFamily: "'DM Sans',sans-serif",
+                fontFamily: "system-ui,sans-serif",
               }}
             >
               {/* Drag handle pill — mobile only */}
@@ -8666,7 +8666,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
           ) : filteredDocs.length === 0 ? (
             <p className="text-gray-500 text-sm p-6">No documents match your search.</p>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "system-ui, sans-serif" }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                   {['Ref', 'Type', 'Buyer', 'Car', 'Status', 'Date', ''].map(h => (
@@ -8738,7 +8738,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                 <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Car Listing</label>
                 <div style={{ position: 'relative' }}>
                   <button type="button" onClick={() => setListingDropOpen(p => !p)}
-                    style={{ width: '100%', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', fontFamily: "'DM Sans', sans-serif" }}>
+                    style={{ width: '100%', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', fontFamily: "system-ui, sans-serif" }}>
                     {selectedListing ? (
                       <>
                         {selectedListing.images?.[0] ? (
@@ -8778,7 +8778,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                             <div style={{ padding: '12px 14px', fontSize: 13, color: '#9ca3af' }}>No listings match</div>
                           ) : filteredListings.map(l => (
                             <button key={l.id} type="button" onClick={() => handleListingSelect(l)}
-                              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: genForm.listing_id === l.id ? 'rgba(220,38,38,0.07)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: "'DM Sans', sans-serif" }}
+                              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: genForm.listing_id === l.id ? 'rgba(220,38,38,0.07)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: "system-ui, sans-serif" }}
                               onMouseEnter={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = '#f9fafb'; }}
                               onMouseLeave={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = 'transparent'; }}>
                               {l.images?.[0] ? (
@@ -8920,7 +8920,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                     ].map(([field, label]) => (
                       <label key={field} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '7px 10px', background: genForm[field] ? 'rgba(22,163,74,0.06)' : '#f9fafb', borderRadius: 7, border: `1px solid ${genForm[field] ? 'rgba(22,163,74,0.2)' : '#e5e7eb'}` }}>
                         <input type="checkbox" checked={genForm[field]} onChange={e => setGenForm(p => ({ ...p, [field]: e.target.checked }))} style={{ width: 15, height: 15, accentColor: '#16a34a', flexShrink: 0 }} />
-                        <span style={{ fontSize: 12, color: '#374151', fontFamily: "'DM Sans', sans-serif" }}>{label}</span>
+                        <span style={{ fontSize: 12, color: '#374151', fontFamily: "system-ui, sans-serif" }}>{label}</span>
                       </label>
                     ))}
                   </div>
@@ -8932,7 +8932,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                 <div style={{ paddingTop: 4, borderTop: '1px solid #e5e7eb' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: genForm.include_financing ? 12 : 0 }}>
                     <input type="checkbox" checked={genForm.include_financing} onChange={e => setGenForm(p => ({ ...p, include_financing: e.target.checked }))} style={{ width: 15, height: 15, accentColor: '#dc2626' }} />
-                    <span style={{ fontSize: 13, color: '#374151', fontFamily: "'DM Sans', sans-serif" }}>Include Financing Details</span>
+                    <span style={{ fontSize: 13, color: '#374151', fontFamily: "system-ui, sans-serif" }}>Include Financing Details</span>
                   </label>
                   {genForm.include_financing && (
                     <div className="space-y-3">
@@ -8960,7 +8960,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                   {encBlocked && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 10 }}>
                       <AlertTriangle style={{ width: 14, height: 14, color: '#dc2626', flexShrink: 0 }} />
-                      <span style={{ fontSize: 12, color: '#dc2626', fontFamily: "'DM Sans',sans-serif" }}>
+                      <span style={{ fontSize: 12, color: '#dc2626', fontFamily: "system-ui,sans-serif" }}>
                         This vehicle is marked <strong>Under HP</strong> in stock. Clear the encumbrance before issuing a Handover Checklist.
                       </span>
                     </div>
@@ -8968,7 +8968,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                   {linkedStock && linkedStock.encumbrance_status === 'unknown' && genForm.doc_type === 'Handover Checklist' && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 10 }}>
                       <AlertTriangle style={{ width: 14, height: 14, color: '#f59e0b', flexShrink: 0 }} />
-                      <span style={{ fontSize: 12, color: '#92400e', fontFamily: "'DM Sans',sans-serif" }}>Encumbrance status not verified in stock. Confirm before handover.</span>
+                      <span style={{ fontSize: 12, color: '#92400e', fontFamily: "system-ui,sans-serif" }}>Encumbrance status not verified in stock. Confirm before handover.</span>
                     </div>
                   )}
                   <div style={{ display: 'flex', gap: 12 }}>
@@ -9011,7 +9011,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
             {printDoc.doc_status !== 'issued' && (
               <div style={{ background: 'rgba(245,158,11,0.08)', borderBottom: '1px solid rgba(245,158,11,0.2)', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <AlertTriangle style={{ width: 13, height: 13, color: '#f59e0b', flexShrink: 0 }} />
-                <span style={{ fontSize: 12, color: '#92400e', fontFamily: "'DM Sans',sans-serif" }}>This is a draft — review all details then click <strong>Issue Document</strong> to lock and finalise.</span>
+                <span style={{ fontSize: 12, color: '#92400e', fontFamily: "system-ui,sans-serif" }}>This is a draft — review all details then click <strong>Issue Document</strong> to lock and finalise.</span>
               </div>
             )}
             <div className="overflow-y-auto" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderDocHTML(printDoc)) }} />
@@ -10014,7 +10014,7 @@ export default function DashboardPage() {
   }
 
   if (!subLoading && status === 'expired') return (
-    <div style={{ background: '#F7F8FA', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", gap: 16 }}>
+    <div style={{ background: '#F7F8FA', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "system-ui, sans-serif", gap: 16 }}>
       <p style={{ color: '#111827', fontSize: 22, fontWeight: 600 }}>Your trial has ended</p>
       <p style={{ color: '#6b7280', fontSize: 14 }}>Contact us to activate your ShiftOS subscription.</p>
       <a href="https://wa.me/60174155191" style={{ background: '#DC2626', color: '#ffffff', padding: '12px 28px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Upgrade Now</a>
@@ -10031,7 +10031,7 @@ export default function DashboardPage() {
     <div
       className="min-h-screen flex"
       style={{
-        fontFamily: "'DM Sans',sans-serif",
+        fontFamily: "system-ui,sans-serif",
         background: color.appBg,
         color: color.ink,
       }}
@@ -10296,7 +10296,7 @@ export default function DashboardPage() {
             {notifOpen && (
               <>
                 <div onClick={() => setNotifOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
-                <div style={{ position: 'absolute', top: '110%', right: 0, zIndex: 50, width: 320, maxHeight: 420, overflowY: 'auto', background: '#FFFFFF', border: '1px solid #EAECF0', borderRadius: 12, boxShadow: '0 8px 32px rgba(15,23,42,0.12)', fontFamily: "'DM Sans', sans-serif" }}>
+                <div style={{ position: 'absolute', top: '110%', right: 0, zIndex: 50, width: 320, maxHeight: 420, overflowY: 'auto', background: '#FFFFFF', border: '1px solid #EAECF0', borderRadius: 12, boxShadow: '0 8px 32px rgba(15,23,42,0.12)', fontFamily: "system-ui, sans-serif" }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #EAECF0' }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: color.ink }}>Notifications</span>
                     {notifCount > 0 && <button onClick={markAllRead} style={{ fontSize: 11, color: color.textMuted, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Mark all read</button>}
@@ -10324,7 +10324,7 @@ export default function DashboardPage() {
 
         {/* ── Onboarding Banner ── */}
         {showOnboardingBanner && (
-          <div style={{ background: '#FFFBEB', borderBottom: '1px solid #FDE68A', padding: '14px 24px', fontFamily: "'DM Sans',sans-serif", position: 'sticky', top: 0, zIndex: 15 }}>
+          <div style={{ background: '#FFFBEB', borderBottom: '1px solid #FDE68A', padding: '14px 24px', fontFamily: "system-ui,sans-serif", position: 'sticky', top: 0, zIndex: 15 }}>
             <div style={{ maxWidth: 900, margin: '0 auto' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -10387,7 +10387,7 @@ export default function DashboardPage() {
 
         {/* ── Congrats toast ── */}
         {onboardingToast && (
-          <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 99, background: '#fff', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', fontFamily: "'DM Sans',sans-serif", animation: 'slideUp 0.3s ease' }}>
+          <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 99, background: '#fff', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', fontFamily: "system-ui,sans-serif", animation: 'slideUp 0.3s ease' }}>
             <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
             <div>
               <p style={{ fontSize: 13, fontWeight: 600, color: color.ink, margin: 0 }}>Setup complete!</p>
@@ -10417,7 +10417,7 @@ export default function DashboardPage() {
                     display: "flex", alignItems: "center", gap: 10, width: "100%",
                     padding: "10px 14px", borderRadius: 10,
                     background: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.18)",
-                    cursor: "pointer", fontFamily: "'DM Sans',sans-serif", textAlign: "left",
+                    cursor: "pointer", fontFamily: "system-ui,sans-serif", textAlign: "left",
                   }}
                 >
                   <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(37,99,235,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -10492,11 +10492,11 @@ export default function DashboardPage() {
               </div>
 
               {/* ── Listings panel ── */}
-              <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #EAECF0', background: '#FFFFFF', boxShadow: '0 1px 4px rgba(15,23,42,0.06)', fontFamily: "'DM Sans', sans-serif" }}>
+              <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #EAECF0', background: '#FFFFFF', boxShadow: '0 1px 4px rgba(15,23,42,0.06)', fontFamily: "system-ui, sans-serif" }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px 0', flexWrap: 'wrap', gap: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <h2 style={{ fontSize: 17, fontWeight: 600, color: color.ink, fontFamily: "'DM Sans', sans-serif", margin: 0, lineHeight: 1 }}>My Listings</h2>
+                      <h2 style={{ fontSize: 17, fontWeight: 600, color: color.ink, fontFamily: "system-ui, sans-serif", margin: 0, lineHeight: 1 }}>My Listings</h2>
                       <span style={{ fontSize: 12, fontWeight: 700, color: '#f87171', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 6, padding: '2px 8px', lineHeight: 1.5 }}>
                         {filteredListings.length}
                       </span>
@@ -10508,7 +10508,7 @@ export default function DashboardPage() {
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           placeholder="Search…"
-                          style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '7px 10px 7px 28px', fontSize: 13, color: '#111827', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: 160 }}
+                          style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '7px 10px 7px 28px', fontSize: 13, color: '#111827', fontFamily: "system-ui, sans-serif", outline: 'none', width: 160 }}
                         />
                         {searchQuery && (
                           <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
@@ -10518,7 +10518,7 @@ export default function DashboardPage() {
                       </div>
                       <button
                         onClick={() => setShowFilters(p => !p)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 5, background: showFilters || activeFilterCount > 0 ? 'rgba(59,130,246,0.1)' : '#f9fafb', border: `1px solid ${showFilters || activeFilterCount > 0 ? 'rgba(59,130,246,0.35)' : '#e5e7eb'}`, borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600, color: showFilters || activeFilterCount > 0 ? '#93c5fd' : '#374151', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 5, background: showFilters || activeFilterCount > 0 ? 'rgba(59,130,246,0.1)' : '#f9fafb', border: `1px solid ${showFilters || activeFilterCount > 0 ? 'rgba(59,130,246,0.35)' : '#e5e7eb'}`, borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600, color: showFilters || activeFilterCount > 0 ? '#93c5fd' : '#374151', fontFamily: "system-ui, sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
                       >
                         <SlidersHorizontal style={{ width: 13, height: 13 }} />
                         Filters
@@ -10535,7 +10535,7 @@ export default function DashboardPage() {
                             return next;
                           });
                         }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 5, background: toolsMenuOpen ? 'rgba(107,114,128,0.12)' : '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600, color: '#374151', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 5, background: toolsMenuOpen ? 'rgba(107,114,128,0.12)' : '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600, color: '#374151', fontFamily: "system-ui, sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
                       >
                         <Wrench style={{ width: 13, height: 13 }} /> Tools
                       </button>
@@ -10551,7 +10551,7 @@ export default function DashboardPage() {
                               <button
                                 key={key}
                                 onClick={() => { setStockAutoTool(key); handleTabChange('stock'); setToolsMenuOpen(false); }}
-                                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', background: 'none', border: 'none', borderRadius: 6, padding: '8px 10px', fontSize: 13, fontWeight: 500, color: '#374151', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', background: 'none', border: 'none', borderRadius: 6, padding: '8px 10px', fontSize: 13, fontWeight: 500, color: '#374151', cursor: 'pointer', fontFamily: "system-ui, sans-serif" }}
                                 onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
                                 onMouseLeave={e => e.currentTarget.style.background = 'none'}
                               >
@@ -10564,13 +10564,13 @@ export default function DashboardPage() {
                       )}
                       <button
                         onClick={() => setShowFastModal(true)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#dc2626', border: 'none', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#dc2626', border: 'none', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: "system-ui, sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
                       >
                         ⚡ Fast
                       </button>
                       <button
                         onClick={() => handleTabChange("add")}
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.28)', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 600, color: '#f87171', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.28)', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 600, color: '#f87171', fontFamily: "system-ui, sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.18)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'rgba(220,38,38,0.1)'}
                       >
@@ -10586,23 +10586,23 @@ export default function DashboardPage() {
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
                         <div>
                           <label style={{ display: 'block', fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Min Price (RM)</label>
-                          <input type="number" value={filterMinPrice} onChange={e => setFilterMinPrice(e.target.value)} placeholder="e.g. 20000" style={{ width: '100%', padding: '7px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: "'DM Sans',sans-serif" }} />
+                          <input type="number" value={filterMinPrice} onChange={e => setFilterMinPrice(e.target.value)} placeholder="e.g. 20000" style={{ width: '100%', padding: '7px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: "system-ui,sans-serif" }} />
                         </div>
                         <div>
                           <label style={{ display: 'block', fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Max Price (RM)</label>
-                          <input type="number" value={filterMaxPrice} onChange={e => setFilterMaxPrice(e.target.value)} placeholder="e.g. 150000" style={{ width: '100%', padding: '7px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: "'DM Sans',sans-serif" }} />
+                          <input type="number" value={filterMaxPrice} onChange={e => setFilterMaxPrice(e.target.value)} placeholder="e.g. 150000" style={{ width: '100%', padding: '7px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: "system-ui,sans-serif" }} />
                         </div>
                         <div>
                           <label style={{ display: 'block', fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Min Mileage (km)</label>
-                          <input type="number" value={filterMinMileage} onChange={e => setFilterMinMileage(e.target.value)} placeholder="e.g. 0" style={{ width: '100%', padding: '7px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: "'DM Sans',sans-serif" }} />
+                          <input type="number" value={filterMinMileage} onChange={e => setFilterMinMileage(e.target.value)} placeholder="e.g. 0" style={{ width: '100%', padding: '7px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: "system-ui,sans-serif" }} />
                         </div>
                         <div>
                           <label style={{ display: 'block', fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Max Mileage (km)</label>
-                          <input type="number" value={filterMaxMileage} onChange={e => setFilterMaxMileage(e.target.value)} placeholder="e.g. 100000" style={{ width: '100%', padding: '7px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: "'DM Sans',sans-serif" }} />
+                          <input type="number" value={filterMaxMileage} onChange={e => setFilterMaxMileage(e.target.value)} placeholder="e.g. 100000" style={{ width: '100%', padding: '7px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: "system-ui,sans-serif" }} />
                         </div>
                         <div>
                           <label style={{ display: 'block', fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Condition</label>
-                          <select value={filterCondition} onChange={e => setFilterCondition(e.target.value)} style={{ width: '100%', padding: '7px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: "'DM Sans',sans-serif" }}>
+                          <select value={filterCondition} onChange={e => setFilterCondition(e.target.value)} style={{ width: '100%', padding: '7px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: "system-ui,sans-serif" }}>
                             <option value="">All</option>
                             <option value="new">New</option>
                             <option value="used">Used</option>
@@ -10610,7 +10610,7 @@ export default function DashboardPage() {
                         </div>
                         <div>
                           <label style={{ display: 'block', fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Transmission</label>
-                          <select value={filterTransmission} onChange={e => setFilterTransmission(e.target.value)} style={{ width: '100%', padding: '7px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: "'DM Sans',sans-serif" }}>
+                          <select value={filterTransmission} onChange={e => setFilterTransmission(e.target.value)} style={{ width: '100%', padding: '7px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: "system-ui,sans-serif" }}>
                             <option value="">All</option>
                             <option value="Auto">Auto</option>
                             <option value="Manual">Manual</option>
@@ -10618,14 +10618,14 @@ export default function DashboardPage() {
                         </div>
                         <div>
                           <label style={{ display: 'block', fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>State</label>
-                          <select value={filterState} onChange={e => setFilterState(e.target.value)} style={{ width: '100%', padding: '7px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: "'DM Sans',sans-serif" }}>
+                          <select value={filterState} onChange={e => setFilterState(e.target.value)} style={{ width: '100%', padding: '7px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: "system-ui,sans-serif" }}>
                             <option value="">All States</option>
                             {['Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka','Negeri Sembilan','Pahang','Perak','Perlis','Pulau Pinang','Putrajaya','Sabah','Sarawak','Selangor','Terengganu'].map(s => <option key={s} value={s}>{s}</option>)}
                           </select>
                         </div>
                       </div>
                       {activeFilterCount > 0 && (
-                        <button onClick={clearFilters} style={{ marginTop: 10, fontSize: 11, fontWeight: 600, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', fontFamily: "'DM Sans',sans-serif" }}>
+                        <button onClick={clearFilters} style={{ marginTop: 10, fontSize: 11, fontWeight: 600, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', fontFamily: "system-ui,sans-serif" }}>
                           Clear all filters ({activeFilterCount})
                         </button>
                       )}
@@ -10647,7 +10647,7 @@ export default function DashboardPage() {
                           background: 'none', border: 'none', cursor: 'pointer',
                           padding: '10px 16px', fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap',
                           fontWeight: statusFilter === key ? 600 : 400,
-                          fontFamily: "'DM Sans', sans-serif",
+                          fontFamily: "system-ui, sans-serif",
                           color: statusFilter === key ? '#111827' : '#4b5563',
                           borderBottom: statusFilter === key ? '2px solid #dc2626' : '2px solid transparent',
                           marginBottom: -1,
@@ -10687,11 +10687,11 @@ export default function DashboardPage() {
                   <>
                     {/* Desktop table */}
                     <div className="hidden md:block" style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', minWidth: 1180, borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
+                      <table style={{ width: '100%', minWidth: 1180, borderCollapse: 'collapse', fontFamily: "system-ui, sans-serif" }}>
                         <thead>
                           <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                             {['', 'Vehicle', 'Price', 'Cost', 'Recon', 'Gross', 'Year / Km', 'Grade', 'Seller', 'Age', 'Status'].map((h, i) => (
-                              <th key={i} style={{ padding: '11px 16px', fontSize: 10, letterSpacing: '0.13em', textTransform: 'uppercase', color: '#374151', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap', fontFamily: "'DM Sans', sans-serif" }}>{h}</th>
+                              <th key={i} style={{ padding: '11px 16px', fontSize: 10, letterSpacing: '0.13em', textTransform: 'uppercase', color: '#374151', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap', fontFamily: "system-ui, sans-serif" }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
@@ -11146,7 +11146,7 @@ export default function DashboardPage() {
           )}
           {activeTab === "stock" && userId && (
             <>
-              <button onClick={() => handleTabChange("listings")} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 14, fontSize: 13, fontWeight: 600, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'DM Sans', sans-serif" }}>
+              <button onClick={() => handleTabChange("listings")} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 14, fontSize: 13, fontWeight: 600, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "system-ui, sans-serif" }}>
                 <ChevronLeft style={{ width: 15, height: 15 }} /> Back to Inventory
               </button>
               <StockTab userId={userId} listings={listings} profile={profile}
@@ -11228,7 +11228,7 @@ export default function DashboardPage() {
             border: '1px solid #e5e7eb',
             borderRadius: 12,
             boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
-            fontFamily: "'DM Sans', sans-serif",
+            fontFamily: "system-ui, sans-serif",
             zIndex: 9999,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #e5e7eb' }}>
@@ -11313,7 +11313,7 @@ export default function DashboardPage() {
       {/* ── Fast List modal ── */}
       {showFastModal && (
         <div onClick={() => setShowFastModal(false)} className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#0d1117', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto', overscrollBehavior: 'contain', fontFamily: "'DM Sans',sans-serif" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#0d1117', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto', overscrollBehavior: 'contain', fontFamily: "system-ui,sans-serif" }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
               <div>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#fff' }}>⚡ Fast List</p>

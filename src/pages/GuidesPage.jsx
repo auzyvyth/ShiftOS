@@ -61,7 +61,7 @@ function HowItWorksPage() {
         <meta name="description" content="Learn how to buy a car on XDrive Malaysia. Browse verified listings, use the finance calculator, contact dealers directly, and drive away with confidence." />
       </Helmet>
       <MarketplaceHeader />
-      <main style={{ paddingTop: 72, background: '#F7F6F2', minHeight: '100vh', fontFamily: "'DM Sans',sans-serif" }}>
+      <main style={{ paddingTop: 72, background: '#F7F6F2', minHeight: '100vh', fontFamily: "system-ui,sans-serif" }}>
 
         {/* Hero */}
         <div style={{ background: '#111827', padding: '56px 20px 48px', textAlign: 'center' }}>
@@ -209,7 +209,7 @@ function FAQPage() {
         <meta name="description" content="Frequently asked questions about buying a car on XDrive Malaysia. Answers on pricing, dealers, financing, and more." />
       </Helmet>
       <MarketplaceHeader />
-      <main style={{ paddingTop: 72, background: '#F7F6F2', minHeight: '100vh', fontFamily: "'DM Sans',sans-serif" }}>
+      <main style={{ paddingTop: 72, background: '#F7F6F2', minHeight: '100vh', fontFamily: "system-ui,sans-serif" }}>
         <div style={{ background: '#111827', padding: '56px 20px 48px', textAlign: 'center' }}>
           <p style={{ color: '#dc2626', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 12px' }}>Support</p>
           <h1 style={{ color: 'white', fontSize: 'clamp(1.8rem,5vw,2.8rem)', fontWeight: 800, margin: '0 0 14px', lineHeight: 1.15, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: '0.03em' }}>
@@ -232,7 +232,7 @@ function FAQPage() {
                     background: 'none', border: 'none', cursor: 'pointer',
                   }}
                 >
-                  <span style={{ color: '#111827', fontSize: 14, fontWeight: 600, lineHeight: 1.5, fontFamily: "'DM Sans',sans-serif" }}>{q}</span>
+                  <span style={{ color: '#111827', fontSize: 14, fontWeight: 600, lineHeight: 1.5, fontFamily: "system-ui,sans-serif" }}>{q}</span>
                   <HelpCircle size={16} style={{ color: open === i ? '#dc2626' : '#9ca3af', flexShrink: 0, marginTop: 1, transition: 'color 0.15s' }} />
                 </button>
                 {open === i && (
@@ -316,7 +316,7 @@ function BuyersGuidePage() {
         <meta name="description" content="Expert tips for buying a car in Malaysia. Budget planning, new vs recon comparison, financing advice, and what to check before signing." />
       </Helmet>
       <MarketplaceHeader />
-      <main style={{ paddingTop: 72, background: '#F7F6F2', minHeight: '100vh', fontFamily: "'DM Sans',sans-serif" }}>
+      <main style={{ paddingTop: 72, background: '#F7F6F2', minHeight: '100vh', fontFamily: "system-ui,sans-serif" }}>
         <div style={{ background: '#111827', padding: '56px 20px 48px', textAlign: 'center' }}>
           <p style={{ color: '#dc2626', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 12px' }}>Resources</p>
           <h1 style={{ color: 'white', fontSize: 'clamp(1.8rem,5vw,2.8rem)', fontWeight: 800, margin: '0 0 14px', lineHeight: 1.15, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: '0.03em' }}>

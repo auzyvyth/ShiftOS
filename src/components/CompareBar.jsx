@@ -115,7 +115,7 @@ export default function CompareBar() {
           flexDirection: 'column',
           alignItems: 'flex-end',
           gap: 10,
-          fontFamily: "'DM Sans', sans-serif",
+          fontFamily: "system-ui, sans-serif",
           maxWidth: isMobile ? 'calc(100vw - 24px)' : 320,
         }}
       >
@@ -141,7 +141,7 @@ export default function CompareBar() {
               </span>
               <button
                 onClick={clearCompare}
-                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: 11, cursor: 'pointer', padding: 0, fontFamily: "'DM Sans',sans-serif" }}
+                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: 11, cursor: 'pointer', padding: 0, fontFamily: "system-ui,sans-serif" }}
               >
                 Clear all
               </button>
@@ -215,7 +215,7 @@ export default function CompareBar() {
                 fontSize: 13, fontWeight: 700, padding: '11px',
                 cursor: canCompare ? 'pointer' : 'not-allowed',
                 transition: 'background 0.2s',
-                fontFamily: "'DM Sans',sans-serif",
+                fontFamily: "system-ui,sans-serif",
               }}
             >
               <ArrowLeftRight size={14} />
@@ -235,7 +235,7 @@ export default function CompareBar() {
             padding: '10px 16px 10px 12px',
             color: '#fff', cursor: 'pointer',
             boxShadow: '0 8px 32px rgba(220,38,38,0.5)',
-            fontFamily: "'DM Sans', sans-serif",
+            fontFamily: "system-ui, sans-serif",
             transition: 'background 0.2s',
           }}
         >

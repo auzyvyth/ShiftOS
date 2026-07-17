@@ -2965,7 +2965,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  display: "flex",
  alignItems: "center",
  gap: 8,
- fontFamily: "'DM Sans', sans-serif",
+ fontFamily: "system-ui, sans-serif",
  }}
  >
  {label}
@@ -3003,7 +3003,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  overflow: "hidden",
  display: "flex",
  flexDirection: "column",
- fontFamily: "'DM Sans', sans-serif",
+ fontFamily: "system-ui, sans-serif",
  }}
  >
  {/* Close */}
@@ -3397,7 +3397,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
 ? "2px solid #ef4444"
  : "2px solid transparent",
  cursor: "pointer",
- fontFamily: "'DM Sans', sans-serif",
+ fontFamily: "system-ui, sans-serif",
  }}
  >
  {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -4746,7 +4746,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  value={waModalMsg}
  onChange={(e) => setWaModalMessage(e.target.value)}
  rows={5}
- style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "10px 12px", outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", resize: "vertical", lineHeight: 1.5 }}
+ style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "10px 12px", outline: "none", boxSizing: "border-box", fontFamily: "system-ui, sans-serif", resize: "vertical", lineHeight: 1.5 }}
  />
  <button
  onClick={async () => {
@@ -5254,7 +5254,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  {/* backdrop */}
  <div onClick={close} style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
  {/* panel */}
- <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 50, width: 400, maxWidth: "100vw", background: "#0d1117", borderLeft: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", fontFamily: "'DM Sans', sans-serif" }}>
+ <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 50, width: 400, maxWidth: "100vw", background: "#0d1117", borderLeft: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", fontFamily: "system-ui, sans-serif" }}>
 
  {/* header */}
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
@@ -5781,7 +5781,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  {isRescheduling && (
  <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 8 }}>
  <p style={{ margin: "0 0 6px", fontSize: 11, color: "#c084fc", fontWeight: 600 }}>Choose new date & time</p>
- <input type="datetime-local" value={rescheduleDate} onChange={e => setRescheduleDate(e.target.value)} style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans',sans-serif", marginBottom: 8 }} />
+ <input type="datetime-local" value={rescheduleDate} onChange={e => setRescheduleDate(e.target.value)} style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "system-ui,sans-serif", marginBottom: 8 }} />
  <div style={{ display: "flex", gap: 6 }}>
  <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }} style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
  <button onClick={async () => { if (!rescheduleDate) return; const newDate = new Date(rescheduleDate); await supabase.from("appointments").update({ appointment_date: newDate.toISOString(), status: "rescheduled" }).eq("id", apt.id); setAppointments(p => p.map(a => a.id === apt.id ? { ...a, appointment_date: newDate.toISOString(), status: "rescheduled" } : a)); setReschedulingAptId(null); setRescheduleDate(""); toast.success("Appointment rescheduled!"); }} style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.35)", color: "#c084fc", cursor: "pointer" }}>Save New Time</button>
@@ -7057,7 +7057,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  display: "flex",
  flexDirection: isMobile? "column" : "row",
  minHeight: "100vh",
- fontFamily: "'DM Sans', sans-serif",
+ fontFamily: "system-ui, sans-serif",
  color: "#fff",
  }}
  >
@@ -7065,7 +7065,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <meta name="robots" content="noindex, nofollow" />
  </Helmet>
  <style>{`
- @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
+ @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
  .lead-score-wrap:hover .lead-score-tip { display: block!important; }
  @keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
  @keyframes hotpulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.5)} }
@@ -8672,7 +8672,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  {moreOpen && createPortal(
  <div
  onClick={() => setMoreOpen(false)}
- style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)", display: "flex", alignItems: "flex-end", fontFamily: "'DM Sans', sans-serif" }}
+ style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)", display: "flex", alignItems: "flex-end", fontFamily: "system-ui, sans-serif" }}
  >
  <div
  onClick={(e) => e.stopPropagation()}

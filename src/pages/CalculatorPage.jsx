@@ -39,7 +39,7 @@ const CalculatorPage = () => {
 
       {sub ? <Header /> : <MarketplaceHeader />}
 
-      <main style={{ paddingTop: sub ? 82 : 72, background: sub ? '#08090f' : '#F7F6F2', minHeight: '100vh', fontFamily: "'DM Sans',sans-serif" }}>
+      <main style={{ paddingTop: sub ? 82 : 72, background: sub ? '#08090f' : '#F7F6F2', minHeight: '100vh', fontFamily: "system-ui,sans-serif" }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 16px 48px' }}>
 
           {/* Page header */}

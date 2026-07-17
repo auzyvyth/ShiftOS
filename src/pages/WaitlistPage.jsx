@@ -76,7 +76,7 @@ export default function WaitlistPage() {
   };
 
   const s = {
-    page: { minHeight: "100dvh", background: "#070711", color: "#f1f5f9", fontFamily: "'DM Sans', sans-serif", overflowX: "hidden" },
+    page: { minHeight: "100dvh", background: "#070711", color: "#f1f5f9", fontFamily: "system-ui, sans-serif", overflowX: "hidden" },
     container: { maxWidth: 680, margin: "0 auto", padding: "0 20px" },
     card: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 8, backdropFilter: "blur(12px)" },
   };

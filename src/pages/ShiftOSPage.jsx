@@ -119,11 +119,11 @@ const FAQ_LD = {
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
 
   .sos *{box-sizing:border-box;margin:0;padding:0;}
   .sos{
-    font-family:'DM Sans',sans-serif;
+    font-family:system-ui,sans-serif;
     background:#06080F;
     min-height:100vh;
     color:#fff;

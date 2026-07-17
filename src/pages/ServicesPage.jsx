@@ -370,7 +370,7 @@ export default function ServicesPage({ userId }) {
     padding: "9px 13px",
     color: "#111827",
     fontSize: 13,
-    fontFamily: "'DM Sans',sans-serif",
+    fontFamily: "system-ui,sans-serif",
     outline: "none",
     boxSizing: "border-box",
     appearance: "none",
@@ -381,7 +381,7 @@ export default function ServicesPage({ userId }) {
   return (
     <div
       style={{
-        fontFamily: "'DM Sans',sans-serif",
+        fontFamily: "system-ui,sans-serif",
         width: "100%",
         padding: "24px 24px 48px",
         maxWidth: 1100,
@@ -1255,7 +1255,7 @@ export default function ServicesPage({ userId }) {
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
-              fontFamily: "'DM Sans',sans-serif",
+              fontFamily: "system-ui,sans-serif",
               animation: "svcSlide 0.2s ease",
             }}
           >

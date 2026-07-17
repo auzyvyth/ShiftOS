@@ -376,7 +376,7 @@ export default function ImportStockPage() {
   if (planChecked && !planAllowed) {
     return (
       <div
-        className="min-h-screen font-['DM_Sans',sans-serif] flex items-center justify-center px-4"
+        className="min-h-screen font-['system-ui',sans-serif] flex items-center justify-center px-4"
         style={{ background: "#080C14" }}
       >
         <div
@@ -401,7 +401,7 @@ export default function ImportStockPage() {
 
   return (
     <div
-      className="min-h-screen font-['DM_Sans',sans-serif]"
+      className="min-h-screen font-['system-ui',sans-serif]"
       style={{ background: "#080C14" }}
     >
       <div className="max-w-2xl mx-auto px-4 py-10">

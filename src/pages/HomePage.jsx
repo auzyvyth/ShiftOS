@@ -921,7 +921,7 @@ const HomePage = () => {
                     fontWeight: 700,
                     color: "#f3f4f6",
                     marginBottom: 20,
-                    fontFamily: "'DM Sans',sans-serif",
+                    fontFamily: "system-ui,sans-serif",
                   }}
                 >
                   {tenant.hero_video_title}

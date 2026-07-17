@@ -103,13 +103,13 @@ export default function ReviewsSection({ dealerId, listingId, sellerName = 'this
   const btnStyle = {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
     fontSize: 13, fontWeight: 700, padding: '10px 16px', borderRadius: 10, cursor: 'pointer',
-    border: 'none', fontFamily: "'DM Sans',sans-serif",
+    border: 'none', fontFamily: "system-ui,sans-serif",
   };
 
   return (
     <div style={{ marginTop: 32, paddingTop: 28, borderTop: `1px solid ${th.border}` }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: th.textMuted, fontWeight: 700, margin: 0 }}>Reviews</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 4, flexWrap: 'wrap' }}>
+        <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: th.textMuted, fontWeight: 700, margin: 0 }}>Seller Reviews</p>
         {count > 0 && (
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: '1.5rem', color: th.text, lineHeight: 1 }}>{avg.toFixed(1)}</span>
@@ -118,6 +118,7 @@ export default function ReviewsSection({ dealerId, listingId, sellerName = 'this
           </div>
         )}
       </div>
+      <p style={{ fontSize: 12, color: th.textMuted, margin: '0 0 16px' }}>Ratings are for {sellerName} as a seller, not this specific vehicle.</p>
 
       {/* Write / own-review area */}
       {!editing && (
@@ -163,14 +164,14 @@ export default function ReviewsSection({ dealerId, listingId, sellerName = 'this
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder="Your name"
-            style={{ width: '100%', boxSizing: 'border-box', background: th.inputBg, border: `1px solid ${th.border}`, borderRadius: 9, color: th.text, fontSize: 13, padding: '9px 12px', marginBottom: 10, outline: 'none', fontFamily: "'DM Sans',sans-serif" }}
+            style={{ width: '100%', boxSizing: 'border-box', background: th.inputBg, border: `1px solid ${th.border}`, borderRadius: 9, color: th.text, fontSize: 13, padding: '9px 12px', marginBottom: 10, outline: 'none', fontFamily: "system-ui,sans-serif" }}
           />
           <textarea
             value={body}
             onChange={e => setBody(e.target.value)}
             placeholder={`Share your experience with ${sellerName}…`}
             rows={3}
-            style={{ width: '100%', boxSizing: 'border-box', background: th.inputBg, border: `1px solid ${th.border}`, borderRadius: 9, color: th.text, fontSize: 13, padding: '9px 12px', marginBottom: 12, outline: 'none', resize: 'vertical', fontFamily: "'DM Sans',sans-serif" }}
+            style={{ width: '100%', boxSizing: 'border-box', background: th.inputBg, border: `1px solid ${th.border}`, borderRadius: 9, color: th.text, fontSize: 13, padding: '9px 12px', marginBottom: 12, outline: 'none', resize: 'vertical', fontFamily: "system-ui,sans-serif" }}
           />
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button onClick={() => setEditing(false)} style={{ ...btnStyle, background: 'none', color: th.textSec, border: `1px solid ${th.border}` }}>Cancel</button>

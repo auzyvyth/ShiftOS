@@ -19,7 +19,7 @@ import {
 const inp = {
   width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)',
   borderRadius: 6, padding: '9px 13px', color: 'white', fontSize: 13,
-  fontFamily: "'DM Sans', sans-serif", outline: 'none', boxSizing: 'border-box',
+  fontFamily: "system-ui, sans-serif", outline: 'none', boxSizing: 'border-box',
 };
 const focusRed = { borderColor: 'rgba(220,38,38,0.4)' };
 
@@ -888,7 +888,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
 
   // ── White modal styles ──────────────────────────────────────────────────────
   const w = {
-    inp: { width: '100%', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8, padding: '9px 13px', color: '#111827', fontSize: 13, fontFamily: "'DM Sans', sans-serif", outline: 'none', boxSizing: 'border-box' },
+    inp: { width: '100%', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8, padding: '9px 13px', color: '#111827', fontSize: 13, fontFamily: "system-ui, sans-serif", outline: 'none', boxSizing: 'border-box' },
     label: { fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9ca3af', margin: '0 0 8px', display: 'block' },
     section: { background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 16px', marginBottom: 12 },
     divider: { height: 1, background: '#f1f3f5', margin: '16px 0' },
@@ -901,7 +901,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
 
       {/* Centered modal */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, pointerEvents: 'none' }}>
-        <div style={{ width: '100%', maxWidth: 700, maxHeight: '92vh', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 18, boxShadow: '0 24px 80px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: "'DM Sans', sans-serif", animation: 'ldPop 0.16s ease', pointerEvents: 'auto' }}>
+        <div style={{ width: '100%', maxWidth: 700, maxHeight: '92vh', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 18, boxShadow: '0 24px 80px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: "system-ui, sans-serif", animation: 'ldPop 0.16s ease', pointerEvents: 'auto' }}>
           <style>{`
             @keyframes ldPop { from { transform: scale(0.97); opacity:0; } to { transform:scale(1); opacity:1; } }
             .ld-inp:focus { border-color: #dc2626 !important; outline: none; }
@@ -1018,7 +1018,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                 <select
                   value={selectedCloser}
                   onChange={e => setSelectedCloser(e.target.value)}
-                  style={{ width: '100%', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '9px 13px', color: '#111827', fontSize: 13, fontFamily: "'DM Sans',sans-serif", outline: 'none', marginBottom: 12, cursor: 'pointer', appearance: 'none' }}
+                  style={{ width: '100%', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '9px 13px', color: '#111827', fontSize: 13, fontFamily: "system-ui,sans-serif", outline: 'none', marginBottom: 12, cursor: 'pointer', appearance: 'none' }}
                 >
                   <option value="">— Unassigned —</option>
                   {teamMembers.map(m => (

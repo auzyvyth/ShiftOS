@@ -3428,7 +3428,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       onKeyDown={handleKeyDown}
       className="w-full"
       style={{
-        fontFamily: "'DM Sans', sans-serif",
+        fontFamily: "system-ui, sans-serif",
         backgroundImage:
           "radial-gradient(circle, rgba(0,0,0,0.04) 1px, transparent 1px)",
         backgroundSize: "24px 24px",
@@ -3436,7 +3436,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     >
       {/* Draft resume banner */}
       {draftBanner && !listing && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, padding: "10px 14px", borderRadius: 9, background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.25)", fontFamily: "'DM Sans',sans-serif" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, padding: "10px 14px", borderRadius: 9, background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.25)", fontFamily: "system-ui,sans-serif" }}>
           <p style={{ margin: 0, fontSize: 12, color: "#93c5fd", flex: 1 }}>You have a saved draft from a previous session.</p>
           <button onClick={() => {
             const d = cfLoadDraft(profile?.id);
@@ -3455,7 +3455,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       )}
       {/* Draft auto-save indicator */}
       {!draftBanner && !listing && draftSavedAt && (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, fontFamily: "'DM Sans',sans-serif" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, fontFamily: "system-ui,sans-serif" }}>
           <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", flexShrink: 0 }} />
           <span style={{ fontSize: 11, color: "#6b7280" }}>Draft saved</span>
         </div>

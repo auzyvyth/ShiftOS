@@ -2775,7 +2775,7 @@ export default function SalesmanPremium() {
  display: "flex",
  alignItems: "center",
  gap: 8,
- fontFamily: "'DM Sans', sans-serif",
+ fontFamily: "system-ui, sans-serif",
  }}
  >
  {label}
@@ -2811,7 +2811,7 @@ export default function SalesmanPremium() {
  overflow: "hidden",
  display: "flex",
  flexDirection: "column",
- fontFamily: "'DM Sans', sans-serif",
+ fontFamily: "system-ui, sans-serif",
  }}
  >
  <button
@@ -3200,7 +3200,7 @@ export default function SalesmanPremium() {
 ? "2px solid #ef4444"
  : "2px solid transparent",
  cursor: "pointer",
- fontFamily: "'DM Sans', sans-serif",
+ fontFamily: "system-ui, sans-serif",
  }}
  >
  {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -4152,7 +4152,7 @@ export default function SalesmanPremium() {
  {/* backdrop */}
  <div onClick={close} style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
  {/* panel */}
- <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 50, width: 400, maxWidth: "100vw", background: "#0d1117", borderLeft: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", fontFamily: "'DM Sans', sans-serif" }}>
+ <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 50, width: 400, maxWidth: "100vw", background: "#0d1117", borderLeft: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", fontFamily: "system-ui, sans-serif" }}>
 
  {/* header */}
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
@@ -4902,7 +4902,7 @@ export default function SalesmanPremium() {
  padding: "8px 10px",
  outline: "none",
  boxSizing: "border-box",
- fontFamily: "'DM Sans', sans-serif",
+ fontFamily: "system-ui, sans-serif",
  resize: "vertical",
  lineHeight: 1.5,
  marginBottom: 6,
@@ -5077,7 +5077,7 @@ export default function SalesmanPremium() {
  padding: "10px 12px",
  outline: "none",
  boxSizing: "border-box",
- fontFamily: "'DM Sans', sans-serif",
+ fontFamily: "system-ui, sans-serif",
  };
 
  const localPhone = (settingsForm.whatsapp_number || "").replace(/^\+?60/, "");
@@ -5220,7 +5220,7 @@ export default function SalesmanPremium() {
  padding: "10px 12px",
  outline: "none",
  boxSizing: "border-box",
- fontFamily: "'DM Sans', sans-serif",
+ fontFamily: "system-ui, sans-serif",
  }}
  />
  <button
@@ -5397,7 +5397,7 @@ export default function SalesmanPremium() {
  padding: "9px 12px",
  outline: "none",
  boxSizing: "border-box",
- fontFamily: "'DM Sans', sans-serif",
+ fontFamily: "system-ui, sans-serif",
  }}
  />
  </div>
@@ -5498,7 +5498,7 @@ export default function SalesmanPremium() {
  padding: "10px 12px",
  outline: "none",
  boxSizing: "border-box",
- fontFamily: "'DM Sans', sans-serif",
+ fontFamily: "system-ui, sans-serif",
  resize: "vertical",
  lineHeight: 1.5,
  }}
@@ -5643,7 +5643,7 @@ export default function SalesmanPremium() {
  }
  };
 
- const loanInputSx = { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, color: "#fff", padding: "8px 10px", fontSize: 13, outline: "none", width: "100%", fontFamily: "'DM Sans', sans-serif" };
+ const loanInputSx = { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, color: "#fff", padding: "8px 10px", fontSize: 13, outline: "none", width: "100%", fontFamily: "system-ui, sans-serif" };
  const cardSx = { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: 20, marginBottom: 20 };
  const loanStatusColors = { Submitted: { bg: "rgba(59,130,246,.15)", border: "rgba(59,130,246,.3)", color: "#93c5fd" }, Pending: { bg: "rgba(251,191,36,.15)", border: "rgba(251,191,36,.3)", color: "#fbbf24" }, Approved: { bg: "rgba(34,197,94,.15)", border: "rgba(34,197,94,.3)", color: "#4ade80" }, Declined: { bg: "rgba(239,68,68,.15)", border: "rgba(239,68,68,.3)", color: "#f87171" } };
 
@@ -6173,7 +6173,7 @@ export default function SalesmanPremium() {
  display: "flex",
  flexDirection: isMobile? "column" : "row",
  minHeight: "100vh",
- fontFamily: "'DM Sans', sans-serif",
+ fontFamily: "system-ui, sans-serif",
  color: "#fff",
  }}
  >

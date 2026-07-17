@@ -21,7 +21,7 @@ const inp = {
   padding: "5px 8px",
   outline: "none",
   width: "100%",
-  fontFamily: "'DM Sans',sans-serif",
+  fontFamily: "system-ui,sans-serif",
   boxSizing: "border-box",
 };
 
@@ -1160,7 +1160,7 @@ export default function AccountantPanel() {
           justifyContent: "center",
         }}
       >
-        <p style={{ color: "#6b7280", fontFamily: "'DM Sans',sans-serif" }}>
+        <p style={{ color: "#6b7280", fontFamily: "system-ui,sans-serif" }}>
           Loading...
         </p>
       </div>
@@ -1252,7 +1252,7 @@ export default function AccountantPanel() {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontFamily: "'DM Sans',sans-serif",
+    fontFamily: "system-ui,sans-serif",
   };
 
   const tbBtn = (active) => ({
@@ -1264,7 +1264,7 @@ export default function AccountantPanel() {
     fontWeight: active ? 600 : 400,
     padding: "3px 10px",
     cursor: "pointer",
-    fontFamily: "'DM Sans',sans-serif",
+    fontFamily: "system-ui,sans-serif",
     letterSpacing: 0.3,
   });
 
@@ -1307,7 +1307,7 @@ export default function AccountantPanel() {
         display: "flex",
         minHeight: "100vh",
         background: "#080C14",
-        fontFamily: "'DM Sans',sans-serif",
+        fontFamily: "system-ui,sans-serif",
         color: "#f0f2f5",
       }}
     >
@@ -1403,7 +1403,7 @@ export default function AccountantPanel() {
                   fontWeight: active ? 600 : 400,
                   cursor: "pointer",
                   textAlign: "left",
-                  fontFamily: "'DM Sans',sans-serif",
+                  fontFamily: "system-ui,sans-serif",
                   transition: "all 0.12s",
                 }}
               >
@@ -1455,7 +1455,7 @@ export default function AccountantPanel() {
                 alignItems: "center",
                 gap: 6,
                 fontSize: 11,
-                fontFamily: "'DM Sans',sans-serif",
+                fontFamily: "system-ui,sans-serif",
               }}
             >
               <Bell style={{ width: 13, height: 13, flexShrink: 0 }} />
@@ -1501,7 +1501,7 @@ export default function AccountantPanel() {
                     border: "1px solid rgba(255,255,255,0.08)",
                     borderRadius: 10,
                     boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
-                    fontFamily: "'DM Sans',sans-serif",
+                    fontFamily: "system-ui,sans-serif",
                   }}
                 >
                   <div
@@ -1663,7 +1663,7 @@ export default function AccountantPanel() {
               border: "none",
               cursor: "pointer",
               padding: 0,
-              fontFamily: "'DM Sans',sans-serif",
+              fontFamily: "system-ui,sans-serif",
             }}
           >
             Sign out
@@ -1872,7 +1872,7 @@ export default function AccountantPanel() {
                   display: "flex",
                   alignItems: "center",
                   gap: 4,
-                  fontFamily: "'DM Sans',sans-serif",
+                  fontFamily: "system-ui,sans-serif",
                 }}
               >
                 ↓ Export .xlsx
@@ -2028,7 +2028,7 @@ export default function AccountantPanel() {
                     padding: "3px 10px",
                     cursor: advisorSending ? "not-allowed" : "pointer",
                     whiteSpace: "nowrap",
-                    fontFamily: "'DM Sans',sans-serif",
+                    fontFamily: "system-ui,sans-serif",
                     flexShrink: 0,
                     opacity: advisorSending ? 0.5 : 1,
                   }}
@@ -3805,7 +3805,7 @@ export default function AccountantPanel() {
                                         padding: "2px 8px",
                                         fontSize: 10,
                                         cursor: "pointer",
-                                        fontFamily: "'DM Sans',sans-serif",
+                                        fontFamily: "system-ui,sans-serif",
                                       }}
                                     >
                                       {isChecked ? "Uncheck" : "Check"}
@@ -4113,7 +4113,7 @@ export default function AccountantPanel() {
                       textAlign: "left",
                       lineHeight: 1.4,
                       marginBottom: 6,
-                      fontFamily: "'DM Sans',sans-serif",
+                      fontFamily: "system-ui,sans-serif",
                       opacity: advisorSending ? 0.5 : 1,
                     }}
                   >
@@ -4180,7 +4180,7 @@ export default function AccountantPanel() {
                             <button
                               onClick={() => markDisbursed(row)}
                               disabled={!!arDisbursing[row.id]}
-                              style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)", borderRadius: 4, color: "#60a5fa", fontSize: 10, fontWeight: 600, padding: "3px 10px", cursor: "pointer", opacity: arDisbursing[row.id] ? 0.5 : 1, fontFamily: "'DM Sans',sans-serif", whiteSpace: "nowrap" }}
+                              style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)", borderRadius: 4, color: "#60a5fa", fontSize: 10, fontWeight: 600, padding: "3px 10px", cursor: "pointer", opacity: arDisbursing[row.id] ? 0.5 : 1, fontFamily: "system-ui,sans-serif", whiteSpace: "nowrap" }}
                             >
                               {arDisbursing[row.id] ? "Saving…" : "Mark Disbursed"}
                             </button>

@@ -729,7 +729,7 @@ export default function OversightTab({ dealerId, onNavigate }) {
   }
 
   return (
-    <div style={{ background: '#fafafa', minHeight: '100vh', margin: '-24px', padding: '32px 36px', fontFamily: "'DM Sans', sans-serif", color: '#111827' }}>
+    <div style={{ background: '#fafafa', minHeight: '100vh', margin: '-24px', padding: '32px 36px', fontFamily: "system-ui, sans-serif", color: '#111827' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28, paddingBottom: 18, borderBottom: '1px solid #e5e7eb' }}>
         <div>

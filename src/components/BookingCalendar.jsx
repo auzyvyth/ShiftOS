@@ -99,25 +99,25 @@ export default function BookingCalendar({ carId, refSlug, th, isXdrive, value, o
   const accent = "#dc2626";
   const cellBase = {
     aspectRatio: "1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-    borderRadius: 8, fontSize: 13, fontFamily: "'DM Sans',sans-serif", fontWeight: 600, border: "1px solid transparent",
+    borderRadius: 8, fontSize: 13, fontFamily: "system-ui,sans-serif", fontWeight: 600, border: "1px solid transparent",
   };
 
   const openSlots = openDay ? slotsFor(new Date(`${openDay}T00:00:00`)) : [];
 
   if (loading) {
-    return <div style={{ padding: "24px 0", textAlign: "center", fontSize: 12, color: th.textMuted, fontFamily: "'DM Sans',sans-serif" }}>Loading available times…</div>;
+    return <div style={{ padding: "24px 0", textAlign: "center", fontSize: 12, color: th.textMuted, fontFamily: "system-ui,sans-serif" }}>Loading available times…</div>;
   }
 
   return (
     <div>
-      <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: th.textMuted, fontWeight: 700, margin: "0 0 8px", fontFamily: "'DM Sans',sans-serif" }}>
+      <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: th.textMuted, fontWeight: 700, margin: "0 0 8px", fontFamily: "system-ui,sans-serif" }}>
         {rule.has ? "Pick an available day" : "Pick a day"}
       </p>
 
       {/* weekday header */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4, marginBottom: 4 }}>
         {DOW.map((d) => (
-          <div key={d} style={{ textAlign: "center", fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", color: th.textMuted, textTransform: "uppercase", fontFamily: "'DM Sans',sans-serif" }}>{d}</div>
+          <div key={d} style={{ textAlign: "center", fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", color: th.textMuted, textTransform: "uppercase", fontFamily: "system-ui,sans-serif" }}>{d}</div>
         ))}
       </div>
 
@@ -155,11 +155,11 @@ export default function BookingCalendar({ carId, refSlug, th, isXdrive, value, o
       {/* time chips for the chosen day */}
       {openDay && (
         <div style={{ marginTop: 16 }}>
-          <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: th.textMuted, fontWeight: 700, margin: "0 0 8px", fontFamily: "'DM Sans',sans-serif" }}>
+          <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: th.textMuted, fontWeight: 700, margin: "0 0 8px", fontFamily: "system-ui,sans-serif" }}>
             Pick a time
           </p>
           {openSlots.length === 0 ? (
-            <p style={{ fontSize: 12, color: th.textMuted, margin: 0, fontFamily: "'DM Sans',sans-serif" }}>No times left on this day — pick another.</p>
+            <p style={{ fontSize: 12, color: th.textMuted, margin: 0, fontFamily: "system-ui,sans-serif" }}>No times left on this day — pick another.</p>
           ) : (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {openSlots.map((s) => {
@@ -171,7 +171,7 @@ export default function BookingCalendar({ carId, refSlug, th, isXdrive, value, o
                     type="button"
                     onClick={() => onChange({ date: openDay, time: t })}
                     style={{
-                      padding: "8px 14px", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "'DM Sans',sans-serif",
+                      padding: "8px 14px", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "system-ui,sans-serif",
                       background: sel ? accent : (isXdrive ? "#f3f4f6" : "rgba(255,255,255,0.05)"),
                       border: sel ? `1px solid ${accent}` : `1px solid ${th.border}`,
                       color: sel ? "#fff" : th.text,

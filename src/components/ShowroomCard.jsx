@@ -319,7 +319,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
               e.stopPropagation();
               setWaGateOpen(true);
             }}
-            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '7px 0', background: isSold ? 'rgba(0,0,0,0.03)' : '#16a34a', border: isSold ? '1px solid rgba(0,0,0,0.07)' : '1px solid #15803d', color: isSold ? '#9ca3af' : '#ffffff', borderRadius: '8px', textDecoration: 'none', fontSize: '12px', fontWeight: '700', fontFamily: "'Outfit',sans-serif", transition: 'all 0.15s', pointerEvents: isSold ? 'none' : 'auto', boxSizing: 'border-box' }}
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '7px 0', background: isSold ? 'rgba(0,0,0,0.03)' : '#25D366', border: isSold ? '1px solid rgba(0,0,0,0.07)' : '1px solid #1ea952', color: isSold ? '#9ca3af' : '#ffffff', borderRadius: '8px', textDecoration: 'none', fontSize: '12px', fontWeight: '700', fontFamily: "'Outfit',sans-serif", transition: 'all 0.15s', pointerEvents: isSold ? 'none' : 'auto', boxSizing: 'border-box' }}
           >
             <MessageCircle size={13} /> WhatsApp
           </a>

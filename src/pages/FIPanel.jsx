@@ -649,12 +649,12 @@ export default function FIPanel() {
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: '#05070e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: '#6b7280', fontFamily: "'DM Sans',sans-serif" }}>Loading...</p>
+      <p style={{ color: '#6b7280', fontFamily: "system-ui,sans-serif" }}>Loading...</p>
     </div>
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: '#05070e', fontFamily: "'DM Sans',sans-serif", color: '#f0f2f5' }}>
+    <div style={{ minHeight: '100vh', background: '#05070e', fontFamily: "system-ui,sans-serif", color: '#f0f2f5' }}>
 
       {/* Header */}
       <header style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -696,7 +696,7 @@ export default function FIPanel() {
       {/* Nav */}
       <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '0 24px', display: 'flex', gap: 0 }}>
         {NAV.map(n => (
-          <button key={n.id} onClick={() => setActiveNav(n.id)} style={{ padding: '12px 16px', background: 'none', border: 'none', borderBottom: activeNav === n.id ? `2px solid ${ACCENT}` : '2px solid transparent', color: activeNav === n.id ? ACCENT : '#6b7280', fontSize: 13, fontWeight: activeNav === n.id ? 600 : 400, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", transition: 'all 0.15s' }}>
+          <button key={n.id} onClick={() => setActiveNav(n.id)} style={{ padding: '12px 16px', background: 'none', border: 'none', borderBottom: activeNav === n.id ? `2px solid ${ACCENT}` : '2px solid transparent', color: activeNav === n.id ? ACCENT : '#6b7280', fontSize: 13, fontWeight: activeNav === n.id ? 600 : 400, cursor: 'pointer', fontFamily: "system-ui,sans-serif", transition: 'all 0.15s' }}>
             {n.label}
           </button>
         ))}

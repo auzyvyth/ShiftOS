@@ -253,7 +253,7 @@ const styles = {
     justifyContent: 'center',
     gap: 20,
     padding: '24px 16px',
-    fontFamily: "'DM Sans', sans-serif",
+    fontFamily: "system-ui, sans-serif",
   },
   brand: {
     display: 'flex',
@@ -302,7 +302,7 @@ const styles = {
     color: '#dc2626',
     fontWeight: 500,
     marginBottom: 8,
-    fontFamily: "'DM Sans', sans-serif",
+    fontFamily: "system-ui, sans-serif",
   },
   cardHeading: {
     fontFamily: "'Bebas Neue', sans-serif",
@@ -337,7 +337,7 @@ const styles = {
     borderRadius: 4,
     padding: '13px 40px 13px 14px',
     color: '#fff',
-    fontFamily: "'DM Sans', sans-serif",
+    fontFamily: "system-ui, sans-serif",
     fontSize: 14,
     outline: 'none',
     boxSizing: 'border-box',
@@ -406,7 +406,7 @@ const styles = {
 };
 
 const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
   @keyframes rp-pulse {
     0%, 100% { box-shadow: 0 0 20px rgba(220,38,38,0.4); }
     50% { box-shadow: 0 0 36px rgba(220,38,38,0.75), 0 0 60px rgba(220,38,38,0.15); }

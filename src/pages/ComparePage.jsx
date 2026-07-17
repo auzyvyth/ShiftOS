@@ -324,7 +324,7 @@ export default function ComparePage() {
           <link rel="canonical" href="https://xdrive.my/compare" />
         </Helmet>
         <HeaderC />
-        <div style={{ minHeight: '100vh', background: pageBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, fontFamily: "'DM Sans',sans-serif", padding: '72px 20px 48px', textAlign: 'center', ...cpVars }}>
+        <div style={{ minHeight: '100vh', background: pageBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, fontFamily: "system-ui,sans-serif", padding: '72px 20px 48px', textAlign: 'center', ...cpVars }}>
           <div style={{ width: 64, height: 64, borderRadius: 18, background: 'rgba(220,38,38,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <ArrowLeftRight size={28} color="#dc2626" />
           </div>
@@ -339,7 +339,7 @@ export default function ComparePage() {
           </div>
           <button
             onClick={goAddCars}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#dc2626', color: '#fff', border: 'none', borderRadius: 50, padding: '13px 26px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", boxShadow: '0 8px 28px rgba(220,38,38,0.35)' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#dc2626', color: '#fff', border: 'none', borderRadius: 50, padding: '13px 26px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: "system-ui,sans-serif", boxShadow: '0 8px 28px rgba(220,38,38,0.35)' }}
           >
             <Plus size={16} /> Add Cars to Compare
           </button>
@@ -361,7 +361,7 @@ export default function ComparePage() {
         {!sub && <link rel="canonical" href="https://xdrive.my/compare" />}
       </Helmet>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
         *, *::before, *::after { box-sizing: border-box; }
         .cp-row:hover .cp-val { background: var(--cp-hover, #f9fafb) !important; }
         .cp-lbl {
@@ -395,7 +395,7 @@ export default function ComparePage() {
 
       <HeaderC />
 
-      <div style={{ minHeight: '100vh', background: pageBg, fontFamily: "'DM Sans',sans-serif", paddingTop: 72, paddingBottom: 64, ...cpVars }}>
+      <div style={{ minHeight: '100vh', background: pageBg, fontFamily: "system-ui,sans-serif", paddingTop: 72, paddingBottom: 64, ...cpVars }}>
 
         {/* ── Page title ── */}
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '14px 16px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>

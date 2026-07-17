@@ -263,7 +263,7 @@ export default function AdminPanel() {
     background: "rgba(255,255,255,0.05)",
     border: "1px solid rgba(255,255,255,0.08)",
     color: "#fff",
-    fontFamily: "'DM Sans',sans-serif",
+    fontFamily: "system-ui,sans-serif",
     fontSize: 13,
     padding: "9px 13px",
     borderRadius: 8,
@@ -285,7 +285,7 @@ export default function AdminPanel() {
           justifyContent: "center",
         }}
       >
-        <p style={{ color: "#6b7280", fontFamily: "'DM Sans',sans-serif" }}>
+        <p style={{ color: "#6b7280", fontFamily: "system-ui,sans-serif" }}>
           Loading...
         </p>
       </div>
@@ -294,10 +294,10 @@ export default function AdminPanel() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: #08080f; }
-        .ap-root { min-height: 100vh; background: #08080f; font-family: 'DM Sans', sans-serif; color: #f0f2f5; }
+        .ap-root { min-height: 100vh; background: #08080f; font-family: system-ui, sans-serif; color: #f0f2f5; }
         .ap-row:hover { background: rgba(255,255,255,0.02) !important; }
         .ap-check:checked { accent-color: #dc2626; }
         input:focus, select:focus, textarea:focus { border-color: rgba(220,38,38,0.5) !important; outline: none; }
@@ -366,7 +366,7 @@ export default function AdminPanel() {
               {notifOpen && (
                 <>
                   <div onClick={() => setNotifOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
-                  <div style={{ position: "absolute", top: "110%", right: 0, zIndex: 50, width: 300, maxHeight: 380, overflowY: "auto", background: "#111827", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.6)", fontFamily: "'DM Sans',sans-serif" }}>
+                  <div style={{ position: "absolute", top: "110%", right: 0, zIndex: 50, width: 300, maxHeight: 380, overflowY: "auto", background: "#111827", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.6)", fontFamily: "system-ui,sans-serif" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: "#f3f4f6" }}>Notifications</span>
                       {notifications.some(n => !n.is_read) && (

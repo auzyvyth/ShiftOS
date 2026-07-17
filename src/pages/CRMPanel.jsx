@@ -465,7 +465,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                             fontSize: 12,
                             fontWeight: 600,
                             cursor: "pointer",
-                            fontFamily: "'DM Sans',sans-serif",
+                            fontFamily: "system-ui,sans-serif",
                           }}
                         >
                           <MessageCircle style={{ width: 13, height: 13 }} />{" "}
@@ -486,7 +486,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                           padding: "8px 6px",
                           cursor: "pointer",
                           outline: "none",
-                          fontFamily: "'DM Sans',sans-serif",
+                          fontFamily: "system-ui,sans-serif",
                           appearance: "none",
                           WebkitAppearance: "none",
                         }}
@@ -511,7 +511,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                           color: "#9ca3af",
                           fontSize: 12,
                           cursor: "pointer",
-                          fontFamily: "'DM Sans',sans-serif",
+                          fontFamily: "system-ui,sans-serif",
                           whiteSpace: "nowrap",
                         }}
                       >
@@ -529,7 +529,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  fontFamily: "'DM Sans', sans-serif",
+                  fontFamily: "system-ui, sans-serif",
                 }}
               >
                 <thead>
@@ -718,7 +718,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
               borderLeft: "1px solid rgba(255,255,255,0.08)",
               display: "flex",
               flexDirection: "column",
-              fontFamily: "'DM Sans', sans-serif",
+              fontFamily: "system-ui, sans-serif",
             }}
           >
             <div
@@ -894,7 +894,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                     padding: "10px 12px",
                     cursor: "pointer",
                     outline: "none",
-                    fontFamily: "'DM Sans',sans-serif",
+                    fontFamily: "system-ui,sans-serif",
                   }}
                 >
                   {Object.keys(statusMeta).map((s) => (
@@ -979,7 +979,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                         fontSize: 14,
                         fontWeight: 600,
                         cursor: "pointer",
-                        fontFamily: "'DM Sans',sans-serif",
+                        fontFamily: "system-ui,sans-serif",
                       }}
                     >
                       <MessageCircle style={{ width: 15, height: 15 }} />
@@ -1000,7 +1000,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                         fontSize: 12,
                         cursor: "pointer",
                         whiteSpace: "nowrap",
-                        fontFamily: "'DM Sans',sans-serif",
+                        fontFamily: "system-ui,sans-serif",
                       }}
                     >
                       <Save style={{ width: 12, height: 12 }} />
@@ -1051,7 +1051,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                         color: "#fbbf24",
                         fontSize: 13,
                         fontWeight: 500,
-                        fontFamily: "'DM Sans',sans-serif",
+                        fontFamily: "system-ui,sans-serif",
                       }}
                     >
                       <FileText style={{ width: 14, height: 14 }} /> Generate
@@ -1078,7 +1078,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                         color: "#60a5fa",
                         fontSize: 13,
                         fontWeight: 500,
-                        fontFamily: "'DM Sans',sans-serif",
+                        fontFamily: "system-ui,sans-serif",
                       }}
                     >
                       <FileText style={{ width: 14, height: 14 }} /> Generate
@@ -1108,7 +1108,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                     borderRadius: 10,
                     padding: '10px 14px',
                     cursor: 'pointer',
-                    fontFamily: "'DM Sans', sans-serif",
+                    fontFamily: "system-ui, sans-serif",
                     transition: 'all 0.15s',
                   }}
                 >
@@ -1209,7 +1209,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                             background: 'rgba(255,255,255,0.04)',
                             border: '1px solid rgba(255,255,255,0.08)',
                             borderRadius: 20, padding: '4px 10px',
-                            cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                            cursor: 'pointer', fontFamily: "system-ui, sans-serif",
                             transition: 'all 0.15s',
                           }}
                         >{q}</button>
@@ -1233,7 +1233,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                           border: '1px solid rgba(255,255,255,0.08)',
                           borderRadius: 10, padding: '8px 12px',
                           fontSize: 13, color: '#f3f4f6',
-                          fontFamily: "'DM Sans', sans-serif",
+                          fontFamily: "system-ui, sans-serif",
                           resize: 'none', outline: 'none', lineHeight: 1.5,
                         }}
                       />
@@ -1655,7 +1655,7 @@ function BookingsTab({ userId, listings, salesmen }) {
           <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(124,58,237,0.05)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: 8 }}>
             <p style={{ margin: "0 0 6px", fontSize: 11, color: "#7c3aed", fontWeight: 600 }}>Choose new date & time</p>
             <input type="datetime-local" value={rescheduleDate} onChange={e => setRescheduleDate(e.target.value)}
-              style={{ width: "100%", background: "#fff", border: "1px solid #d1d5db", borderRadius: 7, color: "#111827", fontSize: 12, padding: "7px 10px", outline: "none", boxSizing: "border-box", marginBottom: 8, fontFamily: "'DM Sans',sans-serif" }} />
+              style={{ width: "100%", background: "#fff", border: "1px solid #d1d5db", borderRadius: 7, color: "#111827", fontSize: 12, padding: "7px 10px", outline: "none", boxSizing: "border-box", marginBottom: 8, fontFamily: "system-ui,sans-serif" }} />
             <div style={{ display: "flex", gap: 6 }}>
               <button onClick={() => { setRescheduleAptId(null); setRescheduleDate(""); }} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: "#f3f4f6", border: "1px solid #e5e7eb", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
               <button onClick={() => doReschedule(b)} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.3)", color: "#7c3aed", cursor: "pointer", fontWeight: 600 }}>Confirm</button>
@@ -2189,7 +2189,7 @@ const CRM_CSS = `
     border-bottom: 2px solid transparent;
     cursor: pointer;
     transition: color 0.15s, border-color 0.15s;
-    font-family: 'DM Sans', sans-serif;
+    font-family: system-ui, sans-serif;
     white-space: nowrap;
     margin-bottom: -1px;
   }
