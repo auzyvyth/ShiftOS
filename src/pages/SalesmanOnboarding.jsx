@@ -70,7 +70,13 @@ const CSS = `
 .eo-review-val{font-size:13px;color:#E8EDF5;font-weight:500;max-width:60%;text-align:right;word-break:break-all;}
 .eo-error{font-size:12px;color:#f87171;margin-top:12px;padding:10px 14px;background:rgba(248,113,113,0.07);border:1px solid rgba(248,113,113,0.15);border-radius:6px;line-height:1.5;}
 .eo-hint{font-size:12px;color:rgba(255,255,255,0.22);margin-top:7px;line-height:1.6;}
-.eo-mobile-bar{display:none;justify-content:space-between;align-items:center;padding:0 0 28px;width:100%;max-width:480px;}
+.eo-mobile-bar{display:none;justify-content:space-between;align-items:center;padding:0 0 20px;width:100%;max-width:480px;}
+.eo-progress-track{position:fixed;top:0;left:0;right:0;height:3px;background:rgba(255,255,255,0.06);z-index:50;}
+.eo-progress-fill{height:100%;background:#dc2626;transition:width 0.35s ease;}
+.eo-mobile-features{display:none;flex-wrap:wrap;gap:7px;padding-bottom:24px;margin-bottom:20px;border-bottom:1px solid rgba(255,255,255,0.06);width:100%;max-width:480px;}
+.eo-mobile-feature-pill{display:flex;align-items:center;gap:6px;font-size:10.5px;color:rgba(255,255,255,0.55);background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:99px;padding:5px 10px;}
+.eo-mobile-feature-dot{width:4px;height:4px;border-radius:50%;background:#dc2626;flex-shrink:0;}
+.eo-mobile-plan-badge{display:none;align-items:center;gap:6px;padding:4px 10px;background:rgba(220,38,38,0.12);border:1px solid rgba(220,38,38,0.25);border-radius:4px;font-size:10px;letter-spacing:0.15em;color:rgba(220,38,38,0.9);text-transform:uppercase;margin-bottom:14px;width:fit-content;}
 .eo-done-root{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#070A12;text-align:center;gap:0;}
 .eo-done-ring{width:64px;height:64px;border-radius:50%;background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);display:flex;align-items:center;justify-content:center;margin-bottom:28px;}
 .eo-done-title{font-family:'Bebas Neue',cursive;font-size:clamp(52px,8vw,84px);letter-spacing:4px;color:#E8EDF5;line-height:1;margin-bottom:16px;}
@@ -82,6 +88,8 @@ const CSS = `
   .eo-left{display:none;}
   .eo-right{padding:36px 20px;justify-content:flex-start;}
   .eo-mobile-bar{display:flex;}
+  .eo-mobile-features{display:flex;}
+  .eo-mobile-plan-badge{display:inline-flex;}
 }
 `;
 
@@ -545,9 +553,14 @@ export default function SalesmanOnboarding() {
 
   const canSlugContinue = form.slug.length >= 3 && !slugTaken && !slugChecking;
 
+  const cfg = TIERS[tier] || TIERS.lite;
+
   return (
     <>
       <style>{CSS}</style>
+      <div className="eo-progress-track">
+        <div className="eo-progress-fill" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
+      </div>
       {showPlans && <PlanPickerModal currentTier={tier} onClose={() => setShowPlans(false)} />}
       <div className="eo-root">
         <LeftPanel step={step} tier={tier} onChangePlan={() => setShowPlans(true)} />
@@ -567,6 +580,22 @@ export default function SalesmanOnboarding() {
                 <button type="button" className="eo-changeplan" style={{ margin: 0, padding: '4px 9px' }} onClick={() => setShowPlans(true)}>Change plan</button>
               </div>
             </div>
+
+            {/* Mobile-only: the value prop that desktop shows in the left
+                sidebar — without this, a phone user's first screen is a bare
+                Terms wall with no context for why they're here. */}
+            {step === 0 && (
+              <>
+                <div className="eo-mobile-plan-badge">{cfg.label} &mdash; {cfg.price}</div>
+                <div className="eo-mobile-features">
+                  {cfg.features.map((f, i) => (
+                    <span key={i} className="eo-mobile-feature-pill">
+                      <span className="eo-mobile-feature-dot" />{f}
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
 
             {step === 0 && (
               <>
@@ -689,6 +718,9 @@ export default function SalesmanOnboarding() {
                   disabled={form.phone.replace(/\D/g, '').length < 9}>
                   CONTINUE
                 </button>
+                <button className="eo-ghost" onClick={() => { setErr(''); setStep(2); }}>
+                  BACK
+                </button>
               </>
             )}
 
@@ -728,6 +760,9 @@ export default function SalesmanOnboarding() {
                 <button className="eo-btn" disabled={!canSlugContinue || loading}
                   onClick={() => { setErr(''); setStep(5); }}>
                   CONTINUE
+                </button>
+                <button className="eo-ghost" onClick={() => { setErr(''); setStep(3); }}>
+                  BACK
                 </button>
               </>
             )}
