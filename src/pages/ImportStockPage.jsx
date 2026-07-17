@@ -15,15 +15,16 @@ const MAX_CARS = 50;
 const SYSTEM_PROMPT = `You are a data extraction assistant for a car dealership platform.
 Extract car listings from the provided data and return ONLY a JSON array. No markdown, no explanation. Each object must follow this exact schema:
 {"brand":"","model":"","variant":"","year":null,"price":null,"mileage":null,"color":"","transmission":"","fuel_type":"","engine_cc":null,"condition":"","state":"","auction_grade":"","interior_grade":"","import_country":"","vin":null,"registration_date":null,"options":null,"image_url":null}
+Every dealer's sheet is laid out differently — column names, order, and which columns exist at all vary between dealers. Match columns by MEANING, not by exact header text or position (e.g. "SELLING PRICE", "ASKING", "PRICE (RM)" all mean the same thing as "ADS PRICE" below). Ignore any column that doesn't correspond to a field in the schema (e.g. an internal agent/inspector code column) — do not force unrelated data into a field.
 HARD LIMIT: Extract a maximum of 50 listings. Once you have written 50 objects, immediately close the array with ] and stop.
-SKIP any row where the REMARKS column contains "SOLD" or "PRESERVED" — do not include those units.
-SKIP any row where the ARR column is "ETA DELAY" — only include arrived stock.
+SKIP any row where the REMARKS (or equivalent status/notes) column contains "SOLD" or "PRESERVED" — do not include those units.
+SKIP any row that is not yet arrived/available — this is usually noted as "ETA" (with or without a date, e.g. "ETA 20/6", "ETA DELAY") inside the REMARKS/notes column, NOT a dedicated arrival column. A car is available to list only if there is no such not-yet-arrived marker.
 For brand: BRAND column.
 For model: MODEL column.
 For variant: SPEC column (the trim/spec level).
 For year: YEAR column (manufacture year).
 For registration_date: combine the YEAR + MONTH + DATE columns into "YYYY-MM-DD" format. If DATE is missing use "YYYY-MM". This is the car's original registration date in its country of origin.
-For price: ADS PRICE column (the dealer's advertised price). Null if blank.
+For price: the column meaning the dealer's advertised/selling price to a buyer (often labeled ADS PRICE). Null if blank. If the sheet also has a separate small numeric column (e.g. labeled BASE PRICE) that looks like an internal tier/priority flag rather than a currency amount (e.g. always 1-3 regardless of the car's value), ignore it — do not use it as price.
 For mileage: MILEAGE column. Extract as a plain number (no units).
 For color: COLOUR column.
 For vin: CHASSIS column. Can be a standard 17-char VIN (e.g. WBAHF12090WW43378) or a Japanese short chassis code (e.g. FL5-1234567, LA805S-0089301, GR3-1234567). Extract exactly as shown including any dashes. Null if not found.
@@ -33,8 +34,8 @@ For image_url: look for any column containing a full HTTP URL. Null if not found
 Transmission must be "Auto" or "Manual". Infer from options/spec if not explicit.
 Fuel type must be "Petrol", "Diesel", "Hybrid", or "Electric". Infer from model name if not explicit.
 Condition must be "Recon" for Japanese imports, "Used" for local used, "New" for brand new.
-auction_grade: exterior grade e.g. "4.5","4","3.5","3","R","S". Null if not found.
-interior_grade: "A","B","C","D". Null if not found.
+auction_grade: exterior grade e.g. "4.5","4","3.5","3","R","S". If there's no dedicated grade column, check for an embedded mention inside REMARKS/OPTIONS (e.g. "GRADE 4B" -> "4"). Null if not found.
+interior_grade: "A","B","C","D". Same fallback as auction_grade — check REMARKS/OPTIONS if there's no dedicated column. Null if not found.
 state: Malaysian state if mentioned. Null if not found.
 Always use null (not empty string) for missing numeric or unknown fields.`;
 
@@ -164,6 +165,7 @@ async function callClaude(messages, onProgress) {
   let buffer = "";
   let inputTokens = 0;
   let outputTokens = 0;
+  let hitCap = false;
   const ESTIMATED_CHARS = 25000;
 
   while (true) {
@@ -192,6 +194,7 @@ async function callClaude(messages, onProgress) {
           onProgress?.(Math.round(pct), cars, msg);
           // Hard stop at limit — close the array and bail
           if (cars >= MAX_CARS) {
+            hitCap = true;
             reader.cancel();
             const lastClose = text.lastIndexOf('}');
             if (lastClose !== -1) text = text.slice(0, lastClose + 1) + ']';
@@ -208,10 +211,10 @@ async function callClaude(messages, onProgress) {
   onProgress?.(93, 0, "Parsing results…");
   try {
     const result = JSON.parse(text);
-    return { result, inputTokens, outputTokens };
+    return { result, inputTokens, outputTokens, hitCap };
   } catch {
     const match = text.match(/\[[\s\S]*\]/);
-    if (match) return { result: JSON.parse(match[0]), inputTokens, outputTokens };
+    if (match) return { result: JSON.parse(match[0]), inputTokens, outputTokens, hitCap };
     throw new Error("Could not parse JSON from response");
   }
 }
@@ -230,6 +233,7 @@ export default function ImportStockPage() {
   const [imported, setImported] = useState(null);
   const [importError, setImportError] = useState("");
   const [analyseError, setAnalyseError] = useState("");
+  const [hitCap, setHitCap] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -260,7 +264,7 @@ export default function ImportStockPage() {
     setAnalyseError("");
     try {
       const messages = await buildClaudeMessages(file, sheetsUrl);
-      const { result, inputTokens, outputTokens } = await callClaude(messages, (pct, _cars, msg) => {
+      const { result, inputTokens, outputTokens, hitCap: capped } = await callClaude(messages, (pct, _cars, msg) => {
         setProgress(pct);
         setProgressMsg(msg);
       });
@@ -269,6 +273,7 @@ export default function ImportStockPage() {
       setProgress(100);
       setProgressMsg(`${result.length} cars extracted!`);
       setUsage({ inputTokens, outputTokens });
+      setHitCap(!!capped);
       setTimeout(() => { setRows(result); setStep(2); }, 400);
     } catch (e) {
       setAnalyseError(e.message || "Unknown error");
@@ -432,6 +437,7 @@ export default function ImportStockPage() {
             <Step2Preview
               rows={rows}
               usage={usage}
+              hitCap={hitCap}
               onBack={() => setStep(1)}
               onNext={handleStep2}
             />

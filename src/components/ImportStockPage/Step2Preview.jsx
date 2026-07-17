@@ -24,7 +24,7 @@ function UsageBar({ usage }) {
   );
 }
 
-export default function Step2Preview({ rows: initial, usage, onBack, onNext }) {
+export default function Step2Preview({ rows: initial, usage, hitCap, onBack, onNext }) {
   const [rows, setRows] = useState(initial);
 
   const update = (i, field, val) =>
@@ -58,6 +58,13 @@ export default function Step2Preview({ rows: initial, usage, onBack, onNext }) {
           <p className="text-xs text-gray-600">Click any cell to edit · Delete rows with <Trash2 className="w-3 h-3 inline mx-0.5" /></p>
         </div>
       </div>
+
+      {hitCap && (
+        <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)', color: '#fbbf24' }}>
+          <p className="font-bold mb-1">This file has more than 50 cars</p>
+          <p className="text-xs" style={{ color: '#fcd34d' }}>Only the first 50 were extracted. Import these, then remove the rows already imported from your file and run it through again to get the rest.</p>
+        </div>
+      )}
 
       <UsageBar usage={usage} />
 
