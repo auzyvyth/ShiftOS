@@ -553,9 +553,10 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
           {/* ── Price block ── */}
           <div style={{ marginBottom: 10 }}>
 
-            {/* Strikethrough + save — 16px reserved. For sambung bayar this slot
-                carries the "Sambung Bayar" tag instead (no strike price applies). */}
-            <div style={{ height: 16, display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
+            {/* Strikethrough + save — only reserves height when it has content
+                (discount or sambung); collapsed otherwise so the price sits
+                tight under the details and the card stays short/impactful. */}
+            <div style={{ height: (isSambung || hasDiscount) ? 16 : 0, display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
               {isSambung ? (
                 <span style={{
                   fontSize: 9, fontWeight: 700, lineHeight: 1, flexShrink: 0, letterSpacing: '0.04em',

@@ -76,7 +76,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
     saveBg:'rgba(255,255,255,0.05)', saveBorder:'rgba(255,255,255,0.12)', saveIcon:'#9ca3af',
   } : {
     cardBg:'#ffffff', cardBorder:'rgba(0,0,0,0.08)',
-    imgBg:'#f3f4f6', title:'#111827', spec:'#4b5563',
+    imgBg:'#000000', title:'#111827', spec:'#4b5563',
     yearBg:'rgba(0,0,0,0.05)', yearText:'#374151', yearBorder:'rgba(0,0,0,0.09)',
     usedPill:{ background:'rgba(0,0,0,0.05)', color:'#374151', border:'1px solid rgba(0,0,0,0.1)' },
     cmpBg:'rgba(0,0,0,0.05)', cmpBorder:'rgba(0,0,0,0.12)', cmpText:'#374151',
@@ -217,10 +217,10 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
           </div>
         )}
 
-        {/* Price overlay */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '24px 10px 7px', background: 'linear-gradient(to top,rgba(0,0,0,0.82) 55%,transparent)', pointerEvents: 'none' }}>
-          {hasDiscount && <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.5)', textDecoration: 'line-through', lineHeight: 1, marginBottom: '1px' }}>RM {origPrice.toLocaleString('en-MY')}</div>}
-          <div style={{ fontSize: '14px', fontWeight: '800', color: isHot ? '#fca5a5' : '#ffffff', lineHeight: 1, letterSpacing: '-0.02em' }}>
+        {/* Price — vertically centred over the black image column (no gradient) */}
+        <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', padding: '0 8px', pointerEvents: 'none' }}>
+          {hasDiscount && <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.55)', textDecoration: 'line-through', lineHeight: 1, marginBottom: '2px', textShadow: '0 1px 3px rgba(0,0,0,0.7)' }}>RM {origPrice.toLocaleString('en-MY')}</div>}
+          <div style={{ fontSize: '15px', fontWeight: '800', color: isHot ? '#fca5a5' : '#ffffff', lineHeight: 1.05, letterSpacing: '-0.02em', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
             {price ? 'RM ' + price.toLocaleString('en-MY') : 'P.O.R'}
           </div>
         </div>
