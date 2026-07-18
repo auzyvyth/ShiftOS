@@ -6,6 +6,7 @@ import { supabase } from "../supabaseClient";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import CarFormFast from "../components/CarFormFast";
 import CarForm from "../components/CarForm";
+import DealerPendingApproval from "../components/DealerPendingApproval";
 import {
  LogOut,
  Copy,
@@ -197,6 +198,7 @@ export default function SalesmanPremium() {
  const [profile, setProfile] = useState(null);
  const [userId, setUserId] = useState(null);
  const [loading, setLoading] = useState(true);
+ const [pendingPay, setPendingPay] = useState(false);
  const isPremium = profile?.plan === 'salesman_full';
  const { permissions } = usePermissions(profile);
  // Owner-granted extra: Outreach Hub (scoped to this salesman's own leads).
@@ -440,6 +442,16 @@ export default function SalesmanPremium() {
  // the wizard before the dashboard, no matter how they arrived here.
  if (profileData.onboarding_complete === false) {
  navigate("/salesman-onboarding/premium", { replace: true });
+ return;
+ }
+
+ // Payment gate: a premium salesman awaiting payment confirmation sees the
+ // pending-approval screen (same manual DuitNow QR flow as dealers) until an
+ // admin marks payment_status != 'pending'. Grandfathered rows (null) pass.
+ if (profileData.payment_status === "pending") {
+ setProfile(profileData);
+ setPendingPay(true);
+ setLoading(false);
  return;
  }
 
@@ -6165,7 +6177,20 @@ export default function SalesmanPremium() {
  );
  }
 
- // MAIN RENDER 
+ // Payment gate — premium salesman awaiting payment confirmation (manual QR flow).
+ if (pendingPay) {
+ return (
+ <DealerPendingApproval
+ planKey="salesman_full"
+ dealershipName={profile?.full_name}
+ email={profile?.email}
+ profileId={profile?.id}
+ redirectTo="/salesman-premium"
+ />
+ );
+ }
+
+ // MAIN RENDER
 
  return (
  <div

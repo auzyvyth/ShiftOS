@@ -200,7 +200,7 @@ export default function AdminPage() {
     // Load ALL salesmen with plan info
     const { data: salesmanData } = await supabase
       .from("profiles")
-      .select("id, full_name, email, created_at, is_active, role, dealer_id, subdomain, subscription_status, plan, slug")
+      .select("id, full_name, email, created_at, is_active, role, dealer_id, subdomain, subscription_status, plan, slug, payment_status")
       .eq("role", "salesman")
       .order("created_at", { ascending: false });
     setSalesmen(salesmanData || []);
@@ -1076,13 +1076,15 @@ export default function AdminPage() {
 
               {/* ── Group 1: Standalone Lite ── */}
               {(() => {
-                const lites = filteredSalesmen.filter(s => s.plan === 'salesman_lite' && !s.dealer_id);
+                // Standalone (no dealer) salesmen: lite + solo premium. Solo
+                // premium pay RM50/mo themselves and need a payment-approval action.
+                const lites = filteredSalesmen.filter(s => !s.dealer_id && (s.plan === 'salesman_lite' || s.plan === 'salesman_full'));
                 return (
                   <div style={{ marginBottom: 24 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em" }}>Standalone Lite</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em" }}>Standalone Salesmen</span>
                       <span style={{ fontSize: 11, color: "#4b5563", background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: 20, padding: "1px 8px" }}>{lites.length}</span>
-                      <span style={{ fontSize: 10, color: "#374151", marginLeft: 4 }}>Own listings · no dealer</span>
+                      <span style={{ fontSize: 10, color: "#374151", marginLeft: 4 }}>Lite + solo Premium · no dealer</span>
                     </div>
                     <div style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
                       <div style={{ overflowX: "auto" }}>
@@ -1127,10 +1129,25 @@ export default function AdminPage() {
                                   <span style={{ fontSize: 11, fontWeight: 600, color: sm.is_active === false ? "#f87171" : "#4ade80" }}>
                                     {sm.is_active === false ? "○ Suspended" : "● Active"}
                                   </span>
+                                  {sm.plan === 'salesman_full' && (
+                                    <span style={{ display: "block", marginTop: 4, fontSize: 10, fontWeight: 700, color: sm.payment_status === 'pending' ? "#fbbf24" : "#c084fc" }}>
+                                      {sm.payment_status === 'pending' ? "◷ Premium · Pending payment" : "★ Premium"}
+                                    </span>
+                                  )}
                                   {saved[sm.id] && <span style={{ fontSize: 10, color: "#4ade80", marginLeft: 6 }}>✓</span>}
                                 </td>
                                 <td style={{ padding: "10px 14px" }}>
                                   <div style={{ display: "flex", gap: 5 }}>
+                                    {sm.plan === 'salesman_full' && sm.payment_status === 'pending' && (
+                                      <button className="adm-btn"
+                                        onClick={async () => {
+                                          const { error } = await supabase.from("profiles").update({ payment_status: "received" }).eq("id", sm.id);
+                                          if (!error) { setSalesmen(prev => prev.map(s => s.id === sm.id ? { ...s, payment_status: "received" } : s)); flashSaved(sm.id); }
+                                        }}
+                                        style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ade80", fontWeight: 700 }}>
+                                        Mark Paid
+                                      </button>
+                                    )}
                                     <button className="adm-btn" onClick={() => toggleSalesmanSuspend(sm)}
                                       style={{ background: sm.is_active === false ? "rgba(74,222,128,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${sm.is_active === false ? "rgba(74,222,128,0.2)" : "rgba(239,68,68,0.2)"}`, color: sm.is_active === false ? "#4ade80" : "#f87171" }}>
                                       {sm.is_active === false ? "Unsuspend" : "Suspend"}
