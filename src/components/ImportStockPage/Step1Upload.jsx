@@ -1,18 +1,54 @@
 import React, { useRef, useState } from 'react';
-import { Upload, Link, FileSpreadsheet, FileText, X, Sparkles } from 'lucide-react';
+import { Upload, Link, FileSpreadsheet, FileText, X, Sparkles, Info, AlertCircle, ShieldCheck, CheckCircle2 } from 'lucide-react';
+
+// Bulletproof-input limits. A .xlsx is a zip, so an oversized upload is the
+// first zip-bomb signal we can cheaply reject before any parser touches it.
+const MAX_FILE_MB = 20;
+const ALLOWED_EXT = ['xlsx', 'pdf'];
+// Real signatures so a renamed executable can't slip through on extension alone.
+// PDF = "%PDF", XLSX = PK zip local-file header "PK\x03\x04".
+const MAGIC = { pdf: [0x25, 0x50, 0x44, 0x46], xlsx: [0x50, 0x4b, 0x03, 0x04] };
+
+async function sniffMagic(file, ext) {
+  try {
+    const head = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+    const sig = MAGIC[ext];
+    return sig.every((b, i) => head[i] === b);
+  } catch {
+    return false;
+  }
+}
 
 export default function Step1Upload({ onNext, onSample, loading, progress = 0, progressMsg = '' }) {
   const [file, setFile] = useState(null);
   const [sheetsUrl, setSheetsUrl] = useState('');
   const [drag, setDrag] = useState(false);
+  const [err, setErr] = useState('');
+  const [showGuide, setShowGuide] = useState(false);
   const inputRef = useRef();
 
   const accept = '.xlsx,.pdf';
 
-  const pickFile = (f) => {
+  const pickFile = async (f) => {
     if (!f) return;
+    setErr('');
     const ext = f.name.split('.').pop().toLowerCase();
-    if (!['xlsx', 'pdf'].includes(ext)) return;
+    if (!ALLOWED_EXT.includes(ext)) {
+      setErr('Unsupported file. Upload a .xlsx or .pdf stock list, or paste a Google Sheets link.');
+      return;
+    }
+    if (f.size > MAX_FILE_MB * 1024 * 1024) {
+      setErr(`That file is ${(f.size / 1024 / 1024).toFixed(1)} MB — the limit is ${MAX_FILE_MB} MB. Split a very large list into smaller files.`);
+      return;
+    }
+    if (f.size === 0) {
+      setErr('That file looks empty. Re-export it and try again.');
+      return;
+    }
+    if (!(await sniffMagic(f, ext))) {
+      setErr(`This doesn't look like a real ${ext.toUpperCase()} file — its contents don't match its extension. Re-save it and try again.`);
+      return;
+    }
     setFile(f);
     setSheetsUrl('');
   };
@@ -56,6 +92,17 @@ export default function Step1Upload({ onNext, onSample, loading, progress = 0, p
 
   return (
     <div className="space-y-5">
+      {/* Best-results guide trigger */}
+      <button
+        onClick={() => setShowGuide(true)}
+        className="w-full flex items-center gap-2.5 rounded-xl px-4 py-3 text-left transition-colors"
+        style={{ background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)' }}
+      >
+        <Info className="w-4 h-4 flex-shrink-0" style={{ color: '#ef4444' }} />
+        <span className="text-xs font-semibold text-white flex-1">Before you upload — how to get the best results</span>
+        <span className="text-xs font-bold" style={{ color: '#ef4444' }}>Read →</span>
+      </button>
+
       {/* Drop zone */}
       <div
         onClick={() => !file && inputRef.current?.click()}
@@ -101,6 +148,14 @@ export default function Step1Upload({ onNext, onSample, loading, progress = 0, p
           onChange={(e) => pickFile(e.target.files[0])}
         />
       </div>
+
+      {/* Validation error */}
+      {err && (
+        <div className="flex items-start gap-2 rounded-xl px-4 py-3" style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.25)' }}>
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#f87171' }} />
+          <p className="text-xs" style={{ color: '#fca5a5' }}>{err}</p>
+        </div>
+      )}
 
       {/* Divider */}
       <div className="flex items-center gap-3">
@@ -149,6 +204,80 @@ export default function Step1Upload({ onNext, onSample, loading, progress = 0, p
       >
         Load sample data (no token)
       </button>
+
+      {showGuide && <UploadGuide onClose={() => setShowGuide(false)} />}
+    </div>
+  );
+}
+
+/* Pre-upload guide — the single biggest cause of a bad import is images/links
+   that the file never actually exposes (private Drive links, password-locked
+   PDFs, blank columns). This walks the dealer through formatting for the best
+   result. Content is based on real dealer stock lists (Drive-folder image links
+   embedded per row). */
+function UploadGuide({ onClose }) {
+  const OK = [
+    { t: 'Set image links to "Anyone with the link"', d: 'Photo links (usually Google Drive) must be shared publicly. A private link imports as a broken image. In Drive: right-click the folder → Share → General access → "Anyone with the link".' },
+    { t: 'Put an image link in its own column', d: 'One photo link per car in a dedicated column — a Google Drive link or a direct image URL (ending .jpg/.png). Folder links work but pull a whole album; a single-file or direct image link gives the cleanest cover photo.' },
+    { t: 'Fill the key columns', d: 'Brand, model, year, price and mileage drive the whole listing. Blank cells import as incomplete listings you’ll have to finish by hand.' },
+    { t: 'Mark sold / reserved rows', d: 'Rows noted SOLD, PRESERVED, or ETA (not yet arrived) are skipped automatically — leave the note in your remarks column and they won’t import.' },
+  ];
+  const AVOID = [
+    { t: 'Password-protected or scanned PDFs', d: 'Locked/encrypted files can’t be read. A scanned image of a printed list has no selectable text or links, so nothing can be extracted — export a real PDF or Excel from your system.' },
+    { t: 'Photos pasted directly into cells', d: 'An image pasted into a cell (not a link) can’t be pulled out. Use a shareable link instead.' },
+    { t: 'More than 50 cars in one file', d: 'Imports are capped at 50 listings per run — split a larger list into batches.' },
+  ];
+  return (
+    <div
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+    >
+      <div style={{ width: 'min(560px, 100%)', maxHeight: '88vh', overflowY: 'auto', background: '#0d1420', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '24px 22px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            <ShieldCheck className="w-5 h-5" style={{ color: '#ef4444' }} />
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#fff' }}>Get the best import</h3>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280' }}><X className="w-5 h-5" /></button>
+        </div>
+        <p style={{ fontSize: 12.5, color: '#9ca3af', margin: '0 0 18px', lineHeight: 1.6 }}>
+          The importer reads your file as text and matches columns by meaning. Photos are pulled from the links in your file — so how the file is shared matters most.
+        </p>
+
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#4ade80', margin: '0 0 10px' }}>Do this</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+          {OK.map((r) => (
+            <div key={r.t} style={{ display: 'flex', gap: 9 }}>
+              <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: '#4ade80', marginTop: 2 }} />
+              <div>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#e5e7eb' }}>{r.t}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#8b97a7', lineHeight: 1.55 }}>{r.d}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#f87171', margin: '0 0 10px' }}>Avoid</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 22 }}>
+          {AVOID.map((r) => (
+            <div key={r.t} style={{ display: 'flex', gap: 9 }}>
+              <AlertCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#f87171', marginTop: 2 }} />
+              <div>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#e5e7eb' }}>{r.t}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#8b97a7', lineHeight: 1.55 }}>{r.d}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full py-2.5 rounded-xl text-sm font-bold text-white"
+          style={{ background: '#dc2626' }}
+        >
+          Got it
+        </button>
+      </div>
     </div>
   );
 }

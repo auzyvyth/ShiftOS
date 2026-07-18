@@ -12,6 +12,7 @@ import CarForm from "../components/CarForm";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import SalesmanLiteHelp from "../components/SalesmanLiteHelp";
+import ChannelBreakdown from "../components/ChannelBreakdown";
 import ReportBugButton from "../components/ReportBugButton";
 import {
   LogOut,
@@ -524,6 +525,8 @@ export default function SalesmanLite() {
 
   // per-listing analytics (carStatsMap)
   const [carStatsMap, setCarStatsMap] = useState({});
+  // per-car share-channel breakdown: { [car_id]: [{ channel, views, enquiries }] }
+  const [channelMap, setChannelMap] = useState({});
   const [cvrHover, setCvrHover] = useState(null);
 
   // car detail popup
@@ -907,6 +910,26 @@ export default function SalesmanLite() {
             };
           });
           setCarStatsMap(map);
+
+          // Share-channel breakdown (which platform each view/enquiry came from),
+          // scoped to this Lite salesman's own slug. Untagged/organic → 'direct'.
+          const carIds = Object.keys(map);
+          if (carIds.length > 0 && profileData.slug) {
+            supabase
+              .rpc("get_salesman_channel_breakdown", { p_car_ids: carIds, p_slug: profileData.slug })
+              .then(({ data: chRows, error: chErr }) => {
+                if (chErr) { console.error("fetchChannelBreakdown:", chErr); return; }
+                const chMap = {};
+                (chRows || []).forEach(r => {
+                  (chMap[r.car_id] = chMap[r.car_id] || []).push({
+                    channel:   r.channel || "direct",
+                    views:     Number(r.views)     || 0,
+                    enquiries: Number(r.enquiries) || 0,
+                  });
+                });
+                setChannelMap(chMap);
+              });
+          }
         });
 
       // fetch leads
@@ -3075,6 +3098,19 @@ export default function SalesmanLite() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* ── Traffic by platform (share-channel attribution) ── */}
+        {Object.keys(channelMap).length > 0 && (
+          <div style={CARD}>
+            <div style={CARD_HEADER}>
+              <span>Traffic Sources</span>
+              <span>which platform your links came from</span>
+            </div>
+            <div style={{ padding: "16px 18px" }}>
+              <ChannelBreakdown rows={Object.values(channelMap).flat()} metric="views" title="" />
             </div>
           </div>
         )}

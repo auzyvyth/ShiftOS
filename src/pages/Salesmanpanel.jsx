@@ -17,6 +17,7 @@ import PostSaleBoard from "../components/postsale/PostSaleBoard";
 import PostSaleChecklist from "../components/postsale/PostSaleChecklist";
 import SalesmanPanelHelp from "../components/SalesmanPanelHelp";
 import ShareMenu from "../components/ShareMenu";
+import ChannelBreakdown from "../components/ChannelBreakdown";
 import { toast } from "sonner";
 import { generateDealSheet } from "../utils/dealSheet";
 import { maskIC } from "../utils/maskIC";
@@ -345,6 +346,8 @@ export default function SalesmanPanel() {
 
  // Per-listing analytics
  const [carStatsMap, setCarStatsMap] = useState({});
+ // Per-car share-channel breakdown: { [car_id]: [{ channel, views, enquiries }] }
+ const [channelMap, setChannelMap] = useState({});
  // rawEvents removed — aggregated server-side via get_car_analytics RPC
  const [dealerSubdomain, setDealerSubdomain] = useState(null);
  const [dealerProfile, setDealerProfile] = useState(null);
@@ -539,6 +542,21 @@ export default function SalesmanPanel() {
  setCarStatsMap(map);
  setMyClicks(Object.values(map).reduce((s, v) => s + (v.views     || 0), 0));
  setMyEnquiries(Object.values(map).reduce((s, v) => s + (v.enquiries || 0), 0));
+
+ // Share-channel breakdown (which platform each view/enquiry came from),
+ // same slug scope. Untagged/organic rows bucket to 'direct' server-side.
+ const { data: chRows, error: chErr } = await supabase
+ .rpc("get_salesman_channel_breakdown", { p_car_ids: myCarIds, p_slug: profileData.slug || "" });
+ if (chErr) console.error("fetchChannelBreakdown:", chErr);
+ const chMap = {};
+ (chRows || []).forEach(row => {
+ (chMap[row.car_id] = chMap[row.car_id] || []).push({
+ channel:   row.channel || "direct",
+ views:     Number(row.views)     || 0,
+ enquiries: Number(row.enquiries) || 0,
+ });
+ });
+ setChannelMap(chMap);
  }
  });
  }, [navigate]);
@@ -2236,6 +2254,16 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  )}
  </div>
 
+ {/* Where my leads came from — share-channel breakdown across all my listings */}
+ <div style={{ ...CARD, padding: 16, marginBottom: 16 }}>
+ <ChannelBreakdown
+ rows={Object.values(channelMap).flat()}
+ metric="views"
+ title="Where my traffic came from · 30 days"
+ emptyHint="No attributed traffic yet — share your listing links to see which platforms convert."
+ />
+ </div>
+
  {/* Dealer connection banner — makes it clear this panel is linked to the dealer dashboard */}
  {profile?.dealer_id && (
  <div
@@ -3624,6 +3652,24 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </span>
  </div>
  ))}
+ </div>
+
+ {/* Per-car share-channel breakdown — where THIS listing's traffic came from */}
+ <div
+ style={{
+ background: "rgba(255,255,255,0.03)",
+ border: "1px solid rgba(255,255,255,0.08)",
+ borderRadius: 6,
+ padding: 12,
+ }}
+ >
+ <ChannelBreakdown
+ rows={channelMap[car.id] || []}
+ metric="views"
+ title="Traffic by platform"
+ emptyHint="No attributed traffic yet — share this listing to see which platforms it came from."
+ compact
+ />
  </div>
 
  {/* Status */}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { CheckCircle2, Loader, ArrowRight } from 'lucide-react';
 
-export default function Step3Import({ rows, importing, imported, error, onImport, onDone }) {
+export default function Step3Import({ rows, importing, imported, error, onImport, onDone, progressMsg }) {
   if (imported !== null) {
     return (
       <div className="flex flex-col items-center gap-6 py-12 text-center">
@@ -69,6 +69,10 @@ export default function Step3Import({ rows, importing, imported, error, onImport
           )}
         </button>
       </div>
+
+      {importing && progressMsg && (
+        <p className="text-xs text-center text-gray-500">{progressMsg}</p>
+      )}
     </div>
   );
 }

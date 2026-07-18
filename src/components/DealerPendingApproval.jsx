@@ -6,7 +6,7 @@ import { getPlanConfig } from '../utils/planConfig';
 // confirmation. Used both right after onboarding and as the dashboard gate.
 // When an admin marks payment_status != 'pending' (AdminPage "mark received"),
 // the realtime subscription auto-forwards them into the dashboard.
-export default function DealerPendingApproval({ planKey, dealershipName, email, profileId }) {
+export default function DealerPendingApproval({ planKey, dealershipName, email, profileId, redirectTo = '/dashboard' }) {
   const cfg = getPlanConfig(planKey);
   const amount = cfg?.price ? `RM ${Number(cfg.price).toLocaleString('en-MY')}` : '';
   const reference = dealershipName || email || '';
@@ -20,13 +20,13 @@ export default function DealerPendingApproval({ planKey, dealershipName, email, 
         { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${profileId}` },
         (payload) => {
           if (payload.new?.payment_status && payload.new.payment_status !== 'pending') {
-            window.location.href = '/dashboard';
+            window.location.href = redirectTo;
           }
         },
       )
       .subscribe();
     return () => supabase.removeChannel(ch);
-  }, [profileId]);
+  }, [profileId, redirectTo]);
 
   const logout = async () => {
     await supabase.auth.signOut();
@@ -69,12 +69,12 @@ export default function DealerPendingApproval({ planKey, dealershipName, email, 
           </div>
         )}
 
-        {/* DuitNow / bank QR — drop your real QR at public/payment-qr.png */}
-        <div style={{ background: '#fff', borderRadius: 12, padding: 14, width: 220, height: 220, margin: '0 auto 18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {/* DuitNow / bank QR — canonical asset at public/payment-qr.png */}
+        <div style={{ background: '#fff', borderRadius: 12, padding: 10, width: 250, margin: '0 auto 18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <img
             src="/payment-qr.png"
-            alt="Scan to pay"
-            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            alt="Scan to pay with any banking app or eWallet"
+            style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 8 }}
             onError={(e) => {
               e.currentTarget.style.display = 'none';
               e.currentTarget.parentElement.innerHTML =

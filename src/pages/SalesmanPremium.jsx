@@ -6,6 +6,7 @@ import { supabase } from "../supabaseClient";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import CarFormFast from "../components/CarFormFast";
 import CarForm from "../components/CarForm";
+import DealerPendingApproval from "../components/DealerPendingApproval";
 import {
  LogOut,
  Copy,
@@ -197,6 +198,7 @@ export default function SalesmanPremium() {
  const [profile, setProfile] = useState(null);
  const [userId, setUserId] = useState(null);
  const [loading, setLoading] = useState(true);
+ const [pendingPay, setPendingPay] = useState(false);
  const isPremium = profile?.plan === 'salesman_full';
  const { permissions } = usePermissions(profile);
  // Owner-granted extra: Outreach Hub (scoped to this salesman's own leads).
@@ -440,6 +442,16 @@ export default function SalesmanPremium() {
  // the wizard before the dashboard, no matter how they arrived here.
  if (profileData.onboarding_complete === false) {
  navigate("/salesman-onboarding/premium", { replace: true });
+ return;
+ }
+
+ // Payment gate: a premium salesman awaiting payment confirmation sees the
+ // pending-approval screen (same manual DuitNow QR flow as dealers) until an
+ // admin marks payment_status != 'pending'. Grandfathered rows (null) pass.
+ if (profileData.payment_status === "pending") {
+ setProfile(profileData);
+ setPendingPay(true);
+ setLoading(false);
  return;
  }
 
@@ -1044,14 +1056,10 @@ export default function SalesmanPremium() {
  };
 
  const logAiUsage = async (feature) => {
- const today = new Date().toISOString().slice(0, 10);
- const col = `${feature}_count`;
- await supabase.from("ai_salesman_usage").upsert(
- { salesman_id: userId, usage_date: today, [col]: 1 },
- { onConflict: "salesman_id,usage_date", ignoreDuplicates: false }
- ).then(async () => {
- await supabase.rpc("increment_ai_usage", { p_salesman_id: userId, p_feature: feature, p_date: today }).then(null, () => {});
- });
+ // Single atomic increment server-side (keyed on auth.uid() + CURRENT_DATE).
+ // The previous direct upsert targeted a non-existent `usage_date` column and
+ // called a missing RPC, so usage never recorded → quota was never enforced.
+ await supabase.rpc("increment_ai_usage", { p_feature: feature }).then(null, () => {});
  };
 
  const generateAiCaptions = async (car, platform = captionPlatform) => {
@@ -6165,7 +6173,20 @@ export default function SalesmanPremium() {
  );
  }
 
- // MAIN RENDER 
+ // Payment gate — premium salesman awaiting payment confirmation (manual QR flow).
+ if (pendingPay) {
+ return (
+ <DealerPendingApproval
+ planKey="salesman_full"
+ dealershipName={profile?.full_name}
+ email={profile?.email}
+ profileId={profile?.id}
+ redirectTo="/salesman-premium"
+ />
+ );
+ }
+
+ // MAIN RENDER
 
  return (
  <div
@@ -6955,7 +6976,7 @@ export default function SalesmanPremium() {
  </div>
  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
  {isPremium && (
- <AiQuotaBadge userId={userId} feature="caption" limit={20} />
+ <AiQuotaBadge userId={userId} feature="caption" />
  )}
  <button
  onClick={() => setAiCaptionCar(null)}

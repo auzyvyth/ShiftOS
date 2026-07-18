@@ -461,6 +461,9 @@ export default function SalesmanOnboarding() {
         is_active: true,
         onboarding_complete: true,
         plan: tier === 'premium' ? 'salesman_full' : 'salesman_lite',
+        // Premium activates only after manual payment confirmation (admin marks
+        // payment_status='received' in /platform). Lite is free — no gate.
+        payment_status: tier === 'premium' ? 'pending' : null,
         pdpa_consent: true,
         pdpa_consent_at: new Date().toISOString(),
         ic_deadline: form.icNumber ? null : new Date(Date.now() + 30 * 86400000).toISOString(),
@@ -470,7 +473,9 @@ export default function SalesmanOnboarding() {
       sessionStorage.removeItem('ob_plan_slug');
       sessionStorage.removeItem('ob_account_type');
       setDone(true);
-      setTimeout(() => navigate('/salesman'), 2400);
+      // Premium lands on the premium panel, which shows the payment-pending gate
+      // until an admin confirms payment; lite goes straight in.
+      setTimeout(() => navigate(tier === 'premium' ? '/salesman-premium' : '/salesman'), 2400);
     } catch (e) {
       setErr(e.message);
     } finally {

@@ -9,7 +9,18 @@
 
 - **ACT-4: Enable Google One Tap (`VITE_GOOGLE_CLIENT_ID`)** — The Google One Tap popup for new marketplace visitors (`src/components/GoogleOneTap.jsx`) is built but no-ops until the Google OAuth **Web client ID** is exposed to the frontend. Steps: (1) Vercel → env `VITE_GOOGLE_CLIENT_ID=<google web client id>` (same client used by Supabase's Google provider); (2) Google Cloud Console → that Web client → add `https://xdrive.my` (+ preview origin) to **Authorized JavaScript origins**; (3) Supabase → Auth → Providers → Google → add the same client ID under **Authorized Client IDs** so `signInWithIdToken` accepts the One Tap token. Until done, the popup simply never shows (no error).
 
-> Reminder protocol: while ACT-1, ACT-2, ACT-3 or ACT-4 remain here, surface them at session start and whenever 2FA/security/Telegram/auth work is touched.
+- **ACT-5: Set `GOOGLE_DRIVE_API_KEY` edge secret** — The self-serve stock
+  importer's photo fetch (`import-drive-images` edge function, IMP-1/IMP-2) needs
+  a Google Drive API key so it can list + download images from dealers' public
+  "anyone with the link" Drive folders WITHOUT any dealer OAuth. Steps: (1) Google
+  Cloud Console → same project as your `credentials.json` → APIs & Services →
+  enable **Google Drive API** → Credentials → Create credentials → **API key**;
+  (2) restrict the key to the Drive API (recommended); (3) Supabase → Edge
+  Functions → Secrets → `GOOGLE_DRIVE_API_KEY=<key>`. Until set, the function
+  returns `drive_key_missing` and imported cars come in without photos (listings
+  still import fine). The key is server-only — never exposed to the client.
+
+> Reminder protocol: while ACT-1, ACT-2, ACT-3, ACT-4 or ACT-5 remain here, surface them at session start and whenever 2FA/security/Telegram/auth/import work is touched.
 
 ## Dev tasks
 
@@ -36,8 +47,15 @@
 
 ### BILLING / PAYMENTS
 
-- [ ] **PAY-1: Salesman Premium payment gate (QR + approval)** — Salesman Premium
-  (`salesman_full`, RM50/mo) currently activates for FREE at onboarding
+- [x] **PAY-1: Salesman Premium payment gate (QR + approval)** — DONE. Ported the
+  dealer flow: `SalesmanOnboarding.activate()` sets `payment_status:'pending'` for
+  premium (lite stays free); `SalesmanPremium` gates on it and renders
+  `DealerPendingApproval` (shared DuitNow QR at `public/payment-qr.png`) with a
+  `redirectTo` prop; realtime auto-forwards on approval. AdminPage now surfaces
+  solo premium salesmen (were invisible) with a "Mark Paid" action
+  (superadmin RLS). Grandfathered premium rows (payment_status null) pass through.
+  Original note below for reference:
+  Salesman Premium (`salesman_full`, RM50/mo) previously activated for FREE at onboarding
   (`SalesmanOnboarding.activate()` sets `plan:'salesman_full'` with no payment).
   Apply the same pattern already shipped for dealers: on premium signup set
   `payment_status:'pending'`, show a QR pending screen (generalise/rename the
@@ -60,6 +78,72 @@
 - [x] **DMS-6: Advertising spend per unit** — DONE. New `ad_spend` table + RLS. "Ads" button per stock row (view_cost gated) opens a modal to log/delete spend per channel (Mudah/Carlist/FB/TikTok/IG). Total deducted as an "Advertising" line in the P&L modal.
 
 ---
+
+### SALESMAN LITE — launched first (context + follow-ups)
+
+Launch note: Salesman Lite (`SalesmanLite.jsx`, solo lite, `/salesman-lite`,
+signup → `/salesman-onboarding/lite`) is live. Premium (`SalesmanPremium.jsx`)
+and the linked-salesman panel (`Salesmanpanel.jsx`) are separate surfaces.
+
+- AI features in Lite: NONE — confirmed. `SalesmanLite.jsx` has zero AI code;
+  the linked panel's AI (captions/WA reply/scoring) is gated `if (!isPremium)`
+  + UpgradeBanner, so no non-premium salesman can reach AI. Correct as intended.
+- [x] **LITE-1: Share-channel breakdown UI in SalesmanLite** — DONE. Added a
+  `channelMap` fetch (`get_salesman_channel_breakdown`, slug-scoped) after the
+  Lite analytics load, and a "Traffic Sources — which platform your links came
+  from" `<ChannelBreakdown>` card in the Performance tab (next to Lead Sources).
+  Optional follow-ups (not blocking): per-car breakdown in the Lite car-detail
+  popup (no stats section there today) + `ShareMenu` per-channel `?src=` buttons
+  in Lite (auto-detect already covers the plain `?ref=` links).
+
+### STOCK IMPORT PARSER — image extraction + security hardening
+
+Context: `ImportStockPage.jsx` converts an uploaded PDF/XLSX (or public Google
+Sheet) to TEXT and sends it to Claude (feature `stock_import`) to extract a JSON
+array of listings incl. `image_url` (→ saved as the listing photo, `:326`).
+Real dealer files inspected: 2 PDFs + 1 Excel. The YAPNET PDF holds 893 `/Link`
+annotations with `/URI` actions — every car's photos are a **Google Drive folder
+link** attached to the row. Current text-only extraction captures NONE of them.
+
+- [x] **IMP-0: Pre-upload guide popup + input hardening** — DONE. Step1Upload now
+  has a "Before you upload" guide modal (share links publicly, image link per
+  car, fill key columns, mark SOLD/ETA, avoid password-protected/scanned PDFs &
+  pasted-in images, 50-car cap) and bulletproof file validation: extension
+  allowlist, 20 MB cap, empty-file guard, and magic-byte sniff (%PDF / PK zip)
+  so a renamed file is rejected before any parser runs.
+- [x] **IMP-1: PDF per-row image extraction (link annotations)** — DONE. The PDF
+  path in `buildClaudeMessages` now runs `page.getAnnotations()`, filters Drive
+  `Link` annotations, assigns each to its nearest text row by y-position, and
+  appends an inline `[image: <url>]` marker the AI maps into image_url. System
+  prompt updated to recognise the marker.
+- [x] **IMP-2: Drive FOLDER-link handling (self-serve, no OAuth)** — DONE. New
+  `import-drive-images` edge function (deployed): JWT + role gated, uses a
+  server-held Drive API KEY (public "anyone with link" folders — no dealer
+  OAuth), lists the folder, downloads all images (capped 40/car, 300/request,
+  15 MB each), rehosts to the `car-images` bucket under `<uid>/<listingId>/`,
+  returns public URLs. `handleImport` inserts listings first, then resolves
+  folders in batches of 20 and patches images via the dealer's RLS session
+  (ownership enforced by the DB, not the function). SSRF-proof: only a Drive ID
+  is extracted and used against googleapis.com — the user URL is never fetched.
+  BLOCKED ON ACT-5 (Drive API key secret) to run end-to-end.
+- [x] **IMP-3: XLSX hyperlink + `=IMAGE()` extraction** — DONE. The xlsx branch
+  now scans every cell for a hyperlink target (`cell.l.Target`), an
+  `=IMAGE("url")` formula, or an inline Drive URL, attaches it to that row, and
+  emits an `IMAGE_LINK` column the AI maps into image_url (values-only
+  `sheet_to_json` dropped these before).
+- [x] **IMP-4: Zip-bomb / resource guard** — DONE. Step1 already caps file size
+  (20 MB) + magic-byte sniff; the xlsx branch now also rejects a decoded grid
+  over 500k cells before building rows, so a crafted sheet can't blow up the tab.
+- [x] **IMP-5: Injection sanitization** — DONE. `sanitizeText` strips leading
+  `= + - @` (and control chars) from every text field → CSV/formula injection
+  neutralized on re-export. System prompt hardened to treat file content as
+  untrusted data and never follow embedded instructions (LLM prompt injection).
+- [x] **IMP-6: Post-extraction field validation** — DONE. Before insert every row
+  is validated: `clampInt` bounds year (1980..now+2), price (≤20M), mileage
+  (≤1.5M), engine_cc (≤12k); strings length-capped; `validImageUrl` requires
+  http(s) on drive.google.com/googleusercontent or a direct image path, else
+  null — junk like `http://taha40-0011092/` and `javascript:` is dropped.
+  Verified with unit tests on the sanitizer/validator.
 
 ### LAUNCH PAGE AUDIT — ranked by conversion impact
 
@@ -168,7 +252,13 @@ Redeploy the other four when convenient to prevent the same Sentry preflight iss
 ### PUBLIC CAR DETAIL PAGE (CarDetailPage) — engagement backlog
 
 - [ ] **CDP-COMMENTS: Comments / Q&A on listings** — public "Ask a question" / "Read all comments" area on the car detail page (Carlist parity). Needs a `listing_comments` table (listing_id, author_name/buyer_id, body, parent_id for replies, created_at), RLS (public read, authenticated/captcha write), a dealer/salesman reply path, and moderation (hide/report). Surface a visible Q&A block on CarDetailPage.
-- [ ] **CDP-REVIEWS: Buyer reviews / ratings** — buyer reviews + star rating on the detail page (and aggregate on the dealer/agent). Needs a `reviews` table (dealer_id/salesman_id, buyer_id, rating 1-5, body, verified_purchase flag tied to a won deal, created_at), RLS, an aggregate-rating RPC, and UI. Only show "verified" stars backed by a real closed deal — no fake/default ratings (anti-slop).
+- [x] **CDP-REVIEWS: Buyer reviews / ratings** — DONE. `reviews` table + RLS live;
+  `src/components/reviews/ReviewsSection.jsx` (rendered on CarDetailPage) does
+  logged-in buyer reviews, star rating, live average/count, one-review-per-buyer
+  upsert, and an honest "No reviews yet" empty state (no fabricated defaults).
+  OPTIONAL future enhancement (not blocking): a `verified_purchase` flag tied to
+  a won deal to show "verified" stars — deliberately omitted for now, and the
+  component is honest that reviews are not purchase-verified.
 
 ### INFRASTRUCTURE
 
