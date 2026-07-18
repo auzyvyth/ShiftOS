@@ -1056,14 +1056,10 @@ export default function SalesmanPremium() {
  };
 
  const logAiUsage = async (feature) => {
- const today = new Date().toISOString().slice(0, 10);
- const col = `${feature}_count`;
- await supabase.from("ai_salesman_usage").upsert(
- { salesman_id: userId, usage_date: today, [col]: 1 },
- { onConflict: "salesman_id,usage_date", ignoreDuplicates: false }
- ).then(async () => {
- await supabase.rpc("increment_ai_usage", { p_salesman_id: userId, p_feature: feature, p_date: today }).then(null, () => {});
- });
+ // Single atomic increment server-side (keyed on auth.uid() + CURRENT_DATE).
+ // The previous direct upsert targeted a non-existent `usage_date` column and
+ // called a missing RPC, so usage never recorded → quota was never enforced.
+ await supabase.rpc("increment_ai_usage", { p_feature: feature }).then(null, () => {});
  };
 
  const generateAiCaptions = async (car, platform = captionPlatform) => {
@@ -6980,7 +6976,7 @@ export default function SalesmanPremium() {
  </div>
  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
  {isPremium && (
- <AiQuotaBadge userId={userId} feature="caption" limit={20} />
+ <AiQuotaBadge userId={userId} feature="caption" />
  )}
  <button
  onClick={() => setAiCaptionCar(null)}
