@@ -370,7 +370,7 @@ function Skeleton() {
       <div className="sk-mobile sk-b" style={{ height:'clamp(200px,50vw,360px)', borderRadius:0 }} />
 
       {/* M2 — identity block */}
-      <div className="sk-mobile" style={{ padding:'20px 18px 0' }}>
+      <div className="sk-mobile" style={{ padding:'20px 20px 0' }}>
         <div className="sk-b" style={{ height:10, width:'18%', marginBottom:10 }} />
         <div className="sk-b" style={{ height:44, width:'72%', marginBottom:8 }} />
         <div className="sk-b" style={{ height:13, width:'42%', marginBottom:16 }} />
@@ -379,7 +379,7 @@ function Skeleton() {
       </div>
 
       {/* M3 — 2-col stats grid */}
-      <div className="sk-mobile" style={{ padding:'0 18px', marginBottom:24 }}>
+      <div className="sk-mobile" style={{ padding:'0 20px', marginBottom:24 }}>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:2, border:`1px solid ${border}`, borderRadius:12, overflow:'hidden' }}>
           {[...Array(8)].map((_,i) => (
             <div key={i} className="sk-b" style={{ height:52, borderRadius:0 }} />
@@ -388,7 +388,7 @@ function Skeleton() {
       </div>
 
       {/* M4 — CTA card */}
-      <div className="sk-mobile" style={{ padding:'0 18px', marginBottom:24 }}>
+      <div className="sk-mobile" style={{ padding:'0 20px', marginBottom:24 }}>
         <div style={{ background:card, border:`1px solid ${border}`, borderRadius:14, padding:'20px' }}>
           <div className="sk-b" style={{ height:48, borderRadius:10, marginBottom:8 }} />
           <div style={{ display:'flex', gap:8 }}>
@@ -1144,7 +1144,10 @@ export default function CarDetailPage() {
     ? (engineL ? car.variant.replace(/^\s*\d\.\d\s*/, "").trim() : car.variant)
     : "";
   const nameplate = [car.model, variantTrim, engineL ? `${engineL}L` : "", car.year]
-    .filter(Boolean).join(" ");
+    .filter(Boolean).join(" ")
+    // Non-breaking hyphen so multi-part trims ("TYPE-R", "CX-5") don't split
+    // across lines mid-word in the big display nameplate.
+    .replace(/-/g, "‑");
   const dealerName =
     dealer?.site_name || dealer?.dealership || dealer?.full_name || "Dealer";
   // Seller mini-page link: dealer subdomain/slug, or the standalone agent's /s/slug.
@@ -1363,6 +1366,7 @@ export default function CarDetailPage() {
         .cdp-mobile-enquire { display: none !important; }
         .cdp-mobile-share   { display: none !important; }
         @media (max-width: 900px) {
+          .cdp-header { padding: 0 20px; }
           .cdp-header-actions { display: none; }
           .cdp-mobile-enquire { display: inline-flex !important; }
           .cdp-mobile-share   { display: inline-flex !important; }
@@ -1781,7 +1785,7 @@ export default function CarDetailPage() {
 
         {/* Thumbnail strip (mobile) */}
         {imgCount > 1 && (
-          <div className="cdp-mobile-only" style={{ display: 'flex', gap: 7, padding: '10px 18px 0', overflowX: 'auto', scrollbarWidth: 'none' }}>
+          <div className="cdp-mobile-only" style={{ display: 'flex', gap: 7, padding: '10px 20px 0', overflowX: 'auto', scrollbarWidth: 'none' }}>
             {images.map((src, i) => (
               <button
                 key={i}
@@ -1796,7 +1800,7 @@ export default function CarDetailPage() {
         )}
 
         {/* M2 — Identity block */}
-        <div className="cdp-mobile-only" style={{ padding:'20px 18px 0' }}>
+        <div className="cdp-mobile-only" style={{ padding:'20px 20px 0' }}>
           {/* Badge row — badges left, financing calculator shortcut on the right */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:16 }}>
             <div style={{ display:'flex', flexWrap:'wrap', gap:6, minWidth:0 }}>
@@ -1817,10 +1821,10 @@ export default function CarDetailPage() {
               <Calculator size={18} />
             </Link>
           </div>
-          {/* Brand — centered + larger */}
-          <p style={{ fontSize:'clamp(14px,1.4vw,20px)', textAlign:'center', textTransform:'uppercase', letterSpacing:'0.34em', color:'#dc2626', fontWeight:700, margin:'0 0 8px' }}>{car.brand}</p>
+          {/* Brand — left-aligned to match the price/specs/stats column below */}
+          <p style={{ fontSize:'clamp(13px,1.4vw,18px)', textTransform:'uppercase', letterSpacing:'0.28em', color:'#dc2626', fontWeight:700, margin:'0 0 6px' }}>{car.brand}</p>
           {/* Nameplate — model, variant, engine size, year */}
-          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(3rem,11vw,3.9rem)', color: th.text, lineHeight:0.98, letterSpacing:'0.01em', textAlign:'center', margin:'0 0 14px' }}>
+          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(2.6rem,9vw,3.6rem)', color: th.text, lineHeight:0.98, letterSpacing:'0.01em', margin:'0 0 12px', overflowWrap:'break-word' }}>
             {nameplate}
           </h1>
           {dealer?.subdomain && !isSubdomain() && (
@@ -1870,7 +1874,7 @@ export default function CarDetailPage() {
         </div>
 
         {/* M3 — Quick stats 2×4 */}
-        <div className="cdp-mobile-only" style={{ padding:'0 18px', marginBottom:24 }}>
+        <div className="cdp-mobile-only" style={{ padding:'0 20px', marginBottom:24 }}>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:2, border:`1px solid ${th.border}`, borderRadius:12, overflow:'hidden' }}>
             {[
               { label:'Mileage',      value: car.mileage ? fmt(car.mileage)+' km' : '—' },
@@ -1893,7 +1897,7 @@ export default function CarDetailPage() {
         </div>
 
         {/* M4 — CTA card */}
-        <div className="cdp-mobile-only" style={{ padding:'0 18px', marginBottom:24 }}>
+        <div className="cdp-mobile-only" style={{ padding:'0 20px', marginBottom:24 }}>
           <div style={{ background: th.card, border:`1px solid ${th.border}`, borderRadius:14, padding:'20px' }}>
             {!isOwnListing && (
             <button
@@ -1968,7 +1972,7 @@ export default function CarDetailPage() {
         </div>
 
         {/* M5 — Description + tabs + sections */}
-        <div className="cdp-mobile-only" style={{ padding:'0 18px', marginBottom:32 }}>
+        <div className="cdp-mobile-only" style={{ padding:'0 20px', marginBottom:32 }}>
           <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.2em', color: th.textMuted, fontWeight:700, marginBottom:12 }}>About this car</p>
           <p style={{ fontSize:14, color: th.textSec, lineHeight:1.85, marginBottom:28 }}>
             {car.specs || `${car.year} ${car.brand} ${car.model}, ${fmt(car.mileage)} km, ${car.transmission}, ${car.fuel_type}, ${car.colour}.`}
@@ -2339,7 +2343,7 @@ export default function CarDetailPage() {
           const waHref = waPhone ? `https://wa.me/${waPhone.startsWith('6') ? waPhone : '6' + waPhone}` : null;
           const firstName = (salesmanProfile.full_name || 'Agent').split(' ')[0];
           return (
-            <div className="cdp-mobile-only" style={{ padding:'0 18px', marginBottom:32 }}>
+            <div className="cdp-mobile-only" style={{ padding:'0 20px', marginBottom:32 }}>
               <div style={{ background: th.card, border:`1px solid ${th.border}`, borderRadius:14, padding:'20px' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:16 }}>
                   {salesmanProfile.avatar_url
@@ -2377,7 +2381,7 @@ export default function CarDetailPage() {
 
         {/* M8 — Similar cars */}
         {similarCars.length > 0 && (
-          <div className="cdp-mobile-only" style={{ background: th.pageBg, padding:'28px 18px', marginBottom:80 }}>
+          <div className="cdp-mobile-only" style={{ background: th.pageBg, padding:'28px 20px', marginBottom:80 }}>
             <p style={{ fontSize:'10px', textTransform:'uppercase', letterSpacing:'0.2em', color:'#dc2626', margin:'0 0 4px', fontWeight:700 }}>You might also like</p>
             <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'2.2rem', letterSpacing:'0.06em', color: th.text, margin:'0 0 20px', borderLeft:'3px solid #dc2626', paddingLeft:'12px' }}>
               More {car.brand}
