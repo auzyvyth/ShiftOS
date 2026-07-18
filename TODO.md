@@ -102,26 +102,24 @@ link** attached to the row. Current text-only extraction captures NONE of them.
   (ownership enforced by the DB, not the function). SSRF-proof: only a Drive ID
   is extracted and used against googleapis.com — the user URL is never fetched.
   BLOCKED ON ACT-5 (Drive API key secret) to run end-to-end.
-- [ ] **IMP-3: XLSX hyperlink + `=IMAGE()` extraction** — `sheet_to_json` reads
-  cell VALUES only, dropping hyperlinks/embedded pics. Iterate cells, read
-  `cell.l.Target` (hyperlink) and `=IMAGE("url")` formula targets, inject into
-  each row before sending to Claude. (Excel dealer file pending inspection.)
-- [ ] **IMP-4: Zip-bomb / resource guard** — .xlsx is a zip. Beyond the 20 MB cap
-  (IMP-0), reject on decompression ratio / cell-count explosion before `XLSX.read`
-  (cap rows*cols, or a streamed size check) so a crafted file can't OOM the tab.
-- [ ] **IMP-5: Injection sanitization (NOT SQL — the real vectors)** — supabase-js
-  already parameterizes inserts, so classic SQLi isn't the risk. The real ones:
-  (a) **CSV/formula injection** — strip a leading `= + - @ \t \r` from text cells
-  so an exported value can't execute if reopened in Excel; (b) **LLM prompt
-  injection** — the PDF/sheet text is fed to Claude, so a malicious file could
-  carry "ignore previous instructions"; harden the system prompt to treat input
-  strictly as data and validate output against the schema (drop unknown keys,
-  coerce types, clamp lengths) before insert.
-- [ ] **IMP-6: Post-extraction field validation** — bulletproof the parsed rows
-  before insert: year in range, price/mileage numeric & bounded, string length
-  caps, image_url must be http(s) + on an allowlist of hosts (drive.google.com /
-  googleusercontent / direct image), else null. Reject junk URLs like the
-  `http://taha40-0011092/` intranet string seen in the sample PDF.
+- [x] **IMP-3: XLSX hyperlink + `=IMAGE()` extraction** — DONE. The xlsx branch
+  now scans every cell for a hyperlink target (`cell.l.Target`), an
+  `=IMAGE("url")` formula, or an inline Drive URL, attaches it to that row, and
+  emits an `IMAGE_LINK` column the AI maps into image_url (values-only
+  `sheet_to_json` dropped these before).
+- [x] **IMP-4: Zip-bomb / resource guard** — DONE. Step1 already caps file size
+  (20 MB) + magic-byte sniff; the xlsx branch now also rejects a decoded grid
+  over 500k cells before building rows, so a crafted sheet can't blow up the tab.
+- [x] **IMP-5: Injection sanitization** — DONE. `sanitizeText` strips leading
+  `= + - @` (and control chars) from every text field → CSV/formula injection
+  neutralized on re-export. System prompt hardened to treat file content as
+  untrusted data and never follow embedded instructions (LLM prompt injection).
+- [x] **IMP-6: Post-extraction field validation** — DONE. Before insert every row
+  is validated: `clampInt` bounds year (1980..now+2), price (≤20M), mileage
+  (≤1.5M), engine_cc (≤12k); strings length-capped; `validImageUrl` requires
+  http(s) on drive.google.com/googleusercontent or a direct image path, else
+  null — junk like `http://taha40-0011092/` and `javascript:` is dropped.
+  Verified with unit tests on the sanitizer/validator.
 
 ### LAUNCH PAGE AUDIT — ranked by conversion impact
 
