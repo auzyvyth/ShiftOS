@@ -3,8 +3,16 @@ import { Helmet } from 'react-helmet';
 import { Link, useParams } from 'react-router-dom';
 import { Clock } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import ReviewsSection from '../components/reviews/ReviewsSection';
 
 const fmt = (n) => Number(n).toLocaleString('en-MY');
+
+// Dark-surface theme tokens for ReviewsSection on the mini pages.
+const DARK_REVIEW_TH = {
+  text: '#e8edf5', textSec: 'rgba(255,255,255,0.62)', textMuted: 'rgba(255,255,255,0.42)',
+  border: 'rgba(255,255,255,0.08)', borderSec: 'rgba(255,255,255,0.05)',
+  card: 'rgba(255,255,255,0.03)', inputBg: 'rgba(255,255,255,0.05)',
+};
 
 const ghostBtn = {
   background: 'rgba(255,255,255,0.05)',
@@ -447,6 +455,14 @@ export default function SalesmanProfilePage() {
               No active listings at the moment.
             </p>
           )}
+
+          {/* ── Seller reviews (same feature as CarDetailPage, seller-scoped) ── */}
+          <ReviewsSection
+            dealerId={profile.id}
+            sellerName={profile.full_name || firstName || 'this seller'}
+            isXdrive={false}
+            th={DARK_REVIEW_TH}
+          />
         </div>
 
         {/* ── Footer ── */}

@@ -36,7 +36,15 @@ import SearchAutocomplete from "@/components/SearchAutocomplete";
 import { supabase } from "../supabaseClient";
 import { readCache, writeCache, precacheImages } from "../utils/localCache";
 import { useSiteProfile } from "../hooks/useSiteProfile";
+import ReviewsSection from "../components/reviews/ReviewsSection";
 import useTenant, { isSubdomain, getSubdomain } from "../hooks/useTenant";
+
+// Dark-surface theme tokens for ReviewsSection on the dealer storefront.
+const DARK_REVIEW_TH = {
+  text: "#e8edf5", textSec: "rgba(255,255,255,0.62)", textMuted: "rgba(255,255,255,0.42)",
+  border: "rgba(255,255,255,0.08)", borderSec: "rgba(255,255,255,0.05)",
+  card: "rgba(255,255,255,0.03)", inputBg: "rgba(255,255,255,0.05)",
+};
 import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 import { captureRef, getRef } from "../utils/refTracking";
 import {
@@ -978,6 +986,20 @@ const HomePage = () => {
                 {tenant.about_text}
               </p>
             </FadeIn>
+          </div>
+        </section>
+      )}
+
+      {/* ══════════ REVIEWS (storefront — real buyer reviews, seller-scoped) ══════════ */}
+      {isSubdomain() && tenant?.id && (
+        <section className="sec-pad" style={secB}>
+          <div style={{ ...wrap, maxWidth: 760 }}>
+            <ReviewsSection
+              dealerId={tenant.id}
+              sellerName={siteName}
+              isXdrive={false}
+              th={DARK_REVIEW_TH}
+            />
           </div>
         </section>
       )}
