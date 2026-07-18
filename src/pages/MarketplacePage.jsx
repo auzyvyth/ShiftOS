@@ -567,9 +567,9 @@ export default function MarketplacePage() {
         <title>{pageTitle}</title>
         <meta name="description" content={pageDesc} />
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
-        <link rel="canonical" href="https://xdrive.my/marketplace" />
+        <link rel="canonical" href="https://xdrive.my" />
         <meta property="og:type"        content="website" />
-        <meta property="og:url"         content="https://xdrive.my/marketplace" />
+        <meta property="og:url"         content="https://xdrive.my" />
         <meta property="og:locale"      content="en_MY" />
         <meta property="og:site_name"   content="XDrive" />
         <meta property="og:title"       content={pageTitle} />
@@ -589,7 +589,7 @@ export default function MarketplacePage() {
             "@type": "SearchAction",
             "target": {
               "@type": "EntryPoint",
-              "urlTemplate": "https://xdrive.my/marketplace?q={search_term_string}"
+              "urlTemplate": "https://xdrive.my?q={search_term_string}"
             },
             "query-input": "required name=search_term_string"
           }

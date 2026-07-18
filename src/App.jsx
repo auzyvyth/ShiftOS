@@ -18,7 +18,6 @@ import CarListingPage from "./pages/CarListingPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 // Lazy — navigated to, not landed on directly
-const MarketplacePage = lazy(() => import("./pages/MarketplacePage"));
 const CarDetailPage   = lazy(() => import("./pages/CarDetailPage"));
 
 // Lazy — everything else
@@ -66,7 +65,7 @@ const KomisenSalesmanArticle = lazy(() => import("./pages/articles/KomisenSalesm
 const ApaItuDmsArticle   = lazy(() => import("./pages/articles/ApaItuDmsArticle"));
 const SalesAgreementArticle = lazy(() => import("./pages/articles/SalesAgreementArticle"));
 
-const COMPARE_PATHS = ["/", "/cars", "/marketplace", "/showroom", "/compare"];
+const COMPARE_PATHS = ["/", "/cars", "/showroom", "/compare"];
 
 function CompareBarGate() {
   const { pathname } = useLocation();
@@ -74,6 +73,16 @@ function CompareBarGate() {
     pathname.startsWith("/cars/") ||
     pathname.startsWith("/showroom/");
   return show ? <CompareBar /> : null;
+}
+
+// "/marketplace" used to be its own page with no subdomain awareness — hitting
+// it on a dealer's subdomain leaked the full unscoped multi-dealer marketplace
+// instead of that dealer's storefront. The marketplace now lives at "/" only
+// (HomePage renders it there when there's no tenant), so this just forwards
+// old links/bookmarks, preserving any query string (e.g. ?hot_deals=true).
+function MarketplaceRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={`/${search}`} replace />;
 }
 
 function App() {
@@ -97,7 +106,7 @@ function App() {
         <SentryRoutes>
           {/* Public — XDrive */}
           <Route path="/" element={<HomePage />} />
-          <Route path="/marketplace" element={<MarketplacePage />} />
+          <Route path="/marketplace" element={<MarketplaceRedirect />} />
           <Route path="/showroom" element={<CarListingPage />} />
           <Route path="/showroom/:slug" element={<CarDetailPage />} />
           <Route path="/cars" element={<CarListingPage />} />

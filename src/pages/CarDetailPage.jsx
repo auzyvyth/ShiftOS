@@ -2398,15 +2398,18 @@ export default function CarDetailPage() {
         <div className="cdp-body-wrap cdp-desktop-only">
           {/* ── LEFT COLUMN ── */}
           <div className="cdp-body-left">
-            {/* Title block */}
+            {/* Title block — brand sits at the same scale as the nameplate below it
+                (was a tiny 10px caption dwarfed by the 3-4.4rem heading), so brand
+                and model read as one masthead, differentiated by color only. */}
             <p
               style={{
-                fontSize: 10,
+                fontFamily: "'Bebas Neue',sans-serif",
+                fontSize: "clamp(3rem,5vw,4.4rem)",
                 textTransform: "uppercase",
-                letterSpacing: "0.28em",
+                letterSpacing: "0.01em",
                 color: "#dc2626",
-                fontWeight: 700,
-                marginBottom: 6,
+                lineHeight: 0.98,
+                marginBottom: 4,
               }}
             >
               {car.brand}

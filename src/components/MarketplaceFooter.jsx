@@ -35,7 +35,7 @@ export default function MarketplaceFooter() {
       links: [
         { label: 'Browse All Cars',    to: '/showroom' },
         { label: 'Search by Brand',    to: '/showroom#brands' },
-        { label: 'Hot Deals',          to: '/marketplace?hot_deals=true' },
+        { label: 'Hot Deals',          to: '/?hot_deals=true' },
         { label: 'Compare Cars',       to: '/compare' },
         { label: 'Saved Listings',     to: '/saved' },
         { label: 'Finance Calculator', to: '/calculator' },

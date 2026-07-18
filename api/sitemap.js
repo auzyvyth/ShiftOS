@@ -154,7 +154,6 @@ export default async function handler(req) {
     : [
         { path: "/",            changefreq: "daily",   priority: "1.0" },
         { path: "/showroom",    changefreq: "daily",   priority: "0.9" },
-        { path: "/marketplace", changefreq: "daily",   priority: "0.9" },
         { path: "/shiftos",     changefreq: "weekly",  priority: "0.9" },
         { path: "/compare",     changefreq: "weekly",  priority: "0.6" },
         { path: "/articles",    changefreq: "weekly",  priority: "0.7" },
