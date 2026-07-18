@@ -295,7 +295,7 @@
       "leads": "Leads",
       "inbox": "Inbox",
       "performance": "Performance",
-      "performanceMobile": "Stats",
+      "performanceMobile": "Performance",
       "merge": "Join Dealership",
       "mergeMobile": "Merge",
       "settings": "Settings",
@@ -328,7 +328,7 @@
         "welcome": { "title": "Welcome to ShiftOS Lite", "body": "A quick 30-second tour. Each step jumps you straight to that part of the panel — you'll see it live." },
         "dashboard": { "title": "Dashboard", "body": "Your control centre — KPIs, overdue follow-up alerts, ad performance, and recent activity all in one view." },
         "listings": { "title": "My Listings", "body": "Add your cars here. Each card shows views, WA taps, and a conversion bar. Cars getting lots of clicks stand out clearly." },
-        "leads": { "title": "Leads", "body": "Track every buyer: New → Contacted → Test Drive → Won. The heat score shows who needs attention. Message them straight on WhatsApp." },
+        "leads": { "title": "Leads", "body": "Track every lead: New → Contacted → Test Drive → Won. The heat score shows who needs attention. Message them straight on WhatsApp." },
         "inbox": { "title": "Inbox", "body": "Buyers who message through your ad cards land here. Reply with a template or convert to a lead in one tap." },
         "bookings": { "title": "Bookings", "body": "Viewing appointments show up here. Confirm, cancel, or send a WA reminder without leaving the app." },
         "performance": { "title": "Performance", "body": "Your sales stats — commission earned, units sold, and ad performance over time. Know what's working." },
@@ -375,9 +375,29 @@
       "title": "Join a Dealership",
       "subtitle": "Got an invite code from your dealer? Enter it below to merge your account into their ShiftOS system.",
       "placeholder": "Enter invite code e.g. DEALER-XXXX",
-      "submitBtn": "Submit Code",
-      "submitting": "Submitting..."
+      "submitBtn": "Request Merge",
+      "verifying": "Verifying...",
+      "merged": "Merged!",
+      "submitting": "Submitting...",
+      "noCodeHelp": "Don't have a code? Ask your dealer to generate one from their ShiftOS Settings panel."
     }
+  },
+  "availability": {
+    "loading": "Loading your schedule…",
+    "title": "Viewing availability",
+    "subtitle": "Buyers can only book viewings on the days and times you set here. Set it once — days you're off are hidden from the booking calendar.",
+    "workingDays": "Working days",
+    "openHours": "Open hours",
+    "to": "to",
+    "slotLength": "Slot length",
+    "minutes": "min",
+    "acceptBookings": "Accept online viewing bookings",
+    "saving": "Saving…",
+    "save": "Save hours",
+    "pickDay": "Pick at least one working day",
+    "endAfterStart": "End time must be after start time",
+    "saveError": "Couldn't save your hours",
+    "saved": "Viewing hours saved"
   },
   "shiftos": {
     "nav": {

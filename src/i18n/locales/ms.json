@@ -295,7 +295,7 @@
       "leads": "Lead",
       "inbox": "Peti Masuk",
       "performance": "Prestasi",
-      "performanceMobile": "Statistik",
+      "performanceMobile": "Prestasi",
       "merge": "Sertai Pengedar",
       "mergeMobile": "Gabung",
       "settings": "Tetapan",
@@ -328,7 +328,7 @@
         "welcome": { "title": "Selamat Datang ke ShiftOS Lite", "body": "Lawatan ringkas 30 saat. Setiap langkah akan membawa anda terus ke bahagian panel — boleh tengok sendiri dalam masa nyata." },
         "dashboard": { "title": "Papan Pemuka", "body": "Pusat kawalan anda — KPI, amaran susulan tertunggak, prestasi iklan, dan aktiviti terkini semuanya dalam satu paparan." },
         "listings": { "title": "Iklan Saya", "body": "Tambah kereta anda di sini. Setiap kad menunjukkan tontonan, ketukan WA, dan bar penukaran. Kereta yang mendapat banyak klik akan terpapar jelas." },
-        "leads": { "title": "Bakal Pelanggan", "body": "Jejak setiap pembeli: Baru → Dihubungi → Test Drive → Menang. Skor panas menunjukkan siapa yang perlu perhatian. Hantar mesej terus ke WhatsApp." },
+        "leads": { "title": "Lead", "body": "Jejak setiap lead: Baru → Dihubungi → Test Drive → Menang. Skor panas menunjukkan siapa yang perlu perhatian. Hantar mesej terus ke WhatsApp." },
         "inbox": { "title": "Pertanyaan", "body": "Pembeli yang menghantar mesej melalui kad iklan anda akan masuk di sini. Balas dengan templat atau tukar kepada lead dalam satu ketikan." },
         "bookings": { "title": "Tempahan", "body": "Janji temu tontonan kereta dipaparkan di sini. Sahkan, batalkan, atau hantar peringatan WA tanpa keluar dari aplikasi." },
         "performance": { "title": "Prestasi", "body": "Statistik jualan anda — komisen diperoleh, unit terjual, dan prestasi setiap iklan dari semasa ke semasa. Tahu apa yang berkesan." },
@@ -375,9 +375,29 @@
       "title": "Sertai Pengedar",
       "subtitle": "Ada kod jemputan dari pengedar anda? Masukkan di bawah untuk gabungkan akaun anda ke dalam sistem ShiftOS mereka.",
       "placeholder": "Masukkan kod jemputan cth. DEALER-XXXX",
-      "submitBtn": "Hantar Kod",
-      "submitting": "Menghantar..."
+      "submitBtn": "Minta Gabung",
+      "verifying": "Mengesahkan...",
+      "merged": "Berjaya Digabung!",
+      "submitting": "Menghantar...",
+      "noCodeHelp": "Tiada kod? Minta pengedar anda jana satu dari panel Tetapan ShiftOS mereka."
     }
+  },
+  "availability": {
+    "loading": "Memuatkan jadual anda…",
+    "title": "Ketersediaan tontonan",
+    "subtitle": "Pembeli hanya boleh menempah tontonan pada hari dan waktu yang anda tetapkan di sini. Tetapkan sekali sahaja — hari anda cuti akan disembunyikan dari kalendar tempahan.",
+    "workingDays": "Hari bekerja",
+    "openHours": "Waktu buka",
+    "to": "hingga",
+    "slotLength": "Tempoh slot",
+    "minutes": "min",
+    "acceptBookings": "Terima tempahan tontonan dalam talian",
+    "saving": "Menyimpan…",
+    "save": "Simpan waktu",
+    "pickDay": "Pilih sekurang-kurangnya satu hari bekerja",
+    "endAfterStart": "Waktu tamat mesti selepas waktu mula",
+    "saveError": "Tidak dapat menyimpan waktu anda",
+    "saved": "Waktu tontonan disimpan"
   },
   "shiftos": {
     "nav": {
