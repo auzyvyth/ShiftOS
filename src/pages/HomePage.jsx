@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { Helmet } from "react-helmet";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import {
@@ -38,6 +38,12 @@ import { readCache, writeCache, precacheImages } from "../utils/localCache";
 import { useSiteProfile } from "../hooks/useSiteProfile";
 import ReviewsSection from "../components/reviews/ReviewsSection";
 import useTenant, { isSubdomain, getSubdomain } from "../hooks/useTenant";
+
+// Lazy — only the root domain (no dealer subdomain) ever needs this. Loaded
+// here instead of navigated to, so the public marketplace lives at "/"
+// (never "/marketplace" — that path used to leak the unscoped, multi-dealer
+// marketplace on dealer subdomains too, since it had no tenant awareness).
+const MarketplacePage = lazy(() => import("./MarketplacePage"));
 
 // Dark-surface theme tokens for ReviewsSection on the dealer storefront.
 const DARK_REVIEW_TH = {
@@ -523,9 +529,15 @@ const HomePage = () => {
   const ctaPrimaryLabel = ctaData.primary_label;
   const ctaSecondaryLabel = ctaData.secondary_label;
 
-  // Main domain (xdrive.my) with no subdomain → show public marketplace
+  // Main domain (xdrive.my) with no subdomain → show public marketplace,
+  // rendered directly here so the URL stays "/" (not a separate "/marketplace"
+  // path — see the lazy import above for why).
   if (!isSubdomain() && tenant === null) {
-    return <Navigate to="/marketplace" replace />;
+    return (
+      <Suspense fallback={null}>
+        <MarketplacePage />
+      </Suspense>
+    );
   }
 
   if (isSubdomain() && tenant === null && tenant !== undefined) {

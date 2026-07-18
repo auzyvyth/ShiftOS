@@ -7,9 +7,9 @@ import PlanPickerModal from '../components/onboarding/PlanPickerModal';
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-.eo-root{display:flex;height:100vh;overflow:hidden;background:#070A12;font-family:system-ui,sans-serif;}
+.eo-root{display:flex;height:100vh;height:100dvh;overflow:hidden;background:#070A12;font-family:system-ui,sans-serif;}
 .eo-left{width:380px;min-width:380px;background:#0C1120;border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;padding:40px 36px;overflow-y:auto;flex-shrink:0;}
-.eo-right{flex:1;min-width:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 48px;position:relative;}
+.eo-right{flex:1;min-width:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:64px 48px;position:relative;}
 .eo-logo{display:flex;align-items:center;gap:10px;margin-bottom:32px;}
 .eo-logo-icon{width:30px;height:30px;background:#dc2626;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;font-family:'Bebas Neue',cursive;letter-spacing:1px;}
 .eo-logo-text{font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:4px;color:#E8EDF5;}
@@ -35,8 +35,8 @@ const CSS = `
 .eo-trustline{margin-top:auto;padding-top:24px;font-size:10px;color:rgba(255,255,255,0.12);letter-spacing:0.1em;text-transform:uppercase;line-height:1.8;}
 .eo-form{width:100%;max-width:480px;animation:eo-up 0.28s ease both;}
 @keyframes eo-up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-.eo-eyebrow{font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:rgba(220,38,38,0.7);margin-bottom:10px;font-weight:500;}
-.eo-heading{font-family:'Bebas Neue',cursive;font-size:clamp(30px,4vw,42px);letter-spacing:3px;color:#E8EDF5;line-height:1;margin-bottom:10px;}
+.eo-eyebrow{font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:rgba(220,38,38,0.7);margin-bottom:12px;font-weight:500;}
+.eo-heading{font-family:'Bebas Neue',cursive;font-size:clamp(30px,4vw,42px);letter-spacing:3px;color:#E8EDF5;line-height:1.15;margin-bottom:10px;}
 .eo-sub{font-size:14px;color:rgba(255,255,255,0.32);line-height:1.65;margin-bottom:28px;}
 .eo-label{display:block;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.35);margin-bottom:7px;margin-top:18px;}
 .eo-inp{width:100%;height:48px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:#E8EDF5;font-family:system-ui,sans-serif;font-size:15px;padding:0 14px;outline:none;transition:border-color 0.15s,background 0.15s;}
@@ -73,21 +73,21 @@ const CSS = `
 .eo-mobile-bar{display:none;justify-content:space-between;align-items:center;padding:0 0 20px;width:100%;max-width:480px;}
 .eo-progress-track{position:fixed;top:0;left:0;right:0;height:3px;background:rgba(255,255,255,0.06);z-index:50;}
 .eo-progress-fill{height:100%;background:#dc2626;transition:width 0.35s ease;}
-.eo-mobile-features{display:none;flex-wrap:wrap;gap:7px;padding-bottom:24px;margin-bottom:20px;border-bottom:1px solid rgba(255,255,255,0.06);width:100%;max-width:480px;}
+.eo-mobile-features{display:none;flex-wrap:wrap;gap:7px;padding-bottom:24px;margin-bottom:24px;border-bottom:1px solid rgba(255,255,255,0.06);width:100%;max-width:480px;}
 .eo-mobile-feature-pill{display:flex;align-items:center;gap:6px;font-size:10.5px;color:rgba(255,255,255,0.55);background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:99px;padding:5px 10px;}
 .eo-mobile-feature-dot{width:4px;height:4px;border-radius:50%;background:#dc2626;flex-shrink:0;}
 .eo-mobile-plan-badge{display:none;align-items:center;gap:6px;padding:4px 10px;background:rgba(220,38,38,0.12);border:1px solid rgba(220,38,38,0.25);border-radius:4px;font-size:10px;letter-spacing:0.15em;color:rgba(220,38,38,0.9);text-transform:uppercase;margin-bottom:14px;width:fit-content;}
-.eo-done-root{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#070A12;text-align:center;gap:0;}
+.eo-done-root{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;height:100dvh;background:#070A12;text-align:center;gap:0;padding:40px 24px;}
 .eo-done-ring{width:64px;height:64px;border-radius:50%;background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);display:flex;align-items:center;justify-content:center;margin-bottom:28px;}
-.eo-done-title{font-family:'Bebas Neue',cursive;font-size:clamp(52px,8vw,84px);letter-spacing:4px;color:#E8EDF5;line-height:1;margin-bottom:16px;}
+.eo-done-title{font-family:'Bebas Neue',cursive;font-size:clamp(52px,8vw,84px);letter-spacing:4px;color:#E8EDF5;line-height:1.12;margin-bottom:16px;}
 .eo-done-sub{font-size:11px;color:rgba(255,255,255,0.25);letter-spacing:0.2em;text-transform:uppercase;}
 .eo-slug-status{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;letter-spacing:0.1em;}
 .eo-slug-wrap{position:relative;}
-.eo-resume-root{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#070A12;text-align:center;}
+.eo-resume-root{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;height:100dvh;background:#070A12;text-align:center;padding:40px 24px;}
 @media(max-width:820px){
   .eo-left{display:none;}
-  .eo-right{padding:36px 20px;justify-content:flex-start;}
-  .eo-mobile-bar{display:flex;}
+  .eo-right{padding:48px 20px 36px;justify-content:flex-start;}
+  .eo-mobile-bar{display:flex;padding-bottom:24px;}
   .eo-mobile-features{display:flex;}
   .eo-mobile-plan-badge{display:inline-flex;}
 }

@@ -245,7 +245,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
           {/* LEFT — links + mega dropdowns */}
           <nav className="mh-nav">
             <MegaNav id="browse" label="Browse Cars" items={BROWSE} accent={{ eyebrow:'XDrive', title:'10,000+ cars, one place', sub:'New, used and recon from trusted dealers across Malaysia.', to:'/showroom', cta:'Browse all' }} />
-            <a href="/marketplace?hot_deals=true" className={`mh-nav-link hot${isHotDeals ? ' active' : ''}`}><Flame size={15} /> Hot Deals</a>
+            <a href="/?hot_deals=true" className={`mh-nav-link hot${isHotDeals ? ' active' : ''}`}><Flame size={15} /> Hot Deals</a>
             <Link to="/compare" className="mh-nav-link"><GitCompare size={15} /> Compare</Link>
             <Link to="/for-salesmen" className="mh-nav-link">Salesman Lite</Link>
             <MegaNav id="dealers" label="For Dealers" items={DEALERS} accent={{ eyebrow:'ShiftOS DMS', title:'Run your dealership', sub:'Listings, leads CRM, F&I and revenue analytics in one system.', to:'/shiftos', cta:'Start free trial' }} />
@@ -343,7 +343,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
             </React.Fragment>
           ))}
 
-          <a href="/marketplace?hot_deals=true" className="mh-m-link" style={{ color:'#ea580c' }} onClick={() => setMenuOpen(false)}>
+          <a href="/?hot_deals=true" className="mh-m-link" style={{ color:'#ea580c' }} onClick={() => setMenuOpen(false)}>
             <span style={{ display:'flex', alignItems:'center', gap:10 }}><Flame size={17} /> Hot Deals</span>
           </a>
           <Link to="/compare" className="mh-m-link" onClick={() => setMenuOpen(false)}>
