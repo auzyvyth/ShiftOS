@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { Clock, Check } from "lucide-react";
 
@@ -18,6 +19,7 @@ const fmtHour = (h) => {
 };
 
 export default function AvailabilityEditor({ ownerId, dealerId, dark = false }) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [weekdays, setWeekdays] = useState([1, 2, 3, 4, 5]);
@@ -56,8 +58,8 @@ export default function AvailabilityEditor({ ownerId, dealerId, dark = false }) 
     setWeekdays((w) => (w.includes(d) ? w.filter((x) => x !== d) : [...w, d].sort((a, b) => a - b)));
 
   const save = async () => {
-    if (weekdays.length === 0) { toast.error("Pick at least one working day"); return; }
-    if (endHour <= startHour) { toast.error("End time must be after start time"); return; }
+    if (weekdays.length === 0) { toast.error(t("availability.pickDay")); return; }
+    if (endHour <= startHour) { toast.error(t("availability.endAfterStart")); return; }
     setSaving(true);
     const { error } = await supabase.from("booking_availability").upsert(
       {
@@ -73,8 +75,8 @@ export default function AvailabilityEditor({ ownerId, dealerId, dark = false }) 
       { onConflict: "owner_id" },
     );
     setSaving(false);
-    if (error) { toast.error("Couldn't save your hours"); console.error("[AvailabilityEditor]", error.message); return; }
-    toast.success("Viewing hours saved");
+    if (error) { toast.error(t("availability.saveError")); console.error("[AvailabilityEditor]", error.message); return; }
+    toast.success(t("availability.saved"));
   };
 
   const startOpts = Array.from({ length: 17 }, (_, i) => i + 6); // 6..22
@@ -83,21 +85,21 @@ export default function AvailabilityEditor({ ownerId, dealerId, dark = false }) 
   const label = { fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: c.muted, margin: "0 0 8px" };
   const select = { background: c.inputBg, border: `1px solid ${c.chipBorder}`, borderRadius: 8, padding: "8px 10px", color: c.text, fontSize: 14, fontFamily: "inherit", cursor: "pointer", outline: "none" };
 
-  if (loading) return <p style={{ fontSize: 12, color: c.muted, margin: 0 }}>Loading your schedule…</p>;
+  if (loading) return <p style={{ fontSize: 12, color: c.muted, margin: 0 }}>{t("availability.loading")}</p>;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <Clock size={16} color="#dc2626" />
-        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: c.text }}>Viewing availability</p>
+        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: c.text }}>{t("availability.title")}</p>
       </div>
       <p style={{ margin: "-12px 0 0", fontSize: 12, color: c.muted, lineHeight: 1.5 }}>
-        Buyers can only book viewings on the days and times you set here. Set it once — days you're off are hidden from the booking calendar.
+        {t("availability.subtitle")}
       </p>
 
       {/* Working days */}
       <div>
-        <p style={label}>Working days</p>
+        <p style={label}>{t("availability.workingDays")}</p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {DAY_ORDER.map((d) => {
             const on = weekdays.includes(d);
@@ -123,12 +125,12 @@ export default function AvailabilityEditor({ ownerId, dealerId, dark = false }) 
 
       {/* Hours */}
       <div>
-        <p style={label}>Open hours</p>
+        <p style={label}>{t("availability.openHours")}</p>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <select value={startHour} onChange={(e) => setStartHour(Number(e.target.value))} style={select}>
             {startOpts.map((h) => <option key={h} value={h}>{fmtHour(h)}</option>)}
           </select>
-          <span style={{ fontSize: 13, color: c.muted }}>to</span>
+          <span style={{ fontSize: 13, color: c.muted }}>{t("availability.to")}</span>
           <select value={endHour} onChange={(e) => setEndHour(Number(e.target.value))} style={select}>
             {endOpts.map((h) => <option key={h} value={h}>{fmtHour(h)}</option>)}
           </select>
@@ -137,7 +139,7 @@ export default function AvailabilityEditor({ ownerId, dealerId, dark = false }) 
 
       {/* Slot length */}
       <div>
-        <p style={label}>Slot length</p>
+        <p style={label}>{t("availability.slotLength")}</p>
         <div style={{ display: "flex", gap: 8 }}>
           {[30, 60].map((m) => {
             const on = slotMinutes === m;
@@ -153,7 +155,7 @@ export default function AvailabilityEditor({ ownerId, dealerId, dark = false }) 
                   color: on ? "#fff" : c.muted,
                 }}
               >
-                {m} min
+                {m} {t("availability.minutes")}
               </button>
             );
           })}
@@ -166,7 +168,7 @@ export default function AvailabilityEditor({ ownerId, dealerId, dark = false }) 
           onClick={() => setIsActive((v) => !v)}>
           {isActive && <Check size={12} color="#fff" strokeWidth={3} />}
         </div>
-        <span style={{ fontSize: 13, color: c.text }}>Accept online viewing bookings</span>
+        <span style={{ fontSize: 13, color: c.text }}>{t("availability.acceptBookings")}</span>
       </label>
 
       <button
@@ -179,7 +181,7 @@ export default function AvailabilityEditor({ ownerId, dealerId, dark = false }) 
           cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1,
         }}
       >
-        {saving ? "Saving…" : "Save hours"}
+        {saving ? t("availability.saving") : t("availability.save")}
       </button>
     </div>
   );

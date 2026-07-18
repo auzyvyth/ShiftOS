@@ -138,7 +138,7 @@ const CONTENT = {
       body: 'Salesman Lite adalah CRM peribadi dan alat marketplace percuma yang dibina khas untuk jurujual kereta bebas di Malaysia. Ia memberikan anda profil awam di XDrive, saluran lead, dan pengurus listing — semuanya dalam satu tempat, tanpa sebarang kos.',
       items: [
         { label: 'Halaman profil awam anda', desc: 'Setiap listing yang anda terbit akan muncul di xdrive.my dan pada pautan profil peribadi anda (xdrive.my/s/slug-anda). Pembeli boleh WhatsApp anda terus dari mana-mana listing.' },
-        { label: 'Saluran lead', desc: 'Jejaki setiap pembeli dari hubungan pertama hingga deal menang. Tambah nota, tarikh susulan, temujanji, dan skrip bantahan yang dijana oleh AI.' },
+        { label: 'Saluran lead', desc: 'Jejaki setiap lead dari hubungan pertama hingga deal menang. Tambah nota, tarikh susulan, temujanji, dan skrip bantahan yang dijana oleh AI.' },
         { label: 'Peti Masuk', desc: 'Pembeli XDrive yang mengetuk WhatsApp pada listing anda akan muncul sebagai Pertanyaan. Permintaan temujanji ditunjukkan di bawah Tempahan.' },
         { label: 'Statistik prestasi', desc: 'Lihat kadar tutup anda, kejatuhan corong, dan aktiviti mingguan supaya anda tahu di mana hendak fokus.' },
         { label: 'Sertai pengedar', desc: 'Jika anda bekerja dengan pengedar di ShiftOS, masukkan kod jemputan mereka untuk menggabungkan akaun anda. Listing dan lead anda akan dibawa bersama.' },

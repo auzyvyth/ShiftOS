@@ -69,6 +69,9 @@ import {
   Voicemail,
   CheckCircle,
   BookOpen,
+  Camera,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip } from "recharts";
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
@@ -174,16 +177,26 @@ const STAGE_WEIGHT = {
   deposit_taken: 6,
 };
 
+const TERMINAL_STAGES = ["won", "closed_won", "lost", "closed_lost"];
+
+// Engagement temperature is only meaningful WHILE a lead is in flight. A
+// closed deal (won or lost) has no urgency to signal, so we mark it terminal
+// and the render sites drop the hot/warm/cold pill entirely — showing "cold"
+// on a Won deal (the old bug: terminal stages have no STAGE_WEIGHT → score 0)
+// read as a contradiction.
 const getHeatScore = (lead) => {
+  const terminal = TERMINAL_STAGES.includes(lead.stage)
+    ? (lead.stage === "won" || lead.stage === "closed_won" ? "won" : "lost")
+    : null;
   const stageWeight = STAGE_WEIGHT[lead.stage] || 0;
   const daysStale = lead.updated_at
     ? Math.floor((Date.now() - new Date(lead.updated_at).getTime()) / 86400000)
     : 0;
   const penalty = Math.min(daysStale * 0.5, 3);
   const score = stageWeight - penalty;
-  if (score >= 4) return { score, icon: Flame,     label: "hot",  color: "#f87171" };
-  if (score >= 2) return { score, icon: TrendingUp, label: "warm", color: "#fbbf24" };
-  return          {         score, icon: Snowflake,  label: "cold", color: "#93c5fd" };
+  if (score >= 4) return { score, terminal, icon: Flame,     label: "hot",  color: "#f87171" };
+  if (score >= 2) return { score, terminal, icon: TrendingUp, label: "warm", color: "#fbbf24" };
+  return          {         score, terminal, icon: Snowflake,  label: "cold", color: "#93c5fd" };
 };
 
 const LOST_REASONS = ["Price", "Timing", "Competitor", "Ghost"];
@@ -2257,7 +2270,7 @@ export default function SalesmanLite() {
     const personalizedLine = isNewUser
       ? "Add your first car to start building your portfolio."
       : staleLeads.length > 0
-      ? `${staleLeads.length} buyer${staleLeads.length !== 1 ? "s" : ""} waiting on a follow-up — don't let a hot lead go cold.`
+      ? `${staleLeads.length} lead${staleLeads.length !== 1 ? "s" : ""} waiting on a follow-up — don't let a hot one go cold.`
       : todayAppts > 0
       ? `You've got ${todayAppts} appointment${todayAppts !== 1 ? "s" : ""} today. Make ${todayAppts !== 1 ? "them" : "it"} count.`
       : activeLeads.length > 0
@@ -3074,7 +3087,7 @@ export default function SalesmanLite() {
           <div style={CARD}>
             <div style={CARD_HEADER}>
               <span>Lead Sources</span>
-              <span>where buyers come from</span>
+              <span>where leads come from</span>
             </div>
             <div style={{ padding: "0" }}>
               {sources.map(([src, { total, won }], i) => {
@@ -3123,7 +3136,7 @@ export default function SalesmanLite() {
               <span>oldest first</span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 70px 60px", padding: "8px 18px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-              {["Buyer", "Stage", "In Pipeline", "Action"].map((h, i) => (
+              {["Lead", "Stage", "In Pipeline", "Action"].map((h, i) => (
                 <p key={h} style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: i > 0 ? "center" : "left" }}>{h}</p>
               ))}
             </div>
@@ -3152,7 +3165,7 @@ export default function SalesmanLite() {
         {/* ── Empty state ── */}
         {allLeads.length === 0 && (
           <div style={{ textAlign: "center", padding: "48px 24px" }}>
-            <p style={{ margin: "0 0 8px", fontSize: 32 }}>📊</p>
+            <BarChart2 size={32} strokeWidth={1.5} style={{ color: "#475569", margin: "0 auto 8px", display: "block" }} />
             <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>No data yet</p>
             <p style={{ margin: "0 0 16px", fontSize: 12, color: "#475569" }}>Add your first listing and start collecting leads to see your performance stats.</p>
             <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, padding: "8px 18px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>Go to Listings →</button>
@@ -3284,7 +3297,7 @@ export default function SalesmanLite() {
           if (avg >= 80) return null;
           return (
             <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 12px", padding: "9px 14px", borderRadius: 9, background: "rgba(251,191,36,0.04)", border: "1px solid rgba(251,191,36,0.15)" }}>
-              <span style={{ fontSize: 13 }}>📊</span>
+              <BarChart2 size={13} style={{ flexShrink: 0, color: "#fbbf24" }} />
               <p style={{ margin: 0, fontSize: 11, color: "#9ca3af", flex: 1 }}>Your listings average <strong style={{ color: "#fbbf24" }}>{avg}% quality</strong>. Complete listings get 3× more views.</p>
             </div>
           );
@@ -3742,8 +3755,8 @@ export default function SalesmanLite() {
                           <span style={{ fontSize: 10, color: "#4b5563" }}>
                             {views} views · {enqs} enquiries
                           </span>
-                          {isHot && <span style={{ fontSize: 10, color: "#ef4444", fontWeight: 600 }}>🔥 Hot</span>}
-                          {isStale && !isHot && <span style={{ fontSize: 10, color: "#6b7280" }}>💤 Stale</span>}
+                          {isHot && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, color: "#ef4444", fontWeight: 600 }}><Flame size={11} /> Hot</span>}
+                          {isStale && !isHot && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, color: "#6b7280" }}><Clock size={11} /> Stale</span>}
                         </div>
                         <div style={{ height: 4, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "visible" }}>
                           <div style={{ height: "100%", width: `${cvrFill}%`, background: isHot ? "#ef4444" : "#4b5563", borderRadius: 99, transition: "width 0.3s" }} />
@@ -3785,7 +3798,7 @@ export default function SalesmanLite() {
                     {/* Photo nudge — fewer than 3 photos hurts views */}
                     {!isSold && (!car.images || car.images.length < 3) && (
                       <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8, padding: "5px 8px", borderRadius: 6, background: "rgba(251,191,36,0.05)", border: "1px solid rgba(251,191,36,0.14)" }}>
-                        <span style={{ fontSize: 11, flexShrink: 0 }}>📷</span>
+                        <Camera size={11} style={{ flexShrink: 0, color: "#d97706" }} />
                         <span style={{ fontSize: 10, color: "#d97706", flex: 1 }}>
                           Add {Math.max(0, 3 - (car.images?.length || 0))} more photo{Math.max(0, 3 - (car.images?.length || 0)) !== 1 ? "s" : ""} — listings with 3+ photos get 3× more views
                         </span>
@@ -3844,7 +3857,7 @@ export default function SalesmanLite() {
                             title="Boost listing"
                             style={{ flex: 1, fontSize: 11, padding: "6px 0", borderRadius: 7, background: "rgba(168,85,247,0.06)", border: "1px dashed rgba(168,85,247,0.25)", color: "#a78bfa", cursor: "pointer", opacity: 0.75, display: "flex", alignItems: "center", justifyContent: "center", gap: 3 }}
                           >
-                            ⚡ Boost
+                            <Zap size={11} /> Boost
                           </button>
                           {/* Edit */}
                           <button
@@ -4912,9 +4925,11 @@ export default function SalesmanLite() {
                   <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {lead.buyer_name || "—"}
                   </p>
-                  <span title="Buyer urgency — based on pipeline stage and how recently this lead moved" style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", flexShrink: 0, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                    {heat.label}
-                  </span>
+                  {!heat.terminal && (
+                    <span title="Lead urgency — based on pipeline stage and how recently this lead moved" style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", flexShrink: 0, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      {heat.label}
+                    </span>
+                  )}
                 </div>
                 {(carName || carPrice) && (
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 3, gap: 8 }}>
@@ -5439,6 +5454,10 @@ export default function SalesmanLite() {
           const pbCar = pl.car_listings;
           const pbCarName = pbCar ? `${pbCar.year || ""} ${pbCar.brand} ${pbCar.model}`.trim() : "this car";
           const pbStage = pl.stage;
+          // Objection scripts only exist for active-negotiation stages. Gate the
+          // button on the same set the panel renders on, so it never toggles
+          // open to an empty panel (read as broken) on new/won/lost leads.
+          const hasScripts = ["negotiating", "viewing_booked", "test_drive", "contacted"].includes(pbStage);
           const scripts = {
             price: { label: "Price too high", color: "#f87171", lines: [`"Let's look at what you're actually paying monthly — at 90% loan over 7 years, that's roughly RM ${pbCar?.selling_price ? Math.round(pbCar.selling_price * 0.9 * 1.245 / 84).toLocaleString() : "X"}/mo. That's less than a phone plan upgrade."`, `"What's your target price? Let me see what I can work out — I want to make this happen for you."`, `"This is already ${pbCar?.original_price && pbCar.original_price > pbCar.selling_price ? `RM ${(pbCar.original_price - pbCar.selling_price).toLocaleString()} below asking` : "market price"}. The value is there."`] },
             mileage: { label: "High mileage concern", color: "#fb923c", lines: [`"Mileage matters less than service history. A well-maintained ${pbCarName} at ${pbCar?.mileage ? Number(pbCar.mileage).toLocaleString() + "km" : "this mileage"} beats a low-km car that's been neglected."`, `"These engines are built to go 300k+ km with regular service. The price already reflects the mileage."`, `"I can help you run a CARFAX/JPJ check so you can see exactly what this car's been through."`] },
@@ -5463,7 +5482,9 @@ export default function SalesmanLite() {
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 99, padding: "2px 8px", background: plHeatStyle.bg, color: plHeatStyle.color }}>{plHeat.label}</span>
+                    {!plHeat.terminal && (
+                      <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 99, padding: "2px 8px", background: plHeatStyle.bg, color: plHeatStyle.color }}>{plHeat.label}</span>
+                    )}
                     <span style={{ fontSize: 10, fontWeight: 600, borderRadius: 6, padding: "2px 8px", background: "rgba(255,255,255,0.05)", color: "#9ca3af", textTransform: "capitalize" }}>{pl.stage?.replace(/_/g," ")}</span>
                     <button onClick={close} style={{ background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", color: "#9ca3af", borderRadius: 8, padding: 6, display: "flex" }}>
                       <X size={16} />
@@ -5552,9 +5573,11 @@ export default function SalesmanLite() {
 
                   {/* Tool row 2 */}
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    <button onClick={() => { setExpandedActivityLeadId(null); setPlaybookLeadId(playbookLeadId === pl.id ? null : pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: playbookLeadId === pl.id ? "rgba(168,85,247,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${playbookLeadId === pl.id ? "rgba(168,85,247,0.3)" : "rgba(255,255,255,0.08)"}`, color: playbookLeadId === pl.id ? "#c084fc" : "#9ca3af" }}>
-                      Scripts
-                    </button>
+                    {hasScripts && (
+                      <button onClick={() => { setExpandedActivityLeadId(null); setPlaybookLeadId(playbookLeadId === pl.id ? null : pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: playbookLeadId === pl.id ? "rgba(168,85,247,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${playbookLeadId === pl.id ? "rgba(168,85,247,0.3)" : "rgba(255,255,255,0.08)"}`, color: playbookLeadId === pl.id ? "#c084fc" : "#9ca3af" }}>
+                        <BookOpen size={12} /> Scripts
+                      </button>
+                    )}
                     <button onClick={() => { setPlaybookLeadId(null); if (expandedActivityLeadId === pl.id) setExpandedActivityLeadId(null); else fetchLeadActivities(pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: expandedActivityLeadId === pl.id ? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${expandedActivityLeadId === pl.id ? "rgba(96,165,250,0.3)" : "rgba(255,255,255,0.08)"}`, color: expandedActivityLeadId === pl.id ? "#93c5fd" : "#9ca3af" }}>
                       <History size={12} /> History
                     </button>
@@ -5579,10 +5602,10 @@ export default function SalesmanLite() {
                       ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           {(leadActivities[pl.id] || []).map((act, i) => {
-                            const icon = act.activity_type === "whatsapp_sent" ? "💬" : act.activity_type === "call_logged" ? "📞" : act.activity_type === "stage_changed" ? "🔄" : "📝";
+                            const ActIcon = act.activity_type === "whatsapp_sent" ? MessageSquare : act.activity_type === "call_logged" ? Phone : act.activity_type === "stage_changed" ? RefreshCw : Pencil;
                             return (
                               <div key={act.id || i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                                <span style={{ fontSize: 13, flexShrink: 0 }}>{icon}</span>
+                                <ActIcon size={13} style={{ flexShrink: 0, marginTop: 2, color: "#6b7280" }} />
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <p style={{ margin: 0, fontSize: 13, color: "#9ca3af" }}>{act.activity_type === "stage_changed" ? `${act.from_stage || "?"} → ${act.to_stage || "?"}` : act.note || act.activity_type}</p>
                                   <p style={{ margin: 0, fontSize: 11, color: "#374151" }}>{timeAgo(act.created_at)}</p>
@@ -5765,7 +5788,7 @@ export default function SalesmanLite() {
               {/* Phone — show when new or expanded */}
               {(isNew || isExpanded) && enq.buyer_phone && (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 8px" }}>
-                  <p style={{ margin: 0, fontSize: 12, color: "#6b7280" }}>📞 {enq.buyer_phone}</p>
+                  <p style={{ margin: 0, fontSize: 12, color: "#6b7280", display: "inline-flex", alignItems: "center", gap: 5 }}><Phone size={12} /> {enq.buyer_phone}</p>
                   {isExpanded && (
                     <a
                       href={`https://wa.me/${enq.buyer_phone.replace(/\D/g, "").replace(/^0/, "6")}?text=${encodeURIComponent(`Hi ${enq.buyer_name || ""}! 😊`)}`}
@@ -5958,13 +5981,13 @@ export default function SalesmanLite() {
           </div>
 
           {/* Date/time — most important, prominent */}
-          <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>
-            📅 {dateStr}{timeStr && ` · ${timeStr}`}
+          <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "#f1f5f9", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Calendar size={14} /> {dateStr}{timeStr && ` · ${timeStr}`}
           </p>
 
           {/* Car + phone + booked time */}
           {car && <p style={{ margin: "0 0 2px", fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
-          {apt.buyer_phone && <p style={{ margin: "0 0 2px", fontSize: 11, color: "#4b5563" }}>📞 {apt.buyer_phone}</p>}
+          {apt.buyer_phone && <p style={{ margin: "0 0 2px", fontSize: 11, color: "#4b5563", display: "inline-flex", alignItems: "center", gap: 5 }}><Phone size={11} /> {apt.buyer_phone}</p>}
           {apt.notes && <p style={{ margin: "0 0 4px", fontSize: 10, color: "#4b5563", fontStyle: "italic" }}>"{apt.notes}"</p>}
           {apt.created_at && <p style={{ margin: "0 0 8px", fontSize: 10, color: "#374151" }}>Booked {timeAgo(apt.created_at)}</p>}
 
@@ -5978,7 +6001,7 @@ export default function SalesmanLite() {
               <button onClick={() => clearReminder(apt)} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 10, cursor: "pointer", padding: 0 }}>✕</button>
             </div>
           ) : apt.remind_sent ? (
-            <p style={{ fontSize: 10, color: "#4b5563", margin: "0 0 8px" }}>✓ Telegram reminder sent</p>
+            <p style={{ fontSize: 10, color: "#4b5563", margin: "0 0 8px", display: "inline-flex", alignItems: "center", gap: 4 }}><Check size={10} /> Telegram reminder sent</p>
           ) : null}
 
           {/* Expand: reschedule date picker */}
@@ -6220,7 +6243,7 @@ export default function SalesmanLite() {
                   const car = apt.car_listings;
                   const { dateStr, timeStr } = fmtAptDate(apt.appointment_date);
                   const sc = statusColors[apt.status] || statusColors.pending;
-                  const carPhone = [car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null, apt.buyer_phone ? `📞 ${apt.buyer_phone}` : null].filter(Boolean).join("  ·  ");
+                  const carLabel = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
                   // A past booking left in an open status (pending/confirmed/rescheduled)
                   // has no automatic terminal state — it would otherwise say "Confirmed"
                   // forever. Offer the two real outcomes explicitly.
@@ -6235,11 +6258,15 @@ export default function SalesmanLite() {
                           {apt.status === "no_show" ? "No-show" : apt.status}
                         </span>
                       </div>
-                      <p style={{ margin: "0 0 2px", fontSize: 12, color: "#6b7280" }}>
-                        📅 {dateStr}{timeStr && ` · ${timeStr}`}
+                      <p style={{ margin: "0 0 2px", fontSize: 12, color: "#6b7280", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                        <Calendar size={12} /> {dateStr}{timeStr && ` · ${timeStr}`}
                       </p>
-                      {carPhone && (
-                        <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>{carPhone}</p>
+                      {(carLabel || apt.buyer_phone) && (
+                        <p style={{ margin: 0, fontSize: 11, color: "#4b5563", display: "inline-flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+                          {carLabel}
+                          {carLabel && apt.buyer_phone && <span>·</span>}
+                          {apt.buyer_phone && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Phone size={11} /> {apt.buyer_phone}</span>}
+                        </p>
                       )}
                       {needsOutcome && (
                         <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
@@ -6435,7 +6462,7 @@ export default function SalesmanLite() {
           </div>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-              <label style={{ fontSize: 11, color: "#6b7280" }}>✈️ {t("salesmanLite.settings.telegram")}</label>
+              <label style={{ fontSize: 11, color: "#6b7280", display: "inline-flex", alignItems: "center", gap: 5 }}><Send size={11} /> {t("salesmanLite.settings.telegram")}</label>
               {profile?.telegram_chat_id
                 ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4ade80" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />{t("salesmanLite.settings.telegramConnected")}</span>
                 : <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4b5563" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4b5563", display: "inline-block" }} />{t("salesmanLite.settings.telegramNotSet")}</span>
@@ -6631,10 +6658,10 @@ export default function SalesmanLite() {
           }}
         >
           {mergeStatus === "pending"
-            ? "Verifying..."
+            ? t("salesmanLite.merge.verifying")
             : mergeStatus === "success"
-              ? "Merged!"
-              : "Request Merge"}
+              ? t("salesmanLite.merge.merged")
+              : t("salesmanLite.merge.submitBtn")}
         </button>
       </div>
 
@@ -6686,8 +6713,7 @@ export default function SalesmanLite() {
           lineHeight: 1.6,
         }}
       >
-        Don't have a code? Ask your dealer to generate one from their ShiftOS
-        Settings panel.
+        {t("salesmanLite.merge.noCodeHelp")}
       </p>
     </div>
   );
@@ -6752,7 +6778,7 @@ export default function SalesmanLite() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {[
-                { key: "buyer_name", label: "Name", placeholder: "Buyer name" },
+                { key: "buyer_name", label: "Name", placeholder: "Lead name" },
                 {
                   key: "phone",
                   label: "Phone",
@@ -6873,10 +6899,10 @@ export default function SalesmanLite() {
   const renderLogCallModal = () => logCallLeadId && (() => {
     const lead = leads.find((l) => l.id === logCallLeadId);
     const OUTCOMES = [
-      { key: "answered", label: "✅ Answered", color: "#4ade80" },
-      { key: "no_answer", label: "📵 No Answer", color: "#f87171" },
-      { key: "callback_requested", label: "🔁 Callback Requested", color: "#fbbf24" },
-      { key: "voicemail", label: "📬 Left Voicemail", color: "#94a3b8" },
+      { key: "answered", label: "Answered", icon: CheckCircle, color: "#4ade80" },
+      { key: "no_answer", label: "No Answer", icon: PhoneOff, color: "#f87171" },
+      { key: "callback_requested", label: "Callback Requested", icon: RefreshCw, color: "#fbbf24" },
+      { key: "voicemail", label: "Left Voicemail", icon: Voicemail, color: "#94a3b8" },
     ];
     return (
       <div onClick={() => setLogCallLeadId(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
@@ -6886,8 +6912,8 @@ export default function SalesmanLite() {
           <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>Outcome</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
             {OUTCOMES.map((o) => (
-              <button key={o.key} onClick={() => setCallOutcome(o.key)} style={{ padding: "10px 12px", borderRadius: 9, fontSize: 12, fontWeight: 600, textAlign: "left", cursor: "pointer", background: callOutcome === o.key ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)", border: callOutcome === o.key ? `1px solid ${o.color}40` : "1px solid rgba(255,255,255,0.07)", color: callOutcome === o.key ? o.color : "#6b7280" }}>
-                {o.label}
+              <button key={o.key} onClick={() => setCallOutcome(o.key)} style={{ padding: "10px 12px", borderRadius: 9, fontSize: 12, fontWeight: 600, textAlign: "left", cursor: "pointer", background: callOutcome === o.key ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)", border: callOutcome === o.key ? `1px solid ${o.color}40` : "1px solid rgba(255,255,255,0.07)", color: callOutcome === o.key ? o.color : "#6b7280", display: "flex", alignItems: "center", gap: 7 }}>
+                <o.icon size={14} style={{ flexShrink: 0 }} /> {o.label}
               </button>
             ))}
           </div>
@@ -7005,7 +7031,14 @@ export default function SalesmanLite() {
             );
           })}
         </div>
-        <input type="date" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 9, color: "#e5e7eb", fontSize: 13, padding: "10px 12px", outline: "none", fontFamily: "inherit", boxSizing: "border-box", marginBottom: 14 }} />
+        <input type="date" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 9, color: "#e5e7eb", fontSize: 13, padding: "10px 12px", outline: "none", fontFamily: "inherit", boxSizing: "border-box", marginBottom: followUpDate ? 6 : 14 }} />
+        {/* Native date inputs render per browser locale (can show mm/dd/yyyy). Echo the
+            chosen date in Malaysian dd/mm/yyyy so it's never misread. */}
+        {followUpDate && (
+          <p style={{ margin: "0 0 14px", fontSize: 11, color: "#9ca3af" }}>
+            Reminder set for <span style={{ color: "#e5e7eb", fontWeight: 600 }}>{followUpDate.split("-").reverse().join("/")}</span>
+          </p>
+        )}
         <div style={{ display: "flex", gap: 8 }}>
           {followUpModalLead.follow_up_at && (
             <button onClick={() => saveFollowUp(followUpModalLead.id, null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Clear</button>
@@ -7833,7 +7866,7 @@ export default function SalesmanLite() {
                         ? t("salesmanLite.greeting.afternoon")
                         : t("salesmanLite.greeting.evening");
                   })()}
-                  , {profile?.full_name?.split(" ")[0] || "there"} 👋
+                  , {profile?.full_name?.split(" ")[0] || "there"}
                 </p>
                 <p
                   style={{
@@ -8057,7 +8090,7 @@ export default function SalesmanLite() {
           <div onClick={dismiss} style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 0 env(safe-area-inset-bottom)" }}>
             <div onClick={e => e.stopPropagation()} style={{ background: "#0d1117", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, padding: "24px 24px 36px", border: "1px solid rgba(255,255,255,0.08)", borderBottom: "none" }}>
               {/* icon */}
-              <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>🚗</div>
+              <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.25)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}><Car size={22} style={{ color: "#93c5fd" }} /></div>
               <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>How did the test drive go?</p>
               <p style={{ margin: "0 0 24px", fontSize: 13, color: "#6b7280", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <span>{tdLead.buyer_name || "Buyer"} · {carName || "no car linked"}</span>
@@ -8076,7 +8109,7 @@ export default function SalesmanLite() {
                   onClick={proceed}
                   style={{ width: "100%", padding: "14px 16px", borderRadius: 12, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.3)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 12, fontFamily: "inherit" }}
                 >
-                  <span style={{ fontSize: 20 }}>👍</span>
+                  <ThumbsUp size={20} style={{ flexShrink: 0, color: "#f87171" }} />
                   <div>
                     <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9" }}>They're interested — move forward</p>
                     <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}>Advance to {tdNext.replace(/_/g, " ")}</p>
@@ -8086,7 +8119,7 @@ export default function SalesmanLite() {
                   onClick={markLost}
                   style={{ width: "100%", padding: "14px 16px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", fontSize: 14, fontWeight: 600, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 12, fontFamily: "inherit" }}
                 >
-                  <span style={{ fontSize: 20 }}>👎</span>
+                  <ThumbsDown size={20} style={{ flexShrink: 0, color: "#9ca3af" }} />
                   <div>
                     <p style={{ margin: 0, fontWeight: 700, color: "#9ca3af" }}>Not interested</p>
                     <p style={{ margin: "2px 0 0", fontSize: 12, color: "#4b5563" }}>Mark as lost</p>
@@ -8110,7 +8143,7 @@ export default function SalesmanLite() {
         return (
           <div onClick={dismiss} style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 0 env(safe-area-inset-bottom)" }}>
             <div onClick={e => e.stopPropagation()} style={{ background: "#0d1117", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, padding: "24px 24px 36px", border: "1px solid rgba(255,255,255,0.08)", borderBottom: "none" }}>
-              <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>🏆</div>
+              <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}><Award size={22} style={{ color: "#4ade80" }} /></div>
               <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>Confirm Won Sale</p>
               <p style={{ margin: "0 0 20px", fontSize: 13, color: "#6b7280" }}>
                 {wonLead.buyer_name || "Buyer"}{carName ? ` · ${carName}` : ""}
@@ -8167,8 +8200,8 @@ export default function SalesmanLite() {
           >
             {/* Header */}
             <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 16 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.25)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 20 }}>
-                ✈️
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.25)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Send size={20} style={{ color: "#93c5fd" }} />
               </div>
               <div>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Connect Telegram</p>
@@ -8300,7 +8333,7 @@ export default function SalesmanLite() {
                   </span>
                 </div>
 
-                <p style={{ fontSize: 10, color: "#4b5563", margin: "0 0 4px" }}>Edit message before sending — personalise it 👇</p>
+                <p style={{ fontSize: 10, color: "#4b5563", margin: "0 0 4px" }}>Edit message before sending — personalise it</p>
                 <textarea
                   value={broadcastMsg}
                   onChange={(e) => setBroadcastMsg(e.target.value)}
@@ -8409,12 +8442,12 @@ export default function SalesmanLite() {
           <div onClick={() => setBoostCarId(null)} style={{ position: "fixed", inset: 0, zIndex: 9000, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
             <div onClick={e => e.stopPropagation()} style={{ background: "#0d1117", border: "1px solid rgba(168,85,247,0.3)", borderRadius: 16, padding: 24, maxWidth: 320, width: "100%", fontFamily: "system-ui,sans-serif" }}>
               <div style={{ textAlign: "center", marginBottom: 16 }}>
-                <div style={{ fontSize: 32, marginBottom: 8 }}>⚡</div>
+                <Zap size={32} style={{ color: "#a78bfa", margin: "0 auto 8px", display: "block" }} />
                 <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#e5e7eb" }}>Boost this listing</p>
                 <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.5 }}>Pin <strong style={{ color: "#c4b5fd" }}>{name}</strong> to the top of XDrive search for 7 days and get up to 5× more views.</p>
               </div>
               <div style={{ background: "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.15)", borderRadius: 10, padding: "10px 14px", marginBottom: 16 }}>
-                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#a78bfa" }}>⚡ Coming soon — Premium feature</p>
+                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#a78bfa", display: "flex", alignItems: "center", gap: 4 }}><Zap size={11} /> Coming soon — Premium feature</p>
                 <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>Join the waitlist and we'll notify you when Boost launches.</p>
               </div>
               {boostWaitlisted ? (
