@@ -30,7 +30,7 @@ For color: COLOUR column.
 For vin: CHASSIS column. Can be a standard 17-char VIN (e.g. WBAHF12090WW43378) or a Japanese short chassis code (e.g. FL5-1234567, LA805S-0089301, GR3-1234567). Extract exactly as shown including any dashes. Null if not found.
 For options: OPTIONS column. Copy the full text exactly (comma-separated list of features). Null if blank.
 For import_country: C.O. column — "JP" = "Japan", "UK" = "UK", "MY" = "Malaysia". Null if not found.
-For image_url: look for any column containing a full HTTP URL. Null if not found.
+For image_url: look for any column containing a full HTTP URL, OR an inline marker in the form [image: https://...] appended to a row — that marker is the photo link for THAT row, so put its URL in image_url. Null if not found.
 Transmission must be "Auto" or "Manual". Infer from options/spec if not explicit.
 Fuel type must be "Petrol", "Diesel", "Hybrid", or "Electric". Infer from model name if not explicit.
 Condition must be "Recon" for Japanese imports, "Used" for local used, "New" for brand new.
@@ -56,6 +56,11 @@ function driveToDirectUrl(url) {
   if (url.startsWith('http')) return url;
   return null;
 }
+
+// A Drive FOLDER link (an album of photos) can't become one <img> — it must be
+// resolved server-side (list + download + rehost) via the import-drive-images
+// edge function. File/direct links are handled inline by driveToDirectUrl.
+const isDriveFolder = (url) => typeof url === 'string' && /\/drive\/folders\//.test(url);
 
 async function extractSheetId(url) {
   const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
@@ -122,7 +127,44 @@ async function buildClaudeMessages(file, sheetsUrl) {
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const content = await page.getTextContent();
-      const pageText = content.items.map((item) => item.str).join(" ");
+
+      // Dealer stock-list PDFs attach each car's photo folder as a LINK
+      // ANNOTATION on its row (not as visible text), so pdf.js text extraction
+      // drops it. Pull the link annotations and attach each one to its nearest
+      // text row by y-position, then append an inline [image: URL] marker the
+      // AI maps back into image_url. Only Drive/googleusercontent links.
+      let annots = [];
+      try { annots = await page.getAnnotations(); } catch { annots = []; }
+      const links = (annots || [])
+        .filter((a) => a.subtype === "Link" && (a.url || a.unsafeUrl))
+        .map((a) => ({ url: a.url || a.unsafeUrl, y: (a.rect[1] + a.rect[3]) / 2 }))
+        .filter((l) => /drive\.google\.com|googleusercontent\.com|\/folders\//.test(l.url));
+
+      // Reconstruct visual rows: group text items by rounded y, ordered by x.
+      const rowMap = new Map();
+      for (const it of content.items) {
+        if (!it.str) continue;
+        const y = Math.round(it.transform[5]);
+        if (!rowMap.has(y)) rowMap.set(y, []);
+        rowMap.get(y).push({ x: it.transform[4], s: it.str });
+      }
+      const ys = [...rowMap.keys()].sort((a, b) => b - a); // top of page first
+
+      // Assign each link to its single nearest row (no link lost to a threshold).
+      const linkForRow = new Map();
+      for (const lk of links) {
+        let best = null, bd = Infinity;
+        for (const y of ys) { const d = Math.abs(y - lk.y); if (d < bd) { bd = d; best = y; } }
+        if (best != null && !linkForRow.has(best)) linkForRow.set(best, lk.url);
+      }
+
+      let pageText = "";
+      for (const y of ys) {
+        const row = rowMap.get(y).sort((a, b) => a.x - b.x).map((o) => o.s).join(" ").trim();
+        if (!row) continue;
+        const link = linkForRow.get(y);
+        pageText += (link ? `${row}  [image: ${link}]` : row) + "\n";
+      }
       fullText += `\n--- Page ${i} ---\n${pageText}`;
     }
     return [
@@ -232,6 +274,7 @@ export default function ImportStockPage() {
   const [importing, setImporting] = useState(false);
   const [imported, setImported] = useState(null);
   const [importError, setImportError] = useState("");
+  const [importMsg, setImportMsg] = useState("");
   const [analyseError, setAnalyseError] = useState("");
   const [hitCap, setHitCap] = useState(false);
 
@@ -323,18 +366,24 @@ export default function ImportStockPage() {
           vin:               r.vin || null,
           registration_date: r.registration_date || null,
           options:           r.options || null,
-          images:            r.image_url ? [driveToDirectUrl(r.image_url)].filter(Boolean) : null,
+          // Folder links resolve after insert (edge function); file/direct
+          // links convert inline. Keep the source link for the resolve step.
+          images:            (r.image_url && !isDriveFolder(r.image_url)) ? [driveToDirectUrl(r.image_url)].filter(Boolean) : null,
           dealer_id:         user.id,
           status:            "available",
           created_at:        now,
         };
       });
+      // Slug → source image link, to re-pair resolved photos with inserted rows
+      // without relying on insert ordering.
+      const urlBySlug = {};
+      records.forEach((rec, i) => { if (rows[i]?.image_url) urlBySlug[rec.slug] = rows[i].image_url; });
 
       // Insert into car_listings and get back IDs for stock_units linkage
       const { data: inserted, error } = await supabase
         .from("car_listings")
         .insert(records)
-        .select('id, brand, model, variant, year, selling_price, mileage, colour, transmission, fuel_type, engine_cc, is_recon, import_country, auction_grade, interior_grade, vin, registration_date, options');
+        .select('id, slug, brand, model, variant, year, selling_price, mileage, colour, transmission, fuel_type, engine_cc, is_recon, import_country, auction_grade, interior_grade, vin, registration_date, options');
       if (error) throw error;
 
       // Mirror into stock_units (dealer cost view)
@@ -365,6 +414,39 @@ export default function ImportStockPage() {
       }));
       const { error: stockError } = await supabase.from("stock_units").insert(stockRows);
       if (stockError) console.warn('stock_units insert partial failure:', stockError.message);
+
+      // ── Resolve Drive FOLDER photos → download + rehost to Storage ──
+      // Runs after insert so the listings exist regardless; a failure here
+      // leaves those cars photoless but imported (dealer can add photos later).
+      const toResolve = inserted
+        .filter((l) => isDriveFolder(urlBySlug[l.slug]))
+        .map((l) => ({ id: l.id, url: urlBySlug[l.slug] }));
+      if (toResolve.length > 0) {
+        const CHUNK = 20; // matches the edge function's per-request cap
+        let done = 0;
+        setImportMsg(`Fetching photos for ${toResolve.length} ${toResolve.length === 1 ? 'car' : 'cars'}…`);
+        for (let c = 0; c < toResolve.length; c += CHUNK) {
+          const batch = toResolve.slice(c, c + CHUNK);
+          try {
+            const { data: fnData, error: fnErr } = await supabase.functions.invoke(
+              "import-drive-images",
+              { body: { items: batch } },
+            );
+            if (!fnErr && fnData?.results) {
+              for (const [id, urls] of Object.entries(fnData.results)) {
+                if (Array.isArray(urls) && urls.length > 0) {
+                  await supabase.from("car_listings").update({ images: urls }).eq("id", id);
+                }
+              }
+            }
+          } catch {
+            /* leave this batch photoless — listings already exist */
+          }
+          done += batch.length;
+          setImportMsg(`Fetching photos… ${Math.min(done, toResolve.length)}/${toResolve.length} cars`);
+        }
+        setImportMsg("");
+      }
 
       setImported(inserted.length);
     } catch (e) {
@@ -448,6 +530,7 @@ export default function ImportStockPage() {
               importing={importing}
               imported={imported}
               error={importError}
+              progressMsg={importMsg}
               onImport={handleImport}
               onDone={() => navigate("/dashboard")}
             />

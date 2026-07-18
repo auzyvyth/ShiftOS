@@ -9,7 +9,18 @@
 
 - **ACT-4: Enable Google One Tap (`VITE_GOOGLE_CLIENT_ID`)** — The Google One Tap popup for new marketplace visitors (`src/components/GoogleOneTap.jsx`) is built but no-ops until the Google OAuth **Web client ID** is exposed to the frontend. Steps: (1) Vercel → env `VITE_GOOGLE_CLIENT_ID=<google web client id>` (same client used by Supabase's Google provider); (2) Google Cloud Console → that Web client → add `https://xdrive.my` (+ preview origin) to **Authorized JavaScript origins**; (3) Supabase → Auth → Providers → Google → add the same client ID under **Authorized Client IDs** so `signInWithIdToken` accepts the One Tap token. Until done, the popup simply never shows (no error).
 
-> Reminder protocol: while ACT-1, ACT-2, ACT-3 or ACT-4 remain here, surface them at session start and whenever 2FA/security/Telegram/auth work is touched.
+- **ACT-5: Set `GOOGLE_DRIVE_API_KEY` edge secret** — The self-serve stock
+  importer's photo fetch (`import-drive-images` edge function, IMP-1/IMP-2) needs
+  a Google Drive API key so it can list + download images from dealers' public
+  "anyone with the link" Drive folders WITHOUT any dealer OAuth. Steps: (1) Google
+  Cloud Console → same project as your `credentials.json` → APIs & Services →
+  enable **Google Drive API** → Credentials → Create credentials → **API key**;
+  (2) restrict the key to the Drive API (recommended); (3) Supabase → Edge
+  Functions → Secrets → `GOOGLE_DRIVE_API_KEY=<key>`. Until set, the function
+  returns `drive_key_missing` and imported cars come in without photos (listings
+  still import fine). The key is server-only — never exposed to the client.
+
+> Reminder protocol: while ACT-1, ACT-2, ACT-3, ACT-4 or ACT-5 remain here, surface them at session start and whenever 2FA/security/Telegram/auth/import work is touched.
 
 ## Dev tasks
 
@@ -76,16 +87,21 @@ link** attached to the row. Current text-only extraction captures NONE of them.
   pasted-in images, 50-car cap) and bulletproof file validation: extension
   allowlist, 20 MB cap, empty-file guard, and magic-byte sniff (%PDF / PK zip)
   so a renamed file is rejected before any parser runs.
-- [ ] **IMP-1: PDF per-row image extraction (link annotations)** — Implement the
-  existing `:109` TODO. pdfjs `page.getAnnotations()` → filter `subtype==='Link'`
-  with a URI action → get each link's rect, correlate its Y-position to the
-  nearest text row, and append `[image: <url>]` inline so Claude maps URL→row.
-  Confirmed viable: YAPNET PDF exposes the URLs as annotations, not text.
-- [ ] **IMP-2: Drive FOLDER-link handling** — Extracted links are
-  `drive.google.com/drive/folders/<id>` (albums), not single files; the current
-  `driveToDirectUrl` only handles file links. Decide: (a) store the folder link
-  as-is for the dealer to open, or (b) call the Drive API to grab the first image
-  as the cover (needs an API key — not zero-cost). Recommend (a) now, (b) later.
+- [x] **IMP-1: PDF per-row image extraction (link annotations)** — DONE. The PDF
+  path in `buildClaudeMessages` now runs `page.getAnnotations()`, filters Drive
+  `Link` annotations, assigns each to its nearest text row by y-position, and
+  appends an inline `[image: <url>]` marker the AI maps into image_url. System
+  prompt updated to recognise the marker.
+- [x] **IMP-2: Drive FOLDER-link handling (self-serve, no OAuth)** — DONE. New
+  `import-drive-images` edge function (deployed): JWT + role gated, uses a
+  server-held Drive API KEY (public "anyone with link" folders — no dealer
+  OAuth), lists the folder, downloads all images (capped 40/car, 300/request,
+  15 MB each), rehosts to the `car-images` bucket under `<uid>/<listingId>/`,
+  returns public URLs. `handleImport` inserts listings first, then resolves
+  folders in batches of 20 and patches images via the dealer's RLS session
+  (ownership enforced by the DB, not the function). SSRF-proof: only a Drive ID
+  is extracted and used against googleapis.com — the user URL is never fetched.
+  BLOCKED ON ACT-5 (Drive API key secret) to run end-to-end.
 - [ ] **IMP-3: XLSX hyperlink + `=IMAGE()` extraction** — `sheet_to_json` reads
   cell VALUES only, dropping hyperlinks/embedded pics. Iterate cells, read
   `cell.l.Target` (hyperlink) and `=IMAGE("url")` formula targets, inject into
