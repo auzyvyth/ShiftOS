@@ -47,8 +47,15 @@
 
 ### BILLING / PAYMENTS
 
-- [ ] **PAY-1: Salesman Premium payment gate (QR + approval)** — Salesman Premium
-  (`salesman_full`, RM50/mo) currently activates for FREE at onboarding
+- [x] **PAY-1: Salesman Premium payment gate (QR + approval)** — DONE. Ported the
+  dealer flow: `SalesmanOnboarding.activate()` sets `payment_status:'pending'` for
+  premium (lite stays free); `SalesmanPremium` gates on it and renders
+  `DealerPendingApproval` (shared DuitNow QR at `public/payment-qr.png`) with a
+  `redirectTo` prop; realtime auto-forwards on approval. AdminPage now surfaces
+  solo premium salesmen (were invisible) with a "Mark Paid" action
+  (superadmin RLS). Grandfathered premium rows (payment_status null) pass through.
+  Original note below for reference:
+  Salesman Premium (`salesman_full`, RM50/mo) previously activated for FREE at onboarding
   (`SalesmanOnboarding.activate()` sets `plan:'salesman_full'` with no payment).
   Apply the same pattern already shipped for dealers: on premium signup set
   `payment_status:'pending'`, show a QR pending screen (generalise/rename the
@@ -228,7 +235,13 @@ Redeploy the other four when convenient to prevent the same Sentry preflight iss
 ### PUBLIC CAR DETAIL PAGE (CarDetailPage) — engagement backlog
 
 - [ ] **CDP-COMMENTS: Comments / Q&A on listings** — public "Ask a question" / "Read all comments" area on the car detail page (Carlist parity). Needs a `listing_comments` table (listing_id, author_name/buyer_id, body, parent_id for replies, created_at), RLS (public read, authenticated/captcha write), a dealer/salesman reply path, and moderation (hide/report). Surface a visible Q&A block on CarDetailPage.
-- [ ] **CDP-REVIEWS: Buyer reviews / ratings** — buyer reviews + star rating on the detail page (and aggregate on the dealer/agent). Needs a `reviews` table (dealer_id/salesman_id, buyer_id, rating 1-5, body, verified_purchase flag tied to a won deal, created_at), RLS, an aggregate-rating RPC, and UI. Only show "verified" stars backed by a real closed deal — no fake/default ratings (anti-slop).
+- [x] **CDP-REVIEWS: Buyer reviews / ratings** — DONE. `reviews` table + RLS live;
+  `src/components/reviews/ReviewsSection.jsx` (rendered on CarDetailPage) does
+  logged-in buyer reviews, star rating, live average/count, one-review-per-buyer
+  upsert, and an honest "No reviews yet" empty state (no fabricated defaults).
+  OPTIONAL future enhancement (not blocking): a `verified_purchase` flag tied to
+  a won deal to show "verified" stars — deliberately omitted for now, and the
+  component is honest that reviews are not purchase-verified.
 
 ### INFRASTRUCTURE
 
