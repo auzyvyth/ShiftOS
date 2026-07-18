@@ -61,6 +61,52 @@
 
 ---
 
+### STOCK IMPORT PARSER — image extraction + security hardening
+
+Context: `ImportStockPage.jsx` converts an uploaded PDF/XLSX (or public Google
+Sheet) to TEXT and sends it to Claude (feature `stock_import`) to extract a JSON
+array of listings incl. `image_url` (→ saved as the listing photo, `:326`).
+Real dealer files inspected: 2 PDFs + 1 Excel. The YAPNET PDF holds 893 `/Link`
+annotations with `/URI` actions — every car's photos are a **Google Drive folder
+link** attached to the row. Current text-only extraction captures NONE of them.
+
+- [x] **IMP-0: Pre-upload guide popup + input hardening** — DONE. Step1Upload now
+  has a "Before you upload" guide modal (share links publicly, image link per
+  car, fill key columns, mark SOLD/ETA, avoid password-protected/scanned PDFs &
+  pasted-in images, 50-car cap) and bulletproof file validation: extension
+  allowlist, 20 MB cap, empty-file guard, and magic-byte sniff (%PDF / PK zip)
+  so a renamed file is rejected before any parser runs.
+- [ ] **IMP-1: PDF per-row image extraction (link annotations)** — Implement the
+  existing `:109` TODO. pdfjs `page.getAnnotations()` → filter `subtype==='Link'`
+  with a URI action → get each link's rect, correlate its Y-position to the
+  nearest text row, and append `[image: <url>]` inline so Claude maps URL→row.
+  Confirmed viable: YAPNET PDF exposes the URLs as annotations, not text.
+- [ ] **IMP-2: Drive FOLDER-link handling** — Extracted links are
+  `drive.google.com/drive/folders/<id>` (albums), not single files; the current
+  `driveToDirectUrl` only handles file links. Decide: (a) store the folder link
+  as-is for the dealer to open, or (b) call the Drive API to grab the first image
+  as the cover (needs an API key — not zero-cost). Recommend (a) now, (b) later.
+- [ ] **IMP-3: XLSX hyperlink + `=IMAGE()` extraction** — `sheet_to_json` reads
+  cell VALUES only, dropping hyperlinks/embedded pics. Iterate cells, read
+  `cell.l.Target` (hyperlink) and `=IMAGE("url")` formula targets, inject into
+  each row before sending to Claude. (Excel dealer file pending inspection.)
+- [ ] **IMP-4: Zip-bomb / resource guard** — .xlsx is a zip. Beyond the 20 MB cap
+  (IMP-0), reject on decompression ratio / cell-count explosion before `XLSX.read`
+  (cap rows*cols, or a streamed size check) so a crafted file can't OOM the tab.
+- [ ] **IMP-5: Injection sanitization (NOT SQL — the real vectors)** — supabase-js
+  already parameterizes inserts, so classic SQLi isn't the risk. The real ones:
+  (a) **CSV/formula injection** — strip a leading `= + - @ \t \r` from text cells
+  so an exported value can't execute if reopened in Excel; (b) **LLM prompt
+  injection** — the PDF/sheet text is fed to Claude, so a malicious file could
+  carry "ignore previous instructions"; harden the system prompt to treat input
+  strictly as data and validate output against the schema (drop unknown keys,
+  coerce types, clamp lengths) before insert.
+- [ ] **IMP-6: Post-extraction field validation** — bulletproof the parsed rows
+  before insert: year in range, price/mileage numeric & bounded, string length
+  caps, image_url must be http(s) + on an allowlist of hosts (drive.google.com /
+  googleusercontent / direct image), else null. Reject junk URLs like the
+  `http://taha40-0011092/` intranet string seen in the sample PDF.
+
 ### LAUNCH PAGE AUDIT — ranked by conversion impact
 
 - [ ] **PAGE-1: Add product screenshots** — BLOCKED ON USER ASSETS. "See It In Action" section has 4 placeholder slots ready (Per-Unit P&L modal, Owner dashboard, Sales CRM pipeline, Post-Sale handover board). Send 4 PNG/JPG screenshots (16:9) and they drop straight into `public/screenshots/` + the grid in ShiftOSPage.jsx.
