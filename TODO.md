@@ -88,15 +88,13 @@ and the linked-salesman panel (`Salesmanpanel.jsx`) are separate surfaces.
 - AI features in Lite: NONE — confirmed. `SalesmanLite.jsx` has zero AI code;
   the linked panel's AI (captions/WA reply/scoring) is gated `if (!isPremium)`
   + UpgradeBanner, so no non-premium salesman can reach AI. Correct as intended.
-- [ ] **LITE-1: Port share-channel breakdown UI into SalesmanLite** — The
-  `ChannelBreakdown` UI + `channelMap` fetch were added to `Salesmanpanel.jsx`
-  (the LINKED panel), NOT `SalesmanLite.jsx` (the launched solo-Lite panel), so
-  Lite users can't see "where my traffic came from" yet. The backend is fine for
-  them — `detectChannel` auto-attributes their `?ref=` links on landing and
-  `get_salesman_channel_breakdown` is slug-scoped. Fix: wire the same fetch +
-  `<ChannelBreakdown>` (aggregate + per-car) into SalesmanLite's Performance tab.
-  Note Lite share links use plain `?ref=` (no `?src=`) — auto-detect covers it,
-  but optionally add the `ShareMenu` per-channel buttons to Lite too.
+- [x] **LITE-1: Share-channel breakdown UI in SalesmanLite** — DONE. Added a
+  `channelMap` fetch (`get_salesman_channel_breakdown`, slug-scoped) after the
+  Lite analytics load, and a "Traffic Sources — which platform your links came
+  from" `<ChannelBreakdown>` card in the Performance tab (next to Lead Sources).
+  Optional follow-ups (not blocking): per-car breakdown in the Lite car-detail
+  popup (no stats section there today) + `ShareMenu` per-channel `?src=` buttons
+  in Lite (auto-detect already covers the plain `?ref=` links).
 
 ### STOCK IMPORT PARSER — image extraction + security hardening
 
