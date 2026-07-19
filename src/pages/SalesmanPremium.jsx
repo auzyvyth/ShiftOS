@@ -5105,10 +5105,19 @@ export default function SalesmanPremium() {
  const { error: upErr } = await supabase.storage.from("avatars").upload(path, compressed, { upsert: true, contentType: "image/jpeg" });
  if (upErr) { toast.error("Upload failed: " + upErr.message); setAvatarUploading(false); return; }
  const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
- await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", userId);
- setAvatarUrl(publicUrl);
- setProfile((p) => ({ ...p, avatar_url: publicUrl }));
+ // Persist the busted URL, not the bare one — avatar.jpg is a fixed storage
+ // path, so without a changing query string every future reader keeps
+ // re-requesting (and getting served) the same cached image after a re-upload.
+ const bustedUrl = `${publicUrl}?t=${Date.now()}`;
+ const { error: avatarProfileErr } = await supabase.from("profiles").update({ avatar_url: bustedUrl }).eq("id", userId);
  setAvatarUploading(false);
+ if (avatarProfileErr) {
+ console.error("handleAvatarUpload profile update:", avatarProfileErr);
+ toast.error("Photo uploaded but couldn't be saved to your profile — try again.");
+ return;
+ }
+ setAvatarUrl(bustedUrl);
+ setProfile((p) => ({ ...p, avatar_url: bustedUrl }));
  toast.success("Profile photo updated");
  };
 
@@ -5122,10 +5131,18 @@ export default function SalesmanPremium() {
  const { error: upErr } = await supabase.storage.from("avatars").upload(path, compressed, { upsert: true, contentType: "image/jpeg" });
  if (upErr) { toast.error("Upload failed: " + upErr.message); setCoverUploading(false); return; }
  const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
- await supabase.from("profiles").update({ cover_url: publicUrl }).eq("id", userId);
- setCoverUrl(publicUrl);
- setProfile((p) => ({ ...p, cover_url: publicUrl }));
+ // Persist the busted URL (see handleAvatarUpload) so re-uploads aren't
+ // served stale from a browser/CDN cache keyed on the fixed storage path.
+ const bustedUrl = `${publicUrl}?t=${Date.now()}`;
+ const { error: coverProfileErr } = await supabase.from("profiles").update({ cover_url: bustedUrl }).eq("id", userId);
  setCoverUploading(false);
+ if (coverProfileErr) {
+ console.error("handleCoverUpload profile update:", coverProfileErr);
+ toast.error("Photo uploaded but couldn't be saved to your profile — try again.");
+ return;
+ }
+ setCoverUrl(bustedUrl);
+ setProfile((p) => ({ ...p, cover_url: bustedUrl }));
  toast.success("Cover photo updated");
  };
 
