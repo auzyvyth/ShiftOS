@@ -10,7 +10,7 @@ import StickyWhatsAppButton from '@/components/StickyWhatsAppButton';
 import FinancingCalculator from '@/components/FinancingCalculator';
 import CalculatorInfoSection from '@/components/CalculatorInfoSection';
 import { motion } from 'framer-motion';
-import { isSubdomain } from '../hooks/useTenant';
+import useTenant, { isSubdomain } from '../hooks/useTenant';
 
 const CalculatorPage = () => {
   useMarketplaceTracking();
@@ -20,6 +20,10 @@ const CalculatorPage = () => {
   const [bodyTypeParam,  setBodyTypeParam]  = useState(null);
   const { t } = useTranslation();
   const sub = isSubdomain(); // subdomain storefront = dark theme
+  // On a dealer subdomain, quotations should be branded to that dealer; on the
+  // root public page there is no seller yet, so the PDF falls back to XDrive.my
+  // rather than guessing from whoever happens to be logged in.
+  const { tenant } = useTenant();
 
   useEffect(() => {
     const priceParam = searchParams.get('carPrice');
@@ -75,6 +79,8 @@ const CalculatorPage = () => {
               bodyType={bodyTypeParam}
               key={`${initialPrice}-${engineCcParam || ''}-${bodyTypeParam || ''}`}
               light={!sub}
+              dealer={sub ? (tenant || null) : null}
+              resolveFromSession={false}
             />
           </motion.div>
 
