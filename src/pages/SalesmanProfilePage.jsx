@@ -210,12 +210,15 @@ export default function SalesmanProfilePage() {
 
         <div style={{ position: 'relative', zIndex: 1 }}>
 
-        {/* ── Cover banner — Facebook-style: full-bleed photo (or a gradient
-            fallback when the agent hasn't set one). The avatar is positioned
-            absolutely against this same wrapper (not a sibling with a
-            negative margin) so it can never end up painted behind the
-            banner regardless of DOM/stacking edge cases. ── */}
-        <div style={{ position: 'relative' }}>
+        {/* ── Cover banner — Facebook/blog-post style: capped to the same
+            max width as the content below (not full-bleed across the
+            viewport — on desktop that stretched into a thin "ribbon" and
+            left the avatar, which is positioned against this same wrapper,
+            stranded far to the left of the centered name/content column).
+            The avatar is positioned absolutely against this wrapper (not a
+            sibling with a negative margin) so it can never end up painted
+            behind the banner regardless of DOM/stacking edge cases. ── */}
+        <div style={{ position: 'relative', maxWidth: 640, margin: '0 auto' }}>
           <div style={{
             width: '100%', height: 'clamp(150px, 30vw, 190px)', overflow: 'hidden',
             background: profile.cover_url

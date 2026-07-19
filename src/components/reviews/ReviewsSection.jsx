@@ -118,8 +118,6 @@ export default function ReviewsSection({ dealerId, listingId, sellerName = 'this
           </div>
         )}
       </div>
-      <p style={{ fontSize: 12, color: th.textMuted, margin: '0 0 16px' }}>Ratings are for {sellerName} as a seller, not this specific vehicle.</p>
-
       {/* Write / own-review area */}
       {!editing && (
         <div style={{ marginBottom: count > 0 ? 20 : 0 }}>

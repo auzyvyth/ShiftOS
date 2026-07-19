@@ -5154,13 +5154,13 @@ export default function SalesmanLite() {
           )}
         </div>
 
-        {isMobile ? (
-          <>
-            {/* Mobile: pill filter row — wraps onto a second row instead of
-                scrolling sideways, so every stage is visible without a swipe.
-                Each pill's count badge turns red with a "!" when that stage
-                has a lead needing follow-up, so you don't have to click into
-                every stage to find out. */}
+        <>
+            {/* Pill filter row (same on every screen size — no horizontal-scroll
+                kanban) — wraps onto a second row instead of scrolling sideways,
+                so every stage is visible without a swipe. Each pill's count
+                badge turns red with a "!" when that stage has a lead needing
+                follow-up, so you don't have to click into every stage to find
+                out. */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "2px 0 10px", marginBottom: 12 }}>
               {activeStages.map((stage) => {
                 const stageLeadsForPill = searchedLeads.filter((l) => l.stage === stage);
@@ -5210,7 +5210,7 @@ export default function SalesmanLite() {
               })}
             </div>
 
-            {/* Mobile: vertical card list for selected stage */}
+            {/* Vertical card list for the selected stage */}
             {(() => {
               const stageLeads = searchedLeads
                 .filter((l) => l.stage === mobileLeadStage)
@@ -5228,69 +5228,7 @@ export default function SalesmanLite() {
                 </div>
               );
             })()}
-          </>
-        ) : (
-          /* Desktop: horizontal kanban scroll */
-          <>
-            {activeStages.length > 3 && (
-              <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 6, fontSize: 11, color: "#6b7280" }}>
-                <span>{activeStages.length} stages — scroll right for more</span>
-                <ChevronRight size={12} />
-              </div>
-            )}
-            <div
-              style={{
-                display: "flex",
-                gap: 12,
-                overflowX: "auto",
-                paddingBottom: 8,
-              }}
-            >
-            {activeStages.map((stage) => {
-              const sc = STAGE_COLOR[stage] || {};
-              const stageLeads = searchedLeads
-                .filter((l) => l.stage === stage)
-                .sort((a, b) => (heatMap.get(b.id)?.score ?? 0) - (heatMap.get(a.id)?.score ?? 0));
-              const staleInStage = stageLeads.filter((l) => staleIdSet.has(l.id));
-              const needsFollowUp = staleInStage.length > 0;
-              return (
-                <div
-                  key={stage}
-                  style={{ minWidth: stageLeads.length === 0 ? 80 : 200, flexShrink: 0 }}
-                >
-                  <div
-                    onClick={() => triggerGlow(staleInStage.map((l) => l.id))}
-                    title={needsFollowUp ? `${staleInStage.length} needs follow-up` : undefined}
-                    style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, cursor: needsFollowUp ? "pointer" : "default" }}
-                  >
-                    <span style={{ fontSize: 11, fontWeight: 600, color: sc.tx || "#9ca3af", textTransform: "capitalize" }}>
-                      {stage.replace(/_/g, " ")}
-                    </span>
-                    <span style={{
-                      fontSize: 10,
-                      background: needsFollowUp ? "rgba(239,68,68,0.18)" : sc.bg,
-                      border: `1px solid ${needsFollowUp ? "rgba(239,68,68,0.4)" : sc.border}`,
-                      color: needsFollowUp ? "#f87171" : sc.tx,
-                      borderRadius: 99,
-                      padding: "1px 6px",
-                    }}>
-                      {stageLeads.length}{needsFollowUp ? "!" : ""}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {stageLeads.length === 0 && (
-                      <div style={{ height: 60, borderRadius: 10, border: "1px dashed rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <span style={{ fontSize: 11, color: "#374151" }}>Empty</span>
-                      </div>
-                    )}
-                    {stageLeads.map((lead) => renderLeadCard(lead))}
-                  </div>
-                </div>
-              );
-            })}
-            </div>
-          </>
-        )}
+        </>
 
         {lostLeads.length > 0 && (
           <div style={{ marginTop: 20 }}>
