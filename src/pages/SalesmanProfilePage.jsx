@@ -255,8 +255,8 @@ export default function SalesmanProfilePage() {
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.full_name}</span>
                 {isVerified && (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="#3b82f6" style={{ flexShrink: 0 }} title="Verified by XDrive">
-                    <path d="M12 1l2.6 1.9 3.2-.4 1 3.1 3 1.5-.6 3.3 1.9 2.6-1.9 2.6.6 3.3-3 1.5-1 3.1-3.2-.4L12 23l-2.6-1.9-3.2.4-1-3.1-3-1.5.6-3.3L.9 11 2.8 8.4l-.6-3.3 3-1.5 1-3.1 3.2.4L12 1z"/>
-                    <path d="M9.5 12.5l1.8 1.8 3.5-4" stroke="#0b0e15" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                    <circle cx="12" cy="12" r="11"/>
+                    <path d="M7.5 12.5l2.8 2.8 6-6.5" stroke="#0b0e15" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
                   </svg>
                 )}
               </h1>
