@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import AmortizationSchedule from './AmortizationSchedule';
 import { supabase } from '../supabaseClient';
 import { estimateRoadTax } from '../utils/roadTax';
+import { getDealerIdFromProfile } from '../hooks/useProfile';
 
 // ─── Insurance estimate ───────────────────────────────────────────────────────
 const NCD_TIERS = [0, 25, 30, 38.33, 45, 55];
@@ -184,17 +185,27 @@ const generateQuotationPDF = async ({ dealer, salesman, carDetails, calc, fmt })
   doc.text(`Date: ${dateStr}`, PW - MARGIN, 14, { align: 'right' });
   y = 32;
 
-  // ── Dealership info ────────────────────────────────────────────────────────
-  if (dealer) {
+  // ── Dealership / brand info ────────────────────────────────────────────────
+  // Prefer the dealer's brand; sole agents (Salesman Lite/Premium) carry their
+  // own dealership/site_name on their own profile row since they have no
+  // separate dealer. Falls back to the XDrive.my brand only when neither is
+  // known — never left blank and never a random/unrelated dealer.
+  const brandName = dealer?.dealership || dealer?.site_name || salesman?.dealership || salesman?.site_name || null;
+  const brandContact = dealer?.whatsapp_number || salesman?.whatsapp_number || salesman?.phone || null;
+  if (brandName) {
     setFont(13, 'bold', [30, 30, 30]);
-    doc.text(dealer.dealership || dealer.site_name || 'Dealership', MARGIN, y);
+    doc.text(brandName, MARGIN, y);
     y += 6;
-    if (dealer.whatsapp_number) {
+    if (brandContact) {
       setFont(10, 'normal', [100, 100, 100]);
-      doc.text(`WhatsApp / Phone: ${dealer.whatsapp_number}`, MARGIN, y);
+      doc.text(`WhatsApp / Phone: ${brandContact}`, MARGIN, y);
       y += 5;
     }
     y += 4;
+  } else {
+    setFont(13, 'bold', [220, 38, 38]);
+    doc.text('XDRIVE.MY', MARGIN, y);
+    y += 10;
   }
 
   // Divider
@@ -209,10 +220,11 @@ const generateQuotationPDF = async ({ dealer, salesman, carDetails, calc, fmt })
   setFont(8, 'bold', [150, 150, 150]);
   doc.text('PREPARED BY', MARGIN, y);
   setFont(11, 'bold', [30, 30, 30]);
-  doc.text(salesman?.full_name || salesman?.name || 'Sales Consultant', MARGIN, y + 6);
-  if (salesman?.phone) {
+  doc.text(salesman?.full_name || salesman?.name || brandName || 'XDrive.my', MARGIN, y + 6);
+  const preparedByContact = salesman?.phone || salesman?.whatsapp_number || (!salesman ? brandContact : null);
+  if (preparedByContact) {
     setFont(9, 'normal', [80, 80, 80]);
-    doc.text(`Contact: ${salesman.phone}`, MARGIN, y + 12);
+    doc.text(`Contact: ${preparedByContact}`, MARGIN, y + 12);
   }
 
   // Right: Car Details
@@ -335,7 +347,16 @@ const generateQuotationPDF = async ({ dealer, salesman, carDetails, calc, fmt })
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType = null, carName: carNameProp = '', carYear: carYearProp = '', carColor: carColorProp = '', light = false }) => {
+const FinancingCalculator = ({
+  initialPrice = 85000, engineCc = null, bodyType = null,
+  carName: carNameProp = '', carYear: carYearProp = '', carColor: carColorProp = '', light = false,
+  // Seller context for the PDF's "prepared by" / dealership header. Pass explicit
+  // dealer/salesman (even null, meaning "known to have no seller") when the page
+  // already knows who's selling — e.g. a specific car's dealer, or a dealer's own
+  // subdomain. Leave resolveFromSession at its default only for internal tools
+  // (dashboard, F&I panel) where the logged-in user IS the preparer.
+  dealer = null, salesman = null, resolveFromSession = dealer === null && salesman === null,
+}) => {
   const { t } = useTranslation();
 
   // Financing inputs
@@ -439,20 +460,40 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
   const handleDownloadPDF = async () => {
     setPdfLoading(true);
     try {
-      const [{ data: dealer }, { data: { user } }] = await Promise.all([
-        supabase.from('public_dealer_profiles').select('site_name,dealership,whatsapp_number,avatar_url').limit(1).maybeSingle(),
-        supabase.auth.getUser(),
-      ]);
+      let resolvedDealer = dealer;
+      let resolvedSalesman = salesman;
 
-      let salesmanProfile = null;
-      if (user) {
-        const { data: sp } = await supabase.from('profiles').select('full_name,phone,role').eq('id', user.id).maybeSingle();
-        salesmanProfile = sp ?? null;
+      // Only guess from the logged-in session when the caller didn't already
+      // tell us who the seller is (internal tools like the dashboard / F&I
+      // panel, where the person downloading IS the preparer). A page that
+      // already knows the seller (a car's dealer, a subdomain's dealer) must
+      // never be overridden by whoever happens to be logged in.
+      if (resolveFromSession && !resolvedDealer && !resolvedSalesman) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: myProfile } = await supabase
+            .from('profiles')
+            .select('id, role, dealer_id, full_name, phone, dealership, site_name, whatsapp_number, avatar_url')
+            .eq('id', user.id)
+            .maybeSingle();
+          if (myProfile) {
+            resolvedSalesman = myProfile;
+            const dealerId = getDealerIdFromProfile(myProfile);
+            if (dealerId === myProfile.id) {
+              resolvedDealer = myProfile; // sole dealer/agent — they ARE the brand
+            } else if (dealerId) {
+              const { data: dealerRow } = await supabase
+                .rpc('get_dealer_profile_by_id', { p_dealer_id: dealerId })
+                .maybeSingle();
+              resolvedDealer = dealerRow || null;
+            }
+          }
+        }
       }
 
       await generateQuotationPDF({
-        dealer,
-        salesman: salesmanProfile,
+        dealer: resolvedDealer,
+        salesman: resolvedSalesman,
         carDetails: {
           name:  carName  || `${carYear ? carYear + ' ' : ''}Vehicle`,
           year:  carYear,

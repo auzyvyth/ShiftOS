@@ -3452,6 +3452,9 @@ export default function CarDetailPage() {
                   carYear={car.year ? String(car.year) : ''}
                   carColor={car.colour || ''}
                   light={isXdrive}
+                  dealer={dealer}
+                  salesman={salesmanProfile}
+                  resolveFromSession={false}
                 />
               </div>
             </div>
