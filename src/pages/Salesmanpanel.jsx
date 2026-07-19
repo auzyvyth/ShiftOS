@@ -395,7 +395,7 @@ export default function SalesmanPanel() {
  // profile settings tab
  const [profileSettings, setProfileSettings] = useState({
  full_name: '', job_title: '', whatsapp_number: '',
- city: '', state: '', about_text: '',
+ city: '', state: '', location: '', about_text: '',
  monthly_target: 5,
  bio: '', response_time: '', specializations: [],
  telegram_chat_id: '',
@@ -424,6 +424,7 @@ export default function SalesmanPanel() {
  whatsapp_number: profile.whatsapp_number || '',
  city: profile.city || '',
  state: profile.state || '',
+ location: profile.location || '',
  about_text: profile.about_text || '',
  bio: profile.bio || '',
  response_time: profile.response_time || '',
@@ -6841,6 +6842,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  whatsapp_number: profileSettings.whatsapp_number,
  city: profileSettings.city,
  state: profileSettings.state,
+ location: profileSettings.location || null,
  about_text: profileSettings.about_text,
  bio: profileSettings.bio || null,
  response_time: profileSettings.response_time || null,
@@ -6951,6 +6953,13 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  onChange={e => setProfileSettings(p => ({ ...p, state: e.target.value }))}
  placeholder="e.g. Selangor" style={inputStyle} />
  </div>
+ </div>
+ <div>
+ <label style={labelStyle}>Full Address (for map)</label>
+ <input type="text" value={profileSettings.location}
+ onChange={e => setProfileSettings(p => ({ ...p, location: e.target.value }))}
+ placeholder="e.g. 12, Jalan Ampang, 50450 Kuala Lumpur" style={inputStyle} />
+ <p style={{ margin: '5px 0 0', fontSize: 11, color: '#374151' }}>Shown as a map on your public page. Leave blank to show your dealership's location instead.</p>
  </div>
  </div>
  </div>

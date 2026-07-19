@@ -145,6 +145,11 @@ export default function SalesmanProfilePage() {
   const dealerLocationStr = dealer
     ? (dealer.location || [dealer.city, dealer.state].filter(Boolean).join(', '))
     : null;
+  // The agent's own address takes priority (every salesman — Lite, Premium,
+  // or linked — can set one in their settings); a linked salesman who hasn't
+  // set their own falls back to their dealership's address.
+  const ownLocationStr = profile?.location || null;
+  const mapLocationStr = ownLocationStr || dealerLocationStr;
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: '#0b0e15', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -389,24 +394,25 @@ export default function SalesmanProfilePage() {
             )}
           </div>
 
-          {/* Dealership location (linked salesmen only) */}
-          {dealerLocationStr && (
+          {/* Location — the agent's own address, or (linked salesmen with none
+              set) the dealership's */}
+          {mapLocationStr && (
             <div style={{ marginTop: 20 }}>
               <p style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>
-                Visit {dealer?.dealership || 'the dealership'}
+                {ownLocationStr ? 'Find Me Here' : `Visit ${dealer?.dealership || 'the dealership'}`}
               </p>
               <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <iframe
-                  title="Dealership location"
-                  src={`https://www.google.com/maps?q=${encodeURIComponent(dealerLocationStr)}&output=embed`}
+                  title={ownLocationStr ? 'My location' : 'Dealership location'}
+                  src={`https://www.google.com/maps?q=${encodeURIComponent(mapLocationStr)}&output=embed`}
                   width="100%" height="150" loading="lazy"
                   style={{ border: 0, display: 'block', filter: 'grayscale(0.2) contrast(1.05)' }}
                 />
-                <a href={`https://www.google.com/maps/search/${encodeURIComponent(dealerLocationStr)}`}
+                <a href={`https://www.google.com/maps/search/${encodeURIComponent(mapLocationStr)}`}
                   target="_blank" rel="noopener noreferrer"
                   style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#0d1117', color: '#93c5fd', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
                   <MapPin size={13} style={{ flexShrink: 0 }} />
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dealerLocationStr}</span>
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mapLocationStr}</span>
                   <ChevronRight size={13} style={{ flexShrink: 0, opacity: 0.5 }} />
                 </a>
               </div>

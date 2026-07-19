@@ -497,6 +497,7 @@ export default function SalesmanLite() {
     telegram_chat_id: "",
     city: "",
     state: "",
+    location: "",
     ic_number: "",
     instagram: "",
     tiktok: "",
@@ -740,6 +741,7 @@ export default function SalesmanLite() {
         telegram_chat_id: profile.telegram_chat_id || "",
         city: profile.city || "",
         state: profile.state || "",
+        location: profile.location || "",
         ic_number: profile.ic_number || "",
         instagram: profile.instagram || "",
         tiktok: profile.tiktok || "",
@@ -781,7 +783,7 @@ export default function SalesmanLite() {
 
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, ic_number, account_status, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
+        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, location, ic_number, account_status, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
         .eq("id", uid)
         .maybeSingle();
 
@@ -6366,6 +6368,7 @@ export default function SalesmanLite() {
           telegram_chat_id: settingsForm.telegram_chat_id || null,
           city: settingsForm.city || null,
           state: settingsForm.state || null,
+          location: settingsForm.location || null,
           ic_number: settingsForm.ic_number || null,
           instagram: settingsForm.instagram || null,
           tiktok: settingsForm.tiktok || null,
@@ -6386,6 +6389,7 @@ export default function SalesmanLite() {
         telegram_chat_id: settingsForm.telegram_chat_id || null,
         city: settingsForm.city || null,
         state: settingsForm.state || null,
+        location: settingsForm.location || null,
         ic_number: settingsForm.ic_number || null,
         instagram: settingsForm.instagram || null,
         tiktok: settingsForm.tiktok || null,
@@ -6536,6 +6540,11 @@ export default function SalesmanLite() {
                   ))}
                 </select>
               </div>
+            </div>
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.address")}</label>
+              <input value={settingsForm.location} onChange={(e) => setSettingsForm((p) => ({ ...p, location: e.target.value }))} placeholder={t("salesmanLite.settings.addressPlaceholder")} style={inputStyle} />
+              <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.settings.addressHint")}</p>
             </div>
             <div>
               <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.icNumber")} <span style={{ color: "#4b5563" }}>{t("salesmanLite.settings.icPrivate")}</span></label>
