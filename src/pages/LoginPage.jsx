@@ -225,7 +225,12 @@ export default function LoginPage() {
       return s;
     };
 
-    if (role === "superadmin" || role === "dealer" || role === "owner") {
+    if (role === "superadmin") {
+      window.location.href = `${base}/platform`;
+      return;
+    }
+
+    if (role === "dealer" || role === "owner") {
       if (profile?.onboarding_complete === false && !subdomain) {
         window.location.href = `${base}/onboarding`;
         return;

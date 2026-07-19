@@ -9069,7 +9069,7 @@ export default function DashboardPage() {
   const { tab: tabParam } = useParams();
   const location = useLocation();
   const { t } = useTranslation();
-  const redirectByRole = useRoleRedirect(["dealer", "superadmin", "owner", "manager", "admin"]);
+  const redirectByRole = useRoleRedirect(["dealer", "owner", "manager", "admin"]);
   const { status, loading: subLoading } = useSubscription();
 
   const [listings, setListings] = useState([]);
@@ -10153,18 +10153,6 @@ export default function DashboardPage() {
             );
           })}
 
-          <div style={{ height: 1, background: '#EAECF0', margin: '6px 4px' }} />
-
-          {profile?.role === 'superadmin' && (
-            <a
-              href="/platform"
-              className="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
-              style={{ color: color.textMuted }}
-            >
-              <Shield className="w-4 h-4 flex-shrink-0" />
-              Admin Panel
-            </a>
-          )}
         </nav>
 
         {/* ── Sidebar bottom ── */}

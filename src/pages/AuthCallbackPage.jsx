@@ -74,7 +74,12 @@ export default function AuthCallbackPage() {
       // Incomplete onboarding — route back to the correct onboarding page.
       // A dealer with a subdomain has completed onboarding regardless of the flag —
       // use subdomain as the authoritative signal to prevent flag drift locking users out.
-      if ((role === 'dealer' || role === 'superadmin') && profile.onboarding_complete === false && !subdomain) {
+      if (role === 'superadmin') {
+        navigate('/platform');
+        return;
+      }
+
+      if (role === 'dealer' && profile.onboarding_complete === false && !subdomain) {
         navigate('/dealer-onboarding');
         return;
       }
@@ -84,7 +89,7 @@ export default function AuthCallbackPage() {
         return;
       }
 
-      if (role === 'dealer' || role === 'superadmin') {
+      if (role === 'dealer') {
         if (subdomain) {
           window.location.href = `https://${subdomain}.xdrive.my/dashboard${handoffSuffix(session)}`;
         } else {

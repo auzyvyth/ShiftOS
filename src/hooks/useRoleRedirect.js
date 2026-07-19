@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 
 export const ROLE_ROUTES = {
-  superadmin:  '/dashboard',
+  superadmin:  '/platform',
   dealer:      '/dashboard',
   owner:       '/dashboard',
   manager:     '/manager',
