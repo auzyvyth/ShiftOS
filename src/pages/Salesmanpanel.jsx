@@ -2209,12 +2209,13 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <Copy size={12} /> Copy
  </button>
  <a
- href={`https://xdrive.my/s/${profile.slug}`}
+ href={`/s/${profile.slug}`}
  target="_blank"
  rel="noopener noreferrer"
+ title="Opens on this environment (preview/staging shows this build; xdrive.my is the real address to share)"
  style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: isMobile ? 1 : "none", fontSize: 12, padding: "8px 14px", borderRadius: 8, background: "rgba(37,99,235,0.1)", border: "1px solid rgba(37,99,235,0.25)", color: "#93c5fd", textDecoration: "none", fontWeight: 600, fontFamily: "inherit" }}
  >
- <ExternalLink size={12} /> View my page <ChevronRight size={12} style={{ opacity: 0.5 }} />
+ <ExternalLink size={12} /> Preview my page <ChevronRight size={12} style={{ opacity: 0.5 }} />
  </a>
  </div>
  </div>

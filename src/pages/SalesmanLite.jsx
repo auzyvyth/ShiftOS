@@ -2704,9 +2704,10 @@ export default function SalesmanLite() {
                       <span style={{ fontSize: 10, color: "#475569", flexShrink: 0 }}>Salin</span>
                     </button>
                     <a
-                      href={`https://xdrive.my/s/${profile.slug}`}
+                      href={`/s/${profile.slug}`}
                       target="_blank"
                       rel="noopener noreferrer"
+                      title="Opens on this environment (preview/staging shows this build; xdrive.my is the real address to share)"
                       style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(37,99,235,0.07)", border: "1px solid rgba(37,99,235,0.2)", color: "#93c5fd", textDecoration: "none", fontWeight: 600, fontFamily: "inherit" }}
                     >
                       <ExternalLink size={11} />
