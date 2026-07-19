@@ -31,7 +31,6 @@ import {
   MessageCircle,
   Link as LinkIcon,
   ExternalLink,
-  GitMerge,
   AlertCircle,
   CheckCircle2,
   Trash2,
@@ -111,6 +110,38 @@ const timeAgo = (iso) => {
   if (s < 3600) return `${Math.floor(s / 60)}m ago`;
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
   return `${Math.floor(s / 86400)}d ago`;
+};
+
+// Inbox countdown — deliberately NEVER collapses to days. "2d ago" hides
+// whether a lead has been sitting 25h or 71h; a salesman needs the real hour
+// count to know how cold a lead is. Always resolves to minutes (and hours once
+// past 60m), e.g. "43m ago", "5h 12m ago", "51h 03m ago". `now` is passed in
+// (a ticking value) so callers re-render every minute for a live countdown.
+const preciseAgo = (iso, now = Date.now()) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  const totalMin = Math.floor((now - d.getTime()) / 60000);
+  if (totalMin < 0) return "just now";
+  if (totalMin < 1) return "just now";
+  if (totalMin < 60) return `${totalMin}m ago`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${h}h ${String(m).padStart(2, "0")}m ago`;
+};
+
+// Countdown toward a FUTURE moment (e.g. an upcoming appointment), same
+// minute-level, never-days philosophy — "in 2h 05m", "in 40m", "now".
+const preciseUntil = (iso, now = Date.now()) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const totalMin = Math.floor((d.getTime() - now) / 60000);
+  if (totalMin <= 0) return "now";
+  if (totalMin < 60) return `in ${totalMin}m`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `in ${h}h ${String(m).padStart(2, "0")}m`;
 };
 
 const LEAD_STAGES = [
@@ -343,6 +374,94 @@ function PrevMonthModal({ open, onClose, monthLabel, commission, count, trendPct
   );
 }
 
+// Confirm-booking modal — shows the buyer + car + date at full clarity, with an
+// editable WhatsApp message the salesman sends to the buyer. "Send" opens
+// WhatsApp AND marks the booking confirmed (via onSend). Portal + body-scroll
+// lock per the app's overlay rules; own × / overlay-click close so it does NOT
+// register useModalHistory.
+function ConfirmBookingModal({ apt, message, onChangeMessage, onClose, onSend }) {
+  useEffect(() => {
+    if (!apt) return;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [apt]);
+
+  if (!apt) return null;
+  const car = apt.car_listings;
+  const carImg = Array.isArray(car?.images) ? car.images[0] : null;
+  const carTitle = car ? [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ") : "No car linked";
+  const carPrice = car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
+  const aptDate = apt.appointment_date ? new Date(apt.appointment_date) : null;
+  const dateStr = aptDate ? aptDate.toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" }) : "—";
+  const timeStr = aptDate ? aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "";
+
+  return createPortal(
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 0 }}
+      className="sm:!items-center sm:!p-5"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "16px 16px 0 0", padding: 22, width: "100%", maxWidth: 460, maxHeight: "92vh", overflowY: "auto", fontFamily: "system-ui,sans-serif" }}
+        className="sm:!rounded-2xl"
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Confirm booking</p>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 4, display: "flex" }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Buyer + car + date summary */}
+        <div style={{ display: "flex", gap: 12, padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", marginBottom: 14 }}>
+          {carImg ? (
+            <img src={carImg} alt="" style={{ width: 72, height: 56, objectFit: "cover", borderRadius: 8, flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)" }} />
+          ) : (
+            <div style={{ width: 72, height: 56, borderRadius: 8, flexShrink: 0, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Car size={20} color="#374151" />
+            </div>
+          )}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{apt.buyer_name || "Unknown Buyer"}</p>
+            <p style={{ margin: "0 0 3px", fontSize: 12, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{carTitle}</p>
+            {carPrice && <p style={{ margin: "0 0 3px", fontSize: 12, fontWeight: 700, color: "#4ade80" }}>{carPrice}</p>}
+            <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#bfdbfe", display: "inline-flex", alignItems: "center", gap: 5 }}>
+              <Calendar size={12} /> {dateStr}{timeStr && ` · ${timeStr}`}
+            </p>
+          </div>
+        </div>
+
+        {/* Editable message */}
+        <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>Message to buyer</p>
+        <textarea
+          value={message}
+          onChange={(e) => onChangeMessage(e.target.value)}
+          rows={5}
+          style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, color: "#e5e7eb", fontSize: 13, lineHeight: 1.5, padding: "11px 13px", outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: "system-ui, sans-serif", marginBottom: 14 }}
+        />
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={onClose}
+            style={{ flex: 1, padding: "11px 0", borderRadius: 9, fontSize: 13, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontFamily: "inherit" }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onSend}
+            disabled={!apt.buyer_phone || !message.trim()}
+            style={{ flex: 2, padding: "11px 0", borderRadius: 9, fontSize: 13, fontWeight: 700, background: "rgba(37,211,102,0.16)", border: "1px solid rgba(37,211,102,0.45)", color: "#4ade80", cursor: apt.buyer_phone && message.trim() ? "pointer" : "not-allowed", opacity: apt.buyer_phone && message.trim() ? 1 : 0.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, fontFamily: "inherit" }}
+          >
+            <MessageCircle size={15} /> Confirm & Send WhatsApp
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export default function SalesmanLite() {
   const navigate = useNavigate();
   const isMobile = useWindowSize() < 768;
@@ -353,9 +472,17 @@ export default function SalesmanLite() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [newBookingsCount, setNewBookingsCount] = useState(0);
-  const [inboxSubTab, setInboxSubTab] = useState("enquiries");
+  // Bookings are the primary inbox surface (real appointments to act on);
+  // enquiries are demoted to a "Lead History" log behind them.
+  const [inboxSubTab, setInboxSubTab] = useState("bookings");
   const [reschedulingAptId, setReschedulingAptId] = useState(null);
   const [rescheduleDate, setRescheduleDate] = useState("");
+  // Confirm-booking modal: holds the appointment being confirmed + the editable
+  // WhatsApp message text the salesman sends to the buyer.
+  const [confirmBookingApt, setConfirmBookingApt] = useState(null);
+  const [confirmBookingMsg, setConfirmBookingMsg] = useState("");
+  // Ticks once a minute so inbox relative-time labels stay live to the minute.
+  const [nowTick, setNowTick] = useState(Date.now());
 
   function switchTab(tab) {
     if (tab === "enquiries") setNewBookingsCount(0);
@@ -575,11 +702,6 @@ export default function SalesmanLite() {
   // boost placeholder
   const [boostCarId, setBoostCarId] = useState(null);
   const [boostWaitlisted, setBoostWaitlisted] = useState(false);
-
-  // merge
-  const [mergeCode, setMergeCode] = useState("");
-  const [mergeStatus, setMergeStatus] = useState("idle");
-  const [mergeMsg, setMergeMsg] = useState("");
 
   // listing status change
   const [statusMenuCarId, setStatusMenuCarId] = useState(null);
@@ -1138,7 +1260,7 @@ export default function SalesmanLite() {
       // fetch appointments
       supabase
         .from("appointments")
-        .select("id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, created_at, car_listings(brand, model, year)")
+        .select("id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, created_at, remind_at, remind_sent, car_listings(id, brand, model, year, variant, selling_price, images, vin_number, plate_number, mileage, transmission, slug)")
         .eq("salesman_id", uid)
         .order("appointment_date", { ascending: false })
         .then(({ data: apts, error: aptsErr }) => {
@@ -1223,11 +1345,18 @@ export default function SalesmanLite() {
     });
   }, [myListings, commissionConfig]);
 
+  // Live minute tick — keeps inbox "Xh Ym ago" / "in Xh Ym" labels current
+  // without a reload. 60s cadence is enough for minute-granular display.
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(Date.now()), 60000);
+    return () => clearInterval(id);
+  }, []);
+
   useEffect(() => {
     if (tourStep === null) { setTourTarget(null); return; }
     // Index-aligned with TOUR_STEPS. "bookings" resolves to the enquiries tab's
     // bookings sub-tab below; the rest map 1:1 to nav data-tour-id anchors.
-    const TOUR_TABS = [null, "dashboard", "listings", "leads", "enquiries", "bookings", "performance", "merge", "settings", "help"];
+    const TOUR_TABS = [null, "dashboard", "listings", "leads", "enquiries", "bookings", "performance", "settings", "help"];
     const tab = TOUR_TABS[tourStep];
     if (!tab) { setTourTarget(null); return; }
     if (tab === "bookings") {
@@ -1676,6 +1805,24 @@ export default function SalesmanLite() {
     }
   };
 
+  // Confirm-booking modal "Send" — open WhatsApp FIRST (must be synchronous in
+  // the click gesture or the popup gets blocked), then mark the booking
+  // confirmed + create/advance the lead + schedule the reminder in the
+  // background, and close the modal.
+  const sendConfirmBooking = () => {
+    const apt = confirmBookingApt;
+    if (!apt || !apt.buyer_phone) return;
+    const phone = apt.buyer_phone.replace(/\D/g, "");
+    const waPhone = phone.startsWith("6") ? phone : "6" + phone;
+    window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(confirmBookingMsg)}`, "_blank", "noopener,noreferrer");
+    updateApptStatus(apt.id, "confirmed");
+    autoUpsertLeadFromAppt(apt);
+    scheduleAptReminder(apt);
+    setConfirmBookingApt(null);
+    setConfirmBookingMsg("");
+    toast.success("Booking confirmed");
+  };
+
   const autoCreateLeadFromEnq = async (enq) => {
     const phone = normalizePhone(enq.buyer_phone);
     if (!phone) return;
@@ -1735,52 +1882,6 @@ export default function SalesmanLite() {
       stage: "new",
       buyer_state: "",
     });
-  };
-
-  const handleMerge = async () => {
-    if (!mergeCode.trim()) return;
-    setMergeStatus("pending");
-    setMergeMsg("");
-
-    const { data, error: inviteErr } = await supabase
-      .from("dealer_invites")
-      .select("dealer_id, expires_at, used")
-      .eq("code", mergeCode.trim().toUpperCase())
-      .maybeSingle();
-
-    if (inviteErr) console.error("handleMerge invite lookup:", inviteErr);
-    if (!data || data.used || new Date(data.expires_at) < new Date()) {
-      setMergeStatus("error");
-      setMergeMsg("Invalid or expired invite code.");
-      return;
-    }
-
-    const { error: rpcErr } = await supabase.rpc("use_dealer_invite", {
-      invite_code: mergeCode.trim().toUpperCase(),
-    });
-    if (rpcErr) {
-      console.error("handleMerge rpc:", rpcErr);
-      setMergeStatus("error");
-      setMergeMsg("Merge failed. Please try again or contact support.");
-      return;
-    }
-
-    setMergeStatus("success");
-    setMergeMsg("Merged! Redirecting to full dashboard...");
-    const keysToDelete = [
-      `slite_listings_${profile.id}`,
-      `slite_leads_${profile.id}`,
-      `slite_enquiries_${profile.id}`,
-      `slite_appts_${profile.id}`,
-      `slite_last_seen_enq_${profile.id}`,
-      `salesman_lite_avatar_${profile.id}`,
-    ];
-    keysToDelete.forEach(k => localStorage.removeItem(k));
-    setMyListings([]);
-    setLeads([]);
-    setEnquiries([]);
-    setAppointments([]);
-    setTimeout(() => navigate("/salesman"), 2500);
   };
 
   const handleListingCopy = (car, type) => {
@@ -1885,11 +1986,6 @@ export default function SalesmanLite() {
       icon: <BarChart2 style={{ width: 14, height: 14 }} />,
     },
     {
-      tab: "merge",
-      label: t("salesmanLite.tabs.merge"),
-      icon: <GitMerge style={{ width: 14, height: 14 }} />,
-    },
-    {
       tab: "settings",
       label: t("salesmanLite.tabs.settings"),
       icon: <Settings style={{ width: 14, height: 14 }} />,
@@ -1922,7 +2018,6 @@ export default function SalesmanLite() {
       badge: (enquiries.filter((e) => e.status === "new").length + newBookingsCount) || null,
     },
     { tab: "performance", label: t("salesmanLite.tabs.performanceMobile"), icon: <BarChart2 size={18} /> },
-    { tab: "merge", label: t("salesmanLite.tabs.mergeMobile"), icon: <GitMerge size={18} /> },
     { tab: "settings", label: t("salesmanLite.tabs.settings"), icon: <Settings size={18} /> },
     { tab: "help", label: t("salesmanLite.tabs.help"), icon: <BookOpen size={18} /> },
   ];
@@ -2784,17 +2879,6 @@ export default function SalesmanLite() {
             </div>
           </div>
         )}
-
-        {/* ── Upgrade nudge ── */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "16px 18px", ...CARD }}>
-          <div>
-            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>Join a dealership</p>
-            <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>Get an invite code from your dealer to unlock the full panel.</p>
-          </div>
-          <button onClick={() => setActiveTab("merge")} style={{ fontSize: 11, padding: "8px 16px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, flexShrink: 0, whiteSpace: "nowrap", fontFamily: "inherit" }}>
-            Enter Code →
-          </button>
-        </div>
 
         <PrevMonthModal
           open={showPrevMonth}
@@ -5690,13 +5774,13 @@ export default function SalesmanLite() {
     return (
     <div>
       <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
-        Enquiries ({historyItems.length})
+        Lead History ({historyItems.length})
       </p>
       {historyItems.length === 0 && (
         <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
           <MessageSquare size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
-          <p style={{ margin: 0, fontSize: 13 }}>No enquiries yet.</p>
-          <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>Share your listing link to start getting enquiries.</p>
+          <p style={{ margin: 0, fontSize: 13 }}>No lead history yet.</p>
+          <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>Enquiries and leads appear here as your listings get shared.</p>
           <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer" }}>
             Go to Listings →
           </button>
@@ -5772,7 +5856,7 @@ export default function SalesmanLite() {
               )}
               {/* Timestamp */}
               <p style={{ margin: isNew ? "0 0 8px" : 0, fontSize: 11, color: "#4b5563" }}>
-                {timeAgo(enq.created_at)}
+                {preciseAgo(enq.created_at, nowTick)}
               </p>
               {/* Action buttons — unreplied only, max 2 */}
               {isNew && (
@@ -5867,6 +5951,25 @@ export default function SalesmanLite() {
       return `Hi ${apt.buyer_name || ""}! Just a reminder for your appointment on ${dateStr}${timeStr ? ` at ${timeStr}` : ""}. See you then! 😊`;
     };
 
+    // Prefilled (editable) confirmation message for the Confirm Booking modal.
+    const buildConfirmMessage = (apt) => {
+      const car = apt.car_listings;
+      const carName = car ? [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ") : "the car";
+      const aptDate = apt.appointment_date ? new Date(apt.appointment_date) : null;
+      const dateStr = aptDate ? aptDate.toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" }) : "";
+      const timeStr = aptDate ? aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "";
+      const when = dateStr ? ` on ${dateStr}${timeStr ? ` at ${timeStr}` : ""}` : "";
+      return `Hi ${apt.buyer_name || ""}! Your viewing for the ${carName} is confirmed${when}. See you then! Let me know if anything changes. 😊`;
+    };
+
+    const openConfirmModal = (apt) => {
+      setConfirmBookingMsg(buildConfirmMessage(apt));
+      setConfirmBookingApt(apt);
+      setReschedulingAptId(null);
+      setCancelConfirmId(null);
+      setReminderPickerAptId(null);
+    };
+
     const fmtAptDate = (iso) => {
       if (!iso) return { dateStr: "—", timeStr: "" };
       const d = new Date(iso);
@@ -5935,32 +6038,82 @@ export default function SalesmanLite() {
       const isReminderPicking = reminderPickerAptId === apt.id;
       const isCancelConfirm = cancelConfirmId === apt.id;
       const notCancelled = apt.status !== "cancelled" && apt.status !== "completed";
+      const isRescheduled = apt.status === "rescheduled";
+
+      const carImg = Array.isArray(car?.images) ? car.images[0] : null;
+      const carTitle = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : "No car linked";
+      const carVariant = car?.variant || "";
+      const carVin = car?.vin_number || car?.plate_number || "";
+      const carPrice = car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
+      const isFuture = apt.appointment_date && new Date(apt.appointment_date) > new Date(nowTick);
+
+      // ── Car panel — image + full clarity (price, brand/model/variant/year, VIN)
+      const carPanel = (
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", minWidth: 0 }}>
+          {carImg ? (
+            <img src={carImg} alt="" style={{ width: 68, height: 52, objectFit: "cover", borderRadius: 8, flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)" }} />
+          ) : (
+            <div style={{ width: 68, height: 52, borderRadius: 8, flexShrink: 0, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Car size={18} color="#374151" />
+            </div>
+          )}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{carTitle}</p>
+            {carVariant && <p style={{ margin: "0 0 3px", fontSize: 11, color: "#93c5fd", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{carVariant}</p>}
+            {carPrice && <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 700, color: "#4ade80" }}>{carPrice}</p>}
+            {carVin && <p style={{ margin: 0, fontSize: 10, color: "#6b7280", fontFamily: "ui-monospace, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{car?.vin_number ? "VIN " : "Plate "}{carVin}</p>}
+          </div>
+        </div>
+      );
+
+      // ── Lead panel — buyer name, phone, message
+      const leadPanel = (
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{apt.buyer_name || "Unknown Buyer"}</p>
+            {aptIsNew(apt.created_at) && (
+              <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.35)", color: "#f87171", flexShrink: 0 }}>NEW</span>
+            )}
+          </div>
+          {apt.buyer_phone && <p style={{ margin: "0 0 3px", fontSize: 12, color: "#cbd5e1", display: "inline-flex", alignItems: "center", gap: 5 }}><Phone size={12} /> {apt.buyer_phone}</p>}
+          {apt.notes && <p style={{ margin: "3px 0 0", fontSize: 11, color: "#94a3b8", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>"{apt.notes}"</p>}
+        </div>
+      );
+
+      // ── Date panel — highlighted, minute-level countdown, reschedule flag
+      const datePanel = (
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: "inline-flex", flexDirection: "column", gap: 3, padding: "8px 12px", borderRadius: 9, background: isRescheduled ? "rgba(167,139,250,0.12)" : "rgba(96,165,250,0.10)", border: `1px solid ${isRescheduled ? "rgba(167,139,250,0.4)" : "rgba(96,165,250,0.28)"}`, width: isMobile ? "auto" : "100%", boxSizing: "border-box" }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: isRescheduled ? "#c084fc" : "#bfdbfe", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Calendar size={14} /> {dateStr}
+            </span>
+            {timeStr && <span style={{ fontSize: 18, fontWeight: 700, color: "#f8fafc", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1 }}>{timeStr}</span>}
+            {isFuture && <span style={{ fontSize: 11, fontWeight: 600, color: "#4ade80" }}>{preciseUntil(apt.appointment_date, nowTick)}</span>}
+          </div>
+          {isRescheduled && (
+            <p style={{ margin: "6px 0 0", fontSize: 10, fontWeight: 700, color: "#c084fc", display: "inline-flex", alignItems: "center", gap: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              <RefreshCw size={10} /> Date changed
+            </p>
+          )}
+        </div>
+      );
 
       return (
-        <div key={apt.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px" }}>
-          {/* Header: name + badges */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {apt.buyer_name || "Unknown Buyer"}
-            </p>
-            {aptIsNew(apt.created_at) && (
-              <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 99, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.3)", color: "#f87171", flexShrink: 0 }}>NEW</span>
-            )}
-            <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
-              {apt.status}
+        <div key={apt.id} style={{ background: "#0d1117", border: `1px solid ${isRescheduled ? "rgba(167,139,250,0.25)" : "rgba(255,255,255,0.08)"}`, borderRadius: 12, padding: isMobile ? "13px 14px" : "14px 16px" }}>
+          {/* Status pill row */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
+              {apt.status === "no_show" ? "No-show" : apt.status}
             </span>
+            {apt.created_at && <span style={{ fontSize: 10, color: "#64748b" }}>Booked {preciseAgo(apt.created_at, nowTick)}</span>}
           </div>
 
-          {/* Date/time — most important, prominent */}
-          <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "#f1f5f9", display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <Calendar size={14} /> {dateStr}{timeStr && ` · ${timeStr}`}
-          </p>
-
-          {/* Car + phone + booked time */}
-          {car && <p style={{ margin: "0 0 2px", fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
-          {apt.buyer_phone && <p style={{ margin: "0 0 2px", fontSize: 11, color: "#4b5563", display: "inline-flex", alignItems: "center", gap: 5 }}><Phone size={11} /> {apt.buyer_phone}</p>}
-          {apt.notes && <p style={{ margin: "0 0 4px", fontSize: 10, color: "#4b5563", fontStyle: "italic" }}>"{apt.notes}"</p>}
-          {apt.created_at && <p style={{ margin: "0 0 8px", fontSize: 10, color: "#374151" }}>Booked {timeAgo(apt.created_at)}</p>}
+          {/* Body — desktop: car | lead | date 3-column; mobile: stacked */}
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.15fr 1fr 0.95fr", gap: isMobile ? 12 : 16, alignItems: "start", marginBottom: 10 }}>
+            {carPanel}
+            {leadPanel}
+            {datePanel}
+          </div>
 
           {/* Telegram reminder indicator */}
           {apt.remind_at && !apt.remind_sent ? (
@@ -6076,33 +6229,39 @@ export default function SalesmanLite() {
           {/* Action bar — always visible for active appointments */}
           {notCancelled && !isRescheduling && !isCancelConfirm && (
             <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-              {/* WA Reminder — opens WhatsApp directly, auto-confirms if pending */}
-              {apt.buyer_phone && (
+              {/* Confirm Booking — primary CTA: opens the confirm panel with an
+                  editable WhatsApp message that also marks the booking confirmed. */}
+              {apt.status !== "confirmed" && apt.buyer_phone && (
+                <button
+                  onClick={() => openConfirmModal(apt)}
+                  style={{ flex: 2, fontSize: 12, fontWeight: 700, padding: "8px 0", borderRadius: 7, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.4)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                  title="Confirm this booking and message the buyer on WhatsApp"
+                >
+                  <Check size={13} /> Confirm Booking
+                </button>
+              )}
+              {/* Confirm without message (fallback when no phone on file) */}
+              {apt.status !== "confirmed" && !apt.buyer_phone && (
+                <button
+                  onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }}
+                  style={{ flex: 2, fontSize: 12, fontWeight: 700, padding: "8px 0", borderRadius: 7, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.4)", color: "#4ade80", cursor: "pointer" }}
+                  title="Mark appointment as confirmed"
+                >
+                  ✓ Confirm Booking
+                </button>
+              )}
+              {/* Message — WhatsApp the buyer (already-confirmed bookings) */}
+              {apt.status === "confirmed" && apt.buyer_phone && (
                 <button
                   onClick={() => {
                     const phone = apt.buyer_phone.replace(/\D/g, "");
                     const msg = buildReminderMessage(apt);
                     window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
-                    if (apt.status === "pending") {
-                      updateApptStatus(apt.id, "confirmed");
-                      autoUpsertLeadFromAppt(apt);
-                      scheduleAptReminder(apt);
-                    }
                   }}
                   style={{ flex: 2, fontSize: 11, fontWeight: 600, padding: "7px 0", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
                   title="Send WhatsApp reminder message to buyer"
                 >
-                  <MessageCircle size={12} /> WA Reminder
-                </button>
-              )}
-              {/* Confirm — mark appointment as confirmed */}
-              {apt.status !== "confirmed" && (
-                <button
-                  onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }}
-                  style={{ flex: 1, fontSize: 11, fontWeight: 600, padding: "7px 0", borderRadius: 7, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}
-                  title="Mark appointment as confirmed"
-                >
-                  ✓ Confirm
+                  <MessageCircle size={12} /> Message
                 </button>
               )}
               {/* Move — change the date/time */}
@@ -6631,130 +6790,6 @@ export default function SalesmanLite() {
     );
   };
 
-  // ── RENDER MERGE ──────────────────────────────────────────────────────────
-
-  const renderMerge = () => (
-    <div style={{ maxWidth: 480 }}>
-      <p
-        style={{
-          margin: "0 0 6px",
-          fontSize: 16,
-          fontWeight: 600,
-          color: "#f1f5f9",
-        }}
-      >
-        {t("salesmanLite.merge.title")}
-      </p>
-      <p
-        style={{
-          margin: "0 0 24px",
-          fontSize: 13,
-          color: "#4b5563",
-          lineHeight: 1.6,
-        }}
-      >
-        {t("salesmanLite.merge.subtitle")}
-      </p>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <input
-          value={mergeCode}
-          onChange={(e) => setMergeCode(e.target.value.toUpperCase())}
-          placeholder={t("salesmanLite.merge.placeholder")}
-          disabled={mergeStatus === "pending" || mergeStatus === "success"}
-          style={{
-            width: "100%",
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 8,
-            color: "#e5e7eb",
-            fontSize: 13,
-            padding: "10px 12px",
-            outline: "none",
-            boxSizing: "border-box",
-            fontFamily: "system-ui, sans-serif",
-          }}
-        />
-        <button
-          onClick={handleMerge}
-          disabled={
-            !mergeCode.trim() ||
-            mergeStatus === "pending" ||
-            mergeStatus === "success"
-          }
-          style={{
-            padding: "10px 16px",
-            borderRadius: 8,
-            background: mergeStatus === "success" ? "#16a34a" : "#dc2626",
-            border: "none",
-            color: "#fff",
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: "pointer",
-            opacity: !mergeCode.trim() || mergeStatus === "pending" ? 0.6 : 1,
-          }}
-        >
-          {mergeStatus === "pending"
-            ? t("salesmanLite.merge.verifying")
-            : mergeStatus === "success"
-              ? t("salesmanLite.merge.merged")
-              : t("salesmanLite.merge.submitBtn")}
-        </button>
-      </div>
-
-      {mergeStatus === "error" && (
-        <div
-          style={{
-            marginTop: 12,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "10px 14px",
-            background: "rgba(239,68,68,0.08)",
-            border: "1px solid rgba(239,68,68,0.2)",
-            borderRadius: 8,
-          }}
-        >
-          <AlertCircle size={14} style={{ color: "#f87171", flexShrink: 0 }} />
-          <p style={{ margin: 0, fontSize: 12, color: "#f87171" }}>
-            {mergeMsg}
-          </p>
-        </div>
-      )}
-
-      {mergeStatus === "success" && (
-        <div
-          style={{
-            marginTop: 12,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "10px 14px",
-            background: "rgba(34,197,94,0.08)",
-            border: "1px solid rgba(34,197,94,0.2)",
-            borderRadius: 8,
-          }}
-        >
-          <CheckCircle2 size={14} style={{ color: "#4ade80", flexShrink: 0 }} />
-          <p style={{ margin: 0, fontSize: 12, color: "#4ade80" }}>
-            {mergeMsg}
-          </p>
-        </div>
-      )}
-
-      <p
-        style={{
-          marginTop: 24,
-          fontSize: 12,
-          color: "#374151",
-          lineHeight: 1.6,
-        }}
-      >
-        {t("salesmanLite.merge.noCodeHelp")}
-      </p>
-    </div>
-  );
-
   // ── ADD LEAD MODAL ────────────────────────────────────────────────────────
 
   const renderAddLeadModal = () =>
@@ -7241,7 +7276,6 @@ export default function SalesmanLite() {
     { icon: MessageSquare, title: t("salesmanLite.tour.steps.inbox.title"),      body: t("salesmanLite.tour.steps.inbox.body") },
     { icon: Calendar,     title: t("salesmanLite.tour.steps.bookings.title"),    body: t("salesmanLite.tour.steps.bookings.body") },
     { icon: BarChart2,    title: t("salesmanLite.tour.steps.performance.title"), body: t("salesmanLite.tour.steps.performance.body") },
-    { icon: GitMerge,     title: t("salesmanLite.tour.steps.merge.title"),       body: t("salesmanLite.tour.steps.merge.body") },
     { icon: Settings,     title: t("salesmanLite.tour.steps.settings.title"),    body: t("salesmanLite.tour.steps.settings.body") },
     { icon: BookOpen,     title: t("salesmanLite.tour.steps.help.title"),        body: t("salesmanLite.tour.steps.help.body") },
   ];
@@ -7995,8 +8029,8 @@ export default function SalesmanLite() {
               {/* Sub-tab switcher */}
               <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
                 {[
-                  { key: "enquiries", label: t("salesmanLite.inbox.enquiries"), badge: enquiries.filter((e) => e.status === "new").length },
-                  { key: "bookings", label: t("salesmanLite.inbox.bookings"), badge: newBookingsCount },
+                  { key: "bookings", label: t("salesmanLite.inbox.bookings", { defaultValue: "Bookings" }), badge: newBookingsCount },
+                  { key: "enquiries", label: t("salesmanLite.inbox.leadHistory", { defaultValue: "Lead History" }), badge: enquiries.filter((e) => e.status === "new").length },
                 ].map(({ key, label, badge }) => (
                   <button
                     key={key}
@@ -8021,7 +8055,6 @@ export default function SalesmanLite() {
               {inboxSubTab === "enquiries" ? renderEnquiries() : renderBookings()}
             </div>
           )}
-          {activeTab === "merge" && renderMerge()}
           {activeTab === "settings" && renderSettings()}
           {activeTab === "help" && <SalesmanLiteHelp />}
         </div>
@@ -8057,6 +8090,13 @@ export default function SalesmanLite() {
       {renderWAModal()}
       {renderLogCallModal()}
       {renderBatchWAModal()}
+      <ConfirmBookingModal
+        apt={confirmBookingApt}
+        message={confirmBookingMsg}
+        onChangeMessage={setConfirmBookingMsg}
+        onClose={() => { setConfirmBookingApt(null); setConfirmBookingMsg(""); }}
+        onSend={sendConfirmBooking}
+      />
 
       {/* IC gate — required before a car can be listed (no anonymous sellers) */}
       {icGateOpen && (
