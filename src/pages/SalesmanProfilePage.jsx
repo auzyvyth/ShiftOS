@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useParams } from 'react-router-dom';
-import { Clock } from 'lucide-react';
+import { Clock, LayoutDashboard } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import ReviewsSection from '../components/reviews/ReviewsSection';
+import { ROLE_ROUTES } from '../hooks/useRoleRedirect';
 
 const fmt = (n) => Number(n).toLocaleString('en-MY');
 
@@ -44,6 +45,23 @@ export default function SalesmanProfilePage() {
   const [bioExpanded, setBioExpanded] = useState(false);
   const bioRef = useRef(null);
   const [bioOverflows, setBioOverflows] = useState(false);
+  const [viewerDashboardRoute, setViewerDashboardRoute] = useState(null);
+
+  // If the visitor is logged in, surface a quick way back to their own
+  // dashboard — most useful when a salesman previews their own mini page
+  // and would otherwise have no way back without hitting the browser's
+  // back button.
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getSession().then(async ({ data }) => {
+      const uid = data?.session?.user?.id;
+      if (!uid || cancelled) return;
+      const { data: viewer } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle();
+      if (cancelled || !viewer?.role) return;
+      setViewerDashboardRoute(ROLE_ROUTES[viewer.role] ?? null);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -197,13 +215,23 @@ export default function SalesmanProfilePage() {
             banner regardless of DOM/stacking edge cases. ── */}
         <div style={{ position: 'relative' }}>
           <div style={{
-            width: '100%', height: 'clamp(120px, 30vw, 190px)', overflow: 'hidden',
+            width: '100%', height: 'clamp(150px, 30vw, 190px)', overflow: 'hidden',
             background: profile.cover_url
               ? `center / cover no-repeat url(${profile.cover_url})`
               : 'linear-gradient(135deg, #2a3142 0%, #1b202b 55%, #10131b 100%)',
           }}>
             <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0) 55%, rgba(11,14,21,0.5) 100%)' }} />
           </div>
+
+          {/* Quick way back for a logged-in visitor (most often the agent
+              themselves previewing this page) — jumps to whichever
+              dashboard their own role resolves to. */}
+          {viewerDashboardRoute && (
+            <Link to={viewerDashboardRoute}
+              style={{ position: 'absolute', top: 12, right: 12, zIndex: 3, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(11,14,21,0.72)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 99, padding: '7px 14px', fontSize: 12, fontWeight: 700, color: '#fff', textDecoration: 'none' }}>
+              <LayoutDashboard size={13} /> Dashboard
+            </Link>
+          )}
 
           {profile.avatar_url ? (
             <img src={profile.avatar_url} alt={profile.full_name}
