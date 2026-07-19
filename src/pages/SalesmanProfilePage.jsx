@@ -191,39 +191,59 @@ export default function SalesmanProfilePage() {
         <div style={{ position: 'relative', zIndex: 1 }}>
 
         {/* ── Cover banner — Facebook-style: full-bleed photo (or a gradient
-            fallback when the agent hasn't set one), profile circle overlaps
-            its bottom-left corner. ── */}
-        <div style={{
-          position: 'relative', width: '100%', height: 'clamp(120px, 30vw, 190px)', overflow: 'hidden',
-          background: profile.cover_url
-            ? `center / cover no-repeat url(${profile.cover_url})`
-            : 'linear-gradient(135deg, #2a3142 0%, #1b202b 55%, #10131b 100%)',
-        }}>
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0) 55%, rgba(11,14,21,0.5) 100%)' }} />
+            fallback when the agent hasn't set one). The avatar is positioned
+            absolutely against this same wrapper (not a sibling with a
+            negative margin) so it can never end up painted behind the
+            banner regardless of DOM/stacking edge cases. ── */}
+        <div style={{ position: 'relative' }}>
+          <div style={{
+            width: '100%', height: 'clamp(120px, 30vw, 190px)', overflow: 'hidden',
+            background: profile.cover_url
+              ? `center / cover no-repeat url(${profile.cover_url})`
+              : 'linear-gradient(135deg, #2a3142 0%, #1b202b 55%, #10131b 100%)',
+          }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0) 55%, rgba(11,14,21,0.5) 100%)' }} />
+          </div>
+
+          {profile.avatar_url ? (
+            <img src={profile.avatar_url} alt={profile.full_name}
+              style={{ position: 'absolute', left: 'clamp(14px, 5vw, 24px)', bottom: -46, zIndex: 2, width: 92, height: 92, borderRadius: '50%', objectFit: 'cover', display: 'block', border: '4px solid #0b0e15', boxShadow: '0 2px 10px rgba(0,0,0,0.4)' }} />
+          ) : (
+            <div style={{ position: 'absolute', left: 'clamp(14px, 5vw, 24px)', bottom: -46, zIndex: 2, width: 92, height: 92, borderRadius: '50%', background: 'linear-gradient(135deg,#1d4ed8,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, fontWeight: 700, color: '#fff', border: '4px solid #0b0e15', boxShadow: '0 2px 10px rgba(0,0,0,0.4)' }}>
+              {(profile.full_name || 'S')[0].toUpperCase()}
+            </div>
+          )}
         </div>
 
         {/* ── Hero ── */}
         <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 clamp(14px, 5vw, 24px) 28px' }}>
 
-          {/* Avatar overlapping the banner, name beside it */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, marginTop: -44, marginBottom: 14 }}>
-            {profile.avatar_url ? (
-              <img src={profile.avatar_url} alt={profile.full_name}
-                style={{ width: 92, height: 92, borderRadius: '50%', objectFit: 'cover', display: 'block', flexShrink: 0, border: '4px solid #0b0e15', boxShadow: '0 2px 10px rgba(0,0,0,0.4)' }} />
-            ) : (
-              <div style={{ width: 92, height: 92, borderRadius: '50%', background: 'linear-gradient(135deg,#1d4ed8,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, fontWeight: 700, color: '#fff', flexShrink: 0, border: '4px solid #0b0e15', boxShadow: '0 2px 10px rgba(0,0,0,0.4)' }}>
-                {(profile.full_name || 'S')[0].toUpperCase()}
-              </div>
-            )}
-
-            <div style={{ minWidth: 0, paddingBottom: 4 }}>
-              <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 28, letterSpacing: '1.5px', color: '#f1f5f9', lineHeight: 1.05, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {profile.full_name}
+          {/* Name (+ verified badge) and listing count sit in the space the
+              avatar overlaps — name padded clear of the avatar, count
+              anchored to the right, both bottom-aligned with the banner. */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10, minHeight: 46, marginBottom: 14 }}>
+            <div style={{ minWidth: 0, paddingLeft: 106 }}>
+              <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 28, letterSpacing: '1.5px', color: '#f1f5f9', lineHeight: 1.05, display: 'flex', alignItems: 'center', gap: 7, overflow: 'hidden' }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.full_name}</span>
+                {isVerified && (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#3b82f6" style={{ flexShrink: 0 }} title="Verified by XDrive">
+                    <path d="M12 1l2.6 1.9 3.2-.4 1 3.1 3 1.5-.6 3.3 1.9 2.6-1.9 2.6.6 3.3-3 1.5-1 3.1-3.2-.4L12 23l-2.6-1.9-3.2.4-1-3.1-3-1.5.6-3.3L.9 11 2.8 8.4l-.6-3.3 3-1.5 1-3.1 3.2.4L12 1z"/>
+                    <path d="M9.5 12.5l1.8 1.8 3.5-4" stroke="#0b0e15" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                  </svg>
+                )}
               </h1>
               {profile.job_title && (
                 <p style={{ fontSize: 11, color: '#6b7280', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {profile.job_title}
                 </p>
+              )}
+            </div>
+
+            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#f1f5f9', lineHeight: 1 }}>{listings.length}</p>
+              <p style={{ margin: '2px 0 0', fontSize: 9, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Available</p>
+              {soldCount > 0 && (
+                <p style={{ margin: '3px 0 0', fontSize: 10, color: '#4ade80', fontWeight: 700 }}>{soldCount} sold</p>
               )}
             </div>
           </div>
@@ -246,7 +266,7 @@ export default function SalesmanProfilePage() {
 
           {/* Specializations */}
           {profile.specializations && profile.specializations.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 18 }}>
               {profile.specializations.map((spec, i) => (
                 <span key={i} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)', color: '#d1d5db', borderRadius: 99, padding: '4px 12px', fontSize: 11, fontWeight: 500, letterSpacing: '0.02em' }}>
                   {spec}
@@ -254,32 +274,6 @@ export default function SalesmanProfilePage() {
               ))}
             </div>
           )}
-
-          {/* Stats strip — flexWrap + maxWidth so a long dealership name or all
-              three cells present can't force the whole page wider than the
-              viewport (this was the actual cause of the side-margin/overflow
-              on narrow phones — inline-flex with no wrap has no ceiling). */}
-          <div style={{ display: 'inline-flex', flexWrap: 'wrap', maxWidth: '100%', gap: 0, background: '#0d1117', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden', marginBottom: (profile.about_text || profile.bio) ? 16 : 20 }}>
-            <div style={{ padding: '10px 20px', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
-              <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#f1f5f9', lineHeight: 1 }}>{listings.length}</p>
-              <p style={{ margin: '3px 0 0', fontSize: 9, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Available</p>
-            </div>
-            {soldCount > 0 && (
-              <div style={{ padding: '10px 20px', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
-                <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#4ade80', lineHeight: 1 }}>{soldCount}</p>
-                <p style={{ margin: '3px 0 0', fontSize: 9, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Sold</p>
-              </div>
-            )}
-            {isVerified && (
-              <div style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', flexShrink: 0, boxShadow: '0 0 6px #10b981' }} />
-                <div>
-                  <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: '#10b981', lineHeight: 1 }}>Verified</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 9, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>XDrive</p>
-                </div>
-              </div>
-            )}
-          </div>
 
           {/* Bio */}
           {profile.bio && (
