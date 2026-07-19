@@ -508,6 +508,9 @@ export default function SalesmanLite() {
   const [avatarUrl, setAvatarUrl] = useState("");
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef(null);
+  const [coverUrl, setCoverUrl] = useState("");
+  const [coverUploading, setCoverUploading] = useState(false);
+  const coverInputRef = useRef(null);
   const broadcastCancelRef = useRef(false);
   const pendingStageRef = useRef({});
   const [cancelConfirmId, setCancelConfirmId] = useState(null);
@@ -745,6 +748,7 @@ export default function SalesmanLite() {
       const av = profile.avatar_url || "";
       setAvatarUrl(av);
       if (av && profile.id) localStorage.setItem(`salesman_lite_avatar_${profile.id}`, av);
+      setCoverUrl(profile.cover_url || "");
       setSettingsForm((p) => ({ ...p, telegram_chat_id: profile.telegram_chat_id || "" }));
     }
   }, [profile]);
@@ -776,7 +780,7 @@ export default function SalesmanLite() {
 
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, ic_number, account_status, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
+        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, ic_number, account_status, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
         .eq("id", uid)
         .maybeSingle();
 
@@ -6370,6 +6374,32 @@ export default function SalesmanLite() {
       toast.success("Profile photo updated");
     };
 
+    const handleCoverUpload = async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { toast.error("Image must be under 5 MB"); return; }
+      if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
+      setCoverUploading(true);
+      const ext = file.name.split(".").pop();
+      const path = `${userId}/cover.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true });
+      if (upErr) {
+        toast.error("Upload failed: " + upErr.message);
+        setCoverUploading(false);
+        return;
+      }
+      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+      const bustedUrl = `${publicUrl}?t=${Date.now()}`;
+      const { error: coverProfileErr } = await supabase.from("profiles").update({ cover_url: publicUrl }).eq("id", userId);
+      if (coverProfileErr) console.error("handleCoverUpload profile update:", coverProfileErr);
+      setCoverUrl(bustedUrl);
+      setProfile((p) => ({ ...p, cover_url: bustedUrl }));
+      setCoverUploading(false);
+      toast.success("Cover photo updated");
+    };
+
     const handleSave = async () => {
       setSettingsSaving(true);
       const cleanLocal = localPhone.replace(/\D/g, "").replace(/^0+/, "");
@@ -6451,6 +6481,24 @@ export default function SalesmanLite() {
             <button onClick={() => avatarInputRef.current?.click()} disabled={avatarUploading} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}>
               {avatarUploading ? t("salesmanLite.settings.uploading") : t("salesmanLite.settings.changePhoto")}
             </button>
+          </div>
+        </div>
+
+        {/* Cover photo — banner shown behind your profile photo on your public XDrive page */}
+        <div style={{ marginBottom: 24, padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
+          <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Cover Photo</p>
+          <p style={{ margin: "0 0 10px", fontSize: 11, color: "#4b5563" }}>Shown as the banner at the top of your public page</p>
+          <div
+            onClick={() => !coverUploading && coverInputRef.current?.click()}
+            style={{ position: "relative", width: "100%", height: 90, borderRadius: 8, overflow: "hidden", cursor: coverUploading ? "default" : "pointer", background: coverUrl ? `center / cover no-repeat url(${coverUrl})` : "linear-gradient(135deg, #2a3142 0%, #1b202b 55%, #10131b 100%)", border: "1px solid rgba(255,255,255,0.08)" }}
+          >
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: coverUploading ? "rgba(0,0,0,0.55)" : "rgba(0,0,0,0.25)" }}>
+              {coverUploading
+                ? <div style={{ width: 22, height: 22, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
+                : <span style={{ fontSize: 11, fontWeight: 600, color: "#fff" }}>{coverUrl ? "Change cover photo" : "Add a cover photo"}</span>
+              }
+            </div>
+            <input ref={coverInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleCoverUpload} />
           </div>
         </div>
 
