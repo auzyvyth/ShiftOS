@@ -8,6 +8,7 @@ import { supabase } from "../supabaseClient";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { normalizePhone } from "../lib/phone";
 import { cdnImg } from "../utils/img";
+import { compressImageFile } from "../utils/compressImage";
 import CarForm from "../components/CarForm";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { getCategoryCfg } from "../utils/serviceCategories";
@@ -2345,6 +2346,58 @@ export default function SalesmanLite() {
           )}
         </div>
 
+        {/* Marketplace Pulse — moved up right below the greeting so the mini
+            page link (the thing most worth acting on) isn't buried under
+            the goal/agenda cards. */}
+        {myListings.filter(c => c.status === "available").length > 0 && (
+          <div style={CARD}>
+            <div style={CARD_HEADER}>
+              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", animation: "live-glow 2s ease-in-out infinite" }} />
+                <span>Live</span>
+              </div>
+              <span>30 days</span>
+            </div>
+            <div style={{ padding: 18 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 18 }}>
+                {[
+                  { label: "Buyer Views", value: totalViews || 0 },
+                  { label: "WA Taps", value: totalWATaps || 0, green: true },
+                  { label: "Live Listings", value: myListings.filter(c => c.status === "available").length },
+                ].map(({ label, value, green }) => (
+                  <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <p style={{ margin: 0, fontSize: 12, color: "#475569" }}>{label}</p>
+                    <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: green ? "#22c55e" : "#f1f5f9", letterSpacing: "-0.03em" }}>{value}</p>
+                  </div>
+                ))}
+              </div>
+              {profile?.slug && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success("Store link copied — share it with buyers!"); }}
+                    style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#94a3b8", cursor: "pointer", fontWeight: 500, fontFamily: "inherit" }}
+                  >
+                    <LinkIcon size={11} />
+                    <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>xdrive.my/s/{profile.slug}</span>
+                    <span style={{ fontSize: 10, color: "#475569", flexShrink: 0 }}>Salin</span>
+                  </button>
+                  <a
+                    href={`/s/${profile.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Opens on this environment (preview/staging shows this build; xdrive.my is the real address to share)"
+                    style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(37,99,235,0.07)", border: "1px solid rgba(37,99,235,0.2)", color: "#93c5fd", textDecoration: "none", fontWeight: 600, fontFamily: "inherit" }}
+                  >
+                    <ExternalLink size={11} />
+                    <span style={{ flex: 1 }}>Lihat halaman mini anda</span>
+                    <ChevronRight size={11} style={{ flexShrink: 0, opacity: 0.5 }} />
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ── Sales Overview — commission trend, gradient sparkline ── */}
         {trendTotal > 0 && (
           <div style={{ ...CARD, padding: isMobile ? "18px 16px 8px" : "22px 24px 10px" }}>
@@ -2558,10 +2611,8 @@ export default function SalesmanLite() {
           ))}
         </div>
 
-        {/* ── Goal + Marketplace Pulse ── */}
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "3fr 2fr", gap: 16 }}>
-          {/* Goal */}
-          <div style={CARD}>
+        {/* ── Goal ── */}
+        <div style={CARD}>
             <div style={CARD_HEADER}>
               <span>Monthly Goal</span>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -2669,57 +2720,6 @@ export default function SalesmanLite() {
               )}
             </div>
           </div>
-
-          {/* Marketplace Pulse */}
-          {myListings.filter(c => c.status === "available").length > 0 && (
-            <div style={CARD}>
-              <div style={CARD_HEADER}>
-                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", animation: "live-glow 2s ease-in-out infinite" }} />
-                  <span>Live</span>
-                </div>
-                <span>30 days</span>
-              </div>
-              <div style={{ padding: 18 }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 18 }}>
-                  {[
-                    { label: "Buyer Views", value: totalViews || 0 },
-                    { label: "WA Taps", value: totalWATaps || 0, green: true },
-                    { label: "Live Listings", value: myListings.filter(c => c.status === "available").length },
-                  ].map(({ label, value, green }) => (
-                    <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <p style={{ margin: 0, fontSize: 12, color: "#475569" }}>{label}</p>
-                      <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: green ? "#22c55e" : "#f1f5f9", letterSpacing: "-0.03em" }}>{value}</p>
-                    </div>
-                  ))}
-                </div>
-                {profile?.slug && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <button
-                      onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success("Store link copied — share it with buyers!"); }}
-                      style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#94a3b8", cursor: "pointer", fontWeight: 500, fontFamily: "inherit" }}
-                    >
-                      <LinkIcon size={11} />
-                      <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>xdrive.my/s/{profile.slug}</span>
-                      <span style={{ fontSize: 10, color: "#475569", flexShrink: 0 }}>Salin</span>
-                    </button>
-                    <a
-                      href={`/s/${profile.slug}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Opens on this environment (preview/staging shows this build; xdrive.my is the real address to share)"
-                      style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(37,99,235,0.07)", border: "1px solid rgba(37,99,235,0.2)", color: "#93c5fd", textDecoration: "none", fontWeight: 600, fontFamily: "inherit" }}
-                    >
-                      <ExternalLink size={11} />
-                      <span style={{ flex: 1 }}>Lihat halaman mini anda</span>
-                      <ChevronRight size={11} style={{ flexShrink: 0, opacity: 0.5 }} />
-                    </a>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
 
         {/* Earnings Target card removed — merged into the single Monthly Goal (commission) above */}
 
@@ -6351,14 +6351,13 @@ export default function SalesmanLite() {
     const handleAvatarUpload = async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      if (file.size > 5 * 1024 * 1024) { toast.error("Image must be under 5 MB"); return; }
       if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
       setAvatarUploading(true);
-      const ext = file.name.split(".").pop();
-      const path = `${userId}/avatar.${ext}`;
+      const compressed = await compressImageFile(file, { maxDim: 800 });
+      const path = `${userId}/avatar.jpg`;
       const { error: upErr } = await supabase.storage
         .from("avatars")
-        .upload(path, file, { upsert: true });
+        .upload(path, compressed, { upsert: true, contentType: "image/jpeg" });
       if (upErr) {
         toast.error("Upload failed: " + upErr.message);
         setAvatarUploading(false);
@@ -6378,14 +6377,13 @@ export default function SalesmanLite() {
     const handleCoverUpload = async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      if (file.size > 5 * 1024 * 1024) { toast.error("Image must be under 5 MB"); return; }
       if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
       setCoverUploading(true);
-      const ext = file.name.split(".").pop();
-      const path = `${userId}/cover.${ext}`;
+      const compressed = await compressImageFile(file, { maxDim: 1600 });
+      const path = `${userId}/cover.jpg`;
       const { error: upErr } = await supabase.storage
         .from("avatars")
-        .upload(path, file, { upsert: true });
+        .upload(path, compressed, { upsert: true, contentType: "image/jpeg" });
       if (upErr) {
         toast.error("Upload failed: " + upErr.message);
         setCoverUploading(false);

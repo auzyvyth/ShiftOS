@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
+import { compressImageFile } from "../utils/compressImage";
 import CarFormFast from "../components/CarFormFast";
 import CarForm from "../components/CarForm";
 import DealerPendingApproval from "../components/DealerPendingApproval";
@@ -5097,10 +5098,11 @@ export default function SalesmanPremium() {
  const handleAvatarUpload = async (e) => {
  const file = e.target.files?.[0];
  if (!file) return;
+ if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
  setAvatarUploading(true);
- const ext = file.name.split(".").pop();
- const path = `${userId}/avatar.${ext}`;
- const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+ const compressed = await compressImageFile(file, { maxDim: 800 });
+ const path = `${userId}/avatar.jpg`;
+ const { error: upErr } = await supabase.storage.from("avatars").upload(path, compressed, { upsert: true, contentType: "image/jpeg" });
  if (upErr) { toast.error("Upload failed: " + upErr.message); setAvatarUploading(false); return; }
  const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
  await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", userId);
@@ -5113,10 +5115,11 @@ export default function SalesmanPremium() {
  const handleCoverUpload = async (e) => {
  const file = e.target.files?.[0];
  if (!file) return;
+ if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
  setCoverUploading(true);
- const ext = file.name.split(".").pop();
- const path = `${userId}/cover.${ext}`;
- const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+ const compressed = await compressImageFile(file, { maxDim: 1600 });
+ const path = `${userId}/cover.jpg`;
+ const { error: upErr } = await supabase.storage.from("avatars").upload(path, compressed, { upsert: true, contentType: "image/jpeg" });
  if (upErr) { toast.error("Upload failed: " + upErr.message); setCoverUploading(false); return; }
  const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
  await supabase.from("profiles").update({ cover_url: publicUrl }).eq("id", userId);
