@@ -341,6 +341,13 @@ const generateQuotationPDF = async ({ dealer, salesman, carDetails, calc, fmt })
   doc.text('This quotation is valid for 7 days and is subject to change without prior notice.', MARGIN, y);
   y += 5;
   doc.text('All figures shown are estimates only. Final pricing subject to confirmation from the dealership.', MARGIN, y);
+  y += 8;
+
+  // Always credit the tool that generated this, even when the quote is
+  // prepared under a dealer/agent's own name above — the calculator itself
+  // is an XDrive.my product, not something the dealer built.
+  setFont(8, 'bold', [220, 38, 38]);
+  doc.text('Generated via XDrive.my', MARGIN, y);
 
   doc.save(`quotation-${Date.now()}.pdf`);
 };

@@ -1812,14 +1812,14 @@ export default function CarDetailPage() {
                 : <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(148,163,184,0.1)', border:'1px solid rgba(148,163,184,0.25)', color: isXdrive ? '#475569' : '#94a3b8', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}><FileText size={11} /> Docs on File</span>
               )}
             </div>
-            <Link
-              to={`/calculator?carPrice=${Math.round(car.selling_price||0)}${car.engine_cc?`&engineCc=${car.engine_cc}`:''}${car.body_type?`&bodyType=${encodeURIComponent(car.body_type)}`:''}`}
+            <button
+              onClick={() => setCalcOpen(true)}
               aria-label="Open financing calculator"
               title="Financing calculator"
-              style={{ flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', width:38, height:38, borderRadius:10, background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.25)', color:'#dc2626' }}
+              style={{ flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', width:38, height:38, borderRadius:10, background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.25)', color:'#dc2626', cursor:'pointer' }}
             >
               <Calculator size={18} />
-            </Link>
+            </button>
           </div>
           {/* Brand — left-aligned to match the price/specs/stats column below */}
           <p style={{ fontSize:'clamp(13px,1.4vw,18px)', textTransform:'uppercase', letterSpacing:'0.28em', color:'#dc2626', fontWeight:700, margin:'0 0 6px' }}>{car.brand}</p>

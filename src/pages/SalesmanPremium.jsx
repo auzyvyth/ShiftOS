@@ -267,6 +267,7 @@ export default function SalesmanPremium() {
  const [settingsForm, setSettingsForm] = useState({
  full_name: "",
  whatsapp_number: "",
+ location: "",
  });
  const [settingsSaving, setSettingsSaving] = useState(false);
  const [avatarUrl, setAvatarUrl] = useState("");
@@ -381,6 +382,7 @@ export default function SalesmanPremium() {
  setSettingsForm({
  full_name: profile.full_name || "",
  whatsapp_number: profile.whatsapp_number || "",
+ location: profile.location || "",
  });
  setAvatarUrl(profile.avatar_url || "");
  setCoverUrl(profile.cover_url || "");
@@ -5149,8 +5151,8 @@ export default function SalesmanPremium() {
  const handleSave = async () => {
  setSettingsSaving(true);
  const phone = "+60" + localPhone.replace(/\D/g, "");
- await supabase.from("profiles").update({ full_name: settingsForm.full_name, whatsapp_number: phone }).eq("id", userId);
- setProfile((p) => ({ ...p, full_name: settingsForm.full_name, whatsapp_number: phone }));
+ await supabase.from("profiles").update({ full_name: settingsForm.full_name, whatsapp_number: phone, location: settingsForm.location || null }).eq("id", userId);
+ setProfile((p) => ({ ...p, full_name: settingsForm.full_name, whatsapp_number: phone, location: settingsForm.location || null }));
  setSettingsForm((p) => ({ ...p, whatsapp_number: phone }));
  setSettingsSaving(false);
  toast.success("Profile updated");
@@ -5216,6 +5218,11 @@ export default function SalesmanPremium() {
  style={{ ...inputStyle, background: "transparent", border: "none", borderRadius: 0, flex: 1, width: "auto" }} />
  </div>
  <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Malaysia country code pre-applied. Enter digits only.</p>
+ </div>
+ <div>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Full Address (for map)</label>
+ <input value={settingsForm.location} onChange={(e) => setSettingsForm((p) => ({ ...p, location: e.target.value }))} placeholder="e.g. 12, Jalan Ampang, 50450 Kuala Lumpur" style={inputStyle} />
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Shown as a map on your public page so buyers can find you.</p>
  </div>
  <div>
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Username / Slug</label>
