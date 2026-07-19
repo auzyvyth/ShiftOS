@@ -463,6 +463,14 @@ export default function SalesmanLite() {
   const [followUpModalLead, setFollowUpModalLead] = useState(null);
   const [followUpDate, setFollowUpDate] = useState("");
   const [followUpSaving, setFollowUpSaving] = useState(false);
+  // Performance-tab coaching nudges: collapsed by default (they otherwise push
+  // the KPIs below the fold), expand one at a time on tap.
+  const [openNudgeKeys, setOpenNudgeKeys] = useState(() => new Set());
+  const toggleNudge = (key) => setOpenNudgeKeys((prev) => {
+    const next = new Set(prev);
+    next.has(key) ? next.delete(key) : next.add(key);
+    return next;
+  });
   // Commission
   const [commissionData, setCommissionData] = useState({ total: 0, revenue: 0, count: 0 });
 
@@ -2876,6 +2884,7 @@ export default function SalesmanLite() {
     // Coaching nudges — rule-based
     const nudges = [];
     if (staleCount > 0) nudges.push({
+      key: "stale",
       type: "warn",
       icon: <Clock size={14} />,
       title: `${staleCount} lead${staleCount !== 1 ? "s" : ""} need follow-up now`,
@@ -2884,6 +2893,7 @@ export default function SalesmanLite() {
       ctaAction: () => setActiveTab("leads"),
     });
     if (leadsWithNoFollowUp > 2) nudges.push({
+      key: "no_followup",
       type: "warn",
       icon: <Target size={14} />,
       title: `${leadsWithNoFollowUp} leads have no follow-up date set`,
@@ -2892,6 +2902,7 @@ export default function SalesmanLite() {
       ctaAction: () => setActiveTab("leads"),
     });
     if (contactedThisWeek === 0 && activeLeads.length > 0) nudges.push({
+      key: "no_contact",
       type: "warn",
       icon: <Zap size={14} />,
       title: "No leads contacted this week",
@@ -2900,6 +2911,7 @@ export default function SalesmanLite() {
       ctaAction: () => setActiveTab("leads"),
     });
     if (closeRate !== null && closeRate < 20 && closedLeads.length >= 3) nudges.push({
+      key: "low_close",
       type: "tip",
       icon: <TrendingUp size={14} />,
       title: `Your close rate is ${closeRate}% — here's how to improve it`,
@@ -2907,6 +2919,7 @@ export default function SalesmanLite() {
       cta: null,
     });
     if (avgDaysToClose !== null && avgDaysToClose > 21) nudges.push({
+      key: "slow_close",
       type: "tip",
       icon: <Clock size={14} />,
       title: `Your average deal takes ${avgDaysToClose} days to close`,
@@ -2914,6 +2927,7 @@ export default function SalesmanLite() {
       cta: null,
     });
     if (nudges.length === 0 && wonLeads.length > 0) nudges.push({
+      key: "on_track",
       type: "good",
       icon: <Award size={14} />,
       title: "You're on track — keep the momentum",
@@ -2938,20 +2952,32 @@ export default function SalesmanLite() {
           <p style={{ margin: "2px 0 0", fontSize: 12, color: "#475569" }}>Close rate, pipeline health, follow-up habits — all in one place.</p>
         </div>
 
-        {/* ── Coaching nudges ── */}
+        {/* ── Coaching nudges (collapsed by default — tap a row to reveal) ── */}
         {nudges.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {nudges.map((n, i) => {
+            {nudges.map((n) => {
               const c = nudgeColor[n.type];
+              const open = openNudgeKeys.has(n.key);
               return (
-                <div key={i} style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 12, padding: "14px 16px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                    <span style={{ color: c.icon, flexShrink: 0 }}>{n.icon}</span>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: c.title }}>{n.title}</p>
-                  </div>
-                  <p style={{ margin: "0 0 10px", fontSize: 12, color: "#6b7280", lineHeight: 1.6 }}>{n.body}</p>
-                  {n.cta && (
-                    <button onClick={n.ctaAction} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>{n.cta} →</button>
+                <div key={n.key} style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 12, overflow: "hidden" }}>
+                  <button
+                    onClick={() => toggleNudge(n.key)}
+                    aria-expanded={open}
+                    style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "12px 14px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}
+                  >
+                    <span style={{ color: c.icon, flexShrink: 0, display: "flex" }}>{n.icon}</span>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: c.title, flex: 1, minWidth: 0 }}>{n.title}</p>
+                    {open
+                      ? <ChevronUp size={16} style={{ color: c.icon, flexShrink: 0 }} />
+                      : <ChevronDown size={16} style={{ color: c.icon, flexShrink: 0 }} />}
+                  </button>
+                  {open && (
+                    <div className="slite-nudge-reveal" style={{ padding: "0 14px 14px" }}>
+                      <p style={{ margin: "0 0 10px", fontSize: 12, color: "#6b7280", lineHeight: 1.6 }}>{n.body}</p>
+                      {n.cta && (
+                        <button onClick={n.ctaAction} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>{n.cta} →</button>
+                      )}
+                    </div>
                   )}
                 </div>
               );
@@ -7444,6 +7470,8 @@ export default function SalesmanLite() {
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
         @keyframes pulse-green{ 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.45;transform:scale(0.8)} }
         @keyframes live-glow{ 0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.4)} 50%{box-shadow:0 0 0 5px rgba(16,185,129,0)} }
+        @keyframes slite-nudge-reveal{ from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+        .slite-nudge-reveal{ animation: slite-nudge-reveal 0.2s ease; }
       `}</style>
 
       {/* ── Nav ── */}
