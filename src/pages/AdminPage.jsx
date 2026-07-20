@@ -468,6 +468,24 @@ export default function AdminPage() {
         ::-webkit-scrollbar { width: 4px; height: 4px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; display: flex; align-items: center; justify-content: center; }
         .modal-box { background: #111318; border: 1px solid rgba(220,38,38,0.3); border-radius: 12px; padding: 28px; max-width: 360px; width: 90%; }
+        .adm-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+        .adm-tabs::-webkit-scrollbar { display: none; }
+        /* Mobile — make the console navigable on a phone (375px+) */
+        @media (max-width: 720px) {
+          .adm-header { padding: 8px 14px !important; height: auto !important; flex-wrap: wrap; gap: 10px; }
+          .adm-tabs { padding: 0 8px !important; flex-wrap: nowrap !important; }
+          .adm-tab { flex-shrink: 0; padding: 11px 12px !important; font-size: 12px !important; }
+          .adm-content { padding: 16px 14px 64px !important; }
+          .adm-search { width: 100% !important; box-sizing: border-box; }
+          .adm-toolbar { flex-direction: column; align-items: stretch !important; }
+          .adm-toolbar > * { margin-left: 0 !important; width: 100%; box-sizing: border-box; }
+          .adm-toolbar .adm-select { width: 100%; }
+          .adm-actions { flex-direction: column; align-items: stretch !important; }
+          .adm-stat4 { grid-template-columns: repeat(2, 1fr) !important; }
+          .adm-approval { flex-wrap: wrap; }
+          .adm-approval-actions { width: 100%; }
+          .adm-approval-actions button { flex: 1; }
+        }
       `}</style>
 
       <div className="adm-root">
@@ -555,16 +573,12 @@ export default function AdminPage() {
         })()}
 
         {/* Header */}
-        <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 28px", height: 52, background: "rgba(8,12,20,0.98)", borderBottom: "1px solid rgba(255,255,255,0.06)", position: "sticky", top: 0, zIndex: 20 }}>
+        <header className="adm-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 28px", height: 52, background: "rgba(8,12,20,0.98)", borderBottom: "1px solid rgba(255,255,255,0.06)", position: "sticky", top: 0, zIndex: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
             <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 20, letterSpacing: 3 }}>
               Shift<span style={{ color: "#dc2626" }}>OS</span>{" "}
               <span style={{ color: "#374151", fontSize: 13, fontFamily: "system-ui,sans-serif", fontWeight: 500, letterSpacing: 1 }}>Superadmin</span>
             </span>
-            <button onClick={() => navigate("/dashboard")}
-              style={{ background: "none", border: "none", color: "#6b7280", fontSize: 12, cursor: "pointer" }}>
-              ← Dashboard
-            </button>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={loadAll}
@@ -579,10 +593,10 @@ export default function AdminPage() {
         </header>
 
         {/* Tabs */}
-        <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 28px", background: "rgba(255,255,255,0.01)" }}>
+        <div className="adm-tabs" style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 28px", background: "rgba(255,255,255,0.01)" }}>
           {TABS.map(t => (
-            <button key={t.id} onClick={() => setActiveTab(t.id)}
-              style={{ padding: "12px 16px", background: "none", border: "none", borderBottom: activeTab === t.id ? "2px solid #dc2626" : "2px solid transparent", color: activeTab === t.id ? "#fff" : "#6b7280", fontSize: 13, fontWeight: activeTab === t.id ? 600 : 400, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s", display: "flex", alignItems: "center", gap: 6 }}>
+            <button key={t.id} className="adm-tab" onClick={() => setActiveTab(t.id)}
+              style={{ padding: "12px 16px", background: "none", border: "none", borderBottom: activeTab === t.id ? "2px solid #dc2626" : "2px solid transparent", color: activeTab === t.id ? "#fff" : "#6b7280", fontSize: 13, fontWeight: activeTab === t.id ? 600 : 400, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
               {t.label}
               {t.badge > 0 && (
                 <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "rgba(220,38,38,0.18)", border: "1px solid rgba(220,38,38,0.35)", color: "#f87171" }}>
@@ -593,7 +607,7 @@ export default function AdminPage() {
           ))}
         </div>
 
-        <div style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 28px 80px" }}>
+        <div className="adm-content" style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 28px 80px" }}>
           {loading ? (
             <div style={{ textAlign: "center", padding: 80, color: "#4b5563" }}>Loading…</div>
           ) : activeTab === "approvals" ? (
@@ -734,7 +748,7 @@ export default function AdminPage() {
                             ))}
                           </div>
                         )}
-                        <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                        <div className="adm-approval" style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
                           {/* Select */}
                           <input
                             type="checkbox"
@@ -809,7 +823,7 @@ export default function AdminPage() {
 
                           {/* Action buttons */}
                           {!isRejecting && (
-                            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                            <div className="adm-approval-actions" style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                               <button
                                 disabled={isActioning}
                                 onClick={async () => {
@@ -941,13 +955,13 @@ export default function AdminPage() {
                   </div>
 
                   {/* Toolbar */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+                  <div className="adm-toolbar" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
                     <input
                       value={waitlistSearch} onChange={e => setWaitlistSearch(e.target.value)}
-                      placeholder="Search name, phone, code…" className="adm-input" style={{ width: 260 }}
+                      placeholder="Search name, phone, code…" className="adm-input adm-search" style={{ width: 260 }}
                     />
                     <span style={{ fontSize: 12, color: "#4b5563" }}>{filtered.length} shown</span>
-                    <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                    <div style={{ marginLeft: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <button
                         onClick={() => {
                           const csv = ["position,name,phone,referral_code,referred_by,founding_member,created_at",
@@ -1068,9 +1082,9 @@ export default function AdminPage() {
           ) : activeTab === "salesman" ? (
             /* ── SALESMEN TAB ── */
             <>
-              <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
+              <div className="adm-toolbar" style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <input value={salesmanSearch} onChange={e => setSalesmanSearch(e.target.value)}
-                  placeholder="Search name, email, slug…" className="adm-input" style={{ width: 280 }} />
+                  placeholder="Search name, email, slug…" className="adm-input adm-search" style={{ width: 280 }} />
                 <span style={{ fontSize: 12, color: "#4b5563", marginLeft: "auto" }}>{filteredSalesmen.length} accounts</span>
               </div>
 
@@ -1422,16 +1436,16 @@ export default function AdminPage() {
           ) : (
             /* ── DEALERS TAB ── */
             <>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
+              <div className="adm-stat4" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
                 <StatCard label="Total" value={stats.total} />
                 <StatCard label="Active" value={stats.active} color="#4ade80" sub={`RM ${stats.mrr.toLocaleString()} MRR`} />
                 <StatCard label="Trial" value={stats.trial} color="#facc15" />
                 <StatCard label="Expired" value={stats.expired} color="#f87171" />
               </div>
 
-              <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
+              <div className="adm-toolbar" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
                 <input value={search} onChange={e => setSearch(e.target.value)}
-                  placeholder="Search dealer, email, subdomain…" className="adm-input" style={{ width: 260 }} />
+                  placeholder="Search dealer, email, subdomain…" className="adm-input adm-search" style={{ width: 260 }} />
                 <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="adm-select">
                   <option value="all">All Status</option>
                   <option value="active">Active</option>

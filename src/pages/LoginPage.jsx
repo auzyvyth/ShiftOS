@@ -225,7 +225,15 @@ export default function LoginPage() {
       return s;
     };
 
-    if (role === "superadmin" || role === "dealer" || role === "owner") {
+    // Platform superadmin has its own console (/platform) — never a dealer
+    // dashboard. Keeping it separate stops the admin account from landing on an
+    // empty, onboarding-less dealer dashboard.
+    if (role === "superadmin") {
+      window.location.href = `${base}/platform`;
+      return;
+    }
+
+    if (role === "dealer" || role === "owner") {
       if (profile?.onboarding_complete === false && !subdomain) {
         window.location.href = `${base}/onboarding`;
         return;
