@@ -3081,7 +3081,7 @@ export default function SalesmanLite() {
     const WON_STAGES = ["won","closed_won"];
     const LOST_STAGES = ["lost","closed_lost"];
     const FUNNEL_STAGES = ["new","contacted","viewing_booked","test_drive","negotiating","deposit_taken"];
-    const FUNNEL_LABELS = { new:"New", contacted:"Contacted", viewing_booked:"Viewing", test_drive:"Test Drive", negotiating:"Negotiating", deposit_taken:"Deposit" };
+    const FUNNEL_LABELS = { new: stageLabel("new"), contacted: stageLabel("contacted"), viewing_booked: stageLabel("viewing_booked"), test_drive: stageLabel("test_drive"), negotiating: stageLabel("negotiating"), deposit_taken: stageLabel("deposit_taken") };
 
     const allLeads = leads;
     const activeLeads = allLeads.filter(l => ACTIVE_STAGES.includes(l.stage));
@@ -3153,51 +3153,51 @@ export default function SalesmanLite() {
       key: "stale",
       type: "warn",
       icon: <Clock size={14} />,
-      title: `${staleCount} lead${staleCount !== 1 ? "s" : ""} need follow-up now`,
-      body: `You haven't contacted ${staleCount} lead${staleCount !== 1 ? "s" : ""} in over 48 hours. A quick WhatsApp message today keeps deals alive — most buyers go cold within 72 hours of first enquiry.`,
-      cta: "Go to Leads",
+      title: t("salesmanLite.perf.nudgeStaleTitle", { count: staleCount }),
+      body: t("salesmanLite.perf.nudgeStaleBody", { count: staleCount }),
+      cta: t("salesmanLite.perf.nudgeGoToLeads"),
       ctaAction: () => setActiveTab("leads"),
     });
     if (leadsWithNoFollowUp > 2) nudges.push({
       key: "no_followup",
       type: "warn",
       icon: <Target size={14} />,
-      title: `${leadsWithNoFollowUp} leads have no follow-up date set`,
-      body: `Set a follow-up date on each lead so you never forget to reach out. Salesmen who schedule follow-ups close 2× more deals than those who don't.`,
-      cta: "Set follow-ups",
+      title: t("salesmanLite.perf.nudgeNoFollowupTitle", { count: leadsWithNoFollowUp }),
+      body: t("salesmanLite.perf.nudgeNoFollowupBody"),
+      cta: t("salesmanLite.perf.nudgeSetFollowups"),
       ctaAction: () => setActiveTab("leads"),
     });
     if (contactedThisWeek === 0 && activeLeads.length > 0) nudges.push({
       key: "no_contact",
       type: "warn",
       icon: <Zap size={14} />,
-      title: "No leads contacted this week",
-      body: `You have ${activeLeads.length} active lead${activeLeads.length !== 1 ? "s" : ""} but haven't moved any forward this week. Even a 2-minute check-in message can re-spark a deal. Follow up every 2–3 days to stay top of mind.`,
-      cta: "Contact leads",
+      title: t("salesmanLite.perf.nudgeNoContactTitle"),
+      body: t("salesmanLite.perf.nudgeNoContactBody", { count: activeLeads.length }),
+      cta: t("salesmanLite.perf.nudgeContactLeads"),
       ctaAction: () => setActiveTab("leads"),
     });
     if (closeRate !== null && closeRate < 20 && closedLeads.length >= 3) nudges.push({
       key: "low_close",
       type: "tip",
       icon: <TrendingUp size={14} />,
-      title: `Your close rate is ${closeRate}% — here's how to improve it`,
-      body: `Top salesmen close 30–50% of qualified leads. Focus on leads in the Negotiating and Deposit stages first. Ask buyers what's stopping them and address it directly.`,
+      title: t("salesmanLite.perf.nudgeLowCloseTitle", { rate: closeRate }),
+      body: t("salesmanLite.perf.nudgeLowCloseBody"),
       cta: null,
     });
     if (avgDaysToClose !== null && avgDaysToClose > 21) nudges.push({
       key: "slow_close",
       type: "tip",
       icon: <Clock size={14} />,
-      title: `Your average deal takes ${avgDaysToClose} days to close`,
-      body: `Deals that go past 3 weeks often stall. Create urgency — remind buyers about limited stock, upcoming price changes, or offer a test drive to speed up decisions.`,
+      title: t("salesmanLite.perf.nudgeSlowCloseTitle", { days: avgDaysToClose }),
+      body: t("salesmanLite.perf.nudgeSlowCloseBody"),
       cta: null,
     });
     if (nudges.length === 0 && wonLeads.length > 0) nudges.push({
       key: "on_track",
       type: "good",
       icon: <Award size={14} />,
-      title: "You're on track — keep the momentum",
-      body: `${wonLeads.length} deal${wonLeads.length !== 1 ? "s" : ""} closed and ${activeLeads.length} still in pipeline. Keep following up every 2–3 days and you'll stay ahead.`,
+      title: t("salesmanLite.perf.nudgeOnTrackTitle"),
+      body: t("salesmanLite.perf.nudgeOnTrackBody", { count: wonLeads.length, won: wonLeads.length, active: activeLeads.length }),
       cta: null,
     });
 
@@ -3214,8 +3214,8 @@ export default function SalesmanLite() {
 
         {/* ── Header ── */}
         <div>
-          <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.3px" }}>Your Performance</p>
-          <p style={{ margin: "2px 0 0", fontSize: 12, color: "#475569" }}>Close rate, pipeline health, follow-up habits — all in one place.</p>
+          <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.3px" }}>{t("salesmanLite.perf.header")}</p>
+          <p style={{ margin: "2px 0 0", fontSize: 12, color: "#475569" }}>{t("salesmanLite.perf.headerSub")}</p>
         </div>
 
         {/* ── Coaching nudges (collapsed by default — tap a row to reveal) ── */}
@@ -3254,15 +3254,15 @@ export default function SalesmanLite() {
         {/* ── Close Rate ── */}
         <div style={CARD}>
           <div style={CARD_HEADER}>
-            <span>Close Rate</span>
-            <span>all time</span>
+            <span>{t("salesmanLite.perf.closeRate")}</span>
+            <span>{t("salesmanLite.perf.allTime")}</span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)" }}>
             {[
-              { label: "Total Leads", value: allLeads.length, note: "ever created" },
-              { label: "Closed Won", value: wonLeads.length, note: "deals done", color: "#22c55e" },
-              { label: "Closed Lost", value: lostLeads.length, note: "didn't convert", color: "#ef4444" },
-              { label: "Close Rate", value: closeRate !== null ? `${closeRate}%` : "—", note: "won ÷ (won+lost)", color: closeRate === null ? "#475569" : closeRate >= 40 ? "#22c55e" : closeRate >= 20 ? "#eab308" : "#ef4444" },
+              { label: t("salesmanLite.perf.totalLeads"), value: allLeads.length, note: t("salesmanLite.perf.everCreated") },
+              { label: t("salesmanLite.perf.closedWon"), value: wonLeads.length, note: t("salesmanLite.perf.dealsDone"), color: "#22c55e" },
+              { label: t("salesmanLite.perf.closedLost"), value: lostLeads.length, note: t("salesmanLite.perf.didntConvert"), color: "#ef4444" },
+              { label: t("salesmanLite.perf.closeRate"), value: closeRate !== null ? `${closeRate}%` : "—", note: t("salesmanLite.perf.closeRateFormula"), color: closeRate === null ? "#475569" : closeRate >= 40 ? "#22c55e" : closeRate >= 20 ? "#eab308" : "#ef4444" },
             ].map(({ label, value, note, color }, i, arr) => (
               <div key={label} style={{
                 padding: "18px 20px",
@@ -3277,19 +3277,19 @@ export default function SalesmanLite() {
           </div>
           {/* This month strip */}
           <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>This Month</span>
-            <span style={{ fontSize: 12, color: "#94a3b8" }}>{monthLeads.length} new leads</span>
-            <span style={{ fontSize: 12, color: "#22c55e", fontWeight: 600 }}>{monthWon.length} won</span>
-            {monthCloseRate !== null && <span style={{ fontSize: 12, color: monthCloseRate >= 30 ? "#22c55e" : "#eab308", fontWeight: 700 }}>{monthCloseRate}% close rate</span>}
-            <span style={{ fontSize: 12, color: "#94a3b8" }}>{weekLeads.length} leads this week</span>
+            <span style={{ fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>{t("salesmanLite.perf.thisMonth")}</span>
+            <span style={{ fontSize: 12, color: "#94a3b8" }}>{t("salesmanLite.perf.newLeadsCount", { count: monthLeads.length })}</span>
+            <span style={{ fontSize: 12, color: "#22c55e", fontWeight: 600 }}>{t("salesmanLite.perf.wonCount", { count: monthWon.length })}</span>
+            {monthCloseRate !== null && <span style={{ fontSize: 12, color: monthCloseRate >= 30 ? "#22c55e" : "#eab308", fontWeight: 700 }}>{t("salesmanLite.perf.closeRatePct", { count: monthCloseRate })}</span>}
+            <span style={{ fontSize: 12, color: "#94a3b8" }}>{t("salesmanLite.perf.leadsThisWeek", { count: weekLeads.length })}</span>
           </div>
         </div>
 
         {/* ── Pipeline Funnel ── */}
         <div style={CARD}>
           <div style={CARD_HEADER}>
-            <span>Pipeline Funnel</span>
-            <span>{activeLeads.length} active</span>
+            <span>{t("salesmanLite.perf.pipelineFunnel")}</span>
+            <span>{t("salesmanLite.perf.activeCount", { count: activeLeads.length })}</span>
           </div>
           <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
             {funnelCounts.map(({ stage, label, count }) => {
@@ -3307,7 +3307,7 @@ export default function SalesmanLite() {
               );
             })}
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 4, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-              <p style={{ margin: 0, fontSize: 11, color: "#475569", width: isMobile ? 76 : 100, flexShrink: 0, textAlign: "right" }}>Won</p>
+              <p style={{ margin: 0, fontSize: 11, color: "#475569", width: isMobile ? 76 : 100, flexShrink: 0, textAlign: "right" }}>{t("salesmanLite.perf.won")}</p>
               <div style={{ flex: 1, height: 22, background: "rgba(34,197,94,0.08)", borderRadius: 6, overflow: "hidden" }}>
                 <div style={{ height: "100%", width: `${Math.min((wonLeads.length / funnelMax) * 100, 100)}%`, background: "#22c55e", borderRadius: 6, transition: "width 0.4s ease" }} />
               </div>
@@ -3319,15 +3319,15 @@ export default function SalesmanLite() {
         {/* ── Follow-up Habit ── */}
         <div style={CARD}>
           <div style={CARD_HEADER}>
-            <span>Follow-up Habits</span>
-            <span>7 days</span>
+            <span>{t("salesmanLite.perf.followUpHabits")}</span>
+            <span>{t("salesmanLite.perf.days7")}</span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)" }}>
             {[
-              { label: "Active Leads", value: activeLeads.length, note: "in pipeline now" },
-              { label: "Contacted This Week", value: contactedThisWeek, note: "leads updated", color: contactedThisWeek > 0 ? "#22c55e" : "#ef4444" },
-              { label: "No Follow-up Set", value: leadsWithNoFollowUp, note: "no date scheduled", color: leadsWithNoFollowUp > 0 ? "#ef4444" : "#22c55e" },
-              { label: "Overdue", value: staleCount, note: "48h+ no contact", color: staleCount > 0 ? "#ef4444" : "#22c55e" },
+              { label: t("salesmanLite.perf.activeLeads"), value: activeLeads.length, note: t("salesmanLite.perf.inPipelineNow") },
+              { label: t("salesmanLite.perf.contactedThisWeek"), value: contactedThisWeek, note: t("salesmanLite.perf.leadsUpdated"), color: contactedThisWeek > 0 ? "#22c55e" : "#ef4444" },
+              { label: t("salesmanLite.perf.noFollowUpSet"), value: leadsWithNoFollowUp, note: t("salesmanLite.perf.noDateScheduled"), color: leadsWithNoFollowUp > 0 ? "#ef4444" : "#22c55e" },
+              { label: t("salesmanLite.perf.overdue"), value: staleCount, note: t("salesmanLite.perf.noContact48"), color: staleCount > 0 ? "#ef4444" : "#22c55e" },
             ].map(({ label, value, note, color }, i, arr) => (
               <div key={label} style={{
                 padding: "16px 20px",
@@ -3342,12 +3342,12 @@ export default function SalesmanLite() {
           </div>
           {activeLeads.length > 0 && contactedThisWeek === 0 && (
             <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 18px", background: "rgba(239,68,68,0.04)" }}>
-              <p style={{ margin: 0, fontSize: 12, color: "#f87171" }}>You've done <strong>no follow-ups this week</strong>. You have {activeLeads.length} leads in pipeline — follow up every 2–3 days to close more deals.</p>
+              <p style={{ margin: 0, fontSize: 12, color: "#f87171" }}>{t("salesmanLite.perf.habitNone", { count: activeLeads.length })}</p>
             </div>
           )}
           {activeLeads.length > 0 && contactedThisWeek > 0 && contactedThisWeek < activeLeads.length && (
             <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 18px", background: "rgba(234,179,8,0.03)" }}>
-              <p style={{ margin: 0, fontSize: 12, color: "#eab308" }}>You contacted {contactedThisWeek} of {activeLeads.length} leads this week. Try to touch every active lead at least once every 3 days.</p>
+              <p style={{ margin: 0, fontSize: 12, color: "#eab308" }}>{t("salesmanLite.perf.habitSome", { done: contactedThisWeek, total: activeLeads.length })}</p>
             </div>
           )}
         </div>
@@ -3356,13 +3356,13 @@ export default function SalesmanLite() {
         {(avgDaysToClose !== null || wonLeads.length > 0) && (
           <div style={CARD}>
             <div style={CARD_HEADER}>
-              <span>Speed &amp; Conversion</span>
+              <span>{t("salesmanLite.perf.speedConversion")}</span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3,1fr)" }}>
               {[
-                { label: "Avg Days to Close", value: avgDaysToClose !== null ? `${avgDaysToClose}d` : "—", note: avgDaysToClose !== null ? (avgDaysToClose <= 14 ? "fast close" : avgDaysToClose <= 30 ? "normal pace" : "consider urgency tactics") : "close more deals to see this", color: avgDaysToClose === null ? "#475569" : avgDaysToClose <= 14 ? "#22c55e" : avgDaysToClose <= 30 ? "#eab308" : "#ef4444" },
-                { label: "Deals Closed Total", value: wonLeads.length, note: "all time", color: wonLeads.length > 0 ? "#22c55e" : "#475569" },
-                { label: "Active Pipeline", value: activeLeads.length, note: `${lostLeads.length} lost all time`, color: "#3b82f6" },
+                { label: t("salesmanLite.perf.avgDaysToClose"), value: avgDaysToClose !== null ? `${avgDaysToClose}d` : "—", note: avgDaysToClose !== null ? (avgDaysToClose <= 14 ? t("salesmanLite.perf.fastClose") : avgDaysToClose <= 30 ? t("salesmanLite.perf.normalPace") : t("salesmanLite.perf.urgencyTactics")) : t("salesmanLite.perf.closeMoreToSee"), color: avgDaysToClose === null ? "#475569" : avgDaysToClose <= 14 ? "#22c55e" : avgDaysToClose <= 30 ? "#eab308" : "#ef4444" },
+                { label: t("salesmanLite.perf.dealsClosedTotal"), value: wonLeads.length, note: t("salesmanLite.perf.allTime"), color: wonLeads.length > 0 ? "#22c55e" : "#475569" },
+                { label: t("salesmanLite.perf.activePipeline"), value: activeLeads.length, note: t("salesmanLite.perf.lostAllTime", { count: lostLeads.length }), color: "#3b82f6" },
               ].map(({ label, value, note, color }, i, arr) => (
                 <div key={label} style={{ padding: "18px 20px", borderRight: !isMobile && i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", borderBottom: isMobile && i < 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
                   <p style={{ margin: "0 0 4px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
@@ -3378,13 +3378,13 @@ export default function SalesmanLite() {
         {sources.length > 0 && (
           <div style={CARD}>
             <div style={CARD_HEADER}>
-              <span>Lead Sources</span>
-              <span>where leads come from</span>
+              <span>{t("salesmanLite.perf.leadSources")}</span>
+              <span>{t("salesmanLite.perf.whereFrom")}</span>
             </div>
             <div style={{ padding: "0" }}>
               {sources.map(([src, { total, won }], i) => {
                 const srcRate = total > 0 ? Math.round((won / total) * 100) : 0;
-                const srcLabels = { enquiry: "XDrive Enquiry", manual: "Manual Add", whatsapp: "WhatsApp", facebook: "Facebook", tiktok: "TikTok", referral: "Referral", other: "Other" };
+                const srcLabels = { enquiry: t("salesmanLite.leads.srcEnquiry"), manual: t("salesmanLite.perf.srcManualAdd"), whatsapp: "WhatsApp", facebook: "Facebook", tiktok: "TikTok", referral: t("salesmanLite.leads.srcReferral"), other: t("salesmanLite.perf.srcOther") };
                 return (
                   <div key={src} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 18px", borderBottom: i < sources.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", background: i % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -3393,12 +3393,12 @@ export default function SalesmanLite() {
                         <div style={{ flex: 1, height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 99, overflow: "hidden", maxWidth: 120 }}>
                           <div style={{ height: "100%", width: `${srcRate}%`, background: srcRate >= 30 ? "#22c55e" : srcRate >= 15 ? "#eab308" : "#3b82f6", borderRadius: 99 }} />
                         </div>
-                        <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{srcRate}% close rate</p>
+                        <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{t("salesmanLite.perf.closeRatePct", { count: srcRate })}</p>
                       </div>
                     </div>
                     <div style={{ textAlign: "right", flexShrink: 0 }}>
                       <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>{total}</p>
-                      <p style={{ margin: 0, fontSize: 10, color: "#22c55e" }}>{won} won</p>
+                      <p style={{ margin: 0, fontSize: 10, color: "#22c55e" }}>{t("salesmanLite.perf.wonCount", { count: won })}</p>
                     </div>
                   </div>
                 );
@@ -3411,8 +3411,8 @@ export default function SalesmanLite() {
         {Object.keys(channelMap).length > 0 && (
           <div style={CARD}>
             <div style={CARD_HEADER}>
-              <span>Traffic Sources</span>
-              <span>which platform your links came from</span>
+              <span>{t("salesmanLite.perf.trafficSources")}</span>
+              <span>{t("salesmanLite.perf.whichPlatform")}</span>
             </div>
             <div style={{ padding: "16px 18px" }}>
               <ChannelBreakdown rows={Object.values(channelMap).flat()} metric="views" title="" />
@@ -3424,11 +3424,11 @@ export default function SalesmanLite() {
         {leadAging.length > 0 && (
           <div style={CARD}>
             <div style={CARD_HEADER}>
-              <span>Lead Aging</span>
-              <span>oldest first</span>
+              <span>{t("salesmanLite.perf.leadAging")}</span>
+              <span>{t("salesmanLite.perf.oldestFirst")}</span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 70px 60px", padding: "8px 18px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-              {["Lead", "Stage", "In Pipeline", "Action"].map((h, i) => (
+              {[t("salesmanLite.perf.colLead"), t("salesmanLite.perf.colStage"), t("salesmanLite.perf.colInPipeline"), t("salesmanLite.perf.colAction")].map((h, i) => (
                 <p key={h} style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: i > 0 ? "center" : "left" }}>{h}</p>
               ))}
             </div>
@@ -3442,11 +3442,11 @@ export default function SalesmanLite() {
                     {l.car && <p style={{ margin: 0, fontSize: 10, color: "#475569", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.car.brand} {l.car.model}</p>}
                   </div>
                   <div style={{ textAlign: "center" }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 5, background: stageC.bg, border: `1px solid ${stageC.border}`, color: stageC.tx, textTransform: "capitalize" }}>{(l.stage || "new").replace(/_/g, " ")}</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 5, background: stageC.bg, border: `1px solid ${stageC.border}`, color: stageC.tx, textTransform: "capitalize" }}>{stageLabel(l.stage || "new")}</span>
                   </div>
                   <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: ageColor, textAlign: "center" }}>{l.days}d</p>
                   <div style={{ textAlign: "center" }}>
-                    <span style={{ fontSize: 10, color: "#475569" }}>→ Leads</span>
+                    <span style={{ fontSize: 10, color: "#475569" }}>→ {t("salesmanLite.tabs.leads")}</span>
                   </div>
                 </div>
               );
@@ -3458,9 +3458,9 @@ export default function SalesmanLite() {
         {allLeads.length === 0 && (
           <div style={{ textAlign: "center", padding: "48px 24px" }}>
             <BarChart2 size={32} strokeWidth={1.5} style={{ color: "#475569", margin: "0 auto 8px", display: "block" }} />
-            <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>No data yet</p>
-            <p style={{ margin: "0 0 16px", fontSize: 12, color: "#475569" }}>Add your first listing and start collecting leads to see your performance stats.</p>
-            <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, padding: "8px 18px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>Go to Listings →</button>
+            <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanLite.perf.noDataYet")}</p>
+            <p style={{ margin: "0 0 16px", fontSize: 12, color: "#475569" }}>{t("salesmanLite.perf.noDataSub")}</p>
+            <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, padding: "8px 18px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>{t("salesmanLite.perf.goToListings")}</button>
           </div>
         )}
 
@@ -3544,7 +3544,7 @@ export default function SalesmanLite() {
               color: "#f1f5f9",
             }}
           >
-            My Listings ({myListings.length})
+            {t("salesmanLite.listings.title")} ({myListings.length})
           </p>
           <button
             onClick={() => (showAddForm ? setShowAddForm(false) : openAddListing())}
@@ -3562,7 +3562,7 @@ export default function SalesmanLite() {
               cursor: "pointer",
             }}
           >
-            <Plus size={13} /> {showAddForm ? "Cancel" : "Add Listing"}
+            <Plus size={13} /> {showAddForm ? t("salesmanLite.listings.cancel") : t("salesmanLite.listings.addListing")}
           </button>
         </div>
 
@@ -3577,7 +3577,7 @@ export default function SalesmanLite() {
               onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success("Link copied!"); }}
               style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: "#10b981", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", fontFamily: "inherit" }}
             >
-              Copy Link
+              {t("salesmanLite.listings.copyLink")}
             </button>
           </div>
         )}
@@ -3596,7 +3596,7 @@ export default function SalesmanLite() {
         })()}
 
         {showAddForm && (
-          <CarFormModal title="Add Listing" onClose={() => setShowAddForm(false)}>
+          <CarFormModal title={t("salesmanLite.listings.addListing")} onClose={() => setShowAddForm(false)}>
             <CarForm
               onCreate={(car) => {
                 setMyListings((p) => [car, ...p]);
@@ -3634,11 +3634,11 @@ export default function SalesmanLite() {
                 }}
               >
                 {[
-                  { key: "pending_approval", label: "Pending",   count: myListings.filter((c) => c.status === "pending_approval").length },
-                  { key: "rejected",         label: "Rejected",  count: myListings.filter((c) => c.status === "rejected").length },
-                  { key: "available",        label: "Available", count: myListings.filter((c) => (c.status || "available") === "available").length },
-                  { key: "reserved",         label: "Reserved",  count: myListings.filter((c) => c.status === "reserved").length },
-                  { key: "sold",             label: "Sold",      count: myListings.filter((c) => c.status === "sold").length },
+                  { key: "pending_approval", label: t("salesmanLite.listings.status.pending"),   count: myListings.filter((c) => c.status === "pending_approval").length },
+                  { key: "rejected",         label: t("salesmanLite.listings.status.rejected"),  count: myListings.filter((c) => c.status === "rejected").length },
+                  { key: "available",        label: t("salesmanLite.listings.status.available"), count: myListings.filter((c) => (c.status || "available") === "available").length },
+                  { key: "reserved",         label: t("salesmanLite.listings.status.reserved"),  count: myListings.filter((c) => c.status === "reserved").length },
+                  { key: "sold",             label: t("salesmanLite.listings.status.sold"),      count: myListings.filter((c) => c.status === "sold").length },
                 ].map(({ key, label, count }) => (
                   <button
                     key={key}
@@ -3691,12 +3691,12 @@ export default function SalesmanLite() {
                 padding: "10px 0 14px",
               }}
             >
-              <span style={{ fontSize: 11, color: "#4b5563", marginRight: 2 }}>Sort:</span>
-              <button style={SEL_STYLE(sortBy === "newest")} onClick={() => setSortBy("newest")}>Newest</button>
-              <button style={SEL_STYLE(sortBy === "price_desc")} onClick={() => setSortBy("price_desc")}>Price ↓</button>
-              <button style={SEL_STYLE(sortBy === "price_asc")} onClick={() => setSortBy("price_asc")}>Price ↑</button>
+              <span style={{ fontSize: 11, color: "#4b5563", marginRight: 2 }}>{t("salesmanLite.listings.sort")}</span>
+              <button style={SEL_STYLE(sortBy === "newest")} onClick={() => setSortBy("newest")}>{t("salesmanLite.listings.sortNewest")}</button>
+              <button style={SEL_STYLE(sortBy === "price_desc")} onClick={() => setSortBy("price_desc")}>{t("salesmanLite.listings.sortPriceDesc")}</button>
+              <button style={SEL_STYLE(sortBy === "price_asc")} onClick={() => setSortBy("price_asc")}>{t("salesmanLite.listings.sortPriceAsc")}</button>
               {hotCount > 0 && (
-                <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 600, marginLeft: "auto" }}>{hotCount} hot</span>
+                <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 600, marginLeft: "auto" }}>{hotCount} {t("salesmanLite.heat.hot")}</span>
               )}
               {staleCount > 0 && (
                 <span style={{ fontSize: 11, color: "#6b7280", fontWeight: 500 }}>{staleCount} stale</span>
@@ -3886,7 +3886,7 @@ export default function SalesmanLite() {
                         fontSize: 10, fontWeight: 600,
                         color: isRejected ? "#f87171" : isSold ? "#9ca3af" : "#fbbf24",
                       }}>
-                        {isSold ? "Sold" : isReserved ? "Reserved" : isPending ? "Pending approval" : "Rejected"}
+                        {isSold ? t("salesmanLite.listings.status.sold") : isReserved ? t("salesmanLite.listings.status.reserved") : isPending ? t("salesmanLite.listings.status.pendingApproval") : t("salesmanLite.listings.status.rejected")}
                       </span>
                       {isSold && car.sold_at && (
                         <span style={{ fontSize: 10, color: "#4b5563" }}>
