@@ -10,7 +10,7 @@ export const PLAN_CONFIG = {
   salesman_full: {
     label: 'Salesman Premium',
     price: 20,
-    listingCap: 20,
+    listingCap: 30,
     seatCap: 1,
     isDealer: false,
   },
@@ -18,19 +18,26 @@ export const PLAN_CONFIG = {
     label: 'Dealer Starter',
     price: 299,
     listingCap: 30,
-    seatCap: 2,
+    seatCap: 4,
     isDealer: true,
   },
   dealer_growth: {
     label: 'Dealer Growth',
     price: 599,
     listingCap: 80,
-    seatCap: 5,
+    seatCap: 8,
     isDealer: true,
   },
   dealer_pro: {
     label: 'Dealer Pro',
     price: 1199,
+    listingCap: 150,
+    seatCap: 15,
+    isDealer: true,
+  },
+  dealer_group: {
+    label: 'Dealer Group',
+    price: 2999,
     listingCap: null,
     seatCap: null,
     isDealer: true,
@@ -46,6 +53,7 @@ export const DEALER_PLAN_ORDER = [
   'dealer_starter',
   'dealer_growth',
   'dealer_pro',
+  'dealer_group',
 ];
 
 export function nextDealerPlan(currentPlan) {

@@ -118,7 +118,7 @@ const TIERS = {
     label: 'SALESMAN PREMIUM',
     price: 'RM 20 / mo',
     features: [
-      'Unlimited listings',
+      'Up to 30 active listings',
       'Priority marketplace placement',
       'Full CRM + lead pipeline',
       'Commission tracking',
