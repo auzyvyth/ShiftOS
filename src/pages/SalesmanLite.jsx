@@ -117,31 +117,35 @@ const timeAgo = (iso) => {
 // count to know how cold a lead is. Always resolves to minutes (and hours once
 // past 60m), e.g. "43m ago", "5h 12m ago", "51h 03m ago". `now` is passed in
 // (a ticking value) so callers re-render every minute for a live countdown.
-const preciseAgo = (iso, now = Date.now()) => {
+// `L` carries the localized words (ago / justNow) — the numbers stay universal.
+const preciseAgo = (iso, now = Date.now(), L = {}) => {
   if (!iso) return "—";
+  const ago = L.ago || "ago";
+  const justNow = L.justNow || "just now";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "—";
   const totalMin = Math.floor((now - d.getTime()) / 60000);
-  if (totalMin < 0) return "just now";
-  if (totalMin < 1) return "just now";
-  if (totalMin < 60) return `${totalMin}m ago`;
+  if (totalMin < 1) return justNow;
+  if (totalMin < 60) return `${totalMin}m ${ago}`;
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
-  return `${h}h ${String(m).padStart(2, "0")}m ago`;
+  return `${h}h ${String(m).padStart(2, "0")}m ${ago}`;
 };
 
 // Countdown toward a FUTURE moment (e.g. an upcoming appointment), same
 // minute-level, never-days philosophy — "in 2h 05m", "in 40m", "now".
-const preciseUntil = (iso, now = Date.now()) => {
+const preciseUntil = (iso, now = Date.now(), L = {}) => {
   if (!iso) return "";
+  const inW = L.in || "in";
+  const nowW = L.now || "now";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "";
   const totalMin = Math.floor((d.getTime() - now) / 60000);
-  if (totalMin <= 0) return "now";
-  if (totalMin < 60) return `in ${totalMin}m`;
+  if (totalMin <= 0) return nowW;
+  if (totalMin < 60) return `${inW} ${totalMin}m`;
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
-  return `in ${h}h ${String(m).padStart(2, "0")}m`;
+  return `${inW} ${h}h ${String(m).padStart(2, "0")}m`;
 };
 
 const LEAD_STAGES = [
@@ -380,6 +384,7 @@ function PrevMonthModal({ open, onClose, monthLabel, commission, count, trendPct
 // lock per the app's overlay rules; own × / overlay-click close so it does NOT
 // register useModalHistory.
 function ConfirmBookingModal({ apt, message, onChangeMessage, onClose, onSend }) {
+  const { t } = useTranslation();
   useEffect(() => {
     if (!apt) return;
     document.body.style.overflow = "hidden";
@@ -407,7 +412,7 @@ function ConfirmBookingModal({ apt, message, onChangeMessage, onClose, onSend })
         className="sm:!rounded-2xl"
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Confirm booking</p>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanLite.confirmModal.title")}</p>
           <button onClick={onClose} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 4, display: "flex" }}>
             <X size={18} />
           </button>
@@ -433,7 +438,7 @@ function ConfirmBookingModal({ apt, message, onChangeMessage, onClose, onSend })
         </div>
 
         {/* Editable message */}
-        <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>Message to buyer</p>
+        <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("salesmanLite.confirmModal.messageLabel")}</p>
         <textarea
           value={message}
           onChange={(e) => onChangeMessage(e.target.value)}
@@ -446,14 +451,14 @@ function ConfirmBookingModal({ apt, message, onChangeMessage, onClose, onSend })
             onClick={onClose}
             style={{ flex: 1, padding: "11px 0", borderRadius: 9, fontSize: 13, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontFamily: "inherit" }}
           >
-            Cancel
+            {t("salesmanLite.confirmModal.cancel")}
           </button>
           <button
             onClick={onSend}
             disabled={!apt.buyer_phone || !message.trim()}
             style={{ flex: 2, padding: "11px 0", borderRadius: 9, fontSize: 13, fontWeight: 700, background: "rgba(37,211,102,0.16)", border: "1px solid rgba(37,211,102,0.45)", color: "#4ade80", cursor: apt.buyer_phone && message.trim() ? "pointer" : "not-allowed", opacity: apt.buyer_phone && message.trim() ? 1 : 0.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, fontFamily: "inherit" }}
           >
-            <MessageCircle size={15} /> Confirm & Send WhatsApp
+            <MessageCircle size={15} /> {t("salesmanLite.confirmModal.send")}
           </button>
         </div>
       </div>
@@ -467,6 +472,7 @@ function ConfirmBookingModal({ apt, message, onChangeMessage, onClose, onSend })
 // the date/time (defaults pre-filled, editable). Confirming creates a CONFIRMED
 // appointment → Confirmed Upcoming. Portal + body-scroll lock; own close.
 function SellerBookingModal({ lead, dateValue, onChangeDate, onClose, onConfirm, saving }) {
+  const { t } = useTranslation();
   useEffect(() => {
     if (!lead) return;
     document.body.style.overflow = "hidden";
@@ -491,13 +497,13 @@ function SellerBookingModal({ lead, dateValue, onChangeDate, onClose, onConfirm,
         className="sm:!rounded-2xl"
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Confirm this lead's booking</p>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanLite.sellerBooking.title")}</p>
           <button onClick={onClose} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 4, display: "flex" }}>
             <X size={18} />
           </button>
         </div>
         <p style={{ margin: "0 0 14px", fontSize: 12, color: "#94a3b8", lineHeight: 1.5 }}>
-          Set the viewing date &amp; time. This creates a confirmed booking in your Bookings tab.
+          {t("salesmanLite.sellerBooking.subtitle")}
         </p>
 
         <div style={{ display: "flex", gap: 12, padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", marginBottom: 14 }}>
@@ -515,7 +521,7 @@ function SellerBookingModal({ lead, dateValue, onChangeDate, onClose, onConfirm,
           </div>
         </div>
 
-        <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>Viewing date &amp; time</p>
+        <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("salesmanLite.sellerBooking.dateLabel")}</p>
         <input
           type="datetime-local"
           value={dateValue}
@@ -528,14 +534,14 @@ function SellerBookingModal({ lead, dateValue, onChangeDate, onClose, onConfirm,
             onClick={onClose}
             style={{ flex: 1, padding: "11px 0", borderRadius: 9, fontSize: 13, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontFamily: "inherit" }}
           >
-            Cancel
+            {t("salesmanLite.sellerBooking.cancel")}
           </button>
           <button
             onClick={onConfirm}
             disabled={!dateValue || saving}
             style={{ flex: 2, padding: "11px 0", borderRadius: 9, fontSize: 13, fontWeight: 700, background: "rgba(34,197,94,0.16)", border: "1px solid rgba(34,197,94,0.45)", color: "#4ade80", cursor: dateValue && !saving ? "pointer" : "not-allowed", opacity: dateValue && !saving ? 1 : 0.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, fontFamily: "inherit" }}
           >
-            <Check size={15} /> {saving ? "Confirming…" : "Confirm Booking"}
+            <Check size={15} /> {saving ? t("salesmanLite.sellerBooking.confirming") : t("salesmanLite.sellerBooking.confirm")}
           </button>
         </div>
       </div>
@@ -548,6 +554,14 @@ export default function SalesmanLite() {
   const navigate = useNavigate();
   const isMobile = useWindowSize() < 768;
   const { t, i18n } = useTranslation();
+  // Localized words for the minute-level relative-time helpers (numbers stay
+  // universal); recomputed each render so a language switch takes effect live.
+  const timeLabels = {
+    ago: t("salesmanLite.time.ago"),
+    justNow: t("salesmanLite.time.justNow"),
+    in: t("salesmanLite.time.in"),
+    now: t("salesmanLite.time.now"),
+  };
 
   const [profile, setProfile] = useState(null);
   const [userId, setUserId] = useState(null);
@@ -5933,15 +5947,15 @@ export default function SalesmanLite() {
     return (
     <div>
       <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
-        Lead History ({historyItems.length})
+        {t("salesmanLite.inbox.leadHistory")} ({historyItems.length})
       </p>
       {historyItems.length === 0 && (
         <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
           <MessageSquare size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
-          <p style={{ margin: 0, fontSize: 13 }}>No lead history yet.</p>
-          <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>Enquiries and leads appear here as your listings get shared.</p>
+          <p style={{ margin: 0, fontSize: 13 }}>{t("salesmanLite.inbox.noLeadHistory")}</p>
+          <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>{t("salesmanLite.inbox.noLeadHistorySub")}</p>
           <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer" }}>
-            Go to Listings →
+            {t("salesmanLite.inbox.goToListings")}
           </button>
         </div>
       )}
@@ -5973,7 +5987,7 @@ export default function SalesmanLite() {
                 </p>
                 {isNew ? (
                   <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd" }}>
-                    New
+                    {t("salesmanLite.inbox.new")}
                   </span>
                 ) : liveStage ? (
                   <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: stageC.bg, border: `1px solid ${stageC.border}`, color: stageC.tx, textTransform: "capitalize" }}>
@@ -5981,7 +5995,7 @@ export default function SalesmanLite() {
                   </span>
                 ) : (
                   <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", textTransform: "capitalize" }}>
-                    Converted → Lead
+                    {t("salesmanLite.inbox.convertedToLead")}
                   </span>
                 )}
               </div>
@@ -6015,7 +6029,7 @@ export default function SalesmanLite() {
               )}
               {/* Timestamp */}
               <p style={{ margin: isNew ? "0 0 8px" : 0, fontSize: 11, color: "#4b5563" }}>
-                {preciseAgo(enq.created_at, nowTick)}
+                {preciseAgo(enq.created_at, nowTick, timeLabels)}
               </p>
               {/* Action buttons — unreplied only, max 2 */}
               {isNew && (
@@ -6034,7 +6048,7 @@ export default function SalesmanLite() {
                       }}
                       style={{ fontSize: 10, padding: "6px 11px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}
                     >
-                      WA Reply
+                      {t("salesmanLite.inbox.waReply")}
                     </button>
                   )}
                   {enq.buyer_phone && (
@@ -6042,7 +6056,7 @@ export default function SalesmanLite() {
                       onClick={() => setOpenTemplateId(openTemplateId === enq.id ? null : enq.id)}
                       style={{ fontSize: 10, padding: "6px 11px", borderRadius: 6, background: openTemplateId === enq.id ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.05)", border: `1px solid ${openTemplateId === enq.id ? "rgba(220,38,38,0.3)" : "rgba(255,255,255,0.08)"}`, color: openTemplateId === enq.id ? "#f87171" : "#6b7280", cursor: "pointer" }}
                     >
-                      Templates ▾
+                      {t("salesmanLite.inbox.templates")} ▾
                     </button>
                   )}
                 </div>
@@ -6051,10 +6065,10 @@ export default function SalesmanLite() {
               {isNew && openTemplateId === enq.id && (
                 <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
                   {[
-                    { key: "chat", label: "Let's Chat", color: "#4ade80" },
-                    { key: "test_drive", label: "Book Test Drive", color: "#60a5fa" },
-                    { key: "budget", label: "What's Budget?", color: "#fbbf24" },
-                    { key: "deposit", label: "Deposit to Hold", color: "#f87171" },
+                    { key: "chat", label: t("salesmanLite.inbox.templateChat"), color: "#4ade80" },
+                    { key: "test_drive", label: t("salesmanLite.inbox.templateTestDrive"), color: "#60a5fa" },
+                    { key: "budget", label: t("salesmanLite.inbox.templateBudget"), color: "#fbbf24" },
+                    { key: "deposit", label: t("salesmanLite.inbox.templateDeposit"), color: "#f87171" },
                   ].map(({ key, label, color }) => {
                     const toastKey = enq.id + "_" + key;
                     return (
@@ -6064,7 +6078,7 @@ export default function SalesmanLite() {
                         style={{ textAlign: "left", fontSize: 11, padding: "7px 10px", borderRadius: 7, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: templateToast === toastKey ? color : "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
                       >
                         <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }} />
-                        {templateToast === toastKey ? "✓ Sent!" : label}
+                        {templateToast === toastKey ? `✓ ${t("salesmanLite.inbox.sent")}` : label}
                       </button>
                     );
                   })}
@@ -6247,11 +6261,11 @@ export default function SalesmanLite() {
               <Calendar size={14} /> {dateStr}
             </span>
             {timeStr && <span style={{ fontSize: 18, fontWeight: 700, color: "#f8fafc", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1 }}>{timeStr}</span>}
-            {isFuture && <span style={{ fontSize: 11, fontWeight: 600, color: "#4ade80" }}>{preciseUntil(apt.appointment_date, nowTick)}</span>}
+            {isFuture && <span style={{ fontSize: 11, fontWeight: 600, color: "#4ade80" }}>{preciseUntil(apt.appointment_date, nowTick, timeLabels)}</span>}
           </div>
           {isRescheduled && (
             <p style={{ margin: "6px 0 0", fontSize: 10, fontWeight: 700, color: "#c084fc", display: "inline-flex", alignItems: "center", gap: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              <RefreshCw size={10} /> Date changed
+              <RefreshCw size={10} /> {t("salesmanLite.inbox.dateChanged")}
             </p>
           )}
         </div>
@@ -6262,9 +6276,9 @@ export default function SalesmanLite() {
           {/* Status pill row */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
             <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
-              {apt.status === "no_show" ? "No-show" : apt.status}
+              {t("salesmanLite.inbox.status." + apt.status, { defaultValue: apt.status })}
             </span>
-            {apt.created_at && <span style={{ fontSize: 10, color: "#64748b" }}>Booked {preciseAgo(apt.created_at, nowTick)}</span>}
+            {apt.created_at && <span style={{ fontSize: 10, color: "#64748b" }}>{t("salesmanLite.inbox.booked")} {preciseAgo(apt.created_at, nowTick, timeLabels)}</span>}
           </div>
 
           {/* Body — desktop: car | lead | date 3-column; mobile: stacked */}
@@ -6279,18 +6293,18 @@ export default function SalesmanLite() {
             <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)", marginBottom: 8 }}>
               <Bell size={11} color="#4ade80" />
               <span style={{ fontSize: 10, color: "#4ade80", flex: 1 }}>
-                Telegram reminder: {new Date(apt.remind_at).toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })} {new Date(apt.remind_at).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}
+                {t("salesmanLite.inbox.reminderLabel")}: {new Date(apt.remind_at).toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })} {new Date(apt.remind_at).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}
               </span>
               <button onClick={() => clearReminder(apt)} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 10, cursor: "pointer", padding: 0 }}>✕</button>
             </div>
           ) : apt.remind_sent ? (
-            <p style={{ fontSize: 10, color: "#4b5563", margin: "0 0 8px", display: "inline-flex", alignItems: "center", gap: 4 }}><Check size={10} /> Telegram reminder sent</p>
+            <p style={{ fontSize: 10, color: "#4b5563", margin: "0 0 8px", display: "inline-flex", alignItems: "center", gap: 4 }}><Check size={10} /> {t("salesmanLite.inbox.reminderSent")}</p>
           ) : null}
 
           {/* Expand: reschedule date picker */}
           {isRescheduling && (
             <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 8 }}>
-              <p style={{ margin: "0 0 6px", fontSize: 11, color: "#c084fc", fontWeight: 600 }}>Choose new date & time</p>
+              <p style={{ margin: "0 0 6px", fontSize: 11, color: "#c084fc", fontWeight: 600 }}>{t("salesmanLite.inbox.chooseNewTime")}</p>
               <input
                 type="datetime-local"
                 value={rescheduleDate}
@@ -6314,7 +6328,7 @@ export default function SalesmanLite() {
                     toast.success("Appointment rescheduled!");
                   }}
                   style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.35)", color: "#c084fc", cursor: "pointer" }}>
-                  Save New Time
+                  {t("salesmanLite.inbox.saveNewTime")}
                 </button>
               </div>
             </div>
@@ -6323,13 +6337,13 @@ export default function SalesmanLite() {
           {/* Expand: Telegram reminder time picker */}
           {isReminderPicking && (
             <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8 }}>
-              <p style={{ margin: "0 0 8px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>Schedule Telegram reminder</p>
+              <p style={{ margin: "0 0 8px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.inbox.scheduleReminderTitle")}</p>
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
                 {[
-                  { key: "1h", label: "1h before" },
-                  { key: "2h", label: "2h before" },
-                  { key: "day_before", label: "Day before 9am" },
-                  { key: "two_days", label: "2 days before" },
+                  { key: "1h", label: t("salesmanLite.inbox.reminderBefore1h") },
+                  { key: "2h", label: t("salesmanLite.inbox.reminderBefore2h") },
+                  { key: "day_before", label: t("salesmanLite.inbox.reminderDayBefore") },
+                  { key: "two_days", label: t("salesmanLite.inbox.reminderTwoDays") },
                 ].map(({ key, label }) => {
                   const t = calcRemindAt(apt, key);
                   const active = selectedRemindAt && t.getTime() === selectedRemindAt.getTime();
@@ -6352,7 +6366,7 @@ export default function SalesmanLite() {
               <div style={{ display: "flex", gap: 6 }}>
                 <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }}
                   style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
-                  Cancel
+                  {t("salesmanLite.inbox.cancel")}
                 </button>
                 <button onClick={() => selectedRemindAt && saveReminder(apt, selectedRemindAt)}
                   disabled={!selectedRemindAt || reminderSaving}
@@ -6362,7 +6376,7 @@ export default function SalesmanLite() {
                     color: selectedRemindAt ? "#4ade80" : "#374151",
                     cursor: selectedRemindAt ? "pointer" : "not-allowed",
                     opacity: reminderSaving ? 0.6 : 1 }}>
-                  {reminderSaving ? "Saving…" : "Set reminder"}
+                  {reminderSaving ? t("salesmanLite.inbox.saving") : t("salesmanLite.inbox.setReminder")}
                 </button>
               </div>
             </div>
@@ -6371,15 +6385,15 @@ export default function SalesmanLite() {
           {/* Expand: cancel confirmation */}
           {isCancelConfirm && (
             <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8 }}>
-              <p style={{ margin: "0 0 8px", fontSize: 12, color: "#f87171" }}>Cancel this appointment?</p>
+              <p style={{ margin: "0 0 8px", fontSize: 12, color: "#f87171" }}>{t("salesmanLite.inbox.cancelConfirmQ")}</p>
               <div style={{ display: "flex", gap: 6 }}>
                 <button onClick={() => setCancelConfirmId(null)}
                   style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
-                  Keep it
+                  {t("salesmanLite.inbox.keepIt")}
                 </button>
                 <button onClick={async () => { await updateApptStatus(apt.id, "cancelled"); setCancelConfirmId(null); }}
                   style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", cursor: "pointer" }}>
-                  Yes, cancel appt
+                  {t("salesmanLite.inbox.cancelAppt")}
                 </button>
               </div>
             </div>
@@ -6396,7 +6410,7 @@ export default function SalesmanLite() {
                   style={{ flex: 2, fontSize: 12, fontWeight: 700, padding: "8px 0", borderRadius: 7, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.4)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                   title="Confirm this booking and message the buyer on WhatsApp"
                 >
-                  <Check size={13} /> Confirm Booking
+                  <Check size={13} /> {t("salesmanLite.inbox.confirmBooking")}
                 </button>
               )}
               {/* Confirm without message (fallback when no phone on file) */}
@@ -6406,7 +6420,7 @@ export default function SalesmanLite() {
                   style={{ flex: 2, fontSize: 12, fontWeight: 700, padding: "8px 0", borderRadius: 7, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.4)", color: "#4ade80", cursor: "pointer" }}
                   title="Mark appointment as confirmed"
                 >
-                  ✓ Confirm Booking
+                  ✓ {t("salesmanLite.inbox.confirmBooking")}
                 </button>
               )}
               {/* Message — WhatsApp the buyer (already-confirmed bookings) */}
@@ -6420,7 +6434,7 @@ export default function SalesmanLite() {
                   style={{ flex: 2, fontSize: 11, fontWeight: 600, padding: "7px 0", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
                   title="Send WhatsApp reminder message to buyer"
                 >
-                  <MessageCircle size={12} /> Message
+                  <MessageCircle size={12} /> {t("salesmanLite.inbox.message")}
                 </button>
               )}
               {/* Move — change the date/time */}
@@ -6437,7 +6451,7 @@ export default function SalesmanLite() {
                 style={{ flex: 1, fontSize: 11, padding: "7px 0", borderRadius: 7, background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)", color: "#c084fc", cursor: "pointer" }}
                 title="Change appointment date or time"
               >
-                ↺ Move
+                ↺ {t("salesmanLite.inbox.move")}
               </button>
               {/* Cancel — opens confirm panel above */}
               <button
@@ -6445,7 +6459,7 @@ export default function SalesmanLite() {
                 style={{ flex: 1, fontSize: 11, padding: "7px 0", borderRadius: 7, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)", color: "#f87171", cursor: "pointer" }}
                 title="Cancel this appointment"
               >
-                ✕ Cancel
+                ✕ {t("salesmanLite.inbox.cancel")}
               </button>
               {/* Bell — schedule Telegram reminder (gates on telegram_chat_id) */}
               <button
@@ -6469,15 +6483,15 @@ export default function SalesmanLite() {
     return (
       <div>
         <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
-          Bookings ({confirmedApts.length})
+          {t("salesmanLite.inbox.bookings")} ({confirmedApts.length})
         </p>
         {appointments.length === 0 && (
           <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
             <Phone size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
-            <p style={{ margin: 0, fontSize: 13 }}>No bookings yet.</p>
-            <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>Bookings appear when customers book a test drive from your listing.</p>
+            <p style={{ margin: 0, fontSize: 13 }}>{t("salesmanLite.inbox.noBookings")}</p>
+            <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>{t("salesmanLite.inbox.noBookingsSub")}</p>
             <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer" }}>
-              Share a Listing →
+              {t("salesmanLite.inbox.shareListing")}
             </button>
           </div>
         )}
@@ -6485,7 +6499,7 @@ export default function SalesmanLite() {
         {pendingApts.length > 0 && (
           <div style={{ marginBottom: 20 }}>
             <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
-              <Clock size={11} color="#fbbf24" /> Awaiting Confirmation ({pendingApts.length})
+              <Clock size={11} color="#fbbf24" /> {t("salesmanLite.inbox.awaitingConfirmation")} ({pendingApts.length})
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {pendingApts.map(renderApptCard)}
@@ -6496,7 +6510,7 @@ export default function SalesmanLite() {
         {todayApts.length > 0 && (
           <div style={{ marginBottom: 20 }}>
             <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
-              <Calendar size={11} color="#fbbf24" /> Today ({todayApts.length})
+              <Calendar size={11} color="#fbbf24" /> {t("salesmanLite.inbox.today")} ({todayApts.length})
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {todayApts.map(renderApptCard)}
@@ -6507,7 +6521,7 @@ export default function SalesmanLite() {
         {upcomingApts.length > 0 && (
           <div style={{ marginBottom: 20 }}>
             <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#4ade80", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
-              <Check size={11} color="#4ade80" /> Confirmed Upcoming ({upcomingApts.length})
+              <Check size={11} color="#4ade80" /> {t("salesmanLite.inbox.confirmedUpcoming")} ({upcomingApts.length})
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {upcomingApts.map(renderApptCard)}
@@ -6522,7 +6536,7 @@ export default function SalesmanLite() {
               style={{ display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", cursor: "pointer", padding: "6px 0", width: "100%" }}
             >
               <span style={{ fontSize: 10, fontWeight: 700, color: "#4b5563", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                Past ({pastApts.length})
+                {t("salesmanLite.inbox.past")} ({pastApts.length})
               </span>
               <span style={{ fontSize: 12, color: "#374151" }}>{pastOpen ? "▲" : "▼"}</span>
             </button>
@@ -6544,7 +6558,7 @@ export default function SalesmanLite() {
                           {apt.buyer_name || "—"}
                         </p>
                         <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
-                          {apt.status === "no_show" ? "No-show" : apt.status}
+                          {t("salesmanLite.inbox.status." + apt.status, { defaultValue: apt.status })}
                         </span>
                       </div>
                       <p style={{ margin: "0 0 2px", fontSize: 12, color: "#6b7280", display: "inline-flex", alignItems: "center", gap: 5 }}>
@@ -6563,13 +6577,13 @@ export default function SalesmanLite() {
                             onClick={() => setAptStatus(apt, "completed")}
                             style={{ fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 6, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.25)", color: "#4ade80", cursor: "pointer", fontFamily: "inherit" }}
                           >
-                            Mark Completed
+                            {t("salesmanLite.inbox.markCompleted")}
                           </button>
                           <button
                             onClick={() => setAptStatus(apt, "no_show")}
                             style={{ fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 6, background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.25)", color: "#fb923c", cursor: "pointer", fontFamily: "inherit" }}
                           >
-                            No-show
+                            {t("salesmanLite.inbox.noShow")}
                           </button>
                         </div>
                       )}
