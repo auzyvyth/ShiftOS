@@ -8,7 +8,7 @@ const STRONG_PW = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 async function redirectByRole(session, navigate) {
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, subdomain, dealer_id, onboarding_complete')
+    .select('role, subdomain, dealer_id, onboarding_complete, plan')
     .eq('id', session.user.id)
     .maybeSingle();
 
@@ -34,7 +34,10 @@ async function redirectByRole(session, navigate) {
       navigate('/dashboard');
     }
   } else if (role === 'salesman') {
-    navigate(dealer_id ? '/salesman' : '/salesman-lite');
+    // Mirror LoginPage: a linked salesman -> /salesman; a solo salesman routes by
+    // plan (Premium -> /salesman-premium, otherwise Lite). Without the plan check
+    // a Premium salesman was dropped onto the Lite panel after a reset.
+    navigate(dealer_id ? '/salesman' : profile.plan === 'salesman_full' ? '/salesman-premium' : '/salesman-lite');
   } else if (role === 'manager') {
     navigate('/manager');
   } else if (role === 'accountant') {

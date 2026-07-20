@@ -20,7 +20,19 @@
   returns `drive_key_missing` and imported cars come in without photos (listings
   still import fine). The key is server-only — never exposed to the client.
 
-> Reminder protocol: while ACT-1, ACT-2, ACT-3, ACT-4 or ACT-5 remain here, surface them at session start and whenever 2FA/security/Telegram/auth/import work is touched.
+- **ACT-6: Enable Leaked Password Protection** — Supabase → Authentication →
+  Settings → Password → turn on **"Check against HaveIBeenPwned"**. Until then,
+  signups/resets accept known-breached passwords. One toggle, no code. (Flagged
+  by the onboarding security audit, 2026-07-20.)
+
+- **ACT-7 (optional): Migrate auth to PKCE flow** — the Supabase client currently
+  uses the implicit flow (tokens land in the URL hash, which can leak via history/
+  referrer). PKCE is best practice but switching `flowType` changes how the
+  email-confirm and password-reset links are parsed (AuthConfirmPage/token_hash,
+  ResetPasswordPage/`type=recovery`), so it needs its own tested pass — do NOT
+  flip it blindly. Deferred from the audit to avoid regressing reset/confirm.
+
+> Reminder protocol: while ACT-1, ACT-2, ACT-3, ACT-4, ACT-5 or ACT-6 remain here, surface them at session start and whenever 2FA/security/Telegram/auth/import work is touched.
 
 ## Dev tasks
 
