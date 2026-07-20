@@ -31,7 +31,6 @@ import {
   MessageCircle,
   Link as LinkIcon,
   ExternalLink,
-  GitMerge,
   AlertCircle,
   CheckCircle2,
   Trash2,
@@ -111,6 +110,42 @@ const timeAgo = (iso) => {
   if (s < 3600) return `${Math.floor(s / 60)}m ago`;
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
   return `${Math.floor(s / 86400)}d ago`;
+};
+
+// Inbox countdown — deliberately NEVER collapses to days. "2d ago" hides
+// whether a lead has been sitting 25h or 71h; a salesman needs the real hour
+// count to know how cold a lead is. Always resolves to minutes (and hours once
+// past 60m), e.g. "43m ago", "5h 12m ago", "51h 03m ago". `now` is passed in
+// (a ticking value) so callers re-render every minute for a live countdown.
+// `L` carries the localized words (ago / justNow) — the numbers stay universal.
+const preciseAgo = (iso, now = Date.now(), L = {}) => {
+  if (!iso) return "—";
+  const ago = L.ago || "ago";
+  const justNow = L.justNow || "just now";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  const totalMin = Math.floor((now - d.getTime()) / 60000);
+  if (totalMin < 1) return justNow;
+  if (totalMin < 60) return `${totalMin}m ${ago}`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${h}h ${String(m).padStart(2, "0")}m ${ago}`;
+};
+
+// Countdown toward a FUTURE moment (e.g. an upcoming appointment), same
+// minute-level, never-days philosophy — "in 2h 05m", "in 40m", "now".
+const preciseUntil = (iso, now = Date.now(), L = {}) => {
+  if (!iso) return "";
+  const inW = L.in || "in";
+  const nowW = L.now || "now";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const totalMin = Math.floor((d.getTime() - now) / 60000);
+  if (totalMin <= 0) return nowW;
+  if (totalMin < 60) return `${inW} ${totalMin}m`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${inW} ${h}h ${String(m).padStart(2, "0")}m`;
 };
 
 const LEAD_STAGES = [
@@ -343,26 +378,223 @@ function PrevMonthModal({ open, onClose, monthLabel, commission, count, trendPct
   );
 }
 
+// Confirm-booking modal — shows the buyer + car + date at full clarity, with an
+// editable WhatsApp message the salesman sends to the buyer. "Send" opens
+// WhatsApp AND marks the booking confirmed (via onSend). Portal + body-scroll
+// lock per the app's overlay rules; own × / overlay-click close so it does NOT
+// register useModalHistory.
+function ConfirmBookingModal({ apt, message, onChangeMessage, onClose, onSend }) {
+  const { t } = useTranslation();
+  useEffect(() => {
+    if (!apt) return;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [apt]);
+
+  if (!apt) return null;
+  const car = apt.car_listings;
+  const carImg = Array.isArray(car?.images) ? car.images[0] : null;
+  const carTitle = car ? [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ") : "No car linked";
+  const carPrice = car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
+  const aptDate = apt.appointment_date ? new Date(apt.appointment_date) : null;
+  const dateStr = aptDate ? aptDate.toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" }) : "—";
+  const timeStr = aptDate ? aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "";
+
+  return createPortal(
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 0 }}
+      className="sm:!items-center sm:!p-5"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "16px 16px 0 0", padding: 22, width: "100%", maxWidth: 460, maxHeight: "92vh", overflowY: "auto", fontFamily: "system-ui,sans-serif" }}
+        className="sm:!rounded-2xl"
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanLite.confirmModal.title")}</p>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 4, display: "flex" }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Buyer + car + date summary */}
+        <div style={{ display: "flex", gap: 12, padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", marginBottom: 14 }}>
+          {carImg ? (
+            <img src={carImg} alt="" style={{ width: 72, height: 56, objectFit: "cover", borderRadius: 8, flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)" }} />
+          ) : (
+            <div style={{ width: 72, height: 56, borderRadius: 8, flexShrink: 0, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Car size={20} color="#374151" />
+            </div>
+          )}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{apt.buyer_name || "Unknown Buyer"}</p>
+            <p style={{ margin: "0 0 3px", fontSize: 12, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{carTitle}</p>
+            {carPrice && <p style={{ margin: "0 0 3px", fontSize: 12, fontWeight: 700, color: "#4ade80" }}>{carPrice}</p>}
+            <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#bfdbfe", display: "inline-flex", alignItems: "center", gap: 5 }}>
+              <Calendar size={12} /> {dateStr}{timeStr && ` · ${timeStr}`}
+            </p>
+          </div>
+        </div>
+
+        {/* Editable message */}
+        <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("salesmanLite.confirmModal.messageLabel")}</p>
+        <textarea
+          value={message}
+          onChange={(e) => onChangeMessage(e.target.value)}
+          rows={5}
+          style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, color: "#e5e7eb", fontSize: 13, lineHeight: 1.5, padding: "11px 13px", outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: "system-ui, sans-serif", marginBottom: 14 }}
+        />
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={onClose}
+            style={{ flex: 1, padding: "11px 0", borderRadius: 9, fontSize: 13, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontFamily: "inherit" }}
+          >
+            {t("salesmanLite.confirmModal.cancel")}
+          </button>
+          <button
+            onClick={onSend}
+            disabled={!apt.buyer_phone || !message.trim()}
+            style={{ flex: 2, padding: "11px 0", borderRadius: 9, fontSize: 13, fontWeight: 700, background: "rgba(37,211,102,0.16)", border: "1px solid rgba(37,211,102,0.45)", color: "#4ade80", cursor: apt.buyer_phone && message.trim() ? "pointer" : "not-allowed", opacity: apt.buyer_phone && message.trim() ? 1 : 0.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, fontFamily: "inherit" }}
+          >
+            <MessageCircle size={15} /> {t("salesmanLite.confirmModal.send")}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+// Seller-initiated booking modal — when the salesman moves a lead into the
+// booking stage, this asks "Confirm this lead's booking at ..." and captures
+// the date/time (defaults pre-filled, editable). Confirming creates a CONFIRMED
+// appointment → Confirmed Upcoming. Portal + body-scroll lock; own close.
+function SellerBookingModal({ lead, dateValue, onChangeDate, onClose, onConfirm, saving }) {
+  const { t } = useTranslation();
+  useEffect(() => {
+    if (!lead) return;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [lead]);
+
+  if (!lead) return null;
+  const car = lead.car_listings;
+  const carImg = Array.isArray(car?.images) ? car.images[0] : null;
+  const carTitle = car ? [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ") : "No car linked";
+  const carPrice = car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
+
+  return createPortal(
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 0 }}
+      className="sm:!items-center sm:!p-5"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "16px 16px 0 0", padding: 22, width: "100%", maxWidth: 440, maxHeight: "92vh", overflowY: "auto", fontFamily: "system-ui,sans-serif" }}
+        className="sm:!rounded-2xl"
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanLite.sellerBooking.title")}</p>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 4, display: "flex" }}>
+            <X size={18} />
+          </button>
+        </div>
+        <p style={{ margin: "0 0 14px", fontSize: 12, color: "#94a3b8", lineHeight: 1.5 }}>
+          {t("salesmanLite.sellerBooking.subtitle")}
+        </p>
+
+        <div style={{ display: "flex", gap: 12, padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", marginBottom: 14 }}>
+          {carImg ? (
+            <img src={carImg} alt="" style={{ width: 64, height: 50, objectFit: "cover", borderRadius: 8, flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)" }} />
+          ) : (
+            <div style={{ width: 64, height: 50, borderRadius: 8, flexShrink: 0, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Car size={18} color="#374151" />
+            </div>
+          )}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{lead.buyer_name || "Unknown Buyer"}</p>
+            <p style={{ margin: "0 0 3px", fontSize: 12, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{carTitle}</p>
+            {carPrice && <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#4ade80" }}>{carPrice}</p>}
+          </div>
+        </div>
+
+        <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("salesmanLite.sellerBooking.dateLabel")}</p>
+        <input
+          type="datetime-local"
+          value={dateValue}
+          onChange={(e) => onChangeDate(e.target.value)}
+          style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, color: "#e5e7eb", fontSize: 14, padding: "12px 13px", outline: "none", boxSizing: "border-box", fontFamily: "system-ui, sans-serif", marginBottom: 16 }}
+        />
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={onClose}
+            style={{ flex: 1, padding: "11px 0", borderRadius: 9, fontSize: 13, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontFamily: "inherit" }}
+          >
+            {t("salesmanLite.sellerBooking.cancel")}
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={!dateValue || saving}
+            style={{ flex: 2, padding: "11px 0", borderRadius: 9, fontSize: 13, fontWeight: 700, background: "rgba(34,197,94,0.16)", border: "1px solid rgba(34,197,94,0.45)", color: "#4ade80", cursor: dateValue && !saving ? "pointer" : "not-allowed", opacity: dateValue && !saving ? 1 : 0.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, fontFamily: "inherit" }}
+          >
+            <Check size={15} /> {saving ? t("salesmanLite.sellerBooking.confirming") : t("salesmanLite.sellerBooking.confirm")}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export default function SalesmanLite() {
   const navigate = useNavigate();
   const isMobile = useWindowSize() < 768;
   const { t, i18n } = useTranslation();
+  // Localized words for the minute-level relative-time helpers (numbers stay
+  // universal); recomputed each render so a language switch takes effect live.
+  const timeLabels = {
+    ago: t("salesmanLite.time.ago"),
+    justNow: t("salesmanLite.time.justNow"),
+    in: t("salesmanLite.time.in"),
+    now: t("salesmanLite.time.now"),
+  };
+  // Localized pipeline-stage label; falls back to the de-underscored raw value
+  // for any stage not in the map.
+  const stageLabel = (s) => t("salesmanLite.stages." + s, { defaultValue: (s || "").replace(/_/g, " ") });
 
   const [profile, setProfile] = useState(null);
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [newBookingsCount, setNewBookingsCount] = useState(0);
-  const [inboxSubTab, setInboxSubTab] = useState("enquiries");
+  // Bookings are the primary inbox surface (real appointments to act on);
+  // enquiries are demoted to a "Lead History" log behind them.
+  const [inboxSubTab, setInboxSubTab] = useState("bookings");
   const [reschedulingAptId, setReschedulingAptId] = useState(null);
   const [rescheduleDate, setRescheduleDate] = useState("");
+  // Confirm-booking modal: holds the appointment being confirmed + the editable
+  // WhatsApp message text the salesman sends to the buyer.
+  const [confirmBookingApt, setConfirmBookingApt] = useState(null);
+  const [confirmBookingMsg, setConfirmBookingMsg] = useState("");
+  // Seller-initiated booking: when the salesman moves a lead into the booking
+  // stage, this holds the lead + the chosen date/time so we can create a
+  // CONFIRMED appointment (→ Confirmed Upcoming) instead of a pending request.
+  const [sellerBookingLead, setSellerBookingLead] = useState(null);
+  const [sellerBookingDate, setSellerBookingDate] = useState("");
+  const [sellerBookingSaving, setSellerBookingSaving] = useState(false);
+  // Ticks once a minute so inbox relative-time labels stay live to the minute.
+  const [nowTick, setNowTick] = useState(Date.now());
 
   function switchTab(tab) {
     if (tab === "enquiries") setNewBookingsCount(0);
     const GATED = ["leads", "enquiries", "performance"];
     if (GATED.includes(tab) && myListings.length === 0 && !loading) {
-      toast("Add your first listing to unlock this tab", {
-        description: "Publish a car first — leads and performance data flow from your listings.",
+      toast(t("salesmanLite.toast.listingLockedTab"), {
+        description: t("salesmanLite.toast.listingLockedTabDesc"),
       });
       openAddListing();
       setActiveTab("listings");
@@ -385,7 +617,7 @@ export default function SalesmanLite() {
 
   async function saveIcAndList() {
     const digits = (icGateVal || "").replace(/\D/g, "");
-    if (digits.length !== 12) { toast.error("Enter a valid 12-digit IC number"); return; }
+    if (digits.length !== 12) { toast.error(t("salesmanLite.toast.icInvalid")); return; }
     setIcGateSaving(true);
     try {
       const { error } = await supabase
@@ -396,9 +628,9 @@ export default function SalesmanLite() {
       setProfile((p) => ({ ...p, ic_number: digits, ic_deadline: null }));
       setIcGateOpen(false);
       setShowAddForm(true);
-      toast.success("Verified — you can list cars now");
+      toast.success(t("salesmanLite.toast.icVerified"));
     } catch (e) {
-      toast.error(e.message || "Could not save IC");
+      toast.error(e.message || t("salesmanLite.toast.icSaveFailed"));
     } finally {
       setIcGateSaving(false);
     }
@@ -576,11 +808,6 @@ export default function SalesmanLite() {
   const [boostCarId, setBoostCarId] = useState(null);
   const [boostWaitlisted, setBoostWaitlisted] = useState(false);
 
-  // merge
-  const [mergeCode, setMergeCode] = useState("");
-  const [mergeStatus, setMergeStatus] = useState("idle");
-  const [mergeMsg, setMergeMsg] = useState("");
-
   // listing status change
   const [statusMenuCarId, setStatusMenuCarId] = useState(null);
 
@@ -601,7 +828,7 @@ export default function SalesmanLite() {
     if (statusErr) {
       console.error("updateListingStatus:", statusErr);
       setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: prevStatus, sold_at: prevSoldAt } : c));
-      toast.error("Failed to update status");
+      toast.error(t("salesmanLite.toast.statusUpdateFailed"));
       return;
     }
     writeCache(`slite_listings_${userId}`, myListings.map((c) => c.id === car.id ? { ...c, status: newStatus, sold_at: optimisticSoldAt } : c));
@@ -623,13 +850,13 @@ export default function SalesmanLite() {
       .eq("dealer_id", userId);
     if (error) {
       console.error("handleDeleteListing:", error);
-      toast.error("Failed to delete listing");
+      toast.error(t("salesmanLite.toast.listingDeleteFailed"));
       return;
     }
     setMyListings((p) => p.filter((c) => c.id !== carId));
     writeCache(`slite_listings_${userId}`, myListings.filter((c) => c.id !== carId));
     setConfirmDeleteId(null);
-    toast.success("Listing deleted");
+    toast.success(t("salesmanLite.toast.listingDeleted"));
   };
 
   // quick brief
@@ -1047,7 +1274,7 @@ export default function SalesmanLite() {
           // shared enquiry INSERT handler — deduplicates across both filter channels
           const handleEnquiryInsert = async (row) => {
             setEnquiries((p) => p.find((e) => e.id === row.id) ? p : [row, ...p]);
-            toast("New enquiry!", { description: row.buyer_name || "Someone enquired" });
+            toast(t("salesmanLite.toast.newEnquiry"), { description: row.buyer_name || t("salesmanLite.toast.someoneEnquired") });
             if (!row.buyer_phone && !row.listing_id) return;
             const phone = normalizePhone(row.buyer_phone);
             if (phone) {
@@ -1096,11 +1323,11 @@ export default function SalesmanLite() {
                 writeCache(`slite_listings_${uid}`, myListings.map((c) => c.id === payload.new.id ? { ...c, ...payload.new } : c));
                 if (payload.new.status === "available" && payload.old?.status === "pending_approval") {
                   setFilterStatus("available");
-                  toast.success("Listing approved!", { description: `${payload.new.brand} ${payload.new.model} is now live.` });
+                  toast.success(t("salesmanLite.toast.listingApproved"), { description: t("salesmanLite.toast.listingApprovedDesc", { car: `${payload.new.brand} ${payload.new.model}` }) });
                 }
                 if (payload.new.status === "rejected" && payload.old?.status === "pending_approval") {
                   setFilterStatus("rejected");
-                  toast.error("Listing rejected", { description: `${payload.new.brand} ${payload.new.model} was not approved.` });
+                  toast.error(t("salesmanLite.toast.listingRejected"), { description: t("salesmanLite.toast.listingRejectedDesc", { car: `${payload.new.brand} ${payload.new.model}` }) });
                 }
               },
             )
@@ -1112,18 +1339,27 @@ export default function SalesmanLite() {
             .on("postgres_changes", { event: "*", schema: "public", table: "appointments", filter: `salesman_id=eq.${uid}` },
               async (payload) => {
                 if (payload.eventType === "INSERT") {
-                  setAppointments((p) => [payload.new, ...p]);
-                  setNewBookingsCount((c) => c + 1);
-                  toast("New booking!", { description: payload.new.buyer_name || "New appointment" });
+                  // Dedup: a seller-initiated booking is added optimistically, so
+                  // guard against the realtime echo double-listing it.
+                  setAppointments((p) => p.find((a) => a.id === payload.new.id) ? p : [payload.new, ...p]);
+                  // Only a PENDING booking is a genuine inbound request to badge/
+                  // announce — a confirmed one the seller just created themselves
+                  // shouldn't fire "New booking!" or bump the Awaiting counter.
+                  if (payload.new.status === "pending") {
+                    setNewBookingsCount((c) => c + 1);
+                    toast(t("salesmanLite.toast.newBooking"), { description: payload.new.buyer_name || t("salesmanLite.toast.newAppointment") });
+                  }
+                  // Auto-create a pipeline lead only when the booking isn't already
+                  // linked to one (organic /api/booking rows carry lead_id).
                   const phone = normalizePhone(payload.new.buyer_phone);
-                  if (phone) {
+                  if (phone && !payload.new.lead_id) {
                     const { data: existing } = await supabase.from("leads").select("id").eq("salesman_id", uid).eq("phone", phone).limit(1);
                     if (!existing || !existing.length) {
                       const { data: newLead } = await supabase.from("leads").insert({
                         salesman_id: uid, dealer_id: null,
                         buyer_name: payload.new.buyer_name || null, phone,
                         car_listing_id: payload.new.car_listing_id || null,
-                        stage: "new", lead_source: "manual", is_deleted: false,
+                        stage: "viewing_booked", lead_source: "manual", is_deleted: false,
                       }).select().single();
                       if (newLead) setLeads((p) => [newLead, ...p]);
                     }
@@ -1138,11 +1374,11 @@ export default function SalesmanLite() {
       // fetch appointments
       supabase
         .from("appointments")
-        .select("id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, created_at, car_listings(brand, model, year)")
+        .select("id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, created_at, remind_at, remind_sent, car_listings(id, brand, model, year, variant, selling_price, images, vin_number, plate_number, mileage, transmission, slug)")
         .eq("salesman_id", uid)
         .order("appointment_date", { ascending: false })
         .then(({ data: apts, error: aptsErr }) => {
-          if (aptsErr) { console.error("fetchAppointments:", aptsErr); toast.error("Could not load bookings"); return; }
+          if (aptsErr) { console.error("fetchAppointments:", aptsErr); toast.error(t("salesmanLite.toast.bookingsLoadFailed")); return; }
           const appts = apts || [];
           setAppointments(appts);
           writeCache(`slite_appts_${uid}`, appts);
@@ -1223,11 +1459,18 @@ export default function SalesmanLite() {
     });
   }, [myListings, commissionConfig]);
 
+  // Live minute tick — keeps inbox "Xh Ym ago" / "in Xh Ym" labels current
+  // without a reload. 60s cadence is enough for minute-granular display.
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(Date.now()), 60000);
+    return () => clearInterval(id);
+  }, []);
+
   useEffect(() => {
     if (tourStep === null) { setTourTarget(null); return; }
     // Index-aligned with TOUR_STEPS. "bookings" resolves to the enquiries tab's
     // bookings sub-tab below; the rest map 1:1 to nav data-tour-id anchors.
-    const TOUR_TABS = [null, "dashboard", "listings", "leads", "enquiries", "bookings", "performance", "merge", "settings", "help"];
+    const TOUR_TABS = [null, "dashboard", "listings", "leads", "enquiries", "bookings", "performance", "settings", "help"];
     const tab = TOUR_TABS[tourStep];
     if (!tab) { setTourTarget(null); return; }
     if (tab === "bookings") {
@@ -1300,7 +1543,7 @@ export default function SalesmanLite() {
     setStageSavingId(null);
     if (stageErr) {
       console.error("updateLeadStage:", stageErr);
-      toast.error("Failed to update lead stage");
+      toast.error(t("salesmanLite.toast.stageUpdateFailed"));
       return;
     }
     const { error: actErr } = await supabase.from("lead_activities").insert({
@@ -1327,6 +1570,20 @@ export default function SalesmanLite() {
       setWonPrompt({ lead });
       return;
     }
+    // Intercept a seller-initiated move into the booking stage → ask for the
+    // date/time up front, then create a CONFIRMED appointment (the seller set
+    // it up, so it skips "Awaiting Confirmation" and lands in Confirmed
+    // Upcoming). Organic bookings from the car page take the /api/booking path
+    // (status 'pending') and never reach here, so they stay in Awaiting.
+    if (newStage === "viewing_booked" && !force) {
+      if (pendingStageRef.current[lead.id]) {
+        clearTimeout(pendingStageRef.current[lead.id].timer);
+        delete pendingStageRef.current[lead.id];
+      }
+      setSellerBookingDate(defaultBookingSlot());
+      setSellerBookingLead(lead);
+      return;
+    }
     const oldStage = lead.stage;
     const leadId = lead.id;
     const buyerName = lead.buyer_name || "Lead";
@@ -1341,9 +1598,9 @@ export default function SalesmanLite() {
       updateLeadStage(leadId, newStage);
     }, 4500);
     pendingStageRef.current[leadId] = { timer, oldStage };
-    toast(`${buyerName} → ${newStage.replace(/_/g, " ")}`, {
+    toast(`${buyerName} → ${stageLabel(newStage)}`, {
       action: {
-        label: "Undo",
+        label: t("salesmanLite.toast.undo"),
         onClick: () => {
           clearTimeout(pendingStageRef.current[leadId]?.timer);
           delete pendingStageRef.current[leadId];
@@ -1367,7 +1624,7 @@ export default function SalesmanLite() {
     setNotesSavingId(leadId);
     const { error } = await supabase.from("leads").update({ notes: editNoteVal, updated_at: new Date().toISOString() }).eq("id", leadId);
     setNotesSavingId(null);
-    if (error) { console.error("saveLeadNote:", error); toast.error("Failed to save note"); return; }
+    if (error) { console.error("saveLeadNote:", error); toast.error(t("salesmanLite.toast.noteSaveFailed")); return; }
     const ts = new Date().toISOString();
     setLeads((p) => p.map((l) => l.id === leadId ? { ...l, notes: editNoteVal, updated_at: ts } : l));
     setEditingNoteId(null);
@@ -1399,12 +1656,12 @@ export default function SalesmanLite() {
       created_by: userId,
       dealer_id: lead?.dealer_id ?? null,
     });
-    if (error) { console.error("logCall:", error); toast.error("Failed to log call"); setCallSaving(false); return; }
+    if (error) { console.error("logCall:", error); toast.error(t("salesmanLite.toast.callLogFailed")); setCallSaving(false); return; }
     const { error: leadUpdErr } = await supabase.from("leads").update({ updated_at: new Date().toISOString(), last_call_outcome: callOutcome }).eq("id", logCallLeadId);
     if (leadUpdErr) console.error("logCall lead update:", leadUpdErr);
     setLeads((p) => p.map((l) => l.id === logCallLeadId ? { ...l, updated_at: new Date().toISOString(), last_call_outcome: callOutcome } : l));
     setLeadActivities((p) => { const n = { ...p }; delete n[logCallLeadId]; return n; });
-    toast.success("Call logged");
+    toast.success(t("salesmanLite.toast.callLogged"));
     setCallSaving(false);
     setLogCallLeadId(null);
     setCallNote("");
@@ -1415,10 +1672,10 @@ export default function SalesmanLite() {
     setFollowUpSaving(true);
     const { error } = await supabase.from("leads").update({ follow_up_at: date || null, updated_at: new Date().toISOString() }).eq("id", leadId);
     setFollowUpSaving(false);
-    if (error) { console.error("saveFollowUp:", error); toast.error("Failed to save reminder"); return; }
+    if (error) { console.error("saveFollowUp:", error); toast.error(t("salesmanLite.toast.reminderSaveFailed")); return; }
     setLeads((p) => p.map((l) => l.id === leadId ? { ...l, follow_up_at: date || null } : l));
     setFollowUpModalLead(null);
-    toast.success(date ? "Follow-up reminder set" : "Reminder cleared");
+    toast.success(date ? t("salesmanLite.toast.followUpSet") : t("salesmanLite.toast.reminderCleared"));
   };
 
   const handleDeleteLead = async (leadId) => {
@@ -1427,7 +1684,7 @@ export default function SalesmanLite() {
     setDeletingLeadId(null);
     if (delErr) {
       console.error("handleDeleteLead:", delErr);
-      toast.error("Failed to delete lead");
+      toast.error(t("salesmanLite.toast.leadDeleteFailed"));
       return;
     }
     setLeads((p) => p.filter((l) => l.id !== leadId));
@@ -1441,7 +1698,7 @@ export default function SalesmanLite() {
       .eq("id", leadId);
     if (linkErr) {
       console.error("handleLinkCar:", linkErr);
-      toast.error("Failed to link car");
+      toast.error(t("salesmanLite.toast.carLinkFailed"));
       return;
     }
     const car = myListings.find((c) => c.id === carId);
@@ -1453,7 +1710,7 @@ export default function SalesmanLite() {
         : l
     ));
     setLinkCarLeadId(null);
-    toast.success("Car linked to lead!");
+    toast.success(t("salesmanLite.toast.carLinked"));
   };
 
   const handleLostReason = async (leadId, reason) => {
@@ -1469,7 +1726,7 @@ export default function SalesmanLite() {
     setLostSavingId(null);
     if (lostErr) {
       console.error("handleLostReason:", lostErr);
-      toast.error("Failed to mark lead as lost");
+      toast.error(t("salesmanLite.toast.lostMarkFailed"));
       return;
     }
     const { error: lostActErr } = await supabase.from("lead_activities").insert({
@@ -1522,7 +1779,7 @@ export default function SalesmanLite() {
       .eq("id", leadId);
     if (leadErr) {
       console.error("handleMarkWon lead:", leadErr);
-      toast.error("Failed to mark lead as won");
+      toast.error(t("salesmanLite.toast.wonMarkFailed"));
       setWonSaving(false);
       return;
     }
@@ -1546,7 +1803,7 @@ export default function SalesmanLite() {
         .eq("id", lead.car_listing_id);
       if (carErr) {
         console.error("handleMarkWon car listing:", carErr);
-        toast.error("Lead won, but failed to mark listing as sold");
+        toast.error(t("salesmanLite.toast.wonButSoldFailed"));
       } else {
         // Mark sold in place (not remove) — the Monthly Goal panel counts
         // myListings rows with status:'sold' + sold_at this calendar month;
@@ -1565,7 +1822,7 @@ export default function SalesmanLite() {
 
     const car = lead.car_listings;
     const carLabel = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
-    toast.success(carLabel ? `Won! ${carLabel} marked as sold.` : "Lead marked as Won!");
+    toast.success(carLabel ? t("salesmanLite.toast.wonWithCar", { car: carLabel }) : t("salesmanLite.toast.wonNoCar"));
   };
 
   // ── notifications ──────────────────────────────────────────────────────────
@@ -1637,7 +1894,7 @@ export default function SalesmanLite() {
     const { error: apptErr } = await supabase.from("appointments").update({ status }).eq("id", apptId);
     if (apptErr) {
       console.error("updateApptStatus:", apptErr);
-      toast.error("Failed to update appointment");
+      toast.error(t("salesmanLite.toast.appointmentUpdateFailed"));
       return;
     }
     setAppointments((p) => p.map((a) => (a.id === apptId ? { ...a, status } : a)));
@@ -1647,7 +1904,7 @@ export default function SalesmanLite() {
     if (!apt.appointment_date) return;
     const remindAt = new Date(new Date(apt.appointment_date).getTime() - 60 * 60 * 1000).toISOString();
     const { error } = await supabase.from("appointments").update({ remind_at: remindAt, remind_sent: false }).eq("id", apt.id);
-    if (error) { console.error("scheduleAptReminder:", error); toast.error("Couldn't set the reminder. Try again."); return; }
+    if (error) { console.error("scheduleAptReminder:", error); toast.error(t("salesmanLite.toast.reminderSetFailed")); return; }
     setAppointments((p) => p.map((a) => a.id === apt.id ? { ...a, remind_at: remindAt, remind_sent: false } : a));
   };
 
@@ -1663,7 +1920,7 @@ export default function SalesmanLite() {
       if (curIdx < viewIdx) {
         await supabase.from("leads").update({ stage: "viewing_booked" }).eq("id", existing.id);
         setLeads((p) => p.map((l) => l.id === existing.id ? { ...l, stage: "viewing_booked" } : l));
-        toast.success("Lead moved to Viewing Booked!");
+        toast.success(t("salesmanLite.toast.movedToViewingBooked"));
       }
     } else {
       const { data: newLead } = await supabase.from("leads").insert({
@@ -1672,8 +1929,73 @@ export default function SalesmanLite() {
         car_listing_id: apt.car_listing_id || null,
         stage: "viewing_booked", lead_source: "manual", is_deleted: false,
       }).select().single();
-      if (newLead) { setLeads((p) => [newLead, ...p]); toast.success("Lead created at Viewing Booked!"); }
+      if (newLead) { setLeads((p) => [newLead, ...p]); toast.success(t("salesmanLite.toast.createdAtViewingBooked")); }
     }
+  };
+
+  // Confirm-booking modal "Send" — open WhatsApp FIRST (must be synchronous in
+  // the click gesture or the popup gets blocked), then mark the booking
+  // confirmed + create/advance the lead + schedule the reminder in the
+  // background, and close the modal.
+  const sendConfirmBooking = () => {
+    const apt = confirmBookingApt;
+    if (!apt || !apt.buyer_phone) return;
+    const phone = apt.buyer_phone.replace(/\D/g, "");
+    const waPhone = phone.startsWith("6") ? phone : "6" + phone;
+    window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(confirmBookingMsg)}`, "_blank", "noopener,noreferrer");
+    updateApptStatus(apt.id, "confirmed");
+    autoUpsertLeadFromAppt(apt);
+    scheduleAptReminder(apt);
+    setConfirmBookingApt(null);
+    setConfirmBookingMsg("");
+    toast.success(t("salesmanLite.toast.bookingConfirmed"));
+  };
+
+  // Default seller-booking slot: tomorrow 11:00, formatted for datetime-local.
+  const defaultBookingSlot = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(11, 0, 0, 0);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  // Confirm a seller-initiated booking: move the lead into the booking stage AND
+  // create a CONFIRMED appointment at the chosen slot so it shows in the
+  // Bookings tab under Confirmed Upcoming. Optimistic add is de-duplicated by
+  // the appointments realtime handler (guards on id).
+  const confirmSellerBooking = async () => {
+    const lead = sellerBookingLead;
+    if (!lead || !sellerBookingDate) return;
+    const dt = new Date(sellerBookingDate);
+    if (isNaN(dt.getTime())) { toast.error(t("salesmanLite.toast.pickValidDateTime")); return; }
+    setSellerBookingSaving(true);
+    // Move the lead into the booking stage (writes leads.stage + activity).
+    await updateLeadStage(lead.id, "viewing_booked");
+    const remindAt = new Date(dt.getTime() - 60 * 60 * 1000).toISOString();
+    const { data: apptRow, error: apptErr } = await supabase
+      .from("appointments")
+      .insert({
+        salesman_id: userId,
+        dealer_id: lead.dealer_id ?? null,
+        lead_id: lead.id,
+        car_listing_id: lead.car_listing_id ?? null,
+        buyer_name: lead.buyer_name ?? null,
+        buyer_phone: lead.phone ?? null,
+        appointment_date: dt.toISOString(),
+        booking_type: "viewing",
+        status: "confirmed",
+        remind_at: remindAt,
+        remind_sent: false,
+      })
+      .select("id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, created_at, remind_at, remind_sent, car_listings(id, brand, model, year, variant, selling_price, images, vin_number, plate_number, mileage, transmission, slug)")
+      .single();
+    setSellerBookingSaving(false);
+    if (apptErr) { console.error("confirmSellerBooking:", apptErr); toast.error(t("salesmanLite.toast.bookingCreateFailed")); return; }
+    if (apptRow) setAppointments((p) => p.find((a) => a.id === apptRow.id) ? p : [apptRow, ...p]);
+    setSellerBookingLead(null);
+    setSellerBookingDate("");
+    toast.success(t("salesmanLite.toast.bookingConfirmedFor", { when: dt.toLocaleDateString(i18n.language === "ms" ? "ms-MY" : "en-MY", { weekday: "short", day: "numeric", month: "short" }) + " " + dt.toLocaleTimeString(i18n.language === "ms" ? "ms-MY" : "en-MY", { hour: "2-digit", minute: "2-digit" }) }));
   };
 
   const autoCreateLeadFromEnq = async (enq) => {
@@ -1714,7 +2036,7 @@ export default function SalesmanLite() {
       .single();
     if (addLeadErr) {
       console.error("handleAddLead:", addLeadErr);
-      toast.error("Failed to add lead");
+      toast.error(t("salesmanLite.toast.addLeadFailed"));
       setAddLeadSaving(false);
       return;
     }
@@ -1735,52 +2057,6 @@ export default function SalesmanLite() {
       stage: "new",
       buyer_state: "",
     });
-  };
-
-  const handleMerge = async () => {
-    if (!mergeCode.trim()) return;
-    setMergeStatus("pending");
-    setMergeMsg("");
-
-    const { data, error: inviteErr } = await supabase
-      .from("dealer_invites")
-      .select("dealer_id, expires_at, used")
-      .eq("code", mergeCode.trim().toUpperCase())
-      .maybeSingle();
-
-    if (inviteErr) console.error("handleMerge invite lookup:", inviteErr);
-    if (!data || data.used || new Date(data.expires_at) < new Date()) {
-      setMergeStatus("error");
-      setMergeMsg("Invalid or expired invite code.");
-      return;
-    }
-
-    const { error: rpcErr } = await supabase.rpc("use_dealer_invite", {
-      invite_code: mergeCode.trim().toUpperCase(),
-    });
-    if (rpcErr) {
-      console.error("handleMerge rpc:", rpcErr);
-      setMergeStatus("error");
-      setMergeMsg("Merge failed. Please try again or contact support.");
-      return;
-    }
-
-    setMergeStatus("success");
-    setMergeMsg("Merged! Redirecting to full dashboard...");
-    const keysToDelete = [
-      `slite_listings_${profile.id}`,
-      `slite_leads_${profile.id}`,
-      `slite_enquiries_${profile.id}`,
-      `slite_appts_${profile.id}`,
-      `slite_last_seen_enq_${profile.id}`,
-      `salesman_lite_avatar_${profile.id}`,
-    ];
-    keysToDelete.forEach(k => localStorage.removeItem(k));
-    setMyListings([]);
-    setLeads([]);
-    setEnquiries([]);
-    setAppointments([]);
-    setTimeout(() => navigate("/salesman"), 2500);
   };
 
   const handleListingCopy = (car, type) => {
@@ -1885,11 +2161,6 @@ export default function SalesmanLite() {
       icon: <BarChart2 style={{ width: 14, height: 14 }} />,
     },
     {
-      tab: "merge",
-      label: t("salesmanLite.tabs.merge"),
-      icon: <GitMerge style={{ width: 14, height: 14 }} />,
-    },
-    {
       tab: "settings",
       label: t("salesmanLite.tabs.settings"),
       icon: <Settings style={{ width: 14, height: 14 }} />,
@@ -1922,7 +2193,6 @@ export default function SalesmanLite() {
       badge: (enquiries.filter((e) => e.status === "new").length + newBookingsCount) || null,
     },
     { tab: "performance", label: t("salesmanLite.tabs.performanceMobile"), icon: <BarChart2 size={18} /> },
-    { tab: "merge", label: t("salesmanLite.tabs.mergeMobile"), icon: <GitMerge size={18} /> },
     { tab: "settings", label: t("salesmanLite.tabs.settings"), icon: <Settings size={18} /> },
     { tab: "help", label: t("salesmanLite.tabs.help"), icon: <BookOpen size={18} /> },
   ];
@@ -2283,14 +2553,14 @@ export default function SalesmanLite() {
       return h < 12 ? t("salesmanLite.greeting.morning") : h < 17 ? t("salesmanLite.greeting.afternoon") : t("salesmanLite.greeting.evening");
     })();
     const personalizedLine = isNewUser
-      ? "Add your first car to start building your portfolio."
+      ? t("salesmanLite.dash.newUser")
       : staleLeads.length > 0
-      ? `${staleLeads.length} lead${staleLeads.length !== 1 ? "s" : ""} waiting on a follow-up — don't let a hot one go cold.`
+      ? t("salesmanLite.dash.stale", { count: staleLeads.length })
       : todayAppts > 0
-      ? `You've got ${todayAppts} appointment${todayAppts !== 1 ? "s" : ""} today. Make ${todayAppts !== 1 ? "them" : "it"} count.`
+      ? t("salesmanLite.dash.today", { count: todayAppts })
       : activeLeads.length > 0
-      ? `${activeLeads.length} deal${activeLeads.length !== 1 ? "s" : ""} in motion right now.`
-      : "Pipeline's clear — good time to feature a car or reach out to a past buyer.";
+      ? t("salesmanLite.dash.motion", { count: activeLeads.length })
+      : t("salesmanLite.dash.clear");
 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -2329,19 +2599,19 @@ export default function SalesmanLite() {
           {portfolioValue > 0 && (
             <div style={{ position: "relative", marginTop: 20 }}>
               <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                Live portfolio value
+                {t("salesmanLite.dash.portfolioValue")}
               </p>
               <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
                 <p style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: isMobile ? 38 : 50, color: "#fbbf24", letterSpacing: 1, lineHeight: 1 }}>
                   RM {portfolioValue.toLocaleString("en-MY")}
                 </p>
                 <span style={{ fontSize: 12, color: "#475569" }}>
-                  across {available.length} live listing{available.length !== 1 ? "s" : ""}
+                  {t("salesmanLite.dash.acrossListings", { count: available.length })}
                 </span>
               </div>
               {topCar && (
                 <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b" }}>
-                  Headlined by your {topCar.year} {topCar.brand} {topCar.model}{topCar.variant ? ` ${topCar.variant}` : ""} — RM {Number(topCar.selling_price).toLocaleString("en-MY")}
+                  {t("salesmanLite.dash.headlinedBy", { car: [topCar.year, topCar.brand, topCar.model, topCar.variant].filter(Boolean).join(" "), price: Number(topCar.selling_price).toLocaleString("en-MY") })}
                 </p>
               )}
             </div>
@@ -2356,16 +2626,16 @@ export default function SalesmanLite() {
             <div style={CARD_HEADER}>
               <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", animation: "live-glow 2s ease-in-out infinite" }} />
-                <span>Live</span>
+                <span>{t("salesmanLite.dash.live")}</span>
               </div>
-              <span>30 days</span>
+              <span>{t("salesmanLite.dash.days30")}</span>
             </div>
             <div style={{ padding: 18 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 18 }}>
                 {[
-                  { label: "Buyer Views", value: totalViews || 0 },
-                  { label: "WA Taps", value: totalWATaps || 0, green: true },
-                  { label: "Live Listings", value: myListings.filter(c => c.status === "available").length },
+                  { label: t("salesmanLite.dash.buyerViews"), value: totalViews || 0 },
+                  { label: t("salesmanLite.dash.waTaps"), value: totalWATaps || 0, green: true },
+                  { label: t("salesmanLite.kpi.liveListings"), value: myListings.filter(c => c.status === "available").length },
                 ].map(({ label, value, green }) => (
                   <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <p style={{ margin: 0, fontSize: 12, color: "#475569" }}>{label}</p>
@@ -2376,7 +2646,7 @@ export default function SalesmanLite() {
               {profile?.slug && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   <button
-                    onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success("Store link copied — share it with buyers!"); }}
+                    onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success(t("salesmanLite.toast.storeLinkCopied")); }}
                     style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#94a3b8", cursor: "pointer", fontWeight: 500, fontFamily: "inherit" }}
                   >
                     <LinkIcon size={11} />
@@ -2456,13 +2726,13 @@ export default function SalesmanLite() {
             <div style={CARD_HEADER}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444" }} />
-                <span>Follow-up Needed</span>
+                <span>{t("salesmanLite.dash.followUpNeeded")}</span>
                 <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 18, height: 18, borderRadius: 99, background: "rgba(239,68,68,0.15)", color: "#ef4444", fontSize: 10, fontWeight: 800, padding: "0 5px" }}>{staleLeads.length}</span>
               </div>
               {staleLeads.some(l => l.phone) && (
                 <button onClick={() => { setBatchWALeads(staleLeads.filter(l => l.phone)); setBatchWAIdx(0); }}
                   style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", cursor: "pointer", fontWeight: 700, fontFamily: "inherit", textTransform: "none", letterSpacing: 0 }}>
-                  WA All
+                  {t("salesmanLite.dash.waAll")}
                 </button>
               )}
             </div>
@@ -2477,7 +2747,7 @@ export default function SalesmanLite() {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.buyer_name || "—"}</p>
-                      <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{car ? `${car.brand} ${car.model}` : "No car"}</p>
+                      <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{car ? `${car.brand} ${car.model}` : t("salesmanLite.dash.noCar")}</p>
                     </div>
                     <span style={{ fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: 99, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", flexShrink: 0 }}>{daysSince}d ago</span>
                     {lead.phone && (
@@ -2489,8 +2759,8 @@ export default function SalesmanLite() {
             </div>
             {!notifBannerDismissed && browserNotifPerm === 'default' && (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px", borderTop: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}>
-                <p style={{ margin: 0, fontSize: 11, color: "#475569", flex: 1 }}>Get notified when leads go cold</p>
-                <button onClick={requestBrowserNotif} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)", color: "#818cf8", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>Enable</button>
+                <p style={{ margin: 0, fontSize: 11, color: "#475569", flex: 1 }}>{t("salesmanLite.dash.notifyColdLeads")}</p>
+                <button onClick={requestBrowserNotif} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)", color: "#818cf8", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>{t("salesmanLite.dash.enable")}</button>
                 <button onClick={dismissNotifBanner} style={{ fontSize: 14, padding: "0 4px", background: "none", border: "none", color: "#374151", cursor: "pointer", lineHeight: 1, flexShrink: 0 }}>×</button>
               </div>
             )}
@@ -2501,7 +2771,7 @@ export default function SalesmanLite() {
         {hasAgenda && (
           <div style={CARD}>
             <div style={CARD_HEADER}>
-              <span>Today's Agenda</span>
+              <span>{t("salesmanLite.dash.todaysAgenda")}</span>
               <span>{new Date().toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })}</span>
             </div>
             <div style={{ padding: "6px 0" }}>
@@ -2510,7 +2780,7 @@ export default function SalesmanLite() {
                   <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#3b82f6", flexShrink: 0, boxShadow: "0 0 0 3px rgba(59,130,246,0.15)" }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{a.buyer_name || "—"}</p>
-                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>Test drive</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{t("salesmanLite.dash.testDrive")}</p>
                   </div>
                   <span style={{ fontSize: 11, color: "#3b82f6", fontWeight: 600, flexShrink: 0 }}>{a.appointment_date ? new Date(a.appointment_date).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "—"}</span>
                 </div>
@@ -2520,7 +2790,7 @@ export default function SalesmanLite() {
                   <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#eab308", flexShrink: 0, boxShadow: "0 0 0 3px rgba(234,179,8,0.15)" }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{l.buyer_name || "—"}</p>
-                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>Scheduled follow-up · {l.car_listings ? `${l.car_listings.brand} ${l.car_listings.model}` : "no car"}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{t("salesmanLite.dash.scheduledFollowUp")} · {l.car_listings ? `${l.car_listings.brand} ${l.car_listings.model}` : t("salesmanLite.dash.noCar")}</p>
                   </div>
                   <span style={{ fontSize: 11, color: "#eab308", fontWeight: 600, flexShrink: 0 }}>Today</span>
                 </div>
@@ -2542,14 +2812,14 @@ export default function SalesmanLite() {
         {/* ── My Performance (context, not action) ── */}
         <div style={CARD}>
           <div style={CARD_HEADER}>
-            <span>My Performance</span>
-            <span>30 days</span>
+            <span>{t("salesmanLite.dash.myPerformance")}</span>
+            <span>{t("salesmanLite.dash.days30")}</span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
             {[
-              { label: "Views", value: totalViews || 0 },
-              { label: "WA Taps", value: totalWATaps || 0 },
-              { label: "CVR", value: overallCVR !== null ? `${overallCVR}%` : "—" },
+              { label: t("salesmanLite.dash.views"), value: totalViews || 0 },
+              { label: t("salesmanLite.dash.waTaps"), value: totalWATaps || 0 },
+              { label: t("salesmanLite.dash.cvr"), value: overallCVR !== null ? `${overallCVR}%` : "—" },
             ].map(({ label, value }, i, arr) => (
               <div key={label} style={{ padding: "16px 18px", borderRight: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
                 <p style={{ margin: "0 0 4px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
@@ -2616,7 +2886,7 @@ export default function SalesmanLite() {
         {/* ── Goal ── */}
         <div style={CARD}>
             <div style={CARD_HEADER}>
-              <span>Monthly Goal</span>
+              <span>{t("salesmanLite.dash.monthlyGoal")}</span>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span>{daysLeft}d left in {new Date().toLocaleDateString("en-MY",{month:"short"})}</span>
                 <button
@@ -2631,15 +2901,15 @@ export default function SalesmanLite() {
             <div style={{ padding: 18 }}>
               {goalEditing ? (
                 <div>
-                  <p style={{ margin: "0 0 10px", fontSize: 11, color: "#6b7280" }}>Set your commission target for {new Date().toLocaleDateString("en-MY",{month:"long"})}:</p>
+                  <p style={{ margin: "0 0 10px", fontSize: 11, color: "#6b7280" }}>{t("salesmanLite.goal.setTarget", { month: new Date().toLocaleDateString(i18n.language === "ms" ? "ms-MY" : "en-MY", { month: "long" }) })}</p>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 13, color: "#9ca3af", fontWeight: 600 }}>RM</span>
                     <input type="number" min="0" step="500" value={goalDraft} onChange={e => setGoalDraft(Number(e.target.value))}
                       style={{ width: 100, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, padding: "6px 10px", color: "#fff", fontSize: 16, fontWeight: 700, fontFamily: "inherit" }} autoFocus />
-                    <button onClick={() => { saveGoal({ target: goalDraft }); setGoalEditing(false); }} style={{ fontSize: 12, padding: "6px 14px", borderRadius: 6, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>Save</button>
-                    <button onClick={() => setGoalEditing(false)} style={{ fontSize: 11, padding: "6px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                    <button onClick={() => { saveGoal({ target: goalDraft }); setGoalEditing(false); }} style={{ fontSize: 12, padding: "6px 14px", borderRadius: 6, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>{t("salesmanLite.goal.save")}</button>
+                    <button onClick={() => setGoalEditing(false)} style={{ fontSize: 11, padding: "6px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanLite.goal.cancel")}</button>
                   </div>
-                  <p style={{ margin: "8px 0 0", fontSize: 10, color: "#374151" }}>Set commission per car in your Listings tab. Sold cars count toward this goal.</p>
+                  <p style={{ margin: "8px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.goal.perCarHint")}</p>
                 </div>
               ) : goal.target > 0 ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
@@ -2654,26 +2924,26 @@ export default function SalesmanLite() {
                     </svg>
                     <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
                       <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#f1f5f9", lineHeight: 1 }}>{Math.round(pct)}%</p>
-                      <p style={{ margin: 0, fontSize: 9, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>done</p>
+                      <p style={{ margin: 0, fontSize: 9, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanLite.goal.done")}</p>
                     </div>
                   </div>
                   {/* Text */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: "0 0 2px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>Commission earned</p>
+                    <p style={{ margin: "0 0 2px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.goal.commissionEarned")}</p>
                     <p style={{ margin: "0 0 2px", fontSize: 26, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>
                       RM {soldThisMonth.toLocaleString("en-MY")}
                     </p>
-                    <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569" }}>of RM {goal.target.toLocaleString("en-MY")} goal · {soldCountThisMonth} car{soldCountThisMonth !== 1 ? "s" : ""} sold</p>
+                    <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569" }}>{t("salesmanLite.goal.ofGoal", { target: goal.target.toLocaleString("en-MY"), count: soldCountThisMonth })}</p>
                     {pct >= 100
-                      ? <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#22c55e" }}>Goal smashed!</p>
-                      : <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569" }}>RM {(goal.target - soldThisMonth).toLocaleString("en-MY")} to go · {daysLeft > 0 ? `${daysLeft}d left` : "last day!"}</p>
+                      ? <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#22c55e" }}>{t("salesmanLite.goal.smashed")}</p>
+                      : <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569" }}>{t("salesmanLite.goal.toGo", { amount: (goal.target - soldThisMonth).toLocaleString("en-MY"), left: daysLeft > 0 ? t("salesmanLite.goal.daysLeft", { count: daysLeft }) : t("salesmanLite.goal.lastDay") })}</p>
                     }
-                    <button onClick={() => { setGoalDraft(goal.target); setGoalEditing(true); }} style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#475569", cursor: "pointer", fontFamily: "inherit" }}>Edit target</button>
+                    <button onClick={() => { setGoalDraft(goal.target); setGoalEditing(true); }} style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#475569", cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanLite.goal.editTarget")}</button>
                   </div>
                 </div>
               ) : (
                 <button onClick={() => { setGoalDraft(5000); setGoalEditing(true); }} style={{ width: "100%", padding: "14px", borderRadius: 10, background: "rgba(220,38,38,0.06)", border: "1px dashed rgba(220,38,38,0.2)", color: "#ef4444", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                  + Set a monthly commission goal
+                  {t("salesmanLite.goal.setGoalCta")}
                 </button>
               )}
 
@@ -2682,10 +2952,10 @@ export default function SalesmanLite() {
                 <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                     <p style={{ margin: 0, fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>
-                      {focusCar ? <><Pin size={9} style={{ display:'inline', verticalAlign:'middle', marginRight:3 }} />Pinned</> : <><Zap size={9} style={{ display:'inline', verticalAlign:'middle', marginRight:3 }} />Best to push</>}
+                      {focusCar ? <><Pin size={9} style={{ display:'inline', verticalAlign:'middle', marginRight:3 }} />{t("salesmanLite.goal.pinned")}</> : <><Zap size={9} style={{ display:'inline', verticalAlign:'middle', marginRight:3 }} />{t("salesmanLite.goal.bestToPush")}</>}
                     </p>
                     {focusCar && (
-                      <button onClick={() => saveGoal({ focusCarId: null })} style={{ fontSize: 9, padding: "2px 7px", borderRadius: 4, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#475569", cursor: "pointer", fontFamily: "inherit" }}>Unpin</button>
+                      <button onClick={() => saveGoal({ focusCarId: null })} style={{ fontSize: 9, padding: "2px 7px", borderRadius: 4, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#475569", cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanLite.goal.unpin")}</button>
                     )}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -2705,7 +2975,7 @@ export default function SalesmanLite() {
                     <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
                       <button onClick={() => handleListingCopy(highlighted, "wa")} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>WA</button>
                       {!focusCar && (
-                        <button onClick={() => saveGoal({ focusCarId: highlighted.id })} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#475569", cursor: "pointer", fontFamily: "inherit" }}>Pin</button>
+                        <button onClick={() => saveGoal({ focusCarId: highlighted.id })} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#475569", cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanLite.goal.pin")}</button>
                       )}
                     </div>
                   </div>
@@ -2729,7 +2999,7 @@ export default function SalesmanLite() {
         {commissionData.count > 0 && (
           <div style={CARD}>
             <div style={CARD_HEADER}>
-              <span>This Month</span>
+              <span>{t("salesmanLite.dash.thisMonth")}</span>
               <span>{commissionData.count} deal{commissionData.count !== 1 ? "s" : ""} closed</span>
             </div>
             <div style={{ padding: 18 }}>
@@ -2757,13 +3027,13 @@ export default function SalesmanLite() {
         {/* ── Onboarding ── */}
         {isNewUser && !profile?.onboarding_tour_done && (
           <div style={{ ...CARD, border: "1px solid rgba(220,38,38,0.15)" }}>
-            <div style={CARD_HEADER}><span>Get Started</span></div>
+            <div style={CARD_HEADER}><span>{t("salesmanLite.dash.getStarted")}</span></div>
             <div style={{ padding: 18 }}>
-              <p style={{ margin: "0 0 16px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Here's how to make your first sale:</p>
+              <p style={{ margin: "0 0 16px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{t("salesmanLite.checklist.intro")}</p>
               {[
-                { num: 1, done: myListings.length > 0, title: "Add your first listing", sub: "Upload photos, set price, publish to XDrive marketplace.", ctaLabel: "Add Listing →", ctaAction: () => { switchTab("listings"); setTimeout(openAddListing, 100); }, locked: false },
-                { num: 2, done: myListings.length > 0, title: "Share your listing link", sub: "Blast it on WhatsApp groups, Facebook, TikTok.", ctaLabel: "Go to Listings →", ctaAction: () => switchTab("listings"), locked: myListings.length === 0 },
-                { num: 3, done: leads.length > 0, title: "Track your leads", sub: "Every enquiry auto-converts to a lead.", ctaLabel: "View Pipeline →", ctaAction: () => switchTab("leads"), locked: myListings.length === 0 },
+                { num: 1, done: myListings.length > 0, title: t("salesmanLite.checklist.step1Title"), sub: t("salesmanLite.checklist.step1Sub"), ctaLabel: t("salesmanLite.checklist.step1Cta"), ctaAction: () => { switchTab("listings"); setTimeout(openAddListing, 100); }, locked: false },
+                { num: 2, done: myListings.length > 0, title: t("salesmanLite.checklist.step2Title"), sub: t("salesmanLite.checklist.step2Sub"), ctaLabel: t("salesmanLite.checklist.step2Cta"), ctaAction: () => switchTab("listings"), locked: myListings.length === 0 },
+                { num: 3, done: leads.length > 0, title: t("salesmanLite.checklist.step3Title"), sub: t("salesmanLite.checklist.step3Sub"), ctaLabel: t("salesmanLite.checklist.step3Cta"), ctaAction: () => switchTab("leads"), locked: myListings.length === 0 },
               ].map((step, idx) => (
                 <div key={step.num}>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: idx > 0 ? "14px 0 0" : "0" }}>
@@ -2773,28 +3043,17 @@ export default function SalesmanLite() {
                       <p style={{ margin: "2px 0 0", fontSize: 11, color: "#475569", lineHeight: 1.5 }}>{step.sub}</p>
                     </div>
                     {step.locked
-                      ? <span style={{ fontSize: 10, color: "#374151", flexShrink: 0, paddingTop: 3 }}>Step 1 first</span>
+                      ? <span style={{ fontSize: 10, color: "#374151", flexShrink: 0, paddingTop: 3 }}>{t("salesmanLite.dash.step1First")}</span>
                       : <button onClick={step.ctaAction} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.2)", color: "#ef4444", cursor: "pointer", flexShrink: 0, fontFamily: "inherit" }}>{step.ctaLabel}</button>
                     }
                   </div>
                   {idx < 2 && <div style={{ height: 1, background: "rgba(255,255,255,0.04)", margin: "14px 0 0" }} />}
                 </div>
               ))}
-              <button onClick={dismissTour} style={{ marginTop: 16, background: "none", border: "none", color: "#374151", fontSize: 10, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>Dismiss</button>
+              <button onClick={dismissTour} style={{ marginTop: 16, background: "none", border: "none", color: "#374151", fontSize: 10, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>{t("salesmanLite.dash.dismiss")}</button>
             </div>
           </div>
         )}
-
-        {/* ── Upgrade nudge ── */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "16px 18px", ...CARD }}>
-          <div>
-            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>Join a dealership</p>
-            <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>Get an invite code from your dealer to unlock the full panel.</p>
-          </div>
-          <button onClick={() => setActiveTab("merge")} style={{ fontSize: 11, padding: "8px 16px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, flexShrink: 0, whiteSpace: "nowrap", fontFamily: "inherit" }}>
-            Enter Code →
-          </button>
-        </div>
 
         <PrevMonthModal
           open={showPrevMonth}
@@ -2822,7 +3081,7 @@ export default function SalesmanLite() {
     const WON_STAGES = ["won","closed_won"];
     const LOST_STAGES = ["lost","closed_lost"];
     const FUNNEL_STAGES = ["new","contacted","viewing_booked","test_drive","negotiating","deposit_taken"];
-    const FUNNEL_LABELS = { new:"New", contacted:"Contacted", viewing_booked:"Viewing", test_drive:"Test Drive", negotiating:"Negotiating", deposit_taken:"Deposit" };
+    const FUNNEL_LABELS = { new: stageLabel("new"), contacted: stageLabel("contacted"), viewing_booked: stageLabel("viewing_booked"), test_drive: stageLabel("test_drive"), negotiating: stageLabel("negotiating"), deposit_taken: stageLabel("deposit_taken") };
 
     const allLeads = leads;
     const activeLeads = allLeads.filter(l => ACTIVE_STAGES.includes(l.stage));
@@ -2894,51 +3153,51 @@ export default function SalesmanLite() {
       key: "stale",
       type: "warn",
       icon: <Clock size={14} />,
-      title: `${staleCount} lead${staleCount !== 1 ? "s" : ""} need follow-up now`,
-      body: `You haven't contacted ${staleCount} lead${staleCount !== 1 ? "s" : ""} in over 48 hours. A quick WhatsApp message today keeps deals alive — most buyers go cold within 72 hours of first enquiry.`,
-      cta: "Go to Leads",
+      title: t("salesmanLite.perf.nudgeStaleTitle", { count: staleCount }),
+      body: t("salesmanLite.perf.nudgeStaleBody", { count: staleCount }),
+      cta: t("salesmanLite.perf.nudgeGoToLeads"),
       ctaAction: () => setActiveTab("leads"),
     });
     if (leadsWithNoFollowUp > 2) nudges.push({
       key: "no_followup",
       type: "warn",
       icon: <Target size={14} />,
-      title: `${leadsWithNoFollowUp} leads have no follow-up date set`,
-      body: `Set a follow-up date on each lead so you never forget to reach out. Salesmen who schedule follow-ups close 2× more deals than those who don't.`,
-      cta: "Set follow-ups",
+      title: t("salesmanLite.perf.nudgeNoFollowupTitle", { count: leadsWithNoFollowUp }),
+      body: t("salesmanLite.perf.nudgeNoFollowupBody"),
+      cta: t("salesmanLite.perf.nudgeSetFollowups"),
       ctaAction: () => setActiveTab("leads"),
     });
     if (contactedThisWeek === 0 && activeLeads.length > 0) nudges.push({
       key: "no_contact",
       type: "warn",
       icon: <Zap size={14} />,
-      title: "No leads contacted this week",
-      body: `You have ${activeLeads.length} active lead${activeLeads.length !== 1 ? "s" : ""} but haven't moved any forward this week. Even a 2-minute check-in message can re-spark a deal. Follow up every 2–3 days to stay top of mind.`,
-      cta: "Contact leads",
+      title: t("salesmanLite.perf.nudgeNoContactTitle"),
+      body: t("salesmanLite.perf.nudgeNoContactBody", { count: activeLeads.length }),
+      cta: t("salesmanLite.perf.nudgeContactLeads"),
       ctaAction: () => setActiveTab("leads"),
     });
     if (closeRate !== null && closeRate < 20 && closedLeads.length >= 3) nudges.push({
       key: "low_close",
       type: "tip",
       icon: <TrendingUp size={14} />,
-      title: `Your close rate is ${closeRate}% — here's how to improve it`,
-      body: `Top salesmen close 30–50% of qualified leads. Focus on leads in the Negotiating and Deposit stages first. Ask buyers what's stopping them and address it directly.`,
+      title: t("salesmanLite.perf.nudgeLowCloseTitle", { rate: closeRate }),
+      body: t("salesmanLite.perf.nudgeLowCloseBody"),
       cta: null,
     });
     if (avgDaysToClose !== null && avgDaysToClose > 21) nudges.push({
       key: "slow_close",
       type: "tip",
       icon: <Clock size={14} />,
-      title: `Your average deal takes ${avgDaysToClose} days to close`,
-      body: `Deals that go past 3 weeks often stall. Create urgency — remind buyers about limited stock, upcoming price changes, or offer a test drive to speed up decisions.`,
+      title: t("salesmanLite.perf.nudgeSlowCloseTitle", { days: avgDaysToClose }),
+      body: t("salesmanLite.perf.nudgeSlowCloseBody"),
       cta: null,
     });
     if (nudges.length === 0 && wonLeads.length > 0) nudges.push({
       key: "on_track",
       type: "good",
       icon: <Award size={14} />,
-      title: "You're on track — keep the momentum",
-      body: `${wonLeads.length} deal${wonLeads.length !== 1 ? "s" : ""} closed and ${activeLeads.length} still in pipeline. Keep following up every 2–3 days and you'll stay ahead.`,
+      title: t("salesmanLite.perf.nudgeOnTrackTitle"),
+      body: t("salesmanLite.perf.nudgeOnTrackBody", { count: wonLeads.length, won: wonLeads.length, active: activeLeads.length }),
       cta: null,
     });
 
@@ -2955,8 +3214,8 @@ export default function SalesmanLite() {
 
         {/* ── Header ── */}
         <div>
-          <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.3px" }}>Your Performance</p>
-          <p style={{ margin: "2px 0 0", fontSize: 12, color: "#475569" }}>Close rate, pipeline health, follow-up habits — all in one place.</p>
+          <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.3px" }}>{t("salesmanLite.perf.header")}</p>
+          <p style={{ margin: "2px 0 0", fontSize: 12, color: "#475569" }}>{t("salesmanLite.perf.headerSub")}</p>
         </div>
 
         {/* ── Coaching nudges (collapsed by default — tap a row to reveal) ── */}
@@ -2995,15 +3254,15 @@ export default function SalesmanLite() {
         {/* ── Close Rate ── */}
         <div style={CARD}>
           <div style={CARD_HEADER}>
-            <span>Close Rate</span>
-            <span>all time</span>
+            <span>{t("salesmanLite.perf.closeRate")}</span>
+            <span>{t("salesmanLite.perf.allTime")}</span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)" }}>
             {[
-              { label: "Total Leads", value: allLeads.length, note: "ever created" },
-              { label: "Closed Won", value: wonLeads.length, note: "deals done", color: "#22c55e" },
-              { label: "Closed Lost", value: lostLeads.length, note: "didn't convert", color: "#ef4444" },
-              { label: "Close Rate", value: closeRate !== null ? `${closeRate}%` : "—", note: "won ÷ (won+lost)", color: closeRate === null ? "#475569" : closeRate >= 40 ? "#22c55e" : closeRate >= 20 ? "#eab308" : "#ef4444" },
+              { label: t("salesmanLite.perf.totalLeads"), value: allLeads.length, note: t("salesmanLite.perf.everCreated") },
+              { label: t("salesmanLite.perf.closedWon"), value: wonLeads.length, note: t("salesmanLite.perf.dealsDone"), color: "#22c55e" },
+              { label: t("salesmanLite.perf.closedLost"), value: lostLeads.length, note: t("salesmanLite.perf.didntConvert"), color: "#ef4444" },
+              { label: t("salesmanLite.perf.closeRate"), value: closeRate !== null ? `${closeRate}%` : "—", note: t("salesmanLite.perf.closeRateFormula"), color: closeRate === null ? "#475569" : closeRate >= 40 ? "#22c55e" : closeRate >= 20 ? "#eab308" : "#ef4444" },
             ].map(({ label, value, note, color }, i, arr) => (
               <div key={label} style={{
                 padding: "18px 20px",
@@ -3018,19 +3277,19 @@ export default function SalesmanLite() {
           </div>
           {/* This month strip */}
           <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>This Month</span>
-            <span style={{ fontSize: 12, color: "#94a3b8" }}>{monthLeads.length} new leads</span>
-            <span style={{ fontSize: 12, color: "#22c55e", fontWeight: 600 }}>{monthWon.length} won</span>
-            {monthCloseRate !== null && <span style={{ fontSize: 12, color: monthCloseRate >= 30 ? "#22c55e" : "#eab308", fontWeight: 700 }}>{monthCloseRate}% close rate</span>}
-            <span style={{ fontSize: 12, color: "#94a3b8" }}>{weekLeads.length} leads this week</span>
+            <span style={{ fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>{t("salesmanLite.perf.thisMonth")}</span>
+            <span style={{ fontSize: 12, color: "#94a3b8" }}>{t("salesmanLite.perf.newLeadsCount", { count: monthLeads.length })}</span>
+            <span style={{ fontSize: 12, color: "#22c55e", fontWeight: 600 }}>{t("salesmanLite.perf.wonCount", { count: monthWon.length })}</span>
+            {monthCloseRate !== null && <span style={{ fontSize: 12, color: monthCloseRate >= 30 ? "#22c55e" : "#eab308", fontWeight: 700 }}>{t("salesmanLite.perf.closeRatePct", { count: monthCloseRate })}</span>}
+            <span style={{ fontSize: 12, color: "#94a3b8" }}>{t("salesmanLite.perf.leadsThisWeek", { count: weekLeads.length })}</span>
           </div>
         </div>
 
         {/* ── Pipeline Funnel ── */}
         <div style={CARD}>
           <div style={CARD_HEADER}>
-            <span>Pipeline Funnel</span>
-            <span>{activeLeads.length} active</span>
+            <span>{t("salesmanLite.perf.pipelineFunnel")}</span>
+            <span>{t("salesmanLite.perf.activeCount", { count: activeLeads.length })}</span>
           </div>
           <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
             {funnelCounts.map(({ stage, label, count }) => {
@@ -3048,7 +3307,7 @@ export default function SalesmanLite() {
               );
             })}
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 4, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-              <p style={{ margin: 0, fontSize: 11, color: "#475569", width: isMobile ? 76 : 100, flexShrink: 0, textAlign: "right" }}>Won</p>
+              <p style={{ margin: 0, fontSize: 11, color: "#475569", width: isMobile ? 76 : 100, flexShrink: 0, textAlign: "right" }}>{t("salesmanLite.perf.won")}</p>
               <div style={{ flex: 1, height: 22, background: "rgba(34,197,94,0.08)", borderRadius: 6, overflow: "hidden" }}>
                 <div style={{ height: "100%", width: `${Math.min((wonLeads.length / funnelMax) * 100, 100)}%`, background: "#22c55e", borderRadius: 6, transition: "width 0.4s ease" }} />
               </div>
@@ -3060,15 +3319,15 @@ export default function SalesmanLite() {
         {/* ── Follow-up Habit ── */}
         <div style={CARD}>
           <div style={CARD_HEADER}>
-            <span>Follow-up Habits</span>
-            <span>7 days</span>
+            <span>{t("salesmanLite.perf.followUpHabits")}</span>
+            <span>{t("salesmanLite.perf.days7")}</span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)" }}>
             {[
-              { label: "Active Leads", value: activeLeads.length, note: "in pipeline now" },
-              { label: "Contacted This Week", value: contactedThisWeek, note: "leads updated", color: contactedThisWeek > 0 ? "#22c55e" : "#ef4444" },
-              { label: "No Follow-up Set", value: leadsWithNoFollowUp, note: "no date scheduled", color: leadsWithNoFollowUp > 0 ? "#ef4444" : "#22c55e" },
-              { label: "Overdue", value: staleCount, note: "48h+ no contact", color: staleCount > 0 ? "#ef4444" : "#22c55e" },
+              { label: t("salesmanLite.perf.activeLeads"), value: activeLeads.length, note: t("salesmanLite.perf.inPipelineNow") },
+              { label: t("salesmanLite.perf.contactedThisWeek"), value: contactedThisWeek, note: t("salesmanLite.perf.leadsUpdated"), color: contactedThisWeek > 0 ? "#22c55e" : "#ef4444" },
+              { label: t("salesmanLite.perf.noFollowUpSet"), value: leadsWithNoFollowUp, note: t("salesmanLite.perf.noDateScheduled"), color: leadsWithNoFollowUp > 0 ? "#ef4444" : "#22c55e" },
+              { label: t("salesmanLite.perf.overdue"), value: staleCount, note: t("salesmanLite.perf.noContact48"), color: staleCount > 0 ? "#ef4444" : "#22c55e" },
             ].map(({ label, value, note, color }, i, arr) => (
               <div key={label} style={{
                 padding: "16px 20px",
@@ -3083,12 +3342,12 @@ export default function SalesmanLite() {
           </div>
           {activeLeads.length > 0 && contactedThisWeek === 0 && (
             <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 18px", background: "rgba(239,68,68,0.04)" }}>
-              <p style={{ margin: 0, fontSize: 12, color: "#f87171" }}>You've done <strong>no follow-ups this week</strong>. You have {activeLeads.length} leads in pipeline — follow up every 2–3 days to close more deals.</p>
+              <p style={{ margin: 0, fontSize: 12, color: "#f87171" }}>{t("salesmanLite.perf.habitNone", { count: activeLeads.length })}</p>
             </div>
           )}
           {activeLeads.length > 0 && contactedThisWeek > 0 && contactedThisWeek < activeLeads.length && (
             <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 18px", background: "rgba(234,179,8,0.03)" }}>
-              <p style={{ margin: 0, fontSize: 12, color: "#eab308" }}>You contacted {contactedThisWeek} of {activeLeads.length} leads this week. Try to touch every active lead at least once every 3 days.</p>
+              <p style={{ margin: 0, fontSize: 12, color: "#eab308" }}>{t("salesmanLite.perf.habitSome", { done: contactedThisWeek, total: activeLeads.length })}</p>
             </div>
           )}
         </div>
@@ -3097,13 +3356,13 @@ export default function SalesmanLite() {
         {(avgDaysToClose !== null || wonLeads.length > 0) && (
           <div style={CARD}>
             <div style={CARD_HEADER}>
-              <span>Speed &amp; Conversion</span>
+              <span>{t("salesmanLite.perf.speedConversion")}</span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3,1fr)" }}>
               {[
-                { label: "Avg Days to Close", value: avgDaysToClose !== null ? `${avgDaysToClose}d` : "—", note: avgDaysToClose !== null ? (avgDaysToClose <= 14 ? "fast close" : avgDaysToClose <= 30 ? "normal pace" : "consider urgency tactics") : "close more deals to see this", color: avgDaysToClose === null ? "#475569" : avgDaysToClose <= 14 ? "#22c55e" : avgDaysToClose <= 30 ? "#eab308" : "#ef4444" },
-                { label: "Deals Closed Total", value: wonLeads.length, note: "all time", color: wonLeads.length > 0 ? "#22c55e" : "#475569" },
-                { label: "Active Pipeline", value: activeLeads.length, note: `${lostLeads.length} lost all time`, color: "#3b82f6" },
+                { label: t("salesmanLite.perf.avgDaysToClose"), value: avgDaysToClose !== null ? `${avgDaysToClose}d` : "—", note: avgDaysToClose !== null ? (avgDaysToClose <= 14 ? t("salesmanLite.perf.fastClose") : avgDaysToClose <= 30 ? t("salesmanLite.perf.normalPace") : t("salesmanLite.perf.urgencyTactics")) : t("salesmanLite.perf.closeMoreToSee"), color: avgDaysToClose === null ? "#475569" : avgDaysToClose <= 14 ? "#22c55e" : avgDaysToClose <= 30 ? "#eab308" : "#ef4444" },
+                { label: t("salesmanLite.perf.dealsClosedTotal"), value: wonLeads.length, note: t("salesmanLite.perf.allTime"), color: wonLeads.length > 0 ? "#22c55e" : "#475569" },
+                { label: t("salesmanLite.perf.activePipeline"), value: activeLeads.length, note: t("salesmanLite.perf.lostAllTime", { count: lostLeads.length }), color: "#3b82f6" },
               ].map(({ label, value, note, color }, i, arr) => (
                 <div key={label} style={{ padding: "18px 20px", borderRight: !isMobile && i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", borderBottom: isMobile && i < 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
                   <p style={{ margin: "0 0 4px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
@@ -3119,13 +3378,13 @@ export default function SalesmanLite() {
         {sources.length > 0 && (
           <div style={CARD}>
             <div style={CARD_HEADER}>
-              <span>Lead Sources</span>
-              <span>where leads come from</span>
+              <span>{t("salesmanLite.perf.leadSources")}</span>
+              <span>{t("salesmanLite.perf.whereFrom")}</span>
             </div>
             <div style={{ padding: "0" }}>
               {sources.map(([src, { total, won }], i) => {
                 const srcRate = total > 0 ? Math.round((won / total) * 100) : 0;
-                const srcLabels = { enquiry: "XDrive Enquiry", manual: "Manual Add", whatsapp: "WhatsApp", facebook: "Facebook", tiktok: "TikTok", referral: "Referral", other: "Other" };
+                const srcLabels = { enquiry: t("salesmanLite.leads.srcEnquiry"), manual: t("salesmanLite.perf.srcManualAdd"), whatsapp: "WhatsApp", facebook: "Facebook", tiktok: "TikTok", referral: t("salesmanLite.leads.srcReferral"), other: t("salesmanLite.perf.srcOther") };
                 return (
                   <div key={src} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 18px", borderBottom: i < sources.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", background: i % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -3134,12 +3393,12 @@ export default function SalesmanLite() {
                         <div style={{ flex: 1, height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 99, overflow: "hidden", maxWidth: 120 }}>
                           <div style={{ height: "100%", width: `${srcRate}%`, background: srcRate >= 30 ? "#22c55e" : srcRate >= 15 ? "#eab308" : "#3b82f6", borderRadius: 99 }} />
                         </div>
-                        <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{srcRate}% close rate</p>
+                        <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{t("salesmanLite.perf.closeRatePct", { count: srcRate })}</p>
                       </div>
                     </div>
                     <div style={{ textAlign: "right", flexShrink: 0 }}>
                       <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>{total}</p>
-                      <p style={{ margin: 0, fontSize: 10, color: "#22c55e" }}>{won} won</p>
+                      <p style={{ margin: 0, fontSize: 10, color: "#22c55e" }}>{t("salesmanLite.perf.wonCount", { count: won })}</p>
                     </div>
                   </div>
                 );
@@ -3152,8 +3411,8 @@ export default function SalesmanLite() {
         {Object.keys(channelMap).length > 0 && (
           <div style={CARD}>
             <div style={CARD_HEADER}>
-              <span>Traffic Sources</span>
-              <span>which platform your links came from</span>
+              <span>{t("salesmanLite.perf.trafficSources")}</span>
+              <span>{t("salesmanLite.perf.whichPlatform")}</span>
             </div>
             <div style={{ padding: "16px 18px" }}>
               <ChannelBreakdown rows={Object.values(channelMap).flat()} metric="views" title="" />
@@ -3165,11 +3424,11 @@ export default function SalesmanLite() {
         {leadAging.length > 0 && (
           <div style={CARD}>
             <div style={CARD_HEADER}>
-              <span>Lead Aging</span>
-              <span>oldest first</span>
+              <span>{t("salesmanLite.perf.leadAging")}</span>
+              <span>{t("salesmanLite.perf.oldestFirst")}</span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 70px 60px", padding: "8px 18px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-              {["Lead", "Stage", "In Pipeline", "Action"].map((h, i) => (
+              {[t("salesmanLite.perf.colLead"), t("salesmanLite.perf.colStage"), t("salesmanLite.perf.colInPipeline"), t("salesmanLite.perf.colAction")].map((h, i) => (
                 <p key={h} style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: i > 0 ? "center" : "left" }}>{h}</p>
               ))}
             </div>
@@ -3183,11 +3442,11 @@ export default function SalesmanLite() {
                     {l.car && <p style={{ margin: 0, fontSize: 10, color: "#475569", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.car.brand} {l.car.model}</p>}
                   </div>
                   <div style={{ textAlign: "center" }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 5, background: stageC.bg, border: `1px solid ${stageC.border}`, color: stageC.tx, textTransform: "capitalize" }}>{(l.stage || "new").replace(/_/g, " ")}</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 5, background: stageC.bg, border: `1px solid ${stageC.border}`, color: stageC.tx, textTransform: "capitalize" }}>{stageLabel(l.stage || "new")}</span>
                   </div>
                   <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: ageColor, textAlign: "center" }}>{l.days}d</p>
                   <div style={{ textAlign: "center" }}>
-                    <span style={{ fontSize: 10, color: "#475569" }}>→ Leads</span>
+                    <span style={{ fontSize: 10, color: "#475569" }}>→ {t("salesmanLite.tabs.leads")}</span>
                   </div>
                 </div>
               );
@@ -3199,9 +3458,9 @@ export default function SalesmanLite() {
         {allLeads.length === 0 && (
           <div style={{ textAlign: "center", padding: "48px 24px" }}>
             <BarChart2 size={32} strokeWidth={1.5} style={{ color: "#475569", margin: "0 auto 8px", display: "block" }} />
-            <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>No data yet</p>
-            <p style={{ margin: "0 0 16px", fontSize: 12, color: "#475569" }}>Add your first listing and start collecting leads to see your performance stats.</p>
-            <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, padding: "8px 18px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>Go to Listings →</button>
+            <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanLite.perf.noDataYet")}</p>
+            <p style={{ margin: "0 0 16px", fontSize: 12, color: "#475569" }}>{t("salesmanLite.perf.noDataSub")}</p>
+            <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, padding: "8px 18px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>{t("salesmanLite.perf.goToListings")}</button>
           </div>
         )}
 
@@ -3285,7 +3544,7 @@ export default function SalesmanLite() {
               color: "#f1f5f9",
             }}
           >
-            My Listings ({myListings.length})
+            {t("salesmanLite.listings.title")} ({myListings.length})
           </p>
           <button
             onClick={() => (showAddForm ? setShowAddForm(false) : openAddListing())}
@@ -3303,7 +3562,7 @@ export default function SalesmanLite() {
               cursor: "pointer",
             }}
           >
-            <Plus size={13} /> {showAddForm ? "Cancel" : "Add Listing"}
+            <Plus size={13} /> {showAddForm ? t("salesmanLite.listings.cancel") : t("salesmanLite.listings.addListing")}
           </button>
         </div>
 
@@ -3315,10 +3574,10 @@ export default function SalesmanLite() {
               Your listings are <strong style={{ color: "#10b981" }}>live on XDrive</strong> — buyers can find you at xdrive.my/s/{profile.slug}
             </span>
             <button
-              onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success("Link copied!"); }}
+              onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success(t("salesmanLite.toast.linkCopied")); }}
               style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: "#10b981", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", fontFamily: "inherit" }}
             >
-              Copy Link
+              {t("salesmanLite.listings.copyLink")}
             </button>
           </div>
         )}
@@ -3337,12 +3596,12 @@ export default function SalesmanLite() {
         })()}
 
         {showAddForm && (
-          <CarFormModal title="Add Listing" onClose={() => setShowAddForm(false)}>
+          <CarFormModal title={t("salesmanLite.listings.addListing")} onClose={() => setShowAddForm(false)}>
             <CarForm
               onCreate={(car) => {
                 setMyListings((p) => [car, ...p]);
                 setShowAddForm(false);
-                toast.success("Listing published!");
+                toast.success(t("salesmanLite.toast.listingPublished"));
                 if (profile?.telegram_chat_id) {
                   const carName = [car.year, car.brand, car.model].filter(Boolean).join(" ");
                   supabase.auth.getSession().then(({ data: { session } }) => {
@@ -3375,11 +3634,11 @@ export default function SalesmanLite() {
                 }}
               >
                 {[
-                  { key: "pending_approval", label: "Pending",   count: myListings.filter((c) => c.status === "pending_approval").length },
-                  { key: "rejected",         label: "Rejected",  count: myListings.filter((c) => c.status === "rejected").length },
-                  { key: "available",        label: "Available", count: myListings.filter((c) => (c.status || "available") === "available").length },
-                  { key: "reserved",         label: "Reserved",  count: myListings.filter((c) => c.status === "reserved").length },
-                  { key: "sold",             label: "Sold",      count: myListings.filter((c) => c.status === "sold").length },
+                  { key: "pending_approval", label: t("salesmanLite.listings.status.pending"),   count: myListings.filter((c) => c.status === "pending_approval").length },
+                  { key: "rejected",         label: t("salesmanLite.listings.status.rejected"),  count: myListings.filter((c) => c.status === "rejected").length },
+                  { key: "available",        label: t("salesmanLite.listings.status.available"), count: myListings.filter((c) => (c.status || "available") === "available").length },
+                  { key: "reserved",         label: t("salesmanLite.listings.status.reserved"),  count: myListings.filter((c) => c.status === "reserved").length },
+                  { key: "sold",             label: t("salesmanLite.listings.status.sold"),      count: myListings.filter((c) => c.status === "sold").length },
                 ].map(({ key, label, count }) => (
                   <button
                     key={key}
@@ -3432,12 +3691,12 @@ export default function SalesmanLite() {
                 padding: "10px 0 14px",
               }}
             >
-              <span style={{ fontSize: 11, color: "#4b5563", marginRight: 2 }}>Sort:</span>
-              <button style={SEL_STYLE(sortBy === "newest")} onClick={() => setSortBy("newest")}>Newest</button>
-              <button style={SEL_STYLE(sortBy === "price_desc")} onClick={() => setSortBy("price_desc")}>Price ↓</button>
-              <button style={SEL_STYLE(sortBy === "price_asc")} onClick={() => setSortBy("price_asc")}>Price ↑</button>
+              <span style={{ fontSize: 11, color: "#4b5563", marginRight: 2 }}>{t("salesmanLite.listings.sort")}</span>
+              <button style={SEL_STYLE(sortBy === "newest")} onClick={() => setSortBy("newest")}>{t("salesmanLite.listings.sortNewest")}</button>
+              <button style={SEL_STYLE(sortBy === "price_desc")} onClick={() => setSortBy("price_desc")}>{t("salesmanLite.listings.sortPriceDesc")}</button>
+              <button style={SEL_STYLE(sortBy === "price_asc")} onClick={() => setSortBy("price_asc")}>{t("salesmanLite.listings.sortPriceAsc")}</button>
               {hotCount > 0 && (
-                <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 600, marginLeft: "auto" }}>{hotCount} hot</span>
+                <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 600, marginLeft: "auto" }}>{hotCount} {t("salesmanLite.heat.hot")}</span>
               )}
               {staleCount > 0 && (
                 <span style={{ fontSize: 11, color: "#6b7280", fontWeight: 500 }}>{staleCount} stale</span>
@@ -3627,7 +3886,7 @@ export default function SalesmanLite() {
                         fontSize: 10, fontWeight: 600,
                         color: isRejected ? "#f87171" : isSold ? "#9ca3af" : "#fbbf24",
                       }}>
-                        {isSold ? "Sold" : isReserved ? "Reserved" : isPending ? "Pending approval" : "Rejected"}
+                        {isSold ? t("salesmanLite.listings.status.sold") : isReserved ? t("salesmanLite.listings.status.reserved") : isPending ? t("salesmanLite.listings.status.pendingApproval") : t("salesmanLite.listings.status.rejected")}
                       </span>
                       {isSold && car.sold_at && (
                         <span style={{ fontSize: 10, color: "#4b5563" }}>
@@ -4887,7 +5146,7 @@ export default function SalesmanLite() {
     // (e.g. real 'whatsapp'/'walk_in'/'referral'/'drevo_enquiry' rows) aren't
     // silently dropped from the total. Mirrors the dynamic bucketing already
     // used for the Prestasi lead-source card below.
-    const SRC_LABELS = { whatsapp: "WhatsApp", enquiry: "XDrive Enquiry", drevo_enquiry: "XDrive Enquiry", walk_in: "Walk-In", referral: "Referral", manual: "Manual" };
+    const SRC_LABELS = { whatsapp: t("salesmanLite.leads.srcWhatsapp"), enquiry: t("salesmanLite.leads.srcEnquiry"), drevo_enquiry: t("salesmanLite.leads.srcEnquiry"), walk_in: t("salesmanLite.leads.srcWalkIn"), referral: t("salesmanLite.leads.srcReferral"), manual: t("salesmanLite.leads.srcManual") };
     const SRC_COLORS = { whatsapp: "#4ade80", enquiry: "#f87171", drevo_enquiry: "#f87171", walk_in: "#a78bfa", referral: "#fbbf24", manual: "#6b7280" };
     const FALLBACK_COLORS = ["#60a5fa", "#f472b6", "#fb923c", "#34d399"];
     const srcMap = {};
@@ -4960,7 +5219,7 @@ export default function SalesmanLite() {
                   </p>
                   {!heat.terminal && (
                     <span title="Lead urgency — based on pipeline stage and how recently this lead moved" style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", flexShrink: 0, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                      {heat.label}
+                      {t("salesmanLite.heat." + heat.label, { defaultValue: heat.label })}
                     </span>
                   )}
                 </div>
@@ -4999,7 +5258,7 @@ export default function SalesmanLite() {
                 ))}
               </div>
               <p style={{ margin: 0, fontSize: 11, color: "#6b7280" }}>
-                Stage: <span style={{ color: "#e5e7eb", fontWeight: 600, textTransform: "capitalize" }}>{(normalizedStage || "new").replace(/_/g, " ")}</span>
+                {t("salesmanLite.leads.stage")}: <span style={{ color: "#e5e7eb", fontWeight: 600, textTransform: "capitalize" }}>{stageLabel(normalizedStage || "new")}</span>
                 {currentProgressIdx >= 0 && <span style={{ color: "#6b7280" }}> · {currentProgressIdx + 1}/{progressStages.length}</span>}
               </p>
             </div>
@@ -5007,7 +5266,7 @@ export default function SalesmanLite() {
             {/* Follow-up warning */}
             {followUpOverdue && (
               <div style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.22)", borderRadius: 7, color: "#fb923c", fontSize: 11, padding: "6px 10px", marginBottom: 12 }}>
-                Follow-up: {timeAgo(lead.follow_up_at)}
+                {t("salesmanLite.leads.followUp")}: {timeAgo(lead.follow_up_at)}
               </div>
             )}
           </div>
@@ -5019,7 +5278,7 @@ export default function SalesmanLite() {
                 onClick={() => advanceLeadStage(lead, nextStage)}
                 style={{ flex: 1, fontSize: 11, fontWeight: 600, padding: "6px 12px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", textAlign: "center", textTransform: "capitalize" }}
               >
-                → {(nextStage || "won").replace(/_/g, " ")}
+                → {stageLabel(nextStage || "won")}
               </button>
             )}
             {lead.phone && (
@@ -5057,7 +5316,7 @@ export default function SalesmanLite() {
                 onClick={() => setLinkCarLeadId(lead.id)}
                 style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
               >
-                <Car size={12} /> Link Car
+                <Car size={12} /> {t("salesmanLite.leads.linkCar")}
               </button>
             ) : null}
             <button
@@ -5099,7 +5358,7 @@ export default function SalesmanLite() {
               color: "#f1f5f9",
             }}
           >
-            Lead Pipeline ({leads.filter((l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won").length})
+            {t("salesmanLite.leads.pipeline")} ({leads.filter((l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won").length})
           </p>
           <button
             onClick={() => setShowAddLead(true)}
@@ -5117,7 +5376,7 @@ export default function SalesmanLite() {
               cursor: "pointer",
             }}
           >
-            <Plus size={13} /> Add Lead
+            <Plus size={13} /> {t("salesmanLite.header.addLead")}
           </button>
         </div>
 
@@ -5146,7 +5405,7 @@ export default function SalesmanLite() {
           <input
             value={leadSearch}
             onChange={(e) => setLeadSearch(e.target.value)}
-            placeholder="Search by name or phone…"
+            placeholder={t("salesmanLite.leads.searchPlaceholder")}
             style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "8px 10px 8px 30px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
           />
           {leadSearch && (
@@ -5194,7 +5453,7 @@ export default function SalesmanLite() {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {stage.replace(/_/g, " ")}
+                    {stageLabel(stage)}
                     <span style={{
                       fontSize: 10,
                       fontWeight: 700,
@@ -5370,7 +5629,7 @@ export default function SalesmanLite() {
                             fontWeight: 600,
                           }}
                         >
-                          Delete?
+                          {t("salesmanLite.leads.deleteQ")}
                         </span>
                         <button
                           onClick={() => handleDeleteLead(lead.id)}
@@ -5385,7 +5644,7 @@ export default function SalesmanLite() {
                             fontWeight: 600,
                           }}
                         >
-                          Yes
+                          {t("salesmanLite.leads.yes")}
                         </button>
                         <button
                           onClick={() => setDeleteConfirmId(null)}
@@ -5399,7 +5658,7 @@ export default function SalesmanLite() {
                             cursor: "pointer",
                           }}
                         >
-                          No
+                          {t("salesmanLite.leads.no")}
                         </button>
                       </div>
                     )}
@@ -5449,14 +5708,14 @@ export default function SalesmanLite() {
                     <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(96,165,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 700, color: "#93c5fd" }}>{plInitials}</div>
                     <div style={{ minWidth: 0 }}>
                       <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.buyer_name || "—"}</p>
-                      <p style={{ margin: "1px 0 0", fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{plCarName || pl.phone || "No car linked"}</p>
+                      <p style={{ margin: "1px 0 0", fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{plCarName || pl.phone || t("salesmanLite.drawer.noCarLinkedShort")}</p>
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                     {!plHeat.terminal && (
                       <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 99, padding: "2px 8px", background: plHeatStyle.bg, color: plHeatStyle.color }}>{plHeat.label}</span>
                     )}
-                    <span style={{ fontSize: 10, fontWeight: 600, borderRadius: 6, padding: "2px 8px", background: "rgba(255,255,255,0.05)", color: "#9ca3af", textTransform: "capitalize" }}>{pl.stage?.replace(/_/g," ")}</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, borderRadius: 6, padding: "2px 8px", background: "rgba(255,255,255,0.05)", color: "#9ca3af", textTransform: "capitalize" }}>{stageLabel(pl.stage)}</span>
                     <button onClick={close} style={{ background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", color: "#9ca3af", borderRadius: 8, padding: 6, display: "flex" }}>
                       <X size={16} />
                     </button>
@@ -5492,7 +5751,7 @@ export default function SalesmanLite() {
                       </p>
                       {(plCar.vin_number || plCar.plate_number) && (
                         <p style={{ margin: "3px 0 0", fontSize: 10, color: "#6b7280", fontFamily: "monospace" }}>
-                          {[plCar.plate_number && `Plate ${plCar.plate_number}`, plCar.vin_number && `VIN ${plCar.vin_number}`].filter(Boolean).join("  ·  ")}
+                          {[plCar.plate_number && `${t("salesmanLite.drawer.plateLabel")} ${plCar.plate_number}`, plCar.vin_number && `${t("salesmanLite.drawer.vinLabel")} ${plCar.vin_number}`].filter(Boolean).join("  ·  ")}
                         </p>
                       )}
                     </div>
@@ -5500,7 +5759,7 @@ export default function SalesmanLite() {
                 ) : (
                   <div style={{ padding: "10px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)", display: "flex", alignItems: "center", gap: 8 }}>
                     <Car size={14} style={{ color: "#4b5563" }} />
-                    <span style={{ fontSize: 12, color: "#6b7280" }}>No car linked to this lead</span>
+                    <span style={{ fontSize: 12, color: "#6b7280" }}>{t("salesmanLite.drawer.noCarLinkedRow")}</span>
                   </div>
                 )}
 
@@ -5509,13 +5768,13 @@ export default function SalesmanLite() {
 
                   {/* Notes */}
                   <div>
-                    <p style={{ margin: "0 0 6px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>Notes</p>
+                    <p style={{ margin: "0 0 6px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>{t("salesmanLite.drawer.notes")}</p>
                     {editingNoteId === pl.id ? (
                       <div>
                         <textarea autoFocus value={editNoteVal} onChange={e => setEditNoteVal(e.target.value)} rows={3} style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "8px 11px", resize: "none", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
                         <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                          <button onClick={() => saveLeadNote(pl.id)} disabled={notesSavingId === pl.id} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", fontWeight: 600, opacity: notesSavingId === pl.id ? 0.5 : 1 }}>{notesSavingId === pl.id ? "…" : "Save"}</button>
-                          <button onClick={() => setEditingNoteId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
+                          <button onClick={() => saveLeadNote(pl.id)} disabled={notesSavingId === pl.id} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", fontWeight: 600, opacity: notesSavingId === pl.id ? 0.5 : 1 }}>{notesSavingId === pl.id ? "…" : t("salesmanLite.drawer.save")}</button>
+                          <button onClick={() => setEditingNoteId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>{t("salesmanLite.drawer.cancel")}</button>
                         </div>
                       </div>
                     ) : pl.notes ? (
@@ -5524,7 +5783,7 @@ export default function SalesmanLite() {
                       </p>
                     ) : (
                       <button onClick={() => { setEditingNoteId(pl.id); setEditNoteVal(""); }} style={{ fontSize: 13, padding: "8px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 7, fontFamily: "inherit", width: "100%" }}>
-                        <Pencil size={12} /> Add note…
+                        <Pencil size={12} /> {t("salesmanLite.drawer.addNote")}
                       </button>
                     )}
                   </div>
@@ -5532,13 +5791,13 @@ export default function SalesmanLite() {
                   {/* Tool row 1 */}
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     <button onClick={() => { const price = pl.car_listings?.selling_price || ""; setLoanPrice(String(price)); setLoanCalcLead(pl); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
-                      <DollarSign size={12} /> Loan calc
+                      <DollarSign size={12} /> {t("salesmanLite.drawer.loanCalc")}
                     </button>
                     <button onClick={() => { setLogCallLeadId(pl.id); setCallOutcome("answered"); setCallNote(""); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
-                      <PhoneCall size={12} /> Log call
+                      <PhoneCall size={12} /> {t("salesmanLite.drawer.logCall")}
                     </button>
                     <button onClick={() => { setFollowUpModalLead(pl); setFollowUpDate(pl.follow_up_at ? pl.follow_up_at.slice(0,10) : ""); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: pl.follow_up_at ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.04)", border: pl.follow_up_at ? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(255,255,255,0.08)", color: pl.follow_up_at ? "#fbbf24" : "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
-                      <Clock size={12} /> Set reminder
+                      <Clock size={12} /> {t("salesmanLite.drawer.setReminder")}
                     </button>
                   </div>
 
@@ -5546,30 +5805,30 @@ export default function SalesmanLite() {
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {hasScripts && (
                       <button onClick={() => { setExpandedActivityLeadId(null); setPlaybookLeadId(playbookLeadId === pl.id ? null : pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: playbookLeadId === pl.id ? "rgba(168,85,247,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${playbookLeadId === pl.id ? "rgba(168,85,247,0.3)" : "rgba(255,255,255,0.08)"}`, color: playbookLeadId === pl.id ? "#c084fc" : "#9ca3af" }}>
-                        <BookOpen size={12} /> Scripts
+                        <BookOpen size={12} /> {t("salesmanLite.drawer.scripts")}
                       </button>
                     )}
                     <button onClick={() => { setPlaybookLeadId(null); if (expandedActivityLeadId === pl.id) setExpandedActivityLeadId(null); else fetchLeadActivities(pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: expandedActivityLeadId === pl.id ? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${expandedActivityLeadId === pl.id ? "rgba(96,165,250,0.3)" : "rgba(255,255,255,0.08)"}`, color: expandedActivityLeadId === pl.id ? "#93c5fd" : "#9ca3af" }}>
-                      <History size={12} /> History
+                      <History size={12} /> {t("salesmanLite.drawer.history")}
                     </button>
                     {pl.stage === "deposit_taken" && (
                       <button onClick={() => { setDepositModal(pl); setDepositAmount(""); setDepositCopied(false); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", fontFamily: "inherit" }}>
-                        Receipt
+                        {t("salesmanLite.drawer.receipt")}
                       </button>
                     )}
                     <button onClick={() => setLinkCarLeadId(pl.id)} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
-                      <Car size={12} /> {pl.car_listing_id ? "Change Car" : "Link Car"}
+                      <Car size={12} /> {pl.car_listing_id ? t("salesmanLite.drawer.changeCar") : t("salesmanLite.drawer.linkCar")}
                     </button>
                   </div>
 
                   {/* Activity timeline */}
                   {expandedActivityLeadId === pl.id && (
                     <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "12px 14px" }}>
-                      <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>Activity History</p>
+                      <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanLite.drawer.activityHistory")}</p>
                       {activitiesLoadingId === pl.id ? (
-                        <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>Loading…</p>
+                        <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>{t("salesmanLite.drawer.loading")}</p>
                       ) : (leadActivities[pl.id] || []).length === 0 ? (
-                        <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>No activity yet.</p>
+                        <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>{t("salesmanLite.drawer.noActivity")}</p>
                       ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           {(leadActivities[pl.id] || []).map((act, i) => {
@@ -5578,7 +5837,7 @@ export default function SalesmanLite() {
                               <div key={act.id || i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                                 <ActIcon size={13} style={{ flexShrink: 0, marginTop: 2, color: "#6b7280" }} />
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                  <p style={{ margin: 0, fontSize: 13, color: "#9ca3af" }}>{act.activity_type === "stage_changed" ? `${act.from_stage || "?"} → ${act.to_stage || "?"}` : act.note || act.activity_type}</p>
+                                  <p style={{ margin: 0, fontSize: 13, color: "#9ca3af" }}>{act.activity_type === "stage_changed" ? `${act.from_stage ? stageLabel(act.from_stage) : "?"} → ${act.to_stage ? stageLabel(act.to_stage) : "?"}` : act.note || act.activity_type}</p>
                                   <p style={{ margin: 0, fontSize: 11, color: "#374151" }}>{timeAgo(act.created_at)}</p>
                                 </div>
                               </div>
@@ -5592,10 +5851,10 @@ export default function SalesmanLite() {
                   {/* Objection Scripts */}
                   {playbookLeadId === pl.id && ["negotiating","viewing_booked","test_drive","contacted"].includes(pbStage) && (
                     <div style={{ background: "rgba(168,85,247,0.05)", border: "1px solid rgba(168,85,247,0.15)", borderRadius: 8, padding: "12px 14px" }}>
-                      <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "#c084fc", textTransform: "uppercase", letterSpacing: "0.08em" }}>Objection Scripts</p>
+                      <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "#c084fc", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanLite.drawer.objectionScripts")}</p>
                       {Object.entries(scripts).map(([key, s]) => (
                         <div key={key} style={{ marginBottom: 10 }}>
-                          <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 600, color: s.color }}>{s.label}</p>
+                          <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 600, color: s.color }}>{t("salesmanLite.drawer.scriptLabels." + key)}</p>
                           {s.lines.map((line, lineIdx) => {
                             const lineKey = `${pl.id}-${key}-${lineIdx}`;
                             const isCopied = copiedScriptLine === lineKey;
@@ -5619,29 +5878,29 @@ export default function SalesmanLite() {
                   {/* Lost / Delete zone */}
                   {plIsPromptingLost ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600, marginRight: 2 }}>Why lost?</span>
+                      <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600, marginRight: 2 }}>{t("salesmanLite.drawer.whyLost")}</span>
                       {LOST_REASONS.map(r => (
                         <button key={r} onClick={() => handleLostReason(pl.id, r)} disabled={lostSavingId === pl.id} style={{ fontSize: 11, padding: "6px 10px", borderRadius: 99, background: "rgba(148,163,184,0.08)", border: "1px solid rgba(148,163,184,0.2)", color: "#cbd5e1", cursor: "pointer", opacity: lostSavingId === pl.id ? 0.5 : 1, fontFamily: "inherit" }}>
-                          {lostSavingId === pl.id ? "…" : r}
+                          {lostSavingId === pl.id ? "…" : t("salesmanLite.drawer.lostReasons." + r.toLowerCase())}
                         </button>
                       ))}
                       <button onClick={() => setLostPromptId(null)} style={{ fontSize: 11, padding: "6px 10px", background: "transparent", border: "none", color: "#4b5563", cursor: "pointer" }}>✕</button>
                     </div>
                   ) : plIsConfirmingDelete ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 13, color: "#f87171", fontWeight: 600 }}>Delete this lead?</span>
-                      <button onClick={() => handleDeleteLead(pl.id)} disabled={deletingLeadId === pl.id} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", fontWeight: 600, opacity: deletingLeadId === pl.id ? 0.5 : 1, fontFamily: "inherit" }}>{deletingLeadId === pl.id ? "…" : "Yes, delete"}</button>
-                      <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>No</button>
+                      <span style={{ fontSize: 13, color: "#f87171", fontWeight: 600 }}>{t("salesmanLite.drawer.deleteLeadQ")}</span>
+                      <button onClick={() => handleDeleteLead(pl.id)} disabled={deletingLeadId === pl.id} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", fontWeight: 600, opacity: deletingLeadId === pl.id ? 0.5 : 1, fontFamily: "inherit" }}>{deletingLeadId === pl.id ? "…" : t("salesmanLite.drawer.yesDelete")}</button>
+                      <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanLite.drawer.no")}</button>
                     </div>
                   ) : (
                     <div style={{ display: "flex", gap: 8 }}>
                       {pl.stage !== "won" && pl.stage !== "closed_won" && (
                         <button onClick={() => { setDeleteConfirmId(null); setLostPromptId(pl.id); }} style={{ fontSize: 13, padding: "8px 14px", borderRadius: 8, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
-                          Mark as lost
+                          {t("salesmanLite.drawer.markLost")}
                         </button>
                       )}
                       <button onClick={() => { setLostPromptId(null); setDeleteConfirmId(pl.id); }} style={{ fontSize: 13, padding: "8px 14px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#4b5563", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
-                        <Trash2 size={13} /> Delete
+                        <Trash2 size={13} /> {t("salesmanLite.drawer.delete")}
                       </button>
                     </div>
                   )}
@@ -5659,46 +5918,47 @@ export default function SalesmanLite() {
   // ── RENDER ENQUIRIES ─────────────────────────────────────────────────────
 
   const renderEnquiries = () => {
-    // History log: every lead this salesman has, not just the ones that
-    // originated from a tracked WhatsApp button click. Enquiries rows are
-    // matched to their live lead by phone so the badge reflects the lead's
-    // CURRENT stage — previously it froze at "Converted → Lead" forever,
-    // even after the lead moved to negotiating/won/lost.
+    // Lead History log — LEAD-CENTRIC: every lead is its own entry so a new lead
+    // never disappears. Previously this listed enquiries first and only added
+    // leads whose phone wasn't already in the enquiry set, so multiple leads
+    // sharing a phone (or any lead whose phone matched an old enquiry) collapsed
+    // behind a single enquiry row and looked "missing". Now every lead shows,
+    // and only PURE enquiries (no lead yet on that phone) are appended so a
+    // brand-new, not-yet-converted enquiry still surfaces with its quick actions.
     const leadByPhone = new Map();
     leads.forEach((l) => {
       const p = normalizePhone(l.phone);
       if (p && !leadByPhone.has(p)) leadByPhone.set(p, l);
     });
-    const enqPhones = new Set(enquiries.map((e) => normalizePhone(e.buyer_phone)).filter(Boolean));
-    const leadOnlyItems = leads
-      .filter((l) => {
-        const p = normalizePhone(l.phone);
-        return !p || !enqPhones.has(p);
-      })
-      .map((l) => ({
-        id: `lead_${l.id}`,
-        buyer_name: l.buyer_name,
-        buyer_phone: l.phone,
-        buyer_message: l.notes,
-        status: "has_lead",
-        created_at: l.created_at,
-        car_listings: l.car_listings,
-        _lead: l,
-      }));
-    const historyItems = [...enquiries, ...leadOnlyItems];
+    const leadPhones = new Set(leads.map((l) => normalizePhone(l.phone)).filter(Boolean));
+    const leadItems = leads.map((l) => ({
+      id: `lead_${l.id}`,
+      buyer_name: l.buyer_name,
+      buyer_phone: l.phone,
+      buyer_message: l.notes,
+      status: "has_lead",
+      created_at: l.created_at,
+      car_listings: l.car_listings,
+      _lead: l,
+    }));
+    const pureEnquiries = enquiries.filter((e) => {
+      const p = normalizePhone(e.buyer_phone);
+      return !p || !leadPhones.has(p);
+    });
+    const historyItems = [...pureEnquiries, ...leadItems];
 
     return (
     <div>
       <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
-        Enquiries ({historyItems.length})
+        {t("salesmanLite.inbox.leadHistory")} ({historyItems.length})
       </p>
       {historyItems.length === 0 && (
         <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
           <MessageSquare size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
-          <p style={{ margin: 0, fontSize: 13 }}>No enquiries yet.</p>
-          <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>Share your listing link to start getting enquiries.</p>
+          <p style={{ margin: 0, fontSize: 13 }}>{t("salesmanLite.inbox.noLeadHistory")}</p>
+          <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>{t("salesmanLite.inbox.noLeadHistorySub")}</p>
           <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer" }}>
-            Go to Listings →
+            {t("salesmanLite.inbox.goToListings")}
           </button>
         </div>
       )}
@@ -5730,7 +5990,7 @@ export default function SalesmanLite() {
                 </p>
                 {isNew ? (
                   <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd" }}>
-                    New
+                    {t("salesmanLite.inbox.new")}
                   </span>
                 ) : liveStage ? (
                   <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: stageC.bg, border: `1px solid ${stageC.border}`, color: stageC.tx, textTransform: "capitalize" }}>
@@ -5738,7 +5998,7 @@ export default function SalesmanLite() {
                   </span>
                 ) : (
                   <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", textTransform: "capitalize" }}>
-                    Converted → Lead
+                    {t("salesmanLite.inbox.convertedToLead")}
                   </span>
                 )}
               </div>
@@ -5772,7 +6032,7 @@ export default function SalesmanLite() {
               )}
               {/* Timestamp */}
               <p style={{ margin: isNew ? "0 0 8px" : 0, fontSize: 11, color: "#4b5563" }}>
-                {timeAgo(enq.created_at)}
+                {preciseAgo(enq.created_at, nowTick, timeLabels)}
               </p>
               {/* Action buttons — unreplied only, max 2 */}
               {isNew && (
@@ -5791,7 +6051,7 @@ export default function SalesmanLite() {
                       }}
                       style={{ fontSize: 10, padding: "6px 11px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}
                     >
-                      WA Reply
+                      {t("salesmanLite.inbox.waReply")}
                     </button>
                   )}
                   {enq.buyer_phone && (
@@ -5799,7 +6059,7 @@ export default function SalesmanLite() {
                       onClick={() => setOpenTemplateId(openTemplateId === enq.id ? null : enq.id)}
                       style={{ fontSize: 10, padding: "6px 11px", borderRadius: 6, background: openTemplateId === enq.id ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.05)", border: `1px solid ${openTemplateId === enq.id ? "rgba(220,38,38,0.3)" : "rgba(255,255,255,0.08)"}`, color: openTemplateId === enq.id ? "#f87171" : "#6b7280", cursor: "pointer" }}
                     >
-                      Templates ▾
+                      {t("salesmanLite.inbox.templates")} ▾
                     </button>
                   )}
                 </div>
@@ -5808,10 +6068,10 @@ export default function SalesmanLite() {
               {isNew && openTemplateId === enq.id && (
                 <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
                   {[
-                    { key: "chat", label: "Let's Chat", color: "#4ade80" },
-                    { key: "test_drive", label: "Book Test Drive", color: "#60a5fa" },
-                    { key: "budget", label: "What's Budget?", color: "#fbbf24" },
-                    { key: "deposit", label: "Deposit to Hold", color: "#f87171" },
+                    { key: "chat", label: t("salesmanLite.inbox.templateChat"), color: "#4ade80" },
+                    { key: "test_drive", label: t("salesmanLite.inbox.templateTestDrive"), color: "#60a5fa" },
+                    { key: "budget", label: t("salesmanLite.inbox.templateBudget"), color: "#fbbf24" },
+                    { key: "deposit", label: t("salesmanLite.inbox.templateDeposit"), color: "#f87171" },
                   ].map(({ key, label, color }) => {
                     const toastKey = enq.id + "_" + key;
                     return (
@@ -5821,7 +6081,7 @@ export default function SalesmanLite() {
                         style={{ textAlign: "left", fontSize: 11, padding: "7px 10px", borderRadius: 7, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: templateToast === toastKey ? color : "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
                       >
                         <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }} />
-                        {templateToast === toastKey ? "✓ Sent!" : label}
+                        {templateToast === toastKey ? `✓ ${t("salesmanLite.inbox.sent")}` : label}
                       </button>
                     );
                   })}
@@ -5856,7 +6116,7 @@ export default function SalesmanLite() {
 
     const setAptStatus = async (apt, status) => {
       const { error } = await supabase.from("appointments").update({ status }).eq("id", apt.id);
-      if (error) { toast.error("Failed to update booking"); return; }
+      if (error) { toast.error(t("salesmanLite.toast.bookingUpdateFailed")); return; }
       setAppointments((p) => p.map((a) => a.id === apt.id ? { ...a, status } : a));
     };
 
@@ -5865,6 +6125,25 @@ export default function SalesmanLite() {
       const dateStr = aptDate.toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" });
       const timeStr = aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" });
       return `Hi ${apt.buyer_name || ""}! Just a reminder for your appointment on ${dateStr}${timeStr ? ` at ${timeStr}` : ""}. See you then! 😊`;
+    };
+
+    // Prefilled (editable) confirmation message for the Confirm Booking modal.
+    const buildConfirmMessage = (apt) => {
+      const car = apt.car_listings;
+      const carName = car ? [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ") : "the car";
+      const aptDate = apt.appointment_date ? new Date(apt.appointment_date) : null;
+      const dateStr = aptDate ? aptDate.toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" }) : "";
+      const timeStr = aptDate ? aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "";
+      const when = dateStr ? ` on ${dateStr}${timeStr ? ` at ${timeStr}` : ""}` : "";
+      return `Hi ${apt.buyer_name || ""}! Your viewing for the ${carName} is confirmed${when}. See you then! Let me know if anything changes. 😊`;
+    };
+
+    const openConfirmModal = (apt) => {
+      setConfirmBookingMsg(buildConfirmMessage(apt));
+      setConfirmBookingApt(apt);
+      setReschedulingAptId(null);
+      setCancelConfirmId(null);
+      setReminderPickerAptId(null);
     };
 
     const fmtAptDate = (iso) => {
@@ -5915,11 +6194,11 @@ export default function SalesmanLite() {
       setReminderSaving(true);
       const { error } = await supabase.from("appointments").update({ remind_at: remindAt.toISOString(), remind_sent: false }).eq("id", apt.id);
       setReminderSaving(false);
-      if (error) { toast.error("Failed to set reminder"); return; }
+      if (error) { toast.error(t("salesmanLite.toast.reminderSaveFailed")); return; }
       setAppointments((p) => p.map((a) => a.id === apt.id ? { ...a, remind_at: remindAt.toISOString(), remind_sent: false } : a));
       setReminderPickerAptId(null);
       setSelectedRemindAt(null);
-      toast.success("Reminder set — Telegram fires " + remindAt.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }));
+      toast.success(t("salesmanLite.toast.telegramReminderSet", { time: remindAt.toLocaleTimeString(i18n.language === "ms" ? "ms-MY" : "en-MY", { hour: "2-digit", minute: "2-digit" }) }));
     };
 
     const clearReminder = async (apt) => {
@@ -5935,50 +6214,100 @@ export default function SalesmanLite() {
       const isReminderPicking = reminderPickerAptId === apt.id;
       const isCancelConfirm = cancelConfirmId === apt.id;
       const notCancelled = apt.status !== "cancelled" && apt.status !== "completed";
+      const isRescheduled = apt.status === "rescheduled";
+
+      const carImg = Array.isArray(car?.images) ? car.images[0] : null;
+      const carTitle = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : "No car linked";
+      const carVariant = car?.variant || "";
+      const carVin = car?.vin_number || car?.plate_number || "";
+      const carPrice = car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
+      const isFuture = apt.appointment_date && new Date(apt.appointment_date) > new Date(nowTick);
+
+      // ── Car panel — image + full clarity (price, brand/model/variant/year, VIN)
+      const carPanel = (
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", minWidth: 0 }}>
+          {carImg ? (
+            <img src={carImg} alt="" style={{ width: 68, height: 52, objectFit: "cover", borderRadius: 8, flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)" }} />
+          ) : (
+            <div style={{ width: 68, height: 52, borderRadius: 8, flexShrink: 0, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Car size={18} color="#374151" />
+            </div>
+          )}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{carTitle}</p>
+            {carVariant && <p style={{ margin: "0 0 3px", fontSize: 11, color: "#93c5fd", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{carVariant}</p>}
+            {carPrice && <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 700, color: "#4ade80" }}>{carPrice}</p>}
+            {carVin && <p style={{ margin: 0, fontSize: 10, color: "#6b7280", fontFamily: "ui-monospace, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{car?.vin_number ? "VIN " : "Plate "}{carVin}</p>}
+          </div>
+        </div>
+      );
+
+      // ── Lead panel — buyer name, phone, message
+      const leadPanel = (
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{apt.buyer_name || "Unknown Buyer"}</p>
+            {aptIsNew(apt.created_at) && (
+              <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.35)", color: "#f87171", flexShrink: 0 }}>NEW</span>
+            )}
+          </div>
+          {apt.buyer_phone && <p style={{ margin: "0 0 3px", fontSize: 12, color: "#cbd5e1", display: "inline-flex", alignItems: "center", gap: 5 }}><Phone size={12} /> {apt.buyer_phone}</p>}
+          {apt.notes && <p style={{ margin: "3px 0 0", fontSize: 11, color: "#94a3b8", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>"{apt.notes}"</p>}
+        </div>
+      );
+
+      // ── Date panel — highlighted, minute-level countdown, reschedule flag
+      const datePanel = (
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: "inline-flex", flexDirection: "column", gap: 3, padding: "8px 12px", borderRadius: 9, background: isRescheduled ? "rgba(167,139,250,0.12)" : "rgba(96,165,250,0.10)", border: `1px solid ${isRescheduled ? "rgba(167,139,250,0.4)" : "rgba(96,165,250,0.28)"}`, width: isMobile ? "auto" : "100%", boxSizing: "border-box" }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: isRescheduled ? "#c084fc" : "#bfdbfe", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Calendar size={14} /> {dateStr}
+            </span>
+            {timeStr && <span style={{ fontSize: 18, fontWeight: 700, color: "#f8fafc", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1 }}>{timeStr}</span>}
+            {isFuture && <span style={{ fontSize: 11, fontWeight: 600, color: "#4ade80" }}>{preciseUntil(apt.appointment_date, nowTick, timeLabels)}</span>}
+          </div>
+          {isRescheduled && (
+            <p style={{ margin: "6px 0 0", fontSize: 10, fontWeight: 700, color: "#c084fc", display: "inline-flex", alignItems: "center", gap: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              <RefreshCw size={10} /> {t("salesmanLite.inbox.dateChanged")}
+            </p>
+          )}
+        </div>
+      );
 
       return (
-        <div key={apt.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px" }}>
-          {/* Header: name + badges */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {apt.buyer_name || "Unknown Buyer"}
-            </p>
-            {aptIsNew(apt.created_at) && (
-              <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 99, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.3)", color: "#f87171", flexShrink: 0 }}>NEW</span>
-            )}
-            <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
-              {apt.status}
+        <div key={apt.id} style={{ background: "#0d1117", border: `1px solid ${isRescheduled ? "rgba(167,139,250,0.25)" : "rgba(255,255,255,0.08)"}`, borderRadius: 12, padding: isMobile ? "13px 14px" : "14px 16px" }}>
+          {/* Status pill row */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
+              {t("salesmanLite.inbox.status." + apt.status, { defaultValue: apt.status })}
             </span>
+            {apt.created_at && <span style={{ fontSize: 10, color: "#64748b" }}>{t("salesmanLite.inbox.booked")} {preciseAgo(apt.created_at, nowTick, timeLabels)}</span>}
           </div>
 
-          {/* Date/time — most important, prominent */}
-          <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "#f1f5f9", display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <Calendar size={14} /> {dateStr}{timeStr && ` · ${timeStr}`}
-          </p>
-
-          {/* Car + phone + booked time */}
-          {car && <p style={{ margin: "0 0 2px", fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
-          {apt.buyer_phone && <p style={{ margin: "0 0 2px", fontSize: 11, color: "#4b5563", display: "inline-flex", alignItems: "center", gap: 5 }}><Phone size={11} /> {apt.buyer_phone}</p>}
-          {apt.notes && <p style={{ margin: "0 0 4px", fontSize: 10, color: "#4b5563", fontStyle: "italic" }}>"{apt.notes}"</p>}
-          {apt.created_at && <p style={{ margin: "0 0 8px", fontSize: 10, color: "#374151" }}>Booked {timeAgo(apt.created_at)}</p>}
+          {/* Body — desktop: car | lead | date 3-column; mobile: stacked */}
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.15fr 1fr 0.95fr", gap: isMobile ? 12 : 16, alignItems: "start", marginBottom: 10 }}>
+            {carPanel}
+            {leadPanel}
+            {datePanel}
+          </div>
 
           {/* Telegram reminder indicator */}
           {apt.remind_at && !apt.remind_sent ? (
             <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)", marginBottom: 8 }}>
               <Bell size={11} color="#4ade80" />
               <span style={{ fontSize: 10, color: "#4ade80", flex: 1 }}>
-                Telegram reminder: {new Date(apt.remind_at).toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })} {new Date(apt.remind_at).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}
+                {t("salesmanLite.inbox.reminderLabel")}: {new Date(apt.remind_at).toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })} {new Date(apt.remind_at).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}
               </span>
               <button onClick={() => clearReminder(apt)} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 10, cursor: "pointer", padding: 0 }}>✕</button>
             </div>
           ) : apt.remind_sent ? (
-            <p style={{ fontSize: 10, color: "#4b5563", margin: "0 0 8px", display: "inline-flex", alignItems: "center", gap: 4 }}><Check size={10} /> Telegram reminder sent</p>
+            <p style={{ fontSize: 10, color: "#4b5563", margin: "0 0 8px", display: "inline-flex", alignItems: "center", gap: 4 }}><Check size={10} /> {t("salesmanLite.inbox.reminderSent")}</p>
           ) : null}
 
           {/* Expand: reschedule date picker */}
           {isRescheduling && (
             <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 8 }}>
-              <p style={{ margin: "0 0 6px", fontSize: 11, color: "#c084fc", fontWeight: 600 }}>Choose new date & time</p>
+              <p style={{ margin: "0 0 6px", fontSize: 11, color: "#c084fc", fontWeight: 600 }}>{t("salesmanLite.inbox.chooseNewTime")}</p>
               <input
                 type="datetime-local"
                 value={rescheduleDate}
@@ -5999,10 +6328,10 @@ export default function SalesmanLite() {
                     setAppointments((p) => p.map((a) => a.id === apt.id ? { ...a, appointment_date: newDate.toISOString(), status: "rescheduled", remind_at: remindAt, remind_sent: false } : a));
                     setReschedulingAptId(null);
                     setRescheduleDate("");
-                    toast.success("Appointment rescheduled!");
+                    toast.success(t("salesmanLite.toast.appointmentRescheduled"));
                   }}
                   style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.35)", color: "#c084fc", cursor: "pointer" }}>
-                  Save New Time
+                  {t("salesmanLite.inbox.saveNewTime")}
                 </button>
               </div>
             </div>
@@ -6011,13 +6340,13 @@ export default function SalesmanLite() {
           {/* Expand: Telegram reminder time picker */}
           {isReminderPicking && (
             <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8 }}>
-              <p style={{ margin: "0 0 8px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>Schedule Telegram reminder</p>
+              <p style={{ margin: "0 0 8px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.inbox.scheduleReminderTitle")}</p>
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
                 {[
-                  { key: "1h", label: "1h before" },
-                  { key: "2h", label: "2h before" },
-                  { key: "day_before", label: "Day before 9am" },
-                  { key: "two_days", label: "2 days before" },
+                  { key: "1h", label: t("salesmanLite.inbox.reminderBefore1h") },
+                  { key: "2h", label: t("salesmanLite.inbox.reminderBefore2h") },
+                  { key: "day_before", label: t("salesmanLite.inbox.reminderDayBefore") },
+                  { key: "two_days", label: t("salesmanLite.inbox.reminderTwoDays") },
                 ].map(({ key, label }) => {
                   const t = calcRemindAt(apt, key);
                   const active = selectedRemindAt && t.getTime() === selectedRemindAt.getTime();
@@ -6040,7 +6369,7 @@ export default function SalesmanLite() {
               <div style={{ display: "flex", gap: 6 }}>
                 <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }}
                   style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
-                  Cancel
+                  {t("salesmanLite.inbox.cancel")}
                 </button>
                 <button onClick={() => selectedRemindAt && saveReminder(apt, selectedRemindAt)}
                   disabled={!selectedRemindAt || reminderSaving}
@@ -6050,7 +6379,7 @@ export default function SalesmanLite() {
                     color: selectedRemindAt ? "#4ade80" : "#374151",
                     cursor: selectedRemindAt ? "pointer" : "not-allowed",
                     opacity: reminderSaving ? 0.6 : 1 }}>
-                  {reminderSaving ? "Saving…" : "Set reminder"}
+                  {reminderSaving ? t("salesmanLite.inbox.saving") : t("salesmanLite.inbox.setReminder")}
                 </button>
               </div>
             </div>
@@ -6059,15 +6388,15 @@ export default function SalesmanLite() {
           {/* Expand: cancel confirmation */}
           {isCancelConfirm && (
             <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8 }}>
-              <p style={{ margin: "0 0 8px", fontSize: 12, color: "#f87171" }}>Cancel this appointment?</p>
+              <p style={{ margin: "0 0 8px", fontSize: 12, color: "#f87171" }}>{t("salesmanLite.inbox.cancelConfirmQ")}</p>
               <div style={{ display: "flex", gap: 6 }}>
                 <button onClick={() => setCancelConfirmId(null)}
                   style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
-                  Keep it
+                  {t("salesmanLite.inbox.keepIt")}
                 </button>
                 <button onClick={async () => { await updateApptStatus(apt.id, "cancelled"); setCancelConfirmId(null); }}
                   style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", cursor: "pointer" }}>
-                  Yes, cancel appt
+                  {t("salesmanLite.inbox.cancelAppt")}
                 </button>
               </div>
             </div>
@@ -6076,33 +6405,39 @@ export default function SalesmanLite() {
           {/* Action bar — always visible for active appointments */}
           {notCancelled && !isRescheduling && !isCancelConfirm && (
             <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-              {/* WA Reminder — opens WhatsApp directly, auto-confirms if pending */}
-              {apt.buyer_phone && (
+              {/* Confirm Booking — primary CTA: opens the confirm panel with an
+                  editable WhatsApp message that also marks the booking confirmed. */}
+              {apt.status !== "confirmed" && apt.buyer_phone && (
+                <button
+                  onClick={() => openConfirmModal(apt)}
+                  style={{ flex: 2, fontSize: 12, fontWeight: 700, padding: "8px 0", borderRadius: 7, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.4)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                  title="Confirm this booking and message the buyer on WhatsApp"
+                >
+                  <Check size={13} /> {t("salesmanLite.inbox.confirmBooking")}
+                </button>
+              )}
+              {/* Confirm without message (fallback when no phone on file) */}
+              {apt.status !== "confirmed" && !apt.buyer_phone && (
+                <button
+                  onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }}
+                  style={{ flex: 2, fontSize: 12, fontWeight: 700, padding: "8px 0", borderRadius: 7, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.4)", color: "#4ade80", cursor: "pointer" }}
+                  title="Mark appointment as confirmed"
+                >
+                  ✓ {t("salesmanLite.inbox.confirmBooking")}
+                </button>
+              )}
+              {/* Message — WhatsApp the buyer (already-confirmed bookings) */}
+              {apt.status === "confirmed" && apt.buyer_phone && (
                 <button
                   onClick={() => {
                     const phone = apt.buyer_phone.replace(/\D/g, "");
                     const msg = buildReminderMessage(apt);
                     window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
-                    if (apt.status === "pending") {
-                      updateApptStatus(apt.id, "confirmed");
-                      autoUpsertLeadFromAppt(apt);
-                      scheduleAptReminder(apt);
-                    }
                   }}
                   style={{ flex: 2, fontSize: 11, fontWeight: 600, padding: "7px 0", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
                   title="Send WhatsApp reminder message to buyer"
                 >
-                  <MessageCircle size={12} /> WA Reminder
-                </button>
-              )}
-              {/* Confirm — mark appointment as confirmed */}
-              {apt.status !== "confirmed" && (
-                <button
-                  onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }}
-                  style={{ flex: 1, fontSize: 11, fontWeight: 600, padding: "7px 0", borderRadius: 7, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}
-                  title="Mark appointment as confirmed"
-                >
-                  ✓ Confirm
+                  <MessageCircle size={12} /> {t("salesmanLite.inbox.message")}
                 </button>
               )}
               {/* Move — change the date/time */}
@@ -6119,7 +6454,7 @@ export default function SalesmanLite() {
                 style={{ flex: 1, fontSize: 11, padding: "7px 0", borderRadius: 7, background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)", color: "#c084fc", cursor: "pointer" }}
                 title="Change appointment date or time"
               >
-                ↺ Move
+                ↺ {t("salesmanLite.inbox.move")}
               </button>
               {/* Cancel — opens confirm panel above */}
               <button
@@ -6127,7 +6462,7 @@ export default function SalesmanLite() {
                 style={{ flex: 1, fontSize: 11, padding: "7px 0", borderRadius: 7, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)", color: "#f87171", cursor: "pointer" }}
                 title="Cancel this appointment"
               >
-                ✕ Cancel
+                ✕ {t("salesmanLite.inbox.cancel")}
               </button>
               {/* Bell — schedule Telegram reminder (gates on telegram_chat_id) */}
               <button
@@ -6151,15 +6486,15 @@ export default function SalesmanLite() {
     return (
       <div>
         <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
-          Bookings ({confirmedApts.length})
+          {t("salesmanLite.inbox.bookings")} ({confirmedApts.length})
         </p>
         {appointments.length === 0 && (
           <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
             <Phone size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
-            <p style={{ margin: 0, fontSize: 13 }}>No bookings yet.</p>
-            <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>Bookings appear when customers book a test drive from your listing.</p>
+            <p style={{ margin: 0, fontSize: 13 }}>{t("salesmanLite.inbox.noBookings")}</p>
+            <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>{t("salesmanLite.inbox.noBookingsSub")}</p>
             <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer" }}>
-              Share a Listing →
+              {t("salesmanLite.inbox.shareListing")}
             </button>
           </div>
         )}
@@ -6167,7 +6502,7 @@ export default function SalesmanLite() {
         {pendingApts.length > 0 && (
           <div style={{ marginBottom: 20 }}>
             <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
-              <Clock size={11} color="#fbbf24" /> Awaiting Confirmation ({pendingApts.length})
+              <Clock size={11} color="#fbbf24" /> {t("salesmanLite.inbox.awaitingConfirmation")} ({pendingApts.length})
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {pendingApts.map(renderApptCard)}
@@ -6178,18 +6513,18 @@ export default function SalesmanLite() {
         {todayApts.length > 0 && (
           <div style={{ marginBottom: 20 }}>
             <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
-              <Calendar size={11} color="#fbbf24" /> Today ({todayApts.length})
+              <Calendar size={11} color="#fbbf24" /> {t("salesmanLite.inbox.today")} ({todayApts.length})
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {todayApts.map(renderApptCard)}
             </div>
           </div>
         )}
-        {/* Upcoming */}
+        {/* Confirmed Upcoming */}
         {upcomingApts.length > 0 && (
           <div style={{ marginBottom: 20 }}>
-            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#60a5fa", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
-              <Calendar size={11} color="#60a5fa" /> Upcoming ({upcomingApts.length})
+            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#4ade80", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
+              <Check size={11} color="#4ade80" /> {t("salesmanLite.inbox.confirmedUpcoming")} ({upcomingApts.length})
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {upcomingApts.map(renderApptCard)}
@@ -6204,7 +6539,7 @@ export default function SalesmanLite() {
               style={{ display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", cursor: "pointer", padding: "6px 0", width: "100%" }}
             >
               <span style={{ fontSize: 10, fontWeight: 700, color: "#4b5563", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                Past ({pastApts.length})
+                {t("salesmanLite.inbox.past")} ({pastApts.length})
               </span>
               <span style={{ fontSize: 12, color: "#374151" }}>{pastOpen ? "▲" : "▼"}</span>
             </button>
@@ -6226,7 +6561,7 @@ export default function SalesmanLite() {
                           {apt.buyer_name || "—"}
                         </p>
                         <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
-                          {apt.status === "no_show" ? "No-show" : apt.status}
+                          {t("salesmanLite.inbox.status." + apt.status, { defaultValue: apt.status })}
                         </span>
                       </div>
                       <p style={{ margin: "0 0 2px", fontSize: 12, color: "#6b7280", display: "inline-flex", alignItems: "center", gap: 5 }}>
@@ -6245,13 +6580,13 @@ export default function SalesmanLite() {
                             onClick={() => setAptStatus(apt, "completed")}
                             style={{ fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 6, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.25)", color: "#4ade80", cursor: "pointer", fontFamily: "inherit" }}
                           >
-                            Mark Completed
+                            {t("salesmanLite.inbox.markCompleted")}
                           </button>
                           <button
                             onClick={() => setAptStatus(apt, "no_show")}
                             style={{ fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 6, background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.25)", color: "#fb923c", cursor: "pointer", fontFamily: "inherit" }}
                           >
-                            No-show
+                            {t("salesmanLite.inbox.noShow")}
                           </button>
                         </div>
                       )}
@@ -6291,7 +6626,7 @@ export default function SalesmanLite() {
     const handleAvatarUpload = async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
+      if (!file.type.startsWith("image/")) { toast.error(t("salesmanLite.toast.selectImageFile")); return; }
       setAvatarUploading(true);
       const compressed = await compressImageFile(file, { maxDim: 800 });
       const path = `${userId}/avatar.jpg`;
@@ -6299,7 +6634,7 @@ export default function SalesmanLite() {
         .from("avatars")
         .upload(path, compressed, { upsert: true, contentType: "image/jpeg" });
       if (upErr) {
-        toast.error("Upload failed: " + upErr.message);
+        toast.error(t("salesmanLite.toast.uploadFailed", { msg: upErr.message }));
         setAvatarUploading(false);
         return;
       }
@@ -6315,19 +6650,19 @@ export default function SalesmanLite() {
       setAvatarUploading(false);
       if (avatarProfileErr) {
         console.error("handleAvatarUpload profile update:", avatarProfileErr);
-        toast.error("Photo uploaded but couldn't be saved to your profile — try again.");
+        toast.error(t("salesmanLite.toast.photoSaveFailed"));
         return;
       }
       setAvatarUrl(bustedUrl);
       if (userId) localStorage.setItem(`salesman_lite_avatar_${userId}`, bustedUrl);
       setProfile((p) => ({ ...p, avatar_url: bustedUrl }));
-      toast.success("Profile photo updated");
+      toast.success(t("salesmanLite.toast.profilePhotoUpdated"));
     };
 
     const handleCoverUpload = async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
+      if (!file.type.startsWith("image/")) { toast.error(t("salesmanLite.toast.selectImageFile")); return; }
       setCoverUploading(true);
       const compressed = await compressImageFile(file, { maxDim: 1600 });
       const path = `${userId}/cover.jpg`;
@@ -6335,7 +6670,7 @@ export default function SalesmanLite() {
         .from("avatars")
         .upload(path, compressed, { upsert: true, contentType: "image/jpeg" });
       if (upErr) {
-        toast.error("Upload failed: " + upErr.message);
+        toast.error(t("salesmanLite.toast.uploadFailed", { msg: upErr.message }));
         setCoverUploading(false);
         return;
       }
@@ -6348,12 +6683,12 @@ export default function SalesmanLite() {
       setCoverUploading(false);
       if (coverProfileErr) {
         console.error("handleCoverUpload profile update:", coverProfileErr);
-        toast.error("Photo uploaded but couldn't be saved to your profile — try again.");
+        toast.error(t("salesmanLite.toast.photoSaveFailed"));
         return;
       }
       setCoverUrl(bustedUrl);
       setProfile((p) => ({ ...p, cover_url: bustedUrl }));
-      toast.success("Cover photo updated");
+      toast.success(t("salesmanLite.toast.coverPhotoUpdated"));
     };
 
     const handleSave = async () => {
@@ -6379,7 +6714,7 @@ export default function SalesmanLite() {
       setSettingsSaving(false);
       if (saveProfileErr) {
         console.error("handleSave:", saveProfileErr);
-        toast.error("Couldn't save your profile. Check your connection and try again.");
+        toast.error(t("salesmanLite.toast.profileSaveFailed"));
         return;
       }
       setProfile((p) => ({
@@ -6397,7 +6732,7 @@ export default function SalesmanLite() {
         website: settingsForm.website || null,
       }));
       setSettingsForm((p) => ({ ...p, whatsapp_number: phone }));
-      toast.success("Profile updated");
+      toast.success(t("salesmanLite.toast.profileUpdated"));
     };
 
     const initials = (profile?.full_name || profile?.slug || "S")[0].toUpperCase();
@@ -6413,7 +6748,7 @@ export default function SalesmanLite() {
           <div
             style={{ position: "relative", flexShrink: 0, cursor: avatarUploading ? "default" : "pointer" }}
             onClick={() => !avatarUploading && avatarInputRef.current?.click()}
-            title="Change profile photo"
+            title={t("salesmanLite.settings.changePhotoTitle")}
           >
             {avatarUrl
               ? <img src={avatarUrl} alt="Profile" style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(255,255,255,0.1)", display: "block" }} />
@@ -6434,7 +6769,7 @@ export default function SalesmanLite() {
             <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleAvatarUpload} />
           </div>
           <div>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{profile?.full_name || profile?.slug || "Your Name"}</p>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{profile?.full_name || profile?.slug || t("salesmanLite.settings.yourName")}</p>
             <p style={{ margin: "3px 0 8px", fontSize: 11, color: "#4b5563" }}>{t("salesmanLite.settings.photoSubtext")}</p>
             <button onClick={() => avatarInputRef.current?.click()} disabled={avatarUploading} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}>
               {avatarUploading ? t("salesmanLite.settings.uploading") : t("salesmanLite.settings.changePhoto")}
@@ -6444,8 +6779,8 @@ export default function SalesmanLite() {
 
         {/* Cover photo — banner shown behind your profile photo on your public XDrive page */}
         <div style={{ marginBottom: 24, padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
-          <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Cover Photo</p>
-          <p style={{ margin: "0 0 10px", fontSize: 11, color: "#4b5563" }}>Shown as the banner at the top of your public page</p>
+          <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{t("salesmanLite.settings.coverPhoto")}</p>
+          <p style={{ margin: "0 0 10px", fontSize: 11, color: "#4b5563" }}>{t("salesmanLite.settings.coverSubtext")}</p>
           <div
             onClick={() => !coverUploading && coverInputRef.current?.click()}
             style={{ position: "relative", width: "100%", height: 90, borderRadius: 8, overflow: "hidden", cursor: coverUploading ? "default" : "pointer", background: coverUrl ? `center / cover no-repeat url(${coverUrl})` : "linear-gradient(135deg, #2a3142 0%, #1b202b 55%, #10131b 100%)", border: "1px solid rgba(255,255,255,0.08)" }}
@@ -6453,7 +6788,7 @@ export default function SalesmanLite() {
             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: coverUploading ? "rgba(0,0,0,0.55)" : "rgba(0,0,0,0.25)" }}>
               {coverUploading
                 ? <div style={{ width: 22, height: 22, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
-                : <span style={{ fontSize: 11, fontWeight: 600, color: "#fff" }}>{coverUrl ? "Change cover photo" : "Add a cover photo"}</span>
+                : <span style={{ fontSize: 11, fontWeight: 600, color: "#fff" }}>{coverUrl ? t("salesmanLite.settings.changeCover") : t("salesmanLite.settings.addCover")}</span>
               }
             </div>
             <input ref={coverInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleCoverUpload} />
@@ -6586,7 +6921,7 @@ export default function SalesmanLite() {
             <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.settings.language")}</p>
             <p style={{ margin: "0 0 10px", fontSize: 11, color: "#374151" }}>{t("salesmanLite.settings.languageSubtext")}</p>
             <div style={{ display: "flex", gap: 8 }}>
-              {[{ code: "en", label: "English" }, { code: "ms", label: "Melayu" }].map(({ code, label }) => (
+              {[{ code: "en", label: "English" }, { code: "ms", label: "Malay" }].map(({ code, label }) => (
                 <button
                   key={code}
                   onClick={() => i18n.changeLanguage(code)}
@@ -6630,130 +6965,6 @@ export default function SalesmanLite() {
       </div>
     );
   };
-
-  // ── RENDER MERGE ──────────────────────────────────────────────────────────
-
-  const renderMerge = () => (
-    <div style={{ maxWidth: 480 }}>
-      <p
-        style={{
-          margin: "0 0 6px",
-          fontSize: 16,
-          fontWeight: 600,
-          color: "#f1f5f9",
-        }}
-      >
-        {t("salesmanLite.merge.title")}
-      </p>
-      <p
-        style={{
-          margin: "0 0 24px",
-          fontSize: 13,
-          color: "#4b5563",
-          lineHeight: 1.6,
-        }}
-      >
-        {t("salesmanLite.merge.subtitle")}
-      </p>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <input
-          value={mergeCode}
-          onChange={(e) => setMergeCode(e.target.value.toUpperCase())}
-          placeholder={t("salesmanLite.merge.placeholder")}
-          disabled={mergeStatus === "pending" || mergeStatus === "success"}
-          style={{
-            width: "100%",
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 8,
-            color: "#e5e7eb",
-            fontSize: 13,
-            padding: "10px 12px",
-            outline: "none",
-            boxSizing: "border-box",
-            fontFamily: "system-ui, sans-serif",
-          }}
-        />
-        <button
-          onClick={handleMerge}
-          disabled={
-            !mergeCode.trim() ||
-            mergeStatus === "pending" ||
-            mergeStatus === "success"
-          }
-          style={{
-            padding: "10px 16px",
-            borderRadius: 8,
-            background: mergeStatus === "success" ? "#16a34a" : "#dc2626",
-            border: "none",
-            color: "#fff",
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: "pointer",
-            opacity: !mergeCode.trim() || mergeStatus === "pending" ? 0.6 : 1,
-          }}
-        >
-          {mergeStatus === "pending"
-            ? t("salesmanLite.merge.verifying")
-            : mergeStatus === "success"
-              ? t("salesmanLite.merge.merged")
-              : t("salesmanLite.merge.submitBtn")}
-        </button>
-      </div>
-
-      {mergeStatus === "error" && (
-        <div
-          style={{
-            marginTop: 12,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "10px 14px",
-            background: "rgba(239,68,68,0.08)",
-            border: "1px solid rgba(239,68,68,0.2)",
-            borderRadius: 8,
-          }}
-        >
-          <AlertCircle size={14} style={{ color: "#f87171", flexShrink: 0 }} />
-          <p style={{ margin: 0, fontSize: 12, color: "#f87171" }}>
-            {mergeMsg}
-          </p>
-        </div>
-      )}
-
-      {mergeStatus === "success" && (
-        <div
-          style={{
-            marginTop: 12,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "10px 14px",
-            background: "rgba(34,197,94,0.08)",
-            border: "1px solid rgba(34,197,94,0.2)",
-            borderRadius: 8,
-          }}
-        >
-          <CheckCircle2 size={14} style={{ color: "#4ade80", flexShrink: 0 }} />
-          <p style={{ margin: 0, fontSize: 12, color: "#4ade80" }}>
-            {mergeMsg}
-          </p>
-        </div>
-      )}
-
-      <p
-        style={{
-          marginTop: 24,
-          fontSize: 12,
-          color: "#374151",
-          lineHeight: 1.6,
-        }}
-      >
-        {t("salesmanLite.merge.noCodeHelp")}
-      </p>
-    </div>
-  );
 
   // ── ADD LEAD MODAL ────────────────────────────────────────────────────────
 
@@ -6799,7 +7010,7 @@ export default function SalesmanLite() {
                   color: "#f1f5f9",
                 }}
               >
-                Add Lead
+                {t("salesmanLite.addLead.title")}
               </p>
               <button
                 onClick={() => setShowAddLead(false)}
@@ -6815,13 +7026,13 @@ export default function SalesmanLite() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {[
-                { key: "buyer_name", label: "Name", placeholder: "Lead name" },
+                { key: "buyer_name", label: t("salesmanLite.addLead.name"), placeholder: t("salesmanLite.addLead.namePlaceholder") },
                 {
                   key: "phone",
-                  label: "Phone",
-                  placeholder: "e.g. 0123456789",
+                  label: t("salesmanLite.addLead.phone"),
+                  placeholder: t("salesmanLite.addLead.phonePlaceholder"),
                 },
-                { key: "notes", label: "Notes", placeholder: "Any notes..." },
+                { key: "notes", label: t("salesmanLite.addLead.notes"), placeholder: t("salesmanLite.addLead.notesPlaceholder") },
               ].map(({ key, label, placeholder }) => (
                 <div key={key}>
                   <label
@@ -6857,14 +7068,14 @@ export default function SalesmanLite() {
               ))}
               <div>
                 <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>
-                  Car (optional)
+                  {t("salesmanLite.addLead.carOptional")}
                 </label>
                 <select
                   value={addLeadForm.car_listing_id}
                   onChange={(e) => setAddLeadForm((p) => ({ ...p, car_listing_id: e.target.value }))}
                   style={{ width: "100%", background: "#111827", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "9px 12px", outline: "none", fontFamily: "system-ui, sans-serif" }}
                 >
-                  <option value="">— no car selected —</option>
+                  <option value="">{t("salesmanLite.addLead.noCarSelected")}</option>
                   {myListings.filter((c) => c.status !== "sold").map((c) => (
                     <option key={c.id} value={c.id}>
                       {[c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ")} — RM {Number(c.selling_price || 0).toLocaleString()}
@@ -6881,7 +7092,7 @@ export default function SalesmanLite() {
                     marginBottom: 6,
                   }}
                 >
-                  State (optional)
+                  {t("salesmanLite.addLead.stateOptional")}
                 </label>
                 <select
                   value={addLeadForm.buyer_state}
@@ -6900,7 +7111,7 @@ export default function SalesmanLite() {
                     fontFamily: "system-ui, sans-serif",
                   }}
                 >
-                  <option value="">— select state —</option>
+                  <option value="">{t("salesmanLite.addLead.selectState")}</option>
                   {["Johor","Kedah","Kelantan","Kuala Lumpur","Labuan","Melaka","Negeri Sembilan","Pahang","Penang","Perak","Perlis","Putrajaya","Sabah","Sarawak","Selangor","Terengganu"].map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
@@ -6924,7 +7135,7 @@ export default function SalesmanLite() {
                 opacity: !addLeadForm.buyer_name || addLeadSaving ? 0.6 : 1,
               }}
             >
-              {addLeadSaving ? "Saving..." : "Add Lead"}
+              {addLeadSaving ? t("salesmanLite.addLead.saving") : t("salesmanLite.addLead.add")}
             </button>
           </div>
         </div>
@@ -6936,17 +7147,17 @@ export default function SalesmanLite() {
   const renderLogCallModal = () => logCallLeadId && (() => {
     const lead = leads.find((l) => l.id === logCallLeadId);
     const OUTCOMES = [
-      { key: "answered", label: "Answered", icon: CheckCircle, color: "#4ade80" },
-      { key: "no_answer", label: "No Answer", icon: PhoneOff, color: "#f87171" },
-      { key: "callback_requested", label: "Callback Requested", icon: RefreshCw, color: "#fbbf24" },
-      { key: "voicemail", label: "Left Voicemail", icon: Voicemail, color: "#94a3b8" },
+      { key: "answered", label: t("salesmanLite.logCall.answered"), icon: CheckCircle, color: "#4ade80" },
+      { key: "no_answer", label: t("salesmanLite.logCall.noAnswer"), icon: PhoneOff, color: "#f87171" },
+      { key: "callback_requested", label: t("salesmanLite.logCall.callbackRequested"), icon: RefreshCw, color: "#fbbf24" },
+      { key: "voicemail", label: t("salesmanLite.logCall.voicemail"), icon: Voicemail, color: "#94a3b8" },
     ];
     return (
       <div onClick={() => setLogCallLeadId(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
         <div onClick={(e) => e.stopPropagation()} style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px 16px 0 0", padding: "20px 20px 32px", width: "100%", maxWidth: 480 }}>
-          <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Log Call</p>
+          <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanLite.logCall.title")}</p>
           <p style={{ margin: "0 0 16px", fontSize: 12, color: "#4b5563" }}>{lead?.buyer_name || "—"} · {lead?.phone || "—"}</p>
-          <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>Outcome</p>
+          <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanLite.logCall.outcome")}</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
             {OUTCOMES.map((o) => (
               <button key={o.key} onClick={() => setCallOutcome(o.key)} style={{ padding: "10px 12px", borderRadius: 9, fontSize: 12, fontWeight: 600, textAlign: "left", cursor: "pointer", background: callOutcome === o.key ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)", border: callOutcome === o.key ? `1px solid ${o.color}40` : "1px solid rgba(255,255,255,0.07)", color: callOutcome === o.key ? o.color : "#6b7280", display: "flex", alignItems: "center", gap: 7 }}>
@@ -6954,12 +7165,12 @@ export default function SalesmanLite() {
               </button>
             ))}
           </div>
-          <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>Note (optional)</p>
-          <input value={callNote} onChange={(e) => setCallNote(e.target.value)} placeholder="e.g. Will visit showroom Saturday" style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 9, color: "#e5e7eb", fontSize: 13, padding: "10px 12px", outline: "none", fontFamily: "inherit", boxSizing: "border-box", marginBottom: 14 }} />
+          <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanLite.logCall.noteOptional")}</p>
+          <input value={callNote} onChange={(e) => setCallNote(e.target.value)} placeholder={t("salesmanLite.logCall.notePlaceholder")} style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 9, color: "#e5e7eb", fontSize: 13, padding: "10px 12px", outline: "none", fontFamily: "inherit", boxSizing: "border-box", marginBottom: 14 }} />
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => setLogCallLeadId(null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+            <button onClick={() => setLogCallLeadId(null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("salesmanLite.logCall.cancel")}</button>
             <button onClick={logCall} disabled={callSaving} style={{ flex: 2, padding: "11px 0", borderRadius: 10, background: "#dc2626", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: callSaving ? "not-allowed" : "pointer", opacity: callSaving ? 0.6 : 1 }}>
-              {callSaving ? "Saving…" : "Log Call"}
+              {callSaving ? t("salesmanLite.logCall.saving") : t("salesmanLite.logCall.title")}
             </button>
           </div>
         </div>
@@ -7000,7 +7211,7 @@ export default function SalesmanLite() {
       <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
         <div style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px 16px 0 0", padding: "20px 20px 32px", width: "100%", maxWidth: 480 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Follow-up Blast</p>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanLite.batchWa.title")}</p>
             <span style={{ fontSize: 12, color: "#4b5563" }}>{batchWAIdx + 1} / {batchWALeads.length}</span>
           </div>
           {/* Progress dots */}
@@ -7012,7 +7223,7 @@ export default function SalesmanLite() {
           <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
             <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{current.buyer_name || "—"}</p>
             <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>
-              {car ? `${car.brand} ${car.model}` : "No car linked"} · Last contact {timeAgo(current.updated_at)}
+              {car ? `${car.brand} ${car.model}` : t("salesmanLite.batchWa.noCarLinked")} · {t("salesmanLite.batchWa.lastContact", { time: timeAgo(current.updated_at) })}
             </p>
           </div>
           {/* Editable message */}
@@ -7027,17 +7238,17 @@ export default function SalesmanLite() {
               onClick={() => { window.open(`https://wa.me/${waNum}?text=${encodeURIComponent(batchWAMsg)}`, "_blank"); advance(); }}
               style={{ flex: 2, padding: "11px", borderRadius: 9, background: "#25D366", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
             >
-              WA {current.buyer_name?.split(' ')[0] || 'Lead'} →
+              {t("salesmanLite.batchWa.waLead", { name: current.buyer_name?.split(' ')[0] || t("salesmanLite.loanCalc.leadFallback") })}
             </button>
             <button
               onClick={advance}
               style={{ flex: 1, padding: "11px", borderRadius: 9, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
             >
-              Skip
+              {t("salesmanLite.batchWa.skip")}
             </button>
           </div>
           <button onClick={() => setBatchWALeads(null)} style={{ width: "100%", marginTop: 10, padding: "8px", background: "none", border: "none", color: "#374151", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
-            Stop — done for now
+            {t("salesmanLite.batchWa.stop")}
           </button>
         </div>
       </div>
@@ -7049,15 +7260,15 @@ export default function SalesmanLite() {
   const renderFollowUpModal = () => followUpModalLead && (
     <div onClick={() => setFollowUpModalLead(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px 16px 0 0", padding: "20px 20px 32px", width: "100%", maxWidth: 480 }}>
-        <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Set Follow-up Reminder</p>
+        <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanLite.followUp.title")}</p>
         <p style={{ margin: "0 0 16px", fontSize: 12, color: "#4b5563" }}>{followUpModalLead.buyer_name || "—"}</p>
-        <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>Remind me on</p>
+        <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanLite.followUp.remindOn")}</p>
         <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
           {[
-            { label: "Tomorrow", days: 1 },
-            { label: "In 2 days", days: 2 },
-            { label: "In 3 days", days: 3 },
-            { label: "Next week", days: 7 },
+            { label: t("salesmanLite.followUp.tomorrow"), days: 1 },
+            { label: t("salesmanLite.followUp.in2days"), days: 2 },
+            { label: t("salesmanLite.followUp.in3days"), days: 3 },
+            { label: t("salesmanLite.followUp.nextWeek"), days: 7 },
           ].map(({ label, days }) => {
             const d = new Date(); d.setDate(d.getDate() + days);
             const val = d.toISOString().slice(0, 10);
@@ -7073,16 +7284,16 @@ export default function SalesmanLite() {
             chosen date in Malaysian dd/mm/yyyy so it's never misread. */}
         {followUpDate && (
           <p style={{ margin: "0 0 14px", fontSize: 11, color: "#9ca3af" }}>
-            Reminder set for <span style={{ color: "#e5e7eb", fontWeight: 600 }}>{followUpDate.split("-").reverse().join("/")}</span>
+            {t("salesmanLite.followUp.reminderSetFor")} <span style={{ color: "#e5e7eb", fontWeight: 600 }}>{followUpDate.split("-").reverse().join("/")}</span>
           </p>
         )}
         <div style={{ display: "flex", gap: 8 }}>
           {followUpModalLead.follow_up_at && (
-            <button onClick={() => saveFollowUp(followUpModalLead.id, null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Clear</button>
+            <button onClick={() => saveFollowUp(followUpModalLead.id, null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("salesmanLite.followUp.clear")}</button>
           )}
-          <button onClick={() => setFollowUpModalLead(null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+          <button onClick={() => setFollowUpModalLead(null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("salesmanLite.followUp.cancel")}</button>
           <button onClick={() => followUpDate && saveFollowUp(followUpModalLead.id, followUpDate)} disabled={!followUpDate || followUpSaving} style={{ flex: 2, padding: "11px 0", borderRadius: 10, background: "#dc2626", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: (!followUpDate || followUpSaving) ? "not-allowed" : "pointer", opacity: (!followUpDate || followUpSaving) ? 0.5 : 1 }}>
-            {followUpSaving ? "Saving…" : "Set Reminder"}
+            {followUpSaving ? t("salesmanLite.followUp.saving") : t("salesmanLite.followUp.setReminder")}
           </button>
         </div>
       </div>
@@ -7132,7 +7343,7 @@ export default function SalesmanLite() {
                 color: "#f1f5f9",
               }}
             >
-              Send WA Message
+              {t("salesmanLite.waModal.title")}
             </p>
             <button
               onClick={() => setWaModalLead(null)}
@@ -7171,7 +7382,7 @@ export default function SalesmanLite() {
               const now = new Date().toISOString();
               const { error: waTouchErr } = await supabase
                 .from("leads").update({ updated_at: now }).eq("id", waModalLead.id);
-              if (waTouchErr) { console.error("waModal leads update:", waTouchErr); toast.error("Failed to log message"); return; }
+              if (waTouchErr) { console.error("waModal leads update:", waTouchErr); toast.error(t("salesmanLite.toast.messageLogFailed")); return; }
               const { error: waActErr } = await supabase.from("lead_activities").insert({
                 lead_id: waModalLead.id, activity_type: "whatsapp_sent",
                 note: "WA message sent", created_by: userId,
@@ -7182,9 +7393,9 @@ export default function SalesmanLite() {
               setLeads((p) => p.map((l) => l.id === waModalLead.id ? { ...l, updated_at: now } : l));
               const savedLeadId = waModalLead.id;
               setWaModalLead(null);
-              toast("WA sent!", {
-                description: "Did you also call them?",
-                action: { label: "Log Call", onClick: () => { setLogCallLeadId(savedLeadId); setCallOutcome("answered"); setCallNote(""); } },
+              toast(t("salesmanLite.toast.waSent"), {
+                description: t("salesmanLite.toast.waSentDesc"),
+                action: { label: t("salesmanLite.toast.waSentAction"), onClick: () => { setLogCallLeadId(savedLeadId); setCallOutcome("answered"); setCallNote(""); } },
                 duration: 5000,
               });
               const phone = (waModalLead.phone || "").replace(/\D/g, "");
@@ -7213,7 +7424,7 @@ export default function SalesmanLite() {
               opacity: !waModalMsg.trim() || !waModalLead.phone ? 0.6 : 1,
             }}
           >
-            Send
+            {t("salesmanLite.waModal.send")}
           </button>
           {!waModalLead.phone && (
             <p
@@ -7224,7 +7435,7 @@ export default function SalesmanLite() {
                 textAlign: "center",
               }}
             >
-              No phone number on this lead.
+              {t("salesmanLite.waModal.noPhone")}
             </p>
           )}
         </div>
@@ -7241,7 +7452,6 @@ export default function SalesmanLite() {
     { icon: MessageSquare, title: t("salesmanLite.tour.steps.inbox.title"),      body: t("salesmanLite.tour.steps.inbox.body") },
     { icon: Calendar,     title: t("salesmanLite.tour.steps.bookings.title"),    body: t("salesmanLite.tour.steps.bookings.body") },
     { icon: BarChart2,    title: t("salesmanLite.tour.steps.performance.title"), body: t("salesmanLite.tour.steps.performance.body") },
-    { icon: GitMerge,     title: t("salesmanLite.tour.steps.merge.title"),       body: t("salesmanLite.tour.steps.merge.body") },
     { icon: Settings,     title: t("salesmanLite.tour.steps.settings.title"),    body: t("salesmanLite.tour.steps.settings.body") },
     { icon: BookOpen,     title: t("salesmanLite.tour.steps.help.title"),        body: t("salesmanLite.tour.steps.help.body") },
   ];
@@ -7332,21 +7542,23 @@ export default function SalesmanLite() {
 
     return (
       <>
-        {/* Highlight ring around the target nav item — no backdrop */}
+        {/* Highlight ring around the target nav item — soft glow, gentle pulse,
+            rounded to match the nav item rather than a hard red box. */}
         {tourTarget && !isWelcome && (
           <div
             style={{
               position: "fixed",
-              left: tourTarget.left - 3,
-              top: tourTarget.top - 3,
-              width: tourTarget.width + 6,
-              height: tourTarget.height + 6,
-              borderRadius: isMobile ? 8 : 10,
-              border: "2px solid #dc2626",
-              boxShadow: "0 0 0 4px rgba(220,38,38,0.18), 0 0 16px rgba(220,38,38,0.2)",
+              left: tourTarget.left - 6,
+              top: tourTarget.top - 6,
+              width: tourTarget.width + 12,
+              height: tourTarget.height + 12,
+              borderRadius: isMobile ? 16 : 13,
+              border: "1.5px solid rgba(248,113,113,0.85)",
+              background: "rgba(220,38,38,0.07)",
               pointerEvents: "none",
               zIndex: 1001,
-              transition: "all 0.25s ease",
+              transition: "left 0.28s cubic-bezier(0.4,0,0.2,1), top 0.28s cubic-bezier(0.4,0,0.2,1), width 0.28s cubic-bezier(0.4,0,0.2,1), height 0.28s cubic-bezier(0.4,0,0.2,1)",
+              animation: "tourRing 1.9s ease-in-out infinite",
             }}
           />
         )}
@@ -7355,15 +7567,18 @@ export default function SalesmanLite() {
         <div
           style={{
             ...bubbleStyle,
-            background: "#111827",
-            border: "1px solid rgba(220,38,38,0.22)",
-            borderRadius: 14,
-            padding: "18px 18px 14px",
-            boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
-            animation: "tourPop 0.18s ease",
+            background: "linear-gradient(180deg, #141c2b 0%, #0f1622 100%)",
+            border: "1px solid rgba(255,255,255,0.09)",
+            borderRadius: 16,
+            padding: "18px 18px 15px",
+            boxShadow: "0 18px 50px rgba(0,0,0,0.65), 0 0 0 1px rgba(220,38,38,0.12)",
+            animation: "tourPop 0.2s ease",
           }}
         >
-          <style>{`@keyframes tourPop{from{opacity:0;transform:${isWelcome ? "translate(-50%,-48%)" : "scale(0.95)"}}to{opacity:1;transform:${isWelcome ? "translate(-50%,-50%)" : "scale(1)"}}}`}</style>
+          <style>{`
+            @keyframes tourPop{from{opacity:0;transform:${isWelcome ? "translate(-50%,-48%)" : "scale(0.96)"}}to{opacity:1;transform:${isWelcome ? "translate(-50%,-50%)" : "scale(1)"}}}
+            @keyframes tourRing{0%,100%{box-shadow:0 0 0 3px rgba(220,38,38,0.14), 0 0 18px 2px rgba(220,38,38,0.22)}50%{box-shadow:0 0 0 5px rgba(220,38,38,0.22), 0 0 30px 6px rgba(220,38,38,0.38)}}
+          `}</style>
           {arrowEl}
 
           {/* Header */}
@@ -7386,6 +7601,33 @@ export default function SalesmanLite() {
             {step.body}
           </p>
 
+          {/* Welcome step doubles as the language chooser — pick the language the
+              rest of the intro (and the whole panel) runs in. */}
+          {isWelcome && (
+            <div style={{ marginBottom: 14 }}>
+              <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textAlign: "center" }}>
+                Choose your language · Pilih bahasa anda
+              </p>
+              <div style={{ display: "flex", gap: 8 }}>
+                {[{ code: "en", label: "English" }, { code: "ms", label: "Malay" }].map(({ code, label }) => {
+                  const active = i18n.language === code;
+                  return (
+                    <button
+                      key={code}
+                      onClick={() => { i18n.changeLanguage(code); setTourStep(1); }}
+                      style={{ flex: 1, padding: "11px 0", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer",
+                        background: active ? "#dc2626" : "rgba(255,255,255,0.05)",
+                        border: `1px solid ${active ? "#dc2626" : "rgba(255,255,255,0.12)"}`,
+                        color: active ? "#fff" : "#cbd5e1", transition: "all 0.15s" }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Progress bar */}
           <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
             {TOUR_STEPS.map((_, i) => (
@@ -7393,7 +7635,8 @@ export default function SalesmanLite() {
             ))}
           </div>
 
-          {/* Buttons */}
+          {/* Buttons — on the welcome step the language buttons above are the
+              primary action, so only a quiet Skip shows here. */}
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             {tourStep > 0 && (
               <button onClick={() => setTourStep((s) => s - 1)} style={{ padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer" }}>
@@ -7404,12 +7647,14 @@ export default function SalesmanLite() {
             <button onClick={dismissTour} style={{ background: "none", border: "none", color: "#4b5563", fontSize: 11, cursor: "pointer", padding: "7px 6px" }}>
               {t("salesmanLite.tour.skip")}
             </button>
+            {!isWelcome && (
             <button
               onClick={() => isLast ? dismissTour() : setTourStep((s) => s + 1)}
               style={{ padding: "7px 16px", borderRadius: 7, background: "#dc2626", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
             >
               {isLast ? t("salesmanLite.tour.done") : t("salesmanLite.tour.next")}
             </button>
+            )}
           </div>
         </div>
       </>
@@ -7995,8 +8240,8 @@ export default function SalesmanLite() {
               {/* Sub-tab switcher */}
               <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
                 {[
-                  { key: "enquiries", label: t("salesmanLite.inbox.enquiries"), badge: enquiries.filter((e) => e.status === "new").length },
-                  { key: "bookings", label: t("salesmanLite.inbox.bookings"), badge: newBookingsCount },
+                  { key: "bookings", label: t("salesmanLite.inbox.bookings", { defaultValue: "Bookings" }), badge: newBookingsCount },
+                  { key: "enquiries", label: t("salesmanLite.inbox.leadHistory", { defaultValue: "Lead History" }), badge: enquiries.filter((e) => e.status === "new").length },
                 ].map(({ key, label, badge }) => (
                   <button
                     key={key}
@@ -8021,7 +8266,6 @@ export default function SalesmanLite() {
               {inboxSubTab === "enquiries" ? renderEnquiries() : renderBookings()}
             </div>
           )}
-          {activeTab === "merge" && renderMerge()}
           {activeTab === "settings" && renderSettings()}
           {activeTab === "help" && <SalesmanLiteHelp />}
         </div>
@@ -8057,6 +8301,21 @@ export default function SalesmanLite() {
       {renderWAModal()}
       {renderLogCallModal()}
       {renderBatchWAModal()}
+      <ConfirmBookingModal
+        apt={confirmBookingApt}
+        message={confirmBookingMsg}
+        onChangeMessage={setConfirmBookingMsg}
+        onClose={() => { setConfirmBookingApt(null); setConfirmBookingMsg(""); }}
+        onSend={sendConfirmBooking}
+      />
+      <SellerBookingModal
+        lead={sellerBookingLead}
+        dateValue={sellerBookingDate}
+        onChangeDate={setSellerBookingDate}
+        onClose={() => { setSellerBookingLead(null); setSellerBookingDate(""); }}
+        onConfirm={confirmSellerBooking}
+        saving={sellerBookingSaving}
+      />
 
       {/* IC gate — required before a car can be listed (no anonymous sellers) */}
       {icGateOpen && (
@@ -8564,16 +8823,16 @@ export default function SalesmanLite() {
           <div onClick={() => setLoanCalcLead(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
             <div onClick={e => e.stopPropagation()} style={{ background: "#111827", borderRadius: "16px 16px 0 0", width: "100%", maxWidth: 480, padding: 24, paddingBottom: 36 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-                <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9", fontSize: 14 }}>Loan Calculator</p>
+                <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9", fontSize: 14 }}>{t("salesmanLite.loanCalc.title")}</p>
                 <button onClick={() => setLoanCalcLead(null)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer" }}><X size={18} /></button>
               </div>
-              {car && <p style={{ margin: "0 0 14px", fontSize: 11, color: "#4b5563" }}>{loanCalcLead.buyer_name || "Lead"} · {car.year} {car.brand} {car.model}</p>}
+              {car && <p style={{ margin: "0 0 14px", fontSize: 11, color: "#4b5563" }}>{loanCalcLead.buyer_name || t("salesmanLite.loanCalc.leadFallback")} · {car.year} {car.brand} {car.model}</p>}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                 {[
-                  { label: "Price (RM)", value: loanPrice, set: setLoanPrice, placeholder: "e.g. 85000" },
-                  { label: "Down Payment (%)", value: loanDown, set: setLoanDown, placeholder: "e.g. 10" },
-                  { label: "Interest Rate (%)", value: loanRate, set: setLoanRate, placeholder: "e.g. 3.5" },
-                  { label: "Tenure (years)", value: loanYears, set: setLoanYears, placeholder: "e.g. 7" },
+                  { label: t("salesmanLite.loanCalc.price"), value: loanPrice, set: setLoanPrice, placeholder: "e.g. 85000" },
+                  { label: t("salesmanLite.loanCalc.downPayment"), value: loanDown, set: setLoanDown, placeholder: "e.g. 10" },
+                  { label: t("salesmanLite.loanCalc.interestRate"), value: loanRate, set: setLoanRate, placeholder: "e.g. 3.5" },
+                  { label: t("salesmanLite.loanCalc.tenure"), value: loanYears, set: setLoanYears, placeholder: "e.g. 7" },
                 ].map(({ label, value, set, placeholder }) => (
                   <div key={label}>
                     <p style={{ margin: "0 0 4px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</p>
@@ -8590,16 +8849,16 @@ export default function SalesmanLite() {
               {monthly !== null && (
                 <>
                   <div style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: 10, padding: "12px 16px", marginBottom: 10, textAlign: "center" }}>
-                    <p style={{ margin: "0 0 2px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>Est. Monthly</p>
+                    <p style={{ margin: "0 0 2px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanLite.loanCalc.estMonthly")}</p>
                     <p style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, color: "#fbbf24", letterSpacing: 1 }}>RM {monthly.toLocaleString()}</p>
-                    <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{loanYears}yr · {loanRate}% · {loanDown}% down</p>
+                    <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{loanYears}{t("salesmanLite.loanCalc.yrs")} · {loanRate}% · {loanDown}% {t("salesmanLite.loanCalc.down")}</p>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
-                    {tenures.map(t => {
-                      const m = Math.round(principal * (1 + r * t) / (t * 12));
+                    {tenures.map(yr => {
+                      const m = Math.round(principal * (1 + r * yr) / (yr * 12));
                       return (
-                        <div key={t} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "8px 10px", textAlign: "center" }}>
-                          <p style={{ margin: "0 0 2px", fontSize: 9, color: "#4b5563", textTransform: "uppercase" }}>{t} yrs</p>
+                        <div key={yr} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "8px 10px", textAlign: "center" }}>
+                          <p style={{ margin: "0 0 2px", fontSize: 9, color: "#4b5563", textTransform: "uppercase" }}>{yr} {t("salesmanLite.loanCalc.yrs")}</p>
                           <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#e5e7eb" }}>RM {m.toLocaleString()}</p>
                         </div>
                       );
@@ -8616,7 +8875,7 @@ export default function SalesmanLite() {
                     }}
                     style={{ marginTop: 12, width: "100%", padding: "11px 0", borderRadius: 10, fontSize: 13, fontWeight: 700, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.35)", color: "#fbbf24", cursor: "pointer" }}
                   >
-                    Send via WhatsApp
+                    {t("salesmanLite.loanCalc.sendViaWhatsapp")}
                   </button>
                 </>
               )}
@@ -8651,12 +8910,12 @@ export default function SalesmanLite() {
           <div onClick={() => setDepositModal(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
             <div onClick={e => e.stopPropagation()} style={{ background: "#111827", borderRadius: "16px 16px 0 0", width: "100%", maxWidth: 480, padding: 24, paddingBottom: 36 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-                <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9", fontSize: 14 }}>Deposit Receipt</p>
+                <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9", fontSize: 14 }}>{t("salesmanLite.deposit.title")}</p>
                 <button onClick={() => setDepositModal(null)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer" }}><X size={18} /></button>
               </div>
-              <p style={{ margin: "0 0 14px", fontSize: 11, color: "#4b5563" }}>{lead.buyer_name || "Lead"} · {carName}</p>
+              <p style={{ margin: "0 0 14px", fontSize: 11, color: "#4b5563" }}>{lead.buyer_name || t("salesmanLite.deposit.leadFallback")} · {carName}</p>
               <div style={{ marginBottom: 12 }}>
-                <p style={{ margin: "0 0 4px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>Deposit Amount (RM)</p>
+                <p style={{ margin: "0 0 4px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("salesmanLite.deposit.depositAmount")}</p>
                 <input
                   type="number"
                   value={depositAmount}
@@ -8671,7 +8930,7 @@ export default function SalesmanLite() {
                   onClick={() => { navigator.clipboard.writeText(receipt); setDepositCopied(true); setTimeout(() => setDepositCopied(false), 2000); }}
                   style={{ padding: "10px 0", borderRadius: 10, fontSize: 12, fontWeight: 700, background: depositCopied ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.06)", border: `1px solid ${depositCopied ? "rgba(34,197,94,0.4)" : "rgba(255,255,255,0.12)"}`, color: depositCopied ? "#4ade80" : "#9ca3af", cursor: "pointer" }}
                 >
-                  {depositCopied ? "Copied ✓" : "Copy Text"}
+                  {depositCopied ? t("salesmanLite.deposit.copied") : t("salesmanLite.deposit.copyText")}
                 </button>
                 <button
                   onClick={() => {
@@ -8681,7 +8940,7 @@ export default function SalesmanLite() {
                   }}
                   style={{ padding: "10px 0", borderRadius: 10, fontSize: 12, fontWeight: 700, background: "rgba(37,211,102,0.12)", border: "1px solid rgba(37,211,102,0.3)", color: "#4ade80", cursor: "pointer" }}
                 >
-                  Send via WA
+                  {t("salesmanLite.deposit.sendViaWa")}
                 </button>
               </div>
             </div>
@@ -8696,14 +8955,14 @@ export default function SalesmanLite() {
           <div onClick={() => setLinkCarLeadId(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
             <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: "16px 16px 0 0", width: "100%", maxWidth: 480, padding: 20, paddingBottom: 36 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-                <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9", fontSize: 14 }}>Link Car to Lead</p>
+                <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9", fontSize: 14 }}>{t("salesmanLite.linkCar.title")}</p>
                 <button onClick={() => setLinkCarLeadId(null)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer" }}><X size={18} /></button>
               </div>
               {lead?.buyer_name && (
                 <p style={{ margin: "0 0 14px", fontSize: 11, color: "#4b5563" }}>{lead.buyer_name}</p>
               )}
               {available.length === 0 ? (
-                <p style={{ fontSize: 12, color: "#4b5563", textAlign: "center", padding: "24px 0" }}>No listings yet. Add a listing first.</p>
+                <p style={{ fontSize: 12, color: "#4b5563", textAlign: "center", padding: "24px 0" }}>{t("salesmanLite.linkCar.noListings")}</p>
               ) : (
                 <div style={{ maxHeight: 360, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
                   {available.map((car) => {
@@ -8721,8 +8980,8 @@ export default function SalesmanLite() {
                           {car.selling_price && <p style={{ margin: "2px 0 0", fontSize: 11, color: "#60a5fa" }}>RM {Number(car.selling_price).toLocaleString("en-MY")}</p>}
                         </div>
                         {isLinked
-                          ? <span style={{ fontSize: 11, color: "#4ade80", fontWeight: 600, flexShrink: 0 }}>✓ Linked</span>
-                          : <button onClick={() => handleLinkCar(linkCarLeadId, car.id)} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", flexShrink: 0, fontWeight: 600 }}>Link →</button>
+                          ? <span style={{ fontSize: 11, color: "#4ade80", fontWeight: 600, flexShrink: 0 }}>{t("salesmanLite.linkCar.linked")}</span>
+                          : <button onClick={() => handleLinkCar(linkCarLeadId, car.id)} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", flexShrink: 0, fontWeight: 600 }}>{t("salesmanLite.linkCar.link")}</button>
                         }
                       </div>
                     );
