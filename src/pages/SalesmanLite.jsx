@@ -25,6 +25,7 @@ import {
   User,
   Phone,
   X,
+  Lock,
   LayoutGrid,
   Users,
   MessageSquare,
@@ -589,17 +590,14 @@ export default function SalesmanLite() {
   // Ticks once a minute so inbox relative-time labels stay live to the minute.
   const [nowTick, setNowTick] = useState(Date.now());
 
+  // Tabs whose data is seeded entirely by the salesman's own listings. They stay
+  // reachable at all times (the intro tour walks through them, and a user can
+  // browse them) but render a locked preview state until the first car is listed
+  // — see renderLockedPanel + the content switch. The lock is intentionally NOT
+  // enforced in switchTab: blocking navigation here is what made the tour and the
+  // lock fight each other (tour → switchTab('leads') → forced back to listings).
   function switchTab(tab) {
     if (tab === "enquiries") setNewBookingsCount(0);
-    const GATED = ["leads", "enquiries", "performance"];
-    if (GATED.includes(tab) && myListings.length === 0 && !loading) {
-      toast(t("salesmanLite.toast.listingLockedTab"), {
-        description: t("salesmanLite.toast.listingLockedTabDesc"),
-      });
-      openAddListing();
-      setActiveTab("listings");
-      return;
-    }
     setActiveTab(tab);
   }
 
@@ -7475,6 +7473,39 @@ export default function SalesmanLite() {
     if (tourErr) console.error("dismissTour:", tourErr);
   };
 
+  // Locked preview shown on a listing-gated tab (leads / inbox / performance)
+  // once the intro tour is done but before the salesman has listed a single car.
+  // Same lock badge across all three; copy is tailored per tab. Suppressed while
+  // the tour is running so the intro can show each panel in full.
+  const renderLockedPanel = (kind) => {
+    const cfg = {
+      leads:       { Icon: Users,         title: t("salesmanLite.locked.leadsTitle"),  sub: t("salesmanLite.locked.leadsSub") },
+      enquiries:   { Icon: MessageSquare, title: t("salesmanLite.locked.inboxTitle"),  sub: t("salesmanLite.locked.inboxSub") },
+      performance: { Icon: BarChart2,     title: t("salesmanLite.locked.perfTitle"),   sub: t("salesmanLite.locked.perfSub") },
+    }[kind];
+    const Icon = cfg.Icon;
+    return (
+      <div style={{ maxWidth: 420, margin: "0 auto", textAlign: "center", padding: isMobile ? "56px 20px" : "72px 24px" }}>
+        <div style={{ position: "relative", width: 64, height: 64, margin: "0 auto 18px" }}>
+          <div style={{ width: 64, height: 64, borderRadius: 18, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Icon size={26} strokeWidth={1.5} style={{ color: "#475569" }} />
+          </div>
+          <div style={{ position: "absolute", right: -6, bottom: -6, width: 26, height: 26, borderRadius: 9, background: "#dc2626", border: "3px solid #080a12", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Lock size={12} strokeWidth={2.5} style={{ color: "#fff" }} />
+          </div>
+        </div>
+        <p style={{ margin: "0 0 6px", fontSize: 17, fontWeight: 700, color: "#f1f5f9" }}>{cfg.title}</p>
+        <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>{cfg.sub}</p>
+        <button
+          onClick={() => { switchTab("listings"); setTimeout(openAddListing, 100); }}
+          style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, padding: "11px 22px", borderRadius: 10, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontFamily: "inherit" }}
+        >
+          <Plus size={16} /> {t("salesmanLite.locked.cta")}
+        </button>
+      </div>
+    );
+  };
+
   const renderTour = () => {
     if (tourStep === null) return null;
     const step = TOUR_STEPS[tourStep];
@@ -7715,6 +7746,11 @@ export default function SalesmanLite() {
   }
 
   // ── MAIN RENDER ───────────────────────────────────────────────────────────
+
+  // Listing-gated tabs render a locked preview once the intro tour is finished
+  // and no car has been listed yet. During the tour (tourStep !== null) the lock
+  // lifts so the intro can show every panel in full.
+  const gatedLocked = myListings.length === 0 && tourStep === null && !loading;
 
   return (
     <div
@@ -8240,9 +8276,9 @@ export default function SalesmanLite() {
         >
           {activeTab === "dashboard" && renderDashboard()}
           {activeTab === "listings" && renderListings()}
-          {activeTab === "leads" && renderLeads()}
-          {activeTab === "performance" && renderPerformance()}
-          {activeTab === "enquiries" && (
+          {activeTab === "leads" && (gatedLocked ? renderLockedPanel("leads") : renderLeads())}
+          {activeTab === "performance" && (gatedLocked ? renderLockedPanel("performance") : renderPerformance())}
+          {activeTab === "enquiries" && (gatedLocked ? renderLockedPanel("enquiries") : (
             <div>
               {/* Sub-tab switcher */}
               <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
@@ -8272,7 +8308,7 @@ export default function SalesmanLite() {
               </div>
               {inboxSubTab === "enquiries" ? renderEnquiries() : renderBookings()}
             </div>
-          )}
+          ))}
           {activeTab === "settings" && renderSettings()}
           {activeTab === "help" && <SalesmanLiteHelp />}
         </div>
