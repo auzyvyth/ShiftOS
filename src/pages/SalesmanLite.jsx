@@ -6745,7 +6745,7 @@ export default function SalesmanLite() {
             <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.settings.language")}</p>
             <p style={{ margin: "0 0 10px", fontSize: 11, color: "#374151" }}>{t("salesmanLite.settings.languageSubtext")}</p>
             <div style={{ display: "flex", gap: 8 }}>
-              {[{ code: "en", label: "English" }, { code: "ms", label: "Melayu" }].map(({ code, label }) => (
+              {[{ code: "en", label: "English" }, { code: "ms", label: "Malay" }].map(({ code, label }) => (
                 <button
                   key={code}
                   onClick={() => i18n.changeLanguage(code)}
@@ -7366,21 +7366,23 @@ export default function SalesmanLite() {
 
     return (
       <>
-        {/* Highlight ring around the target nav item — no backdrop */}
+        {/* Highlight ring around the target nav item — soft glow, gentle pulse,
+            rounded to match the nav item rather than a hard red box. */}
         {tourTarget && !isWelcome && (
           <div
             style={{
               position: "fixed",
-              left: tourTarget.left - 3,
-              top: tourTarget.top - 3,
-              width: tourTarget.width + 6,
-              height: tourTarget.height + 6,
-              borderRadius: isMobile ? 8 : 10,
-              border: "2px solid #dc2626",
-              boxShadow: "0 0 0 4px rgba(220,38,38,0.18), 0 0 16px rgba(220,38,38,0.2)",
+              left: tourTarget.left - 6,
+              top: tourTarget.top - 6,
+              width: tourTarget.width + 12,
+              height: tourTarget.height + 12,
+              borderRadius: isMobile ? 16 : 13,
+              border: "1.5px solid rgba(248,113,113,0.85)",
+              background: "rgba(220,38,38,0.07)",
               pointerEvents: "none",
               zIndex: 1001,
-              transition: "all 0.25s ease",
+              transition: "left 0.28s cubic-bezier(0.4,0,0.2,1), top 0.28s cubic-bezier(0.4,0,0.2,1), width 0.28s cubic-bezier(0.4,0,0.2,1), height 0.28s cubic-bezier(0.4,0,0.2,1)",
+              animation: "tourRing 1.9s ease-in-out infinite",
             }}
           />
         )}
@@ -7389,15 +7391,18 @@ export default function SalesmanLite() {
         <div
           style={{
             ...bubbleStyle,
-            background: "#111827",
-            border: "1px solid rgba(220,38,38,0.22)",
-            borderRadius: 14,
-            padding: "18px 18px 14px",
-            boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
-            animation: "tourPop 0.18s ease",
+            background: "linear-gradient(180deg, #141c2b 0%, #0f1622 100%)",
+            border: "1px solid rgba(255,255,255,0.09)",
+            borderRadius: 16,
+            padding: "18px 18px 15px",
+            boxShadow: "0 18px 50px rgba(0,0,0,0.65), 0 0 0 1px rgba(220,38,38,0.12)",
+            animation: "tourPop 0.2s ease",
           }}
         >
-          <style>{`@keyframes tourPop{from{opacity:0;transform:${isWelcome ? "translate(-50%,-48%)" : "scale(0.95)"}}to{opacity:1;transform:${isWelcome ? "translate(-50%,-50%)" : "scale(1)"}}}`}</style>
+          <style>{`
+            @keyframes tourPop{from{opacity:0;transform:${isWelcome ? "translate(-50%,-48%)" : "scale(0.96)"}}to{opacity:1;transform:${isWelcome ? "translate(-50%,-50%)" : "scale(1)"}}}
+            @keyframes tourRing{0%,100%{box-shadow:0 0 0 3px rgba(220,38,38,0.14), 0 0 18px 2px rgba(220,38,38,0.22)}50%{box-shadow:0 0 0 5px rgba(220,38,38,0.22), 0 0 30px 6px rgba(220,38,38,0.38)}}
+          `}</style>
           {arrowEl}
 
           {/* Header */}
@@ -7420,6 +7425,33 @@ export default function SalesmanLite() {
             {step.body}
           </p>
 
+          {/* Welcome step doubles as the language chooser — pick the language the
+              rest of the intro (and the whole panel) runs in. */}
+          {isWelcome && (
+            <div style={{ marginBottom: 14 }}>
+              <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textAlign: "center" }}>
+                Choose your language · Pilih bahasa anda
+              </p>
+              <div style={{ display: "flex", gap: 8 }}>
+                {[{ code: "en", label: "English" }, { code: "ms", label: "Malay" }].map(({ code, label }) => {
+                  const active = i18n.language === code;
+                  return (
+                    <button
+                      key={code}
+                      onClick={() => { i18n.changeLanguage(code); setTourStep(1); }}
+                      style={{ flex: 1, padding: "11px 0", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer",
+                        background: active ? "#dc2626" : "rgba(255,255,255,0.05)",
+                        border: `1px solid ${active ? "#dc2626" : "rgba(255,255,255,0.12)"}`,
+                        color: active ? "#fff" : "#cbd5e1", transition: "all 0.15s" }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Progress bar */}
           <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
             {TOUR_STEPS.map((_, i) => (
@@ -7427,7 +7459,8 @@ export default function SalesmanLite() {
             ))}
           </div>
 
-          {/* Buttons */}
+          {/* Buttons — on the welcome step the language buttons above are the
+              primary action, so only a quiet Skip shows here. */}
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             {tourStep > 0 && (
               <button onClick={() => setTourStep((s) => s - 1)} style={{ padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer" }}>
@@ -7438,12 +7471,14 @@ export default function SalesmanLite() {
             <button onClick={dismissTour} style={{ background: "none", border: "none", color: "#4b5563", fontSize: 11, cursor: "pointer", padding: "7px 6px" }}>
               {t("salesmanLite.tour.skip")}
             </button>
+            {!isWelcome && (
             <button
               onClick={() => isLast ? dismissTour() : setTourStep((s) => s + 1)}
               style={{ padding: "7px 16px", borderRadius: 7, background: "#dc2626", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
             >
               {isLast ? t("salesmanLite.tour.done") : t("salesmanLite.tour.next")}
             </button>
+            )}
           </div>
         </div>
       </>
