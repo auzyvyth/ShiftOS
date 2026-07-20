@@ -2550,14 +2550,14 @@ export default function SalesmanLite() {
       return h < 12 ? t("salesmanLite.greeting.morning") : h < 17 ? t("salesmanLite.greeting.afternoon") : t("salesmanLite.greeting.evening");
     })();
     const personalizedLine = isNewUser
-      ? "Add your first car to start building your portfolio."
+      ? t("salesmanLite.dash.newUser")
       : staleLeads.length > 0
-      ? `${staleLeads.length} lead${staleLeads.length !== 1 ? "s" : ""} waiting on a follow-up — don't let a hot one go cold.`
+      ? t("salesmanLite.dash.stale", { count: staleLeads.length })
       : todayAppts > 0
-      ? `You've got ${todayAppts} appointment${todayAppts !== 1 ? "s" : ""} today. Make ${todayAppts !== 1 ? "them" : "it"} count.`
+      ? t("salesmanLite.dash.today", { count: todayAppts })
       : activeLeads.length > 0
-      ? `${activeLeads.length} deal${activeLeads.length !== 1 ? "s" : ""} in motion right now.`
-      : "Pipeline's clear — good time to feature a car or reach out to a past buyer.";
+      ? t("salesmanLite.dash.motion", { count: activeLeads.length })
+      : t("salesmanLite.dash.clear");
 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -2596,19 +2596,19 @@ export default function SalesmanLite() {
           {portfolioValue > 0 && (
             <div style={{ position: "relative", marginTop: 20 }}>
               <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                Live portfolio value
+                {t("salesmanLite.dash.portfolioValue")}
               </p>
               <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
                 <p style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: isMobile ? 38 : 50, color: "#fbbf24", letterSpacing: 1, lineHeight: 1 }}>
                   RM {portfolioValue.toLocaleString("en-MY")}
                 </p>
                 <span style={{ fontSize: 12, color: "#475569" }}>
-                  across {available.length} live listing{available.length !== 1 ? "s" : ""}
+                  {t("salesmanLite.dash.acrossListings", { count: available.length })}
                 </span>
               </div>
               {topCar && (
                 <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b" }}>
-                  Headlined by your {topCar.year} {topCar.brand} {topCar.model}{topCar.variant ? ` ${topCar.variant}` : ""} — RM {Number(topCar.selling_price).toLocaleString("en-MY")}
+                  {t("salesmanLite.dash.headlinedBy", { car: [topCar.year, topCar.brand, topCar.model, topCar.variant].filter(Boolean).join(" "), price: Number(topCar.selling_price).toLocaleString("en-MY") })}
                 </p>
               )}
             </div>
@@ -2623,16 +2623,16 @@ export default function SalesmanLite() {
             <div style={CARD_HEADER}>
               <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", animation: "live-glow 2s ease-in-out infinite" }} />
-                <span>Live</span>
+                <span>{t("salesmanLite.dash.live")}</span>
               </div>
-              <span>30 days</span>
+              <span>{t("salesmanLite.dash.days30")}</span>
             </div>
             <div style={{ padding: 18 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 18 }}>
                 {[
-                  { label: "Buyer Views", value: totalViews || 0 },
-                  { label: "WA Taps", value: totalWATaps || 0, green: true },
-                  { label: "Live Listings", value: myListings.filter(c => c.status === "available").length },
+                  { label: t("salesmanLite.dash.buyerViews"), value: totalViews || 0 },
+                  { label: t("salesmanLite.dash.waTaps"), value: totalWATaps || 0, green: true },
+                  { label: t("salesmanLite.kpi.liveListings"), value: myListings.filter(c => c.status === "available").length },
                 ].map(({ label, value, green }) => (
                   <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <p style={{ margin: 0, fontSize: 12, color: "#475569" }}>{label}</p>
@@ -2723,7 +2723,7 @@ export default function SalesmanLite() {
             <div style={CARD_HEADER}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444" }} />
-                <span>Follow-up Needed</span>
+                <span>{t("salesmanLite.dash.followUpNeeded")}</span>
                 <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 18, height: 18, borderRadius: 99, background: "rgba(239,68,68,0.15)", color: "#ef4444", fontSize: 10, fontWeight: 800, padding: "0 5px" }}>{staleLeads.length}</span>
               </div>
               {staleLeads.some(l => l.phone) && (
@@ -2768,7 +2768,7 @@ export default function SalesmanLite() {
         {hasAgenda && (
           <div style={CARD}>
             <div style={CARD_HEADER}>
-              <span>Today's Agenda</span>
+              <span>{t("salesmanLite.dash.todaysAgenda")}</span>
               <span>{new Date().toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })}</span>
             </div>
             <div style={{ padding: "6px 0" }}>
@@ -2809,14 +2809,14 @@ export default function SalesmanLite() {
         {/* ── My Performance (context, not action) ── */}
         <div style={CARD}>
           <div style={CARD_HEADER}>
-            <span>My Performance</span>
-            <span>30 days</span>
+            <span>{t("salesmanLite.dash.myPerformance")}</span>
+            <span>{t("salesmanLite.dash.days30")}</span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
             {[
-              { label: "Views", value: totalViews || 0 },
-              { label: "WA Taps", value: totalWATaps || 0 },
-              { label: "CVR", value: overallCVR !== null ? `${overallCVR}%` : "—" },
+              { label: t("salesmanLite.dash.views"), value: totalViews || 0 },
+              { label: t("salesmanLite.dash.waTaps"), value: totalWATaps || 0 },
+              { label: t("salesmanLite.dash.cvr"), value: overallCVR !== null ? `${overallCVR}%` : "—" },
             ].map(({ label, value }, i, arr) => (
               <div key={label} style={{ padding: "16px 18px", borderRight: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
                 <p style={{ margin: "0 0 4px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
@@ -2883,7 +2883,7 @@ export default function SalesmanLite() {
         {/* ── Goal ── */}
         <div style={CARD}>
             <div style={CARD_HEADER}>
-              <span>Monthly Goal</span>
+              <span>{t("salesmanLite.dash.monthlyGoal")}</span>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span>{daysLeft}d left in {new Date().toLocaleDateString("en-MY",{month:"short"})}</span>
                 <button
@@ -2996,7 +2996,7 @@ export default function SalesmanLite() {
         {commissionData.count > 0 && (
           <div style={CARD}>
             <div style={CARD_HEADER}>
-              <span>This Month</span>
+              <span>{t("salesmanLite.dash.thisMonth")}</span>
               <span>{commissionData.count} deal{commissionData.count !== 1 ? "s" : ""} closed</span>
             </div>
             <div style={{ padding: 18 }}>
@@ -3024,7 +3024,7 @@ export default function SalesmanLite() {
         {/* ── Onboarding ── */}
         {isNewUser && !profile?.onboarding_tour_done && (
           <div style={{ ...CARD, border: "1px solid rgba(220,38,38,0.15)" }}>
-            <div style={CARD_HEADER}><span>Get Started</span></div>
+            <div style={CARD_HEADER}><span>{t("salesmanLite.dash.getStarted")}</span></div>
             <div style={{ padding: 18 }}>
               <p style={{ margin: "0 0 16px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Here's how to make your first sale:</p>
               {[

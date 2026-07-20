@@ -310,6 +310,28 @@
       "afternoon": "Selamat tengahari",
       "evening": "Selamat petang"
     },
+    "dash": {
+      "newUser": "Tambah kereta pertama anda untuk mula bina portfolio.",
+      "stale_other": "{{count}} lead menunggu follow-up — jangan biar yang panas jadi sejuk.",
+      "today_other": "Anda ada {{count}} temujanji hari ini. Jadikan ia berbaloi.",
+      "motion_other": "{{count}} deal sedang berjalan sekarang.",
+      "clear": "Pipeline lapang — masa sesuai untuk feature kereta atau hubungi pembeli lama.",
+      "portfolioValue": "Nilai portfolio semasa",
+      "acrossListings_other": "dalam {{count}} listing aktif",
+      "headlinedBy": "Diterajui oleh {{car}} anda — RM {{price}}",
+      "buyerViews": "Tontonan Pembeli",
+      "waTaps": "Ketukan WA",
+      "live": "Langsung",
+      "days30": "30 hari",
+      "myPerformance": "Prestasi Saya",
+      "views": "Tontonan",
+      "cvr": "CVR",
+      "followUpNeeded": "Perlu Susulan",
+      "todaysAgenda": "Agenda Hari Ini",
+      "monthlyGoal": "Sasaran Bulanan",
+      "thisMonth": "Bulan Ini",
+      "getStarted": "Mula Di Sini"
+    },
     "kpi": {
       "pipeline": "Pipeline",
       "liveListings": "Listing Aktif",
