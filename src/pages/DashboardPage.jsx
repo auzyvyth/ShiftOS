@@ -9069,7 +9069,10 @@ export default function DashboardPage() {
   const { tab: tabParam } = useParams();
   const location = useLocation();
   const { t } = useTranslation();
-  const redirectByRole = useRoleRedirect(["dealer", "superadmin", "owner", "manager", "admin"]);
+  // superadmin is intentionally excluded — the platform admin console lives at
+  // /platform, so a superadmin who hits /dashboard is redirected there instead
+  // of rendering an empty, onboarding-less dealer dashboard.
+  const redirectByRole = useRoleRedirect(["dealer", "owner", "manager", "admin"]);
   const { status, loading: subLoading } = useSubscription();
 
   const [listings, setListings] = useState([]);
@@ -9223,7 +9226,7 @@ export default function DashboardPage() {
 
       if (p) {
         if (redirectByRole(p.role)) return;
-        if (!["dealer", "superadmin", "admin", "manager", "owner"].includes(p.role)) {
+        if (!["dealer", "admin", "manager", "owner"].includes(p.role)) {
           navigate("/login");
           return;
         }
