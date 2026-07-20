@@ -70,9 +70,11 @@ export default function LoginPage() {
   const [mounted, setMounted] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  // Client-side brute-force throttle: lock the button for 60s after 5 failed
-  // password attempts (Supabase also rate-limits server-side; this is UX).
-  const [attempts, setAttempts] = useState(0);
+  // Server-enforced brute-force throttle (login_throttle_* RPCs): 3 failed
+  // password attempts in 15 min -> 60s lock, keyed on the email. Enforced in the
+  // DB so it survives page reloads, new tabs and incognito — unlike the old
+  // local counter, which reset the moment the page reloaded. lockSeconds drives
+  // the visible countdown; the DB is the source of truth.
   const [lockSeconds, setLockSeconds] = useState(0);
 
   const [email, setEmail] = useState("");
@@ -153,11 +155,27 @@ export default function LoginPage() {
     setMagicLoading(true);
     const { error } = await supabase.auth.signInWithOtp({
       email: magicEmail.trim(),
-      options: { emailRedirectTo: `${base}/auth/callback` },
+      options: {
+        emailRedirectTo: `${base}/auth/callback`,
+        // Never mint a brand-new account from the login page's magic link — that
+        // path is for signing INTO an existing account. A typo'd/unknown email
+        // otherwise creates a profile-less phantom user. New users go to /onboarding.
+        shouldCreateUser: false,
+      },
     });
     setMagicLoading(false);
     if (error) setError(error.message);
     else setMagicSent(true);
+  };
+
+  // Always-available "email me a sign-in link" entry (not just the passwordless
+  // fallback). Prefills from whatever's typed in the email field.
+  const openMagicLink = () => {
+    setError("");
+    setShowForgotPassword(false);
+    setMagicSent(false);
+    setMagicEmail((prev) => prev || email.trim());
+    setShowMagicLink(true);
   };
 
   const handlePasswordReset = async () => {
@@ -282,6 +300,19 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     const cleanEmail = email.trim().toLowerCase();
+
+    // Ask the server if this email is currently locked out before we even try —
+    // a reload can't shake off an active lock.
+    const { data: gate } = await supabase.rpc("login_throttle_check", { p_email: cleanEmail });
+    const g = Array.isArray(gate) ? gate[0] : gate;
+    if (g && g.allowed === false) {
+      const secs = g.seconds_left || 60;
+      setLockSeconds(secs);
+      setError(`Too many attempts. Try again in ${secs}s.`);
+      setLoading(false);
+      return;
+    }
+
     const { data, error: signInError } = await supabase.auth.signInWithPassword(
       { email: cleanEmail, password },
     );
@@ -291,10 +322,14 @@ export default function LoginPage() {
         signInError.message.toLowerCase().includes("credentials") ||
         signInError.status === 400;
 
-      // Count failed attempts; lock the button for 60s after 5.
-      const nextAttempts = attempts + 1;
-      setAttempts(nextAttempts);
-      if (nextAttempts >= 5) { setLockSeconds(60); setAttempts(0); }
+      // Record the failed attempt server-side; the DB locks after the 3rd.
+      let lockedNow = false;
+      let lockSecs = 60;
+      if (isInvalidCreds) {
+        const { data: fail } = await supabase.rpc("login_throttle_fail", { p_email: cleanEmail });
+        const f = Array.isArray(fail) ? fail[0] : fail;
+        if (f && f.locked) { lockedNow = true; lockSecs = f.seconds_left || 60; setLockSeconds(lockSecs); }
+      }
 
       if (isInvalidCreds) {
         // Resolve account existence via a SECURITY DEFINER RPC — the old direct
@@ -327,9 +362,17 @@ export default function LoginPage() {
         setShowMagicLink(false);
         setShowForgotPassword(false);
       }
+      // A fresh lock takes priority over the per-message guidance above.
+      if (lockedNow) {
+        setError(`Too many attempts. Try again in ${lockSecs}s.`);
+        setShowMagicLink(false);
+        setShowForgotPassword(false);
+      }
       setLoading(false);
       return;
     }
+    // Successful password — reset the throttle counter for this email.
+    supabase.rpc("login_throttle_clear", { p_email: cleanEmail });
     try {
       const proceed = await checkMfaAndProceed(data.user);
       if (proceed) await redirectByRole(data.user, data.session);
@@ -899,11 +942,11 @@ export default function LoginPage() {
             {showMagicLink && (
               <div className="lr-magic">
                 <p className="lr-magic-title">
-                  Looks like you use Google or a magic link
+                  Sign in with a magic link
                 </p>
                 <p className="lr-magic-body">
-                  No password on file. We'll email you a one-tap sign-in link
-                  instead.
+                  We'll email a one-tap sign-in link to the address below — no
+                  password needed.
                 </p>
                 <input
                   className="lr-magic-input"
@@ -943,6 +986,17 @@ export default function LoginPage() {
                 "SIGN IN"
               )}
             </button>
+
+            {!showMagicLink && (
+              <button
+                type="button"
+                className="lr-forgot"
+                onClick={openMagicLink}
+                style={{ display: "block", margin: "14px auto 0", fontSize: 12 }}
+              >
+                Email me a one-time sign-in link instead
+              </button>
+            )}
           </form>
 
           <div className="lr-create-row">

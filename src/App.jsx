@@ -24,7 +24,6 @@ const CarDetailPage   = lazy(() => import("./pages/CarDetailPage"));
 const CalculatorPage     = lazy(() => import("./pages/CalculatorPage"));
 const LoginPage          = lazy(() => import("./pages/LoginPage"));
 const BuyerAuthPage      = lazy(() => import("./pages/BuyerAuthPage"));
-const RegisterPage       = lazy(() => import("./pages/RegisterPage"));
 const DashboardPage      = lazy(() => import("./pages/DashboardPage"));
 const SalesmanPanel      = lazy(() => import("./pages/Salesmanpanel"));
 const SalesmanLite       = lazy(() => import("./pages/SalesmanLite"));

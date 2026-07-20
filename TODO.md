@@ -20,7 +20,34 @@
   returns `drive_key_missing` and imported cars come in without photos (listings
   still import fine). The key is server-only — never exposed to the client.
 
-> Reminder protocol: while ACT-1, ACT-2, ACT-3, ACT-4 or ACT-5 remain here, surface them at session start and whenever 2FA/security/Telegram/auth/import work is touched.
+- **ACT-6: Enable Leaked Password Protection** — Supabase → Authentication →
+  Settings → Password → turn on **"Check against HaveIBeenPwned"**. Until then,
+  signups/resets accept known-breached passwords. One toggle, no code. (Flagged
+  by the onboarding security audit, 2026-07-20.)
+
+- **ACT-7 (optional): Migrate auth to PKCE flow** — the Supabase client currently
+  uses the implicit flow (tokens land in the URL hash, which can leak via history/
+  referrer). PKCE is best practice but switching `flowType` changes how the
+  email-confirm and password-reset links are parsed (AuthConfirmPage/token_hash,
+  ResetPasswordPage/`type=recovery`), so it needs its own tested pass — do NOT
+  flip it blindly. Deferred from the audit to avoid regressing reset/confirm.
+
+- **ACT-8: Pin xlsx to the SheetJS official build** — `xlsx@0.18.5` (npm) has a
+  HIGH prototype-pollution + ReDoS advisory with NO npm fix (SheetJS ships fixes
+  only from their own CDN). Surface is narrow (an authenticated dealer parsing a
+  crafted `.xlsx` in ImportStockPage — mostly self-harm) but it should be pinned.
+  The web session's proxy blocks `cdn.sheetjs.com` (403), so this must be run in
+  a local/unrestricted env: `npm install xlsx@https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`
+  then `npm run build`. (Audit follow-up, 2026-07-20.)
+
+- **ACT-9 (dev-only): vite 5 -> 8 major upgrade** — vite `5.4.21` + its esbuild
+  carry HIGH/MODERATE **dev-server** advisories (path traversal, dev-server CORS,
+  Windows fs.deny bypass). Production is a static Vercel build, so it is NOT
+  affected — the risk is only a developer running `npm run dev`. The fix is the
+  breaking vite@8 major; do it as its own tested upgrade, not folded into a
+  security push. (Audit follow-up, 2026-07-20.)
+
+> Reminder protocol: while ACT-1, ACT-2, ACT-3, ACT-4, ACT-5, ACT-6, ACT-8 or ACT-9 remain here, surface them at session start and whenever 2FA/security/Telegram/auth/import/dependency work is touched.
 
 ## Dev tasks
 

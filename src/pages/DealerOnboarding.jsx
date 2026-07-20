@@ -9,7 +9,7 @@ import DealerPendingApproval from '../components/DealerPendingApproval';
 // Same design system CSS as SalesmanOnboarding (eo- prefix)
 const CSS = `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-.eo-root{display:flex;height:100vh;overflow:hidden;background:#070A12;font-family:system-ui,sans-serif;}
+.eo-root{display:flex;height:100vh;height:100dvh;overflow:hidden;background:#070A12;font-family:system-ui,sans-serif;}
 .eo-left{width:380px;min-width:380px;background:#0C1120;border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;padding:40px 36px;overflow-y:auto;flex-shrink:0;}
 .eo-right{flex:1;min-width:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 48px;position:relative;}
 .eo-logo{display:flex;align-items:center;gap:10px;margin-bottom:32px;}
@@ -69,13 +69,13 @@ const CSS = `
 .eo-error{font-size:12px;color:#f87171;margin-top:12px;padding:10px 14px;background:rgba(248,113,113,0.07);border:1px solid rgba(248,113,113,0.15);border-radius:6px;line-height:1.5;}
 .eo-hint{font-size:12px;color:rgba(255,255,255,0.22);margin-top:7px;line-height:1.6;}
 .eo-mobile-bar{display:none;justify-content:space-between;align-items:center;padding:0 0 28px;width:100%;max-width:480px;}
-.eo-done-root{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#070A12;text-align:center;}
+.eo-done-root{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;height:100dvh;background:#070A12;text-align:center;}
 .eo-done-ring{width:64px;height:64px;border-radius:50%;background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);display:flex;align-items:center;justify-content:center;margin-bottom:28px;}
 .eo-done-title{font-family:'Bebas Neue',cursive;font-size:clamp(44px,7vw,72px);letter-spacing:4px;color:#E8EDF5;line-height:1;margin-bottom:16px;}
 .eo-done-sub{font-size:11px;color:rgba(255,255,255,0.25);letter-spacing:0.2em;text-transform:uppercase;max-width:340px;line-height:1.8;}
 .eo-slug-wrap{position:relative;}
 .eo-slug-status{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;letter-spacing:0.1em;}
-.eo-resume-root{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#070A12;text-align:center;}
+.eo-resume-root{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;height:100dvh;background:#070A12;text-align:center;}
 .eo-pending-box{border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:20px;margin:20px 0;background:rgba(255,255,255,0.02);}
 @media(max-width:820px){
   .eo-left{display:none;}
