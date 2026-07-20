@@ -1493,6 +1493,13 @@ export default function SalesmanLite() {
     if (browserNotifPerm !== 'granted') return;
     const handler = async () => {
       if (document.hidden || staleLeads.length === 0) return;
+      // Throttle: at most one follow-up notification per 24h per browser.
+      // Without this the handler re-fires on EVERY visibilitychange (tab return,
+      // phone unlock, in-app navigation), which Chrome flags as notification spam.
+      const THROTTLE_MS = 24 * 60 * 60 * 1000;
+      const last = Number(localStorage.getItem('slite_last_followup_notif') || 0);
+      if (Date.now() - last < THROTTLE_MS) return;
+      localStorage.setItem('slite_last_followup_notif', String(Date.now()));
       const names = staleLeads.slice(0, 3).map(l => l.buyer_name || 'Unknown').join(', ');
       const title = `${staleLeads.length} lead${staleLeads.length !== 1 ? 's' : ''} need follow-up`;
       const options = { body: names, tag: 'slite-followup' };
