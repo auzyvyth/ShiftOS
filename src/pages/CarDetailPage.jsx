@@ -500,6 +500,17 @@ export default function CarDetailPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
 
+  // Smart back: React Router stamps history.state.idx = 0 on a fresh landing
+  // (shared link / new tab, no in-app history) and increments it as the user
+  // navigates within the app. So idx > 0 means there's a real previous page to
+  // return to; idx 0 (or missing) means they arrived cold -> send them to the
+  // marketplace front page instead of leaving the site.
+  const handleBack = () => {
+    const idx = window.history.state?.idx;
+    if (typeof idx === 'number' && idx > 0) navigate(-1);
+    else navigate('/');
+  };
+
   const [car, setCar] = useState(null);
   const [dealer, setDealer] = useState(null);
   const ctaCtx = useCTAContext();
@@ -1433,7 +1444,7 @@ export default function CarDetailPage() {
       <div className="cdp-root">
         {/* ── header ── */}
         <header className="cdp-header" style={{ position: "sticky" }}>
-          <button className="cdp-back-btn" onClick={() => navigate(-1)}>
+          <button className="cdp-back-btn" onClick={handleBack}>
             <ArrowLeft size={14} /> Back
           </button>
           <span className={`cdp-header-title${showTitle ? " visible" : ""}`}>
