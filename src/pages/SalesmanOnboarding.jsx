@@ -116,7 +116,7 @@ const TIERS = {
   },
   premium: {
     label: 'SALESMAN PREMIUM',
-    price: 'RM 50 / mo',
+    price: 'RM 20 / mo',
     features: [
       'Unlimited listings',
       'Priority marketplace placement',

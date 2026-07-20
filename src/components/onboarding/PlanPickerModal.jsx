@@ -15,7 +15,7 @@ const SALESMAN_PLANS = [
   },
   {
     tier: 'premium', route: '/salesman-onboarding/premium', label: 'Salesman Premium', soon: true,
-    price: 'RM 50', priceSub: '/month', caps: ['Unlimited listings', '1 user'],
+    price: 'RM 20', priceSub: '/month', caps: ['Unlimited listings', '1 user'],
     features: ['Priority marketplace placement', 'Advanced CRM automation', 'Commission tracking', 'Advanced analytics', 'Custom profile subdomain'],
   },
 ];
