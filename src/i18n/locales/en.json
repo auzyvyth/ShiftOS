@@ -457,6 +457,38 @@
         "cancelled": "Cancelled"
       }
     },
+    "stages": {
+      "new": "New",
+      "contacted": "Contacted",
+      "viewing_booked": "Viewing Booked",
+      "test_drive": "Test Drive",
+      "negotiating": "Negotiating",
+      "deposit_taken": "Deposit Taken",
+      "won": "Won",
+      "lost": "Lost",
+      "closed_won": "Won",
+      "closed_lost": "Lost"
+    },
+    "heat": {
+      "hot": "hot",
+      "warm": "warm",
+      "cold": "cold"
+    },
+    "leads": {
+      "searchPlaceholder": "Search by name or phone…",
+      "stage": "Stage",
+      "followUp": "Follow-up",
+      "pipeline": "Lead Pipeline",
+      "linkCar": "Link Car",
+      "deleteQ": "Delete?",
+      "yes": "Yes",
+      "no": "No",
+      "srcWhatsapp": "WhatsApp",
+      "srcEnquiry": "XDrive Enquiry",
+      "srcWalkIn": "Walk-In",
+      "srcReferral": "Referral",
+      "srcManual": "Manual"
+    },
     "confirmModal": {
       "title": "Confirm booking",
       "messageLabel": "Message to buyer",

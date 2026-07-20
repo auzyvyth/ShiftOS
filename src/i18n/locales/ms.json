@@ -452,6 +452,38 @@
         "cancelled": "Dibatalkan"
       }
     },
+    "stages": {
+      "new": "Baru",
+      "contacted": "Dihubungi",
+      "viewing_booked": "Viewing Ditempah",
+      "test_drive": "Test Drive",
+      "negotiating": "Rundingan",
+      "deposit_taken": "Deposit Diambil",
+      "won": "Menang",
+      "lost": "Kalah",
+      "closed_won": "Menang",
+      "closed_lost": "Kalah"
+    },
+    "heat": {
+      "hot": "panas",
+      "warm": "suam",
+      "cold": "sejuk"
+    },
+    "leads": {
+      "searchPlaceholder": "Cari ikut nama atau telefon…",
+      "stage": "Peringkat",
+      "followUp": "Susulan",
+      "pipeline": "Pipeline Lead",
+      "linkCar": "Pautkan Kereta",
+      "deleteQ": "Padam?",
+      "yes": "Ya",
+      "no": "Tidak",
+      "srcWhatsapp": "WhatsApp",
+      "srcEnquiry": "Pertanyaan XDrive",
+      "srcWalkIn": "Walk-In",
+      "srcReferral": "Rujukan",
+      "srcManual": "Manual"
+    },
     "confirmModal": {
       "title": "Sahkan tempahan",
       "messageLabel": "Mesej kepada pembeli",

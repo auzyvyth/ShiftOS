@@ -562,6 +562,9 @@ export default function SalesmanLite() {
     in: t("salesmanLite.time.in"),
     now: t("salesmanLite.time.now"),
   };
+  // Localized pipeline-stage label; falls back to the de-underscored raw value
+  // for any stage not in the map.
+  const stageLabel = (s) => t("salesmanLite.stages." + s, { defaultValue: (s || "").replace(/_/g, " ") });
 
   const [profile, setProfile] = useState(null);
   const [userId, setUserId] = useState(null);
@@ -5143,7 +5146,7 @@ export default function SalesmanLite() {
     // (e.g. real 'whatsapp'/'walk_in'/'referral'/'drevo_enquiry' rows) aren't
     // silently dropped from the total. Mirrors the dynamic bucketing already
     // used for the Prestasi lead-source card below.
-    const SRC_LABELS = { whatsapp: "WhatsApp", enquiry: "XDrive Enquiry", drevo_enquiry: "XDrive Enquiry", walk_in: "Walk-In", referral: "Referral", manual: "Manual" };
+    const SRC_LABELS = { whatsapp: t("salesmanLite.leads.srcWhatsapp"), enquiry: t("salesmanLite.leads.srcEnquiry"), drevo_enquiry: t("salesmanLite.leads.srcEnquiry"), walk_in: t("salesmanLite.leads.srcWalkIn"), referral: t("salesmanLite.leads.srcReferral"), manual: t("salesmanLite.leads.srcManual") };
     const SRC_COLORS = { whatsapp: "#4ade80", enquiry: "#f87171", drevo_enquiry: "#f87171", walk_in: "#a78bfa", referral: "#fbbf24", manual: "#6b7280" };
     const FALLBACK_COLORS = ["#60a5fa", "#f472b6", "#fb923c", "#34d399"];
     const srcMap = {};
@@ -5216,7 +5219,7 @@ export default function SalesmanLite() {
                   </p>
                   {!heat.terminal && (
                     <span title="Lead urgency — based on pipeline stage and how recently this lead moved" style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", flexShrink: 0, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                      {heat.label}
+                      {t("salesmanLite.heat." + heat.label, { defaultValue: heat.label })}
                     </span>
                   )}
                 </div>
@@ -5255,7 +5258,7 @@ export default function SalesmanLite() {
                 ))}
               </div>
               <p style={{ margin: 0, fontSize: 11, color: "#6b7280" }}>
-                Stage: <span style={{ color: "#e5e7eb", fontWeight: 600, textTransform: "capitalize" }}>{(normalizedStage || "new").replace(/_/g, " ")}</span>
+                {t("salesmanLite.leads.stage")}: <span style={{ color: "#e5e7eb", fontWeight: 600, textTransform: "capitalize" }}>{stageLabel(normalizedStage || "new")}</span>
                 {currentProgressIdx >= 0 && <span style={{ color: "#6b7280" }}> · {currentProgressIdx + 1}/{progressStages.length}</span>}
               </p>
             </div>
@@ -5263,7 +5266,7 @@ export default function SalesmanLite() {
             {/* Follow-up warning */}
             {followUpOverdue && (
               <div style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.22)", borderRadius: 7, color: "#fb923c", fontSize: 11, padding: "6px 10px", marginBottom: 12 }}>
-                Follow-up: {timeAgo(lead.follow_up_at)}
+                {t("salesmanLite.leads.followUp")}: {timeAgo(lead.follow_up_at)}
               </div>
             )}
           </div>
@@ -5275,7 +5278,7 @@ export default function SalesmanLite() {
                 onClick={() => advanceLeadStage(lead, nextStage)}
                 style={{ flex: 1, fontSize: 11, fontWeight: 600, padding: "6px 12px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", textAlign: "center", textTransform: "capitalize" }}
               >
-                → {(nextStage || "won").replace(/_/g, " ")}
+                → {stageLabel(nextStage || "won")}
               </button>
             )}
             {lead.phone && (
@@ -5313,7 +5316,7 @@ export default function SalesmanLite() {
                 onClick={() => setLinkCarLeadId(lead.id)}
                 style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
               >
-                <Car size={12} /> Link Car
+                <Car size={12} /> {t("salesmanLite.leads.linkCar")}
               </button>
             ) : null}
             <button
@@ -5355,7 +5358,7 @@ export default function SalesmanLite() {
               color: "#f1f5f9",
             }}
           >
-            Lead Pipeline ({leads.filter((l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won").length})
+            {t("salesmanLite.leads.pipeline")} ({leads.filter((l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won").length})
           </p>
           <button
             onClick={() => setShowAddLead(true)}
@@ -5373,7 +5376,7 @@ export default function SalesmanLite() {
               cursor: "pointer",
             }}
           >
-            <Plus size={13} /> Add Lead
+            <Plus size={13} /> {t("salesmanLite.header.addLead")}
           </button>
         </div>
 
@@ -5402,7 +5405,7 @@ export default function SalesmanLite() {
           <input
             value={leadSearch}
             onChange={(e) => setLeadSearch(e.target.value)}
-            placeholder="Search by name or phone…"
+            placeholder={t("salesmanLite.leads.searchPlaceholder")}
             style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "8px 10px 8px 30px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
           />
           {leadSearch && (
@@ -5450,7 +5453,7 @@ export default function SalesmanLite() {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {stage.replace(/_/g, " ")}
+                    {stageLabel(stage)}
                     <span style={{
                       fontSize: 10,
                       fontWeight: 700,
@@ -5626,7 +5629,7 @@ export default function SalesmanLite() {
                             fontWeight: 600,
                           }}
                         >
-                          Delete?
+                          {t("salesmanLite.leads.deleteQ")}
                         </span>
                         <button
                           onClick={() => handleDeleteLead(lead.id)}
@@ -5641,7 +5644,7 @@ export default function SalesmanLite() {
                             fontWeight: 600,
                           }}
                         >
-                          Yes
+                          {t("salesmanLite.leads.yes")}
                         </button>
                         <button
                           onClick={() => setDeleteConfirmId(null)}
@@ -5655,7 +5658,7 @@ export default function SalesmanLite() {
                             cursor: "pointer",
                           }}
                         >
-                          No
+                          {t("salesmanLite.leads.no")}
                         </button>
                       </div>
                     )}
@@ -5712,7 +5715,7 @@ export default function SalesmanLite() {
                     {!plHeat.terminal && (
                       <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 99, padding: "2px 8px", background: plHeatStyle.bg, color: plHeatStyle.color }}>{plHeat.label}</span>
                     )}
-                    <span style={{ fontSize: 10, fontWeight: 600, borderRadius: 6, padding: "2px 8px", background: "rgba(255,255,255,0.05)", color: "#9ca3af", textTransform: "capitalize" }}>{pl.stage?.replace(/_/g," ")}</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, borderRadius: 6, padding: "2px 8px", background: "rgba(255,255,255,0.05)", color: "#9ca3af", textTransform: "capitalize" }}>{stageLabel(pl.stage)}</span>
                     <button onClick={close} style={{ background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", color: "#9ca3af", borderRadius: 8, padding: 6, display: "flex" }}>
                       <X size={16} />
                     </button>
