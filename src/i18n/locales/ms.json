@@ -386,16 +386,46 @@
       "next": "Seterusnya",
       "done": "Faham",
       "steps": {
-        "welcome": { "title": "Selamat Datang ke ShiftOS Lite", "body": "Lawatan ringkas 30 saat. Setiap langkah akan membawa anda terus ke bahagian panel — boleh tengok sendiri dalam masa nyata." },
-        "dashboard": { "title": "Papan Pemuka", "body": "Pusat kawalan anda — KPI, amaran susulan tertunggak, prestasi iklan, dan aktiviti terkini semuanya dalam satu paparan." },
-        "listings": { "title": "Iklan Saya", "body": "Tambah kereta anda di sini. Setiap kad menunjukkan tontonan, ketukan WA, dan bar penukaran. Kereta yang mendapat banyak klik akan terpapar jelas." },
-        "leads": { "title": "Lead", "body": "Jejak setiap lead: Baru → Dihubungi → Test Drive → Menang. Skor panas menunjukkan siapa yang perlu perhatian. Hantar mesej terus ke WhatsApp." },
-        "inbox": { "title": "Peti Masuk", "body": "Peti masuk anda — Tempahan di hadapan, dengan log Sejarah Lead di belakangnya. Semua yang pembeli mulakan dengan anda masuk di sini." },
-        "bookings": { "title": "Tempahan", "body": "Janji temu tontonan dipaparkan di sini dengan kereta, pembeli dan masa yang jelas. Sahkan tempahan untuk hantar mesej WhatsApp boleh-edit kepada pembeli, atau jadual semula dengan satu ketikan." },
-        "performance": { "title": "Prestasi", "body": "Statistik jualan anda — komisen diperoleh, unit terjual, dan prestasi setiap iklan dari semasa ke semasa. Tahu apa yang berkesan." },
-        "merge": { "title": "Sertai Pengedar", "body": "Ada kod jemputan dari pengedar anda? Masukkan di sini untuk buka panel penuh — stok dikongsi, lead bersama, penjejak komisen dan lebih banyak lagi." },
-        "settings": { "title": "Tetapan", "body": "Kemas kini nombor WhatsApp, foto profil, lokasi dan pautan media sosial. Nombor WhatsApp penting — di situlah pembeli menghubungi anda." },
-        "help": { "title": "Bantuan", "body": "Panduan langkah demi langkah, tip jualan dan soalan lazim. Rujuk di sini bila-bila masa anda tersekat." }
+        "welcome": {
+          "title": "Selamat Datang ke ShiftOS Lite",
+          "body": "Lawatan ringkas 30 saat. Setiap langkah akan membawa anda terus ke bahagian panel — boleh tengok sendiri dalam masa nyata."
+        },
+        "dashboard": {
+          "title": "Papan Pemuka",
+          "body": "Pusat kawalan anda — KPI, amaran susulan tertunggak, prestasi iklan, dan aktiviti terkini semuanya dalam satu paparan."
+        },
+        "listings": {
+          "title": "Iklan Saya",
+          "body": "Tambah kereta anda di sini. Setiap kad menunjukkan tontonan, ketukan WA, dan bar penukaran. Kereta yang mendapat banyak klik akan terpapar jelas."
+        },
+        "leads": {
+          "title": "Lead",
+          "body": "Jejak setiap lead: Baru → Dihubungi → Test Drive → Menang. Skor panas menunjukkan siapa yang perlu perhatian. Hantar mesej terus ke WhatsApp."
+        },
+        "inbox": {
+          "title": "Peti Masuk",
+          "body": "Peti masuk anda — Tempahan di hadapan, dengan log Sejarah Lead di belakangnya. Semua yang pembeli mulakan dengan anda masuk di sini."
+        },
+        "bookings": {
+          "title": "Tempahan",
+          "body": "Janji temu tontonan dipaparkan di sini dengan kereta, pembeli dan masa yang jelas. Sahkan tempahan untuk hantar mesej WhatsApp boleh-edit kepada pembeli, atau jadual semula dengan satu ketikan."
+        },
+        "performance": {
+          "title": "Prestasi",
+          "body": "Statistik jualan anda — komisen diperoleh, unit terjual, dan prestasi setiap iklan dari semasa ke semasa. Tahu apa yang berkesan."
+        },
+        "merge": {
+          "title": "Sertai Pengedar",
+          "body": "Ada kod jemputan dari pengedar anda? Masukkan di sini untuk buka panel penuh — stok dikongsi, lead bersama, penjejak komisen dan lebih banyak lagi."
+        },
+        "settings": {
+          "title": "Tetapan",
+          "body": "Kemas kini nombor WhatsApp, foto profil, lokasi dan pautan media sosial. Nombor WhatsApp penting — di situlah pembeli menghubungi anda."
+        },
+        "help": {
+          "title": "Bantuan",
+          "body": "Panduan langkah demi langkah, tip jualan dan soalan lazim. Rujuk di sini bila-bila masa anda tersekat."
+        }
       }
     },
     "inbox": {
@@ -823,6 +853,15 @@
       "waSent": "WA dihantar!",
       "waSentDesc": "Anda call mereka juga?",
       "waSentAction": "Log Call"
+    },
+    "locked": {
+      "leadsTitle": "Lead dikunci",
+      "leadsSub": "Tambah kenderaan untuk mula kumpul lead. Pembeli yang bertanya pada listing anda akan muncul di sini secara automatik.",
+      "inboxTitle": "Peti masuk dikunci",
+      "inboxSub": "Tambah kenderaan untuk terima pertanyaan dan tempahan. Setiap mesej dan permintaan test drive akan muncul di sini.",
+      "perfTitle": "Prestasi dikunci",
+      "perfSub": "Tambah kenderaan untuk lihat data prestasi anda — paparan, kadar tutup dan kesihatan pipeline semuanya terbina daripada listing anda.",
+      "cta": "Tambah kenderaan"
     }
   },
   "availability": {
