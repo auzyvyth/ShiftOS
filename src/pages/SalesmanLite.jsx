@@ -462,6 +462,88 @@ function ConfirmBookingModal({ apt, message, onChangeMessage, onClose, onSend })
   );
 }
 
+// Seller-initiated booking modal — when the salesman moves a lead into the
+// booking stage, this asks "Confirm this lead's booking at ..." and captures
+// the date/time (defaults pre-filled, editable). Confirming creates a CONFIRMED
+// appointment → Confirmed Upcoming. Portal + body-scroll lock; own close.
+function SellerBookingModal({ lead, dateValue, onChangeDate, onClose, onConfirm, saving }) {
+  useEffect(() => {
+    if (!lead) return;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [lead]);
+
+  if (!lead) return null;
+  const car = lead.car_listings;
+  const carImg = Array.isArray(car?.images) ? car.images[0] : null;
+  const carTitle = car ? [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ") : "No car linked";
+  const carPrice = car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
+
+  return createPortal(
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 0 }}
+      className="sm:!items-center sm:!p-5"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "16px 16px 0 0", padding: 22, width: "100%", maxWidth: 440, maxHeight: "92vh", overflowY: "auto", fontFamily: "system-ui,sans-serif" }}
+        className="sm:!rounded-2xl"
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Confirm this lead's booking</p>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 4, display: "flex" }}>
+            <X size={18} />
+          </button>
+        </div>
+        <p style={{ margin: "0 0 14px", fontSize: 12, color: "#94a3b8", lineHeight: 1.5 }}>
+          Set the viewing date &amp; time. This creates a confirmed booking in your Bookings tab.
+        </p>
+
+        <div style={{ display: "flex", gap: 12, padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", marginBottom: 14 }}>
+          {carImg ? (
+            <img src={carImg} alt="" style={{ width: 64, height: 50, objectFit: "cover", borderRadius: 8, flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)" }} />
+          ) : (
+            <div style={{ width: 64, height: 50, borderRadius: 8, flexShrink: 0, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Car size={18} color="#374151" />
+            </div>
+          )}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{lead.buyer_name || "Unknown Buyer"}</p>
+            <p style={{ margin: "0 0 3px", fontSize: 12, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{carTitle}</p>
+            {carPrice && <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#4ade80" }}>{carPrice}</p>}
+          </div>
+        </div>
+
+        <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>Viewing date &amp; time</p>
+        <input
+          type="datetime-local"
+          value={dateValue}
+          onChange={(e) => onChangeDate(e.target.value)}
+          style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, color: "#e5e7eb", fontSize: 14, padding: "12px 13px", outline: "none", boxSizing: "border-box", fontFamily: "system-ui, sans-serif", marginBottom: 16 }}
+        />
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={onClose}
+            style={{ flex: 1, padding: "11px 0", borderRadius: 9, fontSize: 13, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontFamily: "inherit" }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={!dateValue || saving}
+            style={{ flex: 2, padding: "11px 0", borderRadius: 9, fontSize: 13, fontWeight: 700, background: "rgba(34,197,94,0.16)", border: "1px solid rgba(34,197,94,0.45)", color: "#4ade80", cursor: dateValue && !saving ? "pointer" : "not-allowed", opacity: dateValue && !saving ? 1 : 0.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, fontFamily: "inherit" }}
+          >
+            <Check size={15} /> {saving ? "Confirming…" : "Confirm Booking"}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export default function SalesmanLite() {
   const navigate = useNavigate();
   const isMobile = useWindowSize() < 768;
@@ -481,6 +563,12 @@ export default function SalesmanLite() {
   // WhatsApp message text the salesman sends to the buyer.
   const [confirmBookingApt, setConfirmBookingApt] = useState(null);
   const [confirmBookingMsg, setConfirmBookingMsg] = useState("");
+  // Seller-initiated booking: when the salesman moves a lead into the booking
+  // stage, this holds the lead + the chosen date/time so we can create a
+  // CONFIRMED appointment (→ Confirmed Upcoming) instead of a pending request.
+  const [sellerBookingLead, setSellerBookingLead] = useState(null);
+  const [sellerBookingDate, setSellerBookingDate] = useState("");
+  const [sellerBookingSaving, setSellerBookingSaving] = useState(false);
   // Ticks once a minute so inbox relative-time labels stay live to the minute.
   const [nowTick, setNowTick] = useState(Date.now());
 
@@ -1234,18 +1322,27 @@ export default function SalesmanLite() {
             .on("postgres_changes", { event: "*", schema: "public", table: "appointments", filter: `salesman_id=eq.${uid}` },
               async (payload) => {
                 if (payload.eventType === "INSERT") {
-                  setAppointments((p) => [payload.new, ...p]);
-                  setNewBookingsCount((c) => c + 1);
-                  toast("New booking!", { description: payload.new.buyer_name || "New appointment" });
+                  // Dedup: a seller-initiated booking is added optimistically, so
+                  // guard against the realtime echo double-listing it.
+                  setAppointments((p) => p.find((a) => a.id === payload.new.id) ? p : [payload.new, ...p]);
+                  // Only a PENDING booking is a genuine inbound request to badge/
+                  // announce — a confirmed one the seller just created themselves
+                  // shouldn't fire "New booking!" or bump the Awaiting counter.
+                  if (payload.new.status === "pending") {
+                    setNewBookingsCount((c) => c + 1);
+                    toast("New booking!", { description: payload.new.buyer_name || "New appointment" });
+                  }
+                  // Auto-create a pipeline lead only when the booking isn't already
+                  // linked to one (organic /api/booking rows carry lead_id).
                   const phone = normalizePhone(payload.new.buyer_phone);
-                  if (phone) {
+                  if (phone && !payload.new.lead_id) {
                     const { data: existing } = await supabase.from("leads").select("id").eq("salesman_id", uid).eq("phone", phone).limit(1);
                     if (!existing || !existing.length) {
                       const { data: newLead } = await supabase.from("leads").insert({
                         salesman_id: uid, dealer_id: null,
                         buyer_name: payload.new.buyer_name || null, phone,
                         car_listing_id: payload.new.car_listing_id || null,
-                        stage: "new", lead_source: "manual", is_deleted: false,
+                        stage: "viewing_booked", lead_source: "manual", is_deleted: false,
                       }).select().single();
                       if (newLead) setLeads((p) => [newLead, ...p]);
                     }
@@ -1454,6 +1551,20 @@ export default function SalesmanLite() {
         delete pendingStageRef.current[lead.id];
       }
       setWonPrompt({ lead });
+      return;
+    }
+    // Intercept a seller-initiated move into the booking stage → ask for the
+    // date/time up front, then create a CONFIRMED appointment (the seller set
+    // it up, so it skips "Awaiting Confirmation" and lands in Confirmed
+    // Upcoming). Organic bookings from the car page take the /api/booking path
+    // (status 'pending') and never reach here, so they stay in Awaiting.
+    if (newStage === "viewing_booked" && !force) {
+      if (pendingStageRef.current[lead.id]) {
+        clearTimeout(pendingStageRef.current[lead.id].timer);
+        delete pendingStageRef.current[lead.id];
+      }
+      setSellerBookingDate(defaultBookingSlot());
+      setSellerBookingLead(lead);
       return;
     }
     const oldStage = lead.stage;
@@ -1821,6 +1932,53 @@ export default function SalesmanLite() {
     setConfirmBookingApt(null);
     setConfirmBookingMsg("");
     toast.success("Booking confirmed");
+  };
+
+  // Default seller-booking slot: tomorrow 11:00, formatted for datetime-local.
+  const defaultBookingSlot = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(11, 0, 0, 0);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  // Confirm a seller-initiated booking: move the lead into the booking stage AND
+  // create a CONFIRMED appointment at the chosen slot so it shows in the
+  // Bookings tab under Confirmed Upcoming. Optimistic add is de-duplicated by
+  // the appointments realtime handler (guards on id).
+  const confirmSellerBooking = async () => {
+    const lead = sellerBookingLead;
+    if (!lead || !sellerBookingDate) return;
+    const dt = new Date(sellerBookingDate);
+    if (isNaN(dt.getTime())) { toast.error("Pick a valid date and time"); return; }
+    setSellerBookingSaving(true);
+    // Move the lead into the booking stage (writes leads.stage + activity).
+    await updateLeadStage(lead.id, "viewing_booked");
+    const remindAt = new Date(dt.getTime() - 60 * 60 * 1000).toISOString();
+    const { data: apptRow, error: apptErr } = await supabase
+      .from("appointments")
+      .insert({
+        salesman_id: userId,
+        dealer_id: lead.dealer_id ?? null,
+        lead_id: lead.id,
+        car_listing_id: lead.car_listing_id ?? null,
+        buyer_name: lead.buyer_name ?? null,
+        buyer_phone: lead.phone ?? null,
+        appointment_date: dt.toISOString(),
+        booking_type: "viewing",
+        status: "confirmed",
+        remind_at: remindAt,
+        remind_sent: false,
+      })
+      .select("id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, created_at, remind_at, remind_sent, car_listings(id, brand, model, year, variant, selling_price, images, vin_number, plate_number, mileage, transmission, slug)")
+      .single();
+    setSellerBookingSaving(false);
+    if (apptErr) { console.error("confirmSellerBooking:", apptErr); toast.error("Couldn't create the booking"); return; }
+    if (apptRow) setAppointments((p) => p.find((a) => a.id === apptRow.id) ? p : [apptRow, ...p]);
+    setSellerBookingLead(null);
+    setSellerBookingDate("");
+    toast.success("Booking confirmed for " + dt.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" }) + " " + dt.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }));
   };
 
   const autoCreateLeadFromEnq = async (enq) => {
@@ -5743,33 +5901,34 @@ export default function SalesmanLite() {
   // ── RENDER ENQUIRIES ─────────────────────────────────────────────────────
 
   const renderEnquiries = () => {
-    // History log: every lead this salesman has, not just the ones that
-    // originated from a tracked WhatsApp button click. Enquiries rows are
-    // matched to their live lead by phone so the badge reflects the lead's
-    // CURRENT stage — previously it froze at "Converted → Lead" forever,
-    // even after the lead moved to negotiating/won/lost.
+    // Lead History log — LEAD-CENTRIC: every lead is its own entry so a new lead
+    // never disappears. Previously this listed enquiries first and only added
+    // leads whose phone wasn't already in the enquiry set, so multiple leads
+    // sharing a phone (or any lead whose phone matched an old enquiry) collapsed
+    // behind a single enquiry row and looked "missing". Now every lead shows,
+    // and only PURE enquiries (no lead yet on that phone) are appended so a
+    // brand-new, not-yet-converted enquiry still surfaces with its quick actions.
     const leadByPhone = new Map();
     leads.forEach((l) => {
       const p = normalizePhone(l.phone);
       if (p && !leadByPhone.has(p)) leadByPhone.set(p, l);
     });
-    const enqPhones = new Set(enquiries.map((e) => normalizePhone(e.buyer_phone)).filter(Boolean));
-    const leadOnlyItems = leads
-      .filter((l) => {
-        const p = normalizePhone(l.phone);
-        return !p || !enqPhones.has(p);
-      })
-      .map((l) => ({
-        id: `lead_${l.id}`,
-        buyer_name: l.buyer_name,
-        buyer_phone: l.phone,
-        buyer_message: l.notes,
-        status: "has_lead",
-        created_at: l.created_at,
-        car_listings: l.car_listings,
-        _lead: l,
-      }));
-    const historyItems = [...enquiries, ...leadOnlyItems];
+    const leadPhones = new Set(leads.map((l) => normalizePhone(l.phone)).filter(Boolean));
+    const leadItems = leads.map((l) => ({
+      id: `lead_${l.id}`,
+      buyer_name: l.buyer_name,
+      buyer_phone: l.phone,
+      buyer_message: l.notes,
+      status: "has_lead",
+      created_at: l.created_at,
+      car_listings: l.car_listings,
+      _lead: l,
+    }));
+    const pureEnquiries = enquiries.filter((e) => {
+      const p = normalizePhone(e.buyer_phone);
+      return !p || !leadPhones.has(p);
+    });
+    const historyItems = [...pureEnquiries, ...leadItems];
 
     return (
     <div>
@@ -6344,11 +6503,11 @@ export default function SalesmanLite() {
             </div>
           </div>
         )}
-        {/* Upcoming */}
+        {/* Confirmed Upcoming */}
         {upcomingApts.length > 0 && (
           <div style={{ marginBottom: 20 }}>
-            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#60a5fa", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
-              <Calendar size={11} color="#60a5fa" /> Upcoming ({upcomingApts.length})
+            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#4ade80", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
+              <Check size={11} color="#4ade80" /> Confirmed Upcoming ({upcomingApts.length})
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {upcomingApts.map(renderApptCard)}
@@ -8131,6 +8290,14 @@ export default function SalesmanLite() {
         onChangeMessage={setConfirmBookingMsg}
         onClose={() => { setConfirmBookingApt(null); setConfirmBookingMsg(""); }}
         onSend={sendConfirmBooking}
+      />
+      <SellerBookingModal
+        lead={sellerBookingLead}
+        dateValue={sellerBookingDate}
+        onChangeDate={setSellerBookingDate}
+        onClose={() => { setSellerBookingLead(null); setSellerBookingDate(""); }}
+        onConfirm={confirmSellerBooking}
+        saving={sellerBookingSaving}
       />
 
       {/* IC gate — required before a car can be listed (no anonymous sellers) */}
