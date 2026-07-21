@@ -5988,10 +5988,10 @@ function ListingDetailDrawer({
                   ].join('\n')}
                 />
 
-                {/* TikTok Studio — slide/content generator for this listing */}
+                {/* ShiftOS Studio — slide/content generator for this listing */}
                 {openStudio && (
                   <button onClick={() => openStudio(listing)} style={{ ...btnBase, border: '1px solid rgba(219,39,119,0.3)', color: '#db2777' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
-                    <Film style={{ width: 14, height: 14, flexShrink: 0 }} />TikTok Studio
+                    <Film style={{ width: 14, height: 14, flexShrink: 0 }} />ShiftOS Studio
                   </button>
                 )}
 
@@ -11245,7 +11245,7 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* TikTok Studio — full-screen editor, mounted at page level so the
+      {/* ShiftOS Studio — full-screen editor, mounted at page level so the
           drawer's stacking context can't clip it (overlay rule #1) */}
       {studioListing && (
         <React.Suspense fallback={null}>
