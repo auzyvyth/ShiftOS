@@ -29,12 +29,12 @@ const DEALER_PLANS = [
   {
     tier: 'growth', route: '/dealer-onboarding/growth', label: 'Dealer Growth', popular: true,
     price: 'RM 599', priceSub: '/month', trial: '14-day free trial', caps: ['Up to 80 listings', 'Team of 8'],
-    features: ['Everything in Starter', 'F&I add-on revenue tracking', 'Post-sale handover board', 'Priority support'],
+    features: ['Everything in Starter', 'Priority WhatsApp support', 'Assisted onboarding & stock import'],
   },
   {
     tier: 'pro', route: '/dealer-onboarding/pro', label: 'Dealer Pro',
     price: 'RM 1,199', priceSub: '/month', trial: '14-day free trial', caps: ['Up to 150 listings', 'Team of 15'],
-    features: ['Everything in Growth', 'Custom branding', 'Dedicated account manager', 'SLA-backed uptime'],
+    features: ['Everything in Growth', 'AI Sales Manager chat', 'Dedicated account manager', 'SLA-backed uptime'],
   },
 ];
 

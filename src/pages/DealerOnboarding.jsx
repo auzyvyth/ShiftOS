@@ -117,9 +117,8 @@ const TIERS = {
       'Up to 80 active listings',
       'Everything in Starter',
       'Up to 8 salesmen',
-      'F&I add-on revenue tracking',
-      'Post-sale handover board',
-      'Priority support',
+      'Priority WhatsApp support',
+      'Assisted onboarding & stock import',
     ],
   },
   pro: {
@@ -130,7 +129,7 @@ const TIERS = {
       'Up to 150 active listings',
       'Everything in Growth',
       'Team of up to 15',
-      'Custom branding',
+      'AI Sales Manager chat',
       'Dedicated account manager',
       'SLA-backed uptime',
     ],
@@ -426,10 +425,10 @@ export default function DealerOnboarding() {
         is_active: true,
         onboarding_complete: true,
         plan: planMap[tier] || 'dealer_starter',
-        // Paid tier — hold dashboard access until an admin confirms payment
-        // (see DashboardPage gate + AdminPage "mark received"). Reuses the
-        // existing payment_status field the admin console already acts on.
-        payment_status: 'pending',
+        // No payment gate at signup — the DB defaults grant a real 14-day
+        // trial (subscription_status='trial', trial_ends_at=now()+14d) to
+        // match the "free trial, no card" promise. Payment is collected at
+        // trial end via the DealerPendingApproval expired gate.
         pdpa_consent: true,
         pdpa_consent_at: new Date().toISOString(),
         ic_deadline: null,
@@ -478,14 +477,12 @@ export default function DealerOnboarding() {
     </>
   );
 
-  if (submitted) return (
-    <DealerPendingApproval
-      planKey={{ starter: 'dealer_starter', growth: 'dealer_growth', pro: 'dealer_pro' }[tier] || 'dealer_starter'}
-      dealershipName={form.dealerName}
-      email={userEmail}
-      profileId={userId}
-    />
-  );
+  if (submitted) {
+    // Trial starts immediately — hard reload into the dashboard so the fresh
+    // dealer profile (role/plan just written) is refetched from scratch.
+    window.location.href = '/dashboard';
+    return null;
+  }
 
   const canSubContinue = form.subdomain.length >= 3 && !subTaken && !subReserved && !subChecking;
 

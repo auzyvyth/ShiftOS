@@ -9082,7 +9082,10 @@ export default function DashboardPage() {
   // /platform, so a superadmin who hits /dashboard is redirected there instead
   // of rendering an empty, onboarding-less dealer dashboard.
   const redirectByRole = useRoleRedirect(["dealer", "owner", "manager", "admin"]);
-  const { status, loading: subLoading } = useSubscription();
+  const { status, trialEndsAt, loading: subLoading } = useSubscription();
+  const trialDaysLeft = status === 'trial' && trialEndsAt
+    ? Math.max(0, Math.ceil((new Date(trialEndsAt) - Date.now()) / 86400000))
+    : null;
 
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -10026,17 +10029,32 @@ export default function DashboardPage() {
     );
   }
 
+  // Trial over — same QR screen as onboarding-era payments, in "expired"
+  // dress. Auto-forwards when an admin flips subscription_status to active
+  // (AdminPage "Mark as Active (Paid)").
   if (!subLoading && status === 'expired') return (
-    <div style={{ background: '#F7F8FA', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "system-ui, sans-serif", gap: 16 }}>
-      <p style={{ color: '#111827', fontSize: 22, fontWeight: 600 }}>Your trial has ended</p>
-      <p style={{ color: '#6b7280', fontSize: 14 }}>Contact us to activate your ShiftOS subscription.</p>
-      <a href="https://wa.me/60174155191" style={{ background: '#DC2626', color: '#ffffff', padding: '12px 28px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Upgrade Now</a>
-    </div>
+    <DealerPendingApproval
+      variant="expired"
+      planKey={profile.plan}
+      dealershipName={profile.dealership}
+      email={profile.email}
+      profileId={profile.id}
+    />
   );
 
   return (
     <>
     <SuspendedBanner />
+    {trialDaysLeft !== null && ['dealer', 'owner'].includes(profile?.role) && (
+      <div style={{ background: trialDaysLeft <= 3 ? '#fef2f2' : '#fffbeb', borderBottom: `1px solid ${trialDaysLeft <= 3 ? '#fecaca' : '#fde68a'}`, padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', fontFamily: 'system-ui,sans-serif' }}>
+        <span style={{ fontSize: 13, color: trialDaysLeft <= 3 ? '#991b1b' : '#92400e', fontWeight: 600 }}>
+          Free trial — {trialDaysLeft} day{trialDaysLeft === 1 ? '' : 's'} left. Your data is safe either way.
+        </span>
+        <a href="https://wa.me/60174155191?text=Hi%2C%20I%20want%20to%20activate%20my%20ShiftOS%20subscription" target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: '#dc2626', padding: '4px 12px', borderRadius: 6, textDecoration: 'none' }}>
+          Activate now
+        </a>
+      </div>
+    )}
     <Helmet>
       <meta name="robots" content="noindex, nofollow" />
     </Helmet>

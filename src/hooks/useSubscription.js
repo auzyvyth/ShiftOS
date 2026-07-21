@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 
 export default function useSubscription() {
   const [status, setStatus] = useState(null);
+  const [trialEndsAt, setTrialEndsAt] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -14,6 +15,7 @@ export default function useSubscription() {
         .select('subscription_status, trial_ends_at, role')
         .eq('id', user.id)
         .maybeSingle();
+      setTrialEndsAt(data?.trial_ends_at || null);
       if (data?.role === 'superadmin') { setStatus('active'); setLoading(false); return; }
       if (data?.subscription_status === 'active') { setStatus('active'); setLoading(false); return; }
       if (data?.subscription_status === 'trial' && new Date(data.trial_ends_at) > new Date()) { setStatus('trial'); setLoading(false); return; }
@@ -23,5 +25,5 @@ export default function useSubscription() {
     check();
   }, []);
 
-  return { status, loading };
+  return { status, trialEndsAt, loading };
 }
