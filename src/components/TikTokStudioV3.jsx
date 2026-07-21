@@ -3929,63 +3929,68 @@ export default function TikTokStudioV3({ listing, onClose }) {
     </div>
   );
 
+  // ── Canvas Format selector (shared: desktop DesignPanel + mobile sheet) ────
+  const FormatSelector = () => (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(2,1fr)",
+        gap: 5,
+        marginBottom: 14,
+      }}
+    >
+      {FORMATS.map((f) => (
+        <button
+          key={f.id}
+          onClick={() => setCanvasFormat(f.id)}
+          style={{
+            padding: "8px 6px",
+            borderRadius: 8,
+            cursor: "pointer",
+            border: `1px solid ${
+              canvasFormat === f.id
+                ? "rgba(37,99,235,0.5)"
+                : "rgba(255,255,255,0.07)"
+            }`,
+            background:
+              canvasFormat === f.id
+                ? "rgba(37,99,235,0.1)"
+                : "rgba(255,255,255,0.02)",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            textAlign: "left",
+          }}
+        >
+          <span style={{ fontSize: 14 }}>{f.icon}</span>
+          <div>
+            <div
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                color:
+                  canvasFormat === f.id
+                    ? "#dc2626"
+                    : "rgba(255,255,255,0.55)",
+              }}
+            >
+              {f.id}
+            </div>
+            <div style={{ fontSize: 8, color: "rgba(255,255,255,0.3)" }}>
+              {f.label}
+            </div>
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+
   // ── DesignPanel ──────────────────────────────────────────────────────────
   const DesignPanel = () => (
     <div>
       {/* Canvas Format — at TOP of DesignPanel */}
       <SectionHead label="Canvas Format" />
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(2,1fr)",
-          gap: 5,
-          marginBottom: 14,
-        }}
-      >
-        {FORMATS.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => setCanvasFormat(f.id)}
-            style={{
-              padding: "8px 6px",
-              borderRadius: 8,
-              cursor: "pointer",
-              border: `1px solid ${
-                canvasFormat === f.id
-                  ? "rgba(37,99,235,0.5)"
-                  : "rgba(255,255,255,0.07)"
-              }`,
-              background:
-                canvasFormat === f.id
-                  ? "rgba(37,99,235,0.1)"
-                  : "rgba(255,255,255,0.02)",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              textAlign: "left",
-            }}
-          >
-            <span style={{ fontSize: 14 }}>{f.icon}</span>
-            <div>
-              <div
-                style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color:
-                    canvasFormat === f.id
-                      ? "#dc2626"
-                      : "rgba(255,255,255,0.55)",
-                }}
-              >
-                {f.id}
-              </div>
-              <div style={{ fontSize: 8, color: "rgba(255,255,255,0.3)" }}>
-                {f.label}
-              </div>
-            </div>
-          </button>
-        ))}
-      </div>
+      {FormatSelector()}
 
       <SectionHead label="Style Preset" />
       <div
@@ -5087,6 +5092,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
       if (sheetPanel === "tpl") {
         return (
           <div style={{ padding: "12px 14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+            <SectionHead label="Canvas Format" />
+            {FormatSelector()}
             <PhotoSourceButtons />
             <TemplateCards />
           </div>
