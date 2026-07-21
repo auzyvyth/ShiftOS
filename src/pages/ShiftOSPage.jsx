@@ -104,7 +104,18 @@ const SOFTWARE_LD = {
     "F&I add-ons & revenue analytics",
     "Dealer storefront on the XDrive marketplace",
   ],
-  publisher: { "@type": "Organization", name: "XDrive", url: "https://xdrive.my" },
+  publisher: {
+    "@type": "Organization",
+    "@id": "https://xdrive.my/#organization",
+    name: "XDrive",
+    url: "https://xdrive.my",
+    logo: "https://xdrive.my/xdrivelogo.png",
+    sameAs: [
+      "https://facebook.com/xdrive.my",
+      "https://instagram.com/xdrive.my",
+      "https://tiktok.com/@xdrive.my",
+    ],
+  },
 };
 
 const FAQ_LD = {

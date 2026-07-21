@@ -829,11 +829,19 @@ const HomePage = () => {
             {JSON.stringify({
               "@context": "https://schema.org",
               "@type": "Organization",
+              "@id": "https://xdrive.my/#organization",
               name: "XDrive",
+              alternateName: "XDrive Malaysia",
               url: "https://xdrive.my",
               logo: "https://xdrive.my/xdrivelogo.png",
-              description: "Buy and sell verified used cars in Malaysia",
+              description:
+                "XDrive is a Malaysian used-car marketplace and the maker of ShiftOS, a used-car dealer management system (DMS) for inventory, leads CRM, sales and salesman commission.",
               areaServed: "MY",
+              sameAs: [
+                "https://facebook.com/xdrive.my",
+                "https://instagram.com/xdrive.my",
+                "https://tiktok.com/@xdrive.my",
+              ],
               contactPoint: {
                 "@type": "ContactPoint",
                 contactType: "Customer Service",
