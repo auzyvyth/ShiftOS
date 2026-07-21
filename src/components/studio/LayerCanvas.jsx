@@ -160,15 +160,19 @@ function LayerDiv({
   const f = { ...FILTER_DEFAULTS, ...layer.filters };
   const filterStr = buildFilterStr(f);
 
+  // borderWidth / borderRadius are px in canvas space — scale them by `scale`
+  // so the down-scaled preview matches the full-res export pixel-for-pixel
+  // (previously they were emitted unscaled and looked thicker/rounder than the
+  // downloaded image).
   const borderStyle = {
-    borderWidth: layer.borderWidth || 0,
+    borderWidth: (layer.borderWidth || 0) * scale,
     borderStyle: layer.borderStyle || "solid",
     borderColor: hexToRgba(
       layer.borderColor || "#ffffff",
       layer.borderOpacity ?? 100,
     ),
     borderRadius:
-      layer.type === "circle" ? "50%" : `${layer.borderRadius || 0}px`,
+      layer.type === "circle" ? "50%" : `${(layer.borderRadius || 0) * scale}px`,
   };
 
   const base = {
@@ -570,15 +574,30 @@ const Q_BTN = {
 };
 
 function QuickPanel({ layer, cW, cH, onUpdate, onCommit, onShiftZ }) {
-  const ly = (layer.y / 100) * cH;
+  // Guarded placement: anchor the bar to the selection box and hard-clamp it
+  // so it can NEVER leave the visible canvas frame — in any aspect ratio, for
+  // any selection position (incl. a full-frame layer). Prefer just above the
+  // selection; fall back to just below; otherwise dock to the top edge.
+  const M = 8; // margin from the canvas edges
+  const PANEL_H = 40; // approx bar height (padding + control)
+  const PANEL_W = Math.min(216, Math.max(120, cW - M * 2));
 
-  // Docked bar, Canva-style: pinned to the top of the canvas so it never
-  // overlaps the selection chrome. If the layer itself sits in the top band,
-  // dock to the bottom instead.
-  const PANEL_W = Math.min(216, cW - 16);
-  const dockBottom = ly < 64;
-  const panelTop = dockBottom ? cH - 46 : 8;
-  const panelLeft = (cW - PANEL_W) / 2;
+  const sx = (layer.x / 100) * cW;
+  const sy = (layer.y / 100) * cH;
+  const sw = (layer.width / 100) * cW;
+  const sh = (layer.height / 100) * cH;
+
+  const maxLeft = Math.max(M, cW - PANEL_W - M);
+  const panelLeft = Math.min(maxLeft, Math.max(M, sx + sw / 2 - PANEL_W / 2));
+
+  const above = sy - PANEL_H - M;
+  const below = sy + sh + M;
+  const maxTop = Math.max(M, cH - PANEL_H - M);
+  let panelTop;
+  if (above >= M) panelTop = above;
+  else if (below <= maxTop) panelTop = below;
+  else panelTop = M;
+  panelTop = Math.min(maxTop, Math.max(M, panelTop));
 
   const hasText = ["text", "rect", "circle", "triangle"].includes(layer.type);
   const hasShapeColor = layer.type !== "image" && layer.type !== "text";
@@ -2178,7 +2197,9 @@ export async function renderLayersToCanvas(canvas, layers, CW, CH) {
     if (layer.type === "image" && layer.src) {
       try {
         const img = await _loadImg(layer.src);
-        const rr = ((layer.borderRadius || 0) / 100) * Math.min(w, h);
+        // borderRadius is px in canvas space (matches the CSS preview + the
+        // 0–999px corner-radius slider), not a percent of the box.
+        const rr = layer.borderRadius || 0;
         ctx.beginPath();
         ctx.roundRect(x, y, w, h, rr);
         ctx.clip();
@@ -2205,11 +2226,10 @@ export async function renderLayersToCanvas(canvas, layers, CW, CH) {
       // Text-only layer — full multiline parity with the preview
       drawLayerText(ctx, layer, x, y, w, h);
     } else {
-      // rect / circle
+      // rect / circle — borderRadius is px in canvas space (matches the CSS
+      // preview + the corner-radius slider), not a percent of the box.
       const rr =
-        layer.type === "circle"
-          ? Math.min(w, h) / 2
-          : ((layer.borderRadius || 0) / 100) * Math.min(w, h);
+        layer.type === "circle" ? Math.min(w, h) / 2 : layer.borderRadius || 0;
       ctx.beginPath();
       ctx.roundRect(x, y, w, h, rr);
       ctx.fillStyle = hexToRgba(
