@@ -465,6 +465,45 @@ function useCarSchema(listing, dealer) {
   }, [listing?.id, dealer?.id]);
 }
 
+/* Compact horizontal strip of small vertical cards (image + name + price).
+   Used for "More From This Seller" — minimal info, clean, Carlist-style. */
+function SellerStrip({ cars, title, th }) {
+  const navigate = useNavigate();
+  if (!cars || cars.length === 0) return null;
+  const go = (c) => {
+    if (!(c.slug || c.id)) return;
+    navigate((isSubdomain() ? "/cars/" : "/showroom/") + (c.slug || c.id));
+  };
+  return (
+    <div>
+      <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "2.2rem", letterSpacing: "0.06em", color: th.text, margin: "0 0 16px", borderLeft: "3px solid #dc2626", paddingLeft: "12px" }}>
+        {title}
+      </h2>
+      <div style={{ display: "flex", gap: 12, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", paddingBottom: 4, scrollSnapType: "x mandatory" }}>
+        {cars.map((c) => {
+          const img   = cdnImg(Array.isArray(c.images) ? c.images[0] : null, 400, 70);
+          const name  = [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
+          const price = c.selling_price ? "RM " + Number(c.selling_price).toLocaleString("en-MY") : "P.O.R";
+          return (
+            <button key={c.id} onClick={() => go(c)} style={{ flexShrink: 0, width: 152, scrollSnapAlign: "start", textAlign: "left", background: th.card, border: `1px solid ${th.border}`, borderRadius: 12, overflow: "hidden", cursor: "pointer", padding: 0, fontFamily: "system-ui, sans-serif" }}>
+              <div style={{ position: "relative", aspectRatio: "4 / 3", background: th.card2 }}>
+                {img && <img src={img} alt={name} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
+                {c.is_recon && (
+                  <span style={{ position: "absolute", top: 6, left: 6, fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", padding: "2px 7px", borderRadius: 6, background: "rgba(109,40,217,0.92)", color: "#fff" }}>RECON</span>
+                )}
+              </div>
+              <div style={{ padding: "8px 9px 10px" }}>
+                <p style={{ margin: "0 0 4px", fontSize: 12, fontWeight: 600, lineHeight: 1.3, color: th.text, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", minHeight: 31 }}>{name}</p>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: th.text, letterSpacing: "-0.01em" }}>{price}</p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* ─── main ─── */
 export default function CarDetailPage() {
   const isXdrive = !isSubdomain();
@@ -518,6 +557,7 @@ export default function CarDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [similarCars, setSimilarCars] = useState([]);
+  const [sellerCars, setSellerCars] = useState([]);
   const [salesmanProfile, setSalesmanProfile] = useState(null);
 
   /* gallery */
@@ -748,7 +788,7 @@ export default function CarDetailPage() {
       const simFields =
         "id, slug, year, brand, model, variant, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, car_documents";
 
-      const [visibleServices, dealerData, salesmanData, similarCarsData] =
+      const [visibleServices, dealerData, salesmanData, similarCarsData, sellerCarsData] =
         await Promise.all([
           // Filter included_services against active dealer_products
           (async () => {
@@ -826,12 +866,27 @@ export default function CarDetailPage() {
             }
             return similar;
           })(),
+
+          // More from this seller — the dealer's other live listings (any brand),
+          // newest first. Only fetched when the listing has a dealer_id.
+          carData.dealer_id
+            ? supabase
+                .from("public_car_listings")
+                .select(simFields)
+                .eq("dealer_id", carData.dealer_id)
+                .in("status", ["available", "reserved"])
+                .neq("id", carData.id)
+                .order("created_at", { ascending: false })
+                .limit(12)
+                .then((r) => r.data || [])
+            : Promise.resolve([]),
         ]);
 
       setCar({ ...carData, included_services: visibleServices });
       setDealer(dealerData);
       setSalesmanProfile(salesmanData);
       setSimilarCars(similarCarsData);
+      setSellerCars(sellerCarsData);
       setLoading(false);
 
       // Fire the mileage-aware market avg in the background.
@@ -2390,6 +2445,13 @@ export default function CarDetailPage() {
           );
         })()}
 
+        {/* More from this seller (mobile) — above the "More {brand}" section */}
+        {sellerCars.length > 0 && (
+          <div className="cdp-mobile-only" style={{ background: th.pageBg, padding:'28px 20px 0' }}>
+            <SellerStrip cars={sellerCars} title="More From This Seller" th={th} />
+          </div>
+        )}
+
         {/* M8 — Similar cars */}
         {similarCars.length > 0 && (
           <div className="cdp-mobile-only" style={{ background: th.pageBg, padding:'28px 20px', marginBottom:80 }}>
@@ -3259,6 +3321,13 @@ export default function CarDetailPage() {
 
             {/* BOOKING ANCHOR */}
             <div ref={bookingRef} id="booking-form" style={{ marginTop: 56 }} />
+
+            {/* MORE FROM THIS SELLER — above the "More {brand}" section */}
+            {sellerCars.length > 0 && (
+              <div style={{ marginTop: 64, background: th.card2, border: `1px solid ${th.borderSec}`, borderRadius: 16, padding: '32px 28px' }}>
+                <SellerStrip cars={sellerCars} title="More From This Seller" th={th} />
+              </div>
+            )}
 
             {/* SIMILAR CARS */}
             {similarCars.length > 0 && (
