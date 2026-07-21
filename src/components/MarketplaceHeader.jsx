@@ -121,10 +121,10 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
       : <Link to={to} className="mh-row">{inner}</Link>;
   };
 
-  const MegaNav = ({ id, label, items, accent }) => (
+  const MegaNav = ({ id, label, items, accent, align = 'left' }) => (
     <div className="mh-nav-item">
       <button className="mh-nav-trigger" aria-haspopup="true">{label} <ChevronDown size={14} className="mh-chev" /></button>
-      <div className="mh-menu">
+      <div className={`mh-menu${align === 'right' ? ' mh-menu-r' : ''}`}>
         <div className="mh-mega">
           <div className="mh-mega-grid">
             {items.map(it => <ItemRow key={it.label} {...it} />)}
@@ -167,6 +167,8 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
 
         /* mega */
         .mh-menu { position:absolute; top:100%; left:0; padding-top:13px; display:none; z-index:200; }
+        /* Right-side triggers open leftward so the panel can't run off-screen */
+        .mh-menu-r { left:auto; right:0; }
         .mh-nav-item:hover .mh-menu { display:block; }
         .mh-mega { background:#fff; border:1px solid #ECEAE3; border-radius:20px; box-shadow:0 26px 70px rgba(15,23,42,.2); padding:14px; display:flex; gap:12px; animation:mhFade .17s ease; }
         @keyframes mhFade { from{opacity:0;transform:translateY(-7px);} to{opacity:1;transform:none;} }
@@ -179,11 +181,11 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
         .mh-row-ds { display:block; color:#6b7280; font-size:12px; font-weight:500; margin-top:3px; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .mh-row-arrow { color:#cbd0d6; margin-left:auto; flex-shrink:0; opacity:0; transform:translate(-4px,4px); transition:opacity .14s,transform .14s; }
         .mh-row:hover .mh-row-arrow { opacity:1; transform:none; color:#dc2626; }
-        .mh-mega-promo { width:212px; flex-shrink:0; border-radius:16px; padding:18px; background:linear-gradient(150deg,#15171c,#0f1115); display:flex; flex-direction:column; }
-        .mh-promo-eyebrow { font-size:10px; font-weight:800; letter-spacing:.13em; text-transform:uppercase; color:#f87171; margin:0 0 8px; }
-        .mh-promo-title { font-size:17px; font-weight:800; color:#fff; line-height:1.25; margin:0 0 6px; }
-        .mh-promo-sub { font-size:12px; color:#9ca3af; line-height:1.5; margin:0 0 auto; }
-        .mh-promo-cta { display:inline-flex; align-items:center; gap:5px; margin-top:16px; background:#dc2626; color:#fff; font-size:12.5px; font-weight:700; padding:9px 14px; border-radius:9px; text-decoration:none; align-self:flex-start; transition:background .14s,transform .12s; }
+        .mh-mega-promo { width:182px; flex-shrink:0; border-radius:16px; padding:15px; background:linear-gradient(150deg,#15171c,#0f1115); display:flex; flex-direction:column; }
+        .mh-promo-eyebrow { font-size:9.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#f87171; margin:0 0 7px; }
+        .mh-promo-title { font-size:15.5px; font-weight:800; color:#fff; line-height:1.24; margin:0 0 6px; }
+        .mh-promo-sub { font-size:11.5px; color:#9ca3af; line-height:1.45; margin:0 0 auto; }
+        .mh-promo-cta { display:inline-flex; align-items:center; gap:5px; margin-top:14px; background:#dc2626; color:#fff; font-size:12px; font-weight:700; padding:8px 13px; border-radius:9px; text-decoration:none; align-self:flex-start; transition:background .14s,transform .12s; }
         .mh-promo-cta:hover { background:#ef4444; transform:translateY(-1px); }
 
         /* right cluster */
@@ -248,8 +250,8 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
             <a href="/?hot_deals=true" className={`mh-nav-link hot${isHotDeals ? ' active' : ''}`}><Flame size={15} /> Hot Deals</a>
             <Link to="/compare" className="mh-nav-link"><GitCompare size={15} /> Compare</Link>
             <Link to="/for-salesmen" className="mh-nav-link">Salesman Lite</Link>
-            <MegaNav id="dealers" label="For Dealers" items={DEALERS} accent={{ eyebrow:'ShiftOS DMS', title:'Run your dealership', sub:'Listings, leads CRM, F&I and revenue analytics in one system.', to:'/shiftos', cta:'Start free trial' }} />
-            <MegaNav id="guides" label="Panduan & Artikel" items={GUIDES} />
+            <MegaNav id="dealers" label="For Dealers" align="right" items={DEALERS} accent={{ eyebrow:'ShiftOS DMS', title:'Run your dealership', sub:'Listings, leads CRM, F&I and revenue analytics in one system.', to:'/shiftos', cta:'Start free trial' }} />
+            <MegaNav id="guides" label="Panduan & Artikel" align="right" items={GUIDES} />
           </nav>
 
           {/* RIGHT — search, saved, auth */}
