@@ -2397,7 +2397,7 @@ export default function CarDetailPage() {
             <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'2.2rem', letterSpacing:'0.06em', color: th.text, margin:'0 0 20px', borderLeft:'3px solid #dc2626', paddingLeft:'12px' }}>
               More {car.brand}
             </h2>
-            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
               {similarCars.map(s => (
                 <CarCard key={s.id} car={s} ctaContext={ctaCtx} showCompare />
               ))}
