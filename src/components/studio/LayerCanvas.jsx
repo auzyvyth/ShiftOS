@@ -569,16 +569,15 @@ const Q_BTN = {
 };
 
 function QuickPanel({ layer, cW, cH, onUpdate, onCommit, onShiftZ }) {
-  const lx = (layer.x / 100) * cW;
   const ly = (layer.y / 100) * cH;
-  const lw = (layer.width / 100) * cW;
-  const lh = (layer.height / 100) * cH;
 
-  const PANEL_W = 216;
-  const above = ly > 56;
-  // Below-position clears the rotate handle (which now sits under the shape)
-  const panelTop = clamp(above ? ly - 46 : ly + lh + 54, 4, Math.max(4, cH - 44));
-  const panelLeft = Math.max(4, Math.min(cW - PANEL_W - 4, lx + lw / 2 - PANEL_W / 2));
+  // Docked bar, Canva-style: pinned to the top of the canvas so it never
+  // overlaps the selection chrome. If the layer itself sits in the top band,
+  // dock to the bottom instead.
+  const PANEL_W = Math.min(216, cW - 16);
+  const dockBottom = ly < 64;
+  const panelTop = dockBottom ? cH - 46 : 8;
+  const panelLeft = (cW - PANEL_W) / 2;
 
   const hasText = ["text", "rect", "circle", "triangle"].includes(layer.type);
   const hasShapeColor = layer.type !== "image" && layer.type !== "text";
@@ -1501,25 +1500,65 @@ export function LayerPropertiesPanel({
         </div>
       </div>
 
-      {/* Label */}
-      <PropRow label="Label">
-        <input
-          value={layer.label || ""}
-          onChange={(e) => u({ label: e.target.value })}
-          onBlur={() => onCommit?.()}
-          style={{
-            width: "100%",
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: 6,
-            padding: "5px 8px",
-            color: "rgba(255,255,255,0.8)",
-            fontSize: 11,
-            outline: "none",
-            boxSizing: "border-box",
-          }}
-        />
-      </PropRow>
+      {/* Fill + Border first — the controls people actually reach for */}
+      {layer.type !== "image" && layer.type !== "text" && (
+        <>
+          <SectionLabel>Fill</SectionLabel>
+          <PropRow label="Color">
+            <LColorInput
+              value={layer.fill || "#e63946"}
+              onChange={(v) => u({ fill: v })}
+            />
+          </PropRow>
+          <LSlider
+            label="Fill Opacity"
+            value={layer.fillOpacity ?? 100}
+            min={0}
+            max={100}
+            onChange={(v) => u({ fillOpacity: v })}
+            fmt={(v) => `${v}%`}
+          />
+          {(layer.type === "rect" || layer.type === "circle") && (
+            <LSlider
+              label="Corner Radius"
+              value={layer.borderRadius || 0}
+              min={0}
+              max={100}
+              onChange={(v) => u({ borderRadius: v })}
+              fmt={(v) => `${v}px`}
+            />
+          )}
+        </>
+      )}
+
+      {/* Border — width / colour / opacity */}
+      <SectionLabel>Border</SectionLabel>
+      <LSlider
+        label="Width"
+        value={layer.borderWidth ?? 0}
+        min={0}
+        max={20}
+        onChange={(v) => u({ borderWidth: v })}
+        fmt={(v) => `${v}px`}
+      />
+      {(layer.borderWidth || 0) > 0 && (
+        <>
+          <PropRow label="Color">
+            <LColorInput
+              value={layer.borderColor || "#ffffff"}
+              onChange={(v) => u({ borderColor: v })}
+            />
+          </PropRow>
+          <LSlider
+            label="Border Opacity"
+            value={layer.borderOpacity ?? 100}
+            min={0}
+            max={100}
+            onChange={(v) => u({ borderOpacity: v })}
+            fmt={(v) => `${v}%`}
+          />
+        </>
+      )}
 
       {/* Issue 4: Text — full controls for text/rect/circle/triangle */}
       {(layer.type === "text" ||
@@ -1803,37 +1842,6 @@ export function LayerPropertiesPanel({
         fmt={(v) => `${v}°`}
       />
 
-      {/* Fill — not for text or image */}
-      {layer.type !== "image" && layer.type !== "text" && (
-        <>
-          <SectionLabel>Fill</SectionLabel>
-          <PropRow label="Color">
-            <LColorInput
-              value={layer.fill || "#e63946"}
-              onChange={(v) => u({ fill: v })}
-            />
-          </PropRow>
-          <LSlider
-            label="Fill Opacity"
-            value={layer.fillOpacity ?? 100}
-            min={0}
-            max={100}
-            onChange={(v) => u({ fillOpacity: v })}
-            fmt={(v) => `${v}%`}
-          />
-          {(layer.type === "rect" || layer.type === "circle") && (
-            <LSlider
-              label="Corner Radius"
-              value={layer.borderRadius || 0}
-              min={0}
-              max={100}
-              onChange={(v) => u({ borderRadius: v })}
-              fmt={(v) => `${v}px`}
-            />
-          )}
-        </>
-      )}
-
       {/* Image source */}
       {layer.type === "image" && (
         <>
@@ -1881,34 +1889,26 @@ export function LayerPropertiesPanel({
         </>
       )}
 
-      {/* Border */}
-      <SectionLabel>Border</SectionLabel>
-      <LSlider
-        label="Width"
-        value={layer.borderWidth ?? 0}
-        min={0}
-        max={20}
-        onChange={(v) => u({ borderWidth: v })}
-        fmt={(v) => `${v}px`}
-      />
-      {(layer.borderWidth || 0) > 0 && (
-        <>
-          <PropRow label="Color">
-            <LColorInput
-              value={layer.borderColor || "#ffffff"}
-              onChange={(v) => u({ borderColor: v })}
-            />
-          </PropRow>
-          <LSlider
-            label="Border Opacity"
-            value={layer.borderOpacity ?? 100}
-            min={0}
-            max={100}
-            onChange={(v) => u({ borderOpacity: v })}
-            fmt={(v) => `${v}%`}
-          />
-        </>
-      )}
+      {/* Label — rarely used, lives at the bottom */}
+      <SectionLabel>Label</SectionLabel>
+      <PropRow label="Label">
+        <input
+          value={layer.label || ""}
+          onChange={(e) => u({ label: e.target.value })}
+          onBlur={() => onCommit?.()}
+          style={{
+            width: "100%",
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 6,
+            padding: "5px 8px",
+            color: "rgba(255,255,255,0.8)",
+            fontSize: 11,
+            outline: "none",
+            boxSizing: "border-box",
+          }}
+        />
+      </PropRow>
 
       {/* Filters */}
       <SectionLabel>Filters</SectionLabel>

@@ -2767,7 +2767,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
   // ── Pro templates: apply a full ready-made design to the current slide ────
   const applyProTemplate = useCallback(
     (tpl) => {
-      const ctx = buildTemplateCtx(listing, slide, features);
+      const ctx = buildTemplateCtx(listing, slide, features, [...uploadedImages, ...rawImages]);
       (tpl.fonts || []).forEach(ensureFont);
       setTheme((t) => ({ ...t, ...tpl.theme }));
       setSlides((ss) =>
@@ -2788,7 +2788,21 @@ export default function TikTokStudioV3({ listing, onClose }) {
       setLayers((tpl.buildLayers ? tpl.buildLayers(ctx) : []).map((l) => makeLayer(l.type, l)));
       setSelectedId(null);
     },
-    [active, listing, slide, features, setLayers],
+    [active, listing, slide, features, setLayers, uploadedImages, rawImages],
+  );
+
+  // Shapes are stored as % of width AND % of height — on a 9:16 canvas equal
+  // percentages produce a 1:2.7 ellipse, not a circle. Correct the height at
+  // creation so new shapes come out pixel-perfect.
+  const addShapeAspect = useCallback(
+    (type) => {
+      const sq = (wPct, ratio = 1) => ({ width: wPct, height: ((wPct / 100) * CW * ratio / CH) * 100 });
+      if (type === "circle") return addLayer("circle", sq(24, 1));
+      if (type === "rect") return addLayer("rect", sq(40, 0.62));
+      if (type === "triangle") return addLayer("triangle", sq(30, 0.9));
+      return addLayer(type);
+    },
+    [addLayer, CW, CH],
   );
 
   // ── Camera: snapshot the current design (minus photo) as a ghost overlay ──
@@ -2796,12 +2810,14 @@ export default function TikTokStudioV3({ listing, onClose }) {
     try {
       const c = document.createElement("canvas");
       await renderToCanvas(c, { ...slide, imageUrl: null }, theme, font, CW, CH);
+      // Include shape/text layers so the ghost matches the real design
+      await renderLayersToCanvas(c, layers || [], CW, CH);
       setCamOverlay(c.toDataURL("image/png"));
     } catch {
       setCamOverlay(null);
     }
     setShowCamera(true);
-  }, [slide, theme, font, CW, CH]);
+  }, [slide, theme, font, CW, CH, layers]);
 
   const handleCameraCapture = useCallback(
     (dataUrl) => {
@@ -4999,10 +5015,10 @@ export default function TikTokStudioV3({ listing, onClose }) {
         return (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "12px 16px 16px" }}>
             {[
-              ["▭", "Rect", () => { addLayer("rect"); setSheetPanel("layer"); }],
-              ["◯", "Circle", () => { addLayer("circle"); setSheetPanel("layer"); }],
-              ["△", "Triangle", () => { addLayer("triangle"); setSheetPanel("layer"); }],
-              ["T", "Text", () => { addLayer("text"); setSheetPanel("layer"); }],
+              ["▭", "Rect", () => { addShapeAspect("rect"); setSheetPanel("layer"); }],
+              ["◯", "Circle", () => { addShapeAspect("circle"); setSheetPanel("layer"); }],
+              ["△", "Triangle", () => { addShapeAspect("triangle"); setSheetPanel("layer"); }],
+              ["T", "Text", () => { addShapeAspect("text"); setSheetPanel("layer"); }],
             ].map(([icon, lbl, fn]) => (
               <button
                 key={lbl}
@@ -5314,8 +5330,12 @@ export default function TikTokStudioV3({ listing, onClose }) {
           ><Plus size={13} /></button>
         </div>
 
-        {/* Canvas — scrollable, shrinks when sheet opens, scroll pos preserved */}
+        {/* Canvas — scrollable, shrinks when sheet opens, scroll pos preserved.
+            Any press (tap OR drag start) outside the sheet closes it — capture
+            phase, so canvas gestures continue uninterrupted. */}
         <div
+          onTouchStartCapture={() => { if (sheetPanel) setSheetPanel(null); }}
+          onMouseDownCapture={() => { if (sheetPanel) setSheetPanel(null); }}
           style={{
             flex: 1,
             minHeight: 0,
@@ -5474,35 +5494,51 @@ export default function TikTokStudioV3({ listing, onClose }) {
             flexShrink: 0,
           }}
         >
-          {dockItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => toggleSheet(item.id)}
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 3,
-                border: "none",
-                borderTop: `2px solid ${sheetPanel === item.id ? "#3b82f6" : "transparent"}`,
-                background: sheetPanel === item.id ? "rgba(37,99,235,0.1)" : "transparent",
-                color: sheetPanel === item.id ? "#60a5fa" : "rgba(255,255,255,0.42)",
-                cursor: "pointer",
-                fontSize: 8,
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "0.04em",
-                transition: "color 0.15s, background 0.15s",
-                padding: 0,
-                fontFamily: "system-ui,sans-serif",
-              }}
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </button>
-          ))}
+          {dockItems.map((item) => {
+            const on = sheetPanel === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => toggleSheet(item.id)}
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 0,
+                  border: "none",
+                  background: "transparent",
+                  color: on ? "#8db9ff" : "rgba(255,255,255,0.45)",
+                  cursor: "pointer",
+                  fontSize: 8.5,
+                  fontWeight: 600,
+                  letterSpacing: "0.05em",
+                  transition: "color 0.15s",
+                  padding: "6px 0 7px",
+                  fontFamily: "system-ui,sans-serif",
+                }}
+              >
+                {/* Pill highlight around the icon — calmer than a full-cell tint */}
+                <span
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 42,
+                    height: 26,
+                    borderRadius: 13,
+                    background: on ? "rgba(59,130,246,0.22)" : "transparent",
+                    transition: "background 0.15s",
+                    marginBottom: 3,
+                  }}
+                >
+                  {item.icon}
+                </span>
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
     );
@@ -5847,7 +5883,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
             onUndo={undoLayer}
             onRedo={redoLayer}
             onAddShape={(type) => {
-              addLayer(type);
+              addShapeAspect(type);
               setActiveTab("layers");
             }}
             onAddImage={(src) => {
