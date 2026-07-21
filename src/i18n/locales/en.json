@@ -1076,19 +1076,18 @@
           "cta": "Get Started",
           "features": [
             "Everything in Starter",
-            "F&I module + multi-bank HP",
-            "Post-sale handover automation",
-            "Customer lifecycle + reminders",
-            "AI performance advisor"
+            "80 listings and 8 team seats",
+            "Priority WhatsApp support",
+            "Assisted onboarding & stock import"
           ]
         },
         "dealer_pro": {
           "cta": "Talk to Sales",
           "features": [
             "Everything in Growth",
-            "Owner P&L dashboard + scorecards",
-            "Full audit trail",
-            "Priority onboarding & support"
+            "150 listings and 15 team seats",
+            "AI Sales Manager chat",
+            "Dedicated account manager"
           ]
         }
       },

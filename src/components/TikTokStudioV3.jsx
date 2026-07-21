@@ -51,13 +51,18 @@ import {
   Smartphone,
   Monitor,
 } from "lucide-react";
-import { useLayerEditor } from "../hooks/useLayerEditor";
+import { useLayerEditor, makeLayer } from "../hooks/useLayerEditor";
 import LayerCanvas, {
   LayerToolbar,
   LayerStack,
   LayerPropertiesPanel,
   renderLayersToCanvas,
 } from "./studio/LayerCanvas";
+import { CAR_TEMPLATES, buildTemplateCtx } from "./studio/carTemplates";
+import CameraCapture from "./studio/CameraCapture";
+import DragSlider from "./studio/DragSlider";
+import GradientEditor, { gradientCss, DEFAULT_GRADIENT } from "./studio/GradientEditor";
+import { loadCustomFonts, saveCustomFont, deleteCustomFont } from "./studio/customFonts";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CANVAS_W = 1080;
@@ -138,6 +143,11 @@ if (
   s.textContent = `
     @keyframes ttsv3-spin { to { transform: rotate(360deg); } }
     @keyframes ttsv3-highlight { 0%,100%{ box-shadow:none; } 40%{ box-shadow:0 0 0 4px rgba(37,99,235,0.7); } }
+    /* Sliders must own their touch gesture — ancestors declare pan-y, which
+       makes horizontal thumb drags lose gesture arbitration on Android
+       (tap works, drag doesn't). Also give the thumb a real touch target. */
+    input[type="range"] { touch-action: none; }
+    input[type="range"]::-webkit-slider-thumb { width: 18px; height: 18px; }
   `;
   document.head.appendChild(s);
 }
@@ -761,6 +771,23 @@ async function renderToCanvas(
   const fontObj = FONTS.find((f) => f.id === fontId) || FONTS[0];
   const fstack = fontObj.stack.replace(/'/g, "");
 
+  // Wait for every webfont the elements use — canvas silently substitutes a
+  // fallback face for unloaded fonts, which changes glyph sizes and is why
+  // downloads used to drift from the preview.
+  try {
+    const loads = [];
+    for (const el of slide.elements || []) {
+      if (!el.visible || !el.content) continue;
+      const fam = (el.fontFamily || fontObj.stack).replace(/'/g, "").split(",")[0].trim();
+      loads.push(
+        document.fonts.load(
+          `${el.fontStyle === "italic" ? "italic " : ""}${el.fontWeight || "400"} ${el.fontSize || 32}px "${fam}"`,
+        ),
+      );
+    }
+    await Promise.all(loads);
+  } catch {}
+
   for (const el of slide.elements || []) {
     if (!el.visible) continue;
 
@@ -785,7 +812,9 @@ async function renderToCanvas(
       ctx.beginPath();
       ctx.roundRect(0, 0, bw, bh, br);
       ctx.fill();
-      ctx.fillStyle = "#fff";
+      // Badge text: honor an explicit text color when the badge also defines
+      // its own bgColor (legacy badges used `color` AS the background).
+      ctx.fillStyle = el.bgColor && el.color ? el.color : "#fff";
       ctx.textAlign = "left";
       ctx.textBaseline = "top";
       ctx.fillText(el.content, padH, padV);
@@ -814,29 +843,59 @@ async function renderToCanvas(
       );
       ctx.fill();
     }
-    ctx.fillStyle = el.color || "#fff";
-    if (el.shadow) {
-      ctx.shadowColor = "rgba(0,0,0,0.85)";
-      ctx.shadowBlur = 8;
-      ctx.shadowOffsetY = 2;
-    }
     // Always left-align: HTML whiteSpace:nowrap div always renders text at el.x
     // regardless of textAlign setting — match that behaviour here.
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     const textX = el.bgColor ? pad2 : 0;
-    ctx.fillText(el.content || "", textX, 0);
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetY = 0;
-    if (el.shadow) {
-      ctx.shadowColor = "rgba(0,0,0,0.9)";
-      ctx.shadowBlur = 2;
-      ctx.shadowOffsetY = 1;
+    // Text stroke (outline) — drawn first so fill sits on top, matching the
+    // HTML preview's paint-order: stroke fill. lineWidth is 2x because canvas
+    // strokes are centered on the glyph edge (half inside, half outside).
+    if (el.strokeWidth > 0) {
+      ctx.lineWidth = el.strokeWidth * 2;
+      ctx.lineJoin = "round";
+      ctx.miterLimit = 2;
+      ctx.strokeStyle = el.strokeColor || "#000000";
+      ctx.strokeText(el.content || "", textX, 0);
+    }
+    // Gradient text: build a canvas gradient across the glyph box, matching
+    // the CSS background-clip:text preview.
+    if (el.gradient && el.gradient.stops?.length >= 2) {
+      const tw = ctx.measureText(el.content || "").width;
+      const th = el.fontSize || 32;
+      const ang = ((el.gradient.angle ?? 90) - 90) * (Math.PI / 180);
+      const cx0 = textX + tw / 2, cy0 = th / 2;
+      const half = Math.max(tw, th) / 2;
+      const g = ctx.createLinearGradient(
+        cx0 - Math.cos(ang) * half, cy0 - Math.sin(ang) * half,
+        cx0 + Math.cos(ang) * half, cy0 + Math.sin(ang) * half,
+      );
+      [...el.gradient.stops].sort((a, b) => a.pos - b.pos).forEach((s) =>
+        g.addColorStop(Math.max(0, Math.min(1, s.pos / 100)), s.color),
+      );
+      ctx.fillStyle = g;
+      ctx.fillText(el.content || "", textX, 0);
+    } else if (el.color !== "transparent") {
+      // "Invisible" fill (stroke-only text) skips the fill passes entirely
+      ctx.fillStyle = el.color || "#fff";
+      if (el.shadow) {
+        ctx.shadowColor = "rgba(0,0,0,0.85)";
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetY = 2;
+      }
       ctx.fillText(el.content || "", textX, 0);
       ctx.shadowColor = "transparent";
       ctx.shadowBlur = 0;
       ctx.shadowOffsetY = 0;
+      if (el.shadow) {
+        ctx.shadowColor = "rgba(0,0,0,0.9)";
+        ctx.shadowBlur = 2;
+        ctx.shadowOffsetY = 1;
+        ctx.fillText(el.content || "", textX, 0);
+        ctx.shadowColor = "transparent";
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+      }
     }
     ctx.restore();
   }
@@ -892,7 +951,7 @@ function CanvasElement({
         style={{
           ...sharedStyle,
           background: el.bgColor || el.color || "#dc2626",
-          color: "#fff",
+          color: el.bgColor && el.color ? el.color : "#fff",
           fontSize: el.fontSize * scale,
           fontWeight: el.fontWeight,
           fontFamily: el.fontFamily || fontStack,
@@ -909,6 +968,9 @@ function CanvasElement({
     );
   }
 
+  // Gradient text clips a gradient to the glyphs; it needs `background` for the
+  // clip so it can't coexist with a background box — gradient wins.
+  const grad = el.gradient ? gradientCss(el.gradient) : null;
   return (
     <div
       data-el-id={el.id}
@@ -917,18 +979,32 @@ function CanvasElement({
         fontSize: el.fontSize * scale,
         fontWeight: el.fontWeight,
         fontStyle: el.fontStyle || "normal",
-        color: el.color,
+        color: grad ? "transparent" : el.color,
         textAlign: el.align,
         fontFamily: el.fontFamily || fontStack,
         lineHeight: 1.2,
         whiteSpace: "nowrap",
         zIndex: 10,
-        textShadow: el.shadow
+        textShadow: el.shadow && el.color !== "transparent" && !grad
           ? "0 2px 8px rgba(0,0,0,0.85), 0 1px 2px rgba(0,0,0,0.9)"
           : "none",
-        background: el.bgColor || "transparent",
-        padding: el.bgColor ? `${4 * scale}px ${10 * scale}px` : 0,
-        borderRadius: el.bgColor ? 6 * scale : 0,
+        WebkitTextStroke: el.strokeWidth > 0
+          ? `${el.strokeWidth * scale}px ${el.strokeColor || "#000000"}`
+          : undefined,
+        paintOrder: "stroke fill",
+        ...(grad
+          ? {
+              backgroundImage: grad,
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              padding: 0,
+            }
+          : {
+              background: el.bgColor || "transparent",
+              padding: el.bgColor ? `${4 * scale}px ${10 * scale}px` : 0,
+              borderRadius: el.bgColor ? 6 * scale : 0,
+            }),
       }}
       {...handlers}
     >
@@ -1132,14 +1208,16 @@ function SelectionOverlay({
         </div>
       </div>
 
-      {/* Floating mini toolbar — above the rotate handle */}
+      {/* Floating mini toolbar — flips below the element when near the top
+          edge so it can never be cut off */}
       <div
         style={{
           position: "absolute",
-          bottom: "100%",
+          ...(bounds.top < 130
+            ? { top: "100%", marginTop: 14 }
+            : { bottom: "100%", marginBottom: 38 }),
           left: "50%",
           transform: "translateX(-50%)",
-          marginBottom: 38,
           display: "flex",
           alignItems: "center",
           gap: 1,
@@ -1425,7 +1503,8 @@ function CanvasPreview({
         position: "relative",
         width: W,
         height: H,
-        overflow: "hidden",
+        // overflow stays visible so selection handles / toolbars never clip
+        // at the canvas edge; the element layer below clips content itself.
         borderRadius: 4,
         userSelect: "none",
         flexShrink: 0,
@@ -1445,8 +1524,40 @@ function CanvasPreview({
           width: "100%",
           height: "100%",
           display: "block",
+          borderRadius: 4,
         }}
       />
+
+      {/* ── Car photo placeholder (template applied, no image yet) ── */}
+      {slide.carZone && !slide.imageUrl && (
+        <div
+          style={{
+            position: "absolute",
+            left: `${slide.carZone.x}%`,
+            top: `${slide.carZone.y}%`,
+            width: `${slide.carZone.w}%`,
+            height: `${slide.carZone.h}%`,
+            border: "2px dashed rgba(255,255,255,0.55)",
+            borderRadius: 10,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6 * scale,
+            pointerEvents: "none",
+            zIndex: 9,
+          }}
+        >
+          <span style={{ fontSize: 26 * scale, fontWeight: 800, letterSpacing: "0.12em", color: "rgba(255,255,255,0.85)", textTransform: "uppercase" }}>
+            Your car here
+          </span>
+          {slide.carZone.hint && (
+            <span style={{ fontSize: 17 * scale, color: "rgba(255,255,255,0.55)", textAlign: "center", padding: `0 ${20 * scale}px` }}>
+              📐 {slide.carZone.hint}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* ── AI loading overlay ── */}
       {aiLoading && (
@@ -1766,7 +1877,7 @@ function SliderRow({ label, value, min, max, step = 0.01, onChange, fmt }) {
         style={{
           display: "flex",
           justifyContent: "space-between",
-          marginBottom: 5,
+          marginBottom: 2,
         }}
       >
         <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>
@@ -1782,14 +1893,12 @@ function SliderRow({ label, value, min, max, step = 0.01, onChange, fmt }) {
           {fmt ? fmt(value) : value}
         </span>
       </div>
-      <input
-        type="range"
+      <DragSlider
+        value={value}
         min={min}
         max={max}
         step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        style={{ width: "100%", accentColor: "#2563eb", touchAction: "none" }}
+        onChange={onChange}
       />
     </div>
   );
@@ -1915,6 +2024,36 @@ export default function TikTokStudioV3({ listing, onClose }) {
   const [userId, setUserId] = useState(null);
   const [canvasFormat, setCanvasFormat] = useState("9:16");
   const [uploadedImages, setUploadedImages] = useState([]);
+  const [showCamera, setShowCamera] = useState(false);
+  const [camOverlay, setCamOverlay] = useState(null);
+  const [libMsg, setLibMsg] = useState(null);
+  const [customFonts, setCustomFonts] = useState([]);
+  const [fontUploadErr, setFontUploadErr] = useState(null);
+  const [showGradient, setShowGradient] = useState(false);
+
+  // Load the user's uploaded fonts (IndexedDB) once, register them for use
+  useEffect(() => {
+    loadCustomFonts().then(setCustomFonts).catch(() => {});
+  }, []);
+
+  const handleFontUpload = useCallback(async (file) => {
+    setFontUploadErr(null);
+    if (!file) return;
+    const okExt = /\.(ttf|otf|woff2?|)$/i.test(file.name) || /font/.test(file.type);
+    if (!okExt) { setFontUploadErr("Use a .ttf, .otf or .woff file"); return; }
+    if (file.size > 8 * 1024 * 1024) { setFontUploadErr("Font too large (max 8MB)"); return; }
+    try {
+      const meta = await saveCustomFont(file);
+      setCustomFonts((p) => [meta, ...p.filter((f) => f.id !== meta.id)]);
+    } catch {
+      setFontUploadErr("Couldn't load that font file");
+    }
+  }, []);
+
+  const removeCustomFont = useCallback(async (id) => {
+    await deleteCustomFont(id);
+    setCustomFonts((p) => p.filter((f) => f.id !== id));
+  }, []);
 
   // ── Layer editor (shape/image layers per-slide) ──────────────────────────
   const {
@@ -1936,14 +2075,31 @@ export default function TikTokStudioV3({ listing, onClose }) {
     canRedo: canRedoLayer,
   } = useLayerEditor([]);
 
-  const [savedDesigns, setSavedDesigns] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("ttsv3_designs") || "[]");
-    } catch {
-      return [];
-    }
-  });
+  // Design library lives in the DB (studio_designs, RLS user-scoped, 5 max)
+  // so a salesman's saved designs follow them across devices.
+  const [savedDesigns, setSavedDesigns] = useState([]);
   const [designName, setDesignName] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("studio_designs")
+        .select("id, name, thumb, payload, created_at")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (data) {
+        setSavedDesigns(
+          data.map((r) => ({
+            id: r.id,
+            name: r.name,
+            thumb: r.thumb,
+            savedAt: new Date(r.created_at).getTime(),
+            ...(r.payload || {}),
+          })),
+        );
+      }
+    })();
+  }, []);
   const [cmdHistory, setCmdHistory] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("ttsv3_ai_history") || "[]");
@@ -2690,6 +2846,116 @@ export default function TikTokStudioV3({ listing, onClose }) {
     [active, listing, slide, features],
   );
 
+  // ── Pro templates: apply a full ready-made design to the current slide ────
+  const applyProTemplate = useCallback(
+    (tpl) => {
+      const ctx = buildTemplateCtx(listing, slide, features, [...uploadedImages, ...rawImages]);
+      (tpl.fonts || []).forEach(ensureFont);
+      setTheme((t) => ({ ...t, ...tpl.theme }));
+      setSlides((ss) =>
+        ss.map((s, i) =>
+          i !== active
+            ? s
+            : {
+                ...s,
+                template: "minimal", // pro templates draw their own chrome
+                carZone: tpl.carZone,
+                elements: [
+                  ...s.elements.filter((e) => e.id === "watermark"),
+                  ...tpl.buildElements(ctx).map((e) => ({ ...e, id: uid() })),
+                ],
+              },
+        ),
+      );
+      setLayers((tpl.buildLayers ? tpl.buildLayers(ctx) : []).map((l) => makeLayer(l.type, l)));
+      setSelectedId(null);
+    },
+    [active, listing, slide, features, setLayers, uploadedImages, rawImages],
+  );
+
+  // Shapes are stored as % of width AND % of height — on a 9:16 canvas equal
+  // percentages produce a 1:2.7 ellipse, not a circle. Correct the height at
+  // creation so new shapes come out pixel-perfect.
+  const addShapeAspect = useCallback(
+    (type) => {
+      const sq = (wPct, ratio = 1) => ({ width: wPct, height: ((wPct / 100) * CW * ratio / CH) * 100 });
+      if (type === "circle") return addLayer("circle", sq(24, 1));
+      if (type === "rect") return addLayer("rect", sq(40, 0.62));
+      if (type === "triangle") return addLayer("triangle", sq(30, 0.9));
+      return addLayer(type);
+    },
+    [addLayer, CW, CH],
+  );
+
+  // ── Camera: snapshot the current design (minus photo) as a ghost overlay ──
+  const openCamera = useCallback(async () => {
+    try {
+      const c = document.createElement("canvas");
+      await renderToCanvas(c, { ...slide, imageUrl: null }, theme, font, CW, CH);
+      // Include shape/text layers so the ghost matches the real design
+      await renderLayersToCanvas(c, layers || [], CW, CH);
+      setCamOverlay(c.toDataURL("image/png"));
+    } catch {
+      setCamOverlay(null);
+    }
+    setShowCamera(true);
+  }, [slide, theme, font, CW, CH, layers]);
+
+  // "Use + shoot": apply the template, then open the camera with a ghost
+  // built from the template itself (state hasn't flushed yet, so the ghost
+  // can't come from `slide`).
+  const openCameraWithTemplate = useCallback(
+    async (tpl) => {
+      applyProTemplate(tpl);
+      try {
+        const tctx = buildTemplateCtx(listing, slide, features, [...uploadedImages, ...rawImages]);
+        const tmpSlide = {
+          ...slide,
+          imageUrl: null,
+          template: "minimal",
+          elements: [
+            ...(slide?.elements || []).filter((e) => e.id === "watermark"),
+            ...tpl.buildElements(tctx).map((e) => ({ ...e, id: uid() })),
+          ],
+        };
+        const c = document.createElement("canvas");
+        await renderToCanvas(c, tmpSlide, { ...theme, ...tpl.theme }, font, CW, CH);
+        await renderLayersToCanvas(
+          c,
+          (tpl.buildLayers ? tpl.buildLayers(tctx) : []).map((l) => makeLayer(l.type, l)),
+          CW,
+          CH,
+        );
+        setCamOverlay(c.toDataURL("image/png"));
+      } catch {
+        setCamOverlay(null);
+      }
+      setShowCamera(true);
+    },
+    [applyProTemplate, listing, slide, features, uploadedImages, rawImages, theme, font, CW, CH],
+  );
+
+  const handleCameraCapture = useCallback(
+    (dataUrl) => {
+      setUploadedImages((p) => [dataUrl, ...p]);
+      patchSlide({ imageUrl: dataUrl });
+    },
+    [patchSlide],
+  );
+
+  const uploadBgImage = useCallback(
+    (file) => {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        setUploadedImages((p) => [reader.result, ...p]);
+        patchSlide({ imageUrl: reader.result });
+      };
+      reader.readAsDataURL(file);
+    },
+    [patchSlide],
+  );
+
   const addSlide = useCallback(() => {
     const s = {
       id: uid(),
@@ -2887,6 +3153,11 @@ export default function TikTokStudioV3({ listing, onClose }) {
 
   // ── Save / load design ───────────────────────────────────────────────────
   const saveDesign = useCallback(async () => {
+    setLibMsg(null);
+    if (savedDesigns.length >= 5) {
+      setLibMsg("Library is full (5 designs max) — delete one first.");
+      return;
+    }
     // Generate a small thumbnail from the current background canvas
     let thumb = null;
     try {
@@ -2900,45 +3171,56 @@ export default function TikTokStudioV3({ listing, onClose }) {
     const name =
       designName.trim() ||
       `${listing?.brand || "Design"} ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-    const entry = {
-      id: uid(),
-      name,
-      thumb,
+    const payload = {
       theme: { ...theme },
       font,
       elements: JSON.parse(JSON.stringify(slide?.elements || [])),
+      layers: JSON.parse(JSON.stringify(layers || [])),
       format: canvasFormat,
-      savedAt: Date.now(),
+      carZone: slide?.carZone || null,
     };
-    const updated = [entry, ...savedDesigns].slice(0, 24);
-    setSavedDesigns(updated);
-    localStorage.setItem("ttsv3_designs", JSON.stringify(updated));
+    const { data: { user } = {} } = await supabase.auth.getUser();
+    if (!user) {
+      setLibMsg("Sign in to save designs.");
+      return;
+    }
+    const { data, error } = await supabase
+      .from("studio_designs")
+      .insert({ user_id: user.id, name, thumb, payload })
+      .select("id, created_at")
+      .single();
+    if (error) {
+      setLibMsg("Could not save — try again.");
+      return;
+    }
+    setSavedDesigns((p) => [
+      { id: data.id, name, thumb, savedAt: new Date(data.created_at).getTime(), ...payload },
+      ...p,
+    ]);
     setDesignName("");
-  }, [slide, theme, font, canvasFormat, savedDesigns, designName, listing]);
+  }, [slide, theme, font, canvasFormat, savedDesigns, designName, listing, layers]);
 
   const loadDesign = useCallback((d) => {
     setTheme(d.theme);
     setFont(d.font);
     if (d.format) setCanvasFormat(d.format);
-    if (d.elements?.length) {
-      setSlides((ss) =>
-        ss.map((s) => ({
-          ...s,
-          elements: d.elements.map((e) => ({ ...e, id: uid() })),
-        })),
-      );
-    }
+    setSlides((ss) =>
+      ss.map((s, i) => {
+        if (i !== active) return s;
+        const next = { ...s, carZone: d.carZone || s.carZone || null };
+        if (d.elements?.length) next.elements = d.elements.map((e) => ({ ...e, id: uid() }));
+        return next;
+      }),
+    );
+    if (d.layers) setLayers(JSON.parse(JSON.stringify(d.layers)));
     setActiveTab("slide");
-  }, []);
+  }, [active, setLayers]);
 
-  const deleteDesign = useCallback(
-    (id) => {
-      const updated = savedDesigns.filter((d) => d.id !== id);
-      setSavedDesigns(updated);
-      localStorage.setItem("ttsv3_designs", JSON.stringify(updated));
-    },
-    [savedDesigns],
-  );
+  const deleteDesign = useCallback(async (id) => {
+    setSavedDesigns((p) => p.filter((d) => d.id !== id));
+    setLibMsg(null);
+    await supabase.from("studio_designs").delete().eq("id", id);
+  }, []);
 
   if (!slide) return null;
 
@@ -2974,7 +3256,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
               letterSpacing: "0.08em",
             }}
           >
-            ✎ {selectedEl.id}
+            {selectedEl.type === "badge" ? "✎ Badge" : "✎ Text"}
           </span>
           <button
             onClick={() => setSelectedId(null)}
@@ -3030,76 +3312,45 @@ export default function TikTokStudioV3({ listing, onClose }) {
           fmt={(v) => `${v}°`}
         />
 
-        {/* Color */}
-        <ColorRow
-          label="Color"
-          value={selectedEl.color || "#ffffff"}
-          onChange={(v) => updateSelectedElement({ color: v })}
-        />
+        {/* Text color — solid or gradient */}
+        {selectedEl.type !== "badge" && (
+          <div style={{ marginTop: 4 }}>
+            <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+              <button
+                onClick={() => { updateSelectedElement({ gradient: null, color: selectedEl.color === "transparent" ? "#ffffff" : selectedEl.color || "#ffffff" }); setShowGradient(false); }}
+                style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, cursor: "pointer", border: `1px solid ${!selectedEl.gradient ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.1)"}`, background: !selectedEl.gradient ? "rgba(37,99,235,0.12)" : "transparent", color: !selectedEl.gradient ? "#60a5fa" : "rgba(255,255,255,0.5)", fontWeight: 600 }}
+              >
+                Solid
+              </button>
+              <button
+                onClick={() => { updateSelectedElement({ gradient: selectedEl.gradient || DEFAULT_GRADIENT, bgColor: null }); setShowGradient(true); }}
+                style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, cursor: "pointer", border: `1px solid ${selectedEl.gradient ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.1)"}`, background: selectedEl.gradient ? gradientCss(selectedEl.gradient) : "transparent", color: "#fff", fontWeight: 600 }}
+              >
+                Gradient
+              </button>
+            </div>
 
-        {/* X / Y */}
-        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-          <div style={{ flex: 1 }}>
-            <p
-              style={{
-                fontSize: 9,
-                color: "rgba(255,255,255,0.3)",
-                marginBottom: 3,
-              }}
-            >
-              X
-            </p>
-            <input
-              type="number"
-              value={Math.round(selectedEl.x)}
-              onChange={(e) =>
-                updateSelectedElement({ x: Number(e.target.value) })
-              }
-              style={{
-                width: "100%",
-                padding: "6px 8px",
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 7,
-                color: "#fff",
-                fontFamily: "system-ui,sans-serif",
-                fontSize: 11,
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
+            {!selectedEl.gradient ? (
+              <ColorRow
+                label="Text color"
+                value={selectedEl.color === "transparent" ? "#ffffff" : selectedEl.color || "#ffffff"}
+                onChange={(v) => updateSelectedElement({ color: v })}
+              />
+            ) : (
+              <GradientEditor
+                value={selectedEl.gradient}
+                onChange={(g) => updateSelectedElement({ gradient: g })}
+              />
+            )}
           </div>
-          <div style={{ flex: 1 }}>
-            <p
-              style={{
-                fontSize: 9,
-                color: "rgba(255,255,255,0.3)",
-                marginBottom: 3,
-              }}
-            >
-              Y
-            </p>
-            <input
-              type="number"
-              value={Math.round(selectedEl.y)}
-              onChange={(e) =>
-                updateSelectedElement({ y: Number(e.target.value) })
-              }
-              style={{
-                width: "100%",
-                padding: "6px 8px",
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 7,
-                color: "#fff",
-                fontFamily: "system-ui,sans-serif",
-                fontSize: 11,
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-          </div>
-        </div>
+        )}
+        {selectedEl.type === "badge" && (
+          <ColorRow
+            label="Badge color"
+            value={selectedEl.bgColor || selectedEl.color || "#dc2626"}
+            onChange={(v) => updateSelectedElement({ bgColor: v })}
+          />
+        )}
 
         {/* Font weight */}
         <div
@@ -3208,109 +3459,141 @@ export default function TikTokStudioV3({ listing, onClose }) {
           </button>
         </div>
 
-        {/* Font family */}
-        <div style={{ marginTop: 8 }}>
-          <p
-            style={{
-              fontSize: 9,
-              color: "rgba(255,255,255,0.3)",
-              marginBottom: 3,
-            }}
-          >
-            Font
-          </p>
-          <select
-            value={selectedEl.fontFamily || ""}
-            onChange={(e) =>
-              updateSelectedElement({ fontFamily: e.target.value })
-            }
-            style={{
-              width: "100%",
-              padding: "5px 8px",
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 6,
-              color: "rgba(255,255,255,0.8)",
-              fontSize: 11,
-              outline: "none",
-            }}
-          >
-            <option value="">— Template default —</option>
-            {FONTS.map((f) => (
-              <option key={f.id} value={f.stack}>
-                {f.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Fill / invisible-text / background — full Canva-style text styling */}
+        {selectedEl.type !== "badge" && (
+          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+            {/* Fill color + invisible toggle */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", width: 62, flexShrink: 0 }}>Fill</span>
+              <label style={{ position: "relative", width: 26, height: 26, borderRadius: 6, border: "1px solid rgba(255,255,255,0.15)", background: selectedEl.color === "transparent" ? "repeating-conic-gradient(#444 0% 25%, #222 0% 50%) 50%/8px 8px" : selectedEl.color || "#ffffff", cursor: "pointer", flexShrink: 0 }}>
+                <input
+                  type="color"
+                  value={selectedEl.color === "transparent" ? "#ffffff" : selectedEl.color || "#ffffff"}
+                  onChange={(e) => updateSelectedElement({ color: e.target.value })}
+                  style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer" }}
+                />
+              </label>
+              <button
+                onClick={() =>
+                  updateSelectedElement({
+                    color: selectedEl.color === "transparent" ? "#ffffff" : "transparent",
+                    ...(selectedEl.color !== "transparent" && !(selectedEl.strokeWidth > 0)
+                      ? { strokeWidth: 2, strokeColor: selectedEl.strokeColor || "#ffffff" }
+                      : {}),
+                  })
+                }
+                style={{
+                  padding: "5px 10px", borderRadius: 6, fontSize: 10, cursor: "pointer",
+                  border: `1px solid ${selectedEl.color === "transparent" ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.1)"}`,
+                  background: selectedEl.color === "transparent" ? "rgba(37,99,235,0.12)" : "transparent",
+                  color: selectedEl.color === "transparent" ? "#60a5fa" : "rgba(255,255,255,0.5)",
+                }}
+                title="Outline-only text (invisible fill)"
+              >
+                Invisible fill
+              </button>
+            </div>
 
-        {/* Background color — text elements only */}
-        {selectedEl.type === "text" && (
-          <div style={{ marginTop: 8 }}>
-            <p
-              style={{
-                fontSize: 9,
-                color: "rgba(255,255,255,0.3)",
-                marginBottom: 3,
-              }}
-            >
-              Background
-            </p>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <input
-                type="color"
-                value={selectedEl.bgColor || "#000000"}
-                onChange={(e) =>
-                  updateSelectedElement({ bgColor: e.target.value })
-                }
-                style={{
-                  width: 28,
-                  height: 28,
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  background: "none",
-                  borderRadius: 6,
-                  cursor: "pointer",
-                  padding: 2,
-                }}
-              />
-              <input
-                type="text"
-                value={selectedEl.bgColor || ""}
-                placeholder="none"
-                onChange={(e) =>
-                  updateSelectedElement({ bgColor: e.target.value || null })
-                }
-                style={{
-                  flex: 1,
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 6,
-                  padding: "4px 8px",
-                  color: "rgba(255,255,255,0.8)",
-                  fontSize: 11,
-                  fontFamily: "monospace",
-                  outline: "none",
-                }}
-              />
+            {/* Text border (stroke) */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", width: 62, flexShrink: 0 }}>Border</span>
+              <div style={{ flex: 1 }}>
+                <DragSlider
+                  value={selectedEl.strokeWidth || 0}
+                  min={0}
+                  max={14}
+                  step={0.5}
+                  onChange={(v) => updateSelectedElement({ strokeWidth: v })}
+                />
+              </div>
+              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", width: 24, textAlign: "right" }}>{selectedEl.strokeWidth || 0}</span>
+              <label style={{ position: "relative", width: 26, height: 26, borderRadius: 6, border: "1px solid rgba(255,255,255,0.15)", background: selectedEl.strokeColor || "#000000", cursor: "pointer", flexShrink: 0 }} title="Border color">
+                <input
+                  type="color"
+                  value={selectedEl.strokeColor || "#000000"}
+                  onChange={(e) => updateSelectedElement({ strokeColor: e.target.value })}
+                  style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer" }}
+                />
+              </label>
+            </div>
+
+            {/* Text background chip */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", width: 62, flexShrink: 0 }}>Background</span>
+              <label style={{ position: "relative", width: 26, height: 26, borderRadius: 6, border: "1px solid rgba(255,255,255,0.15)", background: selectedEl.bgColor || "repeating-conic-gradient(#444 0% 25%, #222 0% 50%) 50%/8px 8px", cursor: "pointer", flexShrink: 0 }}>
+                <input
+                  type="color"
+                  value={selectedEl.bgColor || "#dc2626"}
+                  onChange={(e) => updateSelectedElement({ bgColor: e.target.value })}
+                  style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer" }}
+                />
+              </label>
               {selectedEl.bgColor && (
                 <button
                   onClick={() => updateSelectedElement({ bgColor: null })}
-                  style={{
-                    padding: "3px 7px",
-                    fontSize: 10,
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    borderRadius: 5,
-                    color: "rgba(255,255,255,0.4)",
-                    cursor: "pointer",
-                  }}
+                  style={{ padding: "5px 10px", borderRadius: 6, fontSize: 10, cursor: "pointer", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(255,255,255,0.5)" }}
                 >
-                  ✕
+                  None
                 </button>
               )}
             </div>
           </div>
         )}
+
+        {/* Font family — built-in + user-uploaded, with an uploader */}
+        <div style={{ marginTop: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Font</span>
+            <label style={{ fontSize: 10, color: "#60a5fa", cursor: "pointer", fontWeight: 600 }}>
+              + Upload font
+              <input type="file" accept=".ttf,.otf,.woff,.woff2,font/*" style={{ display: "none" }} onChange={(e) => { handleFontUpload(e.target.files?.[0]); e.target.value = ""; }} />
+            </label>
+          </div>
+          {fontUploadErr && (
+            <p style={{ fontSize: 10, color: "#f87171", marginBottom: 6 }}>{fontUploadErr}</p>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 5 }}>
+            {[...customFonts.map((cf) => ({ id: cf.id, label: cf.label, stack: `"${cf.family}", sans-serif`, custom: true })),
+              ...FONTS.map((f) => ({ id: f.id, label: f.label, stack: f.stack, custom: false }))].map((f) => {
+              const active = selectedEl.fontFamily === f.stack;
+              return (
+                <button
+                  key={f.id}
+                  onClick={() => updateSelectedElement({ fontFamily: f.stack })}
+                  style={{
+                    position: "relative",
+                    padding: "8px 8px",
+                    borderRadius: 7,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    border: `1px solid ${active ? "rgba(37,99,235,0.6)" : "rgba(255,255,255,0.08)"}`,
+                    background: active ? "rgba(37,99,235,0.12)" : "rgba(255,255,255,0.03)",
+                    color: "rgba(255,255,255,0.85)",
+                    fontFamily: f.stack,
+                    fontSize: 15,
+                    overflow: "hidden",
+                    whiteSpace: "nowrap",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {f.label}
+                  {f.custom && (
+                    <span
+                      onClick={(e) => { e.stopPropagation(); removeCustomFont(f.id); }}
+                      style={{ position: "absolute", top: 2, right: 4, fontSize: 10, color: "rgba(255,255,255,0.35)", fontFamily: "system-ui" }}
+                    >✕</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            onClick={() => updateSelectedElement({ fontFamily: "" })}
+            style={{ marginTop: 6, width: "100%", padding: "5px 0", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.4)", fontSize: 10, cursor: "pointer" }}
+          >
+            Use template default
+          </button>
+        </div>
 
         {/* Corner radius — badge elements */}
         {selectedEl.type === "badge" && (
@@ -3352,28 +3635,68 @@ export default function TikTokStudioV3({ listing, onClose }) {
     );
   };
 
+  // ── TemplateCards — 5 pro ready-made designs (shared desktop + mobile) ───
+  const TemplateCards = () => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {CAR_TEMPLATES.map((t) => (
+        <div
+          key={t.id}
+          style={{
+            background: "rgba(255,255,255,0.03)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: 10,
+            padding: "10px 12px",
+          }}
+        >
+          <p style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.9)", marginBottom: 2 }}>{t.name}</p>
+          <p style={{ fontSize: 10.5, color: "rgba(255,255,255,0.4)", lineHeight: 1.45, marginBottom: 9 }}>{t.tagline}</p>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button
+              onClick={() => applyProTemplate(t)}
+              style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: "none", background: "#2563eb", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+            >
+              Use template
+            </button>
+            <button
+              onClick={() => openCameraWithTemplate(t)}
+              title="Apply this template and shoot the car photo with its guide"
+              style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: "1px solid rgba(37,99,235,0.4)", background: "rgba(37,99,235,0.1)", color: "#7cb1ff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+            >
+              📷 Use + shoot
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  // ── Photo source buttons (picker / upload) — camera lives on each template ─
+  const PhotoSourceButtons = () => (
+    <div style={{ display: "flex", gap: 6 }}>
+      <button
+        onClick={() => setShowImagePicker(true)}
+        style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "1px dashed rgba(255,255,255,0.14)", background: "transparent", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 11 }}
+      >
+        🖼 Photos
+      </button>
+      <label style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "1px dashed rgba(255,255,255,0.14)", background: "transparent", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 11, textAlign: "center" }}>
+        ⬆ Upload
+        <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { uploadBgImage(e.target.files?.[0]); e.target.value = ""; }} />
+      </label>
+    </div>
+  );
+
   // ── SlidePanel ───────────────────────────────────────────────────────────
   const SlidePanel = () => (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {/* Element properties — shown when an element is selected */}
       {ElPropsPanel()}
 
+      <SectionHead label="Pro Templates" />
+      <TemplateCards />
+
       <SectionHead label="Image" />
-      <button
-        onClick={() => setShowImagePicker(true)}
-        style={{
-          width: "100%",
-          padding: "9px 0",
-          borderRadius: 10,
-          border: "1px dashed rgba(255,255,255,0.14)",
-          background: "transparent",
-          color: "rgba(255,255,255,0.4)",
-          cursor: "pointer",
-          fontSize: 12,
-        }}
-      >
-        📷 Change photo
-      </button>
+      <PhotoSourceButtons />
 
       <SectionHead label="Template" />
       <div
@@ -4210,7 +4533,12 @@ export default function TikTokStudioV3({ listing, onClose }) {
   // ── Library Panel ────────────────────────────────────────────────────────
   const LibraryPanel = () => (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <SectionHead label="Save current design" />
+      <SectionHead label={`Save current design · ${savedDesigns.length}/5 slots`} />
+      {libMsg && (
+        <p style={{ fontSize: 11, color: "#fbbf24", background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.25)", borderRadius: 8, padding: "8px 10px" }}>
+          {libMsg}
+        </p>
+      )}
       <input
         value={designName}
         onChange={(e) => setDesignName(e.target.value)}
@@ -4232,15 +4560,16 @@ export default function TikTokStudioV3({ listing, onClose }) {
       />
       <button
         onClick={saveDesign}
+        disabled={savedDesigns.length >= 5}
         style={{
           width: "100%",
           padding: "10px 0",
           borderRadius: 9,
           border: "none",
-          background: "#2563eb",
-          color: "#fff",
+          background: savedDesigns.length >= 5 ? "rgba(255,255,255,0.08)" : "#2563eb",
+          color: savedDesigns.length >= 5 ? "rgba(255,255,255,0.3)" : "#fff",
           fontWeight: 700,
-          cursor: "pointer",
+          cursor: savedDesigns.length >= 5 ? "not-allowed" : "pointer",
           fontSize: 12,
           display: "flex",
           alignItems: "center",
@@ -4248,7 +4577,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
           gap: 6,
         }}
       >
-        💾 Save theme + layout
+        {savedDesigns.length >= 5 ? "Library full — delete a design first" : "💾 Save design (theme + text + shapes)"}
       </button>
 
       {savedDesigns.length === 0 ? (
@@ -4663,6 +4992,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
       ...(hasLayerSel
         ? [{ id: "layer", icon: <Layers size={17} />, label: "Shape" }]
         : []),
+      { id: "tpl", icon: <LayoutTemplate size={17} />, label: "Design" },
       { id: "shapes", icon: <Square size={17} />, label: "Add" },
       { id: "components", icon: <Sliders size={17} />, label: "Layers" },
       { id: "photo", icon: <ImagePlus size={17} />, label: "Photo" },
@@ -4671,6 +5001,14 @@ export default function TikTokStudioV3({ listing, onClose }) {
 
     // Bottom sheet content
     const sheetBody = () => {
+      if (sheetPanel === "tpl") {
+        return (
+          <div style={{ padding: "12px 14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+            <PhotoSourceButtons />
+            <TemplateCards />
+          </div>
+        );
+      }
       if (sheetPanel === "text") {
         const p = ElPropsPanel();
         if (!p) return null;
@@ -4696,10 +5034,10 @@ export default function TikTokStudioV3({ listing, onClose }) {
         return (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "12px 16px 16px" }}>
             {[
-              ["▭", "Rect", () => { addLayer("rect"); setSheetPanel("layer"); }],
-              ["◯", "Circle", () => { addLayer("circle"); setSheetPanel("layer"); }],
-              ["△", "Triangle", () => { addLayer("triangle"); setSheetPanel("layer"); }],
-              ["T", "Text", () => { addLayer("text"); setSheetPanel("layer"); }],
+              ["▭", "Rect", () => { addShapeAspect("rect"); setSheetPanel("layer"); }],
+              ["◯", "Circle", () => { addShapeAspect("circle"); setSheetPanel("layer"); }],
+              ["△", "Triangle", () => { addShapeAspect("triangle"); setSheetPanel("layer"); }],
+              ["T", "Text", () => { addTextElement(); setSheetPanel("text"); }],
             ].map(([icon, lbl, fn]) => (
               <button
                 key={lbl}
@@ -4860,6 +5198,16 @@ export default function TikTokStudioV3({ listing, onClose }) {
         }}
         onTouchMove={e => { if (e.touches.length > 1) e.preventDefault(); }}
       >
+        {showCamera && (
+          <CameraCapture
+            onClose={() => setShowCamera(false)}
+            onCapture={handleCameraCapture}
+            carZone={slide?.carZone || { x: 6, y: 30, w: 88, h: 34, hint: "Fill the box with the car" }}
+            overlayUrl={camOverlay}
+            canvasW={CW}
+            canvasH={CH}
+          />
+        )}
         {/* Header */}
         <div
           style={{
@@ -5001,8 +5349,12 @@ export default function TikTokStudioV3({ listing, onClose }) {
           ><Plus size={13} /></button>
         </div>
 
-        {/* Canvas — scrollable, shrinks when sheet opens, scroll pos preserved */}
+        {/* Canvas — scrollable, shrinks when sheet opens, scroll pos preserved.
+            Any press (tap OR drag start) outside the sheet closes it — capture
+            phase, so canvas gestures continue uninterrupted. */}
         <div
+          onTouchStartCapture={() => { if (sheetPanel) setSheetPanel(null); }}
+          onMouseDownCapture={() => { if (sheetPanel) setSheetPanel(null); }}
           style={{
             flex: 1,
             minHeight: 0,
@@ -5020,7 +5372,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
           {showImagePicker ? (
             <div style={{ position: "relative", width: mobW, height: mobH }}>
               <ImagePicker
-                images={rawImages}
+                images={[...uploadedImages, ...rawImages]}
                 current={slide.imageUrl}
                 onSelect={(url) => patchSlide({ imageUrl: url })}
                 onClose={() => setShowImagePicker(false)}
@@ -5083,7 +5435,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
                   position: "absolute",
                   inset: 0,
                   zIndex: 25,
-                  overflow: "hidden",
+                  // overflow stays visible so the selection box, rotate handle
+                  // and mini toolbar never clip at the canvas edge on mobile
                   borderRadius: 4,
                   pointerEvents: "none",
                 }}
@@ -5160,35 +5513,51 @@ export default function TikTokStudioV3({ listing, onClose }) {
             flexShrink: 0,
           }}
         >
-          {dockItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => toggleSheet(item.id)}
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 3,
-                border: "none",
-                borderTop: `2px solid ${sheetPanel === item.id ? "#3b82f6" : "transparent"}`,
-                background: sheetPanel === item.id ? "rgba(37,99,235,0.1)" : "transparent",
-                color: sheetPanel === item.id ? "#60a5fa" : "rgba(255,255,255,0.42)",
-                cursor: "pointer",
-                fontSize: 8,
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "0.04em",
-                transition: "color 0.15s, background 0.15s",
-                padding: 0,
-                fontFamily: "system-ui,sans-serif",
-              }}
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </button>
-          ))}
+          {dockItems.map((item) => {
+            const on = sheetPanel === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => toggleSheet(item.id)}
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 0,
+                  border: "none",
+                  background: "transparent",
+                  color: on ? "#8db9ff" : "rgba(255,255,255,0.45)",
+                  cursor: "pointer",
+                  fontSize: 8.5,
+                  fontWeight: 600,
+                  letterSpacing: "0.05em",
+                  transition: "color 0.15s",
+                  padding: "6px 0 7px",
+                  fontFamily: "system-ui,sans-serif",
+                }}
+              >
+                {/* Pill highlight around the icon — calmer than a full-cell tint */}
+                <span
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 42,
+                    height: 26,
+                    borderRadius: 13,
+                    background: on ? "rgba(59,130,246,0.22)" : "transparent",
+                    transition: "background 0.15s",
+                    marginBottom: 3,
+                  }}
+                >
+                  {item.icon}
+                </span>
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
     );
@@ -5533,7 +5902,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
             onUndo={undoLayer}
             onRedo={redoLayer}
             onAddShape={(type) => {
-              addLayer(type);
+              // Text is an element (tight box + rich text panel), not a shape layer
+              if (type === "text") { addTextElement(); setActiveTab("slide"); return; }
+              addShapeAspect(type);
               setActiveTab("layers");
             }}
             onAddImage={(src) => {
@@ -5609,7 +5980,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                     {showImagePicker && (
                       <div style={{ position: "absolute", inset: 0, borderRadius: 8, overflow: "hidden", zIndex: 30 }}>
                         <ImagePicker
-                          images={rawImages}
+                          images={[...uploadedImages, ...rawImages]}
                           current={slide.imageUrl}
                           onSelect={(url) => patchSlide({ imageUrl: url })}
                           onClose={() => setShowImagePicker(false)}

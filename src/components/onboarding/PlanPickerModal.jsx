@@ -15,7 +15,7 @@ const SALESMAN_PLANS = [
   },
   {
     tier: 'premium', route: '/salesman-onboarding/premium', label: 'Salesman Premium', soon: true,
-    price: 'RM 50', priceSub: '/month', caps: ['Unlimited listings', '1 user'],
+    price: 'RM 20', priceSub: '/month', caps: ['Up to 30 listings', '1 user'],
     features: ['Priority marketplace placement', 'Advanced CRM automation', 'Commission tracking', 'Advanced analytics', 'Custom profile subdomain'],
   },
 ];
@@ -23,18 +23,18 @@ const SALESMAN_PLANS = [
 const DEALER_PLANS = [
   {
     tier: 'starter', route: '/dealer-onboarding/starter', label: 'Dealer Starter',
-    price: 'RM 299', priceSub: '/month', trial: '14-day free trial', caps: ['Up to 30 listings', 'Team of 2'],
+    price: 'RM 299', priceSub: '/month', trial: '14-day free trial', caps: ['Up to 30 listings', 'Team of 4'],
     features: ['Full dealer dashboard', 'Lead CRM + pipeline', 'Analytics & reports', 'Custom subdomain'],
   },
   {
     tier: 'growth', route: '/dealer-onboarding/growth', label: 'Dealer Growth', popular: true,
-    price: 'RM 599', priceSub: '/month', trial: '14-day free trial', caps: ['Up to 80 listings', 'Team of 5'],
-    features: ['Everything in Starter', 'F&I add-on revenue tracking', 'Post-sale handover board', 'Priority support'],
+    price: 'RM 599', priceSub: '/month', trial: '14-day free trial', caps: ['Up to 80 listings', 'Team of 8'],
+    features: ['Everything in Starter', 'Priority WhatsApp support', 'Assisted onboarding & stock import'],
   },
   {
     tier: 'pro', route: '/dealer-onboarding/pro', label: 'Dealer Pro',
-    price: 'RM 1,199', priceSub: '/month', trial: '14-day free trial', caps: ['Unlimited listings', 'Unlimited team'],
-    features: ['Everything in Growth', 'Custom branding', 'Dedicated account manager', 'SLA-backed uptime'],
+    price: 'RM 1,199', priceSub: '/month', trial: '14-day free trial', caps: ['Up to 150 listings', 'Team of 15'],
+    features: ['Everything in Growth', 'AI Sales Manager chat', 'Dedicated account manager', 'SLA-backed uptime'],
   },
 ];
 

@@ -80,6 +80,7 @@ const LeadsPage        = React.lazy(() => import("./LeadsPage"));
 const CRMPanel         = React.lazy(() => import("./CRMPanel"));
 const HeroSlidesPage   = React.lazy(() => import("./xdrive/HeroSlidesPage"));
 const RevOpsPage       = React.lazy(() => import("./RevOpsPage"));
+const TikTokStudioV3   = React.lazy(() => import("../components/TikTokStudioV3"));
 const ServicesPage     = React.lazy(() => import("./ServicesPage"));
 const AISalesManager   = React.lazy(() => import("../components/AISalesManager"));
 const PerformanceTab   = React.lazy(() => import("../components/PerformanceTab"));
@@ -172,6 +173,7 @@ import {
   Download,
   ClipboardCheck,
   Mail,
+  Film,
 } from "lucide-react";
 
 const SERVER_URL = "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1";
@@ -5642,7 +5644,7 @@ function ListingDetailDrawer({
   listing, salesmen, salesmenById, onClose, onUpdate, onDelete,
   setEditListing, setPriceEditListing, setMarkSoldListing,
   setDeleteId, copyListing, copiedListingId, dealerSubdomain, dealerSlug, handleAssign, handleUnassign,
-  handleStatus, updatingStatus, getListingAge, userId, profile,
+  handleStatus, updatingStatus, getListingAge, userId, profile, openStudio,
 }) {
   const { can } = usePermissions(profile);
   const canViewCosts = can('view_cost');
@@ -5985,6 +5987,13 @@ function ListingDetailDrawer({
                     link,
                   ].join('\n')}
                 />
+
+                {/* TikTok Studio — slide/content generator for this listing */}
+                {openStudio && (
+                  <button onClick={() => openStudio(listing)} style={{ ...btnBase, border: '1px solid rgba(219,39,119,0.3)', color: '#db2777' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                    <Film style={{ width: 14, height: 14, flexShrink: 0 }} />TikTok Studio
+                  </button>
+                )}
 
                 {/* Financing Calculator — hidden on sold listings */}
                 {!isSold && (
@@ -9073,7 +9082,10 @@ export default function DashboardPage() {
   // /platform, so a superadmin who hits /dashboard is redirected there instead
   // of rendering an empty, onboarding-less dealer dashboard.
   const redirectByRole = useRoleRedirect(["dealer", "owner", "manager", "admin"]);
-  const { status, loading: subLoading } = useSubscription();
+  const { status, trialEndsAt, loading: subLoading } = useSubscription();
+  const trialDaysLeft = status === 'trial' && trialEndsAt
+    ? Math.max(0, Math.ceil((new Date(trialEndsAt) - Date.now()) / 86400000))
+    : null;
 
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -9097,6 +9109,7 @@ export default function DashboardPage() {
   });
   const [priceEditListing, setPriceEditListing] = useState(null);
   const [markSoldListing, setMarkSoldListing] = useState(null);
+  const [studioListing, setStudioListing] = useState(null);
   const [markSoldLoading, setMarkSoldLoading] = useState(false);
   const [profile, setProfile] = useState(null);
   const [dealerSubdomain, setDealerSubdomain] = useState(null); // parent dealer's subdomain (used for manager/admin roles)
@@ -10016,17 +10029,32 @@ export default function DashboardPage() {
     );
   }
 
+  // Trial over — same QR screen as onboarding-era payments, in "expired"
+  // dress. Auto-forwards when an admin flips subscription_status to active
+  // (AdminPage "Mark as Active (Paid)").
   if (!subLoading && status === 'expired') return (
-    <div style={{ background: '#F7F8FA', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "system-ui, sans-serif", gap: 16 }}>
-      <p style={{ color: '#111827', fontSize: 22, fontWeight: 600 }}>Your trial has ended</p>
-      <p style={{ color: '#6b7280', fontSize: 14 }}>Contact us to activate your ShiftOS subscription.</p>
-      <a href="https://wa.me/60174155191" style={{ background: '#DC2626', color: '#ffffff', padding: '12px 28px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Upgrade Now</a>
-    </div>
+    <DealerPendingApproval
+      variant="expired"
+      planKey={profile.plan}
+      dealershipName={profile.dealership}
+      email={profile.email}
+      profileId={profile.id}
+    />
   );
 
   return (
     <>
     <SuspendedBanner />
+    {trialDaysLeft !== null && ['dealer', 'owner'].includes(profile?.role) && (
+      <div style={{ background: trialDaysLeft <= 3 ? '#fef2f2' : '#fffbeb', borderBottom: `1px solid ${trialDaysLeft <= 3 ? '#fecaca' : '#fde68a'}`, padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', fontFamily: 'system-ui,sans-serif' }}>
+        <span style={{ fontSize: 13, color: trialDaysLeft <= 3 ? '#991b1b' : '#92400e', fontWeight: 600 }}>
+          Free trial — {trialDaysLeft} day{trialDaysLeft === 1 ? '' : 's'} left. Your data is safe either way.
+        </span>
+        <a href="https://wa.me/60174155191?text=Hi%2C%20I%20want%20to%20activate%20my%20ShiftOS%20subscription" target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: '#dc2626', padding: '4px 12px', borderRadius: 6, textDecoration: 'none' }}>
+          Activate now
+        </a>
+      </div>
+    )}
     <Helmet>
       <meta name="robots" content="noindex, nofollow" />
     </Helmet>
@@ -11213,7 +11241,16 @@ export default function DashboardPage() {
           getListingAge={getListingAge}
           userId={userId}
           profile={profile}
+          openStudio={(l) => { setDetailListing(null); setStudioListing(l); }}
         />
+      )}
+
+      {/* TikTok Studio — full-screen editor, mounted at page level so the
+          drawer's stacking context can't clip it (overlay rule #1) */}
+      {studioListing && (
+        <React.Suspense fallback={null}>
+          <TikTokStudioV3 listing={studioListing} onClose={() => setStudioListing(null)} />
+        </React.Suspense>
       )}
 
       {/* ── Sidebar notification dropdown (portal — escapes overflow-hidden sidebar) ── */}

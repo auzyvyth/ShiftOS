@@ -6,10 +6,11 @@ import { getPlanConfig } from '../utils/planConfig';
 // confirmation. Used both right after onboarding and as the dashboard gate.
 // When an admin marks payment_status != 'pending' (AdminPage "mark received"),
 // the realtime subscription auto-forwards them into the dashboard.
-export default function DealerPendingApproval({ planKey, dealershipName, email, profileId, redirectTo = '/dashboard' }) {
+export default function DealerPendingApproval({ planKey, dealershipName, email, profileId, redirectTo = '/dashboard', variant = 'payment' }) {
   const cfg = getPlanConfig(planKey);
   const amount = cfg?.price ? `RM ${Number(cfg.price).toLocaleString('en-MY')}` : '';
   const reference = dealershipName || email || '';
+  const expired = variant === 'expired';
 
   useEffect(() => {
     if (!profileId) return;
@@ -19,7 +20,12 @@ export default function DealerPendingApproval({ planKey, dealershipName, email, 
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${profileId}` },
         (payload) => {
-          if (payload.new?.payment_status && payload.new.payment_status !== 'pending') {
+          // Forward on either activation path: payment confirmed (QR flow)
+          // or subscription flipped active (expired-trial renewal — the row
+          // may have no payment_status at all).
+          const paid = payload.new?.payment_status && payload.new.payment_status !== 'pending';
+          const activated = payload.new?.subscription_status === 'active';
+          if (paid || activated) {
             window.location.href = redirectTo;
           }
         },
@@ -53,13 +59,15 @@ export default function DealerPendingApproval({ planKey, dealershipName, email, 
 
       <div style={box}>
         <p style={{ fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase', color: 'rgba(251,191,36,0.9)', margin: '0 0 12px', fontWeight: 600 }}>
-          Awaiting Payment Confirmation
+          {expired ? 'Free Trial Ended' : 'Awaiting Payment Confirmation'}
         </p>
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 34, letterSpacing: 2, color: '#E8EDF5', lineHeight: 1.05, marginBottom: 8 }}>
-          ALMOST THERE
+          {expired ? 'KEEP YOUR DASHBOARD' : 'ALMOST THERE'}
         </div>
         <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, lineHeight: 1.7, margin: '0 0 22px' }}>
-          Scan the QR to pay{cfg?.label ? ` for ${cfg.label}` : ''}. We'll activate your dashboard as soon as we confirm payment.
+          {expired
+            ? `Your 14-day free trial is over — all your listings, leads and records are safe. Scan the QR to activate${cfg?.label ? ` ${cfg.label}` : ''} and pick up right where you left off.`
+            : `Scan the QR to pay${cfg?.label ? ` for ${cfg.label}` : ''}. We'll activate your dashboard as soon as we confirm payment.`}
         </p>
 
         {amount && (

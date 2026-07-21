@@ -1091,7 +1091,7 @@ export default function AdminPage() {
               {/* ── Group 1: Standalone Lite ── */}
               {(() => {
                 // Standalone (no dealer) salesmen: lite + solo premium. Solo
-                // premium pay RM50/mo themselves and need a payment-approval action.
+                // premium pay RM20/mo themselves and need a payment-approval action.
                 const lites = filteredSalesmen.filter(s => !s.dealer_id && (s.plan === 'salesman_lite' || s.plan === 'salesman_full'));
                 return (
                   <div style={{ marginBottom: 24 }}>
@@ -1595,7 +1595,12 @@ export default function AdminPage() {
                                           {d.is_verified ? "Remove verified badge" : "✓ Verify dealer (SSM + IC checked)"}
                                         </button>
                                         {d.payment_status === "pending" && (
-                                          <button onClick={() => { saveField(d.id, "payment_status", "received"); updateLocal(d.id, "payment_status", "received"); }}
+                                          <button onClick={async () => {
+                                            // One click = fully activated: clear the payment gate AND
+                                            // flip the subscription, so the dealer isn't paid-but-expired.
+                                            const { error } = await supabase.from("profiles").update({ payment_status: "received", subscription_status: "active" }).eq("id", d.id);
+                                            if (!error) { flashSaved(d.id); setDealers(prev => prev.map(x => x.id === d.id ? { ...x, payment_status: "received", subscription_status: "active" } : x)); }
+                                          }}
                                             style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.25)", color: "#fbbf24", padding: "5px 10px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontFamily: "inherit", fontWeight: 600, textAlign: "left" }}>
                                             ✓ Mark Payment Received
                                           </button>
