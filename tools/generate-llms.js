@@ -1,182 +1,86 @@
 #!/usr/bin/env node
 
-import fs from 'fs';
-import path from 'path';
+// Generates public/llms.txt — a curated, high-signal guide to XDrive for LLMs
+// and AI search engines (ChatGPT, Perplexity, Claude, Gemini). This follows the
+// llmstxt.org convention: an H1, a summary blockquote, then curated sections of
+// links with real descriptions.
+//
+// NOTE: This is intentionally hand-curated, NOT auto-extracted from page source.
+// The previous auto-extractor read <Helmet> titles, but most pages set their
+// title from a JS variable ({SEO_TITLE}), which the extractor stripped — so every
+// page collapsed to "Untitled Page / No description available" and the shipped
+// llms.txt actively misrepresented the product. Curated copy keeps this accurate.
+// When you add a public page or article, add a line to the relevant section below.
 
-const CLEAN_CONTENT_REGEX = {
-  comments: /\/\*[\s\S]*?\*\/|\/\/.*$/gm,
-  templateLiterals: /`[\s\S]*?`/g,
-  strings: /'[^']*'|"[^"]*"/g,
-  jsxExpressions: /\{.*?\}/g,
-  htmlEntities: {
-    quot: /&quot;/g,
-    amp: /&amp;/g,
-    lt: /&lt;/g,
-    gt: /&gt;/g,
-    apos: /&apos;/g
-  }
-};
+import fs from "fs";
+import path from "path";
 
-const EXTRACTION_REGEX = {
-  route: /<Route\s+[^>]*>/g,
-  path: /path=["']([^"']+)["']/,
-  element: /element=\{<(\w+)[^}]*\/?\s*>\}/,
-  helmet: /<Helmet[^>]*?>([\s\S]*?)<\/Helmet>/i,
-  helmetTest: /<Helmet[\s\S]*?<\/Helmet>/i,
-  title: /<title[^>]*?>\s*(.*?)\s*<\/title>/i,
-  description: /<meta\s+name=["']description["']\s+content=["'](.*?)["']/i
-};
+const SITE = "https://xdrive.my";
 
-function cleanContent(content) {
-  return content
-    .replace(CLEAN_CONTENT_REGEX.comments, '')
-    .replace(CLEAN_CONTENT_REGEX.templateLiterals, '""')
-    .replace(CLEAN_CONTENT_REGEX.strings, '""');
-}
+// Public, indexable articles (Malay SEO content). Keep in sync with src/App.jsx.
+const ARTICLES = [
+  ["/articles/app-terbaik-dealer-kereta-terpakai-malaysia", "App terbaik untuk dealer kereta terpakai Malaysia — how ShiftOS compares to Excel and manual record-keeping."],
+  ["/articles/apa-itu-dms-dealer-kereta", "What a dealer DMS (Dealer Management System) is and why used car dealers need one."],
+  ["/articles/cara-urus-stok-kereta-terpakai-sistem-digital", "How to manage used car stock with a digital system instead of spreadsheets."],
+  ["/articles/cara-kira-komisen-salesman-kereta", "How car salesman commission is calculated in Malaysia (percent-of-gross, flat, and tiered)."],
+  ["/articles/cara-buat-sales-agreement-kereta-terpakai", "How to write a used car sales agreement (Sales Agreement / Perjanjian Jual Beli) in Malaysia."],
+  ["/articles/apa-itu-puspakom-b5-b7", "What Puspakom B5 and B7 inspections are, when each is required, and current fees."],
+  ["/articles/cara-pindah-milik-kereta-mysikap", "How to transfer car ownership (pindah milik) via JPJ MySikap, step by step."],
+  ["/articles/beza-kereta-recon-dan-terpakai", "The difference between recond (recon) and locally-used cars for Malaysian buyers."],
+];
 
-function cleanText(text) {
-  if (!text) return text;
-  
-  return text
-    .replace(CLEAN_CONTENT_REGEX.jsxExpressions, '')
-    .replace(CLEAN_CONTENT_REGEX.htmlEntities.quot, '"')
-    .replace(CLEAN_CONTENT_REGEX.htmlEntities.amp, '&')
-    .replace(CLEAN_CONTENT_REGEX.htmlEntities.lt, '<')
-    .replace(CLEAN_CONTENT_REGEX.htmlEntities.gt, '>')
-    .replace(CLEAN_CONTENT_REGEX.htmlEntities.apos, "'")
-    .trim();
-}
+const CONTENT = `# XDrive
 
-function extractRoutes(appJsxPath) {
-  if (!fs.existsSync(appJsxPath)) return new Map();
+> XDrive is a Malaysian used-car platform with two sides: a public marketplace at
+> xdrive.my where buyers browse verified used cars from local dealers, and ShiftOS,
+> a used-car dealer management system (DMS) that dealers and salesmen use to run
+> their inventory, leads CRM, sales records, salesman commission and profit analytics.
 
-  try {
-    const content = fs.readFileSync(appJsxPath, 'utf8');
-    const routes = new Map();
-    const routeMatches = [...content.matchAll(EXTRACTION_REGEX.route)];
-    
-    for (const match of routeMatches) {
-      const routeTag = match[0];
-      const pathMatch = routeTag.match(EXTRACTION_REGEX.path);
-      const elementMatch = routeTag.match(EXTRACTION_REGEX.element);
-      const isIndex = routeTag.includes('index');
-      
-      if (elementMatch) {
-        const componentName = elementMatch[1];
-        let routePath;
-        
-        if (isIndex) {
-          routePath = '/';
-        } else if (pathMatch) {
-          routePath = pathMatch[1].startsWith('/') ? pathMatch[1] : `/${pathMatch[1]}`;
-        }
-        
-        routes.set(componentName, routePath);
-      }
-    }
+XDrive serves three audiences: car **buyers** (the marketplace), used-car **dealers**
+(the ShiftOS software, sold on monthly plans), and individual **salesmen** (a free
+and a low-cost paid tier to manage their own listings, leads and commission). The
+software is purpose-built for Malaysian workflows: Puspakom B5/B7 inspections, JPJ
+pindah milik (ownership transfer), hire-purchase (HP) financing and F&I add-ons.
 
-    return routes;
-  } catch (error) {
-    return new Map();
-  }
-}
+## For car buyers
+- [Marketplace](${SITE}/): Browse verified used cars for sale in Malaysia from trusted dealers.
+- [Showroom / all listings](${SITE}/showroom): Full searchable inventory with filters for price, mileage, year, transmission, condition and location.
+- [Compare cars](${SITE}/compare): Compare up to 4 used cars side by side on price, monthly instalment, mileage, running costs and an overall value score.
+- [Loan calculator](${SITE}/calculator): Estimate monthly hire-purchase instalments for a used car (interest, tenure, down payment).
 
-function findReactFiles(dir) {
-  return fs.readdirSync(dir).map(item => path.join(dir, item));
-}
+## For dealers — ShiftOS software
+- [ShiftOS for dealers](${SITE}/shiftos): Used-car dealer software (DMS) for Malaysia — inventory management, leads CRM, sales records, salesman commission tracking, per-unit profit (P&L), F&I and the full Malaysian handover checklist. 14-day free trial, no card required.
+- What it replaces: Excel stock sheets, WhatsApp lead chats, manual JPJ/Puspakom tracking, printed paperwork and scattered Telegram posts — in one platform.
+- Key modules: real per-unit gross profit, auto customer records on a won deal, post-sale handover board (loan settlement, insurance, Puspakom B5/B7, JPJ pindah milik, road tax, geran, handover), road tax & insurance renewal reminders, and a public dealer storefront on a xdrive.my subdomain.
 
-function extractHelmetData(content, filePath, routes) {
-  const cleanedContent = cleanContent(content);
-  
-  if (!EXTRACTION_REGEX.helmetTest.test(cleanedContent)) {
-    return null;
-  }
-  
-  const helmetMatch = content.match(EXTRACTION_REGEX.helmet);
-  if (!helmetMatch) return null;
-  
-  const helmetContent = helmetMatch[1];
-  const titleMatch = helmetContent.match(EXTRACTION_REGEX.title);
-  const descMatch = helmetContent.match(EXTRACTION_REGEX.description);
-  
-  const title = cleanText(titleMatch?.[1]);
-  const description = cleanText(descMatch?.[1]);
-  
-  const fileName = path.basename(filePath, path.extname(filePath));
-  const url = routes.length && routes.has(fileName) 
-    ? routes.get(fileName) 
-    : generateFallbackUrl(fileName);
-  
-  return {
-    url,
-    title: title || 'Untitled Page',
-    description: description || 'No description available'
-  };
-}
+## For salesmen
+- [ShiftOS for salesmen](${SITE}/for-salesmen): A free app for individual car salesmen to manage their own listings, leads and commission, share cars with tracked referral links, and see which channels drive their traffic.
 
-function generateFallbackUrl(fileName) {
-  const cleanName = fileName.replace(/Page$/, '').toLowerCase();
-  return cleanName === 'app' ? '/' : `/${cleanName}`;
-}
+## Guides & articles
+- [Guides](${SITE}/guides): Practical guides for Malaysian used-car buyers and dealers.
+- [All articles](${SITE}/articles): Index of dealer and buyer guides.
+${ARTICLES.map(([url, desc]) => `- [${url.split("/").pop()}](${SITE}${url}): ${desc}`).join("\n")}
 
-function generateLlmsTxt(pages) {
-  const sortedPages = pages.sort((a, b) => a.title.localeCompare(b.title));
-  const pageEntries = sortedPages.map(page => 
-    `- [${page.title}](${page.url}): ${page.description}`
-  ).join('\n');
-  
-  return `## Pages\n${pageEntries}`;
-}
+## Pricing (RM/month, prices in Malaysian Ringgit)
+- Salesman Lite — RM0 (free): up to 10 listings, 1 seat.
+- Salesman Premium — RM20/month: up to 30 listings, 1 seat, plus AI captions, financing tools and deal sheets.
+- Dealer Starter — RM299/month: up to 30 listings, 4 seats. 14-day free trial.
+- Dealer Growth — RM599/month: up to 80 listings, 8 seats.
+- Dealer Pro — RM1,199/month: up to 150 listings, 15 seats.
+- Dealer Group — RM2,999/month: unlimited listings and seats (multi-branch).
 
-function ensureDirectoryExists(dirPath) {
-  if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true });
-  }
-}
-
-function processPageFile(filePath, routes) {
-  try {
-    const content = fs.readFileSync(filePath, 'utf8');
-    return extractHelmetData(content, filePath, routes);
-  } catch (error) {
-    console.error(`❌ Error processing ${filePath}:`, error.message);
-    return null;
-  }
-}
+## About
+- XDrive is based in Malaysia and built for the Malaysian used-car market.
+- The marketplace lives at ${SITE}; each dealer also gets a storefront at <dealer>.xdrive.my.
+- ShiftOS is the dealer/salesman software product; XDrive is the consumer marketplace brand.
+`;
 
 function main() {
-  const pagesDir = path.join(process.cwd(), 'src', 'pages');
-  const appJsxPath = path.join(process.cwd(), 'src', 'App.jsx');
-
-  let pages = [];
-  
-  if (!fs.existsSync(pagesDir)) {
-    pages.push(processPageFile(appJsxPath, []))
-    pages = pages.filter(Boolean);
-  } else {
-    const routes = extractRoutes(appJsxPath);
-    const reactFiles = findReactFiles(pagesDir);
-
-    pages = reactFiles
-      .map(filePath => processPageFile(filePath, routes))
-      .filter(Boolean);
-  }
-
-  if (pages.length === 0) {
-    console.error('❌ No pages with Helmet components found!');
-    process.exit(1);
-  }
-
-
-  const llmsTxtContent = generateLlmsTxt(pages);
-  const outputPath = path.join(process.cwd(), 'public', 'llms.txt');
-  
-  ensureDirectoryExists(path.dirname(outputPath));
-  fs.writeFileSync(outputPath, llmsTxtContent, 'utf8');
+  const outputPath = path.join(process.cwd(), "public", "llms.txt");
+  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+  fs.writeFileSync(outputPath, CONTENT, "utf8");
+  console.log(`Wrote ${outputPath} (${CONTENT.length} bytes)`);
 }
 
 const isMainModule = import.meta.url === `file://${process.argv[1]}`;
-
-if (isMainModule) {
-  main();
-}
+if (isMainModule) main();

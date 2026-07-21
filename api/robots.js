@@ -5,8 +5,12 @@ const ROOT_DOMAIN = "xdrive.my";
 const INTERNAL_PATHS = [
   "/dashboard",
   "/salesman",
+  "/manager",
+  "/accountant",
+  "/fi",
   "/admin",
   "/accounts",
+  "/platform",
   "/onboarding",
   "/auth",
 ];
