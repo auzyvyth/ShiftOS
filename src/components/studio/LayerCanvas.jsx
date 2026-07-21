@@ -290,6 +290,10 @@ const CURSOR = {
   w: "ew-resize",
 };
 
+// Canva-style selection chrome: tiny 8px visual dots inside invisible 28px
+// hit areas, so handles are precise to look at but easy to grab on touch.
+const HIT = 28;
+
 function SelectionBox({
   layer,
   containerW,
@@ -300,22 +304,27 @@ function SelectionBox({
   onRotateTouchStart,
   onDelete,
 }) {
-  const hs = HANDLE_SIZE;
   const x = (layer.x / 100) * containerW;
   const y = (layer.y / 100) * containerH;
   const w = (layer.width / 100) * containerW;
   const h = (layer.height / 100) * containerH;
 
-  const handlePos = {
-    nw: [-hs / 2, -hs / 2],
-    n: [w / 2 - hs / 2, -hs / 2],
-    ne: [w - hs / 2, -hs / 2],
-    e: [w - hs / 2, h / 2 - hs / 2],
-    se: [w - hs / 2, h - hs / 2],
-    s: [w / 2 - hs / 2, h - hs / 2],
-    sw: [-hs / 2, h - hs / 2],
-    w: [-hs / 2, h / 2 - hs / 2],
+  // Hit-box CENTER positions for each handle
+  const handleCenter = {
+    nw: [0, 0], n: [w / 2, 0], ne: [w, 0],
+    e: [w, h / 2], se: [w, h], s: [w / 2, h],
+    sw: [0, h], w: [0, h / 2],
   };
+
+  const dot = (round) => ({
+    width: 8,
+    height: 8,
+    background: "#fff",
+    border: "1.5px solid #3b82f6",
+    borderRadius: round ? "50%" : 2,
+    boxShadow: "0 1px 4px rgba(0,0,0,0.5)",
+    pointerEvents: "none",
+  });
 
   return (
     <div
@@ -328,7 +337,7 @@ function SelectionBox({
         transform: `rotate(${layer.rotation || 0}deg)`,
         transformOrigin: "center center",
         pointerEvents: "none",
-        zIndex: 200, // always on top
+        zIndex: 200,
       }}
     >
       <div
@@ -341,36 +350,54 @@ function SelectionBox({
         }}
       />
 
-      {HANDLES.map((hk) => (
-        <div
-          key={hk}
-          onMouseDown={(e) => {
-            e.stopPropagation();
-            onHandleMouseDown(e, hk);
-          }}
-          onTouchStart={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            onHandleTouchStart(e, hk);
-          }}
-          style={{
-            position: "absolute",
-            left: handlePos[hk][0],
-            top: handlePos[hk][1],
-            width: hs,
-            height: hs,
-            background: "#fff",
-            border: "1.5px solid #3b82f6",
-            borderRadius: 2,
-            cursor: CURSOR[hk],
-            pointerEvents: "auto",
-            zIndex: 201,
-            touchAction: "none",
-          }}
-        />
-      ))}
+      {HANDLES.map((hk) => {
+        // Side handles render as pills along their edge; corners as squares
+        const isSide = hk.length === 1;
+        return (
+          <div
+            key={hk}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              onHandleMouseDown(e, hk);
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              onHandleTouchStart(e, hk);
+            }}
+            style={{
+              position: "absolute",
+              left: handleCenter[hk][0] - HIT / 2,
+              top: handleCenter[hk][1] - HIT / 2,
+              width: HIT,
+              height: HIT,
+              background: "transparent",
+              cursor: CURSOR[hk],
+              pointerEvents: "auto",
+              zIndex: 201,
+              touchAction: "none",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <div
+              style={
+                isSide
+                  ? {
+                      ...dot(false),
+                      width: hk === "n" || hk === "s" ? 16 : 5,
+                      height: hk === "n" || hk === "s" ? 5 : 16,
+                      borderRadius: 3,
+                    }
+                  : dot(false)
+              }
+            />
+          </div>
+        );
+      })}
 
-      {/* Rotate handle */}
+      {/* Rotate handle — 36px hit area below the shape (Canva placement) */}
       <div
         onMouseDown={(e) => {
           e.stopPropagation();
@@ -383,37 +410,39 @@ function SelectionBox({
         }}
         style={{
           position: "absolute",
-          left: w / 2 - hs / 2,
-          top: -ROTATE_OFFSET - hs / 2,
-          width: hs * 1.5,
-          height: hs * 1.5,
-          background: "#3b82f6",
-          borderRadius: "50%",
-          cursor: "crosshair",
+          left: w / 2 - 18,
+          top: h + 10,
+          width: 36,
+          height: 36,
+          cursor: "grab",
           pointerEvents: "auto",
           zIndex: 201,
           touchAction: "none",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          background: "transparent",
         }}
         title="Rotate"
       >
-        <RotateCcw size={8} color="#fff" />
+        <div
+          style={{
+            width: 18,
+            height: 18,
+            background: "#fff",
+            border: "1.5px solid #3b82f6",
+            borderRadius: "50%",
+            boxShadow: "0 1px 5px rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <RotateCcw size={10} color="#3b82f6" />
+        </div>
       </div>
-      <div
-        style={{
-          position: "absolute",
-          left: w / 2 - 0.5,
-          top: -ROTATE_OFFSET,
-          width: 1,
-          height: ROTATE_OFFSET,
-          background: "rgba(59,130,246,0.5)",
-          pointerEvents: "none",
-        }}
-      />
 
-      {/* Delete — larger touch target on mobile */}
+      {/* Delete — top-right, 32px hit area */}
       <div
         onMouseDown={(e) => {
           e.stopPropagation();
@@ -426,12 +455,10 @@ function SelectionBox({
         }}
         style={{
           position: "absolute",
-          right: -12,
-          top: -12,
-          width: 22,
-          height: 22,
-          background: "#ef4444",
-          borderRadius: "50%",
+          right: -16 - 6,
+          top: -16 - 6,
+          width: 32,
+          height: 32,
           cursor: "pointer",
           pointerEvents: "auto",
           display: "flex",
@@ -439,9 +466,23 @@ function SelectionBox({
           justifyContent: "center",
           zIndex: 201,
           touchAction: "none",
+          background: "transparent",
         }}
       >
-        <Trash2 size={10} color="#fff" />
+        <div
+          style={{
+            width: 20,
+            height: 20,
+            background: "#ef4444",
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 1px 5px rgba(0,0,0,0.5)",
+          }}
+        >
+          <Trash2 size={10} color="#fff" />
+        </div>
       </div>
     </div>
   );
@@ -533,9 +574,10 @@ function QuickPanel({ layer, cW, cH, onUpdate, onCommit, onShiftZ }) {
   const lw = (layer.width / 100) * cW;
   const lh = (layer.height / 100) * cH;
 
-  const PANEL_W = 230;
+  const PANEL_W = 216;
   const above = ly > 56;
-  const panelTop = above ? ly - 46 : ly + lh + 8;
+  // Below-position clears the rotate handle (which now sits under the shape)
+  const panelTop = clamp(above ? ly - 46 : ly + lh + 54, 4, Math.max(4, cH - 44));
   const panelLeft = Math.max(4, Math.min(cW - PANEL_W - 4, lx + lw / 2 - PANEL_W / 2));
 
   const hasText = ["text", "rect", "circle", "triangle"].includes(layer.type);
@@ -653,6 +695,11 @@ export default function LayerCanvas({
   const dragRef = useRef(null);
   const resizeRef = useRef(null);
   const rotateRef = useRef(null);
+  const pinchRef = useRef(null);
+  const layersRef = useRef(layers);
+  layersRef.current = layers;
+  const [snap, setSnap] = React.useState({ v: false, h: false });
+  const [tip, setTip] = React.useState(null);
 
   const CW = canvasW || 1080;
   const CH = canvasH || 1920;
@@ -664,18 +711,49 @@ export default function LayerCanvas({
     (a, b) => (a.zIndex ?? Z_ABOVE_TEMPLATE) - (b.zIndex ?? Z_ABOVE_TEMPLATE),
   );
 
-  // ── Drag ─────────────────────────────────────────────────────────────────
+  // px-space snapshot of a layer (display px, matching pointer coords)
+  const pxOf = useCallback((layer) => ({
+    x: (layer.x / 100) * cW,
+    y: (layer.y / 100) * cH,
+    w: (layer.width / 100) * cW,
+    h: (layer.height / 100) * cH,
+  }), [cW, cH]);
+
+  const startPinch = useCallback((layer, t1, t2) => {
+    const p = pxOf(layer);
+    pinchRef.current = {
+      id: layer.id,
+      startDist: Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY) || 1,
+      startAngle: (Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX) * 180) / Math.PI,
+      startMidX: (t1.clientX + t2.clientX) / 2,
+      startMidY: (t1.clientY + t2.clientY) / 2,
+      origX: p.x, origY: p.y, origW: p.w, origH: p.h,
+      origRotation: layer.rotation || 0,
+      origFontSize: layer.fontSize || 24,
+      isText: layer.type === "text",
+    };
+    dragRef.current = null;
+    resizeRef.current = null;
+    rotateRef.current = null;
+  }, [pxOf]);
+
+  // ── Drag (1 finger / mouse) or pinch (2 fingers) ─────────────────────────
   const onLayerPointerDown = useCallback(
     (e, layer) => {
       if (layer.locked) return;
       e.stopPropagation();
       e.preventDefault();
       onSelectLayer?.(layer.id);
+      if (e.touches && e.touches.length >= 2) {
+        startPinch(layer, e.touches[0], e.touches[1]);
+        return;
+      }
       const cx = e.touches?.[0]?.clientX ?? e.clientX;
       const cy = e.touches?.[0]?.clientY ?? e.clientY;
-      dragRef.current = { id: layer.id, startX: cx, startY: cy, origX: layer.x, origY: layer.y };
+      const p = pxOf(layer);
+      dragRef.current = { id: layer.id, startX: cx, startY: cy, origX: p.x, origY: p.y, w: p.w, h: p.h };
     },
-    [onSelectLayer],
+    [onSelectLayer, startPinch, pxOf],
   );
 
   // ── Resize handle ─────────────────────────────────────────────────────────
@@ -686,14 +764,17 @@ export default function LayerCanvas({
       e.preventDefault();
       const cx = e.touches?.[0]?.clientX ?? e.clientX;
       const cy = e.touches?.[0]?.clientY ?? e.clientY;
+      const p = pxOf(selectedLayer);
       resizeRef.current = {
         id: selectedLayer.id, handle,
         startX: cx, startY: cy,
-        origX: selectedLayer.x, origY: selectedLayer.y,
-        origW: selectedLayer.width, origH: selectedLayer.height,
+        origX: p.x, origY: p.y, origW: p.w, origH: p.h,
+        rotation: selectedLayer.rotation || 0,
+        origFontSize: selectedLayer.fontSize || 24,
+        isText: selectedLayer.type === "text",
       };
     },
-    [selectedLayer],
+    [selectedLayer, pxOf],
   );
 
   // ── Rotate handle ─────────────────────────────────────────────────────────
@@ -710,6 +791,7 @@ export default function LayerCanvas({
       rotateRef.current = {
         id: selectedLayer.id,
         centerX: cx, centerY: cy,
+        containerRect: rect,
         startAngle: Math.atan2(ey - cy, ex - cx) * (180 / Math.PI),
         origRotation: selectedLayer.rotation || 0,
       };
@@ -719,45 +801,135 @@ export default function LayerCanvas({
 
   // ── Global move / up ─────────────────────────────────────────────────────
   useEffect(() => {
+    const SNAP_PX = Math.max(6, cW * 0.014);
+
     const onMove = (e) => {
+      // A second finger landing mid-drag upgrades the gesture to a pinch
+      if (dragRef.current && e.touches && e.touches.length >= 2) {
+        const layer = layersRef.current.find((l) => l.id === dragRef.current.id);
+        if (layer) startPinch(layer, e.touches[0], e.touches[1]);
+      }
+
+      // ── Pinch: move + scale + rotate with two fingers ──
+      if (pinchRef.current && e.touches && e.touches.length >= 2) {
+        e.preventDefault();
+        const t1 = e.touches[0], t2 = e.touches[1];
+        const P = pinchRef.current;
+        const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY) || 1;
+        const ang = (Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX) * 180) / Math.PI;
+        const k = clamp(dist / P.startDist, 0.2, 8);
+        const nw = P.origW * k, nh = P.origH * k;
+        const midX = (t1.clientX + t2.clientX) / 2, midY = (t1.clientY + t2.clientY) / 2;
+        const ncx = P.origX + P.origW / 2 + (midX - P.startMidX);
+        const ncy = P.origY + P.origH / 2 + (midY - P.startMidY);
+        let rot = ((P.origRotation + ang - P.startAngle) % 360 + 360) % 360;
+        const near45 = Math.round(rot / 45) * 45;
+        if (Math.abs(rot - near45) < 4) rot = near45 % 360;
+        onUpdateLayer(P.id, {
+          x: ((ncx - nw / 2) / cW) * 100,
+          y: ((ncy - nh / 2) / cH) * 100,
+          width: (nw / cW) * 100,
+          height: (nh / cH) * 100,
+          rotation: Math.round(rot * 10) / 10,
+          ...(P.isText ? { fontSize: Math.max(8, Math.round(P.origFontSize * k)) } : {}),
+        }, true);
+        return;
+      }
+
       const cx = e.touches?.[0]?.clientX ?? e.clientX;
       const cy = e.touches?.[0]?.clientY ?? e.clientY;
 
+      // ── Drag with center/edge snapping ──
       if (dragRef.current) {
-        const { id, startX, startY, origX, origY } = dragRef.current;
-        const dx = ((cx - startX) / cW) * 100;
-        const dy = ((cy - startY) / cH) * 100;
-        onUpdateLayer(id, { x: origX + dx, y: origY + dy });
+        if (e.touches) e.preventDefault();
+        const { id, startX, startY, origX, origY, w, h } = dragRef.current;
+        let nx = origX + (cx - startX);
+        let ny = origY + (cy - startY);
+        let sV = false, sH = false;
+        if (Math.abs(nx + w / 2 - cW / 2) < SNAP_PX) { nx = cW / 2 - w / 2; sV = true; }
+        if (Math.abs(ny + h / 2 - cH / 2) < SNAP_PX) { ny = cH / 2 - h / 2; sH = true; }
+        if (Math.abs(nx) < SNAP_PX * 0.8) nx = 0;
+        if (Math.abs(nx + w - cW) < SNAP_PX * 0.8) nx = cW - w;
+        if (Math.abs(ny) < SNAP_PX * 0.8) ny = 0;
+        if (Math.abs(ny + h - cH) < SNAP_PX * 0.8) ny = cH - h;
+        setSnap((s) => (s.v === sV && s.h === sH ? s : { v: sV, h: sH }));
+        onUpdateLayer(id, { x: (nx / cW) * 100, y: (ny / cH) * 100 }, true);
       }
 
+      // ── Resize: rotation-aware; corners scale proportionally ──
       if (resizeRef.current) {
-        const { id, handle, startX, startY, origX, origY, origW, origH } = resizeRef.current;
-        const dx = ((cx - startX) / cW) * 100;
-        const dy = ((cy - startY) / cH) * 100;
-        let nx = origX, ny = origY, nw = origW, nh = origH;
-        if (handle.includes("e")) nw = Math.max(2, origW + dx);
-        if (handle.includes("w")) { nx = origX + dx; nw = Math.max(2, origW - dx); }
-        if (handle.includes("s")) nh = Math.max(2, origH + dy);
-        if (handle.includes("n")) { ny = origY + dy; nh = Math.max(2, origH - dy); }
-        onUpdateLayer(id, { x: nx, y: ny, width: nw, height: nh });
+        if (e.touches) e.preventDefault();
+        const R = resizeRef.current;
+        const dx = cx - R.startX, dy = cy - R.startY;
+        const th = deg2rad(R.rotation);
+        const cos = Math.cos(th), sin = Math.sin(th);
+        // pointer delta in the layer's local (rotated) space
+        const ldx = dx * cos + dy * sin;
+        const ldy = -dx * sin + dy * cos;
+        let dW = 0, dH = 0, dCx = 0, dCy = 0;
+        let fontK = 1;
+        if (R.handle.length === 2) {
+          const sX = R.handle.includes("e") ? 1 : -1;
+          const sY = R.handle.includes("s") ? 1 : -1;
+          const k = Math.max(0.08, 1 + ((ldx * sX) / R.origW + (ldy * sY) / R.origH) / 2);
+          dW = R.origW * (k - 1);
+          dH = R.origH * (k - 1);
+          dCx = (sX * dW) / 2;
+          dCy = (sY * dH) / 2;
+          fontK = k;
+        } else {
+          if (R.handle === "e") { dW = ldx; dCx = ldx / 2; }
+          if (R.handle === "w") { dW = -ldx; dCx = ldx / 2; }
+          if (R.handle === "s") { dH = ldy; dCy = ldy / 2; }
+          if (R.handle === "n") { dH = -ldy; dCy = ldy / 2; }
+        }
+        const nw = Math.max(18, R.origW + dW);
+        const nh = Math.max(18, R.origH + dH);
+        // center shift back in global space keeps the opposite edge pinned
+        const gx = dCx * cos - dCy * sin;
+        const gy = dCx * sin + dCy * cos;
+        const nx = R.origX + gx - (nw - R.origW) / 2;
+        const ny = R.origY + gy - (nh - R.origH) / 2;
+        onUpdateLayer(R.id, {
+          x: (nx / cW) * 100,
+          y: (ny / cH) * 100,
+          width: (nw / cW) * 100,
+          height: (nh / cH) * 100,
+          ...(R.isText && R.handle.length === 2
+            ? { fontSize: Math.max(8, Math.round(R.origFontSize * fontK)) }
+            : {}),
+        }, true);
       }
 
+      // ── Rotate with 45° snapping + live angle tooltip ──
       if (rotateRef.current) {
-        const { id, centerX, centerY, startAngle, origRotation } = rotateRef.current;
+        if (e.touches) e.preventDefault();
+        const { id, centerX, centerY, startAngle, origRotation, containerRect } = rotateRef.current;
         const angle = Math.atan2(cy - centerY, cx - centerX) * (180 / Math.PI);
-        onUpdateLayer(id, {
-          rotation: Math.round(((origRotation + angle - startAngle) % 360 + 360) % 360),
-        });
+        let rot = ((origRotation + angle - startAngle) % 360 + 360) % 360;
+        const near45 = Math.round(rot / 45) * 45;
+        if (Math.abs(rot - near45) < 4) rot = near45 % 360;
+        setTip({ text: `${Math.round(rot)}°`, x: cx - containerRect.left, y: cy - containerRect.top });
+        onUpdateLayer(id, { rotation: Math.round(rot * 10) / 10 }, true);
       }
     };
 
-    const onUp = () => {
-      if (dragRef.current || resizeRef.current || rotateRef.current) {
+    const onUp = (e) => {
+      // Pinch → single finger left: end the whole gesture cleanly
+      if (pinchRef.current && e.touches && e.touches.length >= 1) {
+        onCommitHistory?.();
+        pinchRef.current = null;
+        return;
+      }
+      if (dragRef.current || resizeRef.current || rotateRef.current || pinchRef.current) {
         onCommitHistory?.();
       }
       dragRef.current = null;
       resizeRef.current = null;
       rotateRef.current = null;
+      pinchRef.current = null;
+      setSnap((s) => (s.v || s.h ? { v: false, h: false } : s));
+      setTip(null);
     };
 
     document.addEventListener("mousemove", onMove);
@@ -770,13 +942,16 @@ export default function LayerCanvas({
       document.removeEventListener("mouseup", onUp);
       document.removeEventListener("touchend", onUp);
     };
-  }, [onUpdateLayer, onCommitHistory, cW, cH]);
+  }, [onUpdateLayer, onCommitHistory, cW, cH, startPinch]);
 
   return (
     <div
       ref={containerRef}
       style={{ position: "absolute", inset: 0, pointerEvents: "auto" }}
       onMouseDown={(e) => {
+        if (e.target === containerRef.current) onClearSelection?.();
+      }}
+      onTouchEnd={(e) => {
         if (e.target === containerRef.current) onClearSelection?.();
       }}
     >
@@ -789,11 +964,14 @@ export default function LayerCanvas({
             scale={scale}
             onMouseDown={(e) => onLayerPointerDown(e, layer)}
             onTouchStart={(e) => onLayerPointerDown(e, layer)}
-            onTouchMove={(e) => { if (dragRef.current) e.preventDefault(); }}
+            onTouchMove={(e) => { if (dragRef.current || pinchRef.current) e.preventDefault(); }}
             onTouchEnd={() => {}}
           />
         );
       })}
+
+      <SnapGuides snapH={snap.h} snapV={snap.v} />
+      {tip && <Tooltip text={tip.text} x={tip.x} y={tip.y} />}
 
       {selectedLayer && (
         <>

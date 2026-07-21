@@ -51,13 +51,15 @@ import {
   Smartphone,
   Monitor,
 } from "lucide-react";
-import { useLayerEditor } from "../hooks/useLayerEditor";
+import { useLayerEditor, makeLayer } from "../hooks/useLayerEditor";
 import LayerCanvas, {
   LayerToolbar,
   LayerStack,
   LayerPropertiesPanel,
   renderLayersToCanvas,
 } from "./studio/LayerCanvas";
+import { CAR_TEMPLATES, buildTemplateCtx } from "./studio/carTemplates";
+import CameraCapture from "./studio/CameraCapture";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CANVAS_W = 1080;
@@ -814,29 +816,42 @@ async function renderToCanvas(
       );
       ctx.fill();
     }
-    ctx.fillStyle = el.color || "#fff";
-    if (el.shadow) {
-      ctx.shadowColor = "rgba(0,0,0,0.85)";
-      ctx.shadowBlur = 8;
-      ctx.shadowOffsetY = 2;
-    }
     // Always left-align: HTML whiteSpace:nowrap div always renders text at el.x
     // regardless of textAlign setting — match that behaviour here.
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     const textX = el.bgColor ? pad2 : 0;
-    ctx.fillText(el.content || "", textX, 0);
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetY = 0;
-    if (el.shadow) {
-      ctx.shadowColor = "rgba(0,0,0,0.9)";
-      ctx.shadowBlur = 2;
-      ctx.shadowOffsetY = 1;
+    // Text stroke (outline) — drawn first so fill sits on top, matching the
+    // HTML preview's paint-order: stroke fill. lineWidth is 2x because canvas
+    // strokes are centered on the glyph edge (half inside, half outside).
+    if (el.strokeWidth > 0) {
+      ctx.lineWidth = el.strokeWidth * 2;
+      ctx.lineJoin = "round";
+      ctx.miterLimit = 2;
+      ctx.strokeStyle = el.strokeColor || "#000000";
+      ctx.strokeText(el.content || "", textX, 0);
+    }
+    // "Invisible" fill (stroke-only text) skips the fill passes entirely
+    if (el.color !== "transparent") {
+      ctx.fillStyle = el.color || "#fff";
+      if (el.shadow) {
+        ctx.shadowColor = "rgba(0,0,0,0.85)";
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetY = 2;
+      }
       ctx.fillText(el.content || "", textX, 0);
       ctx.shadowColor = "transparent";
       ctx.shadowBlur = 0;
       ctx.shadowOffsetY = 0;
+      if (el.shadow) {
+        ctx.shadowColor = "rgba(0,0,0,0.9)";
+        ctx.shadowBlur = 2;
+        ctx.shadowOffsetY = 1;
+        ctx.fillText(el.content || "", textX, 0);
+        ctx.shadowColor = "transparent";
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+      }
     }
     ctx.restore();
   }
@@ -923,9 +938,13 @@ function CanvasElement({
         lineHeight: 1.2,
         whiteSpace: "nowrap",
         zIndex: 10,
-        textShadow: el.shadow
+        textShadow: el.shadow && el.color !== "transparent"
           ? "0 2px 8px rgba(0,0,0,0.85), 0 1px 2px rgba(0,0,0,0.9)"
           : "none",
+        WebkitTextStroke: el.strokeWidth > 0
+          ? `${el.strokeWidth * scale}px ${el.strokeColor || "#000000"}`
+          : undefined,
+        paintOrder: "stroke fill",
         background: el.bgColor || "transparent",
         padding: el.bgColor ? `${4 * scale}px ${10 * scale}px` : 0,
         borderRadius: el.bgColor ? 6 * scale : 0,
@@ -1132,14 +1151,16 @@ function SelectionOverlay({
         </div>
       </div>
 
-      {/* Floating mini toolbar — above the rotate handle */}
+      {/* Floating mini toolbar — flips below the element when near the top
+          edge so it can never be cut off */}
       <div
         style={{
           position: "absolute",
-          bottom: "100%",
+          ...(bounds.top < 130
+            ? { top: "100%", marginTop: 14 }
+            : { bottom: "100%", marginBottom: 38 }),
           left: "50%",
           transform: "translateX(-50%)",
-          marginBottom: 38,
           display: "flex",
           alignItems: "center",
           gap: 1,
@@ -1425,7 +1446,8 @@ function CanvasPreview({
         position: "relative",
         width: W,
         height: H,
-        overflow: "hidden",
+        // overflow stays visible so selection handles / toolbars never clip
+        // at the canvas edge; the element layer below clips content itself.
         borderRadius: 4,
         userSelect: "none",
         flexShrink: 0,
@@ -1445,8 +1467,40 @@ function CanvasPreview({
           width: "100%",
           height: "100%",
           display: "block",
+          borderRadius: 4,
         }}
       />
+
+      {/* ── Car photo placeholder (template applied, no image yet) ── */}
+      {slide.carZone && !slide.imageUrl && (
+        <div
+          style={{
+            position: "absolute",
+            left: `${slide.carZone.x}%`,
+            top: `${slide.carZone.y}%`,
+            width: `${slide.carZone.w}%`,
+            height: `${slide.carZone.h}%`,
+            border: "2px dashed rgba(255,255,255,0.55)",
+            borderRadius: 10,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6 * scale,
+            pointerEvents: "none",
+            zIndex: 9,
+          }}
+        >
+          <span style={{ fontSize: 26 * scale, fontWeight: 800, letterSpacing: "0.12em", color: "rgba(255,255,255,0.85)", textTransform: "uppercase" }}>
+            Your car here
+          </span>
+          {slide.carZone.hint && (
+            <span style={{ fontSize: 17 * scale, color: "rgba(255,255,255,0.55)", textAlign: "center", padding: `0 ${20 * scale}px` }}>
+              📐 {slide.carZone.hint}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* ── AI loading overlay ── */}
       {aiLoading && (
@@ -1915,6 +1969,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
   const [userId, setUserId] = useState(null);
   const [canvasFormat, setCanvasFormat] = useState("9:16");
   const [uploadedImages, setUploadedImages] = useState([]);
+  const [showCamera, setShowCamera] = useState(false);
+  const [camOverlay, setCamOverlay] = useState(null);
+  const [libMsg, setLibMsg] = useState(null);
 
   // ── Layer editor (shape/image layers per-slide) ──────────────────────────
   const {
@@ -1936,14 +1993,31 @@ export default function TikTokStudioV3({ listing, onClose }) {
     canRedo: canRedoLayer,
   } = useLayerEditor([]);
 
-  const [savedDesigns, setSavedDesigns] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("ttsv3_designs") || "[]");
-    } catch {
-      return [];
-    }
-  });
+  // Design library lives in the DB (studio_designs, RLS user-scoped, 5 max)
+  // so a salesman's saved designs follow them across devices.
+  const [savedDesigns, setSavedDesigns] = useState([]);
   const [designName, setDesignName] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("studio_designs")
+        .select("id, name, thumb, payload, created_at")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (data) {
+        setSavedDesigns(
+          data.map((r) => ({
+            id: r.id,
+            name: r.name,
+            thumb: r.thumb,
+            savedAt: new Date(r.created_at).getTime(),
+            ...(r.payload || {}),
+          })),
+        );
+      }
+    })();
+  }, []);
   const [cmdHistory, setCmdHistory] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("ttsv3_ai_history") || "[]");
@@ -2690,6 +2764,66 @@ export default function TikTokStudioV3({ listing, onClose }) {
     [active, listing, slide, features],
   );
 
+  // ── Pro templates: apply a full ready-made design to the current slide ────
+  const applyProTemplate = useCallback(
+    (tpl) => {
+      const ctx = buildTemplateCtx(listing, slide, features);
+      (tpl.fonts || []).forEach(ensureFont);
+      setTheme((t) => ({ ...t, ...tpl.theme }));
+      setSlides((ss) =>
+        ss.map((s, i) =>
+          i !== active
+            ? s
+            : {
+                ...s,
+                template: "minimal", // pro templates draw their own chrome
+                carZone: tpl.carZone,
+                elements: [
+                  ...s.elements.filter((e) => e.id === "watermark"),
+                  ...tpl.buildElements(ctx).map((e) => ({ ...e, id: uid() })),
+                ],
+              },
+        ),
+      );
+      setLayers((tpl.buildLayers ? tpl.buildLayers(ctx) : []).map((l) => makeLayer(l.type, l)));
+      setSelectedId(null);
+    },
+    [active, listing, slide, features, setLayers],
+  );
+
+  // ── Camera: snapshot the current design (minus photo) as a ghost overlay ──
+  const openCamera = useCallback(async () => {
+    try {
+      const c = document.createElement("canvas");
+      await renderToCanvas(c, { ...slide, imageUrl: null }, theme, font, CW, CH);
+      setCamOverlay(c.toDataURL("image/png"));
+    } catch {
+      setCamOverlay(null);
+    }
+    setShowCamera(true);
+  }, [slide, theme, font, CW, CH]);
+
+  const handleCameraCapture = useCallback(
+    (dataUrl) => {
+      setUploadedImages((p) => [dataUrl, ...p]);
+      patchSlide({ imageUrl: dataUrl });
+    },
+    [patchSlide],
+  );
+
+  const uploadBgImage = useCallback(
+    (file) => {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        setUploadedImages((p) => [reader.result, ...p]);
+        patchSlide({ imageUrl: reader.result });
+      };
+      reader.readAsDataURL(file);
+    },
+    [patchSlide],
+  );
+
   const addSlide = useCallback(() => {
     const s = {
       id: uid(),
@@ -2887,6 +3021,11 @@ export default function TikTokStudioV3({ listing, onClose }) {
 
   // ── Save / load design ───────────────────────────────────────────────────
   const saveDesign = useCallback(async () => {
+    setLibMsg(null);
+    if (savedDesigns.length >= 5) {
+      setLibMsg("Library is full (5 designs max) — delete one first.");
+      return;
+    }
     // Generate a small thumbnail from the current background canvas
     let thumb = null;
     try {
@@ -2900,45 +3039,56 @@ export default function TikTokStudioV3({ listing, onClose }) {
     const name =
       designName.trim() ||
       `${listing?.brand || "Design"} ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-    const entry = {
-      id: uid(),
-      name,
-      thumb,
+    const payload = {
       theme: { ...theme },
       font,
       elements: JSON.parse(JSON.stringify(slide?.elements || [])),
+      layers: JSON.parse(JSON.stringify(layers || [])),
       format: canvasFormat,
-      savedAt: Date.now(),
+      carZone: slide?.carZone || null,
     };
-    const updated = [entry, ...savedDesigns].slice(0, 24);
-    setSavedDesigns(updated);
-    localStorage.setItem("ttsv3_designs", JSON.stringify(updated));
+    const { data: { user } = {} } = await supabase.auth.getUser();
+    if (!user) {
+      setLibMsg("Sign in to save designs.");
+      return;
+    }
+    const { data, error } = await supabase
+      .from("studio_designs")
+      .insert({ user_id: user.id, name, thumb, payload })
+      .select("id, created_at")
+      .single();
+    if (error) {
+      setLibMsg("Could not save — try again.");
+      return;
+    }
+    setSavedDesigns((p) => [
+      { id: data.id, name, thumb, savedAt: new Date(data.created_at).getTime(), ...payload },
+      ...p,
+    ]);
     setDesignName("");
-  }, [slide, theme, font, canvasFormat, savedDesigns, designName, listing]);
+  }, [slide, theme, font, canvasFormat, savedDesigns, designName, listing, layers]);
 
   const loadDesign = useCallback((d) => {
     setTheme(d.theme);
     setFont(d.font);
     if (d.format) setCanvasFormat(d.format);
-    if (d.elements?.length) {
-      setSlides((ss) =>
-        ss.map((s) => ({
-          ...s,
-          elements: d.elements.map((e) => ({ ...e, id: uid() })),
-        })),
-      );
-    }
+    setSlides((ss) =>
+      ss.map((s, i) => {
+        if (i !== active) return s;
+        const next = { ...s, carZone: d.carZone || s.carZone || null };
+        if (d.elements?.length) next.elements = d.elements.map((e) => ({ ...e, id: uid() }));
+        return next;
+      }),
+    );
+    if (d.layers) setLayers(JSON.parse(JSON.stringify(d.layers)));
     setActiveTab("slide");
-  }, []);
+  }, [active, setLayers]);
 
-  const deleteDesign = useCallback(
-    (id) => {
-      const updated = savedDesigns.filter((d) => d.id !== id);
-      setSavedDesigns(updated);
-      localStorage.setItem("ttsv3_designs", JSON.stringify(updated));
-    },
-    [savedDesigns],
-  );
+  const deleteDesign = useCallback(async (id) => {
+    setSavedDesigns((p) => p.filter((d) => d.id !== id));
+    setLibMsg(null);
+    await supabase.from("studio_designs").delete().eq("id", id);
+  }, []);
 
   if (!slide) return null;
 
@@ -3208,6 +3358,87 @@ export default function TikTokStudioV3({ listing, onClose }) {
           </button>
         </div>
 
+        {/* Fill / invisible-text / background — full Canva-style text styling */}
+        {selectedEl.type !== "badge" && (
+          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+            {/* Fill color + invisible toggle */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", width: 62, flexShrink: 0 }}>Fill</span>
+              <label style={{ position: "relative", width: 26, height: 26, borderRadius: 6, border: "1px solid rgba(255,255,255,0.15)", background: selectedEl.color === "transparent" ? "repeating-conic-gradient(#444 0% 25%, #222 0% 50%) 50%/8px 8px" : selectedEl.color || "#ffffff", cursor: "pointer", flexShrink: 0 }}>
+                <input
+                  type="color"
+                  value={selectedEl.color === "transparent" ? "#ffffff" : selectedEl.color || "#ffffff"}
+                  onChange={(e) => updateSelectedElement({ color: e.target.value })}
+                  style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer" }}
+                />
+              </label>
+              <button
+                onClick={() =>
+                  updateSelectedElement({
+                    color: selectedEl.color === "transparent" ? "#ffffff" : "transparent",
+                    ...(selectedEl.color !== "transparent" && !(selectedEl.strokeWidth > 0)
+                      ? { strokeWidth: 2, strokeColor: selectedEl.strokeColor || "#ffffff" }
+                      : {}),
+                  })
+                }
+                style={{
+                  padding: "5px 10px", borderRadius: 6, fontSize: 10, cursor: "pointer",
+                  border: `1px solid ${selectedEl.color === "transparent" ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.1)"}`,
+                  background: selectedEl.color === "transparent" ? "rgba(37,99,235,0.12)" : "transparent",
+                  color: selectedEl.color === "transparent" ? "#60a5fa" : "rgba(255,255,255,0.5)",
+                }}
+                title="Outline-only text (invisible fill)"
+              >
+                Invisible fill
+              </button>
+            </div>
+
+            {/* Text border (stroke) */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", width: 62, flexShrink: 0 }}>Border</span>
+              <input
+                type="range"
+                min={0}
+                max={14}
+                step={0.5}
+                value={selectedEl.strokeWidth || 0}
+                onChange={(e) => updateSelectedElement({ strokeWidth: Number(e.target.value) })}
+                style={{ flex: 1, accentColor: "#2563eb", touchAction: "none" }}
+              />
+              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", width: 24, textAlign: "right" }}>{selectedEl.strokeWidth || 0}</span>
+              <label style={{ position: "relative", width: 26, height: 26, borderRadius: 6, border: "1px solid rgba(255,255,255,0.15)", background: selectedEl.strokeColor || "#000000", cursor: "pointer", flexShrink: 0 }} title="Border color">
+                <input
+                  type="color"
+                  value={selectedEl.strokeColor || "#000000"}
+                  onChange={(e) => updateSelectedElement({ strokeColor: e.target.value })}
+                  style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer" }}
+                />
+              </label>
+            </div>
+
+            {/* Text background chip */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", width: 62, flexShrink: 0 }}>Background</span>
+              <label style={{ position: "relative", width: 26, height: 26, borderRadius: 6, border: "1px solid rgba(255,255,255,0.15)", background: selectedEl.bgColor || "repeating-conic-gradient(#444 0% 25%, #222 0% 50%) 50%/8px 8px", cursor: "pointer", flexShrink: 0 }}>
+                <input
+                  type="color"
+                  value={selectedEl.bgColor || "#dc2626"}
+                  onChange={(e) => updateSelectedElement({ bgColor: e.target.value })}
+                  style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer" }}
+                />
+              </label>
+              {selectedEl.bgColor && (
+                <button
+                  onClick={() => updateSelectedElement({ bgColor: null })}
+                  style={{ padding: "5px 10px", borderRadius: 6, fontSize: 10, cursor: "pointer", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(255,255,255,0.5)" }}
+                >
+                  None
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Font family */}
         <div style={{ marginTop: 8 }}>
           <p
@@ -3352,28 +3583,85 @@ export default function TikTokStudioV3({ listing, onClose }) {
     );
   };
 
+  // ── TemplateCards — 5 pro ready-made designs (shared desktop + mobile) ───
+  const TemplateCards = () => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {CAR_TEMPLATES.map((t) => (
+        <div
+          key={t.id}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            background: "rgba(255,255,255,0.03)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: 10,
+            padding: "8px 10px",
+          }}
+        >
+          {/* Mini visual preview */}
+          <div style={{ width: 34, height: 60, borderRadius: 5, flexShrink: 0, background: t.preview.bg, border: "1px solid rgba(255,255,255,0.1)", position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", left: "12%", right: "40%", top: "18%", height: 3, background: "rgba(255,255,255,0.5)", borderRadius: 2 }} />
+            <div style={{ position: "absolute", left: "12%", right: "20%", top: "62%", height: 4, background: "rgba(255,255,255,0.85)", borderRadius: 2 }} />
+            <div style={{ position: "absolute", left: "12%", right: "45%", top: "74%", height: 6, background: t.preview.accent, borderRadius: 2 }} />
+            {t.preview.style === "ribbon" && (
+              <div style={{ position: "absolute", left: "-25%", top: "6%", width: "90%", height: 5, background: t.preview.accent, transform: "rotate(-10deg)" }} />
+            )}
+            {t.preview.style === "frame" && (
+              <div style={{ position: "absolute", inset: 2, border: `1px solid ${t.preview.accent}`, borderRadius: 3 }} />
+            )}
+            {t.preview.style === "card" && (
+              <div style={{ position: "absolute", left: "8%", right: "8%", top: "56%", bottom: "8%", background: "rgba(255,255,255,0.09)", borderRadius: 3 }} />
+            )}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{t.name}</p>
+            <p style={{ fontSize: 9.5, color: "rgba(255,255,255,0.35)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.tagline}</p>
+          </div>
+          <button
+            onClick={() => applyProTemplate(t)}
+            style={{ flexShrink: 0, padding: "7px 11px", borderRadius: 7, border: "none", background: "#2563eb", color: "#fff", fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}
+          >
+            Use template
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+
+  // ── Photo source buttons (picker / upload / camera) ──────────────────────
+  const PhotoSourceButtons = () => (
+    <div style={{ display: "flex", gap: 6 }}>
+      <button
+        onClick={() => setShowImagePicker(true)}
+        style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "1px dashed rgba(255,255,255,0.14)", background: "transparent", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 11 }}
+      >
+        🖼 Photos
+      </button>
+      <label style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "1px dashed rgba(255,255,255,0.14)", background: "transparent", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 11, textAlign: "center" }}>
+        ⬆ Upload
+        <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { uploadBgImage(e.target.files?.[0]); e.target.value = ""; }} />
+      </label>
+      <button
+        onClick={openCamera}
+        style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "1px solid rgba(37,99,235,0.35)", background: "rgba(37,99,235,0.1)", color: "#60a5fa", cursor: "pointer", fontSize: 11, fontWeight: 700 }}
+      >
+        📷 Camera
+      </button>
+    </div>
+  );
+
   // ── SlidePanel ───────────────────────────────────────────────────────────
   const SlidePanel = () => (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {/* Element properties — shown when an element is selected */}
       {ElPropsPanel()}
 
+      <SectionHead label="Pro Templates" />
+      <TemplateCards />
+
       <SectionHead label="Image" />
-      <button
-        onClick={() => setShowImagePicker(true)}
-        style={{
-          width: "100%",
-          padding: "9px 0",
-          borderRadius: 10,
-          border: "1px dashed rgba(255,255,255,0.14)",
-          background: "transparent",
-          color: "rgba(255,255,255,0.4)",
-          cursor: "pointer",
-          fontSize: 12,
-        }}
-      >
-        📷 Change photo
-      </button>
+      <PhotoSourceButtons />
 
       <SectionHead label="Template" />
       <div
@@ -4210,7 +4498,12 @@ export default function TikTokStudioV3({ listing, onClose }) {
   // ── Library Panel ────────────────────────────────────────────────────────
   const LibraryPanel = () => (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <SectionHead label="Save current design" />
+      <SectionHead label={`Save current design · ${savedDesigns.length}/5 slots`} />
+      {libMsg && (
+        <p style={{ fontSize: 11, color: "#fbbf24", background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.25)", borderRadius: 8, padding: "8px 10px" }}>
+          {libMsg}
+        </p>
+      )}
       <input
         value={designName}
         onChange={(e) => setDesignName(e.target.value)}
@@ -4232,15 +4525,16 @@ export default function TikTokStudioV3({ listing, onClose }) {
       />
       <button
         onClick={saveDesign}
+        disabled={savedDesigns.length >= 5}
         style={{
           width: "100%",
           padding: "10px 0",
           borderRadius: 9,
           border: "none",
-          background: "#2563eb",
-          color: "#fff",
+          background: savedDesigns.length >= 5 ? "rgba(255,255,255,0.08)" : "#2563eb",
+          color: savedDesigns.length >= 5 ? "rgba(255,255,255,0.3)" : "#fff",
           fontWeight: 700,
-          cursor: "pointer",
+          cursor: savedDesigns.length >= 5 ? "not-allowed" : "pointer",
           fontSize: 12,
           display: "flex",
           alignItems: "center",
@@ -4248,7 +4542,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
           gap: 6,
         }}
       >
-        💾 Save theme + layout
+        {savedDesigns.length >= 5 ? "Library full — delete a design first" : "💾 Save design (theme + text + shapes)"}
       </button>
 
       {savedDesigns.length === 0 ? (
@@ -4663,6 +4957,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
       ...(hasLayerSel
         ? [{ id: "layer", icon: <Layers size={17} />, label: "Shape" }]
         : []),
+      { id: "tpl", icon: <LayoutTemplate size={17} />, label: "Design" },
       { id: "shapes", icon: <Square size={17} />, label: "Add" },
       { id: "components", icon: <Sliders size={17} />, label: "Layers" },
       { id: "photo", icon: <ImagePlus size={17} />, label: "Photo" },
@@ -4671,6 +4966,14 @@ export default function TikTokStudioV3({ listing, onClose }) {
 
     // Bottom sheet content
     const sheetBody = () => {
+      if (sheetPanel === "tpl") {
+        return (
+          <div style={{ padding: "12px 14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+            <PhotoSourceButtons />
+            <TemplateCards />
+          </div>
+        );
+      }
       if (sheetPanel === "text") {
         const p = ElPropsPanel();
         if (!p) return null;
@@ -4860,6 +5163,16 @@ export default function TikTokStudioV3({ listing, onClose }) {
         }}
         onTouchMove={e => { if (e.touches.length > 1) e.preventDefault(); }}
       >
+        {showCamera && (
+          <CameraCapture
+            onClose={() => setShowCamera(false)}
+            onCapture={handleCameraCapture}
+            carZone={slide?.carZone || { x: 6, y: 30, w: 88, h: 34, hint: "Fill the box with the car" }}
+            overlayUrl={camOverlay}
+            canvasW={CW}
+            canvasH={CH}
+          />
+        )}
         {/* Header */}
         <div
           style={{
@@ -5020,7 +5333,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
           {showImagePicker ? (
             <div style={{ position: "relative", width: mobW, height: mobH }}>
               <ImagePicker
-                images={rawImages}
+                images={[...uploadedImages, ...rawImages]}
                 current={slide.imageUrl}
                 onSelect={(url) => patchSlide({ imageUrl: url })}
                 onClose={() => setShowImagePicker(false)}
@@ -5083,7 +5396,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
                   position: "absolute",
                   inset: 0,
                   zIndex: 25,
-                  overflow: "hidden",
+                  // overflow stays visible so the selection box, rotate handle
+                  // and mini toolbar never clip at the canvas edge on mobile
                   borderRadius: 4,
                   pointerEvents: "none",
                 }}
@@ -5609,7 +5923,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                     {showImagePicker && (
                       <div style={{ position: "absolute", inset: 0, borderRadius: 8, overflow: "hidden", zIndex: 30 }}>
                         <ImagePicker
-                          images={rawImages}
+                          images={[...uploadedImages, ...rawImages]}
                           current={slide.imageUrl}
                           onSelect={(url) => patchSlide({ imageUrl: url })}
                           onClose={() => setShowImagePicker(false)}
