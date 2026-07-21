@@ -118,6 +118,43 @@ function computeDisplaySize(aspectRatio, maxW, maxH) {
   return { displayW: Math.floor(w), displayH: Math.floor(h) };
 }
 
+// Uniformly scale + center a slide's elements + layers from an authored
+// (fromW×fromH) canvas into a target (toW×toH) format, so every pre-made
+// template fits INSIDE all 4 aspect ratios instead of spilling off-frame.
+// Identity when from===to (e.g. a 9:16-authored template applied at 9:16).
+// Coordinate systems (must match both the preview and the export renderer):
+//   - elements: absolute px in canvas space; fontSize/strokeWidth in px
+//   - layers:   percent (0–100) of canvas for x/y/width/height; px fontSize/borderWidth
+function fitCanvasContent({ elements = [], layers = [], fromW, fromH, toW, toH }) {
+  const s = Math.min(toW / fromW, toH / fromH);
+  const ox = (toW - fromW * s) / 2;
+  const oy = (toH - fromH * s) / 2;
+  const nextElements = elements.map((e) => ({
+    ...e,
+    x: Math.round((e.x || 0) * s + ox),
+    y: Math.round((e.y || 0) * s + oy),
+    ...(e.fontSize ? { fontSize: Math.max(8, Math.round(e.fontSize * s)) } : {}),
+    ...(e.strokeWidth ? { strokeWidth: e.strokeWidth * s } : {}),
+  }));
+  const nextLayers = layers.map((l) => {
+    // percent → authored px → target px → percent of target
+    const ax = ((l.x || 0) / 100) * fromW;
+    const ay = ((l.y || 0) / 100) * fromH;
+    const aw = ((l.width || 0) / 100) * fromW;
+    const ah = ((l.height || 0) / 100) * fromH;
+    return {
+      ...l,
+      x: ((ax * s + ox) / toW) * 100,
+      y: ((ay * s + oy) / toH) * 100,
+      width: ((aw * s) / toW) * 100,
+      height: ((ah * s) / toH) * 100,
+      ...(l.fontSize ? { fontSize: Math.max(8, Math.round(l.fontSize * s)) } : {}),
+      ...(l.borderWidth ? { borderWidth: l.borderWidth * s } : {}),
+    };
+  });
+  return { elements: nextElements, layers: nextLayers };
+}
+
 const SUGGESTION_POOL = [
   "make price bigger",
   "center the hook",
@@ -2293,27 +2330,29 @@ export default function TikTokStudioV3({ listing, onClose }) {
     return () => ro.disconnect();
   }, []);
 
-  // ── Format change → rescale element positions ────────────────────────────
+  // ── Format change → refit elements + layers into the new aspect ratio ─────
+  // Uniform scale + center (via fitCanvasContent) so switching format keeps
+  // every element/layer INSIDE the frame and scales fontSize with it — the old
+  // per-axis rescale distorted shapes and left text overflowing.
   useEffect(() => {
     if (prevFormatRef.current === canvasFormat) return;
-    const oldFmt = FORMATS.find((f) => f.id === prevFormatRef.current);
-    const newFmt = FORMATS.find((f) => f.id === canvasFormat);
-    const oldCW = oldFmt?.w || CANVAS_W;
-    const oldCH = oldFmt?.h || CANVAS_H;
-    const newCW = newFmt?.w || CANVAS_W;
-    const newCH = newFmt?.h || CANVAS_H;
-    setSlides((ss) => {
-      const newSlides = ss.map((s) => ({
-        ...s,
-        elements: s.elements.map((el) => ({
-          ...el,
-          x: Math.round(el.x * (newCW / oldCW)),
-          y: Math.round(el.y * (newCH / oldCH)),
-        })),
-      }));
-      return newSlides;
-    });
+    const oldFmt = FORMATS.find((f) => f.id === prevFormatRef.current) || FORMATS[0];
+    const newFmt = FORMATS.find((f) => f.id === canvasFormat) || FORMATS[0];
+    const dims = { fromW: oldFmt.w, fromH: oldFmt.h, toW: newFmt.w, toH: newFmt.h };
+    setSlides((ss) =>
+      ss.map((s) => {
+        const fitted = fitCanvasContent({
+          elements: s.elements || [],
+          layers: s.layers || [],
+          ...dims,
+        });
+        return { ...s, elements: fitted.elements, layers: fitted.layers };
+      }),
+    );
+    // Keep the live layer-editor state (active slide) in sync with the refit.
+    setLayers(fitCanvasContent({ elements: [], layers, ...dims }).layers);
     prevFormatRef.current = canvasFormat;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasFormat]);
 
   // ── Keyboard shortcuts ───────────────────────────────────────────────────
@@ -2852,6 +2891,16 @@ export default function TikTokStudioV3({ listing, onClose }) {
       const ctx = buildTemplateCtx(listing, slide, features, [...uploadedImages, ...rawImages]);
       (tpl.fonts || []).forEach(ensureFont);
       setTheme((t) => ({ ...t, ...tpl.theme }));
+      // Templates are authored at CANVAS_W×CANVAS_H (1080×1920). Fit them into
+      // the currently-selected format so they never spill off-frame.
+      const fitted = fitCanvasContent({
+        elements: tpl.buildElements(ctx),
+        layers: tpl.buildLayers ? tpl.buildLayers(ctx) : [],
+        fromW: CANVAS_W,
+        fromH: CANVAS_H,
+        toW: CW,
+        toH: CH,
+      });
       setSlides((ss) =>
         ss.map((s, i) =>
           i !== active
@@ -2862,15 +2911,15 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 carZone: tpl.carZone,
                 elements: [
                   ...s.elements.filter((e) => e.id === "watermark"),
-                  ...tpl.buildElements(ctx).map((e) => ({ ...e, id: uid() })),
+                  ...fitted.elements.map((e) => ({ ...e, id: uid() })),
                 ],
               },
         ),
       );
-      setLayers((tpl.buildLayers ? tpl.buildLayers(ctx) : []).map((l) => makeLayer(l.type, l)));
+      setLayers(fitted.layers.map((l) => makeLayer(l.type, l)));
       setSelectedId(null);
     },
-    [active, listing, slide, features, setLayers, uploadedImages, rawImages],
+    [active, listing, slide, features, setLayers, uploadedImages, rawImages, CW, CH],
   );
 
   // Shapes are stored as % of width AND % of height — on a 9:16 canvas equal
@@ -2909,20 +2958,29 @@ export default function TikTokStudioV3({ listing, onClose }) {
       applyProTemplate(tpl);
       try {
         const tctx = buildTemplateCtx(listing, slide, features, [...uploadedImages, ...rawImages]);
+        // Match applyProTemplate: fit the authored template into the current format.
+        const fitted = fitCanvasContent({
+          elements: tpl.buildElements(tctx),
+          layers: tpl.buildLayers ? tpl.buildLayers(tctx) : [],
+          fromW: CANVAS_W,
+          fromH: CANVAS_H,
+          toW: CW,
+          toH: CH,
+        });
         const tmpSlide = {
           ...slide,
           imageUrl: null,
           template: "minimal",
           elements: [
             ...(slide?.elements || []).filter((e) => e.id === "watermark"),
-            ...tpl.buildElements(tctx).map((e) => ({ ...e, id: uid() })),
+            ...fitted.elements.map((e) => ({ ...e, id: uid() })),
           ],
         };
         const c = document.createElement("canvas");
         await renderToCanvas(c, tmpSlide, { ...theme, ...tpl.theme }, font, CW, CH);
         await renderLayersToCanvas(
           c,
-          (tpl.buildLayers ? tpl.buildLayers(tctx) : []).map((l) => makeLayer(l.type, l)),
+          fitted.layers.map((l) => makeLayer(l.type, l)),
           CW,
           CH,
         );
