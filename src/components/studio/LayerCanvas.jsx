@@ -160,15 +160,19 @@ function LayerDiv({
   const f = { ...FILTER_DEFAULTS, ...layer.filters };
   const filterStr = buildFilterStr(f);
 
+  // borderWidth / borderRadius are px in canvas space — scale them by `scale`
+  // so the down-scaled preview matches the full-res export pixel-for-pixel
+  // (previously they were emitted unscaled and looked thicker/rounder than the
+  // downloaded image).
   const borderStyle = {
-    borderWidth: layer.borderWidth || 0,
+    borderWidth: (layer.borderWidth || 0) * scale,
     borderStyle: layer.borderStyle || "solid",
     borderColor: hexToRgba(
       layer.borderColor || "#ffffff",
       layer.borderOpacity ?? 100,
     ),
     borderRadius:
-      layer.type === "circle" ? "50%" : `${layer.borderRadius || 0}px`,
+      layer.type === "circle" ? "50%" : `${(layer.borderRadius || 0) * scale}px`,
   };
 
   const base = {
@@ -2193,7 +2197,9 @@ export async function renderLayersToCanvas(canvas, layers, CW, CH) {
     if (layer.type === "image" && layer.src) {
       try {
         const img = await _loadImg(layer.src);
-        const rr = ((layer.borderRadius || 0) / 100) * Math.min(w, h);
+        // borderRadius is px in canvas space (matches the CSS preview + the
+        // 0–999px corner-radius slider), not a percent of the box.
+        const rr = layer.borderRadius || 0;
         ctx.beginPath();
         ctx.roundRect(x, y, w, h, rr);
         ctx.clip();
@@ -2220,11 +2226,10 @@ export async function renderLayersToCanvas(canvas, layers, CW, CH) {
       // Text-only layer — full multiline parity with the preview
       drawLayerText(ctx, layer, x, y, w, h);
     } else {
-      // rect / circle
+      // rect / circle — borderRadius is px in canvas space (matches the CSS
+      // preview + the corner-radius slider), not a percent of the box.
       const rr =
-        layer.type === "circle"
-          ? Math.min(w, h) / 2
-          : ((layer.borderRadius || 0) / 100) * Math.min(w, h);
+        layer.type === "circle" ? Math.min(w, h) / 2 : layer.borderRadius || 0;
       ctx.beginPath();
       ctx.roundRect(x, y, w, h, rr);
       ctx.fillStyle = hexToRgba(
