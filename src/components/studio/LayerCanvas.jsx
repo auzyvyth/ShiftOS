@@ -30,6 +30,7 @@ import {
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
+import DragSlider from "./DragSlider";
 // react-konva removed — now using CSS div rendering for z-interleave with template
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
@@ -1336,15 +1337,7 @@ function LSlider({ label, value, min, max, step = 1, onChange, fmt }) {
           {fmt ? fmt(value) : value}
         </span>
       </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        style={{ width: "100%", accentColor: "#3b82f6" }}
-      />
+      <DragSlider value={value} min={min} max={max} step={step} onChange={onChange} />
     </div>
   );
 }

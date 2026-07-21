@@ -60,6 +60,9 @@ import LayerCanvas, {
 } from "./studio/LayerCanvas";
 import { CAR_TEMPLATES, buildTemplateCtx } from "./studio/carTemplates";
 import CameraCapture from "./studio/CameraCapture";
+import DragSlider from "./studio/DragSlider";
+import GradientEditor, { gradientCss, DEFAULT_GRADIENT } from "./studio/GradientEditor";
+import { loadCustomFonts, saveCustomFont, deleteCustomFont } from "./studio/customFonts";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CANVAS_W = 1080;
@@ -855,8 +858,25 @@ async function renderToCanvas(
       ctx.strokeStyle = el.strokeColor || "#000000";
       ctx.strokeText(el.content || "", textX, 0);
     }
-    // "Invisible" fill (stroke-only text) skips the fill passes entirely
-    if (el.color !== "transparent") {
+    // Gradient text: build a canvas gradient across the glyph box, matching
+    // the CSS background-clip:text preview.
+    if (el.gradient && el.gradient.stops?.length >= 2) {
+      const tw = ctx.measureText(el.content || "").width;
+      const th = el.fontSize || 32;
+      const ang = ((el.gradient.angle ?? 90) - 90) * (Math.PI / 180);
+      const cx0 = textX + tw / 2, cy0 = th / 2;
+      const half = Math.max(tw, th) / 2;
+      const g = ctx.createLinearGradient(
+        cx0 - Math.cos(ang) * half, cy0 - Math.sin(ang) * half,
+        cx0 + Math.cos(ang) * half, cy0 + Math.sin(ang) * half,
+      );
+      [...el.gradient.stops].sort((a, b) => a.pos - b.pos).forEach((s) =>
+        g.addColorStop(Math.max(0, Math.min(1, s.pos / 100)), s.color),
+      );
+      ctx.fillStyle = g;
+      ctx.fillText(el.content || "", textX, 0);
+    } else if (el.color !== "transparent") {
+      // "Invisible" fill (stroke-only text) skips the fill passes entirely
       ctx.fillStyle = el.color || "#fff";
       if (el.shadow) {
         ctx.shadowColor = "rgba(0,0,0,0.85)";
@@ -948,6 +968,9 @@ function CanvasElement({
     );
   }
 
+  // Gradient text clips a gradient to the glyphs; it needs `background` for the
+  // clip so it can't coexist with a background box — gradient wins.
+  const grad = el.gradient ? gradientCss(el.gradient) : null;
   return (
     <div
       data-el-id={el.id}
@@ -956,22 +979,32 @@ function CanvasElement({
         fontSize: el.fontSize * scale,
         fontWeight: el.fontWeight,
         fontStyle: el.fontStyle || "normal",
-        color: el.color,
+        color: grad ? "transparent" : el.color,
         textAlign: el.align,
         fontFamily: el.fontFamily || fontStack,
         lineHeight: 1.2,
         whiteSpace: "nowrap",
         zIndex: 10,
-        textShadow: el.shadow && el.color !== "transparent"
+        textShadow: el.shadow && el.color !== "transparent" && !grad
           ? "0 2px 8px rgba(0,0,0,0.85), 0 1px 2px rgba(0,0,0,0.9)"
           : "none",
         WebkitTextStroke: el.strokeWidth > 0
           ? `${el.strokeWidth * scale}px ${el.strokeColor || "#000000"}`
           : undefined,
         paintOrder: "stroke fill",
-        background: el.bgColor || "transparent",
-        padding: el.bgColor ? `${4 * scale}px ${10 * scale}px` : 0,
-        borderRadius: el.bgColor ? 6 * scale : 0,
+        ...(grad
+          ? {
+              backgroundImage: grad,
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              padding: 0,
+            }
+          : {
+              background: el.bgColor || "transparent",
+              padding: el.bgColor ? `${4 * scale}px ${10 * scale}px` : 0,
+              borderRadius: el.bgColor ? 6 * scale : 0,
+            }),
       }}
       {...handlers}
     >
@@ -1844,7 +1877,7 @@ function SliderRow({ label, value, min, max, step = 0.01, onChange, fmt }) {
         style={{
           display: "flex",
           justifyContent: "space-between",
-          marginBottom: 5,
+          marginBottom: 2,
         }}
       >
         <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>
@@ -1860,14 +1893,12 @@ function SliderRow({ label, value, min, max, step = 0.01, onChange, fmt }) {
           {fmt ? fmt(value) : value}
         </span>
       </div>
-      <input
-        type="range"
+      <DragSlider
+        value={value}
         min={min}
         max={max}
         step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        style={{ width: "100%", accentColor: "#2563eb", touchAction: "none" }}
+        onChange={onChange}
       />
     </div>
   );
@@ -1996,6 +2027,33 @@ export default function TikTokStudioV3({ listing, onClose }) {
   const [showCamera, setShowCamera] = useState(false);
   const [camOverlay, setCamOverlay] = useState(null);
   const [libMsg, setLibMsg] = useState(null);
+  const [customFonts, setCustomFonts] = useState([]);
+  const [fontUploadErr, setFontUploadErr] = useState(null);
+  const [showGradient, setShowGradient] = useState(false);
+
+  // Load the user's uploaded fonts (IndexedDB) once, register them for use
+  useEffect(() => {
+    loadCustomFonts().then(setCustomFonts).catch(() => {});
+  }, []);
+
+  const handleFontUpload = useCallback(async (file) => {
+    setFontUploadErr(null);
+    if (!file) return;
+    const okExt = /\.(ttf|otf|woff2?|)$/i.test(file.name) || /font/.test(file.type);
+    if (!okExt) { setFontUploadErr("Use a .ttf, .otf or .woff file"); return; }
+    if (file.size > 8 * 1024 * 1024) { setFontUploadErr("Font too large (max 8MB)"); return; }
+    try {
+      const meta = await saveCustomFont(file);
+      setCustomFonts((p) => [meta, ...p.filter((f) => f.id !== meta.id)]);
+    } catch {
+      setFontUploadErr("Couldn't load that font file");
+    }
+  }, []);
+
+  const removeCustomFont = useCallback(async (id) => {
+    await deleteCustomFont(id);
+    setCustomFonts((p) => p.filter((f) => f.id !== id));
+  }, []);
 
   // ── Layer editor (shape/image layers per-slide) ──────────────────────────
   const {
@@ -3198,7 +3256,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
               letterSpacing: "0.08em",
             }}
           >
-            ✎ {selectedEl.id}
+            {selectedEl.type === "badge" ? "✎ Badge" : "✎ Text"}
           </span>
           <button
             onClick={() => setSelectedId(null)}
@@ -3254,76 +3312,45 @@ export default function TikTokStudioV3({ listing, onClose }) {
           fmt={(v) => `${v}°`}
         />
 
-        {/* Color */}
-        <ColorRow
-          label="Color"
-          value={selectedEl.color || "#ffffff"}
-          onChange={(v) => updateSelectedElement({ color: v })}
-        />
+        {/* Text color — solid or gradient */}
+        {selectedEl.type !== "badge" && (
+          <div style={{ marginTop: 4 }}>
+            <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+              <button
+                onClick={() => { updateSelectedElement({ gradient: null, color: selectedEl.color === "transparent" ? "#ffffff" : selectedEl.color || "#ffffff" }); setShowGradient(false); }}
+                style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, cursor: "pointer", border: `1px solid ${!selectedEl.gradient ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.1)"}`, background: !selectedEl.gradient ? "rgba(37,99,235,0.12)" : "transparent", color: !selectedEl.gradient ? "#60a5fa" : "rgba(255,255,255,0.5)", fontWeight: 600 }}
+              >
+                Solid
+              </button>
+              <button
+                onClick={() => { updateSelectedElement({ gradient: selectedEl.gradient || DEFAULT_GRADIENT, bgColor: null }); setShowGradient(true); }}
+                style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, cursor: "pointer", border: `1px solid ${selectedEl.gradient ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.1)"}`, background: selectedEl.gradient ? gradientCss(selectedEl.gradient) : "transparent", color: "#fff", fontWeight: 600 }}
+              >
+                Gradient
+              </button>
+            </div>
 
-        {/* X / Y */}
-        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-          <div style={{ flex: 1 }}>
-            <p
-              style={{
-                fontSize: 9,
-                color: "rgba(255,255,255,0.3)",
-                marginBottom: 3,
-              }}
-            >
-              X
-            </p>
-            <input
-              type="number"
-              value={Math.round(selectedEl.x)}
-              onChange={(e) =>
-                updateSelectedElement({ x: Number(e.target.value) })
-              }
-              style={{
-                width: "100%",
-                padding: "6px 8px",
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 7,
-                color: "#fff",
-                fontFamily: "system-ui,sans-serif",
-                fontSize: 11,
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
+            {!selectedEl.gradient ? (
+              <ColorRow
+                label="Text color"
+                value={selectedEl.color === "transparent" ? "#ffffff" : selectedEl.color || "#ffffff"}
+                onChange={(v) => updateSelectedElement({ color: v })}
+              />
+            ) : (
+              <GradientEditor
+                value={selectedEl.gradient}
+                onChange={(g) => updateSelectedElement({ gradient: g })}
+              />
+            )}
           </div>
-          <div style={{ flex: 1 }}>
-            <p
-              style={{
-                fontSize: 9,
-                color: "rgba(255,255,255,0.3)",
-                marginBottom: 3,
-              }}
-            >
-              Y
-            </p>
-            <input
-              type="number"
-              value={Math.round(selectedEl.y)}
-              onChange={(e) =>
-                updateSelectedElement({ y: Number(e.target.value) })
-              }
-              style={{
-                width: "100%",
-                padding: "6px 8px",
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 7,
-                color: "#fff",
-                fontFamily: "system-ui,sans-serif",
-                fontSize: 11,
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-          </div>
-        </div>
+        )}
+        {selectedEl.type === "badge" && (
+          <ColorRow
+            label="Badge color"
+            value={selectedEl.bgColor || selectedEl.color || "#dc2626"}
+            onChange={(v) => updateSelectedElement({ bgColor: v })}
+          />
+        )}
 
         {/* Font weight */}
         <div
@@ -3470,15 +3497,15 @@ export default function TikTokStudioV3({ listing, onClose }) {
             {/* Text border (stroke) */}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", width: 62, flexShrink: 0 }}>Border</span>
-              <input
-                type="range"
-                min={0}
-                max={14}
-                step={0.5}
-                value={selectedEl.strokeWidth || 0}
-                onChange={(e) => updateSelectedElement({ strokeWidth: Number(e.target.value) })}
-                style={{ flex: 1, accentColor: "#2563eb", touchAction: "none" }}
-              />
+              <div style={{ flex: 1 }}>
+                <DragSlider
+                  value={selectedEl.strokeWidth || 0}
+                  min={0}
+                  max={14}
+                  step={0.5}
+                  onChange={(v) => updateSelectedElement({ strokeWidth: v })}
+                />
+              </div>
               <span style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", width: 24, textAlign: "right" }}>{selectedEl.strokeWidth || 0}</span>
               <label style={{ position: "relative", width: 26, height: 26, borderRadius: 6, border: "1px solid rgba(255,255,255,0.15)", background: selectedEl.strokeColor || "#000000", cursor: "pointer", flexShrink: 0 }} title="Border color">
                 <input
@@ -3513,109 +3540,60 @@ export default function TikTokStudioV3({ listing, onClose }) {
           </div>
         )}
 
-        {/* Font family */}
-        <div style={{ marginTop: 8 }}>
-          <p
-            style={{
-              fontSize: 9,
-              color: "rgba(255,255,255,0.3)",
-              marginBottom: 3,
-            }}
-          >
-            Font
-          </p>
-          <select
-            value={selectedEl.fontFamily || ""}
-            onChange={(e) =>
-              updateSelectedElement({ fontFamily: e.target.value })
-            }
-            style={{
-              width: "100%",
-              padding: "5px 8px",
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 6,
-              color: "rgba(255,255,255,0.8)",
-              fontSize: 11,
-              outline: "none",
-            }}
-          >
-            <option value="">— Template default —</option>
-            {FONTS.map((f) => (
-              <option key={f.id} value={f.stack}>
-                {f.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Background color — text elements only */}
-        {selectedEl.type === "text" && (
-          <div style={{ marginTop: 8 }}>
-            <p
-              style={{
-                fontSize: 9,
-                color: "rgba(255,255,255,0.3)",
-                marginBottom: 3,
-              }}
-            >
-              Background
-            </p>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <input
-                type="color"
-                value={selectedEl.bgColor || "#000000"}
-                onChange={(e) =>
-                  updateSelectedElement({ bgColor: e.target.value })
-                }
-                style={{
-                  width: 28,
-                  height: 28,
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  background: "none",
-                  borderRadius: 6,
-                  cursor: "pointer",
-                  padding: 2,
-                }}
-              />
-              <input
-                type="text"
-                value={selectedEl.bgColor || ""}
-                placeholder="none"
-                onChange={(e) =>
-                  updateSelectedElement({ bgColor: e.target.value || null })
-                }
-                style={{
-                  flex: 1,
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 6,
-                  padding: "4px 8px",
-                  color: "rgba(255,255,255,0.8)",
-                  fontSize: 11,
-                  fontFamily: "monospace",
-                  outline: "none",
-                }}
-              />
-              {selectedEl.bgColor && (
+        {/* Font family — built-in + user-uploaded, with an uploader */}
+        <div style={{ marginTop: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Font</span>
+            <label style={{ fontSize: 10, color: "#60a5fa", cursor: "pointer", fontWeight: 600 }}>
+              + Upload font
+              <input type="file" accept=".ttf,.otf,.woff,.woff2,font/*" style={{ display: "none" }} onChange={(e) => { handleFontUpload(e.target.files?.[0]); e.target.value = ""; }} />
+            </label>
+          </div>
+          {fontUploadErr && (
+            <p style={{ fontSize: 10, color: "#f87171", marginBottom: 6 }}>{fontUploadErr}</p>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 5 }}>
+            {[...customFonts.map((cf) => ({ id: cf.id, label: cf.label, stack: `"${cf.family}", sans-serif`, custom: true })),
+              ...FONTS.map((f) => ({ id: f.id, label: f.label, stack: f.stack, custom: false }))].map((f) => {
+              const active = selectedEl.fontFamily === f.stack;
+              return (
                 <button
-                  onClick={() => updateSelectedElement({ bgColor: null })}
+                  key={f.id}
+                  onClick={() => updateSelectedElement({ fontFamily: f.stack })}
                   style={{
-                    padding: "3px 7px",
-                    fontSize: 10,
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    borderRadius: 5,
-                    color: "rgba(255,255,255,0.4)",
+                    position: "relative",
+                    padding: "8px 8px",
+                    borderRadius: 7,
                     cursor: "pointer",
+                    textAlign: "left",
+                    border: `1px solid ${active ? "rgba(37,99,235,0.6)" : "rgba(255,255,255,0.08)"}`,
+                    background: active ? "rgba(37,99,235,0.12)" : "rgba(255,255,255,0.03)",
+                    color: "rgba(255,255,255,0.85)",
+                    fontFamily: f.stack,
+                    fontSize: 15,
+                    overflow: "hidden",
+                    whiteSpace: "nowrap",
+                    textOverflow: "ellipsis",
                   }}
                 >
-                  ✕
+                  {f.label}
+                  {f.custom && (
+                    <span
+                      onClick={(e) => { e.stopPropagation(); removeCustomFont(f.id); }}
+                      style={{ position: "absolute", top: 2, right: 4, fontSize: 10, color: "rgba(255,255,255,0.35)", fontFamily: "system-ui" }}
+                    >✕</span>
+                  )}
                 </button>
-              )}
-            </div>
+              );
+            })}
           </div>
-        )}
+          <button
+            onClick={() => updateSelectedElement({ fontFamily: "" })}
+            style={{ marginTop: 6, width: "100%", padding: "5px 0", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.4)", fontSize: 10, cursor: "pointer" }}
+          >
+            Use template default
+          </button>
+        </div>
 
         {/* Corner radius — badge elements */}
         {selectedEl.type === "badge" && (
@@ -5059,7 +5037,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
               ["▭", "Rect", () => { addShapeAspect("rect"); setSheetPanel("layer"); }],
               ["◯", "Circle", () => { addShapeAspect("circle"); setSheetPanel("layer"); }],
               ["△", "Triangle", () => { addShapeAspect("triangle"); setSheetPanel("layer"); }],
-              ["T", "Text", () => { addShapeAspect("text"); setSheetPanel("layer"); }],
+              ["T", "Text", () => { addTextElement(); setSheetPanel("text"); }],
             ].map(([icon, lbl, fn]) => (
               <button
                 key={lbl}
@@ -5924,6 +5902,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
             onUndo={undoLayer}
             onRedo={redoLayer}
             onAddShape={(type) => {
+              // Text is an element (tight box + rich text panel), not a shape layer
+              if (type === "text") { addTextElement(); setActiveTab("slide"); return; }
               addShapeAspect(type);
               setActiveTab("layers");
             }}
