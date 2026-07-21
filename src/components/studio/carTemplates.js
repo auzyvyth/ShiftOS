@@ -117,19 +117,19 @@ export const CAR_TEMPLATES = [
   {
     id: "heroPrice",
     name: "Hero Price",
-    tagline: "Spec strip · giant 348K-style price · full-bleed photo",
+    tagline: "Spec chips across the top, a giant “265K” price — the car owns the bottom half.",
     preview: { bg: "#0b0f16", accent: "#3aa3ff", style: "strip" },
     fonts: ["anton", "dm", "oswald"],
     theme: { accentColor: "#3aa3ff", bgColor: "#0b0f16", overlayOpacity: 0.3 },
-    carZone: { x: 3, y: 30, w: 94, h: 46, hint: "Front 3/4 · car fills the frame, shoot tall" },
+    carZone: { x: 3, y: 42, w: 94, h: 47, hint: "Front 3/4 · car fills the lower half of the frame" },
     buildElements: (c) => {
       const pill = fitFont(c.carName.toUpperCase(), 30, 560, "oswald");
       return [
         el({ content: (c.dealerName || "YOUR DEALERSHIP").toUpperCase(), x: centerX(c.dealerName.length * 0.56 * 26 || 300), y: 52, fontSize: 26, fontWeight: "600", color: "rgba(255,255,255,0.8)", fontFamily: "'DM Sans',sans-serif" }),
-        el({ content: "FROM RM", x: 64, y: 356, fontSize: 40, fontWeight: "600", color: "rgba(255,255,255,0.85)", fontFamily: "'Oswald',sans-serif" }),
-        el({ content: c.priceShort, x: 56, y: 400, fontSize: 300, fontFamily: "'Anton',sans-serif", fontWeight: "400", strokeWidth: 4, strokeColor: "rgba(0,0,0,0.55)" }),
-        badge({ content: c.carName.toUpperCase(), x: 64, y: 760, fontSize: pill.size, bgColor: "#3aa3ff", color: "#04121f" }),
-        badge({ content: c.whatsapp ? `WHATSAPP ${c.whatsapp}` : "DM TO BOOK A VIEWING", x: 64, y: 1730, fontSize: 30, bgColor: "rgba(255,255,255,0.92)", color: "#0b0f16" }),
+        el({ content: "FROM RM", x: 66, y: 292, fontSize: 38, fontWeight: "600", color: "rgba(255,255,255,0.85)", fontFamily: "'Oswald',sans-serif" }),
+        el({ content: c.priceShort, x: 56, y: 344, fontSize: 290, fontFamily: "'Anton',sans-serif", fontWeight: "400", strokeWidth: 4, strokeColor: "rgba(0,0,0,0.55)" }),
+        badge({ content: c.carName.toUpperCase(), x: 64, y: 726, fontSize: pill.size, bgColor: "#3aa3ff", color: "#04121f" }),
+        badge({ content: c.whatsapp ? `WHATSAPP ${c.whatsapp}` : "DM TO BOOK A VIEWING", x: 64, y: 1760, fontSize: 30, bgColor: "rgba(255,255,255,0.92)", color: "#0b0f16" }),
       ];
     },
     buildLayers: (c) => {
@@ -154,7 +154,7 @@ export const CAR_TEMPLATES = [
   {
     id: "poster",
     name: "Poster",
-    tagline: "Launch-poster title · feature icons row",
+    tagline: "Launch-poster: big title on top, feature columns below — car band across the middle.",
     preview: { bg: "#05070d", accent: "#8ef04a", style: "poster" },
     fonts: ["anton", "dm", "oswald"],
     theme: { accentColor: "#8ef04a", bgColor: "#05070d", overlayOpacity: 0.5 },
@@ -189,7 +189,7 @@ export const CAR_TEMPLATES = [
   {
     id: "collage",
     name: "Collage",
-    tagline: "Multi-photo panels · spec footer (BMW-poster style)",
+    tagline: "Three photo panels up top, hero band beneath, spec footer — needs 2+ listing photos.",
     preview: { bg: "#0a1024", accent: "#4a7dff", style: "panels" },
     fonts: ["anton", "dm", "oswald"],
     theme: { accentColor: "#4a7dff", bgColor: "#0a1024", overlayOpacity: 0.45 },
@@ -234,17 +234,17 @@ export const CAR_TEMPLATES = [
   {
     id: "monthlyDeal",
     name: "Monthly Deal",
-    tagline: "Instalment-first · urgency",
+    tagline: "Monthly payment does the selling — car sits up top, numbers below.",
     preview: { bg: "#021a0d", accent: "#00c853", style: "big-number" },
     fonts: ["anton", "dm", "oswald"],
     theme: { accentColor: "#00c853", bgColor: "#021a0d", overlayOpacity: 0.5 },
-    carZone: { x: 4, y: 24, w: 92, h: 33, hint: "Rear 3/4 angle · show the stance" },
+    carZone: { x: 4, y: 10, w: 92, h: 36, hint: "Rear 3/4 angle · show the stance, car up top" },
     buildElements: (c) => {
       const monthlyTxt = c.monthlyStr ? `${c.monthlyStr}/BLN` : "RM XXX/BLN";
       const m = fitFont(monthlyTxt, 150, 960, "anton");
       const nameFit = fitFont(c.carName, 52, 950, "oswald");
       return [
-        badge({ content: "LOW DEPOSIT · FAST LOAN", x: 64, y: 130, fontSize: 30, bgColor: "#00c853", color: "#02180c" }),
+        badge({ content: "LOW DEPOSIT · FAST LOAN", x: 64, y: 940, fontSize: 30, bgColor: "#00c853", color: "#02180c" }),
         el({ content: "DRIVE IT FROM", x: 68, y: 1180, fontSize: 34, fontWeight: "600", color: "rgba(255,255,255,0.7)", fontFamily: "'Oswald',sans-serif" }),
         el({ content: monthlyTxt, x: 60, y: 1232, fontSize: m.size, color: "#00c853", fontFamily: "'Anton',sans-serif", fontWeight: "400", strokeWidth: 2, strokeColor: "#01230f" }),
         el({ content: `Full price ${c.priceStr}`, x: 68, y: 1250 + m.size * 1.2, fontSize: 32, fontWeight: "400", color: "rgba(255,255,255,0.65)", fontFamily: "'DM Sans',sans-serif" }),
@@ -259,7 +259,7 @@ export const CAR_TEMPLATES = [
   {
     id: "luxury",
     name: "Luxury",
-    tagline: "Minimal serif · gold frame",
+    tagline: "Quiet money: serif type, thin gold frame, lots of space — car dead centre.",
     preview: { bg: "#0d0d0d", accent: "#c9a84c", style: "frame" },
     fonts: ["playfair", "dm"],
     theme: { accentColor: "#c9a84c", bgColor: "#0d0d0d", overlayOpacity: 0.35 },

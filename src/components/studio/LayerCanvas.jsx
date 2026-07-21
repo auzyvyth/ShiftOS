@@ -2087,9 +2087,75 @@ export function LayerPropertiesPanel({
   );
 }
 
+// Draw layer text exactly like the TextContent preview: \n honored, long
+// lines word-wrapped to the box, 1.25 line-height, horizontal + vertical
+// alignment, 4/6px padding.
+function drawLayerText(ctx, layer, x, y, w, h) {
+  const fontSize = layer.fontSize || 24;
+  const lineH = fontSize * 1.25;
+  const maxW = Math.max(10, w - 12);
+  ctx.font = `${layer.fontStyle === "italic" ? "italic " : ""}${layer.fontWeight || "bold"} ${fontSize}px "${layer.fontFamily || "DM Sans"}", sans-serif`;
+  ctx.fillStyle = layer.textColor || "#ffffff";
+  ctx.textAlign = layer.textAlign || "center";
+  ctx.textBaseline = "middle";
+
+  // \n splits first, then word-wrap each segment to the box width
+  const lines = [];
+  for (const seg of String(layer.text || "").split("\n")) {
+    const words = seg.split(" ");
+    let cur = "";
+    for (const word of words) {
+      const test = cur ? cur + " " + word : word;
+      if (ctx.measureText(test).width > maxW && cur) {
+        lines.push(cur);
+        cur = word;
+      } else {
+        cur = test;
+      }
+    }
+    lines.push(cur);
+  }
+
+  const blockH = lines.length * lineH;
+  const va = layer.textVerticalAlign || "center";
+  let startY =
+    va === "top" ? y + 4 + lineH / 2
+    : va === "bottom" ? y + h - 4 - blockH + lineH / 2
+    : y + h / 2 - blockH / 2 + lineH / 2;
+
+  const tx =
+    (layer.textAlign || "center") === "left" ? x + 6
+    : layer.textAlign === "right" ? x + w - 6
+    : x + w / 2;
+
+  for (const line of lines) {
+    ctx.fillText(line, tx, startY);
+    startY += lineH;
+  }
+}
+
+// Wait for every font used by the given layers so canvas export renders with
+// the same faces the DOM preview showed (canvas silently falls back when a
+// webfont isn't loaded yet — that's how exports drift from the preview).
+async function ensureLayerFonts(layers) {
+  try {
+    const loads = [];
+    for (const l of layers || []) {
+      if (!l.text) continue;
+      loads.push(
+        document.fonts.load(
+          `${l.fontStyle === "italic" ? "italic " : ""}${l.fontWeight || "bold"} ${l.fontSize || 24}px "${l.fontFamily || "DM Sans"}"`,
+        ),
+      );
+    }
+    await Promise.all(loads);
+  } catch {}
+}
+
 // ─── renderLayersToCanvas ──────────────────────────────────────────────────────
 export async function renderLayersToCanvas(canvas, layers, CW, CH) {
   if (!layers?.length) return;
+  await ensureLayerFonts(layers);
   const ctx = canvas.getContext("2d");
 
   // Sort by zIndex so low-z layers paint first
@@ -2143,18 +2209,8 @@ export async function renderLayersToCanvas(canvas, layers, CW, CH) {
       );
       ctx.fill();
     } else if (layer.type === "text") {
-      // Text-only layer
-      ctx.font = `${layer.fontStyle === "italic" ? "italic " : ""}${layer.fontWeight || "bold"} ${layer.fontSize || 24}px "${layer.fontFamily || "DM Sans"}", sans-serif`;
-      ctx.fillStyle = layer.textColor || "#ffffff";
-      ctx.textAlign = layer.textAlign || "center";
-      ctx.textBaseline = "middle";
-      const tx =
-        layer.textAlign === "left"
-          ? x + 6
-          : layer.textAlign === "right"
-            ? x + w - 6
-            : x + w / 2;
-      ctx.fillText(layer.text || "Text", tx, y + h / 2);
+      // Text-only layer — full multiline parity with the preview
+      drawLayerText(ctx, layer, x, y, w, h);
     } else {
       // rect / circle
       const rr =
@@ -2186,17 +2242,7 @@ export async function renderLayersToCanvas(canvas, layers, CW, CH) {
         ctx.beginPath();
         ctx.roundRect(x, y, w, h, rr);
         ctx.clip();
-        ctx.font = `${layer.fontStyle === "italic" ? "italic " : ""}${layer.fontWeight || "bold"} ${layer.fontSize || 24}px "${layer.fontFamily || "DM Sans"}", sans-serif`;
-        ctx.fillStyle = layer.textColor || "#ffffff";
-        ctx.textAlign = layer.textAlign || "center";
-        ctx.textBaseline = "middle";
-        const tx =
-          layer.textAlign === "left"
-            ? x + 6
-            : layer.textAlign === "right"
-              ? x + w - 6
-              : x + w / 2;
-        ctx.fillText(layer.text, tx, y + h / 2);
+        drawLayerText(ctx, layer, x, y, w, h);
         ctx.restore();
       }
     }

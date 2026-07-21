@@ -140,6 +140,11 @@ if (
   s.textContent = `
     @keyframes ttsv3-spin { to { transform: rotate(360deg); } }
     @keyframes ttsv3-highlight { 0%,100%{ box-shadow:none; } 40%{ box-shadow:0 0 0 4px rgba(37,99,235,0.7); } }
+    /* Sliders must own their touch gesture — ancestors declare pan-y, which
+       makes horizontal thumb drags lose gesture arbitration on Android
+       (tap works, drag doesn't). Also give the thumb a real touch target. */
+    input[type="range"] { touch-action: none; }
+    input[type="range"]::-webkit-slider-thumb { width: 18px; height: 18px; }
   `;
   document.head.appendChild(s);
 }
@@ -763,6 +768,23 @@ async function renderToCanvas(
   const fontObj = FONTS.find((f) => f.id === fontId) || FONTS[0];
   const fstack = fontObj.stack.replace(/'/g, "");
 
+  // Wait for every webfont the elements use — canvas silently substitutes a
+  // fallback face for unloaded fonts, which changes glyph sizes and is why
+  // downloads used to drift from the preview.
+  try {
+    const loads = [];
+    for (const el of slide.elements || []) {
+      if (!el.visible || !el.content) continue;
+      const fam = (el.fontFamily || fontObj.stack).replace(/'/g, "").split(",")[0].trim();
+      loads.push(
+        document.fonts.load(
+          `${el.fontStyle === "italic" ? "italic " : ""}${el.fontWeight || "400"} ${el.fontSize || 32}px "${fam}"`,
+        ),
+      );
+    }
+    await Promise.all(loads);
+  } catch {}
+
   for (const el of slide.elements || []) {
     if (!el.visible) continue;
 
@@ -787,7 +809,9 @@ async function renderToCanvas(
       ctx.beginPath();
       ctx.roundRect(0, 0, bw, bh, br);
       ctx.fill();
-      ctx.fillStyle = "#fff";
+      // Badge text: honor an explicit text color when the badge also defines
+      // its own bgColor (legacy badges used `color` AS the background).
+      ctx.fillStyle = el.bgColor && el.color ? el.color : "#fff";
       ctx.textAlign = "left";
       ctx.textBaseline = "top";
       ctx.fillText(el.content, padH, padV);
@@ -907,7 +931,7 @@ function CanvasElement({
         style={{
           ...sharedStyle,
           background: el.bgColor || el.color || "#dc2626",
-          color: "#fff",
+          color: el.bgColor && el.color ? el.color : "#fff",
           fontSize: el.fontSize * scale,
           fontWeight: el.fontWeight,
           fontFamily: el.fontFamily || fontStack,
@@ -2819,6 +2843,40 @@ export default function TikTokStudioV3({ listing, onClose }) {
     setShowCamera(true);
   }, [slide, theme, font, CW, CH, layers]);
 
+  // "Use + shoot": apply the template, then open the camera with a ghost
+  // built from the template itself (state hasn't flushed yet, so the ghost
+  // can't come from `slide`).
+  const openCameraWithTemplate = useCallback(
+    async (tpl) => {
+      applyProTemplate(tpl);
+      try {
+        const tctx = buildTemplateCtx(listing, slide, features, [...uploadedImages, ...rawImages]);
+        const tmpSlide = {
+          ...slide,
+          imageUrl: null,
+          template: "minimal",
+          elements: [
+            ...(slide?.elements || []).filter((e) => e.id === "watermark"),
+            ...tpl.buildElements(tctx).map((e) => ({ ...e, id: uid() })),
+          ],
+        };
+        const c = document.createElement("canvas");
+        await renderToCanvas(c, tmpSlide, { ...theme, ...tpl.theme }, font, CW, CH);
+        await renderLayersToCanvas(
+          c,
+          (tpl.buildLayers ? tpl.buildLayers(tctx) : []).map((l) => makeLayer(l.type, l)),
+          CW,
+          CH,
+        );
+        setCamOverlay(c.toDataURL("image/png"));
+      } catch {
+        setCamOverlay(null);
+      }
+      setShowCamera(true);
+    },
+    [applyProTemplate, listing, slide, features, uploadedImages, rawImages, theme, font, CW, CH],
+  );
+
   const handleCameraCapture = useCallback(
     (dataUrl) => {
       setUploadedImages((p) => [dataUrl, ...p]);
@@ -3606,46 +3664,35 @@ export default function TikTokStudioV3({ listing, onClose }) {
         <div
           key={t.id}
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
             background: "rgba(255,255,255,0.03)",
             border: "1px solid rgba(255,255,255,0.07)",
             borderRadius: 10,
-            padding: "8px 10px",
+            padding: "10px 12px",
           }}
         >
-          {/* Mini visual preview */}
-          <div style={{ width: 34, height: 60, borderRadius: 5, flexShrink: 0, background: t.preview.bg, border: "1px solid rgba(255,255,255,0.1)", position: "relative", overflow: "hidden" }}>
-            <div style={{ position: "absolute", left: "12%", right: "40%", top: "18%", height: 3, background: "rgba(255,255,255,0.5)", borderRadius: 2 }} />
-            <div style={{ position: "absolute", left: "12%", right: "20%", top: "62%", height: 4, background: "rgba(255,255,255,0.85)", borderRadius: 2 }} />
-            <div style={{ position: "absolute", left: "12%", right: "45%", top: "74%", height: 6, background: t.preview.accent, borderRadius: 2 }} />
-            {t.preview.style === "ribbon" && (
-              <div style={{ position: "absolute", left: "-25%", top: "6%", width: "90%", height: 5, background: t.preview.accent, transform: "rotate(-10deg)" }} />
-            )}
-            {t.preview.style === "frame" && (
-              <div style={{ position: "absolute", inset: 2, border: `1px solid ${t.preview.accent}`, borderRadius: 3 }} />
-            )}
-            {t.preview.style === "card" && (
-              <div style={{ position: "absolute", left: "8%", right: "8%", top: "56%", bottom: "8%", background: "rgba(255,255,255,0.09)", borderRadius: 3 }} />
-            )}
+          <p style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.9)", marginBottom: 2 }}>{t.name}</p>
+          <p style={{ fontSize: 10.5, color: "rgba(255,255,255,0.4)", lineHeight: 1.45, marginBottom: 9 }}>{t.tagline}</p>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button
+              onClick={() => applyProTemplate(t)}
+              style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: "none", background: "#2563eb", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+            >
+              Use template
+            </button>
+            <button
+              onClick={() => openCameraWithTemplate(t)}
+              title="Apply this template and shoot the car photo with its guide"
+              style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: "1px solid rgba(37,99,235,0.4)", background: "rgba(37,99,235,0.1)", color: "#7cb1ff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+            >
+              📷 Use + shoot
+            </button>
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{t.name}</p>
-            <p style={{ fontSize: 9.5, color: "rgba(255,255,255,0.35)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.tagline}</p>
-          </div>
-          <button
-            onClick={() => applyProTemplate(t)}
-            style={{ flexShrink: 0, padding: "7px 11px", borderRadius: 7, border: "none", background: "#2563eb", color: "#fff", fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}
-          >
-            Use template
-          </button>
         </div>
       ))}
     </div>
   );
 
-  // ── Photo source buttons (picker / upload / camera) ──────────────────────
+  // ── Photo source buttons (picker / upload) — camera lives on each template ─
   const PhotoSourceButtons = () => (
     <div style={{ display: "flex", gap: 6 }}>
       <button
@@ -3658,12 +3705,6 @@ export default function TikTokStudioV3({ listing, onClose }) {
         ⬆ Upload
         <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { uploadBgImage(e.target.files?.[0]); e.target.value = ""; }} />
       </label>
-      <button
-        onClick={openCamera}
-        style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "1px solid rgba(37,99,235,0.35)", background: "rgba(37,99,235,0.1)", color: "#60a5fa", cursor: "pointer", fontSize: 11, fontWeight: 700 }}
-      >
-        📷 Camera
-      </button>
     </div>
   );
 
