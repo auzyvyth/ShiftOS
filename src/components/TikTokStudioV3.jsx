@@ -2058,6 +2058,31 @@ export default function TikTokStudioV3({ listing, onClose }) {
     h: 600,
   });
   const desktopWrapperRef = useRef(null);
+  // Measured CONTENT size of the desktop single-slide canvas area (the flex row
+  // that sits BELOW the LayerStack). desktopWrapperSize measures the whole
+  // column incl. the LayerStack, so using it here oversized the canvas and let
+  // it (and the floating QuickPanel) spill below the fold. Measured separately
+  // so slideScale fits the true available box without touching the top-level
+  // `scale` that element-drag math depends on.
+  const [canvasAreaSize, setCanvasAreaSize] = useState({ w: 0, h: 0 });
+  const canvasAreaObs = useRef(null);
+  const measureCanvasArea = useCallback((node) => {
+    if (canvasAreaObs.current) {
+      canvasAreaObs.current.disconnect();
+      canvasAreaObs.current = null;
+    }
+    if (node) {
+      const ro = new ResizeObserver((entries) => {
+        const { width, height } = entries[0].contentRect;
+        setCanvasAreaSize({ w: width, h: height });
+      });
+      ro.observe(node);
+      canvasAreaObs.current = ro;
+      const r = node.getBoundingClientRect();
+      // subtract the row's 24px h / 12px v padding to match contentRect
+      setCanvasAreaSize({ w: Math.max(r.width - 48, 0), h: Math.max(r.height - 24, 0) });
+    }
+  }, []);
   const [userId, setUserId] = useState(null);
   const [canvasFormat, setCanvasFormat] = useState("9:16");
   const [uploadedImages, setUploadedImages] = useState([]);
@@ -5997,10 +6022,12 @@ export default function TikTokStudioV3({ listing, onClose }) {
             {/* Single-slide view with side controls */}
             {(() => {
               const SIDE_W = 44;
-              const V_PAD = 24;
-              const H_PAD = 48 + SIDE_W;
-              const availW = Math.max(desktopWrapperSize.w - H_PAD, 80);
-              const availH = Math.max(desktopWrapperSize.h - V_PAD, 80);
+              // canvasAreaSize is the measured CONTENT box of the row below
+              // (padding already excluded); fall back to the column measurement
+              // (minus the row padding) until the row has been measured once.
+              const measured = canvasAreaSize.h > 0;
+              const availW = Math.max((measured ? canvasAreaSize.w : desktopWrapperSize.w - 48) - SIDE_W, 80);
+              const availH = Math.max(measured ? canvasAreaSize.h : desktopWrapperSize.h - 24, 80);
               const { displayW: slideW, displayH: slideH } = computeDisplaySize(CW / CH, availW, availH);
               const slideScale = CW > 0 ? slideW / CW : 0.3;
               const btnBase = {
@@ -6011,7 +6038,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 flexShrink: 0,
               };
               return (
-                <div style={{ flex: 1, display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", overflow: "hidden", padding: "12px 24px" }}>
+                <div ref={measureCanvasArea} style={{ flex: 1, display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", overflow: "hidden", padding: "12px 24px", minHeight: 0 }}>
                   {/* Active slide canvas — no header/nav, fills panel */}
                   <div
                     style={{

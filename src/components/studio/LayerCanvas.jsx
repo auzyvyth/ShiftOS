@@ -570,15 +570,30 @@ const Q_BTN = {
 };
 
 function QuickPanel({ layer, cW, cH, onUpdate, onCommit, onShiftZ }) {
-  const ly = (layer.y / 100) * cH;
+  // Guarded placement: anchor the bar to the selection box and hard-clamp it
+  // so it can NEVER leave the visible canvas frame — in any aspect ratio, for
+  // any selection position (incl. a full-frame layer). Prefer just above the
+  // selection; fall back to just below; otherwise dock to the top edge.
+  const M = 8; // margin from the canvas edges
+  const PANEL_H = 40; // approx bar height (padding + control)
+  const PANEL_W = Math.min(216, Math.max(120, cW - M * 2));
 
-  // Docked bar, Canva-style: pinned to the top of the canvas so it never
-  // overlaps the selection chrome. If the layer itself sits in the top band,
-  // dock to the bottom instead.
-  const PANEL_W = Math.min(216, cW - 16);
-  const dockBottom = ly < 64;
-  const panelTop = dockBottom ? cH - 46 : 8;
-  const panelLeft = (cW - PANEL_W) / 2;
+  const sx = (layer.x / 100) * cW;
+  const sy = (layer.y / 100) * cH;
+  const sw = (layer.width / 100) * cW;
+  const sh = (layer.height / 100) * cH;
+
+  const maxLeft = Math.max(M, cW - PANEL_W - M);
+  const panelLeft = Math.min(maxLeft, Math.max(M, sx + sw / 2 - PANEL_W / 2));
+
+  const above = sy - PANEL_H - M;
+  const below = sy + sh + M;
+  const maxTop = Math.max(M, cH - PANEL_H - M);
+  let panelTop;
+  if (above >= M) panelTop = above;
+  else if (below <= maxTop) panelTop = below;
+  else panelTop = M;
+  panelTop = Math.min(maxTop, Math.max(M, panelTop));
 
   const hasText = ["text", "rect", "circle", "triangle"].includes(layer.type);
   const hasShapeColor = layer.type !== "image" && layer.type !== "text";
