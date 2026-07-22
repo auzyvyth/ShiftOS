@@ -918,7 +918,7 @@ export default function CarDetailPage() {
       car_id: car.id,
       car_name: `${car.brand} ${car.model} ${car.year}`,
       dealer_id: car.dealer_id,
-      salesman_slug: getSlugFromURL() || car.salesman_slug || null,
+      salesman_slug: getSlugFromURL() || car.salesman_slug || salesmanProfile?.slug || null,
       page_path: window.location.pathname,
       metadata: { price: car.selling_price, colour: car.colour },
     });
@@ -1027,7 +1027,7 @@ export default function CarDetailPage() {
       car_id: car.id,
       car_name: `${car.brand} ${car.model} ${car.year}`,
       dealer_id: car.dealer_id,
-      salesman_slug: getSlugFromURL() || car.salesman_slug || null,
+      salesman_slug: getSlugFromURL() || car.salesman_slug || salesmanProfile?.slug || null,
       metadata: { source: "car_detail" },
     });
     window.location.href = `tel:+${phone}`;
@@ -1053,7 +1053,7 @@ export default function CarDetailPage() {
       car_id: car.id,
       car_name: `${car.brand} ${car.model} ${car.year}`,
       dealer_id: car.dealer_id,
-      salesman_slug: getSlugFromURL() || car.salesman_slug || null,
+      salesman_slug: getSlugFromURL() || car.salesman_slug || salesmanProfile?.slug || null,
       metadata: { source: "storefront", price: car.selling_price },
     });
     fetch("/api/enquiry", {
