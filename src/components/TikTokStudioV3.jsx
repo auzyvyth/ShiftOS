@@ -61,12 +61,19 @@ import LayerCanvas, {
 import { CAR_TEMPLATES, buildTemplateCtx } from "./studio/carTemplates";
 import CameraCapture from "./studio/CameraCapture";
 import DragSlider from "./studio/DragSlider";
-import GradientEditor, { gradientCss, DEFAULT_GRADIENT } from "./studio/GradientEditor";
+import GradientEditor, { gradientCss, DEFAULT_GRADIENT, DARK_SCRIM_GRADIENT } from "./studio/GradientEditor";
 import { loadCustomFonts, saveCustomFont, deleteCustomFont } from "./studio/customFonts";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CANVAS_W = 1080;
 const CANVAS_H = 1920;
+// zIndex plane the interactive text/badge elements render on (see CanvasPreview
+// overlay). Layers below it sit behind text; layers at/above it sit in front.
+// Export interleaves layers around this plane so it matches the live preview.
+const ELEMENT_PLANE_Z = 25;
+// Default zIndex for the seeded dark gradient overlay — above the photo, behind
+// the template text so headline/price stay readable.
+const OVERLAY_Z = 12;
 const SERVER_URL = import.meta.env.VITE_API_URL || "";
 const AI_MESSAGES_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/ai/messages` : '/api/ai-messages';
 const AI_LIMIT = 100;
@@ -418,9 +425,11 @@ const SLIDE_TEMPLATES = [
 const DEFAULT_THEME = {
   accentColor: "#dc2626",
   bgColor: "#060910",
+  // The dark scrim is now a movable gradient shape (see makeOverlayLayer), not a
+  // baked background overlay — so the background gradient is off by default.
   overlayOpacity: 0.45,
   overlayStyle: "dark",
-  overlayGradient: "standard",
+  overlayGradient: "none",
   textColor: "#ffffff",
   watermarkText: "",
   watermarkOpacity: 0.14,
@@ -456,6 +465,28 @@ function buildDefaultElements(listing, theme, dealerName) {
   ];
 }
 
+// ─── Dark gradient overlay shape ──────────────────────────────────────────────
+// The dark transparent scrim used to be baked into every slide's background as a
+// fixed overlay. It is now a real, movable/rotatable/deletable shape seeded into
+// every template — a full-bleed rect with a transparent dark gradient fill,
+// sitting above the photo but behind the headline/price text (OVERLAY_Z).
+function makeOverlayLayer(overrides = {}) {
+  return makeLayer("rect", {
+    label: "Gradient",
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 100,
+    gradient: DARK_SCRIM_GRADIENT,
+    fill: "#060910",
+    fillOpacity: 100,
+    borderWidth: 0,
+    borderRadius: 0,
+    zIndex: OVERLAY_Z,
+    ...overrides,
+  });
+}
+
 // ─── Build default slides ─────────────────────────────────────────────────────
 function buildDefaultSlides(listing, images, features, dealerName, whatsapp) {
   const brand = listing?.brand || "";
@@ -487,6 +518,7 @@ function buildDefaultSlides(listing, images, features, dealerName, whatsapp) {
     whatsapp: whatsapp || "",
     monthly: calcMonthly(price),
     elements: buildDefaultElements(listing, DEFAULT_THEME, dealerName),
+    layers: [makeOverlayLayer()],
     bgAdjust: { brightness: 1, contrast: 1, saturation: 1, warmth: 0, blur: 0, vignette: 0 },
   });
 
@@ -682,7 +714,7 @@ async function renderBackground(
   }
 
   // ── Gradient overlay ─────────────────────────────────────────────────────
-  const overlayGrad = theme.overlayGradient || "standard";
+  const overlayGrad = theme.overlayGradient || "none";
   const op = theme.overlayOpacity ?? 0.45;
   // Scale each stop's alpha linearly with overlayOpacity
   const gc = (a) => `rgba(6,9,16,${Math.min(1, a * op).toFixed(3)})`;
@@ -798,10 +830,39 @@ async function renderToCanvas(
   CW = CANVAS_W,
   CH = CANVAS_H,
 ) {
-  // Step 1: background (image, gradient, chrome)
   await renderBackground(canvas, slide, theme, fontId, CW, CH);
+  await renderElements(canvas, slide, theme, fontId, CW, CH);
+}
 
-  // Step 2: text / badge elements on top
+// Composite background + below-text layers + text elements + above-text layers,
+// so movable shapes (e.g. the dark gradient overlay) sit at the right depth in
+// the export exactly as they do in the live preview.
+async function renderComposite(
+  canvas,
+  slide,
+  theme,
+  fontId = "dm",
+  CW = CANVAS_W,
+  CH = CANVAS_H,
+  layers = [],
+) {
+  const below = (layers || []).filter((l) => (l.zIndex ?? 20) < ELEMENT_PLANE_Z);
+  const above = (layers || []).filter((l) => (l.zIndex ?? 20) >= ELEMENT_PLANE_Z);
+  await renderBackground(canvas, slide, theme, fontId, CW, CH);
+  await renderLayersToCanvas(canvas, below, CW, CH);
+  await renderElements(canvas, slide, theme, fontId, CW, CH);
+  await renderLayersToCanvas(canvas, above, CW, CH);
+}
+
+// Text / badge elements pass — drawn on top of the background.
+async function renderElements(
+  canvas,
+  slide,
+  theme,
+  fontId = "dm",
+  CW = CANVAS_W,
+  CH = CANVAS_H,
+) {
   const ctx = canvas.getContext("2d");
   const W = CW;
   const H = CH;
@@ -2941,7 +3002,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
               },
         ),
       );
-      setLayers(fitted.layers.map((l) => makeLayer(l.type, l)));
+      // Seed the dark gradient overlay behind the template's own graphics so the
+      // scrim is always present (and always a movable shape) on a fresh template.
+      setLayers([makeOverlayLayer(), ...fitted.layers.map((l) => makeLayer(l.type, l))]);
       setSelectedId(null);
     },
     [active, listing, slide, features, setLayers, uploadedImages, rawImages, CW, CH],
@@ -2953,6 +3016,14 @@ export default function TikTokStudioV3({ listing, onClose }) {
   const addShapeAspect = useCallback(
     (type) => {
       const sq = (wPct, ratio = 1) => ({ width: wPct, height: ((wPct / 100) * CW * ratio / CH) * 100 });
+      if (type === "gradient")
+        return addLayer("rect", {
+          label: "Gradient",
+          gradient: DARK_SCRIM_GRADIENT,
+          x: 0, y: 0, width: 100, height: 100,
+          borderWidth: 0, borderRadius: 0,
+          zIndex: OVERLAY_Z,
+        });
       if (type === "circle") return addLayer("circle", sq(24, 1));
       if (type === "rect") return addLayer("rect", sq(40, 0.62));
       if (type === "triangle") return addLayer("triangle", sq(30, 0.9));
@@ -2965,9 +3036,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
   const openCamera = useCallback(async () => {
     try {
       const c = document.createElement("canvas");
-      await renderToCanvas(c, { ...slide, imageUrl: null }, theme, font, CW, CH);
       // Include shape/text layers so the ghost matches the real design
-      await renderLayersToCanvas(c, layers || [], CW, CH);
+      await renderComposite(c, { ...slide, imageUrl: null }, theme, font, CW, CH, layers || []);
       setCamOverlay(c.toDataURL("image/png"));
     } catch {
       setCamOverlay(null);
@@ -3002,13 +3072,11 @@ export default function TikTokStudioV3({ listing, onClose }) {
           ],
         };
         const c = document.createElement("canvas");
-        await renderToCanvas(c, tmpSlide, { ...theme, ...tpl.theme }, font, CW, CH);
-        await renderLayersToCanvas(
-          c,
-          fitted.layers.map((l) => makeLayer(l.type, l)),
-          CW,
-          CH,
-        );
+        const ghostLayers = [
+          makeOverlayLayer(),
+          ...fitted.layers.map((l) => makeLayer(l.type, l)),
+        ];
+        await renderComposite(c, tmpSlide, { ...theme, ...tpl.theme }, font, CW, CH, ghostLayers);
         setCamOverlay(c.toDataURL("image/png"));
       } catch {
         setCamOverlay(null);
@@ -3175,8 +3243,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
     async (idx) => {
       await document.fonts.ready;
       const c = document.createElement("canvas");
-      await renderToCanvas(c, slides[idx], theme, font, CW, CH);
-      await renderLayersToCanvas(c, slides[idx]?.layers || [], CW, CH);
+      await renderComposite(c, slides[idx], theme, font, CW, CH, slides[idx]?.layers || []);
       return new Promise((res) => c.toBlob(res, "image/jpeg", 0.93));
     },
     [slides, theme, font, CW, CH],
@@ -4079,16 +4146,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
         ))}
       </div>
 
-      <SectionHead label="Overlay" />
-      <SliderRow
-        label="Opacity"
-        value={theme.overlayOpacity}
-        min={0}
-        max={1}
-        step={0.01}
-        onChange={(v) => setTheme((t) => ({ ...t, overlayOpacity: v }))}
-        fmt={(v) => `${Math.round(v * 100)}%`}
-      />
+      <SectionHead label="Background" />
       <SliderRow
         label="Blur intensity"
         value={theme.blurIntensity ?? 18}
@@ -4098,56 +4156,10 @@ export default function TikTokStudioV3({ listing, onClose }) {
         onChange={(v) => setTheme((t) => ({ ...t, blurIntensity: v }))}
         fmt={(v) => `${v}px`}
       />
-
-      <SectionHead label="Overlay style" />
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4,1fr)",
-          gap: 4,
-          marginBottom: 12,
-        }}
-      >
-        {[
-          {
-            id: "standard",
-            label: "Auto",
-            grad: "linear-gradient(to bottom,rgba(6,9,16,0.95) 0%,rgba(6,9,16,0.05) 40%,rgba(6,9,16,0.9) 100%)",
-          },
-          {
-            id: "top",
-            label: "Top",
-            grad: "linear-gradient(to bottom,rgba(6,9,16,0.98) 0%,rgba(6,9,16,0.02) 60%)",
-          },
-          {
-            id: "bottom",
-            label: "Bottom",
-            grad: "linear-gradient(to top,rgba(6,9,16,0.98) 0%,rgba(6,9,16,0.02) 60%)",
-          },
-          { id: "none", label: "None", grad: "none" },
-        ].map((g) => {
-          const active2 = (theme.overlayGradient || "standard") === g.id;
-          return (
-            <button
-              key={g.id}
-              onClick={() => setTheme((t) => ({ ...t, overlayGradient: g.id }))}
-              style={{
-                padding: "8px 4px",
-                borderRadius: 7,
-                cursor: "pointer",
-                fontSize: 9,
-                border: `1px solid ${
-                  active2 ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.07)"
-                }`,
-                background: active2 ? "rgba(37,99,235,0.08)" : "transparent",
-                color: active2 ? "#dc2626" : "rgba(255,255,255,0.4)",
-              }}
-            >
-              {g.label}
-            </button>
-          );
-        })}
-      </div>
+      <p style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", lineHeight: 1.4, margin: "2px 2px 10px" }}>
+        The dark gradient is now a shape on the canvas — select it to move, rotate,
+        restyle or delete it, or add another from the Layers toolbar.
+      </p>
 
       <SectionHead label="Options" />
       <Toggle
@@ -5127,6 +5139,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
               ["▭", "Rect", () => { addShapeAspect("rect"); setSheetPanel("layer"); }],
               ["◯", "Circle", () => { addShapeAspect("circle"); setSheetPanel("layer"); }],
               ["△", "Triangle", () => { addShapeAspect("triangle"); setSheetPanel("layer"); }],
+              ["◨", "Gradient", () => { addShapeAspect("gradient"); setSheetPanel("layer"); }],
               ["T", "Text", () => { addTextElement(); setSheetPanel("text"); }],
             ].map(([icon, lbl, fn]) => (
               <button

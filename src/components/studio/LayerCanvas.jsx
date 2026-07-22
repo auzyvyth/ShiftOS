@@ -15,6 +15,7 @@ import {
   Square,
   Circle as CircleIcon,
   Triangle,
+  Blend,
   ImagePlus,
   Type,
   Undo2,
@@ -31,6 +32,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import DragSlider from "./DragSlider";
+import GradientEditor, { gradientCss, stopColor, DARK_SCRIM_GRADIENT } from "./GradientEditor";
 // react-konva removed — now using CSS div rendering for z-interleave with template
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
@@ -233,16 +235,21 @@ function LayerDiv({
     );
   }
 
+  // Shape fill — a gradient value wins over the solid fill so any rect / circle /
+  // triangle can be painted with a (optionally transparent) linear gradient.
+  const shapeBg = layer.gradient
+    ? gradientCss(layer.gradient)
+    : hexToRgba(layer.fill || "#e63946", layer.fillOpacity ?? 100);
+
   if (layer.type === "triangle") {
     return (
       <div
         style={{
           ...base,
           overflow: "hidden",
-          background: hexToRgba(
-            layer.fill || "#f59e0b",
-            layer.fillOpacity ?? 100,
-          ),
+          background: layer.gradient
+            ? gradientCss(layer.gradient)
+            : hexToRgba(layer.fill || "#f59e0b", layer.fillOpacity ?? 100),
           clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)",
         }}
         {...handlers}
@@ -269,10 +276,7 @@ function LayerDiv({
       style={{
         ...base,
         overflow: "hidden",
-        background: hexToRgba(
-          layer.fill || "#e63946",
-          layer.fillOpacity ?? 100,
-        ),
+        background: shapeBg,
         ...borderStyle,
       }}
       {...handlers}
@@ -1096,6 +1100,9 @@ export function LayerToolbar({
       {btn(<Triangle size={14} />, "Add Triangle", () =>
         onAddShape("triangle"),
       )}
+      {btn(<Blend size={14} />, "Add Gradient Overlay", () =>
+        onAddShape("gradient"),
+      )}
       {btn(<Type size={14} />, "Add Text", () => onAddShape("text"))}
       {btn(<ImagePlus size={14} />, "Add Image", () =>
         inputRef.current?.click(),
@@ -1516,20 +1523,53 @@ export function LayerPropertiesPanel({
       {layer.type !== "image" && layer.type !== "text" && (
         <>
           <SectionLabel>Fill</SectionLabel>
-          <PropRow label="Color">
-            <LColorInput
-              value={layer.fill || "#e63946"}
-              onChange={(v) => u({ fill: v })}
+          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+            <button
+              onClick={() => uc({ gradient: null })}
+              style={{
+                flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, cursor: "pointer", fontWeight: 600,
+                border: `1px solid ${!layer.gradient ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.1)"}`,
+                background: !layer.gradient ? "rgba(37,99,235,0.12)" : "transparent",
+                color: !layer.gradient ? "#60a5fa" : "rgba(255,255,255,0.5)",
+              }}
+            >
+              Solid
+            </button>
+            <button
+              onClick={() => uc({ gradient: layer.gradient || DARK_SCRIM_GRADIENT })}
+              style={{
+                flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, cursor: "pointer", fontWeight: 600, color: "#fff",
+                border: `1px solid ${layer.gradient ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.1)"}`,
+                background: layer.gradient ? gradientCss(layer.gradient) : "transparent",
+              }}
+            >
+              Gradient
+            </button>
+          </div>
+          {layer.gradient ? (
+            <GradientEditor
+              value={layer.gradient}
+              onChange={(g) => u({ gradient: g })}
+              showAlpha
             />
-          </PropRow>
-          <LSlider
-            label="Fill Opacity"
-            value={layer.fillOpacity ?? 100}
-            min={0}
-            max={100}
-            onChange={(v) => u({ fillOpacity: v })}
-            fmt={(v) => `${v}%`}
-          />
+          ) : (
+            <>
+              <PropRow label="Color">
+                <LColorInput
+                  value={layer.fill || "#e63946"}
+                  onChange={(v) => u({ fill: v })}
+                />
+              </PropRow>
+              <LSlider
+                label="Fill Opacity"
+                value={layer.fillOpacity ?? 100}
+                min={0}
+                max={100}
+                onChange={(v) => u({ fillOpacity: v })}
+                fmt={(v) => `${v}%`}
+              />
+            </>
+          )}
           {(layer.type === "rect" || layer.type === "circle") && (
             <LSlider
               label="Corner Radius"
@@ -2165,6 +2205,22 @@ async function ensureLayerFonts(layers) {
 }
 
 // ─── renderLayersToCanvas ──────────────────────────────────────────────────────
+// Build a canvas linear gradient across a shape's box, matching the CSS
+// `linear-gradient(<angle>deg, …)` used in the live preview so export is WYSIWYG.
+function canvasGradientFor(ctx, g, x, y, w, h) {
+  const ang = ((g.angle ?? 90) * Math.PI) / 180;
+  const dx = Math.sin(ang);
+  const dy = -Math.cos(ang);
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const half = (Math.abs(dx) * w + Math.abs(dy) * h) / 2;
+  const grad = ctx.createLinearGradient(cx - dx * half, cy - dy * half, cx + dx * half, cy + dy * half);
+  [...g.stops]
+    .sort((a, b) => a.pos - b.pos)
+    .forEach((s) => grad.addColorStop(Math.max(0, Math.min(1, s.pos / 100)), stopColor(s)));
+  return grad;
+}
+
 export async function renderLayersToCanvas(canvas, layers, CW, CH) {
   if (!layers?.length) return;
   await ensureLayerFonts(layers);
@@ -2217,10 +2273,9 @@ export async function renderLayersToCanvas(canvas, layers, CW, CH) {
       ctx.lineTo(x + w, y + h);
       ctx.lineTo(x, y + h);
       ctx.closePath();
-      ctx.fillStyle = hexToRgba(
-        layer.fill || "#f59e0b",
-        layer.fillOpacity ?? 100,
-      );
+      ctx.fillStyle = layer.gradient
+        ? canvasGradientFor(ctx, layer.gradient, x, y, w, h)
+        : hexToRgba(layer.fill || "#f59e0b", layer.fillOpacity ?? 100);
       ctx.fill();
     } else if (layer.type === "text") {
       // Text-only layer — full multiline parity with the preview
@@ -2232,10 +2287,9 @@ export async function renderLayersToCanvas(canvas, layers, CW, CH) {
         layer.type === "circle" ? Math.min(w, h) / 2 : layer.borderRadius || 0;
       ctx.beginPath();
       ctx.roundRect(x, y, w, h, rr);
-      ctx.fillStyle = hexToRgba(
-        layer.fill || "#e63946",
-        layer.fillOpacity ?? 100,
-      );
+      ctx.fillStyle = layer.gradient
+        ? canvasGradientFor(ctx, layer.gradient, x, y, w, h)
+        : hexToRgba(layer.fill || "#e63946", layer.fillOpacity ?? 100);
       ctx.fill();
       if ((layer.borderWidth || 0) > 0) {
         ctx.strokeStyle = hexToRgba(
