@@ -2005,7 +2005,7 @@ export default function CarDetailPage() {
             {(() => {
               const isAgent = car.seller_role === 'salesman' || !!salesmanProfile;
               const displayName = isAgent ? (salesmanProfile?.full_name || 'Agent') : (dealer ? dealerName : 'Seller');
-              const avatarSrc = isAgent ? salesmanProfile?.avatar_url : (dealer?.site_logo_url || dealer?.avatar_url);
+              const avatarSrc = isAgent ? salesmanProfile?.avatar_url : (dealer?.avatar_url || dealer?.site_logo_url);
               return (
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                   {avatarSrc
@@ -3358,7 +3358,7 @@ export default function CarDetailPage() {
             {(() => {
               const isAgent = car.seller_role === 'salesman' || !!salesmanProfile;
               const displayName = isAgent ? (salesmanProfile?.full_name || 'Agent') : (dealer ? dealerName : 'Seller');
-              const avatarSrc = isAgent ? salesmanProfile?.avatar_url : (dealer?.site_logo_url || dealer?.avatar_url);
+              const avatarSrc = isAgent ? salesmanProfile?.avatar_url : (dealer?.avatar_url || dealer?.site_logo_url);
               return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, paddingBottom: 16, borderBottom: `1px solid ${th.borderSec}` }}>
                   {avatarSrc
