@@ -76,6 +76,7 @@ import {
  MessageCircle,
  BookOpen,
  Inbox,
+ Film,
 } from "lucide-react";
 
 import { callClaude } from "../lib/callClaude";
@@ -84,6 +85,10 @@ import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import UpgradeBanner from "../components/ai/UpgradeBanner";
 import AiLoadingState from "../components/ai/AiLoadingState";
 import AiQuotaBadge from "../components/ai/AiQuotaBadge";
+
+// ShiftOS Studio — full-screen marketing-content editor (camera overlay +
+// branded templates). Lazy so the panel's initial bundle stays lean.
+const TikTokStudioV3 = React.lazy(() => import("../components/TikTokStudioV3"));
 
 // helpers 
 
@@ -371,6 +376,7 @@ export default function SalesmanPanel() {
 
  // Car detail popup
  const [selectedCar, setSelectedCar] = useState(null);
+ const [studioCar, setStudioCar] = useState(null); // ShiftOS Studio target listing
  const [carDetailImgIdx, setCarDetailImgIdx] = useState(0);
  const [carDetailTab, setCarDetailTab] = useState("specs");
  const [carDetailLbOpen, setCarDetailLbOpen] = useState(false);
@@ -441,7 +447,7 @@ export default function SalesmanPanel() {
  moreOpen || dealSheetConfigLead || linkCarLeadId || testDriveConfirm || waModalLead ||
  logCallLeadId || followUpModalLead || (batchWALeads && batchWALeads.length) || selectedCar ||
  aiCaptionCar || broadcastCar || showAddLead || telegramSetupModal || deleteConfirmId ||
- cancelConfirmId || reminderPickerAptId || reschedulingAptId
+ cancelConfirmId || reminderPickerAptId || reschedulingAptId || studioCar
  );
  useEffect(() => {
  if (!anyOverlayOpen) return;
@@ -3574,6 +3580,21 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  link,
  ].join("\n")}
  />
+ {actionBtn(
+ <>
+ <Film size={13} style={{ flexShrink: 0 }} />ShiftOS Studio
+ </>,
+ "#f472b6",
+ "rgba(219,39,119,0.08)",
+ "rgba(219,39,119,0.25)",
+ () => {
+ // Close the detail popup first, then open the studio — never
+ // stack two full-screen overlays (overlay rule #3).
+ const target = car;
+ close();
+ setStudioCar(target);
+ },
+ )}
  {actionBtn(
  <>
  <MessageSquare size={13} style={{ flexShrink: 0 }} />WA
@@ -7945,6 +7966,14 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </div>
 
  {renderCarDetailPopup()}
+
+ {/* ShiftOS Studio — full-screen editor, mounted at page level so no
+     parent stacking context can clip it (overlay rule #1). */}
+ {studioCar && (
+ <React.Suspense fallback={null}>
+ <TikTokStudioV3 listing={studioCar} onClose={() => setStudioCar(null)} />
+ </React.Suspense>
+ )}
 
  {/* FAB — mobile only */}
  {isMobile && (
