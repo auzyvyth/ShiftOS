@@ -167,6 +167,7 @@ import {
   CheckSquare,
   Wrench,
   Upload,
+  User,
   Snowflake,
   UserCheck,
   SlidersHorizontal,
@@ -1054,6 +1055,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const [subdomainStatus, setSubdomainStatus] = useState(null); // 'checking' | 'taken' | 'available' | 'unchanged'
   const [logoUrl, setLogoUrl] = useState(profile?.site_logo_url || '');
   const [logoBusy, setLogoBusy] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '');
+  const [avatarBusy, setAvatarBusy] = useState(false);
   const [planUsage, setPlanUsage] = useState(null);
   const [settingsLastChange, setSettingsLastChange] = useState(null);
 
@@ -1142,6 +1145,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setSubdomain(profile.subdomain || "");
     setSubdomainStatus(null);
     setLogoUrl(profile.site_logo_url || "");
+    setAvatarUrl(profile.avatar_url || "");
     setSfWhy({ ...defaultSfWhy, ...(profile.storefront_why || {}), items: (profile.storefront_why?.items || defaultSfWhy.items).map(i => ({...i})) });
     setSfHow({ ...defaultSfHow, ...(profile.storefront_how || {}), steps: (profile.storefront_how?.steps || defaultSfHow.steps).map(s => ({...s})) });
     setSfTestimonials((profile.storefront_testimonials || defaultSfTestimonials).map(t => ({...t})));
@@ -1220,10 +1224,12 @@ function SettingsTab({ profile, onProfileUpdate }) {
     }
     const dealershipChanged = !dealershipLocked && dealership.trim() !== (profile?.dealership || "");
     const logoChanged = (logoUrl || "") !== (profile?.site_logo_url || "");
+    const avatarChanged = (avatarUrl || "") !== (profile?.avatar_url || "");
     const payload = {
       site_name: siteName.trim() || (profile?.dealership || dealership.trim() || ""),
       subdomain,
       ...(logoChanged && { site_logo_url: logoUrl || null }),
+      ...(avatarChanged && { avatar_url: avatarUrl || null }),
       ...(dealershipChanged && {
         dealership: dealership.trim(),
         dealership_change_count: changeCount + 1,
@@ -1273,13 +1279,37 @@ function SettingsTab({ profile, onProfileUpdate }) {
   // Stage removal only — cleared from the profile when Save is clicked.
   const removeLogo = () => setLogoUrl("");
 
+  // Dealer profile picture — same staged-upload pattern as the logo above:
+  // upload to the avatars bucket for a preview URL, but only persist to
+  // profiles.avatar_url when Save is clicked. This is the dealer's personal
+  // avatar shown in the dashboard header, distinct from the storefront logo.
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) { toast.error("Photo must be under 3 MB"); return; }
+    if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
+    setAvatarBusy(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const ext = (file.name.split(".").pop() || "png").toLowerCase();
+      const path = `${user.id}/avatar.${ext}`;
+      const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+      if (upErr) { toast.error("Upload failed: " + upErr.message); setAvatarBusy(false); return; }
+      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+      setAvatarUrl(`${publicUrl}?t=${Date.now()}`); // stage only — persisted on Save
+    } catch (err) { toast.error(err.message || "Upload failed"); }
+    setAvatarBusy(false);
+  };
+  const removeAvatar = () => setAvatarUrl("");
+
   // Save enables on ANY single change (name OR site name OR subdomain) —
   // the name lock no longer gates the button.
   const identityDirty =
     (!dealershipLocked && dealership.trim() !== (profile?.dealership || "")) ||
     (siteName.trim() || "") !== (profile?.site_name || "") ||
     subdomain !== (profile?.subdomain || "") ||
-    (logoUrl || "") !== (profile?.site_logo_url || "");
+    (logoUrl || "") !== (profile?.site_logo_url || "") ||
+    (avatarUrl || "") !== (profile?.avatar_url || "");
 
   const saveContact = () =>
     saveSection("contact", {
@@ -1683,6 +1713,27 @@ function SettingsTab({ profile, onProfileUpdate }) {
             placeholder="e.g. Auto City — Used Cars Penang"
             className={iCls}
           />
+        </SettingsField>
+
+        <SettingsField label="Profile Picture" hint="Your personal avatar, shown in the dashboard">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#f9fafb', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+              {avatarUrl
+                ? <img src={avatarUrl} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <User className="w-5 h-5 text-gray-400" />}
+            </div>
+            <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer" style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#374151', opacity: avatarBusy ? 0.5 : 1 }}>
+              <Upload className="w-3.5 h-3.5" />
+              {avatarBusy ? 'Uploading…' : (avatarUrl ? 'Change photo' : 'Upload photo')}
+              <input type="file" accept="image/*" onChange={handleAvatarUpload} disabled={avatarBusy} style={{ display: 'none' }} />
+            </label>
+            {avatarUrl && (
+              <button type="button" onClick={removeAvatar} disabled={avatarBusy} className="text-xs font-medium px-2.5 py-1.5 rounded-lg" style={{ color: '#6b7280', border: '1px solid #e5e7eb' }}>
+                Remove
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 mt-1.5">Square image works best. Max 3 MB. Click <span className="font-medium text-gray-700">Save</span> below to apply.</p>
         </SettingsField>
 
         <SettingsField label="Dealership Logo" hint="Shown in your storefront header">

@@ -2005,7 +2005,7 @@ export default function CarDetailPage() {
             {(() => {
               const isAgent = car.seller_role === 'salesman' || !!salesmanProfile;
               const displayName = isAgent ? (salesmanProfile?.full_name || 'Agent') : (dealer ? dealerName : 'Seller');
-              const avatarSrc = isAgent ? salesmanProfile?.avatar_url : (dealer?.site_logo_url || dealer?.avatar_url);
+              const avatarSrc = isAgent ? salesmanProfile?.avatar_url : (dealer?.avatar_url || dealer?.site_logo_url);
               return (
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                   {avatarSrc
@@ -2040,7 +2040,7 @@ export default function CarDetailPage() {
         {/* M5 — Description + tabs + sections */}
         <div className="cdp-mobile-only" style={{ padding:'0 20px', marginBottom:32 }}>
           <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.2em', color: th.textMuted, fontWeight:700, marginBottom:12 }}>About this car</p>
-          <p style={{ fontSize:14, color: th.textSec, lineHeight:1.85, marginBottom:28 }}>
+          <p style={{ fontSize:14, color: th.textSec, lineHeight:1.85, marginBottom:28, whiteSpace:'pre-wrap' }}>
             {car.specs || `${car.year} ${car.brand} ${car.model}, ${fmt(car.mileage)} km, ${car.transmission}, ${car.fuel_type}, ${car.colour}.`}
           </p>
           {/* Tabs */}
@@ -2714,6 +2714,7 @@ export default function CarDetailPage() {
                 color: th.textMuted,
                 lineHeight: 2,
                 marginBottom: 40,
+                whiteSpace: "pre-wrap",
               }}
             >
               {car.specs ||
@@ -3357,7 +3358,7 @@ export default function CarDetailPage() {
             {(() => {
               const isAgent = car.seller_role === 'salesman' || !!salesmanProfile;
               const displayName = isAgent ? (salesmanProfile?.full_name || 'Agent') : (dealer ? dealerName : 'Seller');
-              const avatarSrc = isAgent ? salesmanProfile?.avatar_url : (dealer?.site_logo_url || dealer?.avatar_url);
+              const avatarSrc = isAgent ? salesmanProfile?.avatar_url : (dealer?.avatar_url || dealer?.site_logo_url);
               return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, paddingBottom: 16, borderBottom: `1px solid ${th.borderSec}` }}>
                   {avatarSrc
