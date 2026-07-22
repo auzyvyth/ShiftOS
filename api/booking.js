@@ -79,28 +79,22 @@ export default async function handler(req, res) {
   // when a rep taps claim (claim_lead grabs both). Non-fatal: a lead failure
   // must not block the booking itself. Stage 'viewing_booked' labels it as a
   // buyer who wants to view (not a generic "new" enquiry).
-  let leadId = null;
-  const { data: leadRow, error: leadErr } = await supabase
-    .from('leads')
-    .insert({
-      dealer_id: listing.dealer_id,
-      salesman_id: salesmanId,
-      car_listing_id: carId,
-      buyer_name: name.trim().substring(0, 100),
-      phone: phoneClean,
-      buyer_state: state || null,
-      lead_source: 'enquiry',
-      stage: 'viewing_booked',
-      notes: notesWithIntent,
-    })
-    .select('id')
-    .maybeSingle();
+let leadId = null;
+  const { data: leadResult, error: leadErr } = await supabase.rpc('create_lead_from_booking', {
+    p_dealer_id: listing.dealer_id,
+    p_car_id: carId,
+    p_name: name.trim().substring(0, 100),
+    p_phone: phoneClean,
+    p_state: state || null,
+    p_ref_slug: refSlug || null,
+    p_notes: notesWithIntent,
+    p_assigned_to: salesmanId,
+  });
   if (leadErr) {
     console.error('[api/booking] lead:', leadErr.message);
   } else {
-    leadId = leadRow?.id || null;
+    leadId = leadResult || null;
   }
-
   // The booking arrives as 'pending' — the seller must approve it before the
   // slot is real. This is the commitment gate: a window-shopper tap no longer
   // silently books a confirmed viewing; the seller confirms genuine buyers.
