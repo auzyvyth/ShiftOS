@@ -2040,7 +2040,7 @@ export default function CarDetailPage() {
         {/* M5 — Description + tabs + sections */}
         <div className="cdp-mobile-only" style={{ padding:'0 20px', marginBottom:32 }}>
           <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.2em', color: th.textMuted, fontWeight:700, marginBottom:12 }}>About this car</p>
-          <p style={{ fontSize:14, color: th.textSec, lineHeight:1.85, marginBottom:28 }}>
+          <p style={{ fontSize:14, color: th.textSec, lineHeight:1.85, marginBottom:28, whiteSpace:'pre-wrap' }}>
             {car.specs || `${car.year} ${car.brand} ${car.model}, ${fmt(car.mileage)} km, ${car.transmission}, ${car.fuel_type}, ${car.colour}.`}
           </p>
           {/* Tabs */}
@@ -2714,6 +2714,7 @@ export default function CarDetailPage() {
                 color: th.textMuted,
                 lineHeight: 2,
                 marginBottom: 40,
+                whiteSpace: "pre-wrap",
               }}
             >
               {car.specs ||
