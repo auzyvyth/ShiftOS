@@ -20,7 +20,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import { CONFIGURABLE_ROLES, capabilitiesForRole, resolvePermissions, roleExtras } from "../lib/permissions";
 import { DEFAULT_WA_TEMPLATES, WA_PLACEHOLDERS } from "../lib/leadsHelpers";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
-import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
+import { establishSessionFromHandoff } from "../lib/authHandoff";
 import SciFiLoader from "../components/SciFiLoader";
 import DealerPendingApproval from "../components/DealerPendingApproval";
 
@@ -9357,50 +9357,14 @@ export default function DashboardPage() {
     // subscribing to auth events. A stale localStorage session on the subdomain
     // can trigger SIGNED_OUT during its failed auto-refresh — if we're already
     // subscribed when that fires, we'd redirect to xdrive.my/login before our
-    // new tokens even get a chance to run.
-    const { at: _at, rt: _rt } = readHandoffTokens();
+    // new tokens even get a chance to run. establishSessionFromHandoff owns the
+    // stale-session lock contention + guarded-retry logic (see authHandoff.js).
     let unsubscribe = () => {};
 
     (async () => {
-      let session;
-      if (_at && _rt) {
-        clearHandoffTokens();
-        // Cross-domain handoff: setSession can stall when supabase-js is still
-        // recovering/refreshing a STALE localStorage session from a previous login
-        // on this subdomain — the two contend on the auth lock and the dashboard
-        // hangs on the loader until a manual refresh (which works because the fresh
-        // session is by then persisted). Race setSession against a short timeout;
-        // if it stalls, fall back to getSession() — the same thing a refresh does —
-        // so we never sit on the loader forever.
-        const setResult = await Promise.race([
-          supabase.auth.setSession({ access_token: _at, refresh_token: _rt }).then((r) => ({ ok: true, r })),
-          new Promise((res) => setTimeout(() => res({ ok: false }), 4000)),
-        ]);
-        if (!active) return;
-        if (setResult.ok) {
-          session = setResult.r?.data?.session ?? null;
-        } else {
-          const { data } = await supabase.auth.getSession();
-          if (!active) return;
-          session = data?.session ?? null;
-          // Still nothing after the stall + retry: the session didn't take. A single
-          // guarded reload lands on the now-clean URL and recovers via getSession,
-          // exactly like the manual refresh the user found works. Guard prevents loops.
-          if (!session && !sessionStorage.getItem('dash_handoff_reloaded')) {
-            sessionStorage.setItem('dash_handoff_reloaded', '1');
-            window.location.reload();
-            return;
-          }
-        }
-        // Clear the one-shot reload guard once we have a good session.
-        if (session) { try { sessionStorage.removeItem('dash_handoff_reloaded'); } catch { /* ignore */ } }
-      } else {
-        const { data } = await supabase.auth.getSession();
-        if (!active) return;
-        session = data?.session ?? null;
-      }
+      const { session, reloading } = await establishSessionFromHandoff(supabase);
+      if (reloading || !active) return;
 
-      if (!active) return;
       if (!(session?.user?.id && session.user.id === loadedUidRef.current)) {
         loadSession(session);
       }

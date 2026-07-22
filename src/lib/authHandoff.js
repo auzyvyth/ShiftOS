@@ -31,3 +31,100 @@ export function clearHandoffTokens() {
   // Drops both the query string and the hash, leaving a clean path.
   window.history.replaceState({}, "", window.location.pathname);
 }
+
+// ── Robust cross-subdomain session establishment ────────────────────────────
+//
+// Login happens on xdrive.my; dealer dashboards live on <sub>.xdrive.my — a
+// different origin whose localStorage does NOT carry the session. We pass the
+// tokens in the URL hash and call setSession on the subdomain. Two things make
+// that fragile, and this helper handles both so a dealer never lands on the
+// subdomain's OWN /login and has to sign in a second time:
+//
+//  1. A STALE session already in the subdomain's localStorage (from a previous
+//     login) makes supabase-js auto-recover/refresh it on load, holding the auth
+//     lock. Our setSession then contends for that lock and its promise can stall
+//     for several seconds — even though it still persists the fresh session to
+//     storage once the lock frees. So: wait (capped), then poll getSession,
+//     which reads the now-persisted session.
+//  2. If it still hasn't taken, do ONE guarded reload. The previous code cleared
+//     the URL tokens BEFORE reloading, so the reloaded page had nothing to retry
+//     with and dropped straight to /login (the double-login bug). We stash the
+//     tokens in sessionStorage (origin-scoped, survives the reload) so the fresh
+//     page — with no stale-session refresh contending for the lock — retries the
+//     handoff cleanly, then clears the stash on success.
+//
+// Returns { session, reloading }. When reloading is true the caller MUST bail —
+// the page is navigating away.
+const STASH_AT = "handoff_stash_at";
+const STASH_RT = "handoff_stash_rt";
+const RELOAD_GUARD = "handoff_reloaded";
+
+function ssGet(key) {
+  try { return sessionStorage.getItem(key); } catch { return null; }
+}
+function ssSet(key, val) {
+  try { sessionStorage.setItem(key, val); } catch { /* blocked in partitioned webview */ }
+}
+function ssDel(key) {
+  try { sessionStorage.removeItem(key); } catch { /* ignore */ }
+}
+function clearHandoffStash() {
+  ssDel(STASH_AT);
+  ssDel(STASH_RT);
+  ssDel(RELOAD_GUARD);
+}
+
+export async function establishSessionFromHandoff(supabase) {
+  let at, rt;
+  ({ at, rt } = readHandoffTokens());
+  // After a guarded reload the URL is clean — fall back to the stash.
+  if (!at || !rt) {
+    at = ssGet(STASH_AT);
+    rt = ssGet(STASH_RT);
+  }
+
+  // No handoff in play — just report the existing session.
+  if (!at || !rt) {
+    const { data } = await supabase.auth.getSession();
+    return { session: data?.session ?? null, reloading: false };
+  }
+
+  // Clean the URL immediately — tokens must not linger in the address bar. The
+  // stash (not the URL) is what survives a retry reload.
+  clearHandoffTokens();
+
+  const setResult = await Promise.race([
+    supabase.auth
+      .setSession({ access_token: at, refresh_token: rt })
+      .then((r) => ({ ok: true, r }))
+      .catch(() => ({ ok: false })),
+    new Promise((res) => setTimeout(() => res({ ok: false }), 8000)),
+  ]);
+
+  let session = setResult.ok ? setResult.r?.data?.session ?? null : null;
+
+  // setSession stalled on the lock — poll storage, where it usually landed.
+  for (let i = 0; i < 8 && !session; i++) {
+    await new Promise((r) => setTimeout(r, 500));
+    const { data } = await supabase.auth.getSession();
+    session = data?.session ?? null;
+  }
+
+  if (session) {
+    clearHandoffStash();
+    return { session, reloading: false };
+  }
+
+  // Still nothing. One guarded reload with the tokens stashed for the retry.
+  if (!ssGet(RELOAD_GUARD)) {
+    ssSet(STASH_AT, at);
+    ssSet(STASH_RT, rt);
+    ssSet(RELOAD_GUARD, "1");
+    window.location.reload();
+    return { session: null, reloading: true };
+  }
+
+  // Second attempt failed too — give up cleanly; caller falls back to /login.
+  clearHandoffStash();
+  return { session: null, reloading: false };
+}
