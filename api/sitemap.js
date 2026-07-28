@@ -187,12 +187,25 @@ export default async function handler(req) {
           `${SUPABASE_URL}/rest/v1/public_car_listings?dealer_id=eq.${encodeURIComponent(dealerId)}&status=eq.available&select=${select}&limit=1000`,
         );
       }
-    } else {
-      // Root domain — all available listings across all dealers
-      cars = await fetchJson(
-        `${SUPABASE_URL}/rest/v1/public_car_listings?status=eq.available&select=${select}&order=created_at.desc&limit=5000`,
-      );
-    }
+ } else {
+// Root domain — only listings whose dealer has NO subdomain of their own.
+// Dealers with a subdomain canonicalize to their own site (see CarDetailPage.jsx),
+// so including them here would create duplicate canonical URLs.
+let subdomainDealerIds = [];
+try {
+const subDealers = await fetchJson(
+`${SUPABASE_URL}/rest/v1/profiles?subdomain=not.is.null&select=id`,
+);
+subdomainDealerIds = subDealers.map((d) => d.id).filter(Boolean);
+} catch (_) {}
+const excludeFilter =
+subdomainDealerIds.length > 0
+? `&dealer_id=not.in.(${subdomainDealerIds.join(",")})`
+: "";
+cars = await fetchJson(
+`${SUPABASE_URL}/rest/v1/public_car_listings?status=eq.available&select=${select}${excludeFilter}&order=created_at.desc&limit=5000`,
+);
+}
   } catch (_) {}
 
   // Filter out any rows with no slug
