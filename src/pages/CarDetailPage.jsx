@@ -33,6 +33,7 @@ import {
   Share2,
   Link as LinkIcon,
   TrendingDown,
+  
   TrendingUp,
   Minus,
 } from "lucide-react";
@@ -1256,7 +1257,11 @@ export default function CarDetailPage() {
             : "";
           const origin = typeof window !== 'undefined' ? window.location.origin : 'https://xdrive.my';
           const img = car?.images?.[0] || `${origin}/og-default.jpg`;
-          const url = car ? `${origin}/showroom/${car.slug}` : origin;
+          const url = car
+            ? (dealer?.subdomain
+                ? `https://${dealer.subdomain}.xdrive.my/cars/${car.slug}`
+                : `https://xdrive.my/showroom/${car.slug}`)
+            : origin;
           // react-helmet can't traverse a Fragment child (dev invariant crash,
           // tags dropped) — return a flat keyed array instead.
           return [
