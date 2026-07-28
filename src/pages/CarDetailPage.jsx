@@ -437,7 +437,9 @@ function useCarSchema(listing, dealer) {
           }
         : undefined,
       image: listing.images ?? undefined,
-      url: `https://xdrive.my/showroom/${listing.slug}`,
+      url: dealer?.subdomain
+        ? `https://${dealer.subdomain}.xdrive.my/cars/${listing.slug}`
+        : `https://xdrive.my/showroom/${listing.slug}`,
       offers: {
         "@type": "Offer",
         price: listing.selling_price,
