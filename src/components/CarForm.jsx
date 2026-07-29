@@ -751,7 +751,7 @@ function PickerField({ label, value, onChange, options, placeholder = "Select…
   const [query, setQuery] = useState("");
   const normalized = options.map((o) => (typeof o === "string" ? { value: o, label: o } : o));
   const selected = normalized.find((o) => o.value === value);
-  const searchable = normalized.length > 12;
+  const searchable = normalized.length > 12 || allowCustom;
   const filtered = query
     ? normalized.filter((o) => o.label.toLowerCase().includes(query.toLowerCase()))
     : normalized;
@@ -786,9 +786,9 @@ function PickerField({ label, value, onChange, options, placeholder = "Select…
       </button>
       {open &&
         createPortal(
-          <div className="fixed inset-0 z-[300] flex items-end sm:items-center sm:justify-center">
+           <div className="fixed inset-0 z-[300] flex items-start justify-center pt-4 sm:pt-16">
             <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-            <div className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl max-h-[75vh] flex flex-col shadow-xl">
+              <div className="relative w-full sm:max-w-md bg-white rounded-2xl max-h-[85vh] flex flex-col shadow-xl mx-3 sm:mx-0">
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
                 <p className="text-sm font-semibold text-gray-900">{label}</p>
                 <button
@@ -2243,6 +2243,44 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
             </div>,
             document.body,
           )}
+          {!intakeDone && (
+                      <>
+                                    <Field label="Plate Number" hint="Optional — vehicle registration plate">
+                                                    <input
+                                                                      name="plate_number"
+                                                                                        value={form.plate_number}
+                                                                                                          onChange={handleChange}
+                                                                                                                            onBlur={e => checkDuplicate('plate', e.target.value)}
+                                                                                                                                              placeholder="e.g. WXY 1234"
+                                                                                                                                                                className={inputCls}
+                                                                                                                                                                                />
+                                                                                                                                                                                                {dupWarning.plate && (
+                                                                                                                                                                                                                  <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.plate}</p>
+                                                                                                                                                                                                                                  )}
+                                                                                                                                                                                                                                                  {conflictWarning.plate && (
+                                                                                                                                                                                                                                                                    <p className="text-xs text-red-600 mt-1 font-semibold">This plate is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
+                                                                                                                                                                                                                                                                                    )}
+                                                                                                                                                                                                                                                                                                  </Field>
+                                                                                                                                                                                                                                                                                                                <Field label="VIN Number" hint="Vehicle Identification Number">
+                                                                                                                                                                                                                                                                                                                                <input
+                                                                                                                                                                                                                                                                                                                                                  name="vin_number"
+                                                                                                                                                                                                                                                                                                                                                                    value={form.vin_number}
+                                                                                                                                                                                                                                                                                                                                                                                      onChange={handleChange}
+                                                                                                                                                                                                                                                                                                                                                                                                        onBlur={e => checkDuplicate('vin', e.target.value)}
+                                                                                                                                                                                                                                                                                                                                                                                                                          placeholder="e.g. JN1CA31D1XT000001"
+                                                                                                                                                                                                                                                                                                                                                                                                                                            className={inputCls}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                            />
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                            {dupWarning.vin && (
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.vin}</p>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              )}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              {conflictWarning.vin && (
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <p className="text-xs text-red-600 mt-1 font-semibold">This VIN is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                )}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              </Field>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    )}
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              {/* Walkthrough Video */}
           {/* Walkthrough Video */}
           <div className="space-y-1">
             <label className="text-sm text-gray-600">
@@ -2381,16 +2419,27 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
             />
           </Field>
           <Field label="Model" required>
-            <PickerField
-              label="Select Model"
-              value={form.model}
-              onChange={(v) => set("model", v)}
+          <PickerField
+        label="Select Model"
+            value={form.model}
+               onChange={(v) => set("model", v)}
               options={modelOptions}
-              placeholder={form.brand ? "Select model" : "Pick brand first"}
-              disabled={!form.brand}
-              allowCustom
+             placeholder={form.brand ? "Select model" : "Pick brand first"}
+                disabled={!form.brand}
+            allowCustom
             />
-          </Field>
+         </Field> 
+                          <Field label="Variant">
+                                                                                                                                                                    <input
+                                                                                                                                                                                  name="variant"
+                                                                                                                                                                                                value={form.variant}
+                                                                                                                                                                                                              onChange={handleChange}
+                                                                                                                                                                                                                            placeholder="e.g. 1.5 G"
+                                                                                                                                                                                                                                          enterKeyHint="next"
+                                                                                                                                                                                                                                                        className={inputCls}
+                                                                                                                                                                                                                                                                    />
+                                                                                                                                                                                                                                                                              </Field>
+                                                                                                                                                                                                                                                                                        <Field label="Year" required>
           <Field label="Year" required>
             <input
               type="number"
@@ -2436,18 +2485,6 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           )}
 
           <MoreDetails>
-            {!intakeDone && (
-              <Field label="Variant">
-                <input
-                  name="variant"
-                  value={form.variant}
-                  onChange={handleChange}
-                  placeholder="e.g. 1.5 G"
-                  enterKeyHint="next"
-                  className={inputCls}
-                />
-              </Field>
-            )}
             <Field label="Registration Date">
               <input
                 type="date"
@@ -2459,40 +2496,6 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
             </Field>
             {!intakeDone && (
             <>
-            <Field label="Plate Number" hint="Optional — vehicle registration plate">
-              <input
-                name="plate_number"
-                value={form.plate_number}
-                onChange={handleChange}
-                onBlur={e => checkDuplicate('plate', e.target.value)}
-                placeholder="e.g. WXY 1234"
-                className={inputCls}
-              />
-              {dupWarning.plate && (
-                <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.plate}</p>
-              )}
-              {conflictWarning.plate && (
-                <p className="text-xs text-red-600 mt-1 font-semibold">This plate is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
-              )}
-            </Field>
-            <Field label="VIN Number" hint="Vehicle Identification Number">
-              <input
-                name="vin_number"
-                value={form.vin_number}
-                onChange={handleChange}
-                onBlur={e => checkDuplicate('vin', e.target.value)}
-                placeholder="e.g. JN1CA31D1XT000001"
-                className={inputCls}
-              />
-              {dupWarning.vin && (
-                <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.vin}</p>
-              )}
-              {conflictWarning.vin && (
-                <p className="text-xs text-red-600 mt-1 font-semibold">This VIN is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
-              )}
-            </Field>
-            </>
-            )}
             <Field label="Previous Owners">
               <input
                 type="number"
@@ -3049,19 +3052,6 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 />
               </div>
             </Field>
-            {!intakeDone && (
-            <Field label="Warranty Offered (months)" hint="0 = no warranty">
-              <input
-                type="number"
-                name="warranty_months"
-                value={form.warranty_months}
-                onChange={handleChange}
-                placeholder="e.g. 3"
-                min="0"
-                className={inputCls}
-              />
-            </Field>
-            )}
           </MoreDetails>
 
           {/* ── Included Services & Add-ons ── */}
