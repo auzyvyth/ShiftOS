@@ -2418,28 +2418,27 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               allowCustom
             />
           </Field>
-          <Field label="Model" required>
-          <PickerField
-        label="Select Model"
-            value={form.model}
-               onChange={(v) => set("model", v)}
+         <Field label="Model" required>
+            <PickerField
+              label="Select Model"
+              value={form.model}
+              onChange={(v) => set("model", v)}
               options={modelOptions}
-             placeholder={form.brand ? "Select model" : "Pick brand first"}
-                disabled={!form.brand}
-            allowCustom
+              placeholder={form.brand ? "Select model" : "Pick brand first"}
+              disabled={!form.brand}
+              allowCustom
             />
-         </Field> 
-                          <Field label="Variant">
-                                                                                                                                                                    <input
-                                                                                                                                                                                  name="variant"
-                                                                                                                                                                                                value={form.variant}
-                                                                                                                                                                                                              onChange={handleChange}
-                                                                                                                                                                                                                            placeholder="e.g. 1.5 G"
-                                                                                                                                                                                                                                          enterKeyHint="next"
-                                                                                                                                                                                                                                                        className={inputCls}
-                                                                                                                                                                                                                                                                    />
-                                                                                                                                                                                                                                                                              </Field>
-                                                                                                                                                                                                                                                                                        <Field label="Year" required>
+          </Field>
+          <Field label="Variant">
+            <input
+              name="variant"
+              value={form.variant}
+              onChange={handleChange}
+              placeholder="e.g. 1.5 G"
+              enterKeyHint="next"
+              className={inputCls}
+            />
+          </Field>
           <Field label="Year" required>
             <input
               type="number"
