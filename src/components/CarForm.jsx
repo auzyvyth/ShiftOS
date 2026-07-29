@@ -2484,7 +2484,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           )}
 
           <MoreDetails>
-            <Field label="Registration Date">
+             <Field label="Registration Date">
               <input
                 type="date"
                 name="registrationDate"
@@ -2493,8 +2493,6 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 className={inputCls}
               />
             </Field>
-            {!intakeDone && (
-            <>
             <Field label="Previous Owners">
               <input
                 type="number"
