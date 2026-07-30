@@ -1895,11 +1895,10 @@ export default function CarDetailPage() {
             </button>
           </div>
           {/* Brand — left-aligned to match the price/specs/stats column below */}
-          <p style={{ fontSize:'clamp(13px,1.4vw,18px)', textTransform:'uppercase', letterSpacing:'0.28em', color:'#dc2626', fontWeight:700, margin:'0 0 6px' }}>{car.brand}</p>
-          {/* Nameplate — model, variant, engine size, year */}
-          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(2.6rem,9vw,3.6rem)', color: th.text, lineHeight:0.98, letterSpacing:'0.01em', margin:'0 0 12px', overflowWrap:'break-word' }}>
-            {nameplate}
-          </h1>
+         {/* Nameplate — brand + model, variant, engine size, year — unified single line */}
+<h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(2.6rem,9vw,3.6rem)', color: '#374151', lineHeight:0.98, letterSpacing:'0.01em', margin:'0 0 12px', overflowWrap:'break-word' }}>
+  {car.brand} {nameplate}
+</h1>
           {dealer?.subdomain && !isSubdomain() && (
             <a
               href={`https://${dealer.subdomain}.xdrive.my`}
@@ -2481,31 +2480,18 @@ export default function CarDetailPage() {
             {/* Title block — brand sits at the same scale as the nameplate below it
                 (was a tiny 10px caption dwarfed by the 3-4.4rem heading), so brand
                 and model read as one masthead, differentiated by color only. */}
-            <p
-              style={{
-                fontFamily: "'Bebas Neue',sans-serif",
-                fontSize: "clamp(3rem,5vw,4.4rem)",
-                textTransform: "uppercase",
-                letterSpacing: "0.01em",
-                color: "#dc2626",
-                lineHeight: 0.98,
-                marginBottom: 4,
-              }}
-            >
-              {car.brand}
-            </p>
-            <h1
-              style={{
-                fontFamily: "'Bebas Neue',sans-serif",
-                fontSize: "clamp(3rem,5vw,4.4rem)",
-                color: th.text,
-                lineHeight: 0.98,
-                letterSpacing: "0.01em",
-                marginBottom: 12,
-              }}
-            >
-              {nameplate}
-            </h1>
+         <h1
+  style={{
+    fontFamily: "'Bebas Neue',sans-serif",
+    fontSize: "clamp(3rem,5vw,4.4rem)",
+    color: "#374151",
+    lineHeight: 0.98,
+    letterSpacing: "0.01em",
+    marginBottom: 12,
+  }}
+>
+  {car.brand} {nameplate}
+</h1>
             <p
               style={{
                 fontSize: 12,
