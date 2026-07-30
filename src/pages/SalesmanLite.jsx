@@ -74,7 +74,7 @@ import {
   ThumbsUp,
   ThumbsDown,
 } from "lucide-react";
-import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip } from "recharts";
+import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import AvailabilityEditor from "../components/AvailabilityEditor";
 
@@ -2699,19 +2699,23 @@ export default function SalesmanLite() {
             </div>
             <div style={{ height: 90, margin: "8px -8px -6px" }}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={commissionTrend} margin={{ top: 6, right: 8, bottom: 0, left: 8 }}>
+             <AreaChart data={commissionTrend} margin={{ top: 6, right: 8, bottom: 0, left: 8 }}>
                   <defs>
                     <linearGradient id="sliteCommissionFill" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#dc2626" stopOpacity={0.35} />
                       <stop offset="100%" stopColor="#dc2626" stopOpacity={0} />
                     </linearGradient>
                   </defs>
+                  <XAxis dataKey="d" hide />
                   <RTooltip
                     cursor={{ stroke: "rgba(255,255,255,0.1)" }}
                     contentStyle={{ background: "#161b22", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 11 }}
                     labelStyle={{ color: "#94a3b8" }}
                     itemStyle={{ color: "#f87171" }}
-                    labelFormatter={(v) => new Date(v).toLocaleDateString("en-MY", { day: "numeric", month: "short" })}
+                    labelFormatter={(v) => {
+                      const [y, m, day] = v.split("-").map(Number);
+                      return new Date(y, m - 1, day).toLocaleDateString("en-MY", { day: "numeric", month: "short" });
+                    }}
                     formatter={(v) => [`RM ${Number(v).toLocaleString("en-MY")}`, "Cumulative"]}
                   />
                   <Area type="monotone" dataKey="val" stroke="#f87171" strokeWidth={2} fill="url(#sliteCommissionFill)" dot={false} activeDot={{ r: 4, fill: "#f87171" }} />
