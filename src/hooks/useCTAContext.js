@@ -49,11 +49,16 @@ export function useCTAContext() {
       // RLS returns no rows, so the CTA whatsapp_number would come back empty
       // for logged-out storefront visitors.
       if (subdomain) {
+        // No .maybeSingle(): against a RETURNS TABLE function it sends the
+        // object Accept header, which makes PostgREST answer 406 on the (common)
+        // zero-row case — benign but noisy in the console/Sentry. The function
+        // already has LIMIT 1, so read the first (only) row directly and let a
+        // no-match return a clean 200 [] instead.
         const { data } = await supabase
-          .rpc('get_dealer_profile_by_subdomain', { p_subdomain: subdomain })
-          .maybeSingle();
-        if (data) {
-          setCtx({ type: 'dealer', profile: data, ref: null });
+          .rpc('get_dealer_profile_by_subdomain', { p_subdomain: subdomain });
+        const profile = Array.isArray(data) ? data[0] : data;
+        if (profile) {
+          setCtx({ type: 'dealer', profile, ref: null });
           return;
         }
       }
