@@ -1166,10 +1166,15 @@ export default function SalesmanLite() {
 
           // Share-channel breakdown (which platform each view/enquiry came from),
           // scoped to this Lite salesman's own slug. Untagged/organic → 'direct'.
-          const carIds = Object.keys(map);
-          if (carIds.length > 0 && profileData.slug) {
+          // Pass p_car_ids: null => count ALL-TIME across every car ever tagged to
+          // this slug, deduped by session. Previously this passed `Object.keys(map)`
+          // — the cars from get_salesman_analytics's rolling 30-day window — so when
+          // a car's last view aged past 30 days it dropped out of the set and took
+          // all its historical "direct" views with it, making the count fall
+          // day-over-day (the 67 -> 65 bug). A slug-scoped all-time count only grows.
+          if (profileData.slug) {
             supabase
-              .rpc("get_salesman_channel_breakdown", { p_car_ids: carIds, p_slug: profileData.slug })
+              .rpc("get_salesman_channel_breakdown", { p_car_ids: null, p_slug: profileData.slug })
               .then(({ data: chRows, error: chErr }) => {
                 if (chErr) { console.error("fetchChannelBreakdown:", chErr); return; }
                 const chMap = {};
@@ -1347,21 +1352,12 @@ export default function SalesmanLite() {
                     setNewBookingsCount((c) => c + 1);
                     toast(t("salesmanLite.toast.newBooking"), { description: payload.new.buyer_name || t("salesmanLite.toast.newAppointment") });
                   }
-                  // Auto-create a pipeline lead only when the booking isn't already
-                  // linked to one (organic /api/booking rows carry lead_id).
-                  const phone = normalizePhone(payload.new.buyer_phone);
-                  if (phone && !payload.new.lead_id) {
-                    const { data: existing } = await supabase.from("leads").select("id").eq("salesman_id", uid).eq("phone", phone).limit(1);
-                    if (!existing || !existing.length) {
-                      const { data: newLead } = await supabase.from("leads").insert({
-                        salesman_id: uid, dealer_id: null,
-                        buyer_name: payload.new.buyer_name || null, phone,
-                        car_listing_id: payload.new.car_listing_id || null,
-                        stage: "viewing_booked", lead_source: "manual", is_deleted: false,
-                      }).select().single();
-                      if (newLead) setLeads((p) => [newLead, ...p]);
-                    }
-                  }
+                  // NB: do NOT auto-create a pipeline lead here. A booking stays a
+                  // pending request in the Bookings tab until the salesman confirms
+                  // and contacts the buyer — only then (sendConfirmBooking ->
+                  // autoUpsertLeadFromAppt) is the lead created at 'viewing_booked'.
+                  // Creating it on the booking INSERT is what put a raw booking into
+                  // both the Bookings tab and the pipeline at once.
                 }
                 if (payload.eventType === "UPDATE") setAppointments((p) => p.map((a) => a.id === payload.new.id ? { ...a, ...payload.new } : a));
               },
@@ -1477,12 +1473,16 @@ export default function SalesmanLite() {
     } else {
       switchTab(tab);
     }
-    const targetId = tab === "bookings" ? "enquiries" : tab;
+    // The bookings step highlights the actual Bookings sub-tab pill (data-tour-id
+    // "bookings"), not the Enquiries nav again — so it visibly "opens" the booking
+    // tab rather than pointing at the same sidebar item as the previous step. The
+    // pill only mounts after the enquiries tab renders, so give it a touch longer.
+    const targetId = tab;
     const measure = () => {
       const el = document.querySelector(`[data-tour-id="${targetId}"]`);
       if (el) setTourTarget(el.getBoundingClientRect());
     };
-    const t = setTimeout(measure, 80);
+    const t = setTimeout(measure, tab === "bookings" ? 140 : 80);
     return () => clearTimeout(t);
   }, [tourStep]);
 
@@ -8292,6 +8292,7 @@ export default function SalesmanLite() {
                 ].map(({ key, label, badge }) => (
                   <button
                     key={key}
+                    data-tour-id={key === "bookings" ? "bookings" : undefined}
                     onClick={() => { setInboxSubTab(key); if (key === "bookings") setNewBookingsCount(0); }}
                     style={{
                       fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 8, cursor: "pointer",
