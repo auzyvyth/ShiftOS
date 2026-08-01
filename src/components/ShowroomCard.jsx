@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Car, Users, ArrowLeftRight, MessageCircle, Heart } from 'lucide-react';
-import { toast } from 'sonner';
 import GradeBadge from './GradeBadge';
 import { buildWaUrl } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
@@ -289,7 +288,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
           <button
             onClick={e => {
               e.stopPropagation();
-              if (compareFull) { toast.error('Compare full — remove a car first (max 4)', { duration: 2500 }); return; }
+              if (compareFull) { import('sonner').then(({ toast }) => toast.error('Compare full — remove a car first (max 4)', { duration: 2500 })); return; }
               onCompare && onCompare();
             }}
             style={{ display: 'flex', alignItems: 'center', gap: '4px', background: inCompare ? '#dc2626' : c.cmpBg, border: `1px solid ${inCompare ? '#dc2626' : c.cmpBorder}`, borderRadius: '7px', padding: '4px 9px', color: inCompare ? '#fff' : c.cmpText, fontSize: '11px', fontWeight: '700', cursor: 'pointer', fontFamily: "'Outfit',sans-serif", transition: 'all 0.15s', flexShrink: 0 }}

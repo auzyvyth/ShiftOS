@@ -1,6 +1,5 @@
 import React, { lazy, Suspense } from "react";
 import { Route, Routes, BrowserRouter as Router, useLocation, Navigate } from "react-router-dom";
-import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import * as Sentry from "@sentry/react";
@@ -19,6 +18,10 @@ import NotFoundPage from "./pages/NotFoundPage";
 
 // Lazy — navigated to, not landed on directly
 const CarDetailPage   = lazy(() => import("./pages/CarDetailPage"));
+
+// Lazy — the toast library (~64 KB) is only needed on user actions, never on
+// first paint, so keep it out of the eager entry bundle.
+const Toaster = lazy(() => import("sonner").then((m) => ({ default: m.Toaster })));
 
 // Lazy — everything else
 const CalculatorPage     = lazy(() => import("./pages/CalculatorPage"));
@@ -89,17 +92,19 @@ function App() {
   return (
     <Router>
       <ScrollToTop />
-      <Toaster
-        position="bottom-right"
-        toastOptions={{
-          style: {
-            background: "#111118",
-            border: "1px solid rgba(255,255,255,0.08)",
-            color: "#fff",
-            fontFamily: "system-ui,sans-serif",
-          },
-        }}
-      />
+      <Suspense fallback={null}>
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: "#111118",
+              border: "1px solid rgba(255,255,255,0.08)",
+              color: "#fff",
+              fontFamily: "system-ui,sans-serif",
+            },
+          }}
+        />
+      </Suspense>
       <CompareBarGate />
       <Suspense fallback={null}>
         <SentryRoutes>
