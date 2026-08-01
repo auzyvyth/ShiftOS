@@ -2623,11 +2623,16 @@ export default function SalesmanLite() {
           )}
         </div>
 
+        {/* Dashboard body — 2-up grid on desktop, single column on mobile.
+            Per-card CSS `order` puts the KPI strip + My Performance first without
+            moving them in source; the KPI strip spans both columns. */}
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: 16, alignItems: "start" }}>
+
         {/* Marketplace Pulse — moved up right below the greeting so the mini
             page link (the thing most worth acting on) isn't buried under
             the goal/agenda cards. */}
         {myListings.filter(c => c.status === "available").length > 0 && (
-          <div style={CARD}>
+          <div style={{ ...CARD, order: 10 }}>
             <div style={CARD_HEADER}>
               <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", animation: "live-glow 2s ease-in-out infinite" }} />
@@ -2818,8 +2823,8 @@ export default function SalesmanLite() {
           </div>
         )}
 
-        {/* ── My Performance (context, not action) ── */}
-        <div style={CARD}>
+        {/* ── My Performance (context, not action) — sits right below the KPI strip ── */}
+        <div style={{ ...CARD, order: -1 }}>
           <div style={CARD_HEADER}>
             <span>{t("salesmanLite.dash.myPerformance")}</span>
             <span>{t("salesmanLite.dash.days30")}</span>
@@ -2875,8 +2880,8 @@ export default function SalesmanLite() {
           )}
         </div>
 
-        {/* ── KPI strip — separated stat tiles ── */}
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: 10 }}>
+        {/* ── KPI strip — separated stat tiles (spans full grid width, top) ── */}
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: 10, order: -2, gridColumn: "1 / -1" }}>
           {[
             { label: t("salesmanLite.kpi.pipeline"), value: activeLeads.length, accent: "#3b82f6" },
             { label: t("salesmanLite.kpi.liveListings"), value: myListings.filter(c => c.status === "available").length, accent: "#22c55e" },
@@ -3063,6 +3068,7 @@ export default function SalesmanLite() {
             </div>
           </div>
         )}
+        </div>
 
         <PrevMonthModal
           open={showPrevMonth}
