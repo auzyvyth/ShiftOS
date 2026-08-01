@@ -133,7 +133,6 @@ export default function SalesmanSetup() {
       phone: normalizePhone(whatsapp),
       city: city.trim(),
       state: stateVal,
-      ic_number: ic.replace(/-/g, ''),
       pdpa_consent: true,
       pdpa_consent_at: new Date().toISOString(),
       onboarding_complete: true,
@@ -142,6 +141,9 @@ export default function SalesmanSetup() {
       setup_complete: true,
     }).eq('id', userId);
     if (profErr) { setError(profErr.message); setLoading(false); return; }
+    // Hash + store the IC (never plaintext) via set_my_ic.
+    const { error: icErr } = await supabase.rpc('set_my_ic', { p_ic: ic.replace(/\D/g, '') });
+    if (icErr) { setError(icErr.message === 'invalid_ic' ? 'Enter a valid 12-digit IC number.' : icErr.message); setLoading(false); return; }
     setPhase('done');
     setTimeout(() => navigate('/salesman'), 1600);
   };
