@@ -133,6 +133,17 @@ export default defineConfig({
 	},
 	build: {
 		sourcemap: false,
+		// By default Vite injects <link rel="modulepreload"> into index.html for the
+		// entry's chunk graph, which was pulling the heavy dealer-only vendor chunks —
+		// vendor-charts (recharts ~122 KB gz), vendor-pdf (jspdf ~129 KB gz),
+		// vendor-xlsx — onto EVERY public marketplace load even though only the
+		// dashboard/calculator use them. Strip those (and the dealer/admin page chunks)
+		// from the preload manifest so public visitors don't download them; they still
+		// fetch on demand via React.lazy when a dealer opens that route.
+		modulePreload: {
+			resolveDependencies: (_url, deps) =>
+				deps.filter((d) => !/(vendor-charts|vendor-pdf|vendor-xlsx|DashboardPage|Salesmanpanel|SalesmanLite|SalesmanPremium|SalesmanOnboarding|ImportStockPage|AccountantPanel|AdminPanel|AdminPage|ManagerPanel|FIPanel|AccountsPanel|LeadsPage|html2canvas|TikTokStudio)/.test(d)),
+		},
 		rollupOptions: {
 			output: {
 				manualChunks: {
