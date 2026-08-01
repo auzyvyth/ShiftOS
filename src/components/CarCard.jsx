@@ -4,7 +4,7 @@ import { Gauge, Settings2, MessageCircle, Fuel, Calendar, Heart, Images, GitComp
 import GradeBadge from './GradeBadge';
 import { buildWaUrl } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
-import { cdnImg } from '../utils/img';
+import { cdnImg, cdnSrcSet } from '../utils/img';
 import { trackEvent, getOrCreateSessionId } from '../utils/analytics';
 import { getRef } from '../utils/refTracking';
 import { isSubdomain } from '../hooks/useTenant';
@@ -84,6 +84,8 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
   // Resized WebP via weserv (the old ?width= params on /object/public/ were
   // silently ignored by Supabase, so full-res images were being served).
   const image = cdnImg(rawImage, 640, 72);
+  // Responsive candidates so mobile cards stop over-fetching the fixed 640px src.
+  const imageSrcSet = cdnSrcSet(rawImage, undefined, 72);
 
   // Reset shimmer whenever the visible slide changes.
   useEffect(() => { setImgLoaded(false); }, [safeIdx]);
@@ -350,6 +352,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
               <img
                 key={safeIdx}
                 src={cdnTimedOut && rawImage ? rawImage : image}
+                srcSet={cdnTimedOut ? undefined : imageSrcSet}
                 alt={`${year} ${brand} ${model}`}
                 loading={priority ? 'eager' : 'lazy'}
                 fetchPriority={priority ? 'high' : 'auto'}
