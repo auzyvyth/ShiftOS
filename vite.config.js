@@ -84,6 +84,37 @@ export default defineConfig({
 					'**/vendor-xlsx*', '**/html2canvas*', '**/pdf.worker*',
 				],
 				maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+				// Durable revisit caching for the content-hashed app chunks that are
+				// deliberately NOT precached (the entry index-*.js, dealer-only chunks,
+				// vendor-charts/pdf/xlsx). The browser HTTP cache gives these a 1-year
+				// immutable header (vercel.json), but mobile browsers evict it
+				// aggressively after a day — the "reopened after a day is slow" report:
+				// the 155 KB entry re-downloads from the network. Cache Storage is far
+				// more durable, so on revisit these serve instantly from the SW instead.
+				//
+				// CacheFirst is safe here precisely because every /assets/ filename is
+				// content-hashed: a URL's bytes never change, so a cached hit is never
+				// stale. A new deploy ships a NEW hash -> cache miss -> fetched fresh
+				// once -> cached. index.html itself is untouched (still network-first
+				// via must-revalidate), so the blank-after-deploy staleness race the
+				// precache config guards against cannot occur. This is on-demand (not
+				// precache), so a public visitor never pulls dealer chunks — only the
+				// chunks a session actually requests get cached for its own revisit.
+				runtimeCaching: [
+					{
+						urlPattern: /\/assets\/[^/]+\.(?:js|css)$/,
+						handler: 'CacheFirst',
+						options: {
+							cacheName: 'app-assets-v1',
+							expiration: {
+								maxEntries: 120,
+								maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+								purgeOnQuotaError: true,
+							},
+							cacheableResponse: { statuses: [0, 200] },
+						},
+					},
+				],
 			},
 		}),
 	],
