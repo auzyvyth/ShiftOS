@@ -151,13 +151,16 @@ export default function useTenant() {
       let rpcErrored = false;
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
+          // No .maybeSingle(): against a RETURNS TABLE function it forces the
+          // object Accept header, so PostgREST returns 406 for the zero-row case
+          // (benign — swallowed to null — but noisy). The function already has
+          // LIMIT 1; read the first row so a no-match is a clean 200 [] instead.
           const { data, error } = await supabase
-            .rpc("get_dealer_profile_by_subdomain", { p_subdomain: subdomain })
-            .maybeSingle();
+            .rpc("get_dealer_profile_by_subdomain", { p_subdomain: subdomain });
           if (error) {
             rpcErrored = true;
           } else {
-            profile = data || null;
+            profile = (Array.isArray(data) ? data[0] : data) || null;
             rpcErrored = false;
             break; // clean response (row or genuine miss) — stop retrying
           }
@@ -196,9 +199,9 @@ export default function useTenant() {
             },
             async () => {
               // Re-fetch the full profile so all storefront fields refresh
-              const { data: updated } = await supabase
-                .rpc("get_dealer_profile_by_subdomain", { p_subdomain: subdomain })
-                .maybeSingle();
+              const { data: updatedRows } = await supabase
+                .rpc("get_dealer_profile_by_subdomain", { p_subdomain: subdomain });
+              const updated = Array.isArray(updatedRows) ? updatedRows[0] : updatedRows;
               if (updated) {
                 setTenant(updated);
                 // Keep the cache in step with a dashboard edit, so the next
