@@ -2503,18 +2503,16 @@ export default function SalesmanLite() {
     const commissionOnDay = (dateKey) => soldWithCommission
       .filter(c => toLocalDateKey(new Date(c.sold_at)) === dateKey)
       .reduce((s, c) => s + (Number(c.commission_amount) || 0), 0);
-    // Cumulative running total, not raw daily commission — sales are sparse
-    // (mostly-zero days with the odd spike), so a per-day chart is a jagged
-    // comb, not a trend line. Cumulative is monotonically non-decreasing, which
-    // is what actually reads as a smooth "premium" sparkline (and is the same
-    // convention the reference screenshot uses).
-    let runningCommission = 0;
+    // Per-day commission (NOT cumulative). A cumulative line only ever climbs and
+    // then sits flat at the top forever once a deal lands, which read as broken
+    // ("stays flat on top"). Daily values spike on the day a deal is won and drop
+    // back to baseline after — the line actually moves. trendTotal is summed
+    // separately below so the ↑/↓ delta badge still reflects the 14-day total.
     const commissionTrend = Array.from({ length: 14 }, (_, i) => {
       const key = toLocalDateKey(new Date(todayMidnight.getTime() - (13 - i) * DAY_MS));
-      runningCommission += commissionOnDay(key);
-      return { d: key, val: runningCommission };
+      return { d: key, val: commissionOnDay(key) };
     });
-    const trendTotal = commissionTrend.length ? commissionTrend[commissionTrend.length - 1].val : 0;
+    const trendTotal = commissionTrend.reduce((s, p) => s + p.val, 0);
     const prevTrendTotal = Array.from({ length: 14 }, (_, i) =>
       commissionOnDay(toLocalDateKey(new Date(todayMidnight.getTime() - (27 - i) * DAY_MS))),
     ).reduce((s, v) => s + v, 0);
@@ -2534,9 +2532,6 @@ export default function SalesmanLite() {
       : null;
     const highlighted = focusCar || autoFocus;
 
-    // SVG ring
-    const R = 44, STROKE = 6, CIRC = 2 * Math.PI * R;
-
     // Shared card style
     const CARD = { background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden" };
     const CARD_HEADER = {
@@ -2545,14 +2540,6 @@ export default function SalesmanLite() {
       display: "flex", alignItems: "center", justifyContent: "space-between",
     };
 
-    // Live portfolio value — sum of currently-available listings' asking price.
-    // Distinct from soldThisMonth (realized commission) and the "Revenue (Sales)"
-    // figure further down (sold cars only) — this is "what you're carrying right
-    // now," the number that makes the landing page feel like a real book of stock.
-    const portfolioValue = available.reduce((sum, c) => sum + (Number(c.selling_price) || 0), 0);
-    const topCar = available.length > 0
-      ? available.reduce((best, c) => (Number(c.selling_price) || 0) > (Number(best.selling_price) || 0) ? c : best, available[0])
-      : null;
     const greetingWord = (() => {
       const h = new Date().getHours();
       return h < 12 ? t("salesmanLite.greeting.morning") : h < 17 ? t("salesmanLite.greeting.afternoon") : t("salesmanLite.greeting.evening");
@@ -2601,63 +2588,31 @@ export default function SalesmanLite() {
               </button>
             )}
           </div>
-          {portfolioValue > 0 && (
-            <div style={{ position: "relative", marginTop: 20 }}>
-              <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                {t("salesmanLite.dash.portfolioValue")}
-              </p>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-                <p style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: isMobile ? 38 : 50, color: "#fbbf24", letterSpacing: 1, lineHeight: 1 }}>
-                  RM {portfolioValue.toLocaleString("en-MY")}
-                </p>
-                <span style={{ fontSize: 12, color: "#475569" }}>
-                  {t("salesmanLite.dash.acrossListings", { count: available.length })}
-                </span>
-              </div>
-              {topCar && (
-                <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b" }}>
-                  {t("salesmanLite.dash.headlinedBy", { car: [topCar.year, topCar.brand, topCar.model, topCar.variant].filter(Boolean).join(" "), price: Number(topCar.selling_price).toLocaleString("en-MY") })}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Dashboard body — 2-up grid on desktop, single column on mobile.
-            Per-card CSS `order` puts the KPI strip + My Performance first without
-            moving them in source; the KPI strip spans both columns. */}
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: 16, alignItems: "start" }}>
-
-        {/* Marketplace Pulse — moved up right below the greeting so the mini
-            page link (the thing most worth acting on) isn't buried under
-            the goal/agenda cards. */}
-        {myListings.filter(c => c.status === "available").length > 0 && (
-          <div style={{ ...CARD, order: 10 }}>
-            <div style={CARD_HEADER}>
-              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", animation: "live-glow 2s ease-in-out infinite" }} />
-                <span>{t("salesmanLite.dash.live")}</span>
-              </div>
-              <span>{t("salesmanLite.dash.days30")}</span>
-            </div>
-            <div style={{ padding: 18 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 18 }}>
+          {/* Live snapshot merged into the hero — compact 30-day stats + the
+              shareable mini-page link. Portfolio value removed (not actionable). */}
+          {available.length > 0 && (
+            <div style={{ position: "relative", marginTop: 18, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 18 : 28, flexWrap: "wrap" }}>
                 {[
-                  { label: t("salesmanLite.dash.buyerViews"), value: totalViews || 0 },
-                  { label: t("salesmanLite.dash.waTaps"), value: totalWATaps || 0, green: true },
-                  { label: t("salesmanLite.kpi.liveListings"), value: myListings.filter(c => c.status === "available").length },
-                ].map(({ label, value, green }) => (
-                  <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <p style={{ margin: 0, fontSize: 12, color: "#475569" }}>{label}</p>
-                    <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: green ? "#22c55e" : "#f1f5f9", letterSpacing: "-0.03em" }}>{value}</p>
+                  { label: t("salesmanLite.dash.buyerViews"), value: totalViews || 0, color: "#f1f5f9" },
+                  { label: t("salesmanLite.dash.waTaps"), value: totalWATaps || 0, color: "#22c55e" },
+                  { label: t("salesmanLite.kpi.liveListings"), value: available.length, color: "#f1f5f9" },
+                ].map(({ label, value, color }) => (
+                  <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <span style={{ fontSize: isMobile ? 22 : 26, fontWeight: 700, color, letterSpacing: "-0.03em", lineHeight: 1 }}>{value}</span>
+                    <span style={{ fontSize: 10.5, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
                   </div>
                 ))}
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, marginLeft: "auto", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", animation: "live-glow 2s ease-in-out infinite" }} />
+                  {t("salesmanLite.dash.days30")}
+                </span>
               </div>
               {profile?.slug && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
                   <button
                     onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success(t("salesmanLite.toast.storeLinkCopied")); }}
-                    style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#94a3b8", cursor: "pointer", fontWeight: 500, fontFamily: "inherit" }}
+                    style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 180px", minWidth: 0, fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#94a3b8", cursor: "pointer", fontWeight: 500, fontFamily: "inherit" }}
                   >
                     <LinkIcon size={11} />
                     <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>xdrive.my/s/{profile.slug}</span>
@@ -2668,7 +2623,7 @@ export default function SalesmanLite() {
                     target="_blank"
                     rel="noopener noreferrer"
                     title="Opens on this environment (preview/staging shows this build; xdrive.my is the real address to share)"
-                    style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(37,99,235,0.07)", border: "1px solid rgba(37,99,235,0.2)", color: "#93c5fd", textDecoration: "none", fontWeight: 600, fontFamily: "inherit" }}
+                    style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 180px", minWidth: 0, fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(37,99,235,0.07)", border: "1px solid rgba(37,99,235,0.2)", color: "#93c5fd", textDecoration: "none", fontWeight: 600, fontFamily: "inherit" }}
                   >
                     <ExternalLink size={11} />
                     <span style={{ flex: 1 }}>Lihat halaman mini anda</span>
@@ -2677,62 +2632,13 @@ export default function SalesmanLite() {
                 </div>
               )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* ── Sales Overview — commission trend, gradient sparkline ── */}
-        {trendTotal > 0 && (
-          <div style={{ ...CARD, padding: isMobile ? "18px 16px 8px" : "22px 24px 10px" }}>
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 4 }}>
-              <div>
-                <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                  Commission — last 14 days
-                </p>
-                <p style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: isMobile ? 32 : 40, color: "#f1f5f9", letterSpacing: 0.5, lineHeight: 1 }}>
-                  RM {trendTotal.toLocaleString("en-MY")}
-                </p>
-              </div>
-              {trendDelta !== null && (
-                <span style={{
-                  display: "flex", alignItems: "center", gap: 3, marginTop: 4, padding: "4px 9px", borderRadius: 99, fontSize: 11, fontWeight: 700, flexShrink: 0,
-                  background: trendDelta >= 0 ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)",
-                  color: trendDelta >= 0 ? "#4ade80" : "#f87171",
-                }}>
-                  {trendDelta >= 0 ? "↑" : "↓"} {Math.abs(trendDelta)}%
-                </span>
-              )}
-            </div>
-            <div style={{ height: 90, margin: "8px -8px -6px" }}>
-              <ResponsiveContainer width="100%" height="100%">
-             <AreaChart data={commissionTrend} margin={{ top: 6, right: 8, bottom: 0, left: 8 }}>
-                  <defs>
-                    <linearGradient id="sliteCommissionFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#dc2626" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="#dc2626" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="d" hide />
-                  <RTooltip
-                    cursor={{ stroke: "rgba(255,255,255,0.1)" }}
-                    contentStyle={{ background: "#161b22", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 11 }}
-                    labelStyle={{ color: "#94a3b8" }}
-                    itemStyle={{ color: "#f87171" }}
-                    labelFormatter={(v) => {
-                      const [y, m, day] = v.split("-").map(Number);
-                      return new Date(y, m - 1, day).toLocaleDateString("en-MY", { day: "numeric", month: "short" });
-                    }}
-                    formatter={(v) => [`RM ${Number(v).toLocaleString("en-MY")}`, "Cumulative"]}
-                  />
-                  <Area type="monotone" dataKey="val" stroke="#f87171" strokeWidth={2} fill="url(#sliteCommissionFill)" dot={false} activeDot={{ r: 4, fill: "#f87171" }} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
-
-        {/* Actionable items first — follow-ups and today's agenda are what the
-            salesman should act on right now; portfolio value/stats below are
-            context, not action items, so they no longer sit above these. */}
+        {/* Dashboard body — 2-up grid on desktop, single column on mobile.
+            Per-card CSS `order` puts the KPI strip + My Performance first without
+            moving them in source; the KPI strip spans both columns. */}
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: 16, alignItems: "start" }}>
 
         {/* ── Follow-up Needed ── */}
         {staleLeads.length > 0 && (
@@ -2926,34 +2832,74 @@ export default function SalesmanLite() {
                   <p style={{ margin: "8px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.goal.perCarHint")}</p>
                 </div>
               ) : goal.target > 0 ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-                  {/* SVG ring */}
-                  <div style={{ position: "relative", flexShrink: 0 }}>
-                    <svg width={100} height={100} style={{ transform: "rotate(-90deg)" }}>
-                      <circle cx={50} cy={50} r={R} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={STROKE} />
-                      <circle cx={50} cy={50} r={R} fill="none"
-                        stroke={pct >= 100 ? "#22c55e" : pct >= 60 ? "#3b82f6" : "#ef4444"}
-                        strokeWidth={STROKE} strokeDasharray={CIRC} strokeDashoffset={CIRC * (1 - pct / 100)}
-                        strokeLinecap="round" style={{ transition: "stroke-dashoffset 0.6s ease" }} />
-                    </svg>
-                    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                      <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#f1f5f9", lineHeight: 1 }}>{Math.round(pct)}%</p>
-                      <p style={{ margin: 0, fontSize: 9, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanLite.goal.done")}</p>
+                <div>
+                  {/* Commission earned + compact % badge (replaced the big ring) */}
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ margin: "0 0 2px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.goal.commissionEarned")}</p>
+                      <p style={{ margin: "0 0 2px", fontSize: 30, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>
+                        RM {soldThisMonth.toLocaleString("en-MY")}
+                      </p>
+                      <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{t("salesmanLite.goal.ofGoal", { target: goal.target.toLocaleString("en-MY"), count: soldCountThisMonth })}</p>
                     </div>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 99, fontSize: 12, fontWeight: 700, flexShrink: 0,
+                      background: pct >= 100 ? "rgba(34,197,94,0.12)" : pct >= 60 ? "rgba(59,130,246,0.12)" : "rgba(239,68,68,0.12)",
+                      color: pct >= 100 ? "#4ade80" : pct >= 60 ? "#60a5fa" : "#f87171" }}>
+                      {Math.round(pct)}% {t("salesmanLite.goal.done")}
+                    </span>
                   </div>
-                  {/* Text */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: "0 0 2px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.goal.commissionEarned")}</p>
-                    <p style={{ margin: "0 0 2px", fontSize: 26, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>
-                      RM {soldThisMonth.toLocaleString("en-MY")}
-                    </p>
-                    <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569" }}>{t("salesmanLite.goal.ofGoal", { target: goal.target.toLocaleString("en-MY"), count: soldCountThisMonth })}</p>
-                    {pct >= 100
-                      ? <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#22c55e" }}>{t("salesmanLite.goal.smashed")}</p>
-                      : <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569" }}>{t("salesmanLite.goal.toGo", { amount: (goal.target - soldThisMonth).toLocaleString("en-MY"), left: daysLeft > 0 ? t("salesmanLite.goal.daysLeft", { count: daysLeft }) : t("salesmanLite.goal.lastDay") })}</p>
-                    }
-                    <button onClick={() => { setGoalDraft(goal.target); setGoalEditing(true); }} style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#475569", cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanLite.goal.editTarget")}</button>
+                  {/* Thin progress bar — the small "percentage to goal" visual that
+                      replaced the oversized ring. */}
+                  <div style={{ height: 5, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "hidden", margin: "10px 0 8px" }}>
+                    <div style={{ height: "100%", width: `${pct}%`, borderRadius: 99, background: pct >= 100 ? "#22c55e" : pct >= 60 ? "#3b82f6" : "#ef4444", transition: "width 0.6s ease" }} />
                   </div>
+                  {pct >= 100
+                    ? <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 600, color: "#22c55e" }}>{t("salesmanLite.goal.smashed")}</p>
+                    : <p style={{ margin: "0 0 10px", fontSize: 11, color: "#475569" }}>{t("salesmanLite.goal.toGo", { amount: (goal.target - soldThisMonth).toLocaleString("en-MY"), left: daysLeft > 0 ? t("salesmanLite.goal.daysLeft", { count: daysLeft }) : t("salesmanLite.goal.lastDay") })}</p>
+                  }
+                  {/* Commission trendline — merged in from the old Sales Overview
+                      card. Daily (per-day) values so it rises on a won day and drops
+                      back after, instead of a cumulative line pinned to the top. */}
+                  {trendTotal > 0 && (
+                    <div style={{ marginBottom: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
+                        <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>Commission — last 14 days</p>
+                        {trendDelta !== null && (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: 99, fontSize: 10.5, fontWeight: 700,
+                            background: trendDelta >= 0 ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)",
+                            color: trendDelta >= 0 ? "#4ade80" : "#f87171" }}>
+                            {trendDelta >= 0 ? "↑" : "↓"} {Math.abs(trendDelta)}%
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ height: 70, margin: "4px -8px -6px" }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={commissionTrend} margin={{ top: 6, right: 8, bottom: 0, left: 8 }}>
+                            <defs>
+                              <linearGradient id="sliteCommissionFill" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#dc2626" stopOpacity={0.35} />
+                                <stop offset="100%" stopColor="#dc2626" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <XAxis dataKey="d" hide />
+                            <RTooltip
+                              cursor={{ stroke: "rgba(255,255,255,0.1)" }}
+                              contentStyle={{ background: "#161b22", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 11 }}
+                              labelStyle={{ color: "#94a3b8" }}
+                              itemStyle={{ color: "#f87171" }}
+                              labelFormatter={(v) => {
+                                const [y, m, day] = v.split("-").map(Number);
+                                return new Date(y, m - 1, day).toLocaleDateString("en-MY", { day: "numeric", month: "short" });
+                              }}
+                              formatter={(v) => [`RM ${Number(v).toLocaleString("en-MY")}`, "Commission"]}
+                            />
+                            <Area type="monotone" dataKey="val" stroke="#f87171" strokeWidth={2} fill="url(#sliteCommissionFill)" dot={false} activeDot={{ r: 4, fill: "#f87171" }} />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+                  <button onClick={() => { setGoalDraft(goal.target); setGoalEditing(true); }} style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#475569", cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanLite.goal.editTarget")}</button>
                 </div>
               ) : (
                 <button onClick={() => { setGoalDraft(5000); setGoalEditing(true); }} style={{ width: "100%", padding: "14px", borderRadius: 10, background: "rgba(220,38,38,0.06)", border: "1px dashed rgba(220,38,38,0.2)", color: "#ef4444", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
