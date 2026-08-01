@@ -2441,12 +2441,37 @@ export default function SalesmanLite() {
       color: done ? "#22c55e" : "#ef4444",
     });
 
-    // Today's agenda items
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const agendaAppts = appointments.filter((a) => a.appointment_date?.slice(0, 10) === todayStr);
-    const agendaFollowUps = leads.filter((l) => l.follow_up_at?.slice(0, 10) === todayStr && !["won","lost","closed_won","closed_lost"].includes(l.stage));
-    const agendaStale = staleLeads.filter((l) => !l.follow_up_at);
-    const hasAgenda = agendaAppts.length > 0 || agendaFollowUps.length > 0 || agendaStale.length > 0;
+    // Pipeline-stage accent hues — used to colour-code the Follow-up rows so you
+    // can see at a glance where each cold lead sits in the funnel.
+    const STAGE_HUE = { new: "#3b82f6", contacted: "#eab308", viewing_booked: "#a78bfa", test_drive: "#34d399", negotiating: "#fb923c", deposit_taken: "#22c55e", won: "#22c55e", closed_won: "#22c55e", lost: "#6b7280", closed_lost: "#6b7280" };
+    const stageHue = (s) => STAGE_HUE[s] || "#94a3b8";
+
+    // Today's agenda — grouped by urgency, dates keyed on the LOCAL calendar (not
+    // UTC) so an early-morning appointment isn't bucketed into the wrong day.
+    const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const todayKey = dayKey(new Date());
+    const apptDay = (a) => a.appointment_date ? dayKey(new Date(a.appointment_date)) : null;
+    const apptOpen = (s) => !["cancelled", "completed", "done", "no_show"].includes((s || "").toLowerCase());
+    const fuKey = (v) => v ? (v.length <= 10 ? v.slice(0, 10) : dayKey(new Date(v))) : null;
+    const agendaAppts = appointments.filter((a) => apptDay(a) === todayKey && apptOpen(a.status));
+    // Missed = an appointment whose day is already past but was never closed out
+    // (still pending/confirmed). These were previously invisible, which is why an
+    // old appointment read as if it were "today".
+    const missedAppts = appointments
+      .filter((a) => { const k = apptDay(a); return k && k < todayKey && apptOpen(a.status); })
+      .sort((a, b) => new Date(b.appointment_date) - new Date(a.appointment_date))
+      .slice(0, 10);
+    const agendaFollowUps = leads.filter((l) => fuKey(l.follow_up_at) === todayKey && !["won", "lost", "closed_won", "closed_lost"].includes(l.stage));
+    const hasAgenda = agendaAppts.length > 0 || missedAppts.length > 0 || agendaFollowUps.length > 0;
+    // Jump from an agenda row to its pipeline lead with the same red glow. Appointments
+    // aren't joined to leads, so match by phone; fall back to the Bookings tab when
+    // there's no lead yet (e.g. an unconfirmed booking).
+    const goToLeadForAppt = (a) => {
+      const ph = normalizePhone(a.buyer_phone);
+      const lead = ph ? leads.find((l) => normalizePhone(l.phone) === ph) : null;
+      if (lead) { setActiveTab("leads"); setMobileLeadStage(lead.stage); triggerGlow([lead.id]); }
+      else { switchTab("enquiries"); setInboxSubTab("bookings"); }
+    };
 
     // Goal panel data — commission earned this month (sum of commission_amount on sold listings)
     const soldThisMonth = myListings
@@ -2657,25 +2682,41 @@ export default function SalesmanLite() {
               )}
             </div>
             <div>
-              {staleLeads.map((lead, i) => {
+              {staleLeads.slice(0, 10).map((lead, i, arr) => {
                 const car = lead.car_listings;
                 const daysSince = Math.floor((Date.now() - new Date(lead.updated_at)) / 86400000);
+                const hue = stageHue(lead.stage);
                 return (
-                  <div key={lead.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 18px", borderBottom: i < staleLeads.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", background: i % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent" }}>
+                  <div
+                    key={lead.id}
+                    onClick={() => { setActiveTab("leads"); setMobileLeadStage(lead.stage); triggerGlow([lead.id]); }}
+                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 18px 12px 15px", borderLeft: `3px solid ${hue}`, borderBottom: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", background: i % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent", cursor: "pointer" }}
+                  >
                     <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#94a3b8", flexShrink: 0 }}>
                       {(lead.buyer_name || "?")[0].toUpperCase()}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.buyer_name || "—"}</p>
-                      <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{car ? `${car.brand} ${car.model}` : t("salesmanLite.dash.noCar")}</p>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 5, background: `${hue}22`, border: `1px solid ${hue}55`, color: hue, textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{stageLabel(lead.stage || "new")}</span>
+                        <span style={{ fontSize: 11, color: "#475569", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{car ? `${car.brand} ${car.model}` : t("salesmanLite.dash.noCar")}</span>
+                      </div>
                     </div>
                     <span style={{ fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: 99, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", flexShrink: 0 }}>{daysSince}d ago</span>
                     {lead.phone && (
-                      <button onClick={() => pingWA(lead)} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", cursor: "pointer", fontWeight: 600, flexShrink: 0, fontFamily: "inherit" }}>WA</button>
+                      <button onClick={(e) => { e.stopPropagation(); pingWA(lead); }} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", cursor: "pointer", fontWeight: 600, flexShrink: 0, fontFamily: "inherit" }}>WA</button>
                     )}
                   </div>
                 );
               })}
+              {staleLeads.length > 10 && (
+                <button
+                  onClick={() => { setActiveTab("leads"); triggerGlow(staleLeads.map((l) => l.id)); }}
+                  style={{ display: "block", width: "100%", textAlign: "center", padding: "10px 18px", fontSize: 11, fontWeight: 600, color: "#94a3b8", background: "rgba(255,255,255,0.02)", border: "none", borderTop: "1px solid rgba(255,255,255,0.05)", cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  {t("salesmanLite.dash.viewAllFollowUps", { defaultValue: `+${staleLeads.length - 10} more in pipeline`, count: staleLeads.length - 10 })}
+                </button>
+              )}
             </div>
             {!notifBannerDismissed && browserNotifPerm === 'default' && (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px", borderTop: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}>
@@ -2695,34 +2736,38 @@ export default function SalesmanLite() {
               <span>{new Date().toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })}</span>
             </div>
             <div style={{ padding: "6px 0" }}>
+              {/* Missed — past appointments still open. Most urgent, shown first,
+                  with the actual date so a last-week slot never reads as "today". */}
+              {missedAppts.map((a) => (
+                <div key={a.id} onClick={() => goToLeadForAppt(a)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px 11px 15px", borderLeft: "3px solid #ef4444", cursor: "pointer" }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ef4444", flexShrink: 0, boxShadow: "0 0 0 3px rgba(239,68,68,0.15)" }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.buyer_name || "—"}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "#f87171" }}>{t("salesmanLite.dash.missedAppt", { defaultValue: "Missed appointment" })}{a.car_listings ? ` · ${a.car_listings.brand} ${a.car_listings.model}` : ""}</p>
+                  </div>
+                  <span style={{ fontSize: 11, color: "#f87171", fontWeight: 600, flexShrink: 0 }}>{a.appointment_date ? new Date(a.appointment_date).toLocaleDateString("en-MY", { day: "numeric", month: "short" }) : "—"}</span>
+                </div>
+              ))}
+              {/* Today's appointments */}
               {agendaAppts.map((a) => (
-                <div key={a.id} onClick={() => { switchTab("enquiries"); setInboxSubTab("bookings"); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
+                <div key={a.id} onClick={() => goToLeadForAppt(a)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px 11px 15px", borderLeft: "3px solid #3b82f6", cursor: "pointer" }}>
                   <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#3b82f6", flexShrink: 0, boxShadow: "0 0 0 3px rgba(59,130,246,0.15)" }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{a.buyer_name || "—"}</p>
-                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{t("salesmanLite.dash.testDrive")}</p>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.buyer_name || "—"}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{t("salesmanLite.dash.testDrive")}{a.car_listings ? ` · ${a.car_listings.brand} ${a.car_listings.model}` : ""}</p>
                   </div>
                   <span style={{ fontSize: 11, color: "#3b82f6", fontWeight: 600, flexShrink: 0 }}>{a.appointment_date ? new Date(a.appointment_date).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "—"}</span>
                 </div>
               ))}
+              {/* Today's scheduled follow-ups */}
               {agendaFollowUps.map((l) => (
-                <div key={l.id} onClick={() => setActiveTab("leads")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
+                <div key={l.id} onClick={() => { setActiveTab("leads"); setMobileLeadStage(l.stage); triggerGlow([l.id]); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px 11px 15px", borderLeft: "3px solid #eab308", cursor: "pointer" }}>
                   <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#eab308", flexShrink: 0, boxShadow: "0 0 0 3px rgba(234,179,8,0.15)" }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{l.buyer_name || "—"}</p>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.buyer_name || "—"}</p>
                     <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{t("salesmanLite.dash.scheduledFollowUp")} · {l.car_listings ? `${l.car_listings.brand} ${l.car_listings.model}` : t("salesmanLite.dash.noCar")}</p>
                   </div>
                   <span style={{ fontSize: 11, color: "#eab308", fontWeight: 600, flexShrink: 0 }}>Today</span>
-                </div>
-              ))}
-              {agendaStale.slice(0, 3).map((l) => (
-                <div key={l.id} onClick={() => pingWA(l)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
-                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ef4444", flexShrink: 0, boxShadow: "0 0 0 3px rgba(239,68,68,0.15)" }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{l.buyer_name || "—"}</p>
-                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>No contact · {timeAgo(l.updated_at)}</p>
-                  </div>
-                  <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 600, flexShrink: 0 }}>WA</span>
                 </div>
               ))}
             </div>
