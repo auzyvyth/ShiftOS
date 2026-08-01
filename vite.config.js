@@ -84,6 +84,37 @@ export default defineConfig({
 					'**/vendor-xlsx*', '**/html2canvas*', '**/pdf.worker*',
 				],
 				maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+				// Durable revisit caching for the content-hashed app chunks that are
+				// deliberately NOT precached (the entry index-*.js, dealer-only chunks,
+				// vendor-charts/pdf/xlsx). The browser HTTP cache gives these a 1-year
+				// immutable header (vercel.json), but mobile browsers evict it
+				// aggressively after a day — the "reopened after a day is slow" report:
+				// the 155 KB entry re-downloads from the network. Cache Storage is far
+				// more durable, so on revisit these serve instantly from the SW instead.
+				//
+				// CacheFirst is safe here precisely because every /assets/ filename is
+				// content-hashed: a URL's bytes never change, so a cached hit is never
+				// stale. A new deploy ships a NEW hash -> cache miss -> fetched fresh
+				// once -> cached. index.html itself is untouched (still network-first
+				// via must-revalidate), so the blank-after-deploy staleness race the
+				// precache config guards against cannot occur. This is on-demand (not
+				// precache), so a public visitor never pulls dealer chunks — only the
+				// chunks a session actually requests get cached for its own revisit.
+				runtimeCaching: [
+					{
+						urlPattern: /\/assets\/[^/]+\.(?:js|css)$/,
+						handler: 'CacheFirst',
+						options: {
+							cacheName: 'app-assets-v1',
+							expiration: {
+								maxEntries: 120,
+								maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+								purgeOnQuotaError: true,
+							},
+							cacheableResponse: { statuses: [0, 200] },
+						},
+					},
+				],
 			},
 		}),
 	],
@@ -102,6 +133,17 @@ export default defineConfig({
 	},
 	build: {
 		sourcemap: false,
+		// By default Vite injects <link rel="modulepreload"> into index.html for the
+		// entry's chunk graph, which was pulling the heavy dealer-only vendor chunks —
+		// vendor-charts (recharts ~122 KB gz), vendor-pdf (jspdf ~129 KB gz),
+		// vendor-xlsx — onto EVERY public marketplace load even though only the
+		// dashboard/calculator use them. Strip those (and the dealer/admin page chunks)
+		// from the preload manifest so public visitors don't download them; they still
+		// fetch on demand via React.lazy when a dealer opens that route.
+		modulePreload: {
+			resolveDependencies: (_url, deps) =>
+				deps.filter((d) => !/(vendor-charts|vendor-pdf|vendor-xlsx|DashboardPage|Salesmanpanel|SalesmanLite|SalesmanPremium|SalesmanOnboarding|ImportStockPage|AccountantPanel|AdminPanel|AdminPage|ManagerPanel|FIPanel|AccountsPanel|LeadsPage|html2canvas|TikTokStudio)/.test(d)),
+		},
 		rollupOptions: {
 			output: {
 				manualChunks: {

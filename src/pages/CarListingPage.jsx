@@ -15,7 +15,7 @@ import { trackEvent } from '../utils/analytics';
 import { useMarketplaceTracking } from '../hooks/useMarketplaceTracking';
 import useTenant, { isSubdomain } from '../hooks/useTenant';
 import { PRICE_STEPS } from '../components/PriceDrumPicker';
-import { CAR_DATA } from '../components/CarForm';
+import { CAR_DATA } from '../data/carData';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import PriceAlertButton from '../components/PriceAlertButton';
 import ShowroomCard, { ShowroomCardSkeleton } from '../components/ShowroomCard';

@@ -10,7 +10,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
-import { cdnImg, imgFallback } from "../utils/img";
+import { cdnImg, cdnSrcSet, imgFallback } from "../utils/img";
 import useTenant, { isSubdomain, getSubdomain } from "../hooks/useTenant";
 import { trackEvent, getSlugFromURL, getOrCreateSessionId } from "../utils/analytics";
 import ContactGate from "./ContactGate";
@@ -753,6 +753,11 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
       const s = slides[i];
       if (!s?.image_url || imgLoaded[i]) return;
       const img = new Image();
+      // Match the rendered <img> so the preload warms the exact resource the
+      // browser will pick for this viewport (no duplicate 1600px download).
+      img.sizes = "100vw";
+      const ss = cdnSrcSet(s.image_url);
+      if (ss) img.srcset = ss;
       img.src = cdnImg(s.image_url, 1600, 70);
       img.onload = () => setImgLoaded((prev) => ({ ...prev, [i]: true }));
     });
@@ -994,6 +999,8 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
               <img
                 key={`bg-${i}`}
                 src={cdnImg(slide.image_url, 1600, 70)}
+                srcSet={cdnSrcSet(slide.image_url)}
+                sizes="100vw"
                 alt=""
                 className={`hc-bg-img${i === idx ? " active" : ""}`}
                 loading={i === 0 ? "eager" : "lazy"}

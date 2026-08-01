@@ -11,6 +11,15 @@ export function cdnImg(url, w = 1280, q = 70) {
   return `https://wsrv.nl/?url=${encodeURIComponent('ssl:' + stripped)}&w=${w}&q=${q}&output=webp&we`;
 }
 
+// Responsive srcset for full-bleed images (hero). Lets the browser pick the
+// right width for the viewport x DPR instead of always downloading the largest
+// size — a 375px phone was fetching the 1600px hero, dominating mobile LCP.
+// Pair with sizes="100vw" and keep src=cdnImg(url, <largest>) as the fallback.
+export function cdnSrcSet(url, widths = [640, 960, 1280, 1600], q = 70) {
+  if (!url || typeof url !== 'string' || !url.includes('/storage/v1/object/public/')) return undefined;
+  return widths.map((w) => `${cdnImg(url, w, q)} ${w}w`).join(', ');
+}
+
 // onError handler factory: fall back to the original URL once, then give up.
 export const imgFallback = (original) => (e) => {
   if (e.currentTarget.dataset.fellBack) return;

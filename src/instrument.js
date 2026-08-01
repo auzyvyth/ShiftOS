@@ -9,7 +9,13 @@ import {
 
 const _dsn = import.meta.env.VITE_SENTRY_DSN;
 
-if (_dsn) {
+// Sentry.init sets up fetch/history instrumentation + schedules the replay
+// integration — all main-thread work that was previously running during the
+// initial load window, inflating Total Blocking Time (the biggest lever on the
+// mobile Lighthouse score). Defer it to browser idle so first paint / TTI land
+// first; error capture still works, it just arms a beat after load. The
+// Sentry.ErrorBoundary in main.jsx renders its fallback with or without init.
+function initSentry() {
   Sentry.init({
     dsn: _dsn,
     environment: import.meta.env.MODE,
@@ -45,4 +51,9 @@ if (_dsn) {
       return event;
     },
   });
+}
+
+if (_dsn) {
+  const ric = window.requestIdleCallback || ((cb) => setTimeout(cb, 1));
+  ric(() => initSentry(), { timeout: 3000 });
 }

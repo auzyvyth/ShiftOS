@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Car, Users, ArrowLeftRight, MessageCircle, Heart } from 'lucide-react';
-import { toast } from 'sonner';
 import GradeBadge from './GradeBadge';
 import { buildWaUrl } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
@@ -105,12 +104,15 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
 
   // weserv.nl (the CDN resizer) occasionally stalls instead of erroring —
   // the <img> never fires onError, so the shimmer placeholder spins forever.
-  // Fall back to the original Supabase URL if it hasn't loaded within 4s.
+  // Fall back to the original Supabase URL if the in-view image hasn't loaded
+  // within 10s. 10s (not 4s) so a legitimately slow-but-progressing load on a
+  // throttled mobile connection isn't mistaken for a stall and made to pull
+  // the full-size original on top of the WebP already in flight.
   const [cdnTimedOut, setCdnTimedOut] = useState(false);
   useEffect(() => {
     setCdnTimedOut(false);
     if (!inView || imgLoaded) return;
-    const t = setTimeout(() => setCdnTimedOut(true), 4000);
+    const t = setTimeout(() => setCdnTimedOut(true), 10000);
     return () => clearTimeout(t);
   }, [inView, safeIdx, imgLoaded]);
 
@@ -289,7 +291,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
           <button
             onClick={e => {
               e.stopPropagation();
-              if (compareFull) { toast.error('Compare full — remove a car first (max 4)', { duration: 2500 }); return; }
+              if (compareFull) { import('sonner').then(({ toast }) => toast.error('Compare full — remove a car first (max 4)', { duration: 2500 })); return; }
               onCompare && onCompare();
             }}
             style={{ display: 'flex', alignItems: 'center', gap: '4px', background: inCompare ? '#dc2626' : c.cmpBg, border: `1px solid ${inCompare ? '#dc2626' : c.cmpBorder}`, borderRadius: '7px', padding: '4px 9px', color: inCompare ? '#fff' : c.cmpText, fontSize: '11px', fontWeight: '700', cursor: 'pointer', fontFamily: "'Outfit',sans-serif", transition: 'all 0.15s', flexShrink: 0 }}
