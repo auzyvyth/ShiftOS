@@ -337,6 +337,8 @@
       "enable": "Aktifkan",
       "testDrive": "Test drive",
       "scheduledFollowUp": "Follow-up dijadualkan",
+      "missedAppt": "Temujanji terlepas",
+      "viewAllFollowUps": "+{{count}} lagi dalam pipeline",
       "step1First": "Langkah 1 dulu",
       "dismiss": "Tutup"
     },

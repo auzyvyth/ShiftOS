@@ -192,6 +192,35 @@ link** attached to the row. Current text-only extraction captures NONE of them.
 
 ---
 
+### TIER-2 READINESS AUDIT (2026-08-01) — gaps to close 50–150 unit dealers
+
+Full cross-reference of the Tier 1/Tier 2 feature checklist against code + schema.
+Everything else in both tiers verified BUILT — only these three are open. Ranked
+by what unblocks closing Tier 2 dealers first.
+
+- [ ] **T2-1: Multi-branch visibility** — MISSING (the only hard structural blocker).
+  No `branch_id`/outlet concept exists anywhere in schema or code — the tenant model
+  is flat (`dealer_id` only). A 50–150 unit dealer usually runs 2+ outlets and needs
+  per-branch stock/GP/sales scoping + a group roll-up. Biggest schema change of the
+  three. Scope before building: add `branches` table (dealer_id FK, name, address),
+  optional `branch_id` on car_listings/stock_units/leads/profiles, a branch filter in
+  the dealer dashboard, and a roll-up view. Keep single-branch dealers unaffected
+  (null branch_id = default/HQ). Must respect RLS + `get_my_dealer_id()`.
+- [ ] **T2-2: Multi-channel listing push (real feed, not copy-caption)** — PARTIAL.
+  Today `src/utils/sharePack.js` formats a caption per platform, `ShareMenu.jsx` opens
+  WhatsApp/Facebook share dialogs, and `telegram-notify` auto-posts — but there is NO
+  actual API/data-feed push to Carlist/Mudah/IG; the dealer still re-types each car.
+  Highest-frequency time-saver + top demo moment. Next step: a semi-automated push
+  (data feed export or deep-link prefill) per channel, reusing the sharePack shaping
+  layer (already built for exactly this). Investigate Carlist/Mudah feed formats first.
+- [ ] **T2-3: Standardized appraisal checklist (saved, not a reminder)** — PARTIAL.
+  `AddCarForm.jsx` shows a green intake REMINDER (physical inspection, geran, keys,
+  service history) but nothing is persisted per unit; encumbrance + Puspakom B5/B7
+  dates are saved on stock_units but there's no structured pass/fail appraisal record.
+  Bigger lots buy on process — a saved per-unit appraisal (condition grades, defects,
+  photos) that feeds the recon estimate + cost floor closes the loop. Next step: an
+  `appraisals` table (or JSONB on stock_units) + a structured form in the intake flow.
+
 ### FEATURE ROADMAP — ranked by priority + ROI
 
 #### TIER 1 — Core revenue intelligence (highest ROI, justify RM5k/month)

@@ -68,6 +68,24 @@ export default async function handler(req, res) {
     if (sm?.id) salesmanId = sm.id;
   }
 
+  // Free Salesman Lite tier: a booking must land in the Bookings tab as a PENDING
+  // request only — the pipeline lead is created when the salesman confirms and has
+  // contacted the buyer (SalesmanLite.autoUpsertLeadFromAppt), not up front. So for
+  // a Lite-owned car we skip the pre-created lead and leave the appointment
+  // unlinked (lead_id null). Every other flow (dealer, linked salesman, unassigned
+  // open pool) keeps the pre-created lead so the open-pool claim still grabs the
+  // lead + its viewing slot together via claim_lead. Gate on the OWNING salesman's
+  // plan so it holds whether the booking came in via ?ref= or a plain listing view.
+  let skipLead = false;
+  if (salesmanId) {
+    const { data: owner } = await supabase
+      .from('profiles')
+      .select('plan')
+      .eq('id', salesmanId)
+      .maybeSingle();
+    if (owner?.plan === 'salesman_lite') skipLead = true;
+  }
+
   const cleanNotes = notes?.trim().substring(0, 500) || null;
   const notesWithIntent = intentLabel
     ? `Intent: ${intentLabel}${cleanNotes ? ` — ${cleanNotes}` : ''}`.substring(0, 560)
@@ -79,21 +97,24 @@ export default async function handler(req, res) {
   // when a rep taps claim (claim_lead grabs both). Non-fatal: a lead failure
   // must not block the booking itself. Stage 'viewing_booked' labels it as a
   // buyer who wants to view (not a generic "new" enquiry).
-let leadId = null;
-  const { data: leadResult, error: leadErr } = await supabase.rpc('create_lead_from_booking', {
-    p_dealer_id: listing.dealer_id,
-    p_car_id: carId,
-    p_name: name.trim().substring(0, 100),
-    p_phone: phoneClean,
-    p_state: state || null,
-    p_ref_slug: refSlug || null,
-    p_notes: notesWithIntent,
-    p_assigned_to: salesmanId,
-  });
-  if (leadErr) {
-    console.error('[api/booking] lead:', leadErr.message);
-  } else {
-    leadId = leadResult || null;
+  // Skipped for Lite (see skipLead above) — Lite creates the lead only on confirm.
+  let leadId = null;
+  if (!skipLead) {
+    const { data: leadResult, error: leadErr } = await supabase.rpc('create_lead_from_booking', {
+      p_dealer_id: listing.dealer_id,
+      p_car_id: carId,
+      p_name: name.trim().substring(0, 100),
+      p_phone: phoneClean,
+      p_state: state || null,
+      p_ref_slug: refSlug || null,
+      p_notes: notesWithIntent,
+      p_assigned_to: salesmanId,
+    });
+    if (leadErr) {
+      console.error('[api/booking] lead:', leadErr.message);
+    } else {
+      leadId = leadResult || null;
+    }
   }
   // The booking arrives as 'pending' — the seller must approve it before the
   // slot is real. This is the commitment gate: a window-shopper tap no longer

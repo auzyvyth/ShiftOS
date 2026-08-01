@@ -51,6 +51,11 @@ Project ID: lemdkdizdlcirhbzqlos
 - Cards: bg-gray-900, border-gray-800
 - Public marketplace surfaces: read `DESIGN.md` (tokens, scales, grid, anti-slop rules) before any public-facing UI change.
 
+### Anti-slop UI rules (non-negotiable)
+- NEVER put a decorative coloured left accent bar / vertical side-line on list rows or cards to signal status or category — it reads as generic AI slop. Convey state with a small pill/tag, a status dot, or a very subtle full-row background tint (stage/status hue at ~5-10% alpha) instead.
+- Keep colours low-saturation and DON'T stack multiple saturated accents in one component (e.g. a row of green + purple + red + amber buttons). One primary accent per card; push secondary/rarely-used actions into an overflow (⋮) menu rather than lining them all up.
+- Prefer one clear primary action visible; hide the long tail behind a kebab/overflow menu.
+
 ## Key files
 - src/pages/HomePage.jsx — public XDrive marketplace
 - src/pages/CarDetailPage.jsx — single car listing page (has "What's Included" services strip)

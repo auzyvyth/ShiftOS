@@ -73,6 +73,7 @@ import {
   Camera,
   ThumbsUp,
   ThumbsDown,
+  MoreVertical,
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
@@ -749,6 +750,7 @@ export default function SalesmanLite() {
   const [editingReminder, setEditingReminder] = useState(null);
   const [reminderMsg, setReminderMsg] = useState("");
   const [reminderPickerAptId, setReminderPickerAptId] = useState(null);
+  const [aptMenuId, setAptMenuId] = useState(null);
   const [selectedRemindAt, setSelectedRemindAt] = useState(null);
   const [reminderSaving, setReminderSaving] = useState(false);
 
@@ -1166,10 +1168,15 @@ export default function SalesmanLite() {
 
           // Share-channel breakdown (which platform each view/enquiry came from),
           // scoped to this Lite salesman's own slug. Untagged/organic → 'direct'.
-          const carIds = Object.keys(map);
-          if (carIds.length > 0 && profileData.slug) {
+          // Pass p_car_ids: null => count ALL-TIME across every car ever tagged to
+          // this slug, deduped by session. Previously this passed `Object.keys(map)`
+          // — the cars from get_salesman_analytics's rolling 30-day window — so when
+          // a car's last view aged past 30 days it dropped out of the set and took
+          // all its historical "direct" views with it, making the count fall
+          // day-over-day (the 67 -> 65 bug). A slug-scoped all-time count only grows.
+          if (profileData.slug) {
             supabase
-              .rpc("get_salesman_channel_breakdown", { p_car_ids: carIds, p_slug: profileData.slug })
+              .rpc("get_salesman_channel_breakdown", { p_car_ids: null, p_slug: profileData.slug })
               .then(({ data: chRows, error: chErr }) => {
                 if (chErr) { console.error("fetchChannelBreakdown:", chErr); return; }
                 const chMap = {};
@@ -1347,21 +1354,12 @@ export default function SalesmanLite() {
                     setNewBookingsCount((c) => c + 1);
                     toast(t("salesmanLite.toast.newBooking"), { description: payload.new.buyer_name || t("salesmanLite.toast.newAppointment") });
                   }
-                  // Auto-create a pipeline lead only when the booking isn't already
-                  // linked to one (organic /api/booking rows carry lead_id).
-                  const phone = normalizePhone(payload.new.buyer_phone);
-                  if (phone && !payload.new.lead_id) {
-                    const { data: existing } = await supabase.from("leads").select("id").eq("salesman_id", uid).eq("phone", phone).limit(1);
-                    if (!existing || !existing.length) {
-                      const { data: newLead } = await supabase.from("leads").insert({
-                        salesman_id: uid, dealer_id: null,
-                        buyer_name: payload.new.buyer_name || null, phone,
-                        car_listing_id: payload.new.car_listing_id || null,
-                        stage: "viewing_booked", lead_source: "manual", is_deleted: false,
-                      }).select().single();
-                      if (newLead) setLeads((p) => [newLead, ...p]);
-                    }
-                  }
+                  // NB: do NOT auto-create a pipeline lead here. A booking stays a
+                  // pending request in the Bookings tab until the salesman confirms
+                  // and contacts the buyer — only then (sendConfirmBooking ->
+                  // autoUpsertLeadFromAppt) is the lead created at 'viewing_booked'.
+                  // Creating it on the booking INSERT is what put a raw booking into
+                  // both the Bookings tab and the pipeline at once.
                 }
                 if (payload.eventType === "UPDATE") setAppointments((p) => p.map((a) => a.id === payload.new.id ? { ...a, ...payload.new } : a));
               },
@@ -1477,12 +1475,16 @@ export default function SalesmanLite() {
     } else {
       switchTab(tab);
     }
-    const targetId = tab === "bookings" ? "enquiries" : tab;
+    // The bookings step highlights the actual Bookings sub-tab pill (data-tour-id
+    // "bookings"), not the Enquiries nav again — so it visibly "opens" the booking
+    // tab rather than pointing at the same sidebar item as the previous step. The
+    // pill only mounts after the enquiries tab renders, so give it a touch longer.
+    const targetId = tab;
     const measure = () => {
       const el = document.querySelector(`[data-tour-id="${targetId}"]`);
       if (el) setTourTarget(el.getBoundingClientRect());
     };
-    const t = setTimeout(measure, 80);
+    const t = setTimeout(measure, tab === "bookings" ? 140 : 80);
     return () => clearTimeout(t);
   }, [tourStep]);
 
@@ -2441,12 +2443,37 @@ export default function SalesmanLite() {
       color: done ? "#22c55e" : "#ef4444",
     });
 
-    // Today's agenda items
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const agendaAppts = appointments.filter((a) => a.appointment_date?.slice(0, 10) === todayStr);
-    const agendaFollowUps = leads.filter((l) => l.follow_up_at?.slice(0, 10) === todayStr && !["won","lost","closed_won","closed_lost"].includes(l.stage));
-    const agendaStale = staleLeads.filter((l) => !l.follow_up_at);
-    const hasAgenda = agendaAppts.length > 0 || agendaFollowUps.length > 0 || agendaStale.length > 0;
+    // Pipeline-stage accent hues — used to colour-code the Follow-up rows so you
+    // can see at a glance where each cold lead sits in the funnel.
+    const STAGE_HUE = { new: "#3b82f6", contacted: "#eab308", viewing_booked: "#a78bfa", test_drive: "#34d399", negotiating: "#fb923c", deposit_taken: "#22c55e", won: "#22c55e", closed_won: "#22c55e", lost: "#6b7280", closed_lost: "#6b7280" };
+    const stageHue = (s) => STAGE_HUE[s] || "#94a3b8";
+
+    // Today's agenda — grouped by urgency, dates keyed on the LOCAL calendar (not
+    // UTC) so an early-morning appointment isn't bucketed into the wrong day.
+    const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const todayKey = dayKey(new Date());
+    const apptDay = (a) => a.appointment_date ? dayKey(new Date(a.appointment_date)) : null;
+    const apptOpen = (s) => !["cancelled", "completed", "done", "no_show"].includes((s || "").toLowerCase());
+    const fuKey = (v) => v ? (v.length <= 10 ? v.slice(0, 10) : dayKey(new Date(v))) : null;
+    const agendaAppts = appointments.filter((a) => apptDay(a) === todayKey && apptOpen(a.status));
+    // Missed = an appointment whose day is already past but was never closed out
+    // (still pending/confirmed). These were previously invisible, which is why an
+    // old appointment read as if it were "today".
+    const missedAppts = appointments
+      .filter((a) => { const k = apptDay(a); return k && k < todayKey && apptOpen(a.status); })
+      .sort((a, b) => new Date(b.appointment_date) - new Date(a.appointment_date))
+      .slice(0, 10);
+    const agendaFollowUps = leads.filter((l) => fuKey(l.follow_up_at) === todayKey && !["won", "lost", "closed_won", "closed_lost"].includes(l.stage));
+    const hasAgenda = agendaAppts.length > 0 || missedAppts.length > 0 || agendaFollowUps.length > 0;
+    // Jump from an agenda row to its pipeline lead with the same red glow. Appointments
+    // aren't joined to leads, so match by phone; fall back to the Bookings tab when
+    // there's no lead yet (e.g. an unconfirmed booking).
+    const goToLeadForAppt = (a) => {
+      const ph = normalizePhone(a.buyer_phone);
+      const lead = ph ? leads.find((l) => normalizePhone(l.phone) === ph) : null;
+      if (lead) { setActiveTab("leads"); setMobileLeadStage(lead.stage); triggerGlow([lead.id]); }
+      else { switchTab("enquiries"); setInboxSubTab("bookings"); }
+    };
 
     // Goal panel data — commission earned this month (sum of commission_amount on sold listings)
     const soldThisMonth = myListings
@@ -2503,18 +2530,16 @@ export default function SalesmanLite() {
     const commissionOnDay = (dateKey) => soldWithCommission
       .filter(c => toLocalDateKey(new Date(c.sold_at)) === dateKey)
       .reduce((s, c) => s + (Number(c.commission_amount) || 0), 0);
-    // Cumulative running total, not raw daily commission — sales are sparse
-    // (mostly-zero days with the odd spike), so a per-day chart is a jagged
-    // comb, not a trend line. Cumulative is monotonically non-decreasing, which
-    // is what actually reads as a smooth "premium" sparkline (and is the same
-    // convention the reference screenshot uses).
-    let runningCommission = 0;
+    // Per-day commission (NOT cumulative). A cumulative line only ever climbs and
+    // then sits flat at the top forever once a deal lands, which read as broken
+    // ("stays flat on top"). Daily values spike on the day a deal is won and drop
+    // back to baseline after — the line actually moves. trendTotal is summed
+    // separately below so the ↑/↓ delta badge still reflects the 14-day total.
     const commissionTrend = Array.from({ length: 14 }, (_, i) => {
       const key = toLocalDateKey(new Date(todayMidnight.getTime() - (13 - i) * DAY_MS));
-      runningCommission += commissionOnDay(key);
-      return { d: key, val: runningCommission };
+      return { d: key, val: commissionOnDay(key) };
     });
-    const trendTotal = commissionTrend.length ? commissionTrend[commissionTrend.length - 1].val : 0;
+    const trendTotal = commissionTrend.reduce((s, p) => s + p.val, 0);
     const prevTrendTotal = Array.from({ length: 14 }, (_, i) =>
       commissionOnDay(toLocalDateKey(new Date(todayMidnight.getTime() - (27 - i) * DAY_MS))),
     ).reduce((s, v) => s + v, 0);
@@ -2534,9 +2559,6 @@ export default function SalesmanLite() {
       : null;
     const highlighted = focusCar || autoFocus;
 
-    // SVG ring
-    const R = 44, STROKE = 6, CIRC = 2 * Math.PI * R;
-
     // Shared card style
     const CARD = { background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden" };
     const CARD_HEADER = {
@@ -2545,14 +2567,6 @@ export default function SalesmanLite() {
       display: "flex", alignItems: "center", justifyContent: "space-between",
     };
 
-    // Live portfolio value — sum of currently-available listings' asking price.
-    // Distinct from soldThisMonth (realized commission) and the "Revenue (Sales)"
-    // figure further down (sold cars only) — this is "what you're carrying right
-    // now," the number that makes the landing page feel like a real book of stock.
-    const portfolioValue = available.reduce((sum, c) => sum + (Number(c.selling_price) || 0), 0);
-    const topCar = available.length > 0
-      ? available.reduce((best, c) => (Number(c.selling_price) || 0) > (Number(best.selling_price) || 0) ? c : best, available[0])
-      : null;
     const greetingWord = (() => {
       const h = new Date().getHours();
       return h < 12 ? t("salesmanLite.greeting.morning") : h < 17 ? t("salesmanLite.greeting.afternoon") : t("salesmanLite.greeting.evening");
@@ -2601,58 +2615,31 @@ export default function SalesmanLite() {
               </button>
             )}
           </div>
-          {portfolioValue > 0 && (
-            <div style={{ position: "relative", marginTop: 20 }}>
-              <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                {t("salesmanLite.dash.portfolioValue")}
-              </p>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-                <p style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: isMobile ? 38 : 50, color: "#fbbf24", letterSpacing: 1, lineHeight: 1 }}>
-                  RM {portfolioValue.toLocaleString("en-MY")}
-                </p>
-                <span style={{ fontSize: 12, color: "#475569" }}>
-                  {t("salesmanLite.dash.acrossListings", { count: available.length })}
-                </span>
-              </div>
-              {topCar && (
-                <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b" }}>
-                  {t("salesmanLite.dash.headlinedBy", { car: [topCar.year, topCar.brand, topCar.model, topCar.variant].filter(Boolean).join(" "), price: Number(topCar.selling_price).toLocaleString("en-MY") })}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Marketplace Pulse — moved up right below the greeting so the mini
-            page link (the thing most worth acting on) isn't buried under
-            the goal/agenda cards. */}
-        {myListings.filter(c => c.status === "available").length > 0 && (
-          <div style={CARD}>
-            <div style={CARD_HEADER}>
-              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", animation: "live-glow 2s ease-in-out infinite" }} />
-                <span>{t("salesmanLite.dash.live")}</span>
-              </div>
-              <span>{t("salesmanLite.dash.days30")}</span>
-            </div>
-            <div style={{ padding: 18 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 18 }}>
+          {/* Live snapshot merged into the hero — compact 30-day stats + the
+              shareable mini-page link. Portfolio value removed (not actionable). */}
+          {available.length > 0 && (
+            <div style={{ position: "relative", marginTop: 18, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 18 : 28, flexWrap: "wrap" }}>
                 {[
-                  { label: t("salesmanLite.dash.buyerViews"), value: totalViews || 0 },
-                  { label: t("salesmanLite.dash.waTaps"), value: totalWATaps || 0, green: true },
-                  { label: t("salesmanLite.kpi.liveListings"), value: myListings.filter(c => c.status === "available").length },
-                ].map(({ label, value, green }) => (
-                  <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <p style={{ margin: 0, fontSize: 12, color: "#475569" }}>{label}</p>
-                    <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: green ? "#22c55e" : "#f1f5f9", letterSpacing: "-0.03em" }}>{value}</p>
+                  { label: t("salesmanLite.dash.buyerViews"), value: totalViews || 0, color: "#f1f5f9" },
+                  { label: t("salesmanLite.dash.waTaps"), value: totalWATaps || 0, color: "#22c55e" },
+                  { label: t("salesmanLite.kpi.liveListings"), value: available.length, color: "#f1f5f9" },
+                ].map(({ label, value, color }) => (
+                  <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <span style={{ fontSize: isMobile ? 22 : 26, fontWeight: 700, color, letterSpacing: "-0.03em", lineHeight: 1 }}>{value}</span>
+                    <span style={{ fontSize: 10.5, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
                   </div>
                 ))}
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, marginLeft: "auto", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", animation: "live-glow 2s ease-in-out infinite" }} />
+                  {t("salesmanLite.dash.days30")}
+                </span>
               </div>
               {profile?.slug && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
                   <button
                     onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success(t("salesmanLite.toast.storeLinkCopied")); }}
-                    style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#94a3b8", cursor: "pointer", fontWeight: 500, fontFamily: "inherit" }}
+                    style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 180px", minWidth: 0, fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#94a3b8", cursor: "pointer", fontWeight: 500, fontFamily: "inherit" }}
                   >
                     <LinkIcon size={11} />
                     <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>xdrive.my/s/{profile.slug}</span>
@@ -2663,7 +2650,7 @@ export default function SalesmanLite() {
                     target="_blank"
                     rel="noopener noreferrer"
                     title="Opens on this environment (preview/staging shows this build; xdrive.my is the real address to share)"
-                    style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(37,99,235,0.07)", border: "1px solid rgba(37,99,235,0.2)", color: "#93c5fd", textDecoration: "none", fontWeight: 600, fontFamily: "inherit" }}
+                    style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 180px", minWidth: 0, fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(37,99,235,0.07)", border: "1px solid rgba(37,99,235,0.2)", color: "#93c5fd", textDecoration: "none", fontWeight: 600, fontFamily: "inherit" }}
                   >
                     <ExternalLink size={11} />
                     <span style={{ flex: 1 }}>Lihat halaman mini anda</span>
@@ -2672,62 +2659,13 @@ export default function SalesmanLite() {
                 </div>
               )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* ── Sales Overview — commission trend, gradient sparkline ── */}
-        {trendTotal > 0 && (
-          <div style={{ ...CARD, padding: isMobile ? "18px 16px 8px" : "22px 24px 10px" }}>
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 4 }}>
-              <div>
-                <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                  Commission — last 14 days
-                </p>
-                <p style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: isMobile ? 32 : 40, color: "#f1f5f9", letterSpacing: 0.5, lineHeight: 1 }}>
-                  RM {trendTotal.toLocaleString("en-MY")}
-                </p>
-              </div>
-              {trendDelta !== null && (
-                <span style={{
-                  display: "flex", alignItems: "center", gap: 3, marginTop: 4, padding: "4px 9px", borderRadius: 99, fontSize: 11, fontWeight: 700, flexShrink: 0,
-                  background: trendDelta >= 0 ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)",
-                  color: trendDelta >= 0 ? "#4ade80" : "#f87171",
-                }}>
-                  {trendDelta >= 0 ? "↑" : "↓"} {Math.abs(trendDelta)}%
-                </span>
-              )}
-            </div>
-            <div style={{ height: 90, margin: "8px -8px -6px" }}>
-              <ResponsiveContainer width="100%" height="100%">
-             <AreaChart data={commissionTrend} margin={{ top: 6, right: 8, bottom: 0, left: 8 }}>
-                  <defs>
-                    <linearGradient id="sliteCommissionFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#dc2626" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="#dc2626" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="d" hide />
-                  <RTooltip
-                    cursor={{ stroke: "rgba(255,255,255,0.1)" }}
-                    contentStyle={{ background: "#161b22", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 11 }}
-                    labelStyle={{ color: "#94a3b8" }}
-                    itemStyle={{ color: "#f87171" }}
-                    labelFormatter={(v) => {
-                      const [y, m, day] = v.split("-").map(Number);
-                      return new Date(y, m - 1, day).toLocaleDateString("en-MY", { day: "numeric", month: "short" });
-                    }}
-                    formatter={(v) => [`RM ${Number(v).toLocaleString("en-MY")}`, "Cumulative"]}
-                  />
-                  <Area type="monotone" dataKey="val" stroke="#f87171" strokeWidth={2} fill="url(#sliteCommissionFill)" dot={false} activeDot={{ r: 4, fill: "#f87171" }} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
-
-        {/* Actionable items first — follow-ups and today's agenda are what the
-            salesman should act on right now; portfolio value/stats below are
-            context, not action items, so they no longer sit above these. */}
+        {/* Dashboard body — 2-up grid on desktop, single column on mobile.
+            Per-card CSS `order` puts the KPI strip + My Performance first without
+            moving them in source; the KPI strip spans both columns. */}
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: 16, alignItems: "start" }}>
 
         {/* ── Follow-up Needed ── */}
         {staleLeads.length > 0 && (
@@ -2746,25 +2684,41 @@ export default function SalesmanLite() {
               )}
             </div>
             <div>
-              {staleLeads.map((lead, i) => {
+              {staleLeads.slice(0, 10).map((lead, i, arr) => {
                 const car = lead.car_listings;
                 const daysSince = Math.floor((Date.now() - new Date(lead.updated_at)) / 86400000);
+                const hue = stageHue(lead.stage);
                 return (
-                  <div key={lead.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 18px", borderBottom: i < staleLeads.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", background: i % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent" }}>
+                  <div
+                    key={lead.id}
+                    onClick={() => { setActiveTab("leads"); setMobileLeadStage(lead.stage); triggerGlow([lead.id]); }}
+                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 18px", borderBottom: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", background: `${hue}12`, cursor: "pointer" }}
+                  >
                     <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#94a3b8", flexShrink: 0 }}>
                       {(lead.buyer_name || "?")[0].toUpperCase()}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.buyer_name || "—"}</p>
-                      <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{car ? `${car.brand} ${car.model}` : t("salesmanLite.dash.noCar")}</p>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 5, background: `${hue}22`, border: `1px solid ${hue}55`, color: hue, textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{stageLabel(lead.stage || "new")}</span>
+                        <span style={{ fontSize: 11, color: "#475569", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{car ? `${car.brand} ${car.model}` : t("salesmanLite.dash.noCar")}</span>
+                      </div>
                     </div>
                     <span style={{ fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: 99, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", flexShrink: 0 }}>{daysSince}d ago</span>
                     {lead.phone && (
-                      <button onClick={() => pingWA(lead)} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", cursor: "pointer", fontWeight: 600, flexShrink: 0, fontFamily: "inherit" }}>WA</button>
+                      <button onClick={(e) => { e.stopPropagation(); pingWA(lead); }} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", cursor: "pointer", fontWeight: 600, flexShrink: 0, fontFamily: "inherit" }}>WA</button>
                     )}
                   </div>
                 );
               })}
+              {staleLeads.length > 10 && (
+                <button
+                  onClick={() => { setActiveTab("leads"); triggerGlow(staleLeads.map((l) => l.id)); }}
+                  style={{ display: "block", width: "100%", textAlign: "center", padding: "10px 18px", fontSize: 11, fontWeight: 600, color: "#94a3b8", background: "rgba(255,255,255,0.02)", border: "none", borderTop: "1px solid rgba(255,255,255,0.05)", cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  {t("salesmanLite.dash.viewAllFollowUps", { defaultValue: `+${staleLeads.length - 10} more in pipeline`, count: staleLeads.length - 10 })}
+                </button>
+              )}
             </div>
             {!notifBannerDismissed && browserNotifPerm === 'default' && (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px", borderTop: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}>
@@ -2784,42 +2738,46 @@ export default function SalesmanLite() {
               <span>{new Date().toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })}</span>
             </div>
             <div style={{ padding: "6px 0" }}>
+              {/* Missed — past appointments still open. Most urgent, shown first,
+                  with the actual date so a last-week slot never reads as "today". */}
+              {missedAppts.map((a) => (
+                <div key={a.id} onClick={() => goToLeadForAppt(a)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ef4444", flexShrink: 0, boxShadow: "0 0 0 3px rgba(239,68,68,0.15)" }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.buyer_name || "—"}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "#f87171" }}>{t("salesmanLite.dash.missedAppt", { defaultValue: "Missed appointment" })}{a.car_listings ? ` · ${a.car_listings.brand} ${a.car_listings.model}` : ""}</p>
+                  </div>
+                  <span style={{ fontSize: 11, color: "#f87171", fontWeight: 600, flexShrink: 0 }}>{a.appointment_date ? new Date(a.appointment_date).toLocaleDateString("en-MY", { day: "numeric", month: "short" }) : "—"}</span>
+                </div>
+              ))}
+              {/* Today's appointments */}
               {agendaAppts.map((a) => (
-                <div key={a.id} onClick={() => { switchTab("enquiries"); setInboxSubTab("bookings"); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
+                <div key={a.id} onClick={() => goToLeadForAppt(a)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
                   <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#3b82f6", flexShrink: 0, boxShadow: "0 0 0 3px rgba(59,130,246,0.15)" }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{a.buyer_name || "—"}</p>
-                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{t("salesmanLite.dash.testDrive")}</p>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.buyer_name || "—"}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{t("salesmanLite.dash.testDrive")}{a.car_listings ? ` · ${a.car_listings.brand} ${a.car_listings.model}` : ""}</p>
                   </div>
                   <span style={{ fontSize: 11, color: "#3b82f6", fontWeight: 600, flexShrink: 0 }}>{a.appointment_date ? new Date(a.appointment_date).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "—"}</span>
                 </div>
               ))}
+              {/* Today's scheduled follow-ups */}
               {agendaFollowUps.map((l) => (
-                <div key={l.id} onClick={() => setActiveTab("leads")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
+                <div key={l.id} onClick={() => { setActiveTab("leads"); setMobileLeadStage(l.stage); triggerGlow([l.id]); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
                   <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#eab308", flexShrink: 0, boxShadow: "0 0 0 3px rgba(234,179,8,0.15)" }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{l.buyer_name || "—"}</p>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.buyer_name || "—"}</p>
                     <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{t("salesmanLite.dash.scheduledFollowUp")} · {l.car_listings ? `${l.car_listings.brand} ${l.car_listings.model}` : t("salesmanLite.dash.noCar")}</p>
                   </div>
                   <span style={{ fontSize: 11, color: "#eab308", fontWeight: 600, flexShrink: 0 }}>Today</span>
-                </div>
-              ))}
-              {agendaStale.slice(0, 3).map((l) => (
-                <div key={l.id} onClick={() => pingWA(l)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
-                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ef4444", flexShrink: 0, boxShadow: "0 0 0 3px rgba(239,68,68,0.15)" }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{l.buyer_name || "—"}</p>
-                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>No contact · {timeAgo(l.updated_at)}</p>
-                  </div>
-                  <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 600, flexShrink: 0 }}>WA</span>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* ── My Performance (context, not action) ── */}
-        <div style={CARD}>
+        {/* ── My Performance (context, not action) — sits right below the KPI strip ── */}
+        <div style={{ ...CARD, order: -1 }}>
           <div style={CARD_HEADER}>
             <span>{t("salesmanLite.dash.myPerformance")}</span>
             <span>{t("salesmanLite.dash.days30")}</span>
@@ -2875,8 +2833,8 @@ export default function SalesmanLite() {
           )}
         </div>
 
-        {/* ── KPI strip — separated stat tiles ── */}
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: 10 }}>
+        {/* ── KPI strip — separated stat tiles (spans full grid width, top) ── */}
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: 10, order: -2, gridColumn: "1 / -1" }}>
           {[
             { label: t("salesmanLite.kpi.pipeline"), value: activeLeads.length, accent: "#3b82f6" },
             { label: t("salesmanLite.kpi.liveListings"), value: myListings.filter(c => c.status === "available").length, accent: "#22c55e" },
@@ -2921,34 +2879,74 @@ export default function SalesmanLite() {
                   <p style={{ margin: "8px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.goal.perCarHint")}</p>
                 </div>
               ) : goal.target > 0 ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-                  {/* SVG ring */}
-                  <div style={{ position: "relative", flexShrink: 0 }}>
-                    <svg width={100} height={100} style={{ transform: "rotate(-90deg)" }}>
-                      <circle cx={50} cy={50} r={R} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={STROKE} />
-                      <circle cx={50} cy={50} r={R} fill="none"
-                        stroke={pct >= 100 ? "#22c55e" : pct >= 60 ? "#3b82f6" : "#ef4444"}
-                        strokeWidth={STROKE} strokeDasharray={CIRC} strokeDashoffset={CIRC * (1 - pct / 100)}
-                        strokeLinecap="round" style={{ transition: "stroke-dashoffset 0.6s ease" }} />
-                    </svg>
-                    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                      <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#f1f5f9", lineHeight: 1 }}>{Math.round(pct)}%</p>
-                      <p style={{ margin: 0, fontSize: 9, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanLite.goal.done")}</p>
+                <div>
+                  {/* Commission earned + compact % badge (replaced the big ring) */}
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ margin: "0 0 2px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.goal.commissionEarned")}</p>
+                      <p style={{ margin: "0 0 2px", fontSize: 30, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>
+                        RM {soldThisMonth.toLocaleString("en-MY")}
+                      </p>
+                      <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{t("salesmanLite.goal.ofGoal", { target: goal.target.toLocaleString("en-MY"), count: soldCountThisMonth })}</p>
                     </div>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 99, fontSize: 12, fontWeight: 700, flexShrink: 0,
+                      background: pct >= 100 ? "rgba(34,197,94,0.12)" : pct >= 60 ? "rgba(59,130,246,0.12)" : "rgba(239,68,68,0.12)",
+                      color: pct >= 100 ? "#4ade80" : pct >= 60 ? "#60a5fa" : "#f87171" }}>
+                      {Math.round(pct)}% {t("salesmanLite.goal.done")}
+                    </span>
                   </div>
-                  {/* Text */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: "0 0 2px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.goal.commissionEarned")}</p>
-                    <p style={{ margin: "0 0 2px", fontSize: 26, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>
-                      RM {soldThisMonth.toLocaleString("en-MY")}
-                    </p>
-                    <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569" }}>{t("salesmanLite.goal.ofGoal", { target: goal.target.toLocaleString("en-MY"), count: soldCountThisMonth })}</p>
-                    {pct >= 100
-                      ? <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#22c55e" }}>{t("salesmanLite.goal.smashed")}</p>
-                      : <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569" }}>{t("salesmanLite.goal.toGo", { amount: (goal.target - soldThisMonth).toLocaleString("en-MY"), left: daysLeft > 0 ? t("salesmanLite.goal.daysLeft", { count: daysLeft }) : t("salesmanLite.goal.lastDay") })}</p>
-                    }
-                    <button onClick={() => { setGoalDraft(goal.target); setGoalEditing(true); }} style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#475569", cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanLite.goal.editTarget")}</button>
+                  {/* Thin progress bar — the small "percentage to goal" visual that
+                      replaced the oversized ring. */}
+                  <div style={{ height: 5, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "hidden", margin: "10px 0 8px" }}>
+                    <div style={{ height: "100%", width: `${pct}%`, borderRadius: 99, background: pct >= 100 ? "#22c55e" : pct >= 60 ? "#3b82f6" : "#ef4444", transition: "width 0.6s ease" }} />
                   </div>
+                  {pct >= 100
+                    ? <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 600, color: "#22c55e" }}>{t("salesmanLite.goal.smashed")}</p>
+                    : <p style={{ margin: "0 0 10px", fontSize: 11, color: "#475569" }}>{t("salesmanLite.goal.toGo", { amount: (goal.target - soldThisMonth).toLocaleString("en-MY"), left: daysLeft > 0 ? t("salesmanLite.goal.daysLeft", { count: daysLeft }) : t("salesmanLite.goal.lastDay") })}</p>
+                  }
+                  {/* Commission trendline — merged in from the old Sales Overview
+                      card. Daily (per-day) values so it rises on a won day and drops
+                      back after, instead of a cumulative line pinned to the top. */}
+                  {trendTotal > 0 && (
+                    <div style={{ marginBottom: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
+                        <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>Commission — last 14 days</p>
+                        {trendDelta !== null && (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: 99, fontSize: 10.5, fontWeight: 700,
+                            background: trendDelta >= 0 ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)",
+                            color: trendDelta >= 0 ? "#4ade80" : "#f87171" }}>
+                            {trendDelta >= 0 ? "↑" : "↓"} {Math.abs(trendDelta)}%
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ height: 70, margin: "4px -8px -6px" }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={commissionTrend} margin={{ top: 6, right: 8, bottom: 0, left: 8 }}>
+                            <defs>
+                              <linearGradient id="sliteCommissionFill" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#dc2626" stopOpacity={0.35} />
+                                <stop offset="100%" stopColor="#dc2626" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <XAxis dataKey="d" hide />
+                            <RTooltip
+                              cursor={{ stroke: "rgba(255,255,255,0.1)" }}
+                              contentStyle={{ background: "#161b22", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 11 }}
+                              labelStyle={{ color: "#94a3b8" }}
+                              itemStyle={{ color: "#f87171" }}
+                              labelFormatter={(v) => {
+                                const [y, m, day] = v.split("-").map(Number);
+                                return new Date(y, m - 1, day).toLocaleDateString("en-MY", { day: "numeric", month: "short" });
+                              }}
+                              formatter={(v) => [`RM ${Number(v).toLocaleString("en-MY")}`, "Commission"]}
+                            />
+                            <Area type="monotone" dataKey="val" stroke="#f87171" strokeWidth={2} fill="url(#sliteCommissionFill)" dot={false} activeDot={{ r: 4, fill: "#f87171" }} />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+                  <button onClick={() => { setGoalDraft(goal.target); setGoalEditing(true); }} style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#475569", cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanLite.goal.editTarget")}</button>
                 </div>
               ) : (
                 <button onClick={() => { setGoalDraft(5000); setGoalEditing(true); }} style={{ width: "100%", padding: "14px", borderRadius: 10, background: "rgba(220,38,38,0.06)", border: "1px dashed rgba(220,38,38,0.2)", color: "#ef4444", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
@@ -3063,6 +3061,7 @@ export default function SalesmanLite() {
             </div>
           </div>
         )}
+        </div>
 
         <PrevMonthModal
           open={showPrevMonth}
@@ -6283,14 +6282,51 @@ export default function SalesmanLite() {
         </div>
       );
 
+      const menuItem = { display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "8px 10px", borderRadius: 7, background: "none", border: "none", color: "#cbd5e1", fontSize: 12.5, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", textAlign: "left" };
+
       return (
-        <div key={apt.id} style={{ background: "#0d1117", border: `1px solid ${isRescheduled ? "rgba(167,139,250,0.25)" : "rgba(255,255,255,0.08)"}`, borderRadius: 12, padding: isMobile ? "13px 14px" : "14px 16px" }}>
-          {/* Status pill row */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
-            <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
-              {t("salesmanLite.inbox.status." + apt.status, { defaultValue: apt.status })}
-            </span>
-            {apt.created_at && <span style={{ fontSize: 10, color: "#64748b" }}>{t("salesmanLite.inbox.booked")} {preciseAgo(apt.created_at, nowTick, timeLabels)}</span>}
+        <div key={apt.id} style={{ position: "relative", background: "#0d1117", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: isMobile ? "13px 14px" : "14px 16px" }}>
+          {/* Status row — status pill + when-booked (left), overflow menu (right).
+              Secondary actions live in the menu so the card isn't a wall of
+              clashing coloured buttons. */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize", flexShrink: 0 }}>
+                {t("salesmanLite.inbox.status." + apt.status, { defaultValue: apt.status })}
+              </span>
+              {apt.created_at && <span style={{ fontSize: 10, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("salesmanLite.inbox.booked")} {preciseAgo(apt.created_at, nowTick, timeLabels)}</span>}
+            </div>
+            {notCancelled && (
+              <div style={{ position: "relative", flexShrink: 0 }}>
+                <button
+                  onClick={() => setAptMenuId(aptMenuId === apt.id ? null : apt.id)}
+                  style={{ width: 30, height: 30, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", background: aptMenuId === apt.id ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer" }}
+                  title={t("salesmanLite.inbox.moreActions", { defaultValue: "More actions" })}
+                >
+                  <MoreVertical size={15} />
+                </button>
+                {aptMenuId === apt.id && (
+                  <>
+                    <div onClick={() => setAptMenuId(null)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                    <div style={{ position: "absolute", top: 36, right: 0, zIndex: 41, minWidth: 176, background: "#161b22", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: 5, boxShadow: "0 14px 34px rgba(0,0,0,0.55)" }}>
+                      <button style={menuItem} onClick={() => {
+                        const existing = apt.appointment_date ? new Date(apt.appointment_date) : new Date();
+                        const pad = (n) => String(n).padStart(2, "0");
+                        setRescheduleDate(`${existing.getFullYear()}-${pad(existing.getMonth() + 1)}-${pad(existing.getDate())}T${pad(existing.getHours())}:${pad(existing.getMinutes())}`);
+                        setReschedulingAptId(apt.id); setCancelConfirmId(null); setReminderPickerAptId(null); setAptMenuId(null);
+                      }}><RefreshCw size={13} /> {t("salesmanLite.inbox.move")}</button>
+                      <button style={menuItem} onClick={() => {
+                        if (!profile?.telegram_chat_id) { setTelegramSetupModal(true); setAptMenuId(null); return; }
+                        setReminderPickerAptId(apt.id); setSelectedRemindAt(null); setCancelConfirmId(null); setReschedulingAptId(null); setAptMenuId(null);
+                      }}><Bell size={13} color={apt.remind_at ? "#fbbf24" : undefined} /> {t("salesmanLite.inbox.setReminder")}</button>
+                      <button style={{ ...menuItem, color: "#f87171" }} onClick={() => {
+                        setCancelConfirmId(apt.id); setReschedulingAptId(null); setReminderPickerAptId(null); setAptMenuId(null);
+                      }}><X size={13} /> {t("salesmanLite.inbox.cancelAppt")}</button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Body — desktop: car | lead | date 3-column; mobile: stacked */}
@@ -6316,7 +6352,12 @@ export default function SalesmanLite() {
           {/* Expand: reschedule date picker */}
           {isRescheduling && (
             <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 8 }}>
-              <p style={{ margin: "0 0 6px", fontSize: 11, color: "#c084fc", fontWeight: 600 }}>{t("salesmanLite.inbox.chooseNewTime")}</p>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                <p style={{ margin: 0, fontSize: 11, color: "#c084fc", fontWeight: 600 }}>{t("salesmanLite.inbox.chooseNewTime")}</p>
+                <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }} title={t("salesmanLite.inbox.cancel")} style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0, flexShrink: 0 }}>
+                  <X size={14} />
+                </button>
+              </div>
               <input
                 type="datetime-local"
                 value={rescheduleDate}
@@ -6349,7 +6390,12 @@ export default function SalesmanLite() {
           {/* Expand: Telegram reminder time picker */}
           {isReminderPicking && (
             <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8 }}>
-              <p style={{ margin: "0 0 8px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.inbox.scheduleReminderTitle")}</p>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <p style={{ margin: 0, fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.inbox.scheduleReminderTitle")}</p>
+                <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }} title={t("salesmanLite.inbox.cancel")} style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0, flexShrink: 0 }}>
+                  <X size={14} />
+                </button>
+              </div>
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
                 {[
                   { key: "1h", label: t("salesmanLite.inbox.reminderBefore1h") },
@@ -6411,31 +6457,29 @@ export default function SalesmanLite() {
             </div>
           )}
 
-          {/* Action bar — always visible for active appointments */}
-          {notCancelled && !isRescheduling && !isCancelConfirm && (
-            <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-              {/* Confirm Booking — primary CTA: opens the confirm panel with an
-                  editable WhatsApp message that also marks the booking confirmed. */}
+          {/* Primary action — one clear CTA for the appointment's current state.
+              Reschedule / reminder / cancel live in the ⋮ menu above so the card
+              keeps a single accent instead of a row of competing colours. */}
+          {notCancelled && !isRescheduling && !isCancelConfirm && !isReminderPicking && (
+            <>
               {apt.status !== "confirmed" && apt.buyer_phone && (
                 <button
                   onClick={() => openConfirmModal(apt)}
-                  style={{ flex: 2, fontSize: 12, fontWeight: 700, padding: "8px 0", borderRadius: 7, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.4)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                  style={{ width: "100%", fontSize: 12.5, fontWeight: 700, padding: "10px 0", borderRadius: 8, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.38)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                   title="Confirm this booking and message the buyer on WhatsApp"
                 >
-                  <Check size={13} /> {t("salesmanLite.inbox.confirmBooking")}
+                  <Check size={14} /> {t("salesmanLite.inbox.confirmBooking")}
                 </button>
               )}
-              {/* Confirm without message (fallback when no phone on file) */}
               {apt.status !== "confirmed" && !apt.buyer_phone && (
                 <button
                   onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }}
-                  style={{ flex: 2, fontSize: 12, fontWeight: 700, padding: "8px 0", borderRadius: 7, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.4)", color: "#4ade80", cursor: "pointer" }}
+                  style={{ width: "100%", fontSize: 12.5, fontWeight: 700, padding: "10px 0", borderRadius: 8, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.38)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                   title="Mark appointment as confirmed"
                 >
-                  ✓ {t("salesmanLite.inbox.confirmBooking")}
+                  <Check size={14} /> {t("salesmanLite.inbox.confirmBooking")}
                 </button>
               )}
-              {/* Message — WhatsApp the buyer (already-confirmed bookings) */}
               {apt.status === "confirmed" && apt.buyer_phone && (
                 <button
                   onClick={() => {
@@ -6443,50 +6487,13 @@ export default function SalesmanLite() {
                     const msg = buildReminderMessage(apt);
                     window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
                   }}
-                  style={{ flex: 2, fontSize: 11, fontWeight: 600, padding: "7px 0", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+                  style={{ width: "100%", fontSize: 12.5, fontWeight: 600, padding: "10px 0", borderRadius: 8, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.28)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                   title="Send WhatsApp reminder message to buyer"
                 >
-                  <MessageCircle size={12} /> {t("salesmanLite.inbox.message")}
+                  <MessageCircle size={13} /> {t("salesmanLite.inbox.message")}
                 </button>
               )}
-              {/* Move — change the date/time */}
-              <button
-                onClick={() => {
-                  const existing = apt.appointment_date ? new Date(apt.appointment_date) : new Date();
-                  const pad = (n) => String(n).padStart(2, "0");
-                  const local = `${existing.getFullYear()}-${pad(existing.getMonth()+1)}-${pad(existing.getDate())}T${pad(existing.getHours())}:${pad(existing.getMinutes())}`;
-                  setRescheduleDate(local);
-                  setReschedulingAptId(apt.id);
-                  setCancelConfirmId(null);
-                  setReminderPickerAptId(null);
-                }}
-                style={{ flex: 1, fontSize: 11, padding: "7px 0", borderRadius: 7, background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)", color: "#c084fc", cursor: "pointer" }}
-                title="Change appointment date or time"
-              >
-                ↺ {t("salesmanLite.inbox.move")}
-              </button>
-              {/* Cancel — opens confirm panel above */}
-              <button
-                onClick={() => { setCancelConfirmId(apt.id); setReschedulingAptId(null); setReminderPickerAptId(null); }}
-                style={{ flex: 1, fontSize: 11, padding: "7px 0", borderRadius: 7, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)", color: "#f87171", cursor: "pointer" }}
-                title="Cancel this appointment"
-              >
-                ✕ {t("salesmanLite.inbox.cancel")}
-              </button>
-              {/* Bell — schedule Telegram reminder (gates on telegram_chat_id) */}
-              <button
-                onClick={() => {
-                  if (!profile?.telegram_chat_id) { setTelegramSetupModal(true); return; }
-                  setReminderPickerAptId(isReminderPicking ? null : apt.id);
-                  setSelectedRemindAt(null);
-                  setCancelConfirmId(null);
-                }}
-                style={{ width: 32, height: 32, flexShrink: 0, borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", background: apt.remind_at ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.04)", border: apt.remind_at ? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(255,255,255,0.08)", color: apt.remind_at ? "#fbbf24" : "#4b5563" }}
-                title={profile?.telegram_chat_id ? "Schedule a Telegram reminder" : "Connect Telegram to enable reminders"}
-              >
-                <Bell size={13} />
-              </button>
-            </div>
+            </>
           )}
         </div>
       );
@@ -8292,6 +8299,7 @@ export default function SalesmanLite() {
                 ].map(({ key, label, badge }) => (
                   <button
                     key={key}
+                    data-tour-id={key === "bookings" ? "bookings" : undefined}
                     onClick={() => { setInboxSubTab(key); if (key === "bookings") setNewBookingsCount(0); }}
                     style={{
                       fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 8, cursor: "pointer",
