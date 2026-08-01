@@ -73,6 +73,7 @@ import {
   Camera,
   ThumbsUp,
   ThumbsDown,
+  MoreVertical,
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
@@ -749,6 +750,7 @@ export default function SalesmanLite() {
   const [editingReminder, setEditingReminder] = useState(null);
   const [reminderMsg, setReminderMsg] = useState("");
   const [reminderPickerAptId, setReminderPickerAptId] = useState(null);
+  const [aptMenuId, setAptMenuId] = useState(null);
   const [selectedRemindAt, setSelectedRemindAt] = useState(null);
   const [reminderSaving, setReminderSaving] = useState(false);
 
@@ -2690,7 +2692,7 @@ export default function SalesmanLite() {
                   <div
                     key={lead.id}
                     onClick={() => { setActiveTab("leads"); setMobileLeadStage(lead.stage); triggerGlow([lead.id]); }}
-                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 18px 12px 15px", borderLeft: `3px solid ${hue}`, borderBottom: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", background: i % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent", cursor: "pointer" }}
+                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 18px", borderBottom: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", background: `${hue}12`, cursor: "pointer" }}
                   >
                     <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#94a3b8", flexShrink: 0 }}>
                       {(lead.buyer_name || "?")[0].toUpperCase()}
@@ -2739,7 +2741,7 @@ export default function SalesmanLite() {
               {/* Missed — past appointments still open. Most urgent, shown first,
                   with the actual date so a last-week slot never reads as "today". */}
               {missedAppts.map((a) => (
-                <div key={a.id} onClick={() => goToLeadForAppt(a)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px 11px 15px", borderLeft: "3px solid #ef4444", cursor: "pointer" }}>
+                <div key={a.id} onClick={() => goToLeadForAppt(a)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
                   <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ef4444", flexShrink: 0, boxShadow: "0 0 0 3px rgba(239,68,68,0.15)" }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.buyer_name || "—"}</p>
@@ -2750,7 +2752,7 @@ export default function SalesmanLite() {
               ))}
               {/* Today's appointments */}
               {agendaAppts.map((a) => (
-                <div key={a.id} onClick={() => goToLeadForAppt(a)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px 11px 15px", borderLeft: "3px solid #3b82f6", cursor: "pointer" }}>
+                <div key={a.id} onClick={() => goToLeadForAppt(a)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
                   <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#3b82f6", flexShrink: 0, boxShadow: "0 0 0 3px rgba(59,130,246,0.15)" }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.buyer_name || "—"}</p>
@@ -2761,7 +2763,7 @@ export default function SalesmanLite() {
               ))}
               {/* Today's scheduled follow-ups */}
               {agendaFollowUps.map((l) => (
-                <div key={l.id} onClick={() => { setActiveTab("leads"); setMobileLeadStage(l.stage); triggerGlow([l.id]); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px 11px 15px", borderLeft: "3px solid #eab308", cursor: "pointer" }}>
+                <div key={l.id} onClick={() => { setActiveTab("leads"); setMobileLeadStage(l.stage); triggerGlow([l.id]); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
                   <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#eab308", flexShrink: 0, boxShadow: "0 0 0 3px rgba(234,179,8,0.15)" }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.buyer_name || "—"}</p>
@@ -6280,14 +6282,51 @@ export default function SalesmanLite() {
         </div>
       );
 
+      const menuItem = { display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "8px 10px", borderRadius: 7, background: "none", border: "none", color: "#cbd5e1", fontSize: 12.5, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", textAlign: "left" };
+
       return (
-        <div key={apt.id} style={{ background: "#0d1117", border: `1px solid ${isRescheduled ? "rgba(167,139,250,0.25)" : "rgba(255,255,255,0.08)"}`, borderRadius: 12, padding: isMobile ? "13px 14px" : "14px 16px" }}>
-          {/* Status pill row */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
-            <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
-              {t("salesmanLite.inbox.status." + apt.status, { defaultValue: apt.status })}
-            </span>
-            {apt.created_at && <span style={{ fontSize: 10, color: "#64748b" }}>{t("salesmanLite.inbox.booked")} {preciseAgo(apt.created_at, nowTick, timeLabels)}</span>}
+        <div key={apt.id} style={{ position: "relative", background: "#0d1117", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: isMobile ? "13px 14px" : "14px 16px" }}>
+          {/* Status row — status pill + when-booked (left), overflow menu (right).
+              Secondary actions live in the menu so the card isn't a wall of
+              clashing coloured buttons. */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize", flexShrink: 0 }}>
+                {t("salesmanLite.inbox.status." + apt.status, { defaultValue: apt.status })}
+              </span>
+              {apt.created_at && <span style={{ fontSize: 10, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("salesmanLite.inbox.booked")} {preciseAgo(apt.created_at, nowTick, timeLabels)}</span>}
+            </div>
+            {notCancelled && (
+              <div style={{ position: "relative", flexShrink: 0 }}>
+                <button
+                  onClick={() => setAptMenuId(aptMenuId === apt.id ? null : apt.id)}
+                  style={{ width: 30, height: 30, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", background: aptMenuId === apt.id ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer" }}
+                  title={t("salesmanLite.inbox.moreActions", { defaultValue: "More actions" })}
+                >
+                  <MoreVertical size={15} />
+                </button>
+                {aptMenuId === apt.id && (
+                  <>
+                    <div onClick={() => setAptMenuId(null)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                    <div style={{ position: "absolute", top: 36, right: 0, zIndex: 41, minWidth: 176, background: "#161b22", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: 5, boxShadow: "0 14px 34px rgba(0,0,0,0.55)" }}>
+                      <button style={menuItem} onClick={() => {
+                        const existing = apt.appointment_date ? new Date(apt.appointment_date) : new Date();
+                        const pad = (n) => String(n).padStart(2, "0");
+                        setRescheduleDate(`${existing.getFullYear()}-${pad(existing.getMonth() + 1)}-${pad(existing.getDate())}T${pad(existing.getHours())}:${pad(existing.getMinutes())}`);
+                        setReschedulingAptId(apt.id); setCancelConfirmId(null); setReminderPickerAptId(null); setAptMenuId(null);
+                      }}><RefreshCw size={13} /> {t("salesmanLite.inbox.move")}</button>
+                      <button style={menuItem} onClick={() => {
+                        if (!profile?.telegram_chat_id) { setTelegramSetupModal(true); setAptMenuId(null); return; }
+                        setReminderPickerAptId(apt.id); setSelectedRemindAt(null); setCancelConfirmId(null); setReschedulingAptId(null); setAptMenuId(null);
+                      }}><Bell size={13} color={apt.remind_at ? "#fbbf24" : undefined} /> {t("salesmanLite.inbox.setReminder")}</button>
+                      <button style={{ ...menuItem, color: "#f87171" }} onClick={() => {
+                        setCancelConfirmId(apt.id); setReschedulingAptId(null); setReminderPickerAptId(null); setAptMenuId(null);
+                      }}><X size={13} /> {t("salesmanLite.inbox.cancelAppt")}</button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Body — desktop: car | lead | date 3-column; mobile: stacked */}
@@ -6408,31 +6447,29 @@ export default function SalesmanLite() {
             </div>
           )}
 
-          {/* Action bar — always visible for active appointments */}
-          {notCancelled && !isRescheduling && !isCancelConfirm && (
-            <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-              {/* Confirm Booking — primary CTA: opens the confirm panel with an
-                  editable WhatsApp message that also marks the booking confirmed. */}
+          {/* Primary action — one clear CTA for the appointment's current state.
+              Reschedule / reminder / cancel live in the ⋮ menu above so the card
+              keeps a single accent instead of a row of competing colours. */}
+          {notCancelled && !isRescheduling && !isCancelConfirm && !isReminderPicking && (
+            <>
               {apt.status !== "confirmed" && apt.buyer_phone && (
                 <button
                   onClick={() => openConfirmModal(apt)}
-                  style={{ flex: 2, fontSize: 12, fontWeight: 700, padding: "8px 0", borderRadius: 7, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.4)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                  style={{ width: "100%", fontSize: 12.5, fontWeight: 700, padding: "10px 0", borderRadius: 8, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.38)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                   title="Confirm this booking and message the buyer on WhatsApp"
                 >
-                  <Check size={13} /> {t("salesmanLite.inbox.confirmBooking")}
+                  <Check size={14} /> {t("salesmanLite.inbox.confirmBooking")}
                 </button>
               )}
-              {/* Confirm without message (fallback when no phone on file) */}
               {apt.status !== "confirmed" && !apt.buyer_phone && (
                 <button
                   onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }}
-                  style={{ flex: 2, fontSize: 12, fontWeight: 700, padding: "8px 0", borderRadius: 7, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.4)", color: "#4ade80", cursor: "pointer" }}
+                  style={{ width: "100%", fontSize: 12.5, fontWeight: 700, padding: "10px 0", borderRadius: 8, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.38)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                   title="Mark appointment as confirmed"
                 >
-                  ✓ {t("salesmanLite.inbox.confirmBooking")}
+                  <Check size={14} /> {t("salesmanLite.inbox.confirmBooking")}
                 </button>
               )}
-              {/* Message — WhatsApp the buyer (already-confirmed bookings) */}
               {apt.status === "confirmed" && apt.buyer_phone && (
                 <button
                   onClick={() => {
@@ -6440,50 +6477,13 @@ export default function SalesmanLite() {
                     const msg = buildReminderMessage(apt);
                     window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
                   }}
-                  style={{ flex: 2, fontSize: 11, fontWeight: 600, padding: "7px 0", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+                  style={{ width: "100%", fontSize: 12.5, fontWeight: 600, padding: "10px 0", borderRadius: 8, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.28)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                   title="Send WhatsApp reminder message to buyer"
                 >
-                  <MessageCircle size={12} /> {t("salesmanLite.inbox.message")}
+                  <MessageCircle size={13} /> {t("salesmanLite.inbox.message")}
                 </button>
               )}
-              {/* Move — change the date/time */}
-              <button
-                onClick={() => {
-                  const existing = apt.appointment_date ? new Date(apt.appointment_date) : new Date();
-                  const pad = (n) => String(n).padStart(2, "0");
-                  const local = `${existing.getFullYear()}-${pad(existing.getMonth()+1)}-${pad(existing.getDate())}T${pad(existing.getHours())}:${pad(existing.getMinutes())}`;
-                  setRescheduleDate(local);
-                  setReschedulingAptId(apt.id);
-                  setCancelConfirmId(null);
-                  setReminderPickerAptId(null);
-                }}
-                style={{ flex: 1, fontSize: 11, padding: "7px 0", borderRadius: 7, background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)", color: "#c084fc", cursor: "pointer" }}
-                title="Change appointment date or time"
-              >
-                ↺ {t("salesmanLite.inbox.move")}
-              </button>
-              {/* Cancel — opens confirm panel above */}
-              <button
-                onClick={() => { setCancelConfirmId(apt.id); setReschedulingAptId(null); setReminderPickerAptId(null); }}
-                style={{ flex: 1, fontSize: 11, padding: "7px 0", borderRadius: 7, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)", color: "#f87171", cursor: "pointer" }}
-                title="Cancel this appointment"
-              >
-                ✕ {t("salesmanLite.inbox.cancel")}
-              </button>
-              {/* Bell — schedule Telegram reminder (gates on telegram_chat_id) */}
-              <button
-                onClick={() => {
-                  if (!profile?.telegram_chat_id) { setTelegramSetupModal(true); return; }
-                  setReminderPickerAptId(isReminderPicking ? null : apt.id);
-                  setSelectedRemindAt(null);
-                  setCancelConfirmId(null);
-                }}
-                style={{ width: 32, height: 32, flexShrink: 0, borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", background: apt.remind_at ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.04)", border: apt.remind_at ? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(255,255,255,0.08)", color: apt.remind_at ? "#fbbf24" : "#4b5563" }}
-                title={profile?.telegram_chat_id ? "Schedule a Telegram reminder" : "Connect Telegram to enable reminders"}
-              >
-                <Bell size={13} />
-              </button>
-            </div>
+            </>
           )}
         </div>
       );
