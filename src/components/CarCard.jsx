@@ -35,6 +35,8 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgIdx, setImgIdx]       = useState(0);
   const [waGateOpen, setWaGateOpen] = useState(false);
+  const [inView, setInView] = useState(false);
+  const cardRef = useRef(null);
   const dragX = useRef(null);
   const suppressClick = useRef(false);
   const galleryPreloaded = useRef(false);
@@ -88,16 +90,38 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
   // Reset shimmer whenever the visible slide changes.
   useEffect(() => { setImgLoaded(false); }, [safeIdx]);
 
+  // Only arm the CDN-timeout fallback once the card is actually in view.
+  // priority (above-the-fold) cards load eagerly on mount so they skip the
+  // observer. Without this gate the timer fired on mount for every lazy
+  // off-screen card too, flipping cdnTimedOut before the card was ever
+  // scrolled to — so when it finally entered the viewport the browser
+  // fetched the full-size Supabase original instead of the resized WebP
+  // (double the bytes, tanked LCP/Speed Index on the marketplace).
+  useEffect(() => {
+    if (priority) { setInView(true); return; }
+    const el = cardRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') { setInView(true); return; }
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setInView(true); obs.disconnect(); } },
+      { rootMargin: '200px' },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [priority]);
+
   // weserv.nl (the CDN resizer) occasionally stalls instead of erroring —
   // the <img> never fires onError, so the shimmer placeholder spins forever.
-  // Fall back to the original Supabase URL if it hasn't loaded within 4s.
+  // Fall back to the original Supabase URL if the in-view image hasn't loaded
+  // within 10s. 10s (not 4s) so a legitimately slow-but-progressing load on a
+  // throttled mobile connection isn't mistaken for a stall — that false trip
+  // was pulling the full-size original on top of the WebP already in flight.
   const [cdnTimedOut, setCdnTimedOut] = useState(false);
   useEffect(() => {
     setCdnTimedOut(false);
-    if (imgLoaded) return;
-    const t = setTimeout(() => setCdnTimedOut(true), 4000);
+    if (!inView || imgLoaded) return;
+    const t = setTimeout(() => setCdnTimedOut(true), 10000);
     return () => clearTimeout(t);
-  }, [safeIdx, imgLoaded]);
+  }, [inView, safeIdx, imgLoaded]);
 
   const slideBy = (dx) => {
     if (!hasGallery || Math.abs(dx) <= 36) return false;
@@ -285,6 +309,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
       `}</style>
 
       <article
+        ref={cardRef}
         className={`cc-root${isHot ? ' hot' : ''}${xdrive ? ' xdrive' : ''}`}
         tabIndex={isSold ? undefined : 0}
         role="article"

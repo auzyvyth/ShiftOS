@@ -104,12 +104,15 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
 
   // weserv.nl (the CDN resizer) occasionally stalls instead of erroring —
   // the <img> never fires onError, so the shimmer placeholder spins forever.
-  // Fall back to the original Supabase URL if it hasn't loaded within 4s.
+  // Fall back to the original Supabase URL if the in-view image hasn't loaded
+  // within 10s. 10s (not 4s) so a legitimately slow-but-progressing load on a
+  // throttled mobile connection isn't mistaken for a stall and made to pull
+  // the full-size original on top of the WebP already in flight.
   const [cdnTimedOut, setCdnTimedOut] = useState(false);
   useEffect(() => {
     setCdnTimedOut(false);
     if (!inView || imgLoaded) return;
-    const t = setTimeout(() => setCdnTimedOut(true), 4000);
+    const t = setTimeout(() => setCdnTimedOut(true), 10000);
     return () => clearTimeout(t);
   }, [inView, safeIdx, imgLoaded]);
 
