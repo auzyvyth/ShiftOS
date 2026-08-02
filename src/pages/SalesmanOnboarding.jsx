@@ -229,6 +229,7 @@ export default function SalesmanOnboarding() {
   const [slugChecking, setSlugChecking] = useState(false);
 
   const [showPw, setShowPw] = useState(false);
+  const [showIc, setShowIc] = useState(false);
   const [form, setForm] = useState({
     email: '', password: '', confirmPassword: '',
     fullName: '', icNumber: '',
@@ -704,9 +705,22 @@ export default function SalesmanOnboarding() {
                 <input className="eo-inp" type="text" placeholder="Ahmad bin Abdullah" value={form.fullName}
                   onChange={e => upd('fullName')(e.target.value)} autoComplete="name" />
                 <label className="eo-label">IC NUMBER (MYKAD) <span style={{ color: 'rgba(255,255,255,0.28)', fontWeight: 400 }}>— OPTIONAL FOR NOW</span></label>
-                <input className="eo-inp" type="text" placeholder="901231-10-1234" maxLength={14} value={form.icNumber}
-                  onChange={e => upd('icNumber')(e.target.value.replace(/[^\d-]/g, ''))} />
-                <p className="eo-hint">Format: YYMMDD-NN-XXXX (12 digits). Stored encrypted, used for verification only. Required before your listings appear on xdrive.my — not to use your panel.</p>
+                <div style={{ position: 'relative' }}>
+                  <input className="eo-inp" type={showIc ? 'text' : 'password'} inputMode="numeric"
+                    placeholder="901231-10-1234" maxLength={14} value={form.icNumber}
+                    onChange={e => upd('icNumber')(e.target.value.replace(/[^\d-]/g, ''))}
+                    autoComplete="off" style={{ paddingRight: 46 }} />
+                  <button type="button" onClick={() => setShowIc(v => !v)} tabIndex={-1}
+                    aria-label={showIc ? 'Hide IC number' : 'Show IC number'}
+                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}>
+                    {showIc ? (
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+                    ) : (
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    )}
+                  </button>
+                </div>
+                <p className="eo-hint">Format: YYMMDD-NN-XXXX (12 digits). Stored hashed (never as plaintext), used for verification only. Required before your listings appear on xdrive.my — not to use your panel.</p>
                 {err && <div className="eo-error">{err}</div>}
                 <button className="eo-btn" onClick={saveIdentity}
                   disabled={loading || !form.fullName.trim() || !validateIC(form.icNumber)}>
