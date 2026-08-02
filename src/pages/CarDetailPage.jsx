@@ -1209,10 +1209,13 @@ export default function CarDetailPage() {
   // ("6.5 Superfast"); strip it when we already show the litre token to avoid
   // "6.5 Superfast 6.5L".
   const engineL = car.engine_cc ? (car.engine_cc / 1000).toFixed(1) : null;
-  const variantTrim = car.variant
-    ? (engineL ? car.variant.replace(/^\s*\d\.\d\s*/, "").trim() : car.variant)
-    : "";
-  const nameplate = [car.model, variantTrim, engineL ? `${engineL}L` : "", car.year]
+  // Uploaded model/variant strings very often already bake in the displacement
+  // ("HARRIER 2.0L", "2.5L Z", "300 2.0L(T)", "6.5 Superfast"), so appending the
+  // derived litre rendered the engine size twice. Only append it when neither the
+  // model nor the variant already states a displacement (any "d.d" token).
+  const mentionsDisplacement = /\d\.\d/.test(`${car.model || ""} ${car.variant || ""}`);
+  const showEngineL = engineL && !mentionsDisplacement;
+  const nameplate = [car.model, car.variant, showEngineL ? `${engineL}L` : "", car.year]
     .filter(Boolean).join(" ")
     // Non-breaking hyphen so multi-part trims ("TYPE-R", "CX-5") don't split
     // across lines mid-word in the big display nameplate.
@@ -1810,13 +1813,15 @@ export default function CarDetailPage() {
             MOBILE LAYOUT (≤900px) — M1 through M8
             ══════════════════════════════════════════ */}
 
-        {/* M1 — Swipeable image */}
-        <div className="cdp-mobile-only" style={{ position:'relative', height:'clamp(200px,50vw,360px)', overflow:'hidden', background:'#080f18' }}
+        {/* M1 — Swipeable image. `contain` (not `cover`) + a slightly taller frame
+            so every uploaded photo is shown whole, never cropped, whatever its
+            aspect ratio. Letterbox fills with the dark frame colour. */}
+        <div className="cdp-mobile-only" style={{ position:'relative', height:'clamp(240px,64vw,420px)', overflow:'hidden', background:'#080f18' }}
           onTouchStart={galleryTouchStart} onTouchEnd={galleryTouchEnd}>
           {!imgLoaded && <div className="cdp-img-shimmer" />}
           <img key={slideKey} className={`cdp-main-img cdp-slide-${slideDir}`}
             src={disp(images[activeIdx], 1280)} alt={carTitle} fetchPriority="high" decoding="async"
-            style={{ width:'100%', height:'100%', objectFit:'cover', opacity:0, transition:'opacity 0.8s ease' }}
+            style={{ width:'100%', height:'100%', objectFit:'contain', opacity:0, transition:'opacity 0.8s ease' }}
             onLoad={e => { setImgLoaded(true); e.currentTarget.style.opacity = '1'; }}
             onError={e => {
               if (images[activeIdx] && !e.currentTarget.dataset.fb && e.currentTarget.src !== images[activeIdx]) {
@@ -1873,18 +1878,27 @@ export default function CarDetailPage() {
         )}
 
         {/* M2 — Identity block */}
-        <div className="cdp-mobile-only" style={{ padding:'20px 20px 0' }}>
-          {/* Badge row — badges left, financing calculator shortcut on the right */}
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:16 }}>
-            <div style={{ display:'flex', flexWrap:'wrap', gap:6, minWidth:0 }}>
-              {isReserved && <span style={{ background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.22)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Reserved</span>}
-              {isRecon && <span style={{ background:'rgba(15,23,42,0.05)', border:'1px solid rgba(15,23,42,0.1)', color:'#334155', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Recon</span>}
-              {isHot   && <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.28)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Hot Deal</span>}
-              {hasDocuments && (docsVerified
-                ? <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(22,163,74,0.08)', border:'1px solid rgba(22,163,74,0.25)', color:'#16a34a', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}><BadgeCheck size={11} /> Verified Docs</span>
-                : <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(148,163,184,0.1)', border:'1px solid rgba(148,163,184,0.25)', color: isXdrive ? '#475569' : '#94a3b8', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}><FileText size={11} /> Docs on File</span>
-              )}
-            </div>
+        <div className="cdp-mobile-only" style={{ padding:'14px 20px 0' }}>
+          {/* Title strip — sits directly under the image, compact like the
+              marketplace cards: brand (strong) + model/variant/engine/year
+              (secondary) on a small line that wraps to a 2nd line if long, with
+              the financing calculator shortcut kept on the right. All colours are
+              from `th` so the strip stays legible on the light xdrive theme AND
+              the dark dealer-subdomain theme (was a hardcoded grey masthead that
+              went invisible on dark storefronts). */}
+          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, marginBottom:12 }}>
+            <h1 style={{
+              fontFamily:"'Bebas Neue',sans-serif",
+              fontSize:'clamp(1.4rem,6vw,1.9rem)',
+              lineHeight:1.08,
+              letterSpacing:'0.01em',
+              margin:0,
+              minWidth:0,
+              display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden',
+            }}>
+              <span style={{ color: th.text }}>{car.brand}</span>{' '}
+              <span style={{ color: th.textSec }}>{nameplate}</span>
+            </h1>
             <button
               onClick={() => setCalcOpen(true)}
               aria-label="Open financing calculator"
@@ -1894,16 +1908,18 @@ export default function CarDetailPage() {
               <Calculator size={18} />
             </button>
           </div>
-          {/* Brand — left-aligned to match the price/specs/stats column below */}
-         {/* Nameplate — brand + model, variant, engine size, year. Two-tone
-             masthead: brand in the muted token, model/variant/year in the strong
-             text token. Both pull from `th` so it stays legible on the light
-             xdrive theme AND the dark dealer-subdomain theme (was hardcoded grey
-             #374151 -> invisible on dark storefronts). */}
-<h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(2.6rem,9vw,3.6rem)', lineHeight:0.98, letterSpacing:'0.01em', margin:'0 0 12px', overflowWrap:'break-word' }}>
-  <span style={{ color: th.textSec, fontWeight:400 }}>{car.brand}</span>{' '}
-  <span style={{ color: th.text }}>{nameplate}</span>
-</h1>
+          {/* Status badges — below the title so the name reads first */}
+          {(isReserved || isRecon || isHot || hasDocuments) && (
+            <div style={{ display:'flex', flexWrap:'wrap', gap:6, minWidth:0, marginBottom:16 }}>
+              {isReserved && <span style={{ background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.22)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Reserved</span>}
+              {isRecon && <span style={{ background: isXdrive ? 'rgba(15,23,42,0.05)' : 'rgba(255,255,255,0.06)', border:`1px solid ${isXdrive ? 'rgba(15,23,42,0.1)' : 'rgba(255,255,255,0.12)'}`, color: isXdrive ? '#334155' : '#cbd5e1', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Recon</span>}
+              {isHot   && <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.28)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Hot Deal</span>}
+              {hasDocuments && (docsVerified
+                ? <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(22,163,74,0.08)', border:'1px solid rgba(22,163,74,0.25)', color: isXdrive ? '#16a34a' : '#4ade80', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}><BadgeCheck size={11} /> Verified Docs</span>
+                : <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(148,163,184,0.1)', border:'1px solid rgba(148,163,184,0.25)', color: isXdrive ? '#475569' : '#94a3b8', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}><FileText size={11} /> Docs on File</span>
+              )}
+            </div>
+          )}
           {dealer?.subdomain && !isSubdomain() && (
             <a
               href={`https://${dealer.subdomain}.xdrive.my`}
@@ -2494,9 +2510,10 @@ export default function CarDetailPage() {
     marginBottom: 12,
   }}
 >
-  {/* Two-tone masthead, theme-aware via `th` (was hardcoded #374151). */}
-  <span style={{ color: th.textSec, fontWeight: 400 }}>{car.brand}</span>{" "}
-  <span style={{ color: th.text }}>{nameplate}</span>
+  {/* Two-tone masthead, theme-aware via `th` (was hardcoded #374151): brand
+      strong, model/variant/year secondary. */}
+  <span style={{ color: th.text }}>{car.brand}</span>{" "}
+  <span style={{ color: th.textSec }}>{nameplate}</span>
 </h1>
             <p
               style={{
