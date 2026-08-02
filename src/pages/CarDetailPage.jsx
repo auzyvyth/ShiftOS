@@ -1839,10 +1839,6 @@ export default function CarDetailPage() {
           <div style={{ position:'absolute', bottom:14, left:14, zIndex:5, background:'rgba(6,8,15,0.7)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:20, padding:'4px 12px', fontSize:11, color:'rgba(255,255,255,0.8)', fontFamily:"system-ui,sans-serif", fontWeight:500 }}>
             {activeIdx + 1} / {imgCount}
           </div>
-          <button onClick={() => setLbOpen(true)}
-            style={{ position:'absolute', bottom:12, right:14, zIndex:5, background:'rgba(6,8,15,0.7)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:8, padding:'6px 12px', fontSize:11, color:'white', fontWeight:600, fontFamily:"system-ui,sans-serif", display:'flex', alignItems:'center', gap:5, cursor:'pointer' }}>
-            <Camera size={11} style={{ color:'#dc2626' }} /> All photos
-          </button>
           {imgCount > 1 && (() => {
             const DOT_SLOT = 12;
             const rawOffset = -(activeIdx - 2) * DOT_SLOT;
@@ -1914,7 +1910,12 @@ export default function CarDetailPage() {
               <Calculator size={18} />
             </button>
           </div>
-          {/* Price section — sits directly under the title strip */}
+          {/* Mini details (body · transmission · fuel) — sits directly under the
+              title, per layout */}
+          <p style={{ fontSize:12, color: th.textMuted, letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:600, margin:'0 0 12px' }}>
+            {[car.body_type, car.transmission, car.fuel_type].filter(Boolean).join('  ·  ')}
+          </p>
+          {/* Price section — directly under the title / mini details */}
           {isSambungCar(car) ? (
             <div style={{ marginBottom:4 }}>
               <SambungPriceBlock car={car} th={th} big="2.6rem" />
@@ -1940,11 +1941,22 @@ export default function CarDetailPage() {
               <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.2)', color:'#f87171', fontSize:'11px', padding:'2px 10px', borderRadius:'20px', fontWeight:600, letterSpacing:'0.04em' }}>SAVE {fmtPrice(saving)}</span>
             </div>
           )}
-          {/* Status badges — below the price */}
-          {(isReserved || isRecon || isHot || hasDocuments) && (
+          {/* Seller storefront link — kept high up, right under the price, so
+              buyers actually see whose showroom this is */}
+          {dealer?.subdomain && !isSubdomain() && (
+            <a
+              href={`https://${dealer.subdomain}.xdrive.my`}
+              target="_blank" rel="noopener noreferrer"
+              style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:13, color: th.textSec, textDecoration:'none', margin:'12px 0 0', letterSpacing:'0.02em', fontWeight:600, borderBottom:'1px solid rgba(220,38,38,0.4)', paddingBottom:1, width:'fit-content' }}
+            >
+              Sold by {dealer.site_name || dealer.dealership} <ExternalLink size={12} style={{ color:'#dc2626' }} />
+            </a>
+          )}
+          {/* Status badges — the plain "Recon" chip is dropped here; the icon'd
+              Recon chip in ReconTrust below is the single source for that. */}
+          {(isReserved || isHot || hasDocuments) && (
             <div style={{ display:'flex', flexWrap:'wrap', gap:6, minWidth:0, margin:'12px 0 0' }}>
               {isReserved && <span style={{ background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.22)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Reserved</span>}
-              {isRecon && <span style={{ background: isXdrive ? 'rgba(15,23,42,0.05)' : 'rgba(255,255,255,0.06)', border:`1px solid ${isXdrive ? 'rgba(15,23,42,0.1)' : 'rgba(255,255,255,0.12)'}`, color: isXdrive ? '#334155' : '#cbd5e1', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Recon</span>}
               {isHot   && <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.28)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Hot Deal</span>}
               {hasDocuments && (docsVerified
                 ? <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(22,163,74,0.08)', border:'1px solid rgba(22,163,74,0.25)', color: isXdrive ? '#16a34a' : '#4ade80', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}><BadgeCheck size={11} /> Verified Docs</span>
@@ -1952,19 +1964,6 @@ export default function CarDetailPage() {
               )}
             </div>
           )}
-          {dealer?.subdomain && !isSubdomain() && (
-            <a
-              href={`https://${dealer.subdomain}.xdrive.my`}
-              target="_blank" rel="noopener noreferrer"
-              style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:12, color: th.textSec, textDecoration:'none', margin:'12px 0 0', letterSpacing:'0.02em', fontWeight:600, borderBottom:'1px solid rgba(220,38,38,0.4)', paddingBottom:1, width:'fit-content' }}
-            >
-              {dealer.site_name || dealer.dealership} <ExternalLink size={11} style={{ color:'#dc2626' }} />
-            </a>
-          )}
-          {/* Mini details — sits below the price, per layout */}
-          <p style={{ fontSize:12, color: th.textMuted, letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:600, margin:'0 0 6px' }}>
-            {[car.body_type, car.transmission, car.fuel_type].filter(Boolean).join('  ·  ')}
-          </p>
           <div style={{ marginTop:16 }}>
             <WarrantyBanner car={car} isXdrive={isXdrive} />
             <ReconTrust car={car} isXdrive={isXdrive} />
@@ -2535,7 +2534,9 @@ export default function CarDetailPage() {
                 .filter(Boolean)
                 .join("  ·  ")}
             </p>
-            {(isRecon || isReserved || isHot || hasDocuments) && (
+            {/* Plain "Recon" chip dropped — the icon'd Recon chip in ReconTrust
+                below is the single source, so it isn't shown twice in one view. */}
+            {(isReserved || isHot || hasDocuments) && (
               <div
                 style={{
                   display: "flex",
@@ -2559,23 +2560,6 @@ export default function CarDetailPage() {
                     }}
                   >
                     Reserved
-                  </span>
-                )}
-                {isRecon && (
-                  <span
-                    style={{
-                      background: isXdrive ? "rgba(15,23,42,0.05)" : "rgba(255,255,255,0.06)",
-                      border: `1px solid ${isXdrive ? "rgba(15,23,42,0.1)" : "rgba(255,255,255,0.12)"}`,
-                      color: isXdrive ? "#334155" : "#cbd5e1",
-                      fontSize: "10px",
-                      padding: "4px 10px",
-                      borderRadius: "5px",
-                      letterSpacing: "0.12em",
-                      textTransform: "uppercase",
-                      fontWeight: 700,
-                    }}
-                  >
-                    Recon
                   </span>
                 )}
                 {isHot && (
