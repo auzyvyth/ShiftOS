@@ -2744,7 +2744,7 @@ export default function SalesmanLite() {
               )}
             </div>
             <div>
-              {staleLeads.slice(0, 10).map((lead, i, arr) => {
+              {staleLeads.slice(0, 8).map((lead, i, arr) => {
                 const car = lead.car_listings;
                 const daysSince = Math.floor((Date.now() - new Date(lead.updated_at)) / 86400000);
                 const hue = stageHue(lead.stage);
@@ -2771,12 +2771,12 @@ export default function SalesmanLite() {
                   </div>
                 );
               })}
-              {staleLeads.length > 10 && (
+              {staleLeads.length > 8 && (
                 <button
                   onClick={() => { setActiveTab("leads"); triggerGlow(staleLeads.map((l) => l.id)); }}
                   style={{ display: "block", width: "100%", textAlign: "center", padding: "10px 18px", fontSize: 11, fontWeight: 600, color: "#94a3b8", background: "rgba(255,255,255,0.02)", border: "none", borderTop: "1px solid rgba(255,255,255,0.05)", cursor: "pointer", fontFamily: "inherit" }}
                 >
-                  {t("salesmanLite.dash.viewAllFollowUps", { defaultValue: `+${staleLeads.length - 10} more in pipeline`, count: staleLeads.length - 10 })}
+                  {t("salesmanLite.dash.viewAllFollowUps", { defaultValue: `+${staleLeads.length - 8} more in pipeline`, count: staleLeads.length - 8 })}
                 </button>
               )}
             </div>

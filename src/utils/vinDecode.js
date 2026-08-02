@@ -5,8 +5,10 @@
 // imports, continental brands). Does NOT cover Perodua/Proton national cars,
 // whose VINs aren't in the NHTSA catalog — those fall back to carSpecs.js.
 //
-// Returns { make, model, year, body, cc } with only the fields NHTSA resolves,
-// or null on miss/error. Never throws — intake must keep working offline.
+// Returns { make, model, year, body, cc, cylinders, doors, seats, horsepower }
+// with only the fields NHTSA resolves, or null on miss/error. Never throws —
+// intake must keep working offline. Fuel economy is NOT VIN-decodable (it comes
+// from EPA/model data, not the VIN) so it stays a manual field.
 
 const NHTSA = "https://vpic.nhtsa.dot.gov/api/vehicles/decodevin";
 
@@ -53,6 +55,23 @@ export async function decodeVin(vin) {
     const dispL = get("Displacement (L)");
     const cc = dispL ? Math.round(parseFloat(dispL) * 1000) : null;
 
+    // Spec fields NHTSA sometimes resolves — power/cylinders/doors/seats. These
+    // feed the (optional) Advanced specs so a listing's detail page isn't blank.
+    const toInt = (v) => {
+      const n = v ? parseInt(v, 10) : NaN;
+      return Number.isFinite(n) && n > 0 ? n : null;
+    };
+    const cylinders = toInt(get("Engine Number of Cylinders"));
+    const doors = toInt(get("Doors"));
+    const seats = toInt(get("Number of Seats") || get("Seating Capacity"));
+    // Horsepower: prefer the brake-hp figure; else convert engine power in kW.
+    let horsepower = toInt(get("Engine Brake (hp) From"));
+    if (!horsepower) {
+      const kw = get("Engine Power (kW)");
+      const hp = kw ? Math.round(parseFloat(kw) * 1.34102) : null;
+      horsepower = hp && hp > 0 ? hp : null;
+    }
+
     // Require at least make+model to count as a hit.
     if (!make || !model) return null;
     return {
@@ -61,6 +80,10 @@ export async function decodeVin(vin) {
       year: year || null,
       body,
       cc: cc && cc > 0 ? cc : null,
+      cylinders,
+      doors,
+      seats,
+      horsepower,
     };
   } catch {
     return null;

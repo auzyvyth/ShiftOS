@@ -35,9 +35,10 @@ import DamageMap from "./DamageMap";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { useProfile, getDealerIdFromProfile } from "../hooks/useProfile";
-import { lookupMYCar, isMYBrand } from "../data/malayCars";
+import { lookupFullSpec } from "../utils/carSpecs";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { getListingGaps } from "../utils/listingCompleteness";
+import { decodeVin, isLikelyVin } from "../utils/vinDecode";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 const initialListing = {
@@ -1017,8 +1018,20 @@ function Field({ label, required, hint, children }) {
 // inside (no step validation depends on them being mounted), so collapsing never
 // blocks the wizard. State lives here because renderSectionContent is a plain
 // function call, not a component (Rules of Hooks).
-function MoreDetails({ children, label = "More details (optional)" }) {
+function MoreDetails({ children, label = "More details (optional)", collapsible = false }) {
+  // Most optional groups render inline so nothing useful hides behind a toggle.
+  // Only the engine-spec group passes `collapsible` — buyers rarely need
+  // bhp/cylinders/doors/seats, and a salesman's VIN decode fills them anyway,
+  // so it stays tucked away to keep the form short.
   const [open, setOpen] = useState(false);
+  if (!collapsible) {
+    return (
+      <div>
+        <p className="text-sm font-medium text-gray-500">{label}</p>
+        <div className="mt-4 space-y-4">{children}</div>
+      </div>
+    );
+  }
   return (
     <div>
       <button
@@ -1075,6 +1088,9 @@ const cfClearDraft = (uid) => { try { localStorage.removeItem(cfDraftKey(uid)); 
 export default function CarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intakeDone }) {
   const { profile } = useProfile();
   const dealerId = getDealerIdFromProfile(profile);
+  // VIN decode is a salesman-only convenience (Lite + Premium). Dealers go
+  // through AddCarForm's intake first, so they keep their existing decode there.
+  const isSalesman = profile?.role === "salesman";
 
   // In create mode, pre-fill state/city (and any other defaults) from the caller.
   // In edit mode, initialListing is unused — the pre-fill effect below populates from `listing`.
@@ -1359,11 +1375,10 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       setAutoFilled(true);
     };
 
-    // 1. Try local Malaysian brands first (no network cost)
-    if (isMYBrand(form.brand)) {
-      const local = lookupMYCar(form.brand, form.model, y);
-      if (local) { applySpec(local); return; }
-    }
+    // 1. Try the curated local table first, for ANY brand (no network cost).
+    //    Covers Perodua/Proton + the common CBU sellers with Malaysian-spec data.
+    const local = lookupFullSpec(form.brand, form.model, y);
+    if (local) { applySpec(local); return; }
 
     // 2. Check localStorage cache
     try {
@@ -1387,6 +1402,50 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       } catch (_) {}
     })();
   }, [form.brand, form.model, form.year]);
+
+  // ── VIN decode (salesman flows) ────────────────────────────────────────────
+  // Explicit tap fills the advanced specs (power/cylinders/doors/seats) plus any
+  // still-empty core fields, so a salesman's listing isn't missing spec rows on
+  // the detail page. Only fills blanks — never clobbers what they typed. NHTSA
+  // covers CBU/continental VINs; national cars (Perodua/Proton) miss gracefully.
+  const [decodingVin, setDecodingVin] = useState(false);
+  const [vinDecodeMsg, setVinDecodeMsg] = useState(null); // { ok, text } | null
+  const handleDecodeVin = async () => {
+    setVinDecodeMsg(null);
+    if (!isLikelyVin(form.vin_number)) {
+      setVinDecodeMsg({ ok: false, text: "Enter the full 17-character VIN to decode." });
+      return;
+    }
+    setDecodingVin(true);
+    const r = await decodeVin(form.vin_number);
+    setDecodingVin(false);
+    if (!r) {
+      setVinDecodeMsg({ ok: false, text: "Couldn't decode this VIN (common for Perodua/Proton) — fill the specs manually." });
+      return;
+    }
+    const updates = {};
+    const filled = [];
+    const blank = (v) => !String(v ?? "").trim();
+    if (blank(form.brand) && r.make) {
+      updates.brand = ALL_BRANDS.find((b) => b.toLowerCase() === r.make.toLowerCase()) || r.make;
+    }
+    if (blank(form.model) && r.model) updates.model = r.model;
+    if (blank(form.year) && r.year) updates.year = String(r.year);
+    if (blank(form.engineCc) && r.cc) updates.engineCc = String(r.cc);
+    if (blank(form.bodyType) && r.body && BODY_TYPES.includes(r.body)) updates.bodyType = r.body;
+    if (blank(form.horsepower) && r.horsepower) { updates.horsepower = String(r.horsepower); filled.push(`${r.horsepower} bhp`); }
+    if (blank(form.cylinders) && r.cylinders) { updates.cylinders = String(r.cylinders); filled.push(`${r.cylinders}-cyl`); }
+    if (blank(form.doors) && r.doors) { updates.doors = String(r.doors); filled.push(`${r.doors} doors`); }
+    if (blank(form.seats) && r.seats) { updates.seats = String(r.seats); filled.push(`${r.seats} seats`); }
+    if (Object.keys(updates).length) setForm((f) => ({ ...f, ...updates }));
+    setAutoFilled(true);
+    setVinDecodeMsg({
+      ok: true,
+      text: filled.length
+        ? `Auto-filled: ${filled.join(", ")} — check the Advanced specs section on the Technical step.`
+        : "VIN decoded — no extra specs available for this vehicle.",
+    });
+  };
 
   // Fetch dealer products when picker is first opened
   useEffect(() => {
@@ -2283,37 +2342,53 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           {!intakeDone && (
                       <>
                                     <Field label="Plate Number" hint="Optional — vehicle registration plate">
-                                                    <input
-                                                                      name="plate_number"
-                                                                                        value={form.plate_number}
-                                                                                                          onChange={handleChange}
-                                                                                                                            onBlur={e => checkDuplicate('plate', e.target.value)}
-                                                                                                                                              placeholder="e.g. WXY 1234"
-                                                                                                                                                                className={inputCls}
-                                                                                                                                                                                />
-                                                                                                                                                                                                {dupWarning.plate && (
-                                                                                                                                                                                                                  <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.plate}</p>
-                                                                                                                                                                                                                                  )}
-                                                                                                                                                                                                                                                  {conflictWarning.plate && (
-                                                                                                                                                                                                                                                                    <p className="text-xs text-red-600 mt-1 font-semibold">This plate is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
-                                                                                                                                                                                                                                                                                    )}
-                                                                                                                                                                                                                                                                                                  </Field>
-                                                                                                                                                                                                                                                                                                                <Field label="VIN Number" hint="Vehicle Identification Number">
-                                                                                                                                                                                                                                                                                                                                <input
-                                                                                                                                                                                                                                                                                                                                                  name="vin_number"
-                                                                                                                                                                                                                                                                                                                                                                    value={form.vin_number}
-                                                                                                                                                                                                                                                                                                                                                                                      onChange={handleChange}
-                                                                                                                                                                                                                                                                                                                                                                                                        onBlur={e => checkDuplicate('vin', e.target.value)}
-                                                                                                                                                                                                                                                                                                                                                                                                                          placeholder="e.g. JN1CA31D1XT000001"
-                                                                                                                                                                                                                                                                                                                                                                                                                                            className={inputCls}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                            />
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                            {dupWarning.vin && (
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.vin}</p>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              )}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              {conflictWarning.vin && (
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <p className="text-xs text-red-600 mt-1 font-semibold">This VIN is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                )}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              </Field>
+            <input
+              name="plate_number"
+              value={form.plate_number}
+              onChange={handleChange}
+              onBlur={e => checkDuplicate('plate', e.target.value)}
+              placeholder="e.g. WXY 1234"
+              className={inputCls}
+            />
+            {dupWarning.plate && (
+              <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.plate}</p>
+            )}
+            {conflictWarning.plate && (
+              <p className="text-xs text-red-600 mt-1 font-semibold">This plate is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
+            )}
+          </Field>
+          <Field label="VIN Number" hint={isSalesman ? "17-char VIN — tap Decode to auto-fill specs" : "Vehicle Identification Number"}>
+            <div className="flex gap-2">
+              <input
+                name="vin_number"
+                value={form.vin_number}
+                onChange={handleChange}
+                onBlur={e => checkDuplicate('vin', e.target.value)}
+                placeholder="e.g. JN1CA31D1XT000001"
+                className={`${inputCls} flex-1`}
+                style={{ textTransform: "uppercase" }}
+              />
+              {isSalesman && (
+                <button
+                  type="button"
+                  onClick={handleDecodeVin}
+                  disabled={decodingVin || !isLikelyVin(form.vin_number)}
+                  className={`shrink-0 px-4 text-sm font-semibold text-white transition-colors ${isLikelyVin(form.vin_number) && !decodingVin ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-300 cursor-not-allowed"}`}
+                >
+                  {decodingVin ? "Decoding…" : "Decode"}
+                </button>
+              )}
+            </div>
+            {dupWarning.vin && (
+              <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.vin}</p>
+            )}
+            {conflictWarning.vin && (
+              <p className="text-xs text-red-600 mt-1 font-semibold">This VIN is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
+            )}
+            {vinDecodeMsg && (
+              <p className={`text-xs mt-1 ${vinDecodeMsg.ok ? "text-emerald-600" : "text-amber-600"}`}>{vinDecodeMsg.text}</p>
+            )}
+          </Field>
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           </>
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     )}
 
@@ -2727,8 +2802,9 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
             </div>
           )}
 
-          {/* More details — optional specs, one per row */}
-          <MoreDetails>
+          {/* Advanced specs — enthusiast-facing, collapsed by default. A
+              salesman's VIN decode fills bhp/cylinders/doors/seats for them. */}
+          <MoreDetails collapsible label="Advanced specs (optional)">
             <Field label="Power (bhp)">
               <div className="relative">
                 <input
@@ -3063,6 +3139,23 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 </>
               );
             })()}
+          </Field>
+          <Field
+            label="Warranty (months)"
+            hint="Warranty offered with this car — shown to buyers"
+          >
+            <input
+              type="number"
+              name="warranty_months"
+              value={form.warranty_months}
+              onChange={handleChange}
+              placeholder="e.g. 6"
+              min="0"
+              max="120"
+              enterKeyHint="next"
+              inputMode="numeric"
+              className={inputCls}
+            />
           </Field>
           </>
           )}
