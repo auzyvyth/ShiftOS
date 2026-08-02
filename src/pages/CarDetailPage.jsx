@@ -680,6 +680,9 @@ export default function CarDetailPage() {
   const pauseRef = useRef(false);
   const resumeTimer = useRef(null);
   const galleryTouch = useRef({ startX: 0, startY: 0 });
+  // Set when a touch turns out to be a swipe, so the trailing click (which fires
+  // on touchend) doesn't also open the lightbox — tap opens, swipe changes slide.
+  const gallerySwiped = useRef(false);
 
   function closeLb() {
     setLbOpen(false);
@@ -1000,6 +1003,7 @@ export default function CarDetailPage() {
       e.changedTouches[0].clientY - galleryTouch.current.startY,
     );
     if (Math.abs(dx) < 40 || dy > Math.abs(dx)) return;
+    gallerySwiped.current = true;
     const dir = dx < 0 ? "next" : "prev";
     const len = car?.images?.length || 1;
     go(
@@ -1816,8 +1820,9 @@ export default function CarDetailPage() {
         {/* M1 — Swipeable image. `contain` (not `cover`) + a slightly taller frame
             so every uploaded photo is shown whole, never cropped, whatever its
             aspect ratio. Letterbox fills with the dark frame colour. */}
-        <div className="cdp-mobile-only" style={{ position:'relative', height:'clamp(240px,64vw,420px)', overflow:'hidden', background:'#080f18' }}
-          onTouchStart={galleryTouchStart} onTouchEnd={galleryTouchEnd}>
+        <div className="cdp-mobile-only" style={{ position:'relative', height:'clamp(240px,64vw,420px)', overflow:'hidden', background:'#080f18', cursor:'zoom-in' }}
+          onTouchStart={galleryTouchStart} onTouchEnd={galleryTouchEnd}
+          onClick={() => { if (gallerySwiped.current) { gallerySwiped.current = false; return; } setLbOpen(true); }}>
           {!imgLoaded && <div className="cdp-img-shimmer" />}
           <img key={slideKey} className={`cdp-main-img cdp-slide-${slideDir}`}
             src={disp(images[activeIdx], 1280)} alt={carTitle} fetchPriority="high" decoding="async"
@@ -1886,18 +1891,19 @@ export default function CarDetailPage() {
               from `th` so the strip stays legible on the light xdrive theme AND
               the dark dealer-subdomain theme (was a hardcoded grey masthead that
               went invisible on dark storefronts). */}
-          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, marginBottom:12 }}>
+          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, marginBottom:14 }}>
             <h1 style={{
-              fontFamily:"'Bebas Neue',sans-serif",
-              fontSize:'clamp(1.4rem,6vw,1.9rem)',
-              lineHeight:1.08,
-              letterSpacing:'0.01em',
-              margin:0,
+              flex:1,
               minWidth:0,
+              fontFamily:"'Bebas Neue',sans-serif",
+              fontSize:'clamp(1.7rem,7.5vw,2.4rem)',
+              lineHeight:1.05,
+              letterSpacing:'0.01em',
+              color: th.text,
+              margin:0,
               display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden',
             }}>
-              <span style={{ color: th.text }}>{car.brand}</span>{' '}
-              <span style={{ color: th.textSec }}>{nameplate}</span>
+              {car.brand} {nameplate}
             </h1>
             <button
               onClick={() => setCalcOpen(true)}
@@ -1908,27 +1914,7 @@ export default function CarDetailPage() {
               <Calculator size={18} />
             </button>
           </div>
-          {/* Status badges — below the title so the name reads first */}
-          {(isReserved || isRecon || isHot || hasDocuments) && (
-            <div style={{ display:'flex', flexWrap:'wrap', gap:6, minWidth:0, marginBottom:16 }}>
-              {isReserved && <span style={{ background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.22)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Reserved</span>}
-              {isRecon && <span style={{ background: isXdrive ? 'rgba(15,23,42,0.05)' : 'rgba(255,255,255,0.06)', border:`1px solid ${isXdrive ? 'rgba(15,23,42,0.1)' : 'rgba(255,255,255,0.12)'}`, color: isXdrive ? '#334155' : '#cbd5e1', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Recon</span>}
-              {isHot   && <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.28)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Hot Deal</span>}
-              {hasDocuments && (docsVerified
-                ? <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(22,163,74,0.08)', border:'1px solid rgba(22,163,74,0.25)', color: isXdrive ? '#16a34a' : '#4ade80', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}><BadgeCheck size={11} /> Verified Docs</span>
-                : <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(148,163,184,0.1)', border:'1px solid rgba(148,163,184,0.25)', color: isXdrive ? '#475569' : '#94a3b8', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}><FileText size={11} /> Docs on File</span>
-              )}
-            </div>
-          )}
-          {dealer?.subdomain && !isSubdomain() && (
-            <a
-              href={`https://${dealer.subdomain}.xdrive.my`}
-              target="_blank" rel="noopener noreferrer"
-              style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:12, color: th.textSec, textDecoration:'none', marginBottom:12, letterSpacing:'0.02em', fontWeight:600, borderBottom:'1px solid rgba(220,38,38,0.4)', paddingBottom:1, width:'fit-content' }}
-            >
-              {dealer.site_name || dealer.dealership} <ExternalLink size={11} style={{ color:'#dc2626' }} />
-            </a>
-          )}
+          {/* Price section — sits directly under the title strip */}
           {isSambungCar(car) ? (
             <div style={{ marginBottom:4 }}>
               <SambungPriceBlock car={car} th={th} big="2.6rem" />
@@ -1953,6 +1939,27 @@ export default function CarDetailPage() {
               <span style={{ fontSize:13, color: th.textMuted, textDecoration:'line-through' }}>{fmtPrice(car.original_price)}</span>
               <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.2)', color:'#f87171', fontSize:'11px', padding:'2px 10px', borderRadius:'20px', fontWeight:600, letterSpacing:'0.04em' }}>SAVE {fmtPrice(saving)}</span>
             </div>
+          )}
+          {/* Status badges — below the price */}
+          {(isReserved || isRecon || isHot || hasDocuments) && (
+            <div style={{ display:'flex', flexWrap:'wrap', gap:6, minWidth:0, margin:'12px 0 0' }}>
+              {isReserved && <span style={{ background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.22)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Reserved</span>}
+              {isRecon && <span style={{ background: isXdrive ? 'rgba(15,23,42,0.05)' : 'rgba(255,255,255,0.06)', border:`1px solid ${isXdrive ? 'rgba(15,23,42,0.1)' : 'rgba(255,255,255,0.12)'}`, color: isXdrive ? '#334155' : '#cbd5e1', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Recon</span>}
+              {isHot   && <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.28)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Hot Deal</span>}
+              {hasDocuments && (docsVerified
+                ? <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(22,163,74,0.08)', border:'1px solid rgba(22,163,74,0.25)', color: isXdrive ? '#16a34a' : '#4ade80', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}><BadgeCheck size={11} /> Verified Docs</span>
+                : <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(148,163,184,0.1)', border:'1px solid rgba(148,163,184,0.25)', color: isXdrive ? '#475569' : '#94a3b8', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}><FileText size={11} /> Docs on File</span>
+              )}
+            </div>
+          )}
+          {dealer?.subdomain && !isSubdomain() && (
+            <a
+              href={`https://${dealer.subdomain}.xdrive.my`}
+              target="_blank" rel="noopener noreferrer"
+              style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:12, color: th.textSec, textDecoration:'none', margin:'12px 0 0', letterSpacing:'0.02em', fontWeight:600, borderBottom:'1px solid rgba(220,38,38,0.4)', paddingBottom:1, width:'fit-content' }}
+            >
+              {dealer.site_name || dealer.dealership} <ExternalLink size={11} style={{ color:'#dc2626' }} />
+            </a>
           )}
           {/* Mini details — sits below the price, per layout */}
           <p style={{ fontSize:12, color: th.textMuted, letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:600, margin:'0 0 6px' }}>
@@ -2510,10 +2517,9 @@ export default function CarDetailPage() {
     marginBottom: 12,
   }}
 >
-  {/* Two-tone masthead, theme-aware via `th` (was hardcoded #374151): brand
-      strong, model/variant/year secondary. */}
-  <span style={{ color: th.text }}>{car.brand}</span>{" "}
-  <span style={{ color: th.textSec }}>{nameplate}</span>
+  {/* Masthead, theme-aware via `th` (was hardcoded #374151) — brand and
+      model/variant/year share one strong colour. */}
+  <span style={{ color: th.text }}>{car.brand} {nameplate}</span>
 </h1>
             <p
               style={{
