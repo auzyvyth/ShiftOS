@@ -14,6 +14,7 @@ import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import SalesmanLiteHelp from "../components/SalesmanLiteHelp";
 import ChannelBreakdown from "../components/ChannelBreakdown";
+import ShareMenu from "../components/ShareMenu";
 import ReportBugButton from "../components/ReportBugButton";
 import {
   LogOut,
@@ -2688,6 +2689,19 @@ export default function SalesmanLite() {
                     <span style={{ flex: 1 }}>Lihat halaman mini anda</span>
                     <ChevronRight size={11} style={{ flexShrink: 0, opacity: 0.5 }} />
                   </a>
+                  {/* Per-platform share: each option tags the link with ?src=<channel>
+                      so a click's origin is attributed reliably (not just guessed
+                      from the in-app browser). Always points at the real xdrive.my
+                      domain and carries ?ref so downstream car-page leads credit
+                      this agent. */}
+                  <ShareMenu
+                    baseUrl={`https://xdrive.my/s/${profile.slug}`}
+                    refSlug={profile.slug}
+                    waCaption={(url) => `Tengok senarai kereta saya di XDrive:\n${url}`}
+                    dark
+                    label="Kongsi"
+                    style={{ flex: "1 1 120px", justifyContent: "center", padding: "9px 12px", fontSize: 11 }}
+                  />
                 </div>
               )}
               {/* Where the mini-page footprints came from (Instagram / Facebook /
