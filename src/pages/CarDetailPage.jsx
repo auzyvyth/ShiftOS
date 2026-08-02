@@ -165,14 +165,12 @@ const SpecHighlights = ({ car, th }) => {
   const tags = parseTags(car.features).slice(0, 8);
   if (tags.length === 0) return null;
   return (
-    <div style={{ marginBottom: 20 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-        {tags.map((tag, i) => (
-          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', border: `1px solid ${th.border}`, borderRadius: 6, fontSize: 12, color: th.text, background: th.card2, fontWeight: 500 }}>
-            <Check size={12} strokeWidth={3} style={{ color: '#dc2626', flexShrink: 0 }} /> {tag}
-          </span>
-        ))}
-      </div>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+      {tags.map((tag, i) => (
+        <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 12px', border: `1px solid ${th.border}`, borderRadius: 8, fontSize: 12, color: th.text, background: th.card2, fontWeight: 500, lineHeight: 1.25, minWidth: 0 }}>
+          <Check size={13} strokeWidth={3} style={{ color: '#dc2626', flexShrink: 0 }} /> {tag}
+        </span>
+      ))}
     </div>
   );
 };
@@ -209,10 +207,10 @@ const ReconTrust = ({ car, isXdrive }) => {
     car.interior_grade ? { label: `Grade ${car.interior_grade} interior` } : null,
   ].filter(Boolean);
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 7 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
       {chips.map((c, i) => (
-        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 500, color: chipText, background: chipBg, border: `1px solid ${chipBorder}` }}>
-          <BadgeCheck size={12} strokeWidth={2.5} style={{ color: '#dc2626', flexShrink: 0 }} /> {c.label}
+        <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500, lineHeight: 1.25, color: chipText, background: chipBg, border: `1px solid ${chipBorder}`, minWidth: 0 }}>
+          <BadgeCheck size={13} strokeWidth={2.5} style={{ color: '#dc2626', flexShrink: 0 }} /> {c.label}
         </span>
       ))}
     </div>
@@ -1974,17 +1972,8 @@ export default function CarDetailPage() {
               )}
             </div>
           )}
-          <div style={{ marginTop:16 }}>
-            <WarrantyBanner car={car} isXdrive={isXdrive} />
-            <ReconTrust car={car} isXdrive={isXdrive} />
-            <SpecHighlights car={car} th={th} />
-          </div>
-          <div style={{ height:1, marginBottom:20, background:'linear-gradient(to right,rgba(220,38,38,0.3),rgba(255,255,255,0.04),transparent)' }} />
-        </div>
-
-        {/* M3 — Quick stats 2×4 */}
-        <div className="cdp-mobile-only" style={{ padding:'0 20px', marginBottom:24 }}>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:2, border:`1px solid ${th.border}`, borderRadius:12, overflow:'hidden' }}>
+          {/* Quick stats grid — moved ABOVE the badges */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:2, border:`1px solid ${th.border}`, borderRadius:12, overflow:'hidden', marginTop:16 }}>
             {[
               { label:'Mileage',      value: car.mileage ? fmt(car.mileage)+' km' : '—' },
               { label:'Engine',       value: car.engine_cc ? fmt(car.engine_cc)+' cc' : '—' },
@@ -2003,6 +1992,14 @@ export default function CarDetailPage() {
               </div>
             ))}
           </div>
+          {/* Trust + feature badges — moved BELOW the stats grid, tidied into an
+              even 2-column grid (see ReconTrust / SpecHighlights) */}
+          <div style={{ marginTop:16 }}>
+            <WarrantyBanner car={car} isXdrive={isXdrive} />
+            <ReconTrust car={car} isXdrive={isXdrive} />
+            <SpecHighlights car={car} th={th} />
+          </div>
+          <div style={{ height:1, margin:'20px 0', background:'linear-gradient(to right,rgba(220,38,38,0.3),rgba(255,255,255,0.04),transparent)' }} />
         </div>
 
         {/* M4 — CTA card */}
