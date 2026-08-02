@@ -20,7 +20,7 @@ export default function AuthCallbackPage() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, role, subdomain, dealer_id, onboarding_complete')
+        .select('id, role, subdomain, dealer_id, onboarding_complete, plan')
         .eq('id', session.user.id)
         .maybeSingle();
 
@@ -80,7 +80,12 @@ export default function AuthCallbackPage() {
       }
 
       if (role === 'salesman' && profile.onboarding_complete === false) {
-        navigate('/salesman-onboarding');
+        // Preserve the premium tier across a mid-onboarding re-auth. Without the
+        // tier param the onboarding page defaults to lite and silently downgrades
+        // a premium signup back to the free plan.
+        const savedPlan = session.user?.user_metadata?.tier || profile.plan;
+        const isPremium = savedPlan === 'premium' || savedPlan === 'salesman_full';
+        navigate(isPremium ? '/salesman-onboarding/premium' : '/salesman-onboarding');
         return;
       }
 
