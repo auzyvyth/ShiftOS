@@ -2681,7 +2681,7 @@ export default function SalesmanLite() {
                     href={`/s/${profile.slug}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    title="Opens on this environment (preview/staging shows this build; xdrive.my is the real address to share)"
+                    title="Buka halaman mini anda dalam tab baharu"
                     style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 180px", minWidth: 0, fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(37,99,235,0.07)", border: "1px solid rgba(37,99,235,0.2)", color: "#93c5fd", textDecoration: "none", fontWeight: 600, fontFamily: "inherit" }}
                   >
                     <ExternalLink size={11} />

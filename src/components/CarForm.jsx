@@ -1748,24 +1748,39 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     return true;
   };
 
-  // Which required fields are still empty on the current step (for the toast).
-  const missingFields = () => {
-    if (step === 1) return form.images.length > 0 ? [] : ["at least 1 photo"];
-    if (step === 2) return (intakeDone ? [
+  // Which required fields are still empty on a given step (for the toast). Any
+  // step can be validated — not just the current one — so Publish can pre-flight
+  // every step even when the user jumped straight to Review via the step tabs.
+  const missingForStep = (s) => {
+    if (s === 1) return form.images.length > 0 ? [] : ["at least 1 photo"];
+    if (s === 2) return (intakeDone ? [
       [!form.condition, "Condition"],
     ] : [
       [!form.brand, "Brand"], [!form.model, "Model"], [!form.year, "Year"],
       [!form.mileage, "Mileage"], [!form.colour, "Colour"], [!form.condition, "Condition"],
     ]).filter(([m]) => m).map(([, l]) => l);
-    if (step === 3) return intakeDone ? [] : [[!form.bodyType, "Body type"], [!form.fuelType, "Fuel type"]].filter(([m]) => m).map(([, l]) => l);
-    if (step === 4) return [[!form.state, "State"], [!form.city, "City"]].filter(([m]) => m).map(([, l]) => l);
-    if (step === 5) {
+    if (s === 3) return intakeDone ? [] : [[!form.bodyType, "Body type"], [!form.fuelType, "Fuel type"]].filter(([m]) => m).map(([, l]) => l);
+    if (s === 4) return [[!form.state, "State"], [!form.city, "City"]].filter(([m]) => m).map(([, l]) => l);
+    if (s === 5) {
       if (intakeDone) return [];
       if (form.payment_type === "sambung_bayar")
         return [[!(Number(form.sambungMonthly) > 0), "Monthly (ansuran)"], [!(Number(form.sambungDeposit) > 0), "Deposit / duit nampak"]].filter(([m]) => m).map(([, l]) => l);
       return [[!form.basePrice, "Base price"], [!form.sellingPrice, "Selling price"]].filter(([m]) => m).map(([, l]) => l);
     }
     return [];
+  };
+  const missingFields = () => missingForStep(step);
+
+  // Pre-flight every required step. Returns { step, fields } for the FIRST step
+  // still missing something, or null when the form is complete. Used by Publish
+  // so a half-filled row never reaches the DB (which would throw a cryptic
+  // not-null error the user can't act on).
+  const firstIncompleteStep = () => {
+    for (const s of [1, 2, 3, 4, 5]) {
+      const fields = missingForStep(s);
+      if (fields.length) return { step: s, fields };
+    }
+    return null;
   };
 
   // Advance a step, or explain (via toast) exactly what's missing.
@@ -1795,6 +1810,19 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   };
 
   const handleSubmit = async (skipGapCheck = false) => {
+    // Pre-flight (new listings only): the step tabs let a user jump straight to
+    // Review and hit Publish while an earlier required step is still blank
+    // (brand/model are NOT NULL — that used to surface as a cryptic DB "error
+    // pop up"). Catch it here: name the missing fields and bounce the user to
+    // the offending step. Edit mode ("Save Changes") keeps the lighter checks so
+    // quick edits of older listings aren't blocked on legacy-empty fields.
+    const incomplete = listing ? null : firstIncompleteStep();
+    if (incomplete) {
+      const label = STEPS.find((x) => x.id === incomplete.step)?.label || `Step ${incomplete.step}`;
+      setStep(incomplete.step);
+      toast.error(`Required field${incomplete.fields.length > 1 ? "s" : ""} not filled: ${incomplete.fields.join(", ")}. Complete "${label}" before publishing.`);
+      return;
+    }
     if (!form.images.length) {
       toast.error("Please add at least 1 photo");
       return;
@@ -2028,10 +2056,19 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         setImgProgress([]);
       }
     } catch (err) {
-      if (err?.message?.includes('listing_cap_exceeded') || err?.code === 'P0001' && err?.message?.includes('listing cap')) {
+      const msg = err?.message || "";
+      if (msg.includes('listing_cap_exceeded') || (err?.code === 'P0001' && msg.includes('listing cap'))) {
         setCapError(true);
+      } else if (msg.includes('subscription_inactive')) {
+        toast.error("Your trial or subscription has ended. Activate your plan to publish new listings.");
+      } else if (err?.code === '42501' || msg.toLowerCase().includes('row-level security')) {
+        toast.error("Publishing was blocked — your account isn't fully activated yet. Refresh and try again, or contact support.");
+      } else if (err?.code === '23502') {
+        // not-null violation slipped past pre-flight — name the column
+        const col = msg.match(/column "?([a-z_]+)"?/i)?.[1];
+        toast.error(col ? `Missing required field: ${col}. Please fill it in before publishing.` : "A required field is missing. Please review the form.");
       } else {
-        alert("Error: " + err.message);
+        toast.error("Could not publish: " + msg);
       }
     }
     setUploading(false);
