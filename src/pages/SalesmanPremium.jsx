@@ -994,31 +994,33 @@ export default function SalesmanPremium() {
  setMergeStatus("pending");
  setMergeMsg("");
 
- const { data } = await supabase
- .from("dealer_invites")
- .select("dealer_id, expires_at, used")
- .eq("code", mergeCode.trim().toUpperCase())
- .maybeSingle();
+ // redeem_invite is a SECURITY DEFINER RPC that looks up the SINGLE row by
+ // exact code (unused + unexpired) and returns only dealer_id. It replaces a
+ // direct select on dealer_invites, whose public policy used to leak every
+ // pending invite (code/email/name) platform-wide (F3).
+ const { data: redeemData } = await supabase.rpc("redeem_invite", {
+ p_code: mergeCode.trim().toUpperCase(),
+ });
+ const invite = Array.isArray(redeemData) ? redeemData[0] : redeemData;
 
- if (!data || data.used || new Date(data.expires_at) < new Date()) {
+ if (!invite || !invite.dealer_id) {
  setMergeStatus("error");
  setMergeMsg("Invalid or expired invite code.");
  return;
  }
 
  await supabase
- .from("profiles")
- .update({ dealer_id: data.dealer_id })
- .eq("id", profile.id);
- await supabase
  .from("leads")
- .update({ dealer_id: data.dealer_id })
+ .update({ dealer_id: invite.dealer_id })
  .eq("salesman_id", profile.id)
  .is("dealer_id", null);
  await supabase
  .from("car_listings")
- .update({ dealer_id: data.dealer_id })
+ .update({ dealer_id: invite.dealer_id })
  .eq("assigned_to", profile.id);
+ // use_dealer_invite performs the tenant move server-side (sets
+ // profiles.dealer_id + plan, marks the invite used) in one SECURITY DEFINER
+ // call. No client-side profiles.dealer_id write.
  await supabase.rpc("use_dealer_invite", {
  invite_code: mergeCode.trim().toUpperCase(),
  });
