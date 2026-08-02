@@ -1895,9 +1895,14 @@ export default function CarDetailPage() {
             </button>
           </div>
           {/* Brand — left-aligned to match the price/specs/stats column below */}
-         {/* Nameplate — brand + model, variant, engine size, year — unified single line */}
-<h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(2.6rem,9vw,3.6rem)', color: '#374151', lineHeight:0.98, letterSpacing:'0.01em', margin:'0 0 12px', overflowWrap:'break-word' }}>
-  {car.brand} {nameplate}
+         {/* Nameplate — brand + model, variant, engine size, year. Two-tone
+             masthead: brand in the muted token, model/variant/year in the strong
+             text token. Both pull from `th` so it stays legible on the light
+             xdrive theme AND the dark dealer-subdomain theme (was hardcoded grey
+             #374151 -> invisible on dark storefronts). */}
+<h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(2.6rem,9vw,3.6rem)', lineHeight:0.98, letterSpacing:'0.01em', margin:'0 0 12px', overflowWrap:'break-word' }}>
+  <span style={{ color: th.textSec, fontWeight:400 }}>{car.brand}</span>{' '}
+  <span style={{ color: th.text }}>{nameplate}</span>
 </h1>
           {dealer?.subdomain && !isSubdomain() && (
             <a
@@ -1918,18 +1923,18 @@ export default function CarDetailPage() {
               {fmtPrice(car.selling_price)}
             </p>
             {calcMonthly(car.selling_price) ? (
-              <span style={{ fontSize:12, color:'#475569' }}>
-                ~<span style={{ color:'#64748b' }}>RM {fmt(calcMonthly(car.selling_price))}</span>/mo
+              <span style={{ fontSize:12, color: th.textSec }}>
+                ~<span style={{ color: th.textMuted }}>RM {fmt(calcMonthly(car.selling_price))}</span>/mo
               </span>
             ) : car.selling_price > HIGH_VALUE_THRESHOLD ? (
-              <span style={{ fontSize:12, color:'#475569' }}>Financing available on request</span>
+              <span style={{ fontSize:12, color: th.textSec }}>Financing available on request</span>
             ) : null}
           </div>
           )}
           {!isSambungCar(car) && <MarketPriceTag car={car} isXdrive={isXdrive} th={th} />}
           {!isSambungCar(car) && isHot && (
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
-              <span style={{ fontSize:13, color:'#1e293b', textDecoration:'line-through' }}>{fmtPrice(car.original_price)}</span>
+              <span style={{ fontSize:13, color: th.textMuted, textDecoration:'line-through' }}>{fmtPrice(car.original_price)}</span>
               <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.2)', color:'#f87171', fontSize:'11px', padding:'2px 10px', borderRadius:'20px', fontWeight:600, letterSpacing:'0.04em' }}>SAVE {fmtPrice(saving)}</span>
             </div>
           )}
@@ -1991,7 +1996,7 @@ export default function CarDetailPage() {
               )}
             </div>
             {car.deposit_amount > 0 && (
-              <p style={{ fontSize:11, color:'#475569', marginTop:8, textAlign:'center' }}>RM {fmt(car.deposit_amount)} deposit to reserve</p>
+              <p style={{ fontSize:11, color: th.textSec, marginTop:8, textAlign:'center' }}>RM {fmt(car.deposit_amount)} deposit to reserve</p>
             )}
             {/* Tertiary actions — quiet text links, not more buttons */}
             <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:18, marginTop:14, flexWrap:'wrap' }}>
@@ -2484,13 +2489,14 @@ export default function CarDetailPage() {
   style={{
     fontFamily: "'Bebas Neue',sans-serif",
     fontSize: "clamp(3rem,5vw,4.4rem)",
-    color: "#374151",
     lineHeight: 0.98,
     letterSpacing: "0.01em",
     marginBottom: 12,
   }}
 >
-  {car.brand} {nameplate}
+  {/* Two-tone masthead, theme-aware via `th` (was hardcoded #374151). */}
+  <span style={{ color: th.textSec, fontWeight: 400 }}>{car.brand}</span>{" "}
+  <span style={{ color: th.text }}>{nameplate}</span>
 </h1>
             <p
               style={{
@@ -2661,7 +2667,7 @@ export default function CarDetailPage() {
                       fontSize: 9,
                       textTransform: "uppercase",
                       letterSpacing: "0.16em",
-                      color: "#334155",
+                      color: th.textMuted,
                       fontWeight: 700,
                       marginBottom: 6,
                     }}
@@ -2694,7 +2700,7 @@ export default function CarDetailPage() {
                 fontSize: 10,
                 textTransform: "uppercase",
                 letterSpacing: "0.2em",
-                color: "#334155",
+                color: th.textMuted,
                 fontWeight: 700,
                 marginBottom: 14,
               }}

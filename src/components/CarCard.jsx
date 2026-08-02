@@ -29,7 +29,7 @@ const formatAge = (days) => {
 
 const XDRIVE_PHONE = '60174155191';
 
-const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, showCompare = false }) => {
+const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, showCompare = false, compact = false }) => {
   const navigate = useNavigate();
   const [imgError, setImgError]   = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -284,10 +284,29 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
           .cc-spec-val     { font-size: 10px !important; }
           .cc-wa           { width: 28px !important; height: 28px !important; }
         }
+
+        /* Compact variant (body-type carousel): equal-height cards that fill
+           their stretched wrapper, so a sambung/discount card can never grow
+           the row out of alignment. */
+        .cc-compact { height: 100%; }
+
+        /* On mobile the 2-up carousel cards are narrow — give the image more
+           height (taller ratio) and tighten the body so the card footprint
+           stays roughly the same while the photo reads much larger. */
+        @media (max-width: 520px) {
+          .cc-compact .cc-imgwrap     { aspect-ratio: 4 / 3 !important; }
+          .cc-compact .cc-body        { padding: 7px 9px 9px !important; }
+          .cc-compact .cc-name        { font-size: 11.5px !important; min-height: 28px !important; line-height: 1.2 !important; }
+          .cc-compact .cc-sub         { height: 12px !important; line-height: 12px !important; font-size: 10px !important; margin-bottom: 5px !important; }
+          .cc-compact .cc-price-block { margin-bottom: 6px !important; }
+          .cc-compact .cc-specgrid    { row-gap: 4px !important; column-gap: 6px !important; margin-bottom: 6px !important; }
+          .cc-compact .cc-divider     { margin-bottom: 6px !important; }
+          .cc-compact .cc-footer      { min-height: 22px !important; }
+        }
       `}</style>
 
       <article
-        className={`cc-root${isHot ? ' hot' : ''}${xdrive ? ' xdrive' : ''}`}
+        className={`cc-root${isHot ? ' hot' : ''}${xdrive ? ' xdrive' : ''}${compact ? ' cc-compact' : ''}`}
         tabIndex={isSold ? undefined : 0}
         role="article"
         aria-label={`${year} ${brand} ${model}${isSold ? ' — Sold' : ''}`}
@@ -321,6 +340,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
           display:       'flex',
           flexDirection: 'column',
           boxShadow:     xd.cardShadow,
+          height:        compact ? '100%' : undefined,
         }}
       >
 
@@ -407,7 +427,10 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
               <span style={badgePill('rgba(0,0,0,0.62)', '#e5e7eb')}>SOLD</span>
             ) : (
               <>
-                {condBadge && (
+                {/* Compact cards (body-type carousel) stay clean: no condition
+                    (RECON/USED/NEW) or "JUST ARRIVED" chips crowding the photo —
+                    only the deal signal survives. */}
+                {!compact && condBadge && (
                   <span style={badgePill(condBadge.bg, condBadge.color)}>
                     {{ used: 'USED', recon: 'RECON', new: 'NEW' }[condKey]}
                   </span>
@@ -415,7 +438,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
                 {isHot && (
                   <span style={badgePill('#DC2626', '#fff')}>HOT DEAL</span>
                 )}
-                {isNew && !isHot && (
+                {!compact && isNew && !isHot && (
                   <span style={badgePill('#C4A265', '#1a1206')}>JUST ARRIVED</span>
                 )}
               </>
@@ -540,7 +563,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
           </h3>
 
           {/* Sub: colour · location — 14px reserved */}
-          <p style={{
+          <p className="cc-sub" style={{
             margin:       '0 0 9px',
             height:       14,
             lineHeight:   '14px',
@@ -554,12 +577,14 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
           </p>
 
           {/* ── Price block ── */}
-          <div style={{ marginBottom: 10 }}>
+          <div className="cc-price-block" style={{ marginBottom: 10 }}>
 
             {/* Strikethrough + save — only reserves height when it has content
                 (discount or sambung); collapsed otherwise so the price sits
-                tight under the details and the card stays short/impactful. */}
-            <div style={{ height: (isSambung || hasDiscount) ? 16 : 0, display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
+                tight under the details and the card stays short/impactful.
+                Compact cards ALWAYS reserve this row so a sambung/discount chip
+                can never make one card taller than its neighbours. */}
+            <div style={{ height: (compact || isSambung || hasDiscount) ? 16 : 0, display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
               {isSambung ? (
                 <span style={{
                   fontSize: 9, fontWeight: 700, lineHeight: 1, flexShrink: 0, letterSpacing: '0.04em',
@@ -646,8 +671,9 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
               ) : <span />}
             </div>
 
-            {/* Market price signal pill */}
-            {marketBand && (
+            {/* Market price signal pill — omitted on compact cards to keep the
+                height uniform and the layout clean. */}
+            {!compact && marketBand && (
               <div style={{ marginTop: 6 }}>
                 <span style={{
                   display:      'inline-flex',
@@ -678,7 +704,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
           </div>
 
           {/* ── 4 spec cells (2×2 grid, icon + value, no box background) ── */}
-          <div style={{
+          <div className="cc-specgrid" style={{
             display:             'grid',
             gridTemplateColumns: '1fr 1fr',
             rowGap:              6,
@@ -704,10 +730,10 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
           </div>
 
           {/* Divider */}
-          <div style={{ borderTop: xd.divider, marginBottom: 8 }} />
+          <div className="cc-divider" style={{ borderTop: xd.divider, marginBottom: 8 }} />
 
           {/* ── Footer: freshness + grade | WA ── */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 'auto', minHeight: 28 }}>
+          <div className="cc-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 'auto', minHeight: 28 }}>
 
             <div style={{ minWidth: 0, overflow: 'hidden', flex: 1 }}>
               {hasGrade ? (
