@@ -119,8 +119,8 @@ export default function BodyTypeCarousel({ title, eyebrow, cars, loading, bodyTy
               : isEmpty
               ? <div style={{ width: '100%', padding: '32px 0', color: '#9ca3af', fontSize: 13, fontFamily: "'Outfit',sans-serif", textAlign: 'center' }}>No {title.toLowerCase()} listed yet</div>
               : cars.map(car => (
-                <div key={car.id} style={{ width: cardW, flexShrink: 0 }}>
-                  <CarCard car={car} ctaContext={ctaContext} />
+                <div key={car.id} style={{ width: cardW, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+                  <CarCard car={car} ctaContext={ctaContext} compact />
                 </div>
               ))
             }

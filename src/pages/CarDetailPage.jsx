@@ -165,14 +165,12 @@ const SpecHighlights = ({ car, th }) => {
   const tags = parseTags(car.features).slice(0, 8);
   if (tags.length === 0) return null;
   return (
-    <div style={{ marginBottom: 20 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-        {tags.map((tag, i) => (
-          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', border: `1px solid ${th.border}`, borderRadius: 6, fontSize: 12, color: th.text, background: th.card2, fontWeight: 500 }}>
-            <Check size={12} strokeWidth={3} style={{ color: '#dc2626', flexShrink: 0 }} /> {tag}
-          </span>
-        ))}
-      </div>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+      {tags.map((tag, i) => (
+        <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 12px', border: `1px solid ${th.border}`, borderRadius: 8, fontSize: 12, color: th.text, background: th.card2, fontWeight: 500, lineHeight: 1.25, minWidth: 0 }}>
+          <Check size={13} strokeWidth={3} style={{ color: '#dc2626', flexShrink: 0 }} /> {tag}
+        </span>
+      ))}
     </div>
   );
 };
@@ -209,10 +207,10 @@ const ReconTrust = ({ car, isXdrive }) => {
     car.interior_grade ? { label: `Grade ${car.interior_grade} interior` } : null,
   ].filter(Boolean);
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 7 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
       {chips.map((c, i) => (
-        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 500, color: chipText, background: chipBg, border: `1px solid ${chipBorder}` }}>
-          <BadgeCheck size={12} strokeWidth={2.5} style={{ color: '#dc2626', flexShrink: 0 }} /> {c.label}
+        <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500, lineHeight: 1.25, color: chipText, background: chipBg, border: `1px solid ${chipBorder}`, minWidth: 0 }}>
+          <BadgeCheck size={13} strokeWidth={2.5} style={{ color: '#dc2626', flexShrink: 0 }} /> {c.label}
         </span>
       ))}
     </div>
@@ -680,6 +678,9 @@ export default function CarDetailPage() {
   const pauseRef = useRef(false);
   const resumeTimer = useRef(null);
   const galleryTouch = useRef({ startX: 0, startY: 0 });
+  // Set when a touch turns out to be a swipe, so the trailing click (which fires
+  // on touchend) doesn't also open the lightbox — tap opens, swipe changes slide.
+  const gallerySwiped = useRef(false);
 
   function closeLb() {
     setLbOpen(false);
@@ -1000,6 +1001,7 @@ export default function CarDetailPage() {
       e.changedTouches[0].clientY - galleryTouch.current.startY,
     );
     if (Math.abs(dx) < 40 || dy > Math.abs(dx)) return;
+    gallerySwiped.current = true;
     const dir = dx < 0 ? "next" : "prev";
     const len = car?.images?.length || 1;
     go(
@@ -1209,10 +1211,13 @@ export default function CarDetailPage() {
   // ("6.5 Superfast"); strip it when we already show the litre token to avoid
   // "6.5 Superfast 6.5L".
   const engineL = car.engine_cc ? (car.engine_cc / 1000).toFixed(1) : null;
-  const variantTrim = car.variant
-    ? (engineL ? car.variant.replace(/^\s*\d\.\d\s*/, "").trim() : car.variant)
-    : "";
-  const nameplate = [car.model, variantTrim, engineL ? `${engineL}L` : "", car.year]
+  // Uploaded model/variant strings very often already bake in the displacement
+  // ("HARRIER 2.0L", "2.5L Z", "300 2.0L(T)", "6.5 Superfast"), so appending the
+  // derived litre rendered the engine size twice. Only append it when neither the
+  // model nor the variant already states a displacement (any "d.d" token).
+  const mentionsDisplacement = /\d\.\d/.test(`${car.model || ""} ${car.variant || ""}`);
+  const showEngineL = engineL && !mentionsDisplacement;
+  const nameplate = [car.model, car.variant, showEngineL ? `${engineL}L` : "", car.year]
     .filter(Boolean).join(" ")
     // Non-breaking hyphen so multi-part trims ("TYPE-R", "CX-5") don't split
     // across lines mid-word in the big display nameplate.
@@ -1810,13 +1815,16 @@ export default function CarDetailPage() {
             MOBILE LAYOUT (≤900px) — M1 through M8
             ══════════════════════════════════════════ */}
 
-        {/* M1 — Swipeable image */}
-        <div className="cdp-mobile-only" style={{ position:'relative', height:'clamp(200px,50vw,360px)', overflow:'hidden', background:'#080f18' }}
-          onTouchStart={galleryTouchStart} onTouchEnd={galleryTouchEnd}>
+        {/* M1 — Swipeable image. `contain` (not `cover`) + a slightly taller frame
+            so every uploaded photo is shown whole, never cropped, whatever its
+            aspect ratio. Letterbox fills with the dark frame colour. */}
+        <div className="cdp-mobile-only" style={{ position:'relative', height:'clamp(240px,64vw,420px)', overflow:'hidden', background:'#080f18', cursor:'zoom-in' }}
+          onTouchStart={galleryTouchStart} onTouchEnd={galleryTouchEnd}
+          onClick={() => { if (gallerySwiped.current) { gallerySwiped.current = false; return; } setLbOpen(true); }}>
           {!imgLoaded && <div className="cdp-img-shimmer" />}
           <img key={slideKey} className={`cdp-main-img cdp-slide-${slideDir}`}
             src={disp(images[activeIdx], 1280)} alt={carTitle} fetchPriority="high" decoding="async"
-            style={{ width:'100%', height:'100%', objectFit:'cover', opacity:0, transition:'opacity 0.8s ease' }}
+            style={{ width:'100%', height:'100%', objectFit:'contain', opacity:0, transition:'opacity 0.8s ease' }}
             onLoad={e => { setImgLoaded(true); e.currentTarget.style.opacity = '1'; }}
             onError={e => {
               if (images[activeIdx] && !e.currentTarget.dataset.fb && e.currentTarget.src !== images[activeIdx]) {
@@ -1829,10 +1837,6 @@ export default function CarDetailPage() {
           <div style={{ position:'absolute', bottom:14, left:14, zIndex:5, background:'rgba(6,8,15,0.7)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:20, padding:'4px 12px', fontSize:11, color:'rgba(255,255,255,0.8)', fontFamily:"system-ui,sans-serif", fontWeight:500 }}>
             {activeIdx + 1} / {imgCount}
           </div>
-          <button onClick={() => setLbOpen(true)}
-            style={{ position:'absolute', bottom:12, right:14, zIndex:5, background:'rgba(6,8,15,0.7)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:8, padding:'6px 12px', fontSize:11, color:'white', fontWeight:600, fontFamily:"system-ui,sans-serif", display:'flex', alignItems:'center', gap:5, cursor:'pointer' }}>
-            <Camera size={11} style={{ color:'#dc2626' }} /> All photos
-          </button>
           {imgCount > 1 && (() => {
             const DOT_SLOT = 12;
             const rawOffset = -(activeIdx - 2) * DOT_SLOT;
@@ -1873,41 +1877,53 @@ export default function CarDetailPage() {
         )}
 
         {/* M2 — Identity block */}
-        <div className="cdp-mobile-only" style={{ padding:'20px 20px 0' }}>
-          {/* Badge row — badges left, financing calculator shortcut on the right */}
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:16 }}>
-            <div style={{ display:'flex', flexWrap:'wrap', gap:6, minWidth:0 }}>
-              {isReserved && <span style={{ background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.22)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Reserved</span>}
-              {isRecon && <span style={{ background:'rgba(15,23,42,0.05)', border:'1px solid rgba(15,23,42,0.1)', color:'#334155', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Recon</span>}
-              {isHot   && <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.28)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Hot Deal</span>}
-              {hasDocuments && (docsVerified
-                ? <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(22,163,74,0.08)', border:'1px solid rgba(22,163,74,0.25)', color:'#16a34a', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}><BadgeCheck size={11} /> Verified Docs</span>
-                : <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(148,163,184,0.1)', border:'1px solid rgba(148,163,184,0.25)', color: isXdrive ? '#475569' : '#94a3b8', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}><FileText size={11} /> Docs on File</span>
-              )}
+        <div className="cdp-mobile-only" style={{ padding:'14px 20px 0' }}>
+          {/* Title strip — sits directly under the image, compact like the
+              marketplace cards: brand (strong) + model/variant/engine/year
+              (secondary) on a small line that wraps to a 2nd line if long, with
+              the financing calculator shortcut kept on the right. All colours are
+              from `th` so the strip stays legible on the light xdrive theme AND
+              the dark dealer-subdomain theme (was a hardcoded grey masthead that
+              went invisible on dark storefronts). */}
+          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, marginBottom:14 }}>
+            <h1 style={{
+              flex:1,
+              minWidth:0,
+              fontFamily:"'Bebas Neue',sans-serif",
+              fontSize:'clamp(1.7rem,7.5vw,2.4rem)',
+              lineHeight:1.05,
+              letterSpacing:'0.01em',
+              color: th.text,
+              margin:0,
+              display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden',
+            }}>
+              {car.brand} {nameplate}
+            </h1>
+            <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+              <button
+                onClick={() => { if (!car?.id) return; isInCompare(car.id) ? removeFromCompare(car.id) : addToCompare(car.id); }}
+                aria-label={car?.id && isInCompare(car.id) ? 'Remove from compare' : 'Add to compare'}
+                title={car?.id && isInCompare(car.id) ? 'Remove from compare' : 'Add to compare'}
+                style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:38, height:38, borderRadius:10, background: car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.12)' : th.card2, border: `1px solid ${car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.4)' : th.border}`, color: car?.id && isInCompare(car.id) ? '#dc2626' : th.textSec, cursor:'pointer' }}
+              >
+                <ArrowLeftRight size={18} />
+              </button>
+              <button
+                onClick={() => setCalcOpen(true)}
+                aria-label="Open financing calculator"
+                title="Financing calculator"
+                style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:38, height:38, borderRadius:10, background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.25)', color:'#dc2626', cursor:'pointer' }}
+              >
+                <Calculator size={18} />
+              </button>
             </div>
-            <button
-              onClick={() => setCalcOpen(true)}
-              aria-label="Open financing calculator"
-              title="Financing calculator"
-              style={{ flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', width:38, height:38, borderRadius:10, background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.25)', color:'#dc2626', cursor:'pointer' }}
-            >
-              <Calculator size={18} />
-            </button>
           </div>
-          {/* Brand — left-aligned to match the price/specs/stats column below */}
-         {/* Nameplate — brand + model, variant, engine size, year — unified single line */}
-<h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(2.6rem,9vw,3.6rem)', color: '#374151', lineHeight:0.98, letterSpacing:'0.01em', margin:'0 0 12px', overflowWrap:'break-word' }}>
-  {car.brand} {nameplate}
-</h1>
-          {dealer?.subdomain && !isSubdomain() && (
-            <a
-              href={`https://${dealer.subdomain}.xdrive.my`}
-              target="_blank" rel="noopener noreferrer"
-              style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:12, color: th.textSec, textDecoration:'none', marginBottom:12, letterSpacing:'0.02em', fontWeight:600, borderBottom:'1px solid rgba(220,38,38,0.4)', paddingBottom:1, width:'fit-content' }}
-            >
-              {dealer.site_name || dealer.dealership} <ExternalLink size={11} style={{ color:'#dc2626' }} />
-            </a>
-          )}
+          {/* Mini details (body · transmission · fuel) — sits directly under the
+              title, per layout */}
+          <p style={{ fontSize:12, color: th.textMuted, letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:600, margin:'0 0 12px' }}>
+            {[car.body_type, car.transmission, car.fuel_type].filter(Boolean).join('  ·  ')}
+          </p>
+          {/* Price section — directly under the title / mini details */}
           {isSambungCar(car) ? (
             <div style={{ marginBottom:4 }}>
               <SambungPriceBlock car={car} th={th} big="2.6rem" />
@@ -1918,36 +1934,46 @@ export default function CarDetailPage() {
               {fmtPrice(car.selling_price)}
             </p>
             {calcMonthly(car.selling_price) ? (
-              <span style={{ fontSize:12, color:'#475569' }}>
-                ~<span style={{ color:'#64748b' }}>RM {fmt(calcMonthly(car.selling_price))}</span>/mo
+              <span style={{ fontSize:12, color: th.textSec }}>
+                ~<span style={{ color: th.textMuted }}>RM {fmt(calcMonthly(car.selling_price))}</span>/mo
               </span>
             ) : car.selling_price > HIGH_VALUE_THRESHOLD ? (
-              <span style={{ fontSize:12, color:'#475569' }}>Financing available on request</span>
+              <span style={{ fontSize:12, color: th.textSec }}>Financing available on request</span>
             ) : null}
           </div>
           )}
           {!isSambungCar(car) && <MarketPriceTag car={car} isXdrive={isXdrive} th={th} />}
           {!isSambungCar(car) && isHot && (
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
-              <span style={{ fontSize:13, color:'#1e293b', textDecoration:'line-through' }}>{fmtPrice(car.original_price)}</span>
+              <span style={{ fontSize:13, color: th.textMuted, textDecoration:'line-through' }}>{fmtPrice(car.original_price)}</span>
               <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.2)', color:'#f87171', fontSize:'11px', padding:'2px 10px', borderRadius:'20px', fontWeight:600, letterSpacing:'0.04em' }}>SAVE {fmtPrice(saving)}</span>
             </div>
           )}
-          {/* Mini details — sits below the price, per layout */}
-          <p style={{ fontSize:12, color: th.textMuted, letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:600, margin:'0 0 6px' }}>
-            {[car.body_type, car.transmission, car.fuel_type].filter(Boolean).join('  ·  ')}
-          </p>
-          <div style={{ marginTop:16 }}>
-            <WarrantyBanner car={car} isXdrive={isXdrive} />
-            <ReconTrust car={car} isXdrive={isXdrive} />
-            <SpecHighlights car={car} th={th} />
-          </div>
-          <div style={{ height:1, marginBottom:20, background:'linear-gradient(to right,rgba(220,38,38,0.3),rgba(255,255,255,0.04),transparent)' }} />
-        </div>
-
-        {/* M3 — Quick stats 2×4 */}
-        <div className="cdp-mobile-only" style={{ padding:'0 20px', marginBottom:24 }}>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:2, border:`1px solid ${th.border}`, borderRadius:12, overflow:'hidden' }}>
+          {/* Seller storefront link — kept high up, right under the price, so
+              buyers actually see whose showroom this is */}
+          {dealer?.subdomain && !isSubdomain() && (
+            <a
+              href={`https://${dealer.subdomain}.xdrive.my`}
+              target="_blank" rel="noopener noreferrer"
+              style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:13, color: th.textSec, textDecoration:'none', margin:'12px 0 0', letterSpacing:'0.02em', fontWeight:600, borderBottom:'1px solid rgba(220,38,38,0.4)', paddingBottom:1, width:'fit-content' }}
+            >
+              Sold by {dealer.site_name || dealer.dealership} <ExternalLink size={12} style={{ color:'#dc2626' }} />
+            </a>
+          )}
+          {/* Status badges — the plain "Recon" chip is dropped here; the icon'd
+              Recon chip in ReconTrust below is the single source for that. */}
+          {(isReserved || isHot || hasDocuments) && (
+            <div style={{ display:'flex', flexWrap:'wrap', gap:6, minWidth:0, margin:'12px 0 0' }}>
+              {isReserved && <span style={{ background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.22)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Reserved</span>}
+              {isHot   && <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.28)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Hot Deal</span>}
+              {hasDocuments && (docsVerified
+                ? <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(22,163,74,0.08)', border:'1px solid rgba(22,163,74,0.25)', color: isXdrive ? '#16a34a' : '#4ade80', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}><BadgeCheck size={11} /> Verified Docs</span>
+                : <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(148,163,184,0.1)', border:'1px solid rgba(148,163,184,0.25)', color: isXdrive ? '#475569' : '#94a3b8', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}><FileText size={11} /> Docs on File</span>
+              )}
+            </div>
+          )}
+          {/* Quick stats grid — moved ABOVE the badges */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:2, border:`1px solid ${th.border}`, borderRadius:12, overflow:'hidden', marginTop:16 }}>
             {[
               { label:'Mileage',      value: car.mileage ? fmt(car.mileage)+' km' : '—' },
               { label:'Engine',       value: car.engine_cc ? fmt(car.engine_cc)+' cc' : '—' },
@@ -1966,6 +1992,14 @@ export default function CarDetailPage() {
               </div>
             ))}
           </div>
+          {/* Trust + feature badges — moved BELOW the stats grid, tidied into an
+              even 2-column grid (see ReconTrust / SpecHighlights) */}
+          <div style={{ marginTop:16 }}>
+            <WarrantyBanner car={car} isXdrive={isXdrive} />
+            <ReconTrust car={car} isXdrive={isXdrive} />
+            <SpecHighlights car={car} th={th} />
+          </div>
+          <div style={{ height:1, margin:'20px 0', background:'linear-gradient(to right,rgba(220,38,38,0.3),rgba(255,255,255,0.04),transparent)' }} />
         </div>
 
         {/* M4 — CTA card */}
@@ -1991,7 +2025,7 @@ export default function CarDetailPage() {
               )}
             </div>
             {car.deposit_amount > 0 && (
-              <p style={{ fontSize:11, color:'#475569', marginTop:8, textAlign:'center' }}>RM {fmt(car.deposit_amount)} deposit to reserve</p>
+              <p style={{ fontSize:11, color: th.textSec, marginTop:8, textAlign:'center' }}>RM {fmt(car.deposit_amount)} deposit to reserve</p>
             )}
             {/* Tertiary actions — quiet text links, not more buttons */}
             <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:18, marginTop:14, flexWrap:'wrap' }}>
@@ -2484,13 +2518,14 @@ export default function CarDetailPage() {
   style={{
     fontFamily: "'Bebas Neue',sans-serif",
     fontSize: "clamp(3rem,5vw,4.4rem)",
-    color: "#374151",
     lineHeight: 0.98,
     letterSpacing: "0.01em",
     marginBottom: 12,
   }}
 >
-  {car.brand} {nameplate}
+  {/* Masthead, theme-aware via `th` (was hardcoded #374151) — brand and
+      model/variant/year share one strong colour. */}
+  <span style={{ color: th.text }}>{car.brand} {nameplate}</span>
 </h1>
             <p
               style={{
@@ -2506,7 +2541,9 @@ export default function CarDetailPage() {
                 .filter(Boolean)
                 .join("  ·  ")}
             </p>
-            {(isRecon || isReserved || isHot || hasDocuments) && (
+            {/* Plain "Recon" chip dropped — the icon'd Recon chip in ReconTrust
+                below is the single source, so it isn't shown twice in one view. */}
+            {(isReserved || isHot || hasDocuments) && (
               <div
                 style={{
                   display: "flex",
@@ -2530,23 +2567,6 @@ export default function CarDetailPage() {
                     }}
                   >
                     Reserved
-                  </span>
-                )}
-                {isRecon && (
-                  <span
-                    style={{
-                      background: isXdrive ? "rgba(15,23,42,0.05)" : "rgba(255,255,255,0.06)",
-                      border: `1px solid ${isXdrive ? "rgba(15,23,42,0.1)" : "rgba(255,255,255,0.12)"}`,
-                      color: isXdrive ? "#334155" : "#cbd5e1",
-                      fontSize: "10px",
-                      padding: "4px 10px",
-                      borderRadius: "5px",
-                      letterSpacing: "0.12em",
-                      textTransform: "uppercase",
-                      fontWeight: 700,
-                    }}
-                  >
-                    Recon
                   </span>
                 )}
                 {isHot && (
@@ -2661,7 +2681,7 @@ export default function CarDetailPage() {
                       fontSize: 9,
                       textTransform: "uppercase",
                       letterSpacing: "0.16em",
-                      color: "#334155",
+                      color: th.textMuted,
                       fontWeight: 700,
                       marginBottom: 6,
                     }}
@@ -2694,7 +2714,7 @@ export default function CarDetailPage() {
                 fontSize: 10,
                 textTransform: "uppercase",
                 letterSpacing: "0.2em",
-                color: "#334155",
+                color: th.textMuted,
                 fontWeight: 700,
                 marginBottom: 14,
               }}
@@ -3574,14 +3594,8 @@ export default function CarDetailPage() {
           <HeartButton listingId={car?.id} size={20} style={isXdrive ? { color: 'rgba(0,0,0,0.5)' } : undefined} />
           <span style={{ fontSize:9, color: isXdrive ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)', fontFamily:"system-ui,sans-serif" }}>Save</span>
         </div>
-        <button
-          onClick={() => { if (!car?.id) return; isInCompare(car.id) ? removeFromCompare(car.id) : addToCompare(car.id); }}
-          style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2, background:'none', border:'none', cursor:'pointer', padding:'0 4px', flexShrink:0 }}>
-          <ArrowLeftRight size={20} color={car?.id && isInCompare(car.id) ? '#f87171' : isXdrive ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)'} />
-          <span style={{ fontSize:9, color: car?.id && isInCompare(car.id) ? '#f87171' : isXdrive ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)', fontFamily:"system-ui,sans-serif" }}>
-            {car?.id && isInCompare(car.id) ? 'Added' : 'Compare'}
-          </span>
-        </button>
+        {/* Compare moved up beside the calculator in the title strip so it isn't
+            missed; kept out of this bar to avoid duplicating it. */}
         <button className="cdp-mobile-bar-wa" onClick={handleWhatsApp}>WhatsApp</button>
         {!isOwnListing && (
         <button className="cdp-mobile-bar-book" onClick={handleBookingClick}>Book a Viewing</button>
