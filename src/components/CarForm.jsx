@@ -35,7 +35,7 @@ import DamageMap from "./DamageMap";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { useProfile, getDealerIdFromProfile } from "../hooks/useProfile";
-import { lookupMYCar, isMYBrand } from "../data/malayCars";
+import { lookupFullSpec } from "../utils/carSpecs";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { getListingGaps } from "../utils/listingCompleteness";
 import { decodeVin, isLikelyVin } from "../utils/vinDecode";
@@ -1375,11 +1375,10 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       setAutoFilled(true);
     };
 
-    // 1. Try local Malaysian brands first (no network cost)
-    if (isMYBrand(form.brand)) {
-      const local = lookupMYCar(form.brand, form.model, y);
-      if (local) { applySpec(local); return; }
-    }
+    // 1. Try the curated local table first, for ANY brand (no network cost).
+    //    Covers Perodua/Proton + the common CBU sellers with Malaysian-spec data.
+    const local = lookupFullSpec(form.brand, form.model, y);
+    if (local) { applySpec(local); return; }
 
     // 2. Check localStorage cache
     try {
