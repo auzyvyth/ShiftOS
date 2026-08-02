@@ -1018,18 +1018,12 @@ function Field({ label, required, hint, children }) {
 // blocks the wizard. State lives here because renderSectionContent is a plain
 // function call, not a component (Rules of Hooks).
 function MoreDetails({ children, label = "More details (optional)" }) {
-  const [open, setOpen] = useState(false);
+  // Optional specs are shown inline (no collapse) so nothing useful stays hidden
+  // behind a toggle — a filled-in listing scores higher and converts better.
   return (
     <div>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
-      >
-        {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        {label}
-      </button>
-      {open && <div className="mt-4 space-y-4">{children}</div>}
+      <p className="text-sm font-medium text-gray-500">{label}</p>
+      <div className="mt-4 space-y-4">{children}</div>
     </div>
   );
 }
@@ -3063,6 +3057,23 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 </>
               );
             })()}
+          </Field>
+          <Field
+            label="Warranty (months)"
+            hint="Warranty offered with this car — shown to buyers"
+          >
+            <input
+              type="number"
+              name="warranty_months"
+              value={form.warranty_months}
+              onChange={handleChange}
+              placeholder="e.g. 6"
+              min="0"
+              max="120"
+              enterKeyHint="next"
+              inputMode="numeric"
+              className={inputCls}
+            />
           </Field>
           </>
           )}
