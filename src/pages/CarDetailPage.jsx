@@ -1901,14 +1901,24 @@ export default function CarDetailPage() {
             }}>
               {car.brand} {nameplate}
             </h1>
-            <button
-              onClick={() => setCalcOpen(true)}
-              aria-label="Open financing calculator"
-              title="Financing calculator"
-              style={{ flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', width:38, height:38, borderRadius:10, background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.25)', color:'#dc2626', cursor:'pointer' }}
-            >
-              <Calculator size={18} />
-            </button>
+            <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+              <button
+                onClick={() => { if (!car?.id) return; isInCompare(car.id) ? removeFromCompare(car.id) : addToCompare(car.id); }}
+                aria-label={car?.id && isInCompare(car.id) ? 'Remove from compare' : 'Add to compare'}
+                title={car?.id && isInCompare(car.id) ? 'Remove from compare' : 'Add to compare'}
+                style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:38, height:38, borderRadius:10, background: car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.12)' : th.card2, border: `1px solid ${car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.4)' : th.border}`, color: car?.id && isInCompare(car.id) ? '#dc2626' : th.textSec, cursor:'pointer' }}
+              >
+                <ArrowLeftRight size={18} />
+              </button>
+              <button
+                onClick={() => setCalcOpen(true)}
+                aria-label="Open financing calculator"
+                title="Financing calculator"
+                style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:38, height:38, borderRadius:10, background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.25)', color:'#dc2626', cursor:'pointer' }}
+              >
+                <Calculator size={18} />
+              </button>
+            </div>
           </div>
           {/* Mini details (body · transmission · fuel) — sits directly under the
               title, per layout */}
@@ -3587,14 +3597,8 @@ export default function CarDetailPage() {
           <HeartButton listingId={car?.id} size={20} style={isXdrive ? { color: 'rgba(0,0,0,0.5)' } : undefined} />
           <span style={{ fontSize:9, color: isXdrive ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)', fontFamily:"system-ui,sans-serif" }}>Save</span>
         </div>
-        <button
-          onClick={() => { if (!car?.id) return; isInCompare(car.id) ? removeFromCompare(car.id) : addToCompare(car.id); }}
-          style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2, background:'none', border:'none', cursor:'pointer', padding:'0 4px', flexShrink:0 }}>
-          <ArrowLeftRight size={20} color={car?.id && isInCompare(car.id) ? '#f87171' : isXdrive ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)'} />
-          <span style={{ fontSize:9, color: car?.id && isInCompare(car.id) ? '#f87171' : isXdrive ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)', fontFamily:"system-ui,sans-serif" }}>
-            {car?.id && isInCompare(car.id) ? 'Added' : 'Compare'}
-          </span>
-        </button>
+        {/* Compare moved up beside the calculator in the title strip so it isn't
+            missed; kept out of this bar to avoid duplicating it. */}
         <button className="cdp-mobile-bar-wa" onClick={handleWhatsApp}>WhatsApp</button>
         {!isOwnListing && (
         <button className="cdp-mobile-bar-book" onClick={handleBookingClick}>Book a Viewing</button>
