@@ -14,6 +14,7 @@ import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import SalesmanLiteHelp from "../components/SalesmanLiteHelp";
 import ChannelBreakdown from "../components/ChannelBreakdown";
+import ShareMenu from "../components/ShareMenu";
 import ReportBugButton from "../components/ReportBugButton";
 import {
   LogOut,
@@ -606,7 +607,7 @@ export default function SalesmanLite() {
   // listed anonymously. If IC is missing, prompt for it inline instead of opening
   // the form.
   function openAddListing() {
-    if (profile && !profile.ic_number) {
+    if (profile && !profile.ic_hash) {
       setIcGateVal("");
       setIcGateOpen(true);
       return;
@@ -619,17 +620,19 @@ export default function SalesmanLite() {
     if (digits.length !== 12) { toast.error(t("salesmanLite.toast.icInvalid")); return; }
     setIcGateSaving(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ ic_number: digits, ic_deadline: null })
-        .eq("id", userId);
+      // Hash + store server-side (set_my_ic): the IC is never persisted in
+      // plaintext, only a per-user-salted SHA-256 hash + last-4 for display.
+      const { data: last4, error } = await supabase.rpc("set_my_ic", { p_ic: digits });
       if (error) throw error;
-      setProfile((p) => ({ ...p, ic_number: digits, ic_deadline: null }));
+      setProfile((p) => ({ ...p, ic_hash: "set", ic_last4: last4 || digits.slice(-4), ic_verified_at: new Date().toISOString(), ic_deadline: null }));
       setIcGateOpen(false);
-      setShowAddForm(true);
+      // Only jump into the add-listing form when the gate was opened from that
+      // flow — the 2-week enforcement gate can fire with no form pending.
+      if (icEnforced) setShowAddForm(false); else setShowAddForm(true);
       toast.success(t("salesmanLite.toast.icVerified"));
     } catch (e) {
-      toast.error(e.message || t("salesmanLite.toast.icSaveFailed"));
+      const msg = e.message === "invalid_ic" ? t("salesmanLite.toast.icInvalid") : (e.message || t("salesmanLite.toast.icSaveFailed"));
+      toast.error(msg);
     } finally {
       setIcGateSaving(false);
     }
@@ -646,6 +649,21 @@ export default function SalesmanLite() {
   const [icGateOpen, setIcGateOpen] = useState(false);
   const [icGateVal, setIcGateVal] = useState("");
   const [icGateSaving, setIcGateSaving] = useState(false);
+  // 2-week KYC enforcement: 14 days after signup, a salesman with no IC on file
+  // is hard-blocked until they verify (stored hashed). Before then IC is optional
+  // (only the listing action is gated). Keyed on the account's created_at.
+  const icEnforced = !!(
+    profile && !profile.ic_hash && profile.created_at &&
+    (Date.now() - new Date(profile.created_at).getTime()) >= 14 * 86400000
+  );
+  useEffect(() => {
+    if (icEnforced) { setIcGateVal(""); setIcGateOpen(true); }
+  }, [icEnforced]);
+  useEffect(() => {
+    if (!icGateOpen) return;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [icGateOpen]);
 
   // leads
   const [leads, setLeads] = useState([]);
@@ -729,7 +747,6 @@ export default function SalesmanLite() {
     city: "",
     state: "",
     location: "",
-    ic_number: "",
     instagram: "",
     tiktok: "",
     facebook: "",
@@ -785,6 +802,8 @@ export default function SalesmanLite() {
   const [carStatsMap, setCarStatsMap] = useState({});
   // per-car share-channel breakdown: { [car_id]: [{ channel, views, enquiries }] }
   const [channelMap, setChannelMap] = useState({});
+  // Mini-page (/s/:slug) footprint stats: { visits, cardClicks, byChannel: [{ channel, visits, card_clicks }] }
+  const [minipageStats, setMinipageStats] = useState({ visits: 0, cardClicks: 0, byChannel: [] });
   const [cvrHover, setCvrHover] = useState(null);
 
   // car detail popup
@@ -969,7 +988,6 @@ export default function SalesmanLite() {
         city: profile.city || "",
         state: profile.state || "",
         location: profile.location || "",
-        ic_number: profile.ic_number || "",
         instagram: profile.instagram || "",
         tiktok: profile.tiktok || "",
         facebook: profile.facebook || "",
@@ -1010,7 +1028,7 @@ export default function SalesmanLite() {
 
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, location, ic_number, account_status, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
+        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, location, ic_hash, ic_last4, ic_verified_at, ic_deadline, created_at, account_status, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
         .eq("id", uid)
         .maybeSingle();
 
@@ -1188,6 +1206,20 @@ export default function SalesmanLite() {
                   });
                 });
                 setChannelMap(chMap);
+              });
+
+            // Mini-page footprints (page visits + card clicks) broken down by
+            // the platform each visitor arrived through.
+            supabase
+              .rpc("get_salesman_minipage_stats", { p_slug: profileData.slug })
+              .then(({ data: mpRows, error: mpErr }) => {
+                if (mpErr) { console.error("fetchMinipageStats:", mpErr); return; }
+                const rows = mpRows || [];
+                setMinipageStats({
+                  visits:     rows.reduce((s, r) => s + (Number(r.visits) || 0), 0),
+                  cardClicks: rows.reduce((s, r) => s + (Number(r.card_clicks) || 0), 0),
+                  byChannel:  rows,
+                });
               });
           }
         });
@@ -2622,6 +2654,7 @@ export default function SalesmanLite() {
               <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 18 : 28, flexWrap: "wrap" }}>
                 {[
                   { label: t("salesmanLite.dash.buyerViews"), value: totalViews || 0, color: "#f1f5f9" },
+                  { label: t("salesmanLite.dash.pageVisits"), value: minipageStats.visits || 0, color: "#60a5fa" },
                   { label: t("salesmanLite.dash.waTaps"), value: totalWATaps || 0, color: "#22c55e" },
                   { label: t("salesmanLite.kpi.liveListings"), value: available.length, color: "#f1f5f9" },
                 ].map(({ label, value, color }) => (
@@ -2649,13 +2682,40 @@ export default function SalesmanLite() {
                     href={`/s/${profile.slug}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    title="Opens on this environment (preview/staging shows this build; xdrive.my is the real address to share)"
+                    title="Buka halaman mini anda dalam tab baharu"
                     style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 180px", minWidth: 0, fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(37,99,235,0.07)", border: "1px solid rgba(37,99,235,0.2)", color: "#93c5fd", textDecoration: "none", fontWeight: 600, fontFamily: "inherit" }}
                   >
                     <ExternalLink size={11} />
                     <span style={{ flex: 1 }}>Lihat halaman mini anda</span>
                     <ChevronRight size={11} style={{ flexShrink: 0, opacity: 0.5 }} />
                   </a>
+                  {/* Per-platform share: each option tags the link with ?src=<channel>
+                      so a click's origin is attributed reliably (not just guessed
+                      from the in-app browser). Always points at the real xdrive.my
+                      domain and carries ?ref so downstream car-page leads credit
+                      this agent. */}
+                  <ShareMenu
+                    baseUrl={`https://xdrive.my/s/${profile.slug}`}
+                    refSlug={profile.slug}
+                    waCaption={(url) => `Tengok senarai kereta saya di XDrive:\n${url}`}
+                    dark
+                    label="Kongsi"
+                    style={{ flex: "1 1 120px", justifyContent: "center", padding: "9px 12px", fontSize: 11 }}
+                  />
+                </div>
+              )}
+              {/* Where the mini-page footprints came from (Instagram / Facebook /
+                  TikTok / WhatsApp / …), so the agent knows which channel works. */}
+              {minipageStats.byChannel.length > 0 && (
+                <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                  <ChannelBreakdown
+                    rows={minipageStats.byChannel.map((r) => ({ channel: r.channel, views: Number(r.visits) || 0, enquiries: Number(r.card_clicks) || 0 }))}
+                    metric="views"
+                    title={t("salesmanLite.dash.minipageTrafficBy")}
+                    viewsLabel="visits"
+                    enquiriesLabel="clicks"
+                    compact
+                  />
                 </div>
               )}
             </div>
@@ -6720,7 +6780,6 @@ export default function SalesmanLite() {
           city: settingsForm.city || null,
           state: settingsForm.state || null,
           location: settingsForm.location || null,
-          ic_number: settingsForm.ic_number || null,
           instagram: settingsForm.instagram || null,
           tiktok: settingsForm.tiktok || null,
           facebook: settingsForm.facebook || null,
@@ -6741,7 +6800,6 @@ export default function SalesmanLite() {
         city: settingsForm.city || null,
         state: settingsForm.state || null,
         location: settingsForm.location || null,
-        ic_number: settingsForm.ic_number || null,
         instagram: settingsForm.instagram || null,
         tiktok: settingsForm.tiktok || null,
         facebook: settingsForm.facebook || null,
@@ -6899,7 +6957,22 @@ export default function SalesmanLite() {
             </div>
             <div>
               <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.icNumber")} <span style={{ color: "#4b5563" }}>{t("salesmanLite.settings.icPrivate")}</span></label>
-              <input value={settingsForm.ic_number} onChange={(e) => setSettingsForm((p) => ({ ...p, ic_number: e.target.value }))} placeholder="e.g. 901231-14-1234" style={inputStyle} />
+              {/* IC is verify-only: stored hashed via set_my_ic, never editable as
+                  plaintext. Verified rows show a masked last-4; unverified show a
+                  button that opens the hashing gate. */}
+              {profile?.ic_hash ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 13px", borderRadius: 8, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)" }}>
+                  <ShieldCheck size={15} style={{ color: "#22c55e", flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, color: "#e5e7eb", fontWeight: 600 }}>Verified · •••• •• {profile.ic_last4 || "••••"}</span>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setIcGateVal(""); setIcGateOpen(true); }}
+                  style={{ display: "flex", alignItems: "center", gap: 7, padding: "11px 13px", borderRadius: 8, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", width: "100%" }}
+                >
+                  <ShieldCheck size={15} style={{ flexShrink: 0 }} /> Verify your IC
+                </button>
+              )}
               <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.settings.icHint")}</p>
             </div>
           </div>
@@ -8372,10 +8445,11 @@ export default function SalesmanLite() {
         saving={sellerBookingSaving}
       />
 
-      {/* IC gate — required before a car can be listed (no anonymous sellers) */}
+      {/* IC gate — required before a car can be listed, and hard-enforced 2 weeks
+          after signup (icEnforced). Stored HASHED (set_my_ic), never plaintext. */}
       {icGateOpen && (
         <div
-          onClick={() => !icGateSaving && setIcGateOpen(false)}
+          onClick={() => { if (!icGateSaving && !icEnforced) setIcGateOpen(false); }}
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px" }}
         >
           <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 12, width: "90%", maxWidth: 420, padding: 24 }}>
@@ -8383,10 +8457,14 @@ export default function SalesmanLite() {
               <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(220,38,38,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <ShieldCheck size={18} style={{ color: "#f87171" }} />
               </div>
-              <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Verify your IC to list cars</p>
+              <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>
+                {icEnforced ? "Verify your IC to continue" : "Verify your IC to list cars"}
+              </p>
             </div>
             <p style={{ margin: "0 0 16px", fontSize: 13, color: "#9ca3af", lineHeight: 1.6 }}>
-              Buyers need to know they're dealing with a real, accountable seller. Enter your MyKad IC once — it's stored securely and only used for verification. This is required before any car goes live on xdrive.my.
+              {icEnforced
+                ? "Your 2-week grace period is up. Verify your MyKad IC to keep using your dashboard — it's required for every active seller on xdrive.my."
+                : "Buyers need to know they're dealing with a real, accountable seller. Enter your MyKad IC once — it's required before any car goes live on xdrive.my."}
             </p>
             <label style={{ display: "block", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b7280", marginBottom: 7 }}>IC Number (MyKad)</label>
             <input
@@ -8398,7 +8476,7 @@ export default function SalesmanLite() {
               onKeyDown={(e) => { if (e.key === "Enter") saveIcAndList(); }}
               style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#e5e7eb", fontSize: 15, padding: "11px 13px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
             />
-            <p style={{ margin: "7px 0 0", fontSize: 11, color: "#6b7280" }}>12 digits · stored encrypted, verification only.</p>
+            <p style={{ margin: "7px 0 0", fontSize: 11, color: "#6b7280" }}>12 digits · stored hashed (never in plaintext), verification only.</p>
             <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
               <button
                 onClick={saveIcAndList}
@@ -8407,12 +8485,14 @@ export default function SalesmanLite() {
               >
                 {icGateSaving ? "Verifying…" : "Verify & continue"}
               </button>
-              <button
-                onClick={() => !icGateSaving && setIcGateOpen(false)}
-                style={{ fontSize: 13, fontWeight: 600, padding: "11px 16px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}
-              >
-                Later
-              </button>
+              {!icEnforced && (
+                <button
+                  onClick={() => !icGateSaving && setIcGateOpen(false)}
+                  style={{ fontSize: 13, fontWeight: 600, padding: "11px 16px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}
+                >
+                  Later
+                </button>
+              )}
             </div>
           </div>
         </div>

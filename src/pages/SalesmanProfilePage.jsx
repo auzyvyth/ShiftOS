@@ -5,6 +5,8 @@ import { Clock, LayoutDashboard, MapPin, ChevronRight } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import ReviewsSection from '../components/reviews/ReviewsSection';
 import { ROLE_ROUTES } from '../hooks/useRoleRedirect';
+import { trackEvent } from '../utils/analytics';
+import { captureRef } from '../utils/refTracking';
 
 const fmt = (n) => Number(n).toLocaleString('en-MY');
 
@@ -42,6 +44,27 @@ export default function SalesmanProfilePage() {
   const bioRef = useRef(null);
   const [bioOverflows, setBioOverflows] = useState(false);
   const [viewerDashboardRoute, setViewerDashboardRoute] = useState(null);
+  // Fire the mini-page visit exactly once per mount (StrictMode double-invokes).
+  const visitTracked = useRef(false);
+
+  // Detect the arrival platform (Instagram/Facebook/TikTok/WhatsApp… via the
+  // in-app browser UA or referrer) and stash it so every footprint we log below
+  // carries a channel. Runs first, before any trackEvent fires.
+  useEffect(() => { captureRef(); }, []);
+
+  // A card tap is a footprint even though it navigates away — fire-and-forget so
+  // navigation isn't blocked. Slug-keyed so it lands in the agent's own analytics;
+  // dealer_id lets the parent dealer see it too.
+  const trackCardClick = (car) => {
+    if (!car) return;
+    trackEvent(supabase, 'minipage_card_click', {
+      car_id: car.id,
+      car_name: [car.year, car.brand, car.model, car.variant].filter(Boolean).join(' '),
+      dealer_id: car.dealer_id || profile?.dealer_id || profile?.id || null,
+      salesman_slug: slug,
+      metadata: { source: 'minipage_card' },
+    });
+  };
 
   // If the visitor is logged in, surface a quick way back to their own
   // dashboard — most useful when a salesman previews their own mini page
@@ -86,12 +109,22 @@ export default function SalesmanProfilePage() {
       if (!p) { setNotFound(true); setLoading(false); return; }
       setProfile(p);
 
+      // Log the mini-page visit (footprint). Keyed on the agent's slug so it
+      // shows in their own dashboard; dealer_id so the parent dealer sees it.
+      if (!visitTracked.current) {
+        visitTracked.current = true;
+        trackEvent(supabase, 'minipage_view', {
+          salesman_slug: slug,
+          dealer_id: p.dealer_id || p.id,
+        });
+      }
+
       const [ownedRes, assignedRes, featuredRes, soldOwnedRes, soldAssignedRes] = await Promise.all([
         supabase.from('public_car_listings')
-          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour')
+          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id')
           .eq('dealer_id', p.id).in('status', ['available', 'reserved']).order('created_at', { ascending: false }),
         supabase.from('public_car_listings')
-          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour')
+          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id')
           .eq('assigned_to', p.id).in('status', ['available', 'reserved']).order('created_at', { ascending: false }),
         // Linked salesmen feature dealer cars via salesman_listings (car stays
         // owned by the dealer, assigned_to null) — the two queries above miss
@@ -429,7 +462,7 @@ export default function SalesmanProfilePage() {
         {featured && (
           <div style={{ maxWidth: 640, margin: '0 auto', padding: '28px clamp(14px, 5vw, 24px) 0' }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 12 }}>Featured</p>
-            <Link to={`/showroom/${featured.slug}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+            <Link to={`/showroom/${featured.slug}`} onClick={() => trackCardClick(featured)} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
               <div className="sp-card" style={{ background: '#0d1117', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, overflow: 'hidden' }}>
                 <div style={{ position: 'relative', paddingTop: '48%', background: '#0a0e18', overflow: 'hidden' }}>
                   {featured.images?.[0] ? (
@@ -479,7 +512,7 @@ export default function SalesmanProfilePage() {
                 {rest.map(car => {
                   const img = Array.isArray(car.images) ? car.images[0] : null;
                   return (
-                    <Link key={car.id} to={`/showroom/${car.slug}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block', minWidth: 0 }}>
+                    <Link key={car.id} to={`/showroom/${car.slug}`} onClick={() => trackCardClick(car)} style={{ textDecoration: 'none', color: 'inherit', display: 'block', minWidth: 0 }}>
                       <div className="sp-card"
                         style={{ background: '#0d1117', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden' }}>
                         <div style={{ position: 'relative', paddingTop: '65%', background: '#0a0e18', overflow: 'hidden' }}>

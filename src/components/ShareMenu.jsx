@@ -1,16 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Share2, MessageCircle, Facebook, Music2, Link2 } from 'lucide-react';
+import { Share2, MessageCircle, Facebook, Instagram, Music2, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 // Per-channel share dropdown. Each option opens/copies a link tagged with
 // ?src=<channel> so the analytics dashboard can attribute clicks by platform.
 // Portal-rendered + fixed-positioned so a card's overflow can't clip it.
 const CHANNELS = [
-  { key: 'whatsapp', label: 'WhatsApp',            Icon: MessageCircle, color: '#25D366' },
-  { key: 'facebook', label: 'Facebook',            Icon: Facebook,      color: '#1877F2' },
-  { key: 'tiktok',   label: 'TikTok — copy for bio', Icon: Music2,      color: '#111827' },
-  { key: 'copy',     label: 'Copy link',           Icon: Link2,         color: '#6b7280' },
+  { key: 'whatsapp',  label: 'WhatsApp',                 Icon: MessageCircle, color: '#25D366' },
+  { key: 'facebook',  label: 'Facebook',                 Icon: Facebook,      color: '#1877F2' },
+  { key: 'instagram', label: 'Instagram — copy for bio', Icon: Instagram,     color: '#E4405F' },
+  { key: 'tiktok',    label: 'TikTok — copy for bio',    Icon: Music2,        color: '#111827' },
+  { key: 'copy',      label: 'Copy link',                Icon: Link2,         color: '#6b7280' },
 ];
 
 export default function ShareMenu({ baseUrl, refSlug, waCaption, dark = false, label = 'Share', compact = false, style }) {
@@ -59,6 +60,9 @@ export default function ShareMenu({ baseUrl, refSlug, waCaption, dark = false, l
       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
     } else if (channel === 'facebook') {
       window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank', 'noopener,width=620,height=540');
+    } else if (channel === 'instagram') {
+      navigator.clipboard?.writeText(url);
+      toast.success('Link copied — paste it in your Instagram bio or story');
     } else if (channel === 'tiktok') {
       navigator.clipboard?.writeText(url);
       toast.success('Link copied — paste it in your TikTok bio or caption');

@@ -376,11 +376,17 @@ export default function SalesmanOnboarding() {
         const { error } = await supabase.from('profiles').upsert({
           id: userId,
           full_name: form.fullName.trim(),
-          ic_number: form.icNumber.replace(/-/g, ''),
           role: 'salesman',
           onboarding_complete: false,
         }, { onConflict: 'id' });
         if (error) throw error;
+        // Hash + store the IC (never plaintext). The form keeps the raw value; the
+        // profile only ever holds a salted SHA-256 hash + last-4 via set_my_ic.
+        const icDigits = form.icNumber.replace(/\D/g, '');
+        if (icDigits.length === 12) {
+          const { error: icErr } = await supabase.rpc('set_my_ic', { p_ic: icDigits });
+          if (icErr) throw icErr;
+        }
       }
       setStep(3);
     } catch (e) {
@@ -449,10 +455,9 @@ export default function SalesmanOnboarding() {
         // read whatsapp_number — the onboarding phone is useless unless we also
         // seed it here, otherwise buyers get "dealer hasn't added a WhatsApp number".
         whatsapp_number: normalizePhone(form.phone),
-        // IC is deferred-friendly: signing up no longer requires it. When skipped
-        // we store null and stamp a soft deadline (verification is required before
-        // listings go live on the public marketplace, not to use the panel).
-        ic_number: form.icNumber ? form.icNumber.replace(/-/g, '') : null,
+        // IC is deferred-friendly: signing up no longer requires it. When provided,
+        // it's hashed right after this upsert via set_my_ic (never stored plaintext).
+        // When skipped we stamp a soft deadline; the panel hard-enforces at 2 weeks.
         role: 'salesman',
         slug: form.slug,
         dealership: (form.brand || form.fullName).trim(),
@@ -466,9 +471,15 @@ export default function SalesmanOnboarding() {
         payment_status: tier === 'premium' ? 'pending' : null,
         pdpa_consent: true,
         pdpa_consent_at: new Date().toISOString(),
-        ic_deadline: form.icNumber ? null : new Date(Date.now() + 30 * 86400000).toISOString(),
+        ic_deadline: form.icNumber ? null : new Date(Date.now() + 14 * 86400000).toISOString(),
       }, { onConflict: 'id' });
       if (error) throw error;
+      // Hash + persist the IC (never plaintext) once the profile row exists.
+      const icDigits = (form.icNumber || '').replace(/\D/g, '');
+      if (icDigits.length === 12) {
+        const { error: icErr } = await supabase.rpc('set_my_ic', { p_ic: icDigits });
+        if (icErr) throw icErr;
+      }
       sessionStorage.removeItem('ob_agreed');
       sessionStorage.removeItem('ob_plan_slug');
       sessionStorage.removeItem('ob_account_type');

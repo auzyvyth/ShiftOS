@@ -12,6 +12,8 @@ export default function ChannelBreakdown({
   title = "Traffic by platform",
   emptyHint = "No attributed traffic yet — share this link to start tracking.",
   compact = false,
+  viewsLabel = "views",
+  enquiriesLabel = "WA",
 }) {
   // Sum by channel in case the caller passes multiple rows per channel.
   const agg = {};
@@ -94,11 +96,11 @@ export default function ChannelBreakdown({
                     </span>
                   </span>
                   <span style={{ flexShrink: 0, fontSize: 11.5, color: "#9ca3af" }}>
-                    <strong style={{ color: "#f1f5f9", fontWeight: 700 }}>{r.views}</strong> views
+                    <strong style={{ color: "#f1f5f9", fontWeight: 700 }}>{r.views}</strong> {viewsLabel}
                     {r.enquiries > 0 && (
                       <>
                         {" · "}
-                        <strong style={{ color: "#4ade80", fontWeight: 700 }}>{r.enquiries}</strong> WA
+                        <strong style={{ color: "#4ade80", fontWeight: 700 }}>{r.enquiries}</strong> {enquiriesLabel}
                       </>
                     )}
                   </span>
