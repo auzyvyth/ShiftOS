@@ -301,12 +301,16 @@ no location/map/hours, no real reviews, no on-site finance/trade-in tools.
   marketplace-only (:1326), 4.9-star fake stat removed, fake "RM 0 / Free Consultation"
   stat removed (stats strip now 2 real cells: In Stock + Cars Sold). Default testimonials no longer
   fall back on storefronts (subdomain shows real reviews or the section is hidden
-  entirely). STILL OPEN:
-  1. Add a real contact/location block (address, hours, map/click-to-call) — no
-     such block exists today; render dealer logo (site_logo_url) in storefront header.
-  2. (Optional) Google reviews integration — pull live reviews via Google Places
+  entirely). Contact/location block DONE (2026-08-03): storefront "Visit Us" card
+  shows the full street address with a Google Maps "Get Directions" link (no API
+  key — a maps-search URL built from the address) + a new Opening Hours card;
+  dealer logo already renders in the storefront header (RF-1). Settings gained a
+  Street Address (location) editor + multi-line Business Hours field; new
+  profiles.business_hours column + get_dealer_profile_by_subdomain RPC recreated to
+  return it (grants restored, verified as anon). STILL OPEN (both optional):
+  1. (Optional) Google reviews integration — pull live reviews via Google Places
      API (needs Maps Platform API key + per-dealer place_id + edge-function proxy).
-  3. (Optional) demote hero carousel + add on-page inventory search/filter; detail
+  2. (Optional) demote hero carousel + add on-page inventory search/filter; detail
      page can adopt dconcept.my framed gallery + status+code line + clean spec grid.
 
 ### DEALER DASHBOARD UX/BUG AUDIT (2026-06-07) — all DASH-1..9 shipped
