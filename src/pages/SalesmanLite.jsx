@@ -1947,12 +1947,24 @@ export default function SalesmanLite() {
 
   const autoUpsertLeadFromAppt = async (apt) => {
     const phone = normalizePhone(apt.buyer_phone);
-    if (!phone) return;
-    const { data: existingRows, error: lookErr } = await supabase
-      .from("leads").select("id, stage").eq("salesman_id", userId).eq("phone", phone)
-      .order("created_at", { ascending: false }).limit(1);
-    if (lookErr) console.error("autoUpsertLeadFromAppt lookup:", lookErr);
-    const existing = existingRows && existingRows[0];
+    // Prefer the lead this booking is already tied to. Falling straight to a
+    // phone match picks only the single newest lead with that number, so a
+    // duplicate (e.g. an old "won" sibling) could be returned and left alone —
+    // silently skipping the advance and leaving the real booking out of Booked.
+    let existing = null;
+    if (apt.lead_id) {
+      const { data: linked } = await supabase
+        .from("leads").select("id, stage").eq("id", apt.lead_id).maybeSingle();
+      if (linked) existing = linked;
+    }
+    if (!existing) {
+      if (!phone) return;
+      const { data: existingRows, error: lookErr } = await supabase
+        .from("leads").select("id, stage").eq("salesman_id", userId).eq("phone", phone)
+        .order("created_at", { ascending: false }).limit(1);
+      if (lookErr) console.error("autoUpsertLeadFromAppt lookup:", lookErr);
+      existing = existingRows && existingRows[0];
+    }
     const viewIdx = LEAD_STAGES.indexOf("viewing_booked");
     if (existing) {
       const curIdx = LEAD_STAGES.indexOf(existing.stage);
@@ -1996,28 +2008,43 @@ export default function SalesmanLite() {
         toast.error(t("salesmanLite.toast.stageUpdateFailed"));
         return;
       }
-      if (newLead) { setLeads((p) => [newLead, ...p]); toast.success(t("salesmanLite.toast.createdAtViewingBooked")); }
+      if (newLead) {
+        setLeads((p) => [newLead, ...p]);
+        toast.success(t("salesmanLite.toast.createdAtViewingBooked"));
+        // Tie the booking to the lead it just created so a later confirm/advance
+        // matches by id instead of re-inserting a duplicate off the phone.
+        if (!apt.lead_id) {
+          await supabase.from("appointments").update({ lead_id: newLead.id }).eq("id", apt.id);
+          setAppointments((p) => p.map((a) => a.id === apt.id ? { ...a, lead_id: newLead.id } : a));
+        }
+      }
     }
   };
 
-  // Confirm-booking modal "Send" — open WhatsApp FIRST (must be synchronous in
-  // the click gesture or the popup gets blocked), then mark the booking
-  // confirmed + create/advance the lead + schedule the reminder in the
-  // background, and close the modal.
+  // Confirm-booking modal "Send" — persist the confirm + lead advance FIRST,
+  // then open WhatsApp. WhatsApp-first backgrounds the page on mobile before the
+  // writes fire, which left confirmed bookings out of the Booked pipeline stage.
   const sendConfirmBooking = async () => {
     const apt = confirmBookingApt;
     if (!apt || !apt.buyer_phone) return;
     const phone = apt.buyer_phone.replace(/\D/g, "");
     const waPhone = phone.startsWith("6") ? phone : "6" + phone;
-    window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(confirmBookingMsg)}`, "_blank", "noopener,noreferrer");
+    const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(confirmBookingMsg)}`;
     setConfirmBookingApt(null);
     setConfirmBookingMsg("");
-    toast.success(t("salesmanLite.toast.bookingConfirmed"));
-    // Await the lead upsert so a booked lead reliably lands in the pipeline and
-    // any RLS/constraint failure surfaces as a toast instead of vanishing.
+    // Persist the confirm + advance the lead into the "Booked" pipeline stage
+    // BEFORE opening WhatsApp. Opening WhatsApp first backgrounds this page on
+    // mobile before these requests are dispatched, so the booking confirmed but
+    // the lead never moved into Booked. Writes first (page still foregrounded),
+    // WhatsApp second.
     await updateApptStatus(apt.id, "confirmed");
     await autoUpsertLeadFromAppt(apt);
     scheduleAptReminder(apt);
+    toast.success(t("salesmanLite.toast.bookingConfirmed"));
+    // After the awaits we're outside the tap gesture, so a popup can be blocked
+    // on mobile — fall back to a same-tab navigation, which is never blocked.
+    const waWin = window.open(waUrl, "_blank", "noopener,noreferrer");
+    if (!waWin) window.location.href = waUrl;
   };
 
   // Default seller-booking slot: tomorrow 11:00, formatted for datetime-local.
