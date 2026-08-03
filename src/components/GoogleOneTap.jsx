@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
-import { ensureBuyerProfile } from '../lib/buyerAuth';
+import { ensureBuyerProfile, markBuyerIntent } from '../lib/buyerAuth';
 import { isSubdomain } from '../hooks/useTenant';
 
 // Google One Tap sign-in for new, signed-out marketplace visitors.
@@ -89,11 +89,23 @@ export default function GoogleOneTap() {
             token: response.credential,
             nonce: raw,
           });
-          if (error) { console.warn('[GoogleOneTap]', error.message); return; }
+          // The ID-token path can reject if the nonce or the Supabase "Authorized
+          // Client IDs" list is out of sync — which used to make the tap silently
+          // do nothing. Fall back to the standard OAuth redirect (the exact flow
+          // /buyer-login uses) so the user still gets signed in.
+          if (error || !data?.session) {
+            if (error) console.warn('[GoogleOneTap]', error.message);
+            markBuyerIntent(); // /auth/callback materialises a buyer profile -> /account
+            await supabase.auth.signInWithOAuth({
+              provider: 'google',
+              options: { redirectTo: `${window.location.origin}/auth/callback` },
+            });
+            return;
+          }
           // One Tap sets the session directly (no /auth/callback), so materialise
-          // the buyer profile here, then refresh so auth-aware UI updates.
+          // the buyer profile here, then land them on their buyer dashboard.
           await ensureBuyerProfile(data.user);
-          window.location.reload();
+          window.location.assign('/account');
         },
       });
 

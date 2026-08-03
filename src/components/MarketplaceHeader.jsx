@@ -98,6 +98,16 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
 
   useEffect(() => { if (searchOpen) searchInputRef.current?.focus(); }, [searchOpen]);
 
+  // Lock the page behind the open mobile menu so it can't scroll away (which,
+  // with the menu living inside the sticky header, made the whole sheet ride up
+  // and reveal the hero). Restored on close.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [menuOpen]);
+
   const submitSearch = (e) => {
     e?.preventDefault();
     const s = q.trim();
@@ -216,7 +226,9 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
 
         /* mobile */
         .mh-burger { display:none; background:#F4F3EF; border:1px solid #E7E4DB; color:#0f1115; border-radius:11px; padding:9px; cursor:pointer; align-items:center; justify-content:center; }
-        .mh-mobile { display:none; flex-direction:column; padding:14px 18px 22px; border-top:1px solid #ECEAE3; background:#fff; gap:2px; max-height:calc(100dvh - 64px); overflow-y:auto; }
+        /* Full-height solid sheet so the dark hero can never show through/below it.
+           Body scroll is locked while it's open (see effect), so it stays put. */
+        .mh-mobile { display:none; flex-direction:column; padding:14px 18px 22px; border-top:1px solid #ECEAE3; background:#fff; gap:2px; height:calc(100dvh - 64px); overflow-y:auto; -webkit-overflow-scrolling:touch; }
         .mh-m-search { display:flex; align-items:center; gap:9px; background:#F4F3EF; border:1.5px solid #E7E4DB; border-radius:12px; padding:0 6px 0 13px; height:48px; margin-bottom:10px; }
         .mh-m-search input { flex:1; min-width:0; border:none; background:none; outline:none; font-family:inherit; font-size:14px; color:#0f1115; }
         .mh-m-search button { flex-shrink:0; background:#dc2626; color:#fff; border:none; border-radius:9px; height:36px; padding:0 14px; font-weight:700; font-size:13px; cursor:pointer; }
