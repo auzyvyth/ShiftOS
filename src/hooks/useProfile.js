@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import { setErrorContext } from '../utils/logError';
 
 /**
  * Returns the logged-in user's profile row from the `profiles` table.
@@ -19,6 +20,8 @@ export function useProfile() {
         .eq('id', session.user.id)
         .maybeSingle();
       setProfile(data || null);
+      // Attribute any uncaught client errors to this user/role/dealer.
+      if (data) setErrorContext({ userId: data.id, role: data.role, dealerId: getDealerIdFromProfile(data) });
       setLoading(false);
     })();
   }, []);

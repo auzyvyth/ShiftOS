@@ -4,6 +4,7 @@ import { supabase } from "../supabaseClient";
 import { invalidateMarketplaceSettingsCache, MARKETPLACE_FALLBACK } from "../hooks/useMarketplaceSettings";
 import { PLAN_CONFIG } from "../utils/planConfig";
 import FunnelTab from "../components/platform/FunnelTab";
+import ErrorsTab from "../components/platform/ErrorsTab";
 
 function MktSection({ label, hint, children }) {
   return (
@@ -463,6 +464,7 @@ export default function AdminPage() {
 
   const XDRIVE_TABS = [
     { id: "funnel", label: "Funnel" },
+    { id: "errors", label: "Errors" },
   ];
 
   return (
@@ -663,6 +665,7 @@ export default function AdminPage() {
                 </div>
                 <div className="adm-content" style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 28px 80px" }}>
                   {xdriveTab === "funnel" && <FunnelTab />}
+                  {xdriveTab === "errors" && <ErrorsTab />}
                 </div>
               </>
             ) : (
