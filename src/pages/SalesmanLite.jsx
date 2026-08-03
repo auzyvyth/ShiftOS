@@ -599,7 +599,6 @@ export default function SalesmanLite() {
   // enforced in switchTab: blocking navigation here is what made the tour and the
   // lock fight each other (tour → switchTab('leads') → forced back to listings).
   function switchTab(tab) {
-    if (tab === "enquiries") setNewBookingsCount(0);
     setActiveTab(tab);
   }
 
@@ -4218,11 +4217,11 @@ export default function SalesmanLite() {
                           {/* WA */}
                           <button
                             onClick={() => handleListingCopy(car, "wa")}
-                            title="Copy WA caption"
+                            title="Copy caption"
                             style={{ flex: 1, fontSize: 11, padding: "6px 0", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: listingCopied[car.id] === "wa" ? "rgba(34,197,94,0.12)" : "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.15)", color: listingCopied[car.id] === "wa" ? "#4ade80" : "#6b9" }}
                           >
                             <ClipboardPen size={11} />
-                            {listingCopied[car.id] === "wa" ? "Copied" : "WA"}
+                            {listingCopied[car.id] === "wa" ? "Copied" : "Caption"}
                           </button>
                           {/* Boost */}
                           <button
