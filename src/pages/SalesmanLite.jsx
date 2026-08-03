@@ -1950,24 +1950,54 @@ export default function SalesmanLite() {
   const autoUpsertLeadFromAppt = async (apt) => {
     const phone = normalizePhone(apt.buyer_phone);
     if (!phone) return;
-    const { data: existingRows } = await supabase
-      .from("leads").select("id, stage").eq("salesman_id", userId).eq("phone", phone).limit(1);
+    const { data: existingRows, error: lookErr } = await supabase
+      .from("leads").select("id, stage").eq("salesman_id", userId).eq("phone", phone)
+      .order("created_at", { ascending: false }).limit(1);
+    if (lookErr) console.error("autoUpsertLeadFromAppt lookup:", lookErr);
     const existing = existingRows && existingRows[0];
+    const viewIdx = LEAD_STAGES.indexOf("viewing_booked");
     if (existing) {
       const curIdx = LEAD_STAGES.indexOf(existing.stage);
-      const viewIdx = LEAD_STAGES.indexOf("viewing_booked");
-      if (curIdx < viewIdx) {
-        await supabase.from("leads").update({ stage: "viewing_booked" }).eq("id", existing.id);
-        setLeads((p) => p.map((l) => l.id === existing.id ? { ...l, stage: "viewing_booked" } : l));
+      // Advance a lead that's behind the booking stage into it. ALSO revive a
+      // dead (lost) lead — the buyer just booked a fresh viewing, so it belongs
+      // back in "Booked". A won lead is left alone (don't un-close a sale). This
+      // was the silent gap: a lost buyer who re-booked never re-entered the
+      // pipeline because lost sits AFTER viewing_booked in LEAD_STAGES.
+      const revive = existing.stage === "lost" || existing.stage === "closed_lost";
+      if (curIdx < viewIdx || revive) {
+        const { error: updErr } = await supabase.from("leads")
+          .update({ stage: "viewing_booked", updated_at: new Date().toISOString() })
+          .eq("id", existing.id);
+        if (updErr) {
+          console.error("autoUpsertLeadFromAppt advance:", updErr);
+          toast.error(t("salesmanLite.toast.stageUpdateFailed"));
+          return;
+        }
+        // The lead may not be in local state (a revived/terminal lead can be
+        // filtered out of the board) — refetch it so it shows immediately.
+        setLeads((p) => p.some((l) => l.id === existing.id)
+          ? p.map((l) => l.id === existing.id ? { ...l, stage: "viewing_booked" } : l)
+          : p);
+        if (!leads.some((l) => l.id === existing.id)) {
+          const { data: full } = await supabase.from("leads")
+            .select("*, car_listings(id, brand, model, year, variant, selling_price, images, slug)")
+            .eq("id", existing.id).single();
+          if (full) setLeads((p) => p.some((l) => l.id === full.id) ? p.map((l) => l.id === full.id ? full : l) : [full, ...p]);
+        }
         toast.success(t("salesmanLite.toast.movedToViewingBooked"));
       }
     } else {
-      const { data: newLead } = await supabase.from("leads").insert({
+      const { data: newLead, error: insErr } = await supabase.from("leads").insert({
         salesman_id: userId, dealer_id: null,
         buyer_name: apt.buyer_name || "Unknown", phone,
         car_listing_id: apt.car_listing_id || null,
         stage: "viewing_booked", lead_source: "manual", is_deleted: false,
-      }).select().single();
+      }).select("*, car_listings(id, brand, model, year, variant, selling_price, images, slug)").single();
+      if (insErr) {
+        console.error("autoUpsertLeadFromAppt insert:", insErr);
+        toast.error(t("salesmanLite.toast.stageUpdateFailed"));
+        return;
+      }
       if (newLead) { setLeads((p) => [newLead, ...p]); toast.success(t("salesmanLite.toast.createdAtViewingBooked")); }
     }
   };
@@ -1976,18 +2006,20 @@ export default function SalesmanLite() {
   // the click gesture or the popup gets blocked), then mark the booking
   // confirmed + create/advance the lead + schedule the reminder in the
   // background, and close the modal.
-  const sendConfirmBooking = () => {
+  const sendConfirmBooking = async () => {
     const apt = confirmBookingApt;
     if (!apt || !apt.buyer_phone) return;
     const phone = apt.buyer_phone.replace(/\D/g, "");
     const waPhone = phone.startsWith("6") ? phone : "6" + phone;
     window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(confirmBookingMsg)}`, "_blank", "noopener,noreferrer");
-    updateApptStatus(apt.id, "confirmed");
-    autoUpsertLeadFromAppt(apt);
-    scheduleAptReminder(apt);
     setConfirmBookingApt(null);
     setConfirmBookingMsg("");
     toast.success(t("salesmanLite.toast.bookingConfirmed"));
+    // Await the lead upsert so a booked lead reliably lands in the pipeline and
+    // any RLS/constraint failure surfaces as a toast instead of vanishing.
+    await updateApptStatus(apt.id, "confirmed");
+    await autoUpsertLeadFromAppt(apt);
+    scheduleAptReminder(apt);
   };
 
   // Default seller-booking slot: tomorrow 11:00, formatted for datetime-local.
@@ -4040,11 +4072,13 @@ export default function SalesmanLite() {
                       {price}
                     </p>
 
-                    {/* My commission input */}
+                    {/* My commission input — RM prefix + field share one height
+                        (alignItems: stretch) so the addon never reads shorter
+                        than the number box. */}
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                       <span style={{ fontSize: 10, color: "#374151", whiteSpace: "nowrap" }}>My commission:</span>
-                      <div style={{ display: "flex", alignItems: "center", gap: 0, flex: 1 }}>
-                        <span style={{ fontSize: 10, color: "#6b7280", padding: "3px 5px 3px 7px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRight: "none", borderRadius: "5px 0 0 5px", lineHeight: 1 }}>RM</span>
+                      <div style={{ display: "flex", alignItems: "stretch", gap: 0, flex: 1 }}>
+                        <span style={{ display: "flex", alignItems: "center", fontSize: 11, color: "#6b7280", padding: "0 8px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRight: "none", borderRadius: "6px 0 0 6px" }}>RM</span>
                         <input
                           key={`comm-${car.id}-${car.commission_amount ?? "x"}`}
                           type="number"
@@ -4059,7 +4093,7 @@ export default function SalesmanLite() {
                             setMyListings(prev => prev.map(c => c.id === car.id ? { ...c, commission_amount: val } : c));
                             refreshCommissionData();
                           }}
-                          style={{ flex: 1, minWidth: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderLeft: "none", borderRadius: "0 5px 5px 0", padding: "3px 7px", color: car.commission_amount ? "#60a5fa" : "#6b7280", fontSize: 12, fontWeight: car.commission_amount ? 700 : 400, fontFamily: "inherit", outline: "none" }}
+                          style={{ flex: 1, minWidth: 0, width: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderLeft: "none", borderRadius: "0 6px 6px 0", padding: "5px 8px", color: car.commission_amount ? "#60a5fa" : "#6b7280", fontSize: 13, fontWeight: car.commission_amount ? 700 : 400, fontFamily: "inherit", outline: "none", lineHeight: 1.2, boxSizing: "border-box" }}
                         />
                       </div>
                     </div>
