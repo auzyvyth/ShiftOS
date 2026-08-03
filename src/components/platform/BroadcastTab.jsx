@@ -8,6 +8,23 @@ import { PLAN_CONFIG } from "../../utils/planConfig";
 
 function planLabel(p) { return PLAN_CONFIG[p]?.label || p; }
 
+// Three distinct salesman kinds (mirrors the AdminPage Salesmen tab grouping):
+//   lite = standalone Salesman Lite, solo = solo Premium (no dealer),
+//   team = Premium under a dealer (SalesmanPanel).
+function salesmanKind(s) {
+  if (s.plan === "salesman_lite") return { key: "lite", label: "Lite", color: "#fbbf24" };
+  if (s.plan === "salesman_full" && !s.dealer_id) return { key: "solo", label: "Premium", color: "#c084fc" };
+  if (s.plan === "salesman_full" && s.dealer_id) return { key: "team", label: "Under dealer", color: "#34d399" };
+  return { key: "other", label: "Salesman", color: "#9ca3af" };
+}
+
+const SALES_SEGS = [
+  { key: "all", label: "All" },
+  { key: "lite", label: "Lite" },
+  { key: "solo", label: "Premium" },
+  { key: "team", label: "Under dealer" },
+];
+
 function timeAgo(str) {
   if (!str) return "—";
   const s = Math.floor((Date.now() - new Date(str)) / 1000);
@@ -21,6 +38,7 @@ export default function BroadcastTab({ dealers = [], salesmen = [] }) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [audience, setAudience] = useState("all");
+  const [salesSeg, setSalesSeg] = useState("all");
   const [plan, setPlan] = useState("");
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [pickSearch, setPickSearch] = useState("");
@@ -42,25 +60,34 @@ export default function BroadcastTab({ dealers = [], salesmen = [] }) {
     return [...set];
   }, [dealersOnly, salesmenActive]);
 
-  // Everyone selectable for the hand-picked audience.
+  // Everyone selectable for the hand-picked audience, each tagged by kind.
   const pickList = useMemo(() => {
     const rows = [
-      ...dealersOnly.map(d => ({ id: d.id, name: d.dealership || d.full_name || d.email, sub: d.email, kind: "Dealer" })),
-      ...salesmenActive.map(s => ({ id: s.id, name: s.full_name || s.email, sub: s.email, kind: "Salesman" })),
+      ...dealersOnly.map(d => ({ id: d.id, name: d.dealership || d.full_name || d.email, sub: d.email, kindLabel: "Dealer", kindColor: "#60a5fa" })),
+      ...salesmenActive.map(s => { const k = salesmanKind(s); return { id: s.id, name: s.full_name || s.email, sub: s.email, kindLabel: k.label, kindColor: k.color }; }),
     ];
     if (!pickSearch.trim()) return rows;
     const q = pickSearch.toLowerCase();
     return rows.filter(r => [r.name, r.sub].some(v => v && v.toLowerCase().includes(q)));
   }, [dealersOnly, salesmenActive, pickSearch]);
 
+  // The audience value actually sent to the RPC (salesman segment resolves here).
+  const effAudience = useMemo(() => {
+    if (audience !== "salesmen" || salesSeg === "all") return audience;
+    return salesSeg === "lite" ? "salesmen_lite" : salesSeg === "solo" ? "salesmen_solo" : "salesmen_team";
+  }, [audience, salesSeg]);
+
   const estimate = useMemo(() => {
     if (audience === "all") return dealersOnly.length + salesmenActive.length;
     if (audience === "dealers") return dealersOnly.length;
-    if (audience === "salesmen") return salesmenActive.length;
+    if (audience === "salesmen") {
+      if (salesSeg === "all") return salesmenActive.length;
+      return salesmenActive.filter(s => salesmanKind(s).key === salesSeg).length;
+    }
     if (audience === "plan") return [...dealersOnly, ...salesmenActive].filter(p => p.plan === plan).length;
     if (audience === "ids") return selectedIds.size;
     return 0;
-  }, [audience, plan, selectedIds, dealersOnly, salesmenActive]);
+  }, [audience, salesSeg, plan, selectedIds, dealersOnly, salesmenActive]);
 
   async function loadHistory() {
     const { data } = await supabase
@@ -72,8 +99,16 @@ export default function BroadcastTab({ dealers = [], salesmen = [] }) {
   }
   useEffect(() => { loadHistory(); }, []);
 
-  const canSend = title.trim().length > 0 && estimate > 0 && !sending &&
-    (audience !== "plan" || plan) && (audience !== "ids" || selectedIds.size > 0);
+  // Explain a disabled Send button instead of leaving it silently greyed out.
+  const disabledReason = useMemo(() => {
+    if (!title.trim()) return "Enter a title to send.";
+    if (audience === "plan" && !plan) return "Choose a plan.";
+    if (audience === "ids" && selectedIds.size === 0) return "Select at least one recipient.";
+    if (estimate === 0) return "No active recipients match this audience.";
+    return null;
+  }, [title, audience, plan, selectedIds, estimate]);
+
+  const canSend = !disabledReason && !sending;
 
   async function send() {
     setErr(null);
@@ -82,7 +117,7 @@ export default function BroadcastTab({ dealers = [], salesmen = [] }) {
     const { data, error } = await supabase.rpc("broadcast_notification", {
       p_title: title.trim(),
       p_body: body.trim() || null,
-      p_audience: audience,
+      p_audience: effAudience,
       p_plan: audience === "plan" ? plan : null,
       p_ids: audience === "ids" ? [...selectedIds] : null,
     });
@@ -137,6 +172,25 @@ export default function BroadcastTab({ dealers = [], salesmen = [] }) {
           ))}
         </div>
 
+        {/* Salesman segment sub-picker */}
+        {audience === "salesmen" && (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+            {SALES_SEGS.map(seg => {
+              const n = seg.key === "all" ? salesmenActive.length : salesmenActive.filter(s => salesmanKind(s).key === seg.key).length;
+              const on = salesSeg === seg.key;
+              return (
+                <button key={seg.key} onClick={() => setSalesSeg(seg.key)}
+                  style={{ fontSize: 11, fontWeight: 600, padding: "6px 12px", borderRadius: 7, cursor: "pointer", fontFamily: "inherit",
+                    background: on ? "rgba(255,255,255,0.07)" : "transparent",
+                    border: on ? "1px solid rgba(255,255,255,0.2)" : "1px solid rgba(255,255,255,0.07)",
+                    color: on ? "#e5e7eb" : "#6b7280" }}>
+                  {seg.label} <span style={{ color: on ? "#9ca3af" : "#4b5563" }}>({n})</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Plan sub-picker */}
         {audience === "plan" && (
           <select value={plan} onChange={e => setPlan(e.target.value)} style={{ ...inputStyle, cursor: "pointer", marginBottom: 14 }}>
@@ -163,9 +217,9 @@ export default function BroadcastTab({ dealers = [], salesmen = [] }) {
                     })} />
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ display: "block", fontSize: 12, color: "#e5e7eb", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
-                      <span style={{ display: "block", fontSize: 10, color: "#6b7280" }}>{r.sub}</span>
+                      <span style={{ display: "block", fontSize: 10, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.sub}</span>
                     </span>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: r.kind === "Dealer" ? "#60a5fa" : "#fbbf24", flexShrink: 0 }}>{r.kind}</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: r.kindColor, flexShrink: 0, whiteSpace: "nowrap" }}>{r.kindLabel}</span>
                   </label>
                 );
               })}
@@ -182,6 +236,7 @@ export default function BroadcastTab({ dealers = [], salesmen = [] }) {
               color: canSend ? "#f87171" : "#475569" }}>
             {sending ? "Sending…" : `Send to ${estimate} recipient${estimate === 1 ? "" : "s"}`}
           </button>
+          {!sending && disabledReason && <span style={{ fontSize: 12, color: "#6b7280" }}>{disabledReason}</span>}
           {result && (
             <span style={{ fontSize: 12, color: "#4ade80", fontWeight: 600 }}>
               ✓ Sent — {result.dealers} dealer{result.dealers === 1 ? "" : "s"}, {result.salesmen} salesman{result.salesmen === 1 ? "" : "men"}
