@@ -3,6 +3,7 @@
 // Rate-limited at the edge by middleware.js (5 req/IP/min).
 
 import { createClient } from '@supabase/supabase-js';
+import { verifyTurnstile, clientIp } from '../lib/turnstile.js';
 
 const SUPABASE_URL = 'https://lemdkdizdlcirhbzqlos.supabase.co';
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
@@ -12,10 +13,16 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { carId, name, phone, state, refSlug } = req.body || {};
+  const { carId, name, phone, state, refSlug, token } = req.body || {};
 
   if (!carId || !name?.trim() || !phone?.trim()) {
     return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  // Proof-of-human. Fails open only when TURNSTILE_SECRET is unset (pre-setup).
+  const check = await verifyTurnstile(token, clientIp(req));
+  if (!check.ok) {
+    return res.status(403).json({ error: 'captcha_failed', reason: check.reason });
   }
 
   const phoneClean = String(phone).replace(/\D/g, '');

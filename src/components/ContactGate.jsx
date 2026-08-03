@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { supabase } from '../supabaseClient';
 import { getRef } from '../utils/refTracking';
+import Turnstile from './Turnstile';
 
 // Name-only gate shown before a buyer opens WhatsApp. Captures the buyer's name,
 // creates a real pipeline lead (create_lead_from_whatsapp RPC — anon-callable),
@@ -10,6 +10,7 @@ import { getRef } from '../utils/refTracking';
 export default function ContactGate({ open, onClose, waUrl, dealerId, carId, carName, onConfirmed }) {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [token, setToken] = useState(null);
 
   useEffect(() => {
     if (!open) return;
@@ -24,19 +25,26 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
     if (!nm || busy) return;
     setBusy(true);
     // Open WhatsApp synchronously inside the click gesture so popup blockers
-    // don't intercept it; the lead insert runs after, non-blocking.
+    // don't intercept it; the lead insert runs after, non-blocking. Because the
+    // chat opens regardless, a captcha/rate-limit rejection on the write only
+    // skips the CRM record — it never blocks the buyer reaching the seller.
     if (waUrl && waUrl !== '#') window.open(waUrl, '_blank', 'noopener,noreferrer');
     if (dealerId) {
-      supabase.rpc('create_lead_from_whatsapp', {
-        p_dealer_id: dealerId,
-        p_car_id: carId || null,
-        p_name: nm,
-        p_phone: null,
-        p_ref_slug: getRef() || null,
-      }).then(({ error }) => { if (error) console.error('create_lead_from_whatsapp:', error); });
+      fetch('/api/whatsapp-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dealerId,
+          carId: carId || null,
+          name: nm,
+          phone: null,
+          refSlug: getRef() || null,
+          token,
+        }),
+      }).catch((err) => console.error('whatsapp-lead:', err));
     }
     try { onConfirmed?.(); } catch { /* ignore */ }
-    setName(''); setBusy(false); onClose();
+    setName(''); setToken(null); setBusy(false); onClose();
   };
 
   return createPortal(
@@ -54,6 +62,7 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
           placeholder="Your name"
           style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: 10, padding: '11px 13px', fontSize: 14, color: '#111827', outline: 'none', marginBottom: 12 }}
         />
+        <Turnstile onToken={setToken} action="whatsapp_lead" className="cg-turnstile" />
         <button
           disabled={!name.trim() || busy}
           onClick={proceed}
