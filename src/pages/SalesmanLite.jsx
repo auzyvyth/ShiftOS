@@ -1960,10 +1960,24 @@ export default function SalesmanLite() {
     if (!existing) {
       if (!phone) return;
       const { data: existingRows, error: lookErr } = await supabase
-        .from("leads").select("id, stage").eq("salesman_id", userId).eq("phone", phone)
-        .order("created_at", { ascending: false }).limit(1);
+        .from("leads").select("id, stage, buyer_name").eq("salesman_id", userId).eq("phone", phone)
+        .order("created_at", { ascending: false });
       if (lookErr) console.error("autoUpsertLeadFromAppt lookup:", lookErr);
-      existing = existingRows && existingRows[0];
+      // Only adopt an existing lead when it unambiguously belongs to THIS
+      // booking: a name match, or a single lead on that phone. Blindly taking
+      // the newest lead with the number pulled an unrelated buyer (e.g. a
+      // different "Ahmad" sharing a reused/test number) into Viewing Booked.
+      // When it's ambiguous we fall through and create a fresh lead instead.
+      const nameKey = (apt.buyer_name || "").trim().toLowerCase();
+      existing =
+        (nameKey && existingRows?.find((r) => (r.buyer_name || "").trim().toLowerCase() === nameKey)) ||
+        (existingRows?.length === 1 ? existingRows[0] : null) ||
+        null;
+      // Tie the booking to the lead we adopted so a later confirm matches by id.
+      if (existing && !apt.lead_id) {
+        await supabase.from("appointments").update({ lead_id: existing.id }).eq("id", apt.id);
+        setAppointments((p) => p.map((a) => a.id === apt.id ? { ...a, lead_id: existing.id } : a));
+      }
     }
     const viewIdx = LEAD_STAGES.indexOf("viewing_booked");
     if (existing) {
