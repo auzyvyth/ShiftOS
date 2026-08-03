@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './i18n/config';
 import App from '@/App';
 import { Toaster } from '@/components/ui/toaster';
+import { logError } from '@/utils/logError';
 import '@/index.css';
 
 const queryClient = new QueryClient({
@@ -90,7 +91,10 @@ window.addEventListener('unhandledrejection', (event) => {
   if (isChunkLoadError(event.reason?.message)) {
     event.preventDefault();
     reloadOnceForChunk();
+    return;
   }
+  // Chunk reloads self-heal and are noise; everything else is a real ops signal.
+  logError(event.reason, { code: 'unhandledrejection', context: 'window.unhandledrejection' });
 });
 
 // skipWaiting + clientsClaim activate a new service worker the instant a
@@ -145,7 +149,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     onError={(error) => {
       // Lazy-route failures are caught here (not as unhandledrejection), so the
       // reload must be triggered from the boundary too.
-      if (isChunkLoadError(error?.message)) reloadOnceForChunk();
+      if (isChunkLoadError(error?.message)) { reloadOnceForChunk(); return; }
+      logError(error, { code: 'react_error_boundary', context: 'Sentry.ErrorBoundary' });
     }}
   >
     <QueryClientProvider client={queryClient}>
