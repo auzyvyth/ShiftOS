@@ -9,7 +9,7 @@ import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { normalizePhone } from "../lib/phone";
 import { cdnImg } from "../utils/img";
 import { compressImageFile } from "../utils/compressImage";
-import CarForm from "../components/CarForm";
+import CarForm, { buildCopyText } from "../components/CarForm";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import SalesmanLiteHelp from "../components/SalesmanLiteHelp";
@@ -2102,18 +2102,10 @@ export default function SalesmanLite() {
     const link = `https://xdrive.my/showroom/${car.slug}?ref=${profile?.slug || ""}`;
     let text = link;
     if (type === "wa") {
-      const price = Number(car.selling_price || 0);
-      text = [
-        `🚗 ${car.year} ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""}`,
-        `💰 RM ${price.toLocaleString()}`,
-        `📍 ${car.city || car.location || "Malaysia"}`,
-        `🔢 ${car.mileage ? Number(car.mileage).toLocaleString() + " km" : "—"} · ${car.colour || "—"} · ${car.transmission || "—"}`,
-        ``,
-        `✅ Condition: ${car.condition || "Good"}`,
-        ``,
-        `Berminat? Whatsapp saya sekarang 👇`,
-        link,
-      ].join("\n");
+      // Full-length, structured listing copy — same rich formatter the CarForm
+      // final step uses (specs, pricing, features, about, hashtags) — with the
+      // salesman's referral link appended so buyer taps come back to this rep.
+      text = `${buildCopyText(car)}\n👉 ${link}`;
     }
     navigator.clipboard.writeText(text);
     setListingCopied((prev) => ({ ...prev, [car.id]: type }));
@@ -3062,34 +3054,9 @@ export default function SalesmanLite() {
 
         {/* Earnings Target card removed — merged into the single Monthly Goal (commission) above */}
 
-        {/* ── This Month Analytics ── */}
-        {commissionData.count > 0 && (
-          <div style={CARD}>
-            <div style={CARD_HEADER}>
-              <span>{t("salesmanLite.dash.thisMonth")}</span>
-              <span>{commissionData.count} deal{commissionData.count !== 1 ? "s" : ""} closed</span>
-            </div>
-            <div style={{ padding: 18 }}>
-              <div style={{ marginBottom: 16 }}>
-                <p style={{ margin: "0 0 2px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>Commission Earned</p>
-                <p style={{ margin: 0, fontSize: 32, fontWeight: 800, color: commissionData.total >= 0 ? "#22c55e" : "#ef4444", letterSpacing: "-0.04em", lineHeight: 1 }}>
-                  RM {commissionData.total.toLocaleString("en-MY")}
-                </p>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "rgba(255,255,255,0.06)", borderRadius: 10, overflow: "hidden" }}>
-                {[
-                  { label: "Revenue (sales)", value: commissionData.revenue, color: "#3b82f6" },
-                  { label: "Avg / deal", value: commissionData.count > 0 ? Math.round(commissionData.total / commissionData.count) : 0, color: "#22c55e" },
-                ].map(({ label, value, color }) => (
-                  <div key={label} style={{ padding: "12px 14px", background: "#0d1117" }}>
-                    <p style={{ margin: "0 0 3px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</p>
-                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color }}>{value > 0 ? `RM ${value.toLocaleString("en-MY")}` : "—"}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+        {/* "This Month" commission-earned card removed — it duplicated the
+           commission-earned figure already shown in the Monthly Goal panel
+           above. Revenue/avg-per-deal live in the Performance tab. */}
 
         {/* ── Onboarding ── */}
         {isNewUser && !profile?.onboarding_tour_done && (
@@ -3858,7 +3825,7 @@ export default function SalesmanLite() {
               gap: 14,
             }}
           >
-            {sorted.map(({ car, views, enqs, daily, cvr, isHot, isStale }) => {
+            {sorted.map(({ car, views, enqs, cvr, isHot, isStale }) => {
               const isSold     = car.status === "sold";
               const isReserved = car.status === "reserved";
               const isPending  = car.status === "pending_approval";
@@ -3894,6 +3861,9 @@ export default function SalesmanLite() {
                     overflow: "hidden",
                     opacity: isSold ? 0.62 : 1,
                     transition: "opacity 0.2s",
+                    display: "flex",
+                    flexDirection: "column",
+                    height: "100%",
                   }}
                 >
                   {/* Image */}
@@ -3981,7 +3951,7 @@ export default function SalesmanLite() {
                     </div>
                   )}
 
-                  <div style={{ padding: "12px 14px" }}>
+                  <div style={{ padding: "12px 14px", flex: 1, display: "flex", flexDirection: "column" }}>
                     {/* Title + badge row */}
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4 }}>
                       <p
@@ -4005,40 +3975,61 @@ export default function SalesmanLite() {
                         )}
                       </p>
                       <div style={{ position: "relative", flexShrink: 0 }}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (isPending || isRejected) return; // locked until the dealer approves/rejects the listing
-                            setStatusMenuCarId(statusMenuCarId === car.id ? null : car.id);
-                          }}
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize ${isPending || isRejected ? "opacity-50 cursor-not-allowed" : "cursor-pointer"} ${
-                            ["available"].includes(car.status || "available") ? "bg-green-500/15 text-green-400 border-green-500/30" :
-                            car.status === "reserved" ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" :
-                            car.status === "sold" ? "bg-gray-700 text-gray-400 border-gray-600" :
-                            "bg-gray-700 text-gray-400 border-gray-600"
-                          }`}
-                        >
-                          {car.status || "available"}{!(isPending || isRejected) && " ▾"}
-                        </button>
+                        {(() => {
+                          const curStatus = normStatus(car.status || "available");
+                          const dotColor = curStatus === "reserved" ? "#fbbf24" : curStatus === "sold" ? "#9ca3af" : "#4ade80";
+                          const locked = isPending || isRejected;
+                          const open = statusMenuCarId === car.id;
+                          return (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (locked) return; // locked until the dealer approves/rejects the listing
+                                setStatusMenuCarId(open ? null : car.id);
+                              }}
+                              title={locked ? undefined : "Change listing status"}
+                              style={{
+                                display: "flex", alignItems: "center", gap: 6,
+                                padding: "4px 6px 4px 9px", borderRadius: 7,
+                                background: open ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.05)",
+                                border: `1px solid ${open ? "rgba(255,255,255,0.24)" : "rgba(255,255,255,0.16)"}`,
+                                cursor: locked ? "not-allowed" : "pointer",
+                                opacity: locked ? 0.5 : 1,
+                              }}
+                            >
+                              <span style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
+                              <span style={{ fontSize: 11, fontWeight: 600, color: "#e5e7eb", textTransform: "capitalize" }}>{car.status || "available"}</span>
+                              {!locked && <ChevronDown size={13} color="#9ca3af" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />}
+                            </button>
+                          );
+                        })()}
                         {!isPending && !isRejected && statusMenuCarId === car.id && (
                           <div
                             onClick={(e) => e.stopPropagation()}
-                            style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 50, background: "#1e2433", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, overflow: "hidden", minWidth: 110, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}
+                            style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 50, background: "#1e2433", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 9, overflow: "hidden", minWidth: 146, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}
                           >
+                            <p style={{ margin: 0, padding: "8px 12px 6px", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#6b7280", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>Set this listing to</p>
                             {[
-                              { key: "available", label: "Available", color: "#4ade80" },
-                              { key: "reserved",  label: "Reserved",  color: "#fbbf24" },
-                              { key: "sold",      label: "Sold",      color: "#9ca3af" },
-                            ].map(({ key, label, color }) => (
-                              <button
-                                key={key}
-                                onClick={() => updateListingStatus(car, key)}
-                                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 12px", background: normStatus(car.status || "available") === key ? "rgba(255,255,255,0.06)" : "none", border: "none", cursor: "pointer", textAlign: "left" }}
-                              >
-                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }} />
-                                <span style={{ fontSize: 12, color: normStatus(car.status || "available") === key ? "#f1f5f9" : "#6b7280", fontWeight: normStatus(car.status || "available") === key ? 600 : 400 }}>{label}</span>
-                              </button>
-                            ))}
+                              { key: "available", label: "Available", color: "#4ade80", hint: "Live for buyers" },
+                              { key: "reserved",  label: "Reserved",  color: "#fbbf24", hint: "Deposit / on hold" },
+                              { key: "sold",      label: "Sold",      color: "#9ca3af", hint: "Deal closed" },
+                            ].map(({ key, label, color, hint }) => {
+                              const active = normStatus(car.status || "available") === key;
+                              return (
+                                <button
+                                  key={key}
+                                  onClick={() => updateListingStatus(car, key)}
+                                  style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 12px", background: active ? "rgba(255,255,255,0.06)" : "none", border: "none", cursor: "pointer", textAlign: "left" }}
+                                >
+                                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
+                                  <span style={{ display: "flex", flexDirection: "column", gap: 1, flex: 1, minWidth: 0 }}>
+                                    <span style={{ fontSize: 12.5, color: active ? "#f1f5f9" : "#d1d5db", fontWeight: active ? 700 : 500 }}>{label}</span>
+                                    <span style={{ fontSize: 10, color: "#6b7280" }}>{hint}</span>
+                                  </span>
+                                  {active && <Check size={13} color="#4ade80" style={{ flexShrink: 0 }} />}
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -4111,12 +4102,12 @@ export default function SalesmanLite() {
                         onMouseEnter={() => setCvrHover(car.id)}
                         onMouseLeave={() => setCvrHover(null)}
                       >
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                          <span style={{ fontSize: 10, color: "#4b5563" }}>
-                            {views} views · {enqs} enquiries
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>
+                            <span style={{ color: "#f8fafc", fontWeight: 700 }}>{views}</span> views · <span style={{ color: "#f8fafc", fontWeight: 700 }}>{enqs}</span> enquiries
                           </span>
-                          {isHot && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, color: "#ef4444", fontWeight: 600 }}><Flame size={11} /> Hot</span>}
-                          {isStale && !isHot && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, color: "#6b7280" }}><Clock size={11} /> Stale</span>}
+                          {isHot && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "#ef4444", fontWeight: 600 }}><Flame size={12} /> Hot</span>}
+                          {isStale && !isHot && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "#9ca3af" }}><Clock size={12} /> Stale</span>}
                         </div>
                         <div style={{ height: 4, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "visible" }}>
                           <div style={{ height: "100%", width: `${cvrFill}%`, background: isHot ? "#ef4444" : "#4b5563", borderRadius: 99, transition: "width 0.3s" }} />
@@ -4138,23 +4129,6 @@ export default function SalesmanLite() {
                       </div>
                     )}
 
-                    {/* 7-day sparkline */}
-                    {!isSold && (() => {
-                      const total = daily.reduce((s, v) => s + v, 0);
-                      if (total === 0) return null;
-                      const peak = Math.max(...daily, 1);
-                      const days = ["M","T","W","T","F","S","S"];
-                      return (
-                        <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 24, marginBottom: 10 }}>
-                          {daily.map((v, i) => (
-                            <div key={i} title={`${days[i]}: ${v} view${v !== 1 ? "s" : ""}`} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                              <div style={{ width: "100%", height: Math.max(2, Math.round((v / peak) * 18)), background: v > 0 ? "#3b82f6" : "rgba(255,255,255,0.06)", borderRadius: 2 }} />
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })()}
-
                     {/* Photo nudge — fewer than 3 photos hurts views */}
                     {!isSold && (!car.images || car.images.length < 3) && (
                       <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8, padding: "5px 8px", borderRadius: 6, background: "rgba(251,191,36,0.05)", border: "1px solid rgba(251,191,36,0.14)" }}>
@@ -4167,7 +4141,7 @@ export default function SalesmanLite() {
                     )}
 
                     {/* Action bar */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 10, marginTop: 2 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 10, marginTop: "auto" }}>
                       {isSold ? (
                         <>
                           <button onClick={openDetail} style={{ flex: 1, fontSize: 11, padding: "6px 0", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
