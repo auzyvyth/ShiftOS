@@ -1217,18 +1217,40 @@ Rules:
  };
 
  const autoUpsertLeadFromAppt = async (apt) => {
- const phone = (apt.buyer_phone || "").replace(/\D/g, "");
- if (!phone) return;
  const apptDealerId = getDealerIdFromProfile(profile);
- const { data: existing } = await supabase.from("leads").select("id, stage").eq("salesman_id", userId).eq("dealer_id", apptDealerId || "none").eq("phone", phone).maybeSingle();
- if (existing) {
  const STAGES = ["new","contacted","viewing_booked","test_drive","negotiating","deposit_taken","won","lost"];
+ const viewIdx = STAGES.indexOf("viewing_booked");
+
+ // The appointment's own lead_id is the source of truth for which buyer this
+ // booking belongs to. Matching by phone alone hijacked an unrelated lead when
+ // several buyers (or test rows) shared a number — it advanced whatever lead
+ // happened to match instead of this booking's actual buyer.
+ let existing = null;
+ if (apt.lead_id) {
+ const { data: linked } = await supabase.from("leads").select("id, stage").eq("id", apt.lead_id).maybeSingle();
+ if (linked) existing = linked;
+ }
+ const phone = (apt.buyer_phone || "").replace(/\D/g, "");
+ if (!existing) {
+ if (!phone) return;
+ // No hard link: only adopt a lead when it unambiguously belongs to this
+ // booking — a name match, or a single lead on that phone. Otherwise create
+ // a fresh lead so a shared number can't pull a different buyer's lead in.
+ const nameKey = (apt.buyer_name || "").trim().toLowerCase();
+ const { data: rows } = await supabase.from("leads").select("id, stage, buyer_name").eq("salesman_id", userId).eq("phone", phone);
+ existing =
+ (nameKey && rows?.find((r) => (r.buyer_name || "").trim().toLowerCase() === nameKey)) ||
+ (rows?.length === 1 ? rows[0] : null) ||
+ null;
+ }
+ if (existing) {
  const curIdx = STAGES.indexOf(existing.stage);
- if (curIdx < STAGES.indexOf("viewing_booked")) {
+ if (curIdx > -1 && curIdx < viewIdx) {
  await supabase.from("leads").update({ stage: "viewing_booked" }).eq("id", existing.id);
  setLeads((p) => p.map((l) => l.id === existing.id ? { ...l, stage: "viewing_booked" } : l));
  toast.success("Lead moved to Viewing Booked!");
  }
+ if (!apt.lead_id) await supabase.from("appointments").update({ lead_id: existing.id }).eq("id", apt.id);
  } else {
  const { data: newLead } = await supabase.from("leads").insert({
  salesman_id: userId, dealer_id: apptDealerId || null,
@@ -1236,7 +1258,11 @@ Rules:
  car_listing_id: apt.car_listing_id || null,
  stage: "viewing_booked", lead_source: "manual", is_deleted: false,
  }).select().single();
- if (newLead) { setLeads((p) => [newLead, ...p]); toast.success("Lead created at Viewing Booked!"); }
+ if (newLead) {
+ setLeads((p) => [newLead, ...p]);
+ toast.success("Lead created at Viewing Booked!");
+ if (!apt.lead_id) await supabase.from("appointments").update({ lead_id: newLead.id }).eq("id", apt.id);
+ }
  }
  };
 
