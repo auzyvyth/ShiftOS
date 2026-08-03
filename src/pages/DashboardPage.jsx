@@ -1033,6 +1033,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
   });
   const [dealerState, setDealerState] = useState(profile?.state || '');
   const [dealerCity, setDealerCity]   = useState(profile?.city  || '');
+  const [dealerAddress, setDealerAddress] = useState(profile?.location || '');
+  const [businessHours, setBusinessHours] = useState(profile?.business_hours || '');
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -1139,6 +1141,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setHandlesRti(profile.handles_roadtax_insurance !== false);
     setDealerState(profile.state || '');
     setDealerCity(profile.city || '');
+    setDealerAddress(profile.location || '');
+    setBusinessHours(profile.business_hours || '');
     setTgToken(""); // SEC-5: write-only — never load the stored token back into the form
     setTgChannel(profile.telegram_channel_id || "");
     setTgAutoPost(profile.telegram_auto_post || false);
@@ -1321,6 +1325,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
       social_facebook: facebook.trim(),
       state: dealerState.trim(),
       city:  dealerCity.trim(),
+      location: dealerAddress.trim(),
+      business_hours: businessHours.trim(),
     });
 
   const saveTelegram = () =>
@@ -1841,6 +1847,26 @@ function SettingsTab({ profile, onProfileUpdate }) {
             />
           </SettingsField>
         </div>
+
+        <SettingsField label="Street Address" hint="Shown on your storefront Visit Us card with a Get Directions link">
+          <input
+            value={dealerAddress}
+            onChange={e => setDealerAddress(e.target.value)}
+            placeholder="e.g. 12 Jalan Setia, Petaling Jaya"
+            className={iCls}
+          />
+        </SettingsField>
+
+        <SettingsField label="Business Hours" hint="Shown on your storefront, one line per day is fine">
+          <textarea
+            value={businessHours}
+            onChange={e => setBusinessHours(e.target.value)}
+            placeholder={"e.g. Mon–Sat 9am–6pm\nSun closed"}
+            rows={2}
+            className={iCls}
+            style={{ resize: "vertical" }}
+          />
+        </SettingsField>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <SettingsField label="TikTok">

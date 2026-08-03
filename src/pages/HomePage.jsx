@@ -18,6 +18,7 @@ import {
   MapPin,
   Phone,
   Mail,
+  Clock,
   Facebook,
   Instagram,
   Music2,
@@ -1699,12 +1700,24 @@ const HomePage = () => {
             value: tenant.email,
             href: `mailto:${tenant.email}`,
           },
-          (tenant?.city || tenant?.state || tenant?.location) && {
-            icon: MapPin,
-            label: "Visit us",
-            value:
-              [tenant?.city, tenant?.state].filter(Boolean).join(", ") ||
-              tenant?.location,
+          (() => {
+            const addr = [tenant?.location, tenant?.city, tenant?.state]
+              .filter(Boolean)
+              .join(", ");
+            return (
+              addr && {
+                icon: MapPin,
+                label: "Visit us",
+                value: addr,
+                href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`,
+                external: true,
+              }
+            );
+          })(),
+          tenant?.business_hours && {
+            icon: Clock,
+            label: "Opening hours",
+            value: tenant.business_hours,
             href: null,
           },
         ].filter(Boolean);
@@ -1867,6 +1880,7 @@ const HomePage = () => {
                               fontWeight: 600,
                               margin: 0,
                               wordBreak: "break-word",
+                              whiteSpace: "pre-line",
                             }}
                           >
                             {c.value}
@@ -1877,6 +1891,8 @@ const HomePage = () => {
                         <a
                           key={i}
                           href={c.href}
+                          target={c.external ? "_blank" : undefined}
+                          rel={c.external ? "noopener noreferrer" : undefined}
                           className="card-hover"
                           style={cardStyle}
                         >
