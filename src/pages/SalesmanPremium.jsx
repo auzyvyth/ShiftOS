@@ -994,34 +994,34 @@ export default function SalesmanPremium() {
  setMergeStatus("pending");
  setMergeMsg("");
 
- const { data } = await supabase
- .from("dealer_invites")
- .select("dealer_id, expires_at, used")
- .eq("code", mergeCode.trim().toUpperCase())
- .maybeSingle();
+ // redeem_invite is a SECURITY DEFINER RPC that looks up the SINGLE row by
+ // exact code (unused + unexpired) and returns only dealer_id — a pre-check for
+ // clean UX. It replaces a direct select on dealer_invites, whose public policy
+ // used to leak every pending invite (code/email/name) platform-wide (F3).
+ const { data: redeemData } = await supabase.rpc("redeem_invite", {
+ p_code: mergeCode.trim().toUpperCase(),
+ });
+ const invite = Array.isArray(redeemData) ? redeemData[0] : redeemData;
 
- if (!data || data.used || new Date(data.expires_at) < new Date()) {
+ if (!invite || !invite.dealer_id) {
  setMergeStatus("error");
  setMergeMsg("Invalid or expired invite code.");
  return;
  }
 
- await supabase
- .from("profiles")
- .update({ dealer_id: data.dealer_id })
- .eq("id", profile.id);
- await supabase
- .from("leads")
- .update({ dealer_id: data.dealer_id })
- .eq("salesman_id", profile.id)
- .is("dealer_id", null);
- await supabase
- .from("car_listings")
- .update({ dealer_id: data.dealer_id })
- .eq("assigned_to", profile.id);
- await supabase.rpc("use_dealer_invite", {
+ // use_dealer_invite does the whole merge server-side in one atomic
+ // SECURITY DEFINER call: links profiles.dealer_id (+ plan), re-tenants the
+ // salesman's own leads + listings, and marks the invite used. The tenant move
+ // is otherwise blocked by the escalation trigger, so this must not be a
+ // client-side profiles/leads/car_listings write.
+ const { error: mergeErr } = await supabase.rpc("use_dealer_invite", {
  invite_code: mergeCode.trim().toUpperCase(),
  });
+ if (mergeErr) {
+ setMergeStatus("error");
+ setMergeMsg("Invalid or expired invite code.");
+ return;
+ }
 
  setMergeStatus("success");
  setMergeMsg("Merged! Redirecting to full dashboard...");

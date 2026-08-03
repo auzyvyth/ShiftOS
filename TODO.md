@@ -47,7 +47,18 @@
   breaking vite@8 major; do it as its own tested upgrade, not folded into a
   security push. (Audit follow-up, 2026-07-20.)
 
-> Reminder protocol: while ACT-1, ACT-2, ACT-3, ACT-4, ACT-5, ACT-6, ACT-8 or ACT-9 remain here, surface them at session start and whenever 2FA/security/Telegram/auth/import/dependency work is touched.
+- **ACT-10: Add CAPTCHA (Cloudflare Turnstile) to public write forms** — F5 of the
+  marketplace security review. The DB-side flood caps are in (create_lead_from_whatsapp
+  per-dealer cap, car_hunts/leads/error_logs rate limits), but DB throttles keyed on a
+  client-supplied identifier are bypassable — the real proof-of-human control is a
+  CAPTCHA. Steps: (1) Cloudflare → Turnstile → create a widget, get the site key +
+  secret; (2) Vercel env `VITE_TURNSTILE_SITE_KEY=<site key>`; (3) Supabase edge secret
+  `TURNSTILE_SECRET=<secret>`; (4) render the Turnstile widget in ContactGate + the
+  car-hunt/enquiry forms and pass the token to a small verify step (edge function or
+  inline verify against siteverify) before create_lead_from_whatsapp / hunt insert.
+  Until done, public lead/hunt writes rely on DB rate limits alone. (Audit F5, 2026-08-03.)
+
+> Reminder protocol: while ACT-1, ACT-2, ACT-3, ACT-4, ACT-5, ACT-6, ACT-8, ACT-9 or ACT-10 remain here, surface them at session start and whenever 2FA/security/Telegram/auth/import/dependency work is touched.
 
 ## Dev tasks
 
