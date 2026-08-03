@@ -5,6 +5,7 @@ import { invalidateMarketplaceSettingsCache, MARKETPLACE_FALLBACK } from "../hoo
 import { PLAN_CONFIG } from "../utils/planConfig";
 import FunnelTab from "../components/platform/FunnelTab";
 import ErrorsTab from "../components/platform/ErrorsTab";
+import BroadcastTab from "../components/platform/BroadcastTab";
 
 function MktSection({ label, hint, children }) {
   return (
@@ -465,6 +466,7 @@ export default function AdminPage() {
   const XDRIVE_TABS = [
     { id: "funnel", label: "Funnel" },
     { id: "errors", label: "Errors" },
+    { id: "broadcast", label: "Broadcast" },
   ];
 
   return (
@@ -666,6 +668,7 @@ export default function AdminPage() {
                 <div className="adm-content" style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 28px 80px" }}>
                   {xdriveTab === "funnel" && <FunnelTab />}
                   {xdriveTab === "errors" && <ErrorsTab />}
+                  {xdriveTab === "broadcast" && <BroadcastTab dealers={dealers} salesmen={salesmen} />}
                 </div>
               </>
             ) : (
