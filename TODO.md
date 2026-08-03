@@ -330,7 +330,19 @@ Redeploy the other four when convenient to prevent the same Sentry preflight iss
 
 ### PUBLIC CAR DETAIL PAGE (CarDetailPage) — engagement backlog
 
-- [ ] **CDP-COMMENTS: Comments / Q&A on listings** — public "Ask a question" / "Read all comments" area on the car detail page (Carlist parity). Needs a `listing_comments` table (listing_id, author_name/buyer_id, body, parent_id for replies, created_at), RLS (public read, authenticated/captcha write), a dealer/salesman reply path, and moderation (hide/report). Surface a visible Q&A block on CarDetailPage.
+- [x] **CDP-COMMENTS: Comments / Q&A on listings** — DONE (2026-08-03).
+  `src/components/comments/CommentsSection.jsx` renders a threaded Q&A block under
+  Reviews on CarDetailPage (both mobile + desktop layouts). New `listing_comments`
+  table (listing_id, dealer_id, author_id, author_name, body, parent_id, status,
+  created_at) with RLS: public read of visible rows, authenticated own-write, dealer
+  moderation via get_my_dealer_id(); dealer_id stamped by a BEFORE INSERT trigger so
+  it can't be spoofed. Reply from the listing's dealer account gets a Seller badge
+  derived from the author id (tamper-proof). Delete-own + honest empty state.
+  DELIBERATE scope choice: posting is AUTHENTICATED-ONLY (no anonymous writes) — this
+  removes the spam surface so it ships without the Turnstile CAPTCHA (ACT-10). Follow-
+  ups when ACT-10 lands: allow anonymous captcha-gated posting, a report/flag path,
+  and a dealer moderation queue in the dashboard (hide is possible via RLS today but
+  has no UI yet).
 - [x] **CDP-REVIEWS: Buyer reviews / ratings** — DONE. `reviews` table + RLS live;
   `src/components/reviews/ReviewsSection.jsx` (rendered on CarDetailPage) does
   logged-in buyer reviews, star rating, live average/count, one-review-per-buyer
