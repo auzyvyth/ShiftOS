@@ -54,6 +54,7 @@ import { useMarketplaceTracking } from "../hooks/useMarketplaceTracking";
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { estimateRoadTax } from "../utils/roadTax";
 import ReviewsSection from "../components/reviews/ReviewsSection";
+import CommentsSection from "../components/comments/CommentsSection";
 import { cdnImg } from "../utils/img";
 import { toast } from "sonner";
 
@@ -2440,6 +2441,9 @@ export default function CarDetailPage() {
           {/* Reviews (mobile) */}
           <ReviewsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} isXdrive={isXdrive} />
 
+          {/* Q&A (mobile) */}
+          <CommentsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} />
+
         </div>
 
 
@@ -3332,6 +3336,9 @@ export default function CarDetailPage() {
 
             {/* ── REVIEWS (desktop) ── */}
             <ReviewsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} isXdrive={isXdrive} />
+
+            {/* ── Q&A (desktop) ── */}
+            <CommentsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} />
 
             {/* BOOKING ANCHOR */}
             <div ref={bookingRef} id="booking-form" style={{ marginTop: 56 }} />

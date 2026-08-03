@@ -9,6 +9,7 @@ import { estimateRoadTax } from "../utils/roadTax";
 import { lookupCarSpec } from "../utils/carSpecs";
 import { decodeVin, isLikelyVin } from "../utils/vinDecode";
 import { color } from "../theme/tokens";
+import AppraisalChecklist, { summarizeAppraisal } from "./AppraisalChecklist";
 
 // Official Malaysian transfer baseline (government rates, before runner markup)
 const JPJ_GOVT_FEE = 100;
@@ -58,7 +59,7 @@ const blankForm = {
   purchase_source: "Auction", encumbrance_status: "unknown",
   loan_settlement_amount: "", seller_contact: "",
   // Condition & pricing
-  recon_cost: "", condition: "Good", condition_notes: "",
+  recon_cost: "", condition: "Good", condition_notes: "", appraisal: null,
   b5_done: false, puspakom_b5_date: "",
   asking_price: "", min_price: "", commission_amount: "",
   warranty_months: "",
@@ -322,6 +323,9 @@ export default function AddCarForm({ onPublished, onStocked, mode, onBack, onCon
       encumbrance_status: form.encumbrance_status,
       puspakom_b5_date: form.b5_done && form.puspakom_b5_date ? form.puspakom_b5_date : null,
       notes: form.condition_notes || null,
+      appraisal: form.appraisal
+        ? { ...form.appraisal, appraised_at: new Date().toISOString(), appraised_by: dealerId }
+        : null,
     };
 
     try {
@@ -500,12 +504,13 @@ export default function AddCarForm({ onPublished, onStocked, mode, onBack, onCon
       {step === 3 && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" }} className="addcar-pricing">
           <div style={{ display: "grid", gap: 16 }}>
-            <Field label="Recon estimate (RM)" required hint="Refine later via recon job cards"><FText k="recon_cost" ph="2500" type="number" /></Field>
+            <Field label="Recon estimate (RM)" required hint={form.appraisal ? `Appraisal: ${summarizeAppraisal(form.appraisal)} — set recon accordingly` : "Refine later via recon job cards"}><FText k="recon_cost" ph="2500" type="number" /></Field>
             <Field label="Condition"><FSelect k="condition" options={CONDITIONS} /></Field>
             <Field label="Condition notes">
               <textarea style={{ ...INP, minHeight: 64, resize: "vertical" }} value={form.condition_notes}
                 placeholder="Front bumper scratch, needs respray…" onChange={(e) => setVal("condition_notes", e.target.value)} />
             </Field>
+            <AppraisalChecklist value={form.appraisal} onChange={(v) => setVal("appraisal", v)} />
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <input type="checkbox" id="b5done" checked={form.b5_done} onChange={(e) => setVal("b5_done", e.target.checked)} />
               <label htmlFor="b5done" style={{ fontSize: 13, color: color.ink }}>Puspakom B5 already done</label>

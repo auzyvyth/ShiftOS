@@ -94,6 +94,7 @@ import { normalizeMYPhone } from "../utils/phone";
 import { getCategoryCfg, PRODUCT_CATEGORY_OPTIONS } from "../utils/serviceCategories";
 import OwnerCarPanel from "../components/inventory/OwnerCarPanel";
 import CustomersTab from "../components/crm/CustomersTab";
+import AppraisalChecklist, { summarizeAppraisal } from "../components/AppraisalChecklist";
 import { getPlanConfig, nextDealerPlan } from "../utils/planConfig";
 import { color, border, radius, font } from "../theme/tokens";
 import { getEmbedUrl } from "../utils/videoEmbed";
@@ -1033,6 +1034,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
   });
   const [dealerState, setDealerState] = useState(profile?.state || '');
   const [dealerCity, setDealerCity]   = useState(profile?.city  || '');
+  const [dealerAddress, setDealerAddress] = useState(profile?.location || '');
+  const [businessHours, setBusinessHours] = useState(profile?.business_hours || '');
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -1139,6 +1142,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setHandlesRti(profile.handles_roadtax_insurance !== false);
     setDealerState(profile.state || '');
     setDealerCity(profile.city || '');
+    setDealerAddress(profile.location || '');
+    setBusinessHours(profile.business_hours || '');
     setTgToken(""); // SEC-5: write-only — never load the stored token back into the form
     setTgChannel(profile.telegram_channel_id || "");
     setTgAutoPost(profile.telegram_auto_post || false);
@@ -1321,6 +1326,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
       social_facebook: facebook.trim(),
       state: dealerState.trim(),
       city:  dealerCity.trim(),
+      location: dealerAddress.trim(),
+      business_hours: businessHours.trim(),
     });
 
   const saveTelegram = () =>
@@ -1841,6 +1848,26 @@ function SettingsTab({ profile, onProfileUpdate }) {
             />
           </SettingsField>
         </div>
+
+        <SettingsField label="Street Address" hint="Shown on your storefront Visit Us card with a Get Directions link">
+          <input
+            value={dealerAddress}
+            onChange={e => setDealerAddress(e.target.value)}
+            placeholder="e.g. 12 Jalan Setia, Petaling Jaya"
+            className={iCls}
+          />
+        </SettingsField>
+
+        <SettingsField label="Business Hours" hint="Shown on your storefront, one line per day is fine">
+          <textarea
+            value={businessHours}
+            onChange={e => setBusinessHours(e.target.value)}
+            placeholder={"e.g. Mon–Sat 9am–6pm\nSun closed"}
+            rows={2}
+            className={iCls}
+            style={{ resize: "vertical" }}
+          />
+        </SettingsField>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <SettingsField label="TikTok">
@@ -6386,6 +6413,10 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
   const [publishingStockId, setPublishingStockId] = useState(null);
   const [detailUnit, setDetailUnit] = useState(null);
   const [stockPublishListing, setStockPublishListing] = useState(null);
+  // T2-3: condition appraisal draft for the detail drawer (edit-in-place).
+  const [apprDraft, setApprDraft] = useState(null);
+  const [apprSaving, setApprSaving] = useState(false);
+  useEffect(() => { setApprDraft(detailUnit?.appraisal || null); }, [detailUnit]);
   // Search + filter + sort for the stock list
   const [stockSearch, setStockSearch] = useState('');
   const [stockFilters, setStockFilters] = useState(() => new Set());
@@ -6732,6 +6763,21 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: unit.id, action: 'encumbrance_updated', summary: `Encumbrance status ${unit.encumbrance_status || 'unknown'} → ${next}`, fieldChanges: { encumbrance_status: { from: unit.encumbrance_status, to: next } } });
     setUnits(p => p.map(u => u.id === unit.id ? { ...u, encumbrance_status: next } : u));
     setDetailUnit(prev => (prev && prev.id === unit.id) ? { ...prev, encumbrance_status: next } : prev);
+  };
+
+  // T2-3: persist the condition appraisal from the detail drawer.
+  const handleSaveAppraisal = async (unit) => {
+    setApprSaving(true);
+    const payload = apprDraft
+      ? { ...apprDraft, appraised_at: new Date().toISOString(), appraised_by: userId }
+      : null;
+    const { error } = await supabase.from('stock_units').update({ appraisal: payload }).eq('id', unit.id).eq('dealer_id', userId);
+    setApprSaving(false);
+    if (error) { toast.error('Could not save appraisal'); return; }
+    logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: unit.id, action: 'appraisal_updated', summary: payload ? `Condition appraisal saved — Grade ${payload.overall}` : 'Condition appraisal cleared' });
+    setUnits(p => p.map(u => u.id === unit.id ? { ...u, appraisal: payload } : u));
+    setDetailUnit(prev => (prev && prev.id === unit.id) ? { ...prev, appraisal: payload } : prev);
+    toast.success('Appraisal saved');
   };
 
   const fetchPnl = async (unit) => {
@@ -7265,6 +7311,16 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                             <span title="Hire-purchase / loan encumbrance" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${enc.color}15`, border: `1px solid ${enc.color}30`, color: enc.color }}>{enc.label}</span>
                             {isUnpublished && <span title="Not visible on the public marketplace" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: '#fffbeb', border: '1px solid #fde68a', color: '#b45309' }}>Not published</span>}
                           </>}
+                          {u.appraisal?.overall && (() => {
+                            const t = u.appraisal.overall === 'A' ? { c: '#059669', b: '#6ee7b7', bg: 'rgba(52,211,153,0.12)' }
+                              : u.appraisal.overall === 'D' ? { c: '#dc2626', b: '#fca5a5', bg: 'rgba(248,113,113,0.1)' }
+                              : { c: '#b45309', b: '#fde68a', bg: '#fffbeb' };
+                            return (
+                              <span title={summarizeAppraisal(u.appraisal)} style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: t.bg, border: `1px solid ${t.b}`, color: t.c }}>
+                                Grade {u.appraisal.overall}{u.appraisal.attention_count > 0 ? ` · ${u.appraisal.attention_count}` : ''}
+                              </span>
+                            );
+                          })()}
                           {can('view_gross') && gp != null && (
                             <span title="Net profit after recon, services, commission, ad spend and holding" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: gp >= 0 ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.1)', border: `1px solid ${gp >= 0 ? '#6ee7b7' : '#fca5a5'}`, color: gp >= 0 ? '#059669' : '#dc2626' }}>
                               Net {gp >= 0 ? '+' : '−'}RM {Math.abs(gp).toLocaleString()}
@@ -7458,6 +7514,18 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
               </div>
               </div>{/* /RIGHT column */}
               </div>{/* /body grid */}
+
+              {/* T2-3: editable condition appraisal (full width) */}
+              <div style={{ padding: '14px 16px', borderTop: '1px solid #f3f4f6' }}>
+                <AppraisalChecklist value={apprDraft} onChange={setApprDraft} />
+                <div style={{ marginTop: 12 }}>
+                  <button onClick={() => handleSaveAppraisal(u)} disabled={apprSaving}
+                    style={{ fontSize: 13, fontWeight: 600, padding: '9px 18px', borderRadius: 8, cursor: apprSaving ? 'default' : 'pointer', color: '#fff', background: '#dc2626', border: 'none', opacity: apprSaving ? 0.6 : 1 }}>
+                    {apprSaving ? 'Saving…' : 'Save appraisal'}
+                  </button>
+                </div>
+              </div>
+
               <div style={{ height: 16 }} />
             </div>
           </div>

@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { invalidateMarketplaceSettingsCache, MARKETPLACE_FALLBACK } from "../hooks/useMarketplaceSettings";
 import { PLAN_CONFIG } from "../utils/planConfig";
+import FunnelTab from "../components/platform/FunnelTab";
+import ErrorsTab from "../components/platform/ErrorsTab";
+import BroadcastTab from "../components/platform/BroadcastTab";
 
 function MktSection({ label, hint, children }) {
   return (
@@ -145,6 +148,10 @@ export default function AdminPage() {
   const [dealerStats, setDealerStats] = useState({});
   const [expandedDealer, setExpandedDealer] = useState(null);
   const [activeTab, setActiveTab] = useState("dealers");
+  // Two top-level consoles in the superadmin panel. "shiftos" = the existing SaaS
+  // ops (dealers/approvals/billing…); "xdrive" = the public marketplace analytics.
+  const [activeConsole, setActiveConsole] = useState("shiftos");
+  const [xdriveTab, setXdriveTab] = useState("funnel");
   const [salesmanSearch, setSalesmanSearch] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [waitlist, setWaitlist] = useState([]);
@@ -451,6 +458,17 @@ export default function AdminPage() {
     { id: "billing",     label: "Billing" },
   ];
 
+  const CONSOLES = [
+    { id: "shiftos", label: "ShiftOS Ops", sub: "Dealers · approvals · billing" },
+    { id: "xdrive",  label: "XDrive Ops",  sub: "Marketplace analytics" },
+  ];
+
+  const XDRIVE_TABS = [
+    { id: "funnel", label: "Funnel" },
+    { id: "errors", label: "Errors" },
+    { id: "broadcast", label: "Broadcast" },
+  ];
+
   return (
     <>
       <style>{`
@@ -470,6 +488,17 @@ export default function AdminPage() {
         .modal-box { background: #111318; border: 1px solid rgba(220,38,38,0.3); border-radius: 12px; padding: 28px; max-width: 360px; width: 90%; }
         .adm-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
         .adm-tabs::-webkit-scrollbar { display: none; }
+        /* Two-console shell: left rail (desktop) + main column */
+        .adm-shell { display: flex; align-items: flex-start; }
+        .adm-sidebar { width: 208px; flex-shrink: 0; align-self: stretch; border-right: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.012); padding: 16px 12px; display: flex; flex-direction: column; gap: 6px; position: sticky; top: 52px; min-height: calc(100vh - 52px); }
+        .adm-main { flex: 1; min-width: 0; }
+        .adm-console-btn { text-align: left; background: none; border: 1px solid transparent; border-radius: 9px; padding: 11px 13px; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+        .adm-console-btn:hover { background: rgba(255,255,255,0.03); }
+        .adm-mobile-console { display: none; }
+        @media (max-width: 720px) {
+          .adm-sidebar { display: none; }
+          .adm-mobile-console { display: flex; gap: 6px; padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        }
         /* Mobile — make the console navigable on a phone (375px+) */
         @media (max-width: 720px) {
           .adm-header { padding: 8px 14px !important; height: auto !important; flex-wrap: wrap; gap: 10px; }
@@ -592,6 +621,59 @@ export default function AdminPage() {
           </div>
         </header>
 
+        {/* Two-console shell: left rail (desktop) / segmented switcher (mobile) */}
+        <div className="adm-shell">
+          <aside className="adm-sidebar">
+            <p style={{ fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700, padding: "0 4px 8px" }}>Consoles</p>
+            {CONSOLES.map(c => {
+              const on = activeConsole === c.id;
+              return (
+                <button key={c.id} className="adm-console-btn" onClick={() => setActiveConsole(c.id)}
+                  style={{ background: on ? "rgba(220,38,38,0.1)" : undefined, borderColor: on ? "rgba(220,38,38,0.3)" : "transparent" }}>
+                  <span style={{ display: "block", fontSize: 13, fontWeight: 700, color: on ? "#f87171" : "#e5e7eb" }}>{c.label}</span>
+                  <span style={{ display: "block", fontSize: 10, color: "#6b7280", marginTop: 2 }}>{c.sub}</span>
+                </button>
+              );
+            })}
+          </aside>
+
+          <div className="adm-main">
+            {/* Mobile console switcher */}
+            <div className="adm-mobile-console">
+              {CONSOLES.map(c => {
+                const on = activeConsole === c.id;
+                return (
+                  <button key={c.id} onClick={() => setActiveConsole(c.id)}
+                    style={{ flex: 1, fontSize: 12, fontWeight: 700, padding: "9px 10px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit",
+                      background: on ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.03)",
+                      border: on ? "1px solid rgba(220,38,38,0.3)" : "1px solid rgba(255,255,255,0.08)",
+                      color: on ? "#f87171" : "#9ca3af" }}>
+                    {c.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {activeConsole === "xdrive" ? (
+              /* ══ XDRIVE OPS CONSOLE ══ */
+              <>
+                <div className="adm-tabs" style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 28px", background: "rgba(255,255,255,0.01)" }}>
+                  {XDRIVE_TABS.map(t => (
+                    <button key={t.id} className="adm-tab" onClick={() => setXdriveTab(t.id)}
+                      style={{ padding: "12px 16px", background: "none", border: "none", borderBottom: xdriveTab === t.id ? "2px solid #dc2626" : "2px solid transparent", color: xdriveTab === t.id ? "#fff" : "#6b7280", fontSize: 13, fontWeight: xdriveTab === t.id ? 600 : 400, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s", whiteSpace: "nowrap" }}>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="adm-content" style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 28px 80px" }}>
+                  {xdriveTab === "funnel" && <FunnelTab />}
+                  {xdriveTab === "errors" && <ErrorsTab />}
+                  {xdriveTab === "broadcast" && <BroadcastTab dealers={dealers} salesmen={salesmen} />}
+                </div>
+              </>
+            ) : (
+            /* ══ SHIFTOS OPS CONSOLE ══ */
+            <>
         {/* Tabs */}
         <div className="adm-tabs" style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 28px", background: "rgba(255,255,255,0.01)" }}>
           {TABS.map(t => (
@@ -1620,6 +1702,10 @@ export default function AdminPage() {
               </div>
             </>
           )}
+        </div>
+            </>
+            )}
+          </div>
         </div>
       </div>
     </>

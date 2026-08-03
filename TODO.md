@@ -224,13 +224,21 @@ by what unblocks closing Tier 2 dealers first.
   Highest-frequency time-saver + top demo moment. Next step: a semi-automated push
   (data feed export or deep-link prefill) per channel, reusing the sharePack shaping
   layer (already built for exactly this). Investigate Carlist/Mudah feed formats first.
-- [ ] **T2-3: Standardized appraisal checklist (saved, not a reminder)** — PARTIAL.
-  `AddCarForm.jsx` shows a green intake REMINDER (physical inspection, geran, keys,
-  service history) but nothing is persisted per unit; encumbrance + Puspakom B5/B7
-  dates are saved on stock_units but there's no structured pass/fail appraisal record.
-  Bigger lots buy on process — a saved per-unit appraisal (condition grades, defects,
-  photos) that feeds the recon estimate + cost floor closes the loop. Next step: an
-  `appraisals` table (or JSONB on stock_units) + a structured form in the intake flow.
+- [x] **T2-3: Standardized appraisal checklist (saved, not a reminder)** — DONE
+  (2026-08-03). New `src/components/AppraisalChecklist.jsx` grades 8 inspection areas
+  (exterior, interior, engine, transmission, suspension/brakes, electrical/aircon,
+  tyres, documents) Good/Fair/Poor with per-area defect notes, deriving an overall
+  A-D grade + areas-to-check count. Persisted to a new `stock_units.appraisal` jsonb
+  column (additive; existing dealer RLS covers it). Captured optionally in AddCarForm
+  intake step 3 (grade hints the recon estimate) AND editable in place from the
+  StockTab detail drawer (so legacy + quick-add units can be appraised any time),
+  saved via handleSaveAppraisal + logActivity. Compact grade badge on each stock row.
+  DELIBERATE non-choices / follow-ups: (1) does NOT auto-cost defects into a recon RM
+  figure — that would be fabricated money; the grade informs, the dealer sets recon.
+  Add real per-defect cost bands later to auto-suggest. (2) Appraisal photos per area
+  not yet captured (grades + notes only). (3) The StockTab quick-add "Add Unit" modal
+  still shows only the green reminder — appraise those units from the detail drawer
+  after adding.
 
 ### FEATURE ROADMAP — ranked by priority + ROI
 
@@ -301,12 +309,16 @@ no location/map/hours, no real reviews, no on-site finance/trade-in tools.
   marketplace-only (:1326), 4.9-star fake stat removed, fake "RM 0 / Free Consultation"
   stat removed (stats strip now 2 real cells: In Stock + Cars Sold). Default testimonials no longer
   fall back on storefronts (subdomain shows real reviews or the section is hidden
-  entirely). STILL OPEN:
-  1. Add a real contact/location block (address, hours, map/click-to-call) — no
-     such block exists today; render dealer logo (site_logo_url) in storefront header.
-  2. (Optional) Google reviews integration — pull live reviews via Google Places
+  entirely). Contact/location block DONE (2026-08-03): storefront "Visit Us" card
+  shows the full street address with a Google Maps "Get Directions" link (no API
+  key — a maps-search URL built from the address) + a new Opening Hours card;
+  dealer logo already renders in the storefront header (RF-1). Settings gained a
+  Street Address (location) editor + multi-line Business Hours field; new
+  profiles.business_hours column + get_dealer_profile_by_subdomain RPC recreated to
+  return it (grants restored, verified as anon). STILL OPEN (both optional):
+  1. (Optional) Google reviews integration — pull live reviews via Google Places
      API (needs Maps Platform API key + per-dealer place_id + edge-function proxy).
-  3. (Optional) demote hero carousel + add on-page inventory search/filter; detail
+  2. (Optional) demote hero carousel + add on-page inventory search/filter; detail
      page can adopt dconcept.my framed gallery + status+code line + clean spec grid.
 
 ### DEALER DASHBOARD UX/BUG AUDIT (2026-06-07) — all DASH-1..9 shipped
@@ -318,7 +330,19 @@ Redeploy the other four when convenient to prevent the same Sentry preflight iss
 
 ### PUBLIC CAR DETAIL PAGE (CarDetailPage) — engagement backlog
 
-- [ ] **CDP-COMMENTS: Comments / Q&A on listings** — public "Ask a question" / "Read all comments" area on the car detail page (Carlist parity). Needs a `listing_comments` table (listing_id, author_name/buyer_id, body, parent_id for replies, created_at), RLS (public read, authenticated/captcha write), a dealer/salesman reply path, and moderation (hide/report). Surface a visible Q&A block on CarDetailPage.
+- [x] **CDP-COMMENTS: Comments / Q&A on listings** — DONE (2026-08-03).
+  `src/components/comments/CommentsSection.jsx` renders a threaded Q&A block under
+  Reviews on CarDetailPage (both mobile + desktop layouts). New `listing_comments`
+  table (listing_id, dealer_id, author_id, author_name, body, parent_id, status,
+  created_at) with RLS: public read of visible rows, authenticated own-write, dealer
+  moderation via get_my_dealer_id(); dealer_id stamped by a BEFORE INSERT trigger so
+  it can't be spoofed. Reply from the listing's dealer account gets a Seller badge
+  derived from the author id (tamper-proof). Delete-own + honest empty state.
+  DELIBERATE scope choice: posting is AUTHENTICATED-ONLY (no anonymous writes) — this
+  removes the spam surface so it ships without the Turnstile CAPTCHA (ACT-10). Follow-
+  ups when ACT-10 lands: allow anonymous captcha-gated posting, a report/flag path,
+  and a dealer moderation queue in the dashboard (hide is possible via RLS today but
+  has no UI yet).
 - [x] **CDP-REVIEWS: Buyer reviews / ratings** — DONE. `reviews` table + RLS live;
   `src/components/reviews/ReviewsSection.jsx` (rendered on CarDetailPage) does
   logged-in buyer reviews, star rating, live average/count, one-review-per-buyer
