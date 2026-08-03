@@ -8,6 +8,7 @@ import { Redis } from '@upstash/redis';
 
 const PROTECTED = new Set([
   '/api/enquiry',
+  '/api/whatsapp-lead',
   '/api/booking',
   '/api/waitlist',
   '/api/ai-messages',
@@ -16,11 +17,12 @@ const PROTECTED = new Set([
 
 // Per-IP sliding-window limits
 const LIMITS = {
-  '/api/enquiry':    { window: '60 s',  max: 5,  prefix: 'rl:enquiry' },
-  '/api/booking':    { window: '60 s',  max: 3,  prefix: 'rl:booking' },
-  '/api/waitlist':   { window: '300 s', max: 3,  prefix: 'rl:waitlist' },
-  '/api/ai-messages':{ window: '60 s',  max: 20, prefix: 'rl:ai' },
-  '/api/car-specs':  { window: '60 s',  max: 30, prefix: 'rl:carspecs' },
+  '/api/enquiry':      { window: '60 s',  max: 5,  prefix: 'rl:enquiry' },
+  '/api/whatsapp-lead':{ window: '60 s',  max: 8,  prefix: 'rl:walead' },
+  '/api/booking':      { window: '60 s',  max: 3,  prefix: 'rl:booking' },
+  '/api/waitlist':     { window: '300 s', max: 3,  prefix: 'rl:waitlist' },
+  '/api/ai-messages':  { window: '60 s',  max: 20, prefix: 'rl:ai' },
+  '/api/car-specs':    { window: '60 s',  max: 30, prefix: 'rl:carspecs' },
 };
 
 let limiters = null;
@@ -73,5 +75,5 @@ export default async function middleware(req) {
 }
 
 export const config = {
-  matcher: ['/api/enquiry', '/api/booking', '/api/waitlist', '/api/ai-messages', '/api/car-specs'],
+  matcher: ['/api/enquiry', '/api/whatsapp-lead', '/api/booking', '/api/waitlist', '/api/ai-messages', '/api/car-specs'],
 };

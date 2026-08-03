@@ -46,6 +46,7 @@ import { supabase } from "../supabaseClient";
 import FinancingCalculator from "../components/FinancingCalculator";
 import CarCard from "../components/CarCard";
 import BookingCalendar from "../components/BookingCalendar";
+import Turnstile from "../components/Turnstile";
 import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 import { captureRef, getRef } from "../utils/refTracking";
 import { isSubdomain } from "../hooks/useTenant";
@@ -606,6 +607,7 @@ export default function CarDetailPage() {
   /* enquiry modal */
   const [showEnquiryModal, setShowEnquiryModal] = useState(false);
   const [enquiryForm, setEnquiryForm] = useState({ name: "", phone: "", state: "" });
+  const [enquiryToken, setEnquiryToken] = useState(null);
   const [enquirySubmitting, setEnquirySubmitting] = useState(false);
 
   /* view count */
@@ -1062,6 +1064,10 @@ export default function CarDetailPage() {
       salesman_slug: getSlugFromURL() || car.salesman_slug || salesmanProfile?.slug || null,
       metadata: { source: "storefront", price: car.selling_price },
     });
+    // /api/enquiry records the enquiry + creates the pipeline lead DB-side (via
+    // the enquiry_to_lead trigger on whatsapp_enquiries) behind the Turnstile
+    // gate. Do NOT also call create_lead_from_whatsapp directly here — that
+    // produced a duplicate lead per enquiry.
     fetch("/api/enquiry", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1070,21 +1076,11 @@ export default function CarDetailPage() {
         name: enquiryForm.name,
         phone: enquiryForm.phone,
         state: enquiryForm.state || null,
-        refSlug: getRef() || null,
+        refSlug: getRef() || car.salesman_slug || null,
+        token: enquiryToken,
       }),
     }).catch((err) => console.error("[handleEnquirySubmit] fetch error:", err));
-
-    // Create a real pipeline lead from the captured name + phone so the WhatsApp
-    // click lands in the dealer/salesman pipeline (not just anonymous analytics).
-    if (car.dealer_id) {
-      supabase.rpc("create_lead_from_whatsapp", {
-        p_dealer_id: car.dealer_id,
-        p_car_id: car.id,
-        p_name: enquiryForm.name,
-        p_phone: enquiryForm.phone,
-        p_ref_slug: getRef() || car.salesman_slug || null,
-      }).then(({ error }) => { if (error) console.error("create_lead_from_whatsapp:", error); });
-    }
+    setEnquiryToken(null);
   }
 
   async function handleBook(e) {
@@ -3678,11 +3674,12 @@ export default function CarDetailPage() {
                 <option key={s} value={s} style={{ background: th.card, color: th.text }}>{s}</option>
               ))}
             </select>
+            <Turnstile onToken={setEnquiryToken} action="enquiry" className="cdp-enq-turnstile" />
             <button
               onClick={handleEnquirySubmit}
               disabled={!enquiryForm.name || enquirySubmitting}
               className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-semibold py-3 rounded-lg text-sm"
-              style={{ borderTop: '2px solid #16a34a', letterSpacing: '0.02em' }}
+              style={{ borderTop: '2px solid #16a34a', letterSpacing: '0.02em', marginTop: 4 }}
             >
               {enquirySubmitting ? 'Opening WhatsApp...' : 'Continue to WhatsApp'}
             </button>
