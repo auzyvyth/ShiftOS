@@ -224,13 +224,21 @@ by what unblocks closing Tier 2 dealers first.
   Highest-frequency time-saver + top demo moment. Next step: a semi-automated push
   (data feed export or deep-link prefill) per channel, reusing the sharePack shaping
   layer (already built for exactly this). Investigate Carlist/Mudah feed formats first.
-- [ ] **T2-3: Standardized appraisal checklist (saved, not a reminder)** — PARTIAL.
-  `AddCarForm.jsx` shows a green intake REMINDER (physical inspection, geran, keys,
-  service history) but nothing is persisted per unit; encumbrance + Puspakom B5/B7
-  dates are saved on stock_units but there's no structured pass/fail appraisal record.
-  Bigger lots buy on process — a saved per-unit appraisal (condition grades, defects,
-  photos) that feeds the recon estimate + cost floor closes the loop. Next step: an
-  `appraisals` table (or JSONB on stock_units) + a structured form in the intake flow.
+- [x] **T2-3: Standardized appraisal checklist (saved, not a reminder)** — DONE
+  (2026-08-03). New `src/components/AppraisalChecklist.jsx` grades 8 inspection areas
+  (exterior, interior, engine, transmission, suspension/brakes, electrical/aircon,
+  tyres, documents) Good/Fair/Poor with per-area defect notes, deriving an overall
+  A-D grade + areas-to-check count. Persisted to a new `stock_units.appraisal` jsonb
+  column (additive; existing dealer RLS covers it). Captured optionally in AddCarForm
+  intake step 3 (grade hints the recon estimate) AND editable in place from the
+  StockTab detail drawer (so legacy + quick-add units can be appraised any time),
+  saved via handleSaveAppraisal + logActivity. Compact grade badge on each stock row.
+  DELIBERATE non-choices / follow-ups: (1) does NOT auto-cost defects into a recon RM
+  figure — that would be fabricated money; the grade informs, the dealer sets recon.
+  Add real per-defect cost bands later to auto-suggest. (2) Appraisal photos per area
+  not yet captured (grades + notes only). (3) The StockTab quick-add "Add Unit" modal
+  still shows only the green reminder — appraise those units from the detail drawer
+  after adding.
 
 ### FEATURE ROADMAP — ranked by priority + ROI
 
