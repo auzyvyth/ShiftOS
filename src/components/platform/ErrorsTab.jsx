@@ -22,11 +22,21 @@ function timeAgo(str) {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
-function Card({ label, value, accent }) {
+function Card({ label, value, accent, mono }) {
   return (
-    <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "16px 18px" }}>
+    <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "16px 18px", minWidth: 0 }}>
       <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>{label}</p>
-      <p style={{ fontSize: 26, fontWeight: 700, color: accent || "#f0f0f0", fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.05em", lineHeight: 1 }}>{value}</p>
+      <p style={{
+        fontSize: mono ? 14 : 26,
+        fontWeight: 700,
+        color: accent || "#f0f0f0",
+        fontFamily: mono ? "monospace" : "'Bebas Neue',sans-serif",
+        letterSpacing: mono ? 0 : "0.05em",
+        lineHeight: 1.2,
+        textTransform: mono ? "none" : undefined,
+        wordBreak: "break-word",
+        overflowWrap: "anywhere",
+      }}>{value}</p>
     </div>
   );
 }
@@ -112,7 +122,7 @@ export default function ErrorsTab() {
             <Card label="Errors · 24h" value={num(summary?.total_24h)} accent={summary?.total_24h > 0 ? "#f87171" : "#4ade80"} />
             <Card label="Errors · 7d" value={num(summary?.total_7d)} />
             <Card label="Users affected · 7d" value={num(summary?.users_7d)} accent="#facc15" />
-            <Card label="Top error code" value={summary?.by_code?.[0]?.code || "—"} accent="#c084fc" />
+            <Card label="Top error code" value={summary?.by_code?.[0]?.code || "—"} accent="#c084fc" mono />
           </div>
 
           {/* By code + by role breakdown */}
@@ -121,9 +131,9 @@ export default function ErrorsTab() {
               <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "14px 16px" }}>
                 <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Top codes · 7d</p>
                 {(summary.by_code || []).map(c => (
-                  <div key={c.code} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "5px 0", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-                    <span style={{ fontSize: 12, color: "#cbd5e1", fontFamily: "monospace" }}>{c.code}</span>
-                    <span style={{ fontSize: 12, color: "#9ca3af" }}>{num(c.count)} <span style={{ color: "#475569", fontSize: 10 }}>· {timeAgo(c.last_seen)}</span></span>
+                  <div key={c.code} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, padding: "5px 0", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+                    <span style={{ fontSize: 12, color: "#cbd5e1", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{c.code}</span>
+                    <span style={{ fontSize: 12, color: "#9ca3af", flexShrink: 0, whiteSpace: "nowrap" }}>{num(c.count)} <span style={{ color: "#475569", fontSize: 10 }}>· {timeAgo(c.last_seen)}</span></span>
                   </div>
                 ))}
               </div>
