@@ -38,6 +38,7 @@ import {
   Trash2,
   Send,
   Pencil,
+  ClipboardPen,
   Settings,
   Bell,
   TrendingUp,
@@ -573,7 +574,6 @@ export default function SalesmanLite() {
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [newBookingsCount, setNewBookingsCount] = useState(0);
   // Bookings are the primary inbox surface (real appointments to act on);
   // enquiries are demoted to a "Lead History" log behind them.
   const [inboxSubTab, setInboxSubTab] = useState("bookings");
@@ -1383,7 +1383,6 @@ export default function SalesmanLite() {
                   // announce — a confirmed one the seller just created themselves
                   // shouldn't fire "New booking!" or bump the Awaiting counter.
                   if (payload.new.status === "pending") {
-                    setNewBookingsCount((c) => c + 1);
                     toast(t("salesmanLite.toast.newBooking"), { description: payload.new.buyer_name || t("salesmanLite.toast.newAppointment") });
                   }
                   // NB: do NOT auto-create a pipeline lead here. A booking stays a
@@ -2194,6 +2193,12 @@ export default function SalesmanLite() {
 
   // ── TABS ──────────────────────────────────────────────────────────────────
 
+  // Pending bookings the salesman hasn't confirmed yet — a real inbound request
+  // sitting in the Bookings tab. Derived from live appointment state (not the
+  // session-only newBookingsCount, which resets to 0 on reload) so the Inbox
+  // badge reflects DB truth across reloads, exactly like the Leads badge does.
+  const pendingBookingsCount = appointments.filter((a) => a.status === "pending").length;
+
   const TABS_DESKTOP = [
     {
       tab: "dashboard",
@@ -2216,7 +2221,7 @@ export default function SalesmanLite() {
       tab: "enquiries",
       label: t("salesmanLite.tabs.inbox"),
       icon: <MessageSquare style={{ width: 14, height: 14 }} />,
-      badge: (enquiries.filter((e) => e.status === "new").length + newBookingsCount) || null,
+      badge: (enquiries.filter((e) => e.status === "new").length + pendingBookingsCount) || null,
     },
     {
       tab: "performance",
@@ -2253,7 +2258,7 @@ export default function SalesmanLite() {
       tab: "enquiries",
       label: t("salesmanLite.tabs.inbox"),
       icon: <MessageSquare size={18} />,
-      badge: (enquiries.filter((e) => e.status === "new").length + newBookingsCount) || null,
+      badge: (enquiries.filter((e) => e.status === "new").length + pendingBookingsCount) || null,
     },
     { tab: "performance", label: t("salesmanLite.tabs.performanceMobile"), icon: <BarChart2 size={18} /> },
     { tab: "settings", label: t("salesmanLite.tabs.settings"), icon: <Settings size={18} /> },
@@ -4216,7 +4221,7 @@ export default function SalesmanLite() {
                             title="Copy WA caption"
                             style={{ flex: 1, fontSize: 11, padding: "6px 0", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: listingCopied[car.id] === "wa" ? "rgba(34,197,94,0.12)" : "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.15)", color: listingCopied[car.id] === "wa" ? "#4ade80" : "#6b9" }}
                           >
-                            <MessageCircle size={11} />
+                            <ClipboardPen size={11} />
                             {listingCopied[car.id] === "wa" ? "Copied" : "WA"}
                           </button>
                           {/* Boost */}
@@ -8375,13 +8380,13 @@ export default function SalesmanLite() {
               {/* Sub-tab switcher */}
               <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
                 {[
-                  { key: "bookings", label: t("salesmanLite.inbox.bookings", { defaultValue: "Bookings" }), badge: newBookingsCount },
+                  { key: "bookings", label: t("salesmanLite.inbox.bookings", { defaultValue: "Bookings" }), badge: pendingBookingsCount },
                   { key: "enquiries", label: t("salesmanLite.inbox.leadHistory", { defaultValue: "Lead History" }), badge: enquiries.filter((e) => e.status === "new").length },
                 ].map(({ key, label, badge }) => (
                   <button
                     key={key}
                     data-tour-id={key === "bookings" ? "bookings" : undefined}
-                    onClick={() => { setInboxSubTab(key); if (key === "bookings") setNewBookingsCount(0); }}
+                    onClick={() => { setInboxSubTab(key); }}
                     style={{
                       fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 8, cursor: "pointer",
                       background: inboxSubTab === key ? "rgba(220,38,38,0.15)" : "rgba(255,255,255,0.04)",
