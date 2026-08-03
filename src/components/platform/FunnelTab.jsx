@@ -33,9 +33,9 @@ function Delta({ cur, prev }) {
 
 function StatTile({ label, value, cur, prev, accent }) {
   return (
-    <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "18px 20px" }}>
+    <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "18px 20px", minWidth: 0 }}>
       <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>{label}</p>
-      <p style={{ fontSize: 28, fontWeight: 700, color: accent || "#f0f0f0", fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.05em", lineHeight: 1 }}>
+      <p style={{ fontSize: 28, fontWeight: 700, color: accent || "#f0f0f0", fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.05em", lineHeight: 1, wordBreak: "break-word", overflowWrap: "anywhere" }}>
         {value}
       </p>
       <div style={{ marginTop: 8 }}><Delta cur={cur} prev={prev} /> <span style={{ fontSize: 10, color: "#4b5563" }}>vs prev</span></div>
