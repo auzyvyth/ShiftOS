@@ -148,16 +148,6 @@ export default function BroadcastTab({ dealers = [], salesmen = [] }) {
       </div>
 
       <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "20px 22px", marginBottom: 24 }}>
-        {/* Title */}
-        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Title</label>
-        <input value={title} onChange={e => setTitle(e.target.value)} maxLength={120}
-          placeholder="e.g. Scheduled maintenance tonight, 1–2am" style={{ ...inputStyle, marginBottom: 16 }} />
-
-        {/* Body */}
-        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Message <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span></label>
-        <textarea value={body} onChange={e => setBody(e.target.value)} rows={3} maxLength={600}
-          placeholder="Add detail shown under the title in the notification." style={{ ...inputStyle, resize: "vertical", lineHeight: 1.5, marginBottom: 18 }} />
-
         {/* Audience */}
         <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Audience</label>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
@@ -226,6 +216,16 @@ export default function BroadcastTab({ dealers = [], salesmen = [] }) {
             </div>
           </div>
         )}
+
+        {/* Title */}
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Title</label>
+        <input value={title} onChange={e => setTitle(e.target.value)} maxLength={120}
+          placeholder="e.g. Scheduled maintenance tonight, 1–2am" style={{ ...inputStyle, marginBottom: 16 }} />
+
+        {/* Body */}
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Message <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span></label>
+        <textarea value={body} onChange={e => setBody(e.target.value)} rows={3} maxLength={600}
+          placeholder="Add detail shown under the title in the notification." style={{ ...inputStyle, resize: "vertical", lineHeight: 1.5, marginBottom: 18 }} />
 
         {/* Send row */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", marginTop: 4 }}>
