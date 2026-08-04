@@ -19,12 +19,19 @@ async function redirectByRole(session, navigate) {
 
   const { role, subdomain, dealer_id } = profile;
 
-  if ((role === 'dealer' || role === 'superadmin') && profile.onboarding_complete === false && !subdomain) {
+  // Platform superadmin has its own console (/platform) — never a dealer
+  // dashboard or a subdomain. Mirror LoginPage so every path agrees.
+  if (role === 'superadmin') {
+    navigate('/platform');
+    return;
+  }
+
+  if (role === 'dealer' && profile.onboarding_complete === false && !subdomain) {
     navigate('/onboarding');
     return;
   }
 
-  if (role === 'dealer' || role === 'superadmin') {
+  if (role === 'dealer') {
     if (subdomain) {
       // Carry the session across to the subdomain via the hash-fragment handoff
       // (same mechanism useTenant consumes). Query-string tokens were never read

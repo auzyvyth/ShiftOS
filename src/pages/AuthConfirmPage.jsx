@@ -61,7 +61,10 @@ export default function AuthConfirmPage() {
           // Unknown context → default to salesman-lite, never the dealer flow.
           navigate('/onboarding', { replace: true });
         }
-      } else if ((profile.role === 'dealer' || profile.role === 'superadmin') && profile.onboarding_complete === false) {
+      } else if (profile.role === 'superadmin') {
+        // Platform superadmin has its own console — never a dealer dashboard.
+        navigate('/platform', { replace: true });
+      } else if (profile.role === 'dealer' && profile.onboarding_complete === false) {
         navigate('/onboarding', { replace: true });
       } else if (profile.role === 'salesman') {
         if (profile.onboarding_complete === false) {

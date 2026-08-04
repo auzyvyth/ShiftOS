@@ -110,10 +110,15 @@ export default function LoginPage() {
 
   useEffect(() => {
     setMounted(true);
+    // Intentionally do NOT auto-redirect an existing session away from /login.
+    // Visiting the login page should always let you sign in as a DIFFERENT
+    // account — signing in with new credentials replaces the current session
+    // (so e.g. a superadmin can switch to a dealer account without first having
+    // to sign out). We still surface an outstanding 2FA challenge if the current
+    // session is mid-step (aal1 with a verified factor), so that flow isn't lost.
     supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) return;
-      const proceed = await checkMfaAndProceed(data.session.user);
-      if (proceed) redirectByRole(data.session.user, data.session);
+      await checkMfaAndProceed(data.session.user);
     });
   }, []);
 

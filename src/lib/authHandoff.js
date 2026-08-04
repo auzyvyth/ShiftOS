@@ -116,10 +116,23 @@ export async function establishSessionFromHandoff(supabase) {
   }
 
   // Still nothing. One guarded reload with the tokens stashed for the retry.
+  // Before reloading, purge any STALE persisted session sitting in this origin's
+  // localStorage. That stale session is what supabase-js auto-recovers on load
+  // and holds the auth lock with — so a naive reload just re-creates the same
+  // contention and the retry drops to /login all over again (the "still happens"
+  // double-login). Clearing the persisted session key (NOT a server sign-out —
+  // that would revoke the very refresh token we're handing off) means the
+  // reloaded page has nothing to recover, and setSession(stashed tokens) applies
+  // cleanly with no lock to fight for.
   if (!ssGet(RELOAD_GUARD)) {
     ssSet(STASH_AT, at);
     ssSet(STASH_RT, rt);
     ssSet(RELOAD_GUARD, "1");
+    try {
+      Object.keys(localStorage)
+        .filter((k) => /^sb-.*-auth-token$/.test(k))
+        .forEach((k) => localStorage.removeItem(k));
+    } catch { /* storage blocked in partitioned webview — reload still retries */ }
     window.location.reload();
     return { session: null, reloading: true };
   }
