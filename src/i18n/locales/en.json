@@ -699,7 +699,6 @@
       "loanCalc": "Loan calc",
       "logCall": "Log call",
       "setReminder": "Set reminder",
-      "scripts": "Scripts",
       "history": "History",
       "receipt": "Receipt",
       "changeCar": "Change Car",
@@ -707,7 +706,6 @@
       "activityHistory": "Activity History",
       "loading": "Loading…",
       "noActivity": "No activity yet.",
-      "objectionScripts": "Objection Scripts",
       "whyLost": "Why lost?",
       "deleteLeadQ": "Delete this lead?",
       "yesDelete": "Yes, delete",
@@ -719,12 +717,6 @@
         "timing": "Timing",
         "competitor": "Competitor",
         "ghost": "Ghost"
-      },
-      "scriptLabels": {
-        "price": "Price too high",
-        "mileage": "High mileage concern",
-        "timing": "Not ready yet",
-        "trust": "Not sure / need to think"
       }
     },
     "addLead": {

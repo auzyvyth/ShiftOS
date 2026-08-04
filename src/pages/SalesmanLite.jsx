@@ -888,10 +888,6 @@ export default function SalesmanLite() {
   const [loanRate, setLoanRate] = useState("3.5");
   const [loanYears, setLoanYears] = useState("7");
 
-  // objection playbook
-  const [playbookLeadId, setPlaybookLeadId] = useState(null);
-  const [copiedScriptLine, setCopiedScriptLine] = useState(null);
-
   // enquiry expand
   const [expandedEnqId, setExpandedEnqId] = useState(null);
 
@@ -5802,20 +5798,7 @@ export default function SalesmanLite() {
           const plInitials = (pl.buyer_name || "?").split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase();
           const plIsPromptingLost = lostPromptId === pl.id;
           const plIsConfirmingDelete = deleteConfirmId === pl.id;
-          const pbCar = pl.car_listings;
-          const pbCarName = pbCar ? `${pbCar.year || ""} ${pbCar.brand} ${pbCar.model}`.trim() : "this car";
-          const pbStage = pl.stage;
-          // Objection scripts only exist for active-negotiation stages. Gate the
-          // button on the same set the panel renders on, so it never toggles
-          // open to an empty panel (read as broken) on new/won/lost leads.
-          const hasScripts = ["negotiating", "viewing_booked", "test_drive", "contacted"].includes(pbStage);
-          const scripts = {
-            price: { label: "Price too high", color: "#f87171", lines: [`"Let's look at what you're actually paying monthly — at 90% loan over 7 years, that's roughly RM ${pbCar?.selling_price ? Math.round(pbCar.selling_price * 0.9 * 1.245 / 84).toLocaleString() : "X"}/mo. That's less than a phone plan upgrade."`, `"What's your target price? Let me see what I can work out — I want to make this happen for you."`, `"This is already ${pbCar?.original_price && pbCar.original_price > pbCar.selling_price ? `RM ${(pbCar.original_price - pbCar.selling_price).toLocaleString()} below asking` : "market price"}. The value is there."`] },
-            mileage: { label: "High mileage concern", color: "#fb923c", lines: [`"Mileage matters less than service history. A well-maintained ${pbCarName} at ${pbCar?.mileage ? Number(pbCar.mileage).toLocaleString() + "km" : "this mileage"} beats a low-km car that's been neglected."`, `"These engines are built to go 300k+ km with regular service. The price already reflects the mileage."`, `"I can help you run a CARFAX/JPJ check so you can see exactly what this car's been through."`] },
-            timing: { label: "Not ready yet", color: "#fbbf24", lines: [`"Totally understand — what would need to change for you to feel ready? Is it financing, or something else?"`, `"I can hold this for you with a small refundable deposit while you sort things out. No pressure."`, `"Just so you know — cars at this price point move fast. I'd hate for you to miss it and find something worse for more money."`] },
-            trust: { label: "Not sure / need to think", color: "#f87171", lines: [`"What specific questions can I answer right now? Let's remove all the uncertainty together."`, `"I'm not here to rush you — but I want to make sure you have everything you need to decide confidently."`, `"Can I send you a full brief on this car — specs, loan estimate, everything — so you have it all in one place?"`] },
-          };
-          const close = () => { setDrawerLeadId(null); setEditingNoteId(null); setPlaybookLeadId(null); setExpandedActivityLeadId(null); setLostPromptId(null); setDeleteConfirmId(null); };
+          const close = () => { setDrawerLeadId(null); setEditingNoteId(null); setExpandedActivityLeadId(null); setLostPromptId(null); setDeleteConfirmId(null); };
           return (
             <>
               {/* backdrop */}
@@ -5924,12 +5907,7 @@ export default function SalesmanLite() {
 
                   {/* Tool row 2 */}
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {hasScripts && (
-                      <button onClick={() => { setExpandedActivityLeadId(null); setPlaybookLeadId(playbookLeadId === pl.id ? null : pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: playbookLeadId === pl.id ? "rgba(168,85,247,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${playbookLeadId === pl.id ? "rgba(168,85,247,0.3)" : "rgba(255,255,255,0.08)"}`, color: playbookLeadId === pl.id ? "#c084fc" : "#9ca3af" }}>
-                        <BookOpen size={12} /> {t("salesmanLite.drawer.scripts")}
-                      </button>
-                    )}
-                    <button onClick={() => { setPlaybookLeadId(null); if (expandedActivityLeadId === pl.id) setExpandedActivityLeadId(null); else fetchLeadActivities(pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: expandedActivityLeadId === pl.id ? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${expandedActivityLeadId === pl.id ? "rgba(96,165,250,0.3)" : "rgba(255,255,255,0.08)"}`, color: expandedActivityLeadId === pl.id ? "#93c5fd" : "#9ca3af" }}>
+                    <button onClick={() => { if (expandedActivityLeadId === pl.id) setExpandedActivityLeadId(null); else fetchLeadActivities(pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: expandedActivityLeadId === pl.id ? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${expandedActivityLeadId === pl.id ? "rgba(96,165,250,0.3)" : "rgba(255,255,255,0.08)"}`, color: expandedActivityLeadId === pl.id ? "#93c5fd" : "#9ca3af" }}>
                       <History size={12} /> {t("salesmanLite.drawer.history")}
                     </button>
                     {pl.stage === "deposit_taken" && (
@@ -5966,30 +5944,6 @@ export default function SalesmanLite() {
                           })}
                         </div>
                       )}
-                    </div>
-                  )}
-
-                  {/* Objection Scripts */}
-                  {playbookLeadId === pl.id && ["negotiating","viewing_booked","test_drive","contacted"].includes(pbStage) && (
-                    <div style={{ background: "rgba(168,85,247,0.05)", border: "1px solid rgba(168,85,247,0.15)", borderRadius: 8, padding: "12px 14px" }}>
-                      <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "#c084fc", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanLite.drawer.objectionScripts")}</p>
-                      {Object.entries(scripts).map(([key, s]) => (
-                        <div key={key} style={{ marginBottom: 10 }}>
-                          <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 600, color: s.color }}>{t("salesmanLite.drawer.scriptLabels." + key)}</p>
-                          {s.lines.map((line, lineIdx) => {
-                            const lineKey = `${pl.id}-${key}-${lineIdx}`;
-                            const isCopied = copiedScriptLine === lineKey;
-                            return (
-                              <div key={lineIdx} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 4, overflowX: "hidden" }}>
-                                <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.55, flex: 1, minWidth: 0, wordBreak: "break-word", whiteSpace: "pre-wrap" }}>{line}</p>
-                                <button onClick={() => { navigator.clipboard.writeText(line.replace(/^"|"$/g,"")); setCopiedScriptLine(lineKey); setTimeout(() => setCopiedScriptLine(null), 1500); }} style={{ background: "none", border: "none", color: isCopied ? "#4ade80" : "#4b5563", cursor: "pointer", padding: 0, flexShrink: 0 }}>
-                                  {isCopied ? <Check size={12} /> : <Copy size={12} />}
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ))}
                     </div>
                   )}
 

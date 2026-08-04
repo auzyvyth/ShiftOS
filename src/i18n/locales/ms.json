@@ -690,7 +690,6 @@
       "loanCalc": "Kira loan",
       "logCall": "Log call",
       "setReminder": "Set reminder",
-      "scripts": "Skrip",
       "history": "Sejarah",
       "receipt": "Resit",
       "changeCar": "Tukar Kereta",
@@ -698,7 +697,6 @@
       "activityHistory": "Sejarah Aktiviti",
       "loading": "Memuatkan…",
       "noActivity": "Belum ada aktiviti.",
-      "objectionScripts": "Skrip Bantahan",
       "whyLost": "Kenapa hilang?",
       "deleteLeadQ": "Padam lead ini?",
       "yesDelete": "Ya, padam",
@@ -710,12 +708,6 @@
         "timing": "Masa",
         "competitor": "Pesaing",
         "ghost": "Hilang diam"
-      },
-      "scriptLabels": {
-        "price": "Harga terlalu tinggi",
-        "mileage": "Risau mileage tinggi",
-        "timing": "Belum bersedia",
-        "trust": "Tak pasti / nak fikir dulu"
       }
     },
     "addLead": {

@@ -33,7 +33,7 @@ const CONTENT = {
       body: `Salesman Lite is a free personal CRM and marketplace tool built for independent car salesmen in Malaysia. It gives you a public profile on XDrive, a lead pipeline, and a listings manager — all in one place, at no cost.`,
       items: [
         { label: 'Your public storefront', desc: 'Every listing you publish appears on xdrive.my and on your personal profile link (xdrive.my/s/your-slug). Buyers can WhatsApp you directly from any listing.' },
-        { label: 'Lead pipeline', desc: 'Track every buyer from first contact to won deal. Add notes, follow-up dates, appointments, and AI-generated objection scripts.' },
+        { label: 'Lead pipeline', desc: 'Track every buyer from first contact to won deal. Add notes, follow-up dates, and appointments.' },
         { label: 'Inbox', desc: 'XDrive buyers who tap WhatsApp on your listing appear as Enquiries. Appointment requests show under Bookings.' },
         { label: 'Performance stats', desc: 'See your close rate, funnel drop-off, and weekly activity so you know where to focus.' },
         { label: 'Join a dealership', desc: 'If you work with a dealer on ShiftOS, enter their invite code to merge your account. Your listings and leads carry over.' },
@@ -68,8 +68,7 @@ const CONTENT = {
       items: [
         { label: 'Adding a lead', desc: 'Tap "Add Lead" in the header or the + button on mobile. Enter the buyer\'s name and phone. You can optionally link a listing, add their IC, email, and address.' },
         { label: 'Lead stages', desc: 'New → Contacted → Viewing Booked → Test Drive → Negotiating → Deposit Taken → Won / Lost. Drag or tap a lead to update its stage. Won and Lost leads are archived from the active pipeline.' },
-        { label: 'Lead drawer', desc: 'Tap any lead card to open the detail drawer. Inside: buyer details, notes log, follow-up date picker, appointment scheduler, AI objection scripts, and deal history.' },
-        { label: 'AI Playbook', desc: 'In the lead drawer, tap the Playbook tab. Select the buyer\'s objection (price too high, high mileage, not ready, trust issues) and get proven response scripts you can adapt.' },
+        { label: 'Lead drawer', desc: 'Tap any lead card to open the detail drawer. Inside: buyer details, notes log, follow-up date picker, appointment scheduler, and deal history.' },
         { label: 'Follow-up dates', desc: 'Set a follow-up date on any lead. It appears in your Dashboard Agenda on the due day so you never forget a follow-up.' },
         { label: 'Stale leads alert', desc: 'Leads with no activity in 5 or more days are flagged as stale. They appear as a warning card on your Dashboard and in the Leads tab.' },
         { label: 'Linking a car', desc: 'Open the lead drawer and search for a listing to link. The car name then appears on the lead card and is included when generating a deal sheet.' },
@@ -138,7 +137,7 @@ const CONTENT = {
       body: 'Salesman Lite adalah CRM peribadi dan alat marketplace percuma yang dibina khas untuk jurujual kereta bebas di Malaysia. Ia memberikan anda profil awam di XDrive, saluran lead, dan pengurus listing — semuanya dalam satu tempat, tanpa sebarang kos.',
       items: [
         { label: 'Halaman profil awam anda', desc: 'Setiap listing yang anda terbit akan muncul di xdrive.my dan pada pautan profil peribadi anda (xdrive.my/s/slug-anda). Pembeli boleh WhatsApp anda terus dari mana-mana listing.' },
-        { label: 'Saluran lead', desc: 'Jejaki setiap lead dari hubungan pertama hingga deal menang. Tambah nota, tarikh susulan, temujanji, dan skrip bantahan yang dijana oleh AI.' },
+        { label: 'Saluran lead', desc: 'Jejaki setiap lead dari hubungan pertama hingga deal menang. Tambah nota, tarikh susulan, dan temujanji.' },
         { label: 'Peti Masuk', desc: 'Pembeli XDrive yang mengetuk WhatsApp pada listing anda akan muncul sebagai Pertanyaan. Permintaan temujanji ditunjukkan di bawah Tempahan.' },
         { label: 'Statistik prestasi', desc: 'Lihat kadar tutup anda, kejatuhan corong, dan aktiviti mingguan supaya anda tahu di mana hendak fokus.' },
         { label: 'Sertai pengedar', desc: 'Jika anda bekerja dengan pengedar di ShiftOS, masukkan kod jemputan mereka untuk menggabungkan akaun anda. Listing dan lead anda akan dibawa bersama.' },
@@ -173,8 +172,7 @@ const CONTENT = {
       items: [
         { label: 'Menambah lead', desc: 'Ketik "Tambah Lead" di header atau butang + pada mudah alih. Masukkan nama dan nombor telefon pembeli. Anda boleh memilih untuk mengaitkan listing, menambah IC, e-mel, dan alamat mereka.' },
         { label: 'Peringkat lead', desc: 'Baru → Dihubungi → Lawatan Ditempah → Ujian Pandu → Berunding → Deposit Diambil → Menang / Kalah. Seret atau ketik lead untuk mengemas kini peringkatnya. Lead Menang dan Kalah diarkibkan dari saluran aktif.' },
-        { label: 'Laci lead', desc: 'Ketik mana-mana kad lead untuk membuka laci butiran. Di dalamnya: butiran pembeli, log nota, pemilih tarikh susulan, penjadual temujanji, skrip bantahan AI, dan sejarah deal.' },
-        { label: 'Buku Panduan AI', desc: 'Dalam laci lead, ketik tab Buku Panduan. Pilih bantahan pembeli (harga terlalu tinggi, perbatuan tinggi, belum bersedia, isu kepercayaan) dan dapatkan skrip respons yang terbukti yang boleh anda ubah suai.' },
+        { label: 'Laci lead', desc: 'Ketik mana-mana kad lead untuk membuka laci butiran. Di dalamnya: butiran pembeli, log nota, pemilih tarikh susulan, penjadual temujanji, dan sejarah deal.' },
         { label: 'Tarikh susulan', desc: 'Tetapkan tarikh susulan pada mana-mana lead. Ia akan muncul dalam Agenda Papan Pemuka anda pada hari yang sepatutnya supaya anda tidak pernah lupa susulan.' },
         { label: 'Amaran lead basi', desc: 'Lead tanpa sebarang aktiviti dalam 5 hari atau lebih akan ditanda sebagai basi. Ia muncul sebagai kad amaran pada Papan Pemuka anda dan dalam tab Lead.' },
         { label: 'Mengaitkan kereta', desc: 'Buka laci lead dan cari listing untuk dikaitkan. Nama kereta kemudiannya muncul pada kad lead dan disertakan apabila menjana helaian deal.' },
