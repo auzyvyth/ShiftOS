@@ -14,7 +14,9 @@ const SALESMAN_PLANS = [
     features: ['Auto-published to xdrive.my', 'Direct WhatsApp enquiries', 'Basic performance analytics', 'No credit card required'],
   },
   {
-    tier: 'premium', route: '/salesman-onboarding/premium', label: 'Salesman Premium',
+    // Not launched yet — rendered as a disabled "Coming soon" card. Remove `soon`
+    // to re-enable selection once Salesman Premium goes live.
+    tier: 'premium', route: '/salesman-onboarding/premium', label: 'Salesman Premium', soon: true,
     price: 'RM 20', priceSub: '/month', caps: ['Up to 30 listings', '1 user'],
     features: ['Priority marketplace placement', 'Advanced CRM automation', 'Commission tracking', 'Advanced analytics', 'Custom profile subdomain'],
   },

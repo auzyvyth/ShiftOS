@@ -467,13 +467,15 @@ const TEAM_ROLES = [
 
 const PLAN_META = {
   salesman_lite: { to: "/salesman-onboarding/lite",    variant: "outline" },
-  salesman_full: { to: "/salesman-onboarding/premium", variant: "primary" },
+  salesman_full: { to: "/salesman-onboarding/premium", variant: "primary", soon: true },
   dealer_starter:{ to: "/dealer-onboarding/starter",   variant: "outline" },
   dealer_growth: { to: "/dealer-onboarding/growth",    variant: "primary", popular: true },
   dealer_pro:    { to: "/dealer-onboarding/pro",       variant: "gold" },
 };
 
-// Salesman Premium is live alongside Lite. Remove "salesman_full" to hide the card again.
+// Salesman Premium is not launched yet — its card is shown as "Coming soon"
+// (disabled CTA) via PLAN_META.salesman_full.soon. Drop that flag to go live, or
+// remove "salesman_full" here to hide the card entirely.
 const SALESMAN_PLANS = ["salesman_lite", "salesman_full"];
 const DEALER_PLANS   = ["dealer_starter", "dealer_growth", "dealer_pro"];
 const WA = "https://wa.me/60174155191?text=Hi%2C%20I%27m%20interested%20in%20ShiftOS%20for%20my%20dealership";
@@ -619,6 +621,7 @@ function PriceCard({ planKey }) {
   const cta = t(`shiftos.pricing.plans.${planKey}.cta`);
   const isPopular = meta.popular;
   const isGold    = meta.variant === "gold";
+  const isSoon    = meta.soon;
 
   const borderCol = isPopular ? "rgba(220,38,38,0.55)"
                   : isGold    ? "rgba(212,168,75,0.4)"
@@ -661,14 +664,22 @@ function PriceCard({ planKey }) {
           </li>
         ))}
       </ul>
-      {meta.variant === "primary" && (
-        <Link to={meta.to} className="sos-btn-primary" style={{ justifyContent: "center", fontSize: 14 }}>{cta}</Link>
-      )}
-      {meta.variant === "outline" && (
-        <Link to={meta.to} className="sos-btn-outline" style={{ justifyContent: "center", fontSize: 14 }}>{cta}</Link>
-      )}
-      {meta.variant === "gold" && (
-        <Link to={meta.to} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 26px", borderRadius: 11, background: "linear-gradient(135deg,#d97706,#92400e)", color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none", boxShadow: "0 4px 20px rgba(180,120,40,0.38),inset 0 1px 0 rgba(255,255,255,0.14)", transition: "transform .15s,box-shadow .15s" }}>{cta}</Link>
+      {/* Premium not launched yet — disabled "Coming soon" CTA replaces the
+          onboarding link. Remove PLAN_META.<plan>.soon to restore the button. */}
+      {isSoon ? (
+        <span aria-disabled="true" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 26px", borderRadius: 11, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#6b7280", fontWeight: 700, fontSize: 14, cursor: "not-allowed", letterSpacing: "0.04em" }}>{t("shiftos.pricing.comingSoon", "Coming soon")}</span>
+      ) : (
+        <>
+          {meta.variant === "primary" && (
+            <Link to={meta.to} className="sos-btn-primary" style={{ justifyContent: "center", fontSize: 14 }}>{cta}</Link>
+          )}
+          {meta.variant === "outline" && (
+            <Link to={meta.to} className="sos-btn-outline" style={{ justifyContent: "center", fontSize: 14 }}>{cta}</Link>
+          )}
+          {meta.variant === "gold" && (
+            <Link to={meta.to} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 26px", borderRadius: 11, background: "linear-gradient(135deg,#d97706,#92400e)", color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none", boxShadow: "0 4px 20px rgba(180,120,40,0.38),inset 0 1px 0 rgba(255,255,255,0.14)", transition: "transform .15s,box-shadow .15s" }}>{cta}</Link>
+          )}
+        </>
       )}
     </div>
   );
