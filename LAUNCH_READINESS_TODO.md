@@ -78,6 +78,23 @@ clean one-line root cause.
   bar, polluting analytics and canonical URLs. After load, if `_r` is present, remove
   it via `history.replaceState`. Effort: S · Risk: low.
 
+- [ ] **P1-6 · Triage + fix the 21 Dependabot vulnerabilities**
+  GitHub reports **21 vulns on the default branch: 14 high, 6 moderate, 1 low**
+  (surfaced on `git push`). These are dependency CVEs, separate from the app-code
+  audit. Do NOT blind-run `npm audit fix --force` — forced major upgrades on a Vite +
+  React + Supabase app can break the build. Instead:
+  1. `npm install` then `npm audit --json` to get the real advisory list + which are
+     dev-only (build tooling) vs runtime (shipped to browser). Cross-check the
+     Dependabot dashboard: https://github.com/auzyvyth/ShiftOS/security/dependabot
+  2. Prioritize **runtime** high-severity first (anything bundled into the client or
+     used by the `api/*` serverless + edge functions); dev/build-only advisories are
+     lower real-world risk for a static SPA.
+  3. Apply non-breaking `npm audit fix` (patch/minor) first; take Dependabot's
+     individual PRs for the rest and run `npm run build` + smoke test each.
+  4. Likely heavy/at-risk deps to check: `xlsx`, `jspdf`, `html2canvas`, transitive
+     build-chain packages. Confirm against the actual audit output — do not assume.
+  Effort: M · Risk: M (upgrades can break build/runtime — verify each).
+
 - [ ] **P1-5 · Confirm no precached vendor chunk exceeds the 3 MB SW cap**
   If a `vendor-*` chunk is over `maximumFileSizeToCacheInBytes: 3MB`
   (`vite.config.js:86`), the SW precache install fails, the worker never settles, and
