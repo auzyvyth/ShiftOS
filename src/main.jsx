@@ -143,6 +143,19 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// P1-4: the cache-busting hardReload() leaves ?_r=<timestamp> in the address
+// bar, which pollutes analytics referrers and canonical URLs. Once the fresh
+// document has loaded, strip it back out without a navigation.
+(function stripCacheBustParam() {
+  try {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('_r')) {
+      url.searchParams.delete('_r');
+      window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+    }
+  } catch { /* ignore */ }
+})();
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <Sentry.ErrorBoundary
     fallback={<ErrorFallback />}

@@ -35,11 +35,15 @@ export default async function handler(req, res) {
     process.env.VITE_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY,
   );
 
+  // Read via public_car_listings: the base car_listings table is NOT anon-readable
+  // (public reads go through this view), so an anon .from('car_listings') returns
+  // no row -> a false 404 that silently dropped every enquiry after the base table
+  // was locked down. api/booking.js already reads the view for the same reason.
   const { data: listing } = await supabase
-    .from('car_listings')
+    .from('public_car_listings')
     .select('dealer_id, assigned_to')
     .eq('id', carId)
-    .single();
+    .maybeSingle();
 
   if (!listing) {
     return res.status(404).json({ error: 'Listing not found' });

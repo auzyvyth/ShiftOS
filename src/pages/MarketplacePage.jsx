@@ -188,9 +188,13 @@ export default function MarketplacePage() {
       const from = (loadPage - 1) * PER_PAGE;
       const to   = from + PER_PAGE - 1;
 
+      // Only run the exact COUNT on page 1. Every "load more" re-ran an exact
+      // COUNT over the aggregate-heavy view, roughly doubling its cost per page;
+      // the total result-set size doesn't change between pages, so page 1's
+      // count stays valid for the whole scroll.
       let query = supabase
         .from('public_car_listings')
-        .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, { count: 'exact' })
+        .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, loadPage === 1 ? { count: 'exact' } : undefined)
         .in('status', ['available', 'reserved']);
 
       if (q) {
@@ -244,7 +248,10 @@ export default function MarketplacePage() {
       } else {
         setCars(prev => dedupe([...prev, ...rows]));
       }
-      setTotal(count || 0);
+      // count is only requested on page 1 (see above); don't clobber the total
+      // with the null that later pages return, which would break the load-more
+      // gate (cars.length >= totalCount).
+      if (loadPage === 1) setTotal(count || 0);
     } catch (e) {
       console.error('[fetchCars]', e?.message || e?.code || e);
       // Already showing cached cars from a previous visit — keep them on
