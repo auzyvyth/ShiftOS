@@ -2,28 +2,17 @@
 
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
 
-- **ACT-1: Enable TOTP in Supabase dashboard** — 2FA (SEC-1) will not work end-to-end until the TOTP factor type is enabled: Supabase → Authentication → Settings → Multi-Factor → enable **TOTP**. Until then, the "Enable 2FA" button in Settings will error on enroll.
+- **ACT-1: Enable TOTP in Supabase dashboard** — 2FA (SEC-1) will not work end-to-end until the TOTP factor type is enabled: Supabase → Authentication → Settings → Multi-Factor → enable **TOTP**. Until then, the "Enable 2FA" button in Settings will error on enroll. NOTE (2026-08-05): TOTP is NOT deprecated — Bank Negara's RMiT (28 Nov 2025) bans **SMS OTP** as a standalone factor, not TOTP. TOTP (authenticator-app codes, RFC 6238) is offline/device-local and is one of the regulator's recommended interception-resistant replacements, so it stays the correct choice here. Do NOT enable Supabase's Phone/SMS OTP factor. Passkeys (FIDO2/WebAuthn) are the gold standard but are not a native Supabase MFA factor yet.
 - **ACT-2: Decide on full 2FA enforcement (SEC-1b)** — Client-side 2FA only challenges the password login path. Google OAuth and magic-link logins are NOT challenged. True enforcement across all auth methods needs RLS policies keyed on `aal2` so the database rejects aal1 sessions. Confirm if/when you want this hardening built.
-
-- **ACT-3: Set `TELEGRAM_BOT_TOKEN` edge secret** — Salesman Lite "listing is live" Telegram ping (and appointment-reminder cron) fall back to the platform bot when a user has no personal `telegram_bot_token`. This requires the platform bot token set as a Supabase edge secret: Supabase → Edge Functions → Secrets → `TELEGRAM_BOT_TOKEN=<botfather token>`. Without it, `send-telegram` returns `no_token` for Lite salesmen (silent no-op; dealers with their own token are unaffected). Could not verify whether it is already set from the session.
 
 - **ACT-4: Enable Google One Tap (`VITE_GOOGLE_CLIENT_ID`)** — The Google One Tap popup for new marketplace visitors (`src/components/GoogleOneTap.jsx`) is built but no-ops until the Google OAuth **Web client ID** is exposed to the frontend. Steps: (1) Vercel → env `VITE_GOOGLE_CLIENT_ID=<google web client id>` (same client used by Supabase's Google provider); (2) Google Cloud Console → that Web client → add `https://xdrive.my` (+ preview origin) to **Authorized JavaScript origins**; (3) Supabase → Auth → Providers → Google → add the same client ID under **Authorized Client IDs** so `signInWithIdToken` accepts the One Tap token. Until done, the popup simply never shows (no error).
 
-- **ACT-5: Set `GOOGLE_DRIVE_API_KEY` edge secret** — The self-serve stock
-  importer's photo fetch (`import-drive-images` edge function, IMP-1/IMP-2) needs
-  a Google Drive API key so it can list + download images from dealers' public
-  "anyone with the link" Drive folders WITHOUT any dealer OAuth. Steps: (1) Google
-  Cloud Console → same project as your `credentials.json` → APIs & Services →
-  enable **Google Drive API** → Credentials → Create credentials → **API key**;
-  (2) restrict the key to the Drive API (recommended); (3) Supabase → Edge
-  Functions → Secrets → `GOOGLE_DRIVE_API_KEY=<key>`. Until set, the function
-  returns `drive_key_missing` and imported cars come in without photos (listings
-  still import fine). The key is server-only — never exposed to the client.
-
-- **ACT-6: Enable Leaked Password Protection** — Supabase → Authentication →
+- **ACT-6: Enable Leaked Password Protection — BLOCKED (needs Supabase Pro)** — Supabase → Authentication →
   Settings → Password → turn on **"Check against HaveIBeenPwned"**. Until then,
-  signups/resets accept known-breached passwords. One toggle, no code. (Flagged
-  by the onboarding security audit, 2026-07-20.)
+  signups/resets accept known-breached passwords. One toggle, no code. NOT DOABLE on the
+  free tier — the HIBP check is a Pro-plan feature. DEFERRED until revenue starts and
+  Supabase Pro is acquired; do not keep surfacing it as an actionable toggle until then.
+  (Flagged by the onboarding security audit, 2026-07-20; marked blocked 2026-08-05.)
 
 - **ACT-7 (optional): Migrate auth to PKCE flow** — the Supabase client currently
   uses the implicit flow (tokens land in the URL hash, which can leak via history/
@@ -58,7 +47,7 @@
   inline verify against siteverify) before create_lead_from_whatsapp / hunt insert.
   Until done, public lead/hunt writes rely on DB rate limits alone. (Audit F5, 2026-08-03.)
 
-> Reminder protocol: while ACT-1, ACT-2, ACT-3, ACT-4, ACT-5, ACT-6, ACT-8, ACT-9 or ACT-10 remain here, surface them at session start and whenever 2FA/security/Telegram/auth/import/dependency work is touched.
+> Reminder protocol: while ACT-1, ACT-2, ACT-4, ACT-8, ACT-9 or ACT-10 remain here, surface them at session start and whenever 2FA/security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. ACT-6 is blocked on Supabase Pro/revenue — do not nag until then.)
 
 ## Dev tasks
 
@@ -262,7 +251,7 @@ by what unblocks closing Tier 2 dealers first.
 
 - [x] **NEW-7: Overdue handover step reminders** — DONE. Same `expiry-reminders` edge function also handles overdue post_sale_tasks: finds pending/in_progress steps where due_date < today, inserts dealer_notifications AND salesman_notifications (if lead has a salesman). 24-hour dedup. Cron runs daily 00:00 UTC.
 
-- [ ] **NEW-8: Fix document email delivery** — BLOCKED ON USER ACTION. `send-document` edge function code is correct and complete. Edge function logs show zero calls to it — it has never been triggered. Root cause: `RESEND_API_KEY` is not set as a Supabase edge function secret. Fix: (1) Set secret in Supabase dashboard → Edge Functions → Secrets: `RESEND_API_KEY=<your key>` and `RESEND_FROM_EMAIL=noreply@xdrive.my`. (2) Verify `xdrive.my` as a sender domain in your Resend dashboard. Once secrets are set, the "Send to buyer" button on issued documents will work immediately.
+- [x] **NEW-8: Fix document email delivery** — DONE (2026-08-05). `RESEND_API_KEY` + `RESEND_FROM_EMAIL` edge secrets set and `xdrive.my` verified as a Resend sender; the "Send to buyer" button on issued documents now delivers. (ENT-14 unblocked.)
 
 - [x] **NEW-9: Service package tracking** — DONE. `service_packages` table created (dealer_id, customer_id, lead_id, package_name, total_visits, used_visits, valid_months, sold_price, sold_at, expires_at generated column). RLS policy attached. UI in CustomersTab: expand per customer to see packages with visit progress bars; "+ Pkg" inline form; "Log visit" button decrements remaining visits in real-time.
 
@@ -357,7 +346,7 @@ Redeploy the other four when convenient to prevent the same Sentry preflight iss
 
 ### FOLLOW-UP / MINOR
 
-- **ENT-14: Document email delivery UI** — "Send to buyer" button on issued documents; sends HTML doc to buyer email via Supabase Edge Function / Resend. Blocked until ENT-15/NEW-8 is fixed.
+- [x] **ENT-14: Document email delivery UI** — DONE (2026-08-05). Unblocked by NEW-8 (RESEND secrets set + sender verified). "Send to buyer" on issued documents delivers the HTML doc via the `send-document` edge function / Resend.
 
 ---
 
