@@ -78,22 +78,38 @@ clean one-line root cause.
   bar, polluting analytics and canonical URLs. After load, if `_r` is present, remove
   it via `history.replaceState`. Effort: S · Risk: low.
 
-- [ ] **P1-6 · Triage + fix the 21 Dependabot vulnerabilities**
-  GitHub reports **21 vulns on the default branch: 14 high, 6 moderate, 1 low**
-  (surfaced on `git push`). These are dependency CVEs, separate from the app-code
-  audit. Do NOT blind-run `npm audit fix --force` — forced major upgrades on a Vite +
-  React + Supabase app can break the build. Instead:
-  1. `npm install` then `npm audit --json` to get the real advisory list + which are
-     dev-only (build tooling) vs runtime (shipped to browser). Cross-check the
-     Dependabot dashboard: https://github.com/auzyvyth/ShiftOS/security/dependabot
-  2. Prioritize **runtime** high-severity first (anything bundled into the client or
-     used by the `api/*` serverless + edge functions); dev/build-only advisories are
-     lower real-world risk for a static SPA.
-  3. Apply non-breaking `npm audit fix` (patch/minor) first; take Dependabot's
-     individual PRs for the rest and run `npm run build` + smoke test each.
-  4. Likely heavy/at-risk deps to check: `xlsx`, `jspdf`, `html2canvas`, transitive
-     build-chain packages. Confirm against the actual audit output — do not assume.
-  Effort: M · Risk: M (upgrades can break build/runtime — verify each).
+- [ ] **P1-6 · Triage + fix the dependency vulnerabilities**
+  GitHub Dependabot reports **21 alerts (14 high, 6 moderate, 1 low)**. Running
+  `npm audit --package-lock-only` shows the deduplicated reality: **9 vulnerable
+  packages (6 high, 2 moderate, 1 low)**. The gap is just counting — Dependabot
+  counts each CVE separately, npm counts each package once (e.g. `sharp` = 4 CVEs,
+  `brace-expansion`/`fast-uri`/`react-router` = 3 each). Same issues.
+  Do NOT blind-run `npm audit fix --force` — the two biggest items are BREAKING major
+  upgrades. Split the work:
+
+  **6a · Apply the non-breaking (semver-compatible) fixes now — verify with a build.**
+  These `npm audit fix` cleanly, no major version jump:
+  - `react-router` / `react-router-dom` (high/mod) — **ships to the browser**, used
+    for all routing. Open redirect via backslash in `<Link>`/`useNavigate` +
+    arbitrary constructor injection. Highest real-world priority here.
+  - `postcss` (high) — build-time; arbitrary `.map` file disclosure.
+  - `brace-expansion`, `fast-uri` (high, transitive) — DoS / host-confusion.
+  - `body-parser` (low) — used by the `server/` Express app (`server/routes/anthropic.js`);
+    DoS via invalid limit. Only relevant if that server is actually deployed (Vercel
+    prod uses `api/*` serverless, not `server/`).
+  Run: `npm install && npm audit fix && npm run build`, smoke-test routing, commit.
+
+  **6b · Breaking majors — schedule separately, test hard (own branch each).**
+  - `vite` <=6.4.2 → **vite@8** (+ `esbuild`): the vulns are **dev-server only**
+    (path traversal / dev-server request in local dev) — the production site is static
+    build output, so real-world prod risk is low. But v6→v8 is a big jump; test the
+    full build + PWA/service-worker plugin behavior before shipping.
+  - `sharp` <0.35 → **sharp@0.35.3**: libvips CVEs. **Server-side only** (image
+    processing, not shipped to browser). Confirm where sharp runs (`api/og.js`?
+    import pipeline?) and test image output after upgrade.
+
+  Cross-check: https://github.com/auzyvyth/ShiftOS/security/dependabot
+  Effort: 6a S-M / 6b M · Risk: 6a low (compatible) / 6b M (major upgrades).
 
 - [ ] **P1-5 · Confirm no precached vendor chunk exceeds the 3 MB SW cap**
   If a `vendor-*` chunk is over `maximumFileSizeToCacheInBytes: 3MB`
