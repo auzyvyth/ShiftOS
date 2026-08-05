@@ -55,30 +55,34 @@ clean one-line root cause.
 
 ## P1 — High (do before or immediately after launch)
 
-- [ ] **P1-1 · Add indexes for the marketplace query shape**
-  Filters on `brand, body_type, state, year, selling_price, mileage, fuel_type,
-  transmission` and sorts on `created_at`/`selling_price` have **no supporting
-  index** (existing indexes are all `dealer_id`/`status` combos for the dashboard).
-  At thousands of rows every filtered browse is a seq scan + sort.
-  Add e.g. partial/composite indexes: `(status, created_at DESC)`,
-  `(status, selling_price)`, and btrees on `brand`, `body_type`, `state`, `year`.
-  Where: `car_listings`. Effort: S · Risk: low.
+- [x] **P1-1 · Add indexes for the marketplace query shape**
+  DONE (2026-08-05, migration `marketplace_query_indexes`). Added partial indexes on
+  the public status set (`status = ANY('{available,reserved}')`, matching the exact
+  marketplace predicate so they stay small): `idx_cl_pub_created (created_at DESC)`,
+  `idx_cl_pub_price (selling_price)`, and btrees `idx_cl_pub_brand`,
+  `idx_cl_pub_body_type`, `idx_cl_pub_state`, `idx_cl_pub_year`. No effect at 68 rows
+  (Postgres seq-scans a tiny table) — this is forward-prep for thousands+.
 
-- [ ] **P1-2 · Switch marketplace `count: 'exact'` to estimated/planned**
-  `MarketplacePage.jsx:193` runs an exact COUNT over the whole (aggregate-heavy) view
-  on every page + every "load more," roughly doubling P0-2's cost. Use an estimated
-  count, or only count on page 1. Effort: S · Risk: low.
+- [x] **P1-2 · Switch marketplace `count: 'exact'` to estimated/planned**
+  DONE. `MarketplacePage.jsx` now requests `count: 'exact'` ONLY on page 1 (the total
+  result-set size doesn't change between pages), and guards `setTotal` so the null
+  that later pages return can't clobber the load-more gate. Every "load more" no longer
+  re-runs the exact COUNT over the aggregate-heavy view.
 
 - [ ] **P1-3 · Index or FTS the keyword search**
   `MarketplacePage.jsx:200` uses `ilike '%term%'` (leading wildcard → can't use a
   btree → seq scan per search). Add a `pg_trgm` GIN index on brand/model/variant, or
   route search through the existing `search_listing_terms` function (currently unused
   by MarketplacePage). Effort: M · Risk: low.
+  NOTE (2026-08-05): `pg_trgm` is NOT installed. Deferred with P1-1/2/4 to avoid an
+  extension-placement decision (see P2-2 hygiene) in the same pass; once `pg_trgm` is
+  enabled (in the `extensions` schema, not `public`), a `gin (brand/model/variant
+  gin_trgm_ops)` index makes the existing ilike fast with zero code change.
 
-- [ ] **P1-4 · Strip `_r=` from the URL after the post-deploy reload**
-  The cache-busting reload (`main.jsx:42-46`) leaves `?_r=<timestamp>` in the address
-  bar, polluting analytics and canonical URLs. After load, if `_r` is present, remove
-  it via `history.replaceState`. Effort: S · Risk: low.
+- [x] **P1-4 · Strip `_r=` from the URL after the post-deploy reload**
+  DONE. `main.jsx` runs a one-shot `stripCacheBustParam()` before mount: if `?_r=` is
+  present after the cache-busting reload, it's removed via `history.replaceState`
+  (no navigation), keeping analytics referrers and canonical URLs clean.
 
 - [ ] **P1-6 · Triage + fix the dependency vulnerabilities**
   GitHub Dependabot reports **21 alerts (14 high, 6 moderate, 1 low)**. Running
