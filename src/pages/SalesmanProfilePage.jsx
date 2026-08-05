@@ -198,9 +198,6 @@ export default function SalesmanProfilePage() {
     </div>
   );
 
-  const featured = listings[0] || null;
-  const rest = listings.slice(1);
-
   const facebookHref = profile.facebook
     ? (profile.facebook.startsWith('http') ? profile.facebook : `https://facebook.com/${profile.facebook.replace(/^@/, '')}`)
     : null;
@@ -427,30 +424,8 @@ export default function SalesmanProfilePage() {
             )}
           </div>
 
-          {/* Location — the agent's own address, or (linked salesmen with none
-              set) the dealership's */}
-          {mapLocationStr && (
-            <div style={{ marginTop: 20 }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>
-                {ownLocationStr ? 'Find Me Here' : `Visit ${dealer?.dealership || 'the dealership'}`}
-              </p>
-              <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <iframe
-                  title={ownLocationStr ? 'My location' : 'Dealership location'}
-                  src={`https://www.google.com/maps?q=${encodeURIComponent(mapLocationStr)}&output=embed`}
-                  width="100%" height="150" loading="lazy"
-                  style={{ border: 0, display: 'block', filter: 'grayscale(0.2) contrast(1.05)' }}
-                />
-                <a href={`https://www.google.com/maps/search/${encodeURIComponent(mapLocationStr)}`}
-                  target="_blank" rel="noopener noreferrer"
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#0d1117', color: '#93c5fd', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
-                  <MapPin size={13} style={{ flexShrink: 0 }} />
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mapLocationStr}</span>
-                  <ChevronRight size={13} style={{ flexShrink: 0, opacity: 0.5 }} />
-                </a>
-              </div>
-            </div>
-          )}
+          {/* Location moved below the listings grid (see "Find Me Here" block
+              after All Listings) so the cars lead the page. */}
         </div>
 
         {/* ── Divider ── */}
@@ -458,58 +433,15 @@ export default function SalesmanProfilePage() {
           <div style={{ height: 1, background: 'rgba(255,255,255,0.05)' }} />
         </div>
 
-        {/* ── Featured Listing ── */}
-        {featured && (
-          <div style={{ maxWidth: 640, margin: '0 auto', padding: '28px clamp(14px, 5vw, 24px) 0' }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 12 }}>Featured</p>
-            <Link to={`/showroom/${featured.slug}`} onClick={() => trackCardClick(featured)} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-              <div className="sp-card" style={{ background: '#0d1117', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, overflow: 'hidden' }}>
-                <div style={{ position: 'relative', paddingTop: '48%', background: '#0a0e18', overflow: 'hidden' }}>
-                  {featured.images?.[0] ? (
-                    <img src={featured.images[0]} alt={`${featured.brand} ${featured.model}`}
-                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: 12, color: '#374151' }}>No photo</span>
-                    </div>
-                  )}
-                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(13,17,23,0.9) 0%, transparent 50%)' }} />
-                  <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', borderRadius: 6, padding: '3px 10px', fontSize: 10, fontWeight: 700, color: '#fbbf24', border: '1px solid rgba(251,191,36,0.2)', letterSpacing: '0.06em' }}>
-                    ⭐ FEATURED
-                  </div>
-                </div>
-                <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9', marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {[featured.year, featured.brand, featured.model, featured.variant].filter(Boolean).join(' ')}
-                    </p>
-                    <p style={{ fontSize: 11, color: '#4b5563' }}>
-                      {[featured.mileage ? `${fmt(featured.mileage)} km` : null, featured.transmission, featured.colour].filter(Boolean).join(' · ')}
-                    </p>
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    {featured.selling_price > 0 && (
-                      <p style={{ fontSize: 22, fontWeight: 800, color: '#60a5fa', letterSpacing: '-0.02em', lineHeight: 1 }}>
-                        RM {fmt(featured.selling_price)}
-                      </p>
-                    )}
-                    <p style={{ fontSize: 11, color: '#3b82f6', marginTop: 5, fontWeight: 600 }}>View details →</p>
-                  </div>
-                </div>
-              </div>
-            </Link>
-          </div>
-        )}
-
         {/* ── All Listings ── */}
         <div style={{ maxWidth: 1080, margin: '0 auto', padding: '28px clamp(14px, 5vw, 24px) 80px' }}>
-          {rest.length > 0 && (
+          {listings.length > 0 && (
             <>
               <p style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 14 }}>
-                All Listings{listings.length > 1 ? ` (${listings.length})` : ''}
+                Listings{listings.length > 1 ? ` (${listings.length})` : ''}
               </p>
               <div className="sp-grid">
-                {rest.map(car => {
+                {listings.map(car => {
                   const img = Array.isArray(car.images) ? car.images[0] : null;
                   return (
                     <Link key={car.id} to={`/showroom/${car.slug}`} onClick={() => trackCardClick(car)} style={{ textDecoration: 'none', color: 'inherit', display: 'block', minWidth: 0 }}>
@@ -555,6 +487,32 @@ export default function SalesmanProfilePage() {
             <p style={{ fontSize: 13, color: '#374151', padding: '48px 0', textAlign: 'center' }}>
               No active listings at the moment.
             </p>
+          )}
+
+          {/* ── Location — moved below the car cards. The agent's own address,
+              or (linked salesmen with none set) the dealership's. Capped at the
+              hero width and centered so it doesn't stretch across the wide grid. ── */}
+          {mapLocationStr && (
+            <div style={{ maxWidth: 640, margin: '36px auto 0' }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>
+                {ownLocationStr ? 'Find Me Here' : `Visit ${dealer?.dealership || 'the dealership'}`}
+              </p>
+              <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <iframe
+                  title={ownLocationStr ? 'My location' : 'Dealership location'}
+                  src={`https://www.google.com/maps?q=${encodeURIComponent(mapLocationStr)}&output=embed`}
+                  width="100%" height="150" loading="lazy"
+                  style={{ border: 0, display: 'block', filter: 'grayscale(0.2) contrast(1.05)' }}
+                />
+                <a href={`https://www.google.com/maps/search/${encodeURIComponent(mapLocationStr)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#0d1117', color: '#93c5fd', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+                  <MapPin size={13} style={{ flexShrink: 0 }} />
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mapLocationStr}</span>
+                  <ChevronRight size={13} style={{ flexShrink: 0, opacity: 0.5 }} />
+                </a>
+              </div>
+            </div>
           )}
 
           {/* ── Seller reviews (same feature as CarDetailPage, seller-scoped) ── */}
