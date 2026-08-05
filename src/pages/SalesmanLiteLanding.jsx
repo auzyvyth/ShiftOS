@@ -313,17 +313,23 @@ export default function SalesmanLiteLanding() {
                 </ul>
                 <Link to="/salesman-onboarding/lite" className="sll-btn sll-btn-red sll-btn-block">Sign up free</Link>
               </div>
-              <div className="sll-plan sll-plan-alt">
-                <div className="sll-plan-head">
-                  <span className="sll-plan-name">Salesman Premium</span>
-                  <span className="sll-plan-price">RM20<span>/month</span></span>
+              {/* Premium is not launched yet — shown as a dimmed "Coming soon"
+                  card with a disabled CTA. Restore the <Link> and drop the
+                  soon classes to re-enable upgrades once Premium goes live. */}
+              <div className="sll-plan sll-plan-alt sll-plan-soon">
+                <span className="sll-soon-ribbon">Coming soon</span>
+                <div className="sll-plan-dim">
+                  <div className="sll-plan-head">
+                    <span className="sll-plan-name">Salesman Premium</span>
+                    <span className="sll-plan-price">RM20<span>/month</span></span>
+                  </div>
+                  <ul className="sll-plan-list">
+                    {["Everything in Lite", "Up to 30 active listings", "Priority marketplace placement", "Advanced CRM automation", "Commission tracking", "Advanced analytics + custom subdomain"].map((x) => (
+                      <li key={x}><Check size={15} className="sll-tick" /> {x}</li>
+                    ))}
+                  </ul>
                 </div>
-                <ul className="sll-plan-list">
-                  {["Everything in Lite", "Up to 30 active listings", "Priority marketplace placement", "Advanced CRM automation", "Commission tracking", "Advanced analytics + custom subdomain"].map((x) => (
-                    <li key={x}><Check size={15} className="sll-tick" /> {x}</li>
-                  ))}
-                </ul>
-                <Link to="/salesman-onboarding/premium" className="sll-btn sll-btn-dark sll-btn-block">Upgrade to Premium</Link>
+                <span className="sll-btn sll-btn-dark sll-btn-block sll-btn-disabled" aria-disabled="true">Coming soon</span>
               </div>
             </div>
           </div>
