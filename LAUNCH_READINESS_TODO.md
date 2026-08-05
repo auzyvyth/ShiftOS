@@ -24,16 +24,19 @@ clean one-line root cause.
   `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`.
   Effort: S · Risk: none (config check).
 
-- [ ] **P0-2 · De-hotpath the market-average aggregate in `public_car_listings`**
-  The view recomputes a full-table aggregate (`GROUP BY lower(brand), lower(model),
-  year-bucket HAVING count>=3`) on **every** query — every paginated fetch, every
-  filter, every homepage load. Free at 68 rows; a full table scan + hash aggregate
-  per request at thousands+. **This is the scaling wall.**
-  Fix: move `market_avg_price` / `market_sample_count` into a materialized view (or a
-  small rollup table) refreshed on a schedule (e.g. hourly cron), and join to that
-  instead of the inline subquery. Rebuild `public_car_listings` on top of it.
-  Where: view def in DB; consumers `MarketplacePage.jsx`, `HomePage.jsx:333`.
-  Effort: M · Risk: M (view rewrite — test every marketplace filter after).
+- [x] **P0-2 · De-hotpath the market-average aggregate in `public_car_listings`**
+  DONE (2026-08-05, migrations `p0_2_market_price_stats_matview` +
+  `p0_2_rebuild_public_car_listings_on_matview`). The full-table `GROUP BY` aggregate
+  that ran on EVERY marketplace request now lives in a materialized view
+  `market_price_stats` (same query: brand/model/year-bucket, HAVING count>=3), with a
+  UNIQUE index on the group key so it refreshes CONCURRENTLY without locking reads.
+  `public_car_listings` was rebuilt via CREATE OR REPLACE (columns byte-identical, so
+  owner=postgres, anon SELECT grant, and the non-security_invoker behavior are all
+  preserved) to LEFT JOIN the matview instead of the inline subquery. Refreshed hourly
+  by pg_cron job `refresh-market-price-stats` (`7 * * * *`). Verified: anon reads 67
+  curated rows, 41 with market_avg_price populated; security-definer behavior intact.
+  Tradeoff: market averages are now up to ~1h stale (they're slow-moving — acceptable).
+  Consumers (`MarketplacePage.jsx`, `HomePage.jsx`) need no change (same columns).
 
 - [x] **P0-3 · Add `salesman_notifications` + `whatsapp_enquiries` to Supabase Realtime**
   DONE (2026-08-05, migration `add_salesman_realtime_tables`). Root cause of
@@ -69,15 +72,12 @@ clean one-line root cause.
   that later pages return can't clobber the load-more gate. Every "load more" no longer
   re-runs the exact COUNT over the aggregate-heavy view.
 
-- [ ] **P1-3 · Index or FTS the keyword search**
-  `MarketplacePage.jsx:200` uses `ilike '%term%'` (leading wildcard → can't use a
-  btree → seq scan per search). Add a `pg_trgm` GIN index on brand/model/variant, or
-  route search through the existing `search_listing_terms` function (currently unused
-  by MarketplacePage). Effort: M · Risk: low.
-  NOTE (2026-08-05): `pg_trgm` is NOT installed. Deferred with P1-1/2/4 to avoid an
-  extension-placement decision (see P2-2 hygiene) in the same pass; once `pg_trgm` is
-  enabled (in the `extensions` schema, not `public`), a `gin (brand/model/variant
-  gin_trgm_ops)` index makes the existing ilike fast with zero code change.
+- [x] **P1-3 · Index or FTS the keyword search**
+  DONE (2026-08-05, migration `p1_3_trgm_search_index`). Enabled `pg_trgm` in the
+  dedicated `extensions` schema and added a partial GIN index
+  `idx_cl_pub_search_trgm` on `(brand, model, variant) gin_trgm_ops` WHERE status in
+  (available, reserved). The existing `ilike '%term%'` search is now index-backed with
+  ZERO frontend change.
 
 - [x] **P1-4 · Strip `_r=` from the URL after the post-deploy reload**
   DONE. `main.jsx` runs a one-shot `stripCacheBustParam()` before mount: if `?_r=` is
@@ -124,6 +124,10 @@ clean one-line root cause.
   every-visit version of the `_r` reload). Run `npm run build`, inspect
   `dist/assets/*.js` sizes. Likely fine (heavy chunks are in `globIgnores`), but
   verify. Effort: S · Risk: none (diagnostic).
+  NOTE (2026-08-05): BLOCKED in the web session — `npm install`/`npm run build` fails
+  because the proxy 403s the `cdn.sheetjs.com` xlsx pin (ACT-8). Run in a local env:
+  `npm run build` then `ls -la dist/assets/*.js`; anything >3 MB needs a manual
+  `globIgnores` entry in `vite.config.js`. Same env unblocks P1-6.
 
 ---
 
@@ -132,13 +136,21 @@ clean one-line root cause.
 - [ ] **P2-1 · Enable leaked-password protection (HIBP)** in Supabase Auth. One
   toggle, free. Flagged by the security advisor. Effort: S · Risk: none.
 
-- [ ] **P2-2 · Move `pg_net` extension out of the `public` schema.** Advisor WARN;
-  hygiene. Effort: S · Risk: low.
+- [~] **P2-2 · Move `pg_net` extension out of the `public` schema.** DEFERRED
+  (2026-08-05) — higher-risk than the WARN implies. `pg_net`'s functions actually live
+  in the `net` schema (verified `net.http_post`); the extension is only *registered* in
+  `public`. `pg_net` is known NOT to support `ALTER EXTENSION ... SET SCHEMA`, and every
+  notification path (Telegram, web-push, enquiry/booking pings) calls `net.http_post`.
+  Moving it blind could silently break all of them. Leaving as-is until it can be done
+  with a tested drop/recreate in a maintenance window. Not a launch blocker.
 
-- [ ] **P2-3 · `analytics_events` growth plan.** Already 6,269 rows for 68 listings
-  (~92/listing) and grows fastest. `get_car_analytics` scans it per dashboard load.
-  Add time-based indexes and a retention/rollup strategy before it hits millions.
-  Effort: M · Risk: low.
+- [x] **P2-3 · `analytics_events` growth plan.** Index side DONE / already present:
+  `idx_analytics_events_dealer_created (dealer_id, created_at DESC)` and
+  `idx_analytics_events_car_id` already cover the `get_car_analytics` read shape — no
+  new index needed. REMAINING is a retention/rollup POLICY decision (how long to keep
+  raw events before archiving/aggregating) — that's a product/data call for the owner,
+  not a code change. Recommend: a monthly rollup + drop raw events older than N months
+  once volume warrants.
 
 - [ ] **P2-4 · Lazy-load `framer-motion` off the public first-load path.**
   `vendor-motion` (~50-100 KB gz) is on the public marketplace critical path. Consider
@@ -150,13 +162,14 @@ clean one-line root cause.
   No code does this today; add a guard/convention so it stays that way.
   Effort: S · Risk: none (policy).
 
-- [ ] **P2-6 · Acknowledge/document the `public_car_listings` SECURITY DEFINER view.**
-  The advisor flags it ERROR-level, but it is **by design** for a public marketplace
-  (anon must read curated columns while the base table stays non-anon-readable). I
-  verified it exposes only buyer-facing columns — no `purchase_price`, `recon_cost`,
-  `commission_amount`, `gross_profit`, or `admin_notes`. Keep it column-restricted on
-  every future edit; document the intent so it isn't "fixed" into breaking anon reads.
-  Effort: S · Risk: none.
+- [x] **P2-6 · Acknowledge/document the `public_car_listings` SECURITY DEFINER view.**
+  DONE (2026-08-05). Added a `COMMENT ON VIEW public.public_car_listings` recording that
+  the security-definer behavior is BY DESIGN (anon reads curated columns while the base
+  table stays non-anon-readable), listing the columns that must never be exposed
+  (purchase_price/recon_cost/commission_amount/gross_profit/admin_notes), warning not to
+  set `security_invoker=true` (breaks anon reads — CRIT-0), and noting the
+  market_avg_price source (market_price_stats matview, hourly cron). The comment travels
+  with the object so a future editor sees the intent in the schema itself.
 
 ---
 
