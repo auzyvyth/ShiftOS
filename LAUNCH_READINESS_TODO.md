@@ -35,19 +35,21 @@ clean one-line root cause.
   Where: view def in DB; consumers `MarketplacePage.jsx`, `HomePage.jsx:333`.
   Effort: M · Risk: M (view rewrite — test every marketplace filter after).
 
-- [ ] **P0-3 · Add `salesman_notifications` + `whatsapp_enquiries` to Supabase Realtime**
-  Root cause of "salesman-lite notifications only appear on each visit." The client
-  already subscribes (`SalesmanLite.jsx:1340`, `SalesmanPremium.jsx`), but the
-  `supabase_realtime` publication contains only `appointments, car_listings,
-  dealer_notifications, leads` — so Postgres never broadcasts these two tables.
-  Fix (production DB change — get sign-off first):
+- [x] **P0-3 · Add `salesman_notifications` + `whatsapp_enquiries` to Supabase Realtime**
+  DONE (2026-08-05, migration `add_salesman_realtime_tables`). Root cause of
+  "salesman-lite notifications only appear on each visit": the client already
+  subscribes (`SalesmanLite.jsx:1340,1346`, `SalesmanPremium.jsx:592,605`), but the
+  `supabase_realtime` publication held only `appointments, car_listings,
+  dealer_notifications, leads` — so Postgres never broadcast these two tables. Fix
+  applied to the live DB:
   ```sql
   ALTER PUBLICATION supabase_realtime ADD TABLE public.salesman_notifications;
   ALTER PUBLICATION supabase_realtime ADD TABLE public.whatsapp_enquiries;
   ```
-  RLS already scopes both to the owning salesman, so realtime will deliver correctly.
-  Zero frontend changes. Dealers already work (`dealer_notifications` is published).
-  Effort: S · Risk: low.
+  Verified both are now in `pg_publication_tables`. Pre-checked both tables have RLS
+  enabled + policies scoped by `salesman_id` (6 and 9 policies), so realtime delivers
+  only to the owning salesman. Zero frontend changes. Dealers already worked
+  (`dealer_notifications` was already published).
 
 ---
 
