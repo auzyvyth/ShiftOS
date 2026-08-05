@@ -1332,7 +1332,12 @@ export default function SalesmanLite() {
             .channel("salesman-lite-rt-" + uid)
             .on("postgres_changes", { event: "*", schema: "public", table: "leads", filter: `salesman_id=eq.${uid}` },
               (payload) => {
-                if (payload.eventType === "INSERT") setLeads((p) => [payload.new, ...p]);
+                // Dedup the realtime echo: an optimistic insert (e.g.
+                // autoUpsertLeadFromAppt) already added this lead WITH its joined
+                // car_listings; the raw echo row has no join, so adding it again
+                // rendered the same lead twice — once with a car, once without.
+                // If we already hold it, merge (keep the richer joined fields).
+                if (payload.eventType === "INSERT") setLeads((p) => p.some((l) => l.id === payload.new.id) ? p.map((l) => l.id === payload.new.id ? { ...payload.new, ...l } : l) : [payload.new, ...p]);
                 if (payload.eventType === "UPDATE") setLeads((p) => p.map((l) => l.id === payload.new.id ? { ...l, ...payload.new } : l));
                 if (payload.eventType === "DELETE") setLeads((p) => p.filter((l) => l.id !== payload.old.id));
               },
@@ -2019,7 +2024,10 @@ export default function SalesmanLite() {
         return;
       }
       if (newLead) {
-        setLeads((p) => [newLead, ...p]);
+        // Upsert-by-id: if the realtime echo raced ahead and already added this
+        // lead (as a join-less raw row), replace it with the richer joined row
+        // instead of prepending a second card.
+        setLeads((p) => p.some((l) => l.id === newLead.id) ? p.map((l) => l.id === newLead.id ? newLead : l) : [newLead, ...p]);
         toast.success(t("salesmanLite.toast.createdAtViewingBooked"));
         // Tie the booking to the lead it just created so a later confirm/advance
         // matches by id instead of re-inserting a duplicate off the phone.
