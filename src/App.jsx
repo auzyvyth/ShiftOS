@@ -49,6 +49,7 @@ const ImportStockPage    = lazy(() => import("./pages/ImportStockPage"));
 const ComparePage        = lazy(() => import("./pages/ComparePage"));
 const AccountPage        = lazy(() => import("./pages/AccountPage"));
 const SavedCarsPage      = lazy(() => import("./pages/SavedCarsPage"));
+const FeaturePage        = lazy(() => import("./pages/FeaturePage"));
 const GuidesPage         = lazy(() => import("./pages/GuidesPage"));
 const WaitlistPage       = lazy(() => import("./pages/WaitlistPage"));
 const TermsPage          = lazy(() => import("./pages/TermsPage"));
@@ -165,6 +166,7 @@ function App() {
 
           {/* Public — ShiftOS marketing */}
           <Route path="/shiftos" element={<ShiftOSPage />} />
+          <Route path="/features/:slug" element={<FeaturePage />} />
           <Route path="/for-salesmen" element={<SalesmanLiteLanding />} />
           <Route path="/mindmap" element={<MindMapPage />} />
           <Route path="/waitlist" element={<WaitlistPage />} />
