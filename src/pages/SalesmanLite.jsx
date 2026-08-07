@@ -626,7 +626,7 @@ export default function SalesmanLite() {
       setProfile((p) => ({ ...p, ic_hash: "set", ic_last4: last4 || digits.slice(-4), ic_verified_at: new Date().toISOString(), ic_deadline: null }));
       setIcGateOpen(false);
       // Only jump into the add-listing form when the gate was opened from that
-      // flow — the 2-week enforcement gate can fire with no form pending.
+      // flow — the 1-week enforcement gate can fire with no form pending.
       if (icEnforced) setShowAddForm(false); else setShowAddForm(true);
       toast.success(t("salesmanLite.toast.icVerified"));
     } catch (e) {
@@ -643,17 +643,17 @@ export default function SalesmanLite() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [commissionConfig, setCommissionConfig] = useState(null); // dealer's commission rule, same source CarForm uses
   // IC gate — no anonymous selling: a car can't be listed until the seller's IC
-  // is on file. IC is optional at signup (30-day grace) but this blocks the
+  // is on file. IC is optional at signup (1-week grace) but this blocks the
   // actual listing action until verified.
   const [icGateOpen, setIcGateOpen] = useState(false);
   const [icGateVal, setIcGateVal] = useState("");
   const [icGateSaving, setIcGateSaving] = useState(false);
-  // 2-week KYC enforcement: 14 days after signup, a salesman with no IC on file
+  // 1-week KYC enforcement: 7 days after signup, a salesman with no IC on file
   // is hard-blocked until they verify (stored hashed). Before then IC is optional
   // (only the listing action is gated). Keyed on the account's created_at.
   const icEnforced = !!(
     profile && !profile.ic_hash && profile.created_at &&
-    (Date.now() - new Date(profile.created_at).getTime()) >= 14 * 86400000
+    (Date.now() - new Date(profile.created_at).getTime()) >= 7 * 86400000
   );
   useEffect(() => {
     if (icEnforced) { setIcGateVal(""); setIcGateOpen(true); }
@@ -8478,7 +8478,7 @@ export default function SalesmanLite() {
             </div>
             <p style={{ margin: "0 0 16px", fontSize: 13, color: "#9ca3af", lineHeight: 1.6 }}>
               {icEnforced
-                ? "Your 2-week grace period is up. Verify your MyKad IC to keep using your dashboard — it's required for every active seller on xdrive.my."
+                ? "Your 1-week grace period is up. Verify your MyKad IC to keep using your dashboard — it's required for every active seller on xdrive.my."
                 : "Buyers need to know they're dealing with a real, accountable seller. Enter your MyKad IC once — it's required before any car goes live on xdrive.my."}
             </p>
             <label style={{ display: "block", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b7280", marginBottom: 7 }}>IC Number (MyKad)</label>
