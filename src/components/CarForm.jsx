@@ -1626,7 +1626,11 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     const compressed = await compressImage(file);
     const rand =
       (globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2));
-    const path = `${Date.now()}-${rand}-${compressed.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    // Store under the uploader's uid folder so the storage RLS delete policy
+    // (foldername[1] = auth.uid()) can match — flat root paths carried no owner
+    // and were undeletable. profile.id is the logged-in user's auth uid.
+    const folder = profile?.id ? `${profile.id}/` : "";
+    const path = `${folder}${Date.now()}-${rand}-${compressed.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
     let lastErr = null;
     for (let attempt = 0; attempt < 3; attempt++) {
       const { error } = await supabase.storage
@@ -1899,10 +1903,13 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         urls.push(file);
         continue;
       }
-      const name = `${Date.now()}-${file.name}`;
+      // Same uid-folder scoping as the eager path, so images uploaded at publish
+      // are owner-scoped and deletable under the storage RLS delete policy.
+      const folder = profile?.id ? `${profile.id}/` : "";
+      const name = `${folder}${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
       const { error } = await supabase.storage
         .from("car-images")
-        .upload(name, file);
+        .upload(name, file, { upsert: true, contentType: file.type || "image/jpeg" });
       if (error) throw error;
       urls.push(
         supabase.storage.from("car-images").getPublicUrl(name).data.publicUrl,
