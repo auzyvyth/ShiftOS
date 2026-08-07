@@ -264,7 +264,7 @@ export default function AdminPage() {
         is_recon, import_country, plate_number, vin_number, vin, selling_price, original_price, previous_price,
         payment_type, images, status, created_at, rejection_reason, admin_notes, dealer_id, city, state,
         car_documents, docs_verified,
-        profiles!car_listings_dealer_id_fkey(full_name, slug, dealership, phone, whatsapp_number, ic_submitted, created_at, listing_count_cache, city, state)`)
+        profiles!car_listings_dealer_id_fkey(full_name, slug, dealership, phone, whatsapp_number, ic_verified_at, created_at, listing_count_cache, city, state)`)
       .eq("status", "pending_approval")
       .order("created_at", { ascending: true });
 
@@ -810,7 +810,7 @@ export default function AdminPage() {
                       accountAgeHrs !== null && accountAgeHrs < 24 && { label: "New account (<24h)", sev: "high" },
                       listing._duplicatePlate && { label: "Duplicate plate", sev: "high" },
                       (salesman?.listing_count_cache || 0) >= 28 && { label: "Near listing cap", sev: "med" },
-                      salesman?.ic_submitted === false && { label: "No IC submitted", sev: "med" },
+                      !salesman?.ic_verified_at && { label: "No IC submitted", sev: "med" },
                       discountPct > 20 && { label: `Big discount (${discountPct}%)`, sev: "med" },
                       (listing._rejectionCount || 0) > 0 && { label: `${listing._rejectionCount} prior rejection${listing._rejectionCount > 1 ? "s" : ""}`, sev: "med" },
                       (listing._sharedPhoneAccounts || 0) > 1 && { label: `Phone on ${listing._sharedPhoneAccounts} accounts`, sev: "high" },
@@ -885,7 +885,7 @@ export default function AdminPage() {
                               <span style={{ color: "#374151" }}> · submitted {submittedAgo}</span>
                             </p>
                             <p style={{ margin: "4px 0 0", fontSize: 10, color: "#374151" }}>
-                              IC {salesman?.ic_submitted ? "✓ submitted" : "✗ not submitted"}
+                              IC {salesman?.ic_verified_at ? "✓ submitted" : "✗ not submitted"}
                               {" · "}{salesman?.listing_count_cache ?? 0} listings
                               {" · "}{listing._rejectionCount || 0} rejection{(listing._rejectionCount || 0) === 1 ? "" : "s"}
                               {accountAgeHrs !== null && <> · account {accountAgeHrs < 24 ? `${Math.round(accountAgeHrs)}h` : `${Math.round(accountAgeHrs / 24)}d`} old</>}

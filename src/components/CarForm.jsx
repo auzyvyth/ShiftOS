@@ -1088,9 +1088,11 @@ const cfClearDraft = (uid) => { try { localStorage.removeItem(cfDraftKey(uid)); 
 export default function CarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intakeDone }) {
   const { profile } = useProfile();
   const dealerId = getDealerIdFromProfile(profile);
-  // VIN decode is a salesman-only convenience (Lite + Premium). Dealers go
-  // through AddCarForm's intake first, so they keep their existing decode there.
+  // VIN decode is a Premium-salesman convenience only. It's gated off for
+  // Salesman Lite (the decode doesn't work reliably and Lite is the free tier).
+  // Dealers go through AddCarForm's intake first, so they keep their decode there.
   const isSalesman = profile?.role === "salesman";
+  const isPremiumSalesman = isSalesman && profile?.plan === "salesman_full";
 
   // In create mode, pre-fill state/city (and any other defaults) from the caller.
   // In edit mode, initialListing is unused — the pre-fill effect below populates from `listing`.
@@ -1557,14 +1559,16 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     if (!files.length) return;
     const slots = 30 - form.images.length;
     if (slots <= 0) {
-      alert("Maximum 30 images");
+      toast.error("You've reached the 30-image limit for this listing.");
       e.target.value = "";
       return;
     }
+    // Hard cap: only the first `slots` files are ever processed/uploaded, even
+    // if the OS picker let the user select more (the file dialog can't be capped).
     const accepted = files.slice(0, slots);
     if (accepted.length < files.length)
-      alert(
-        `Only ${slots} more image${slots === 1 ? "" : "s"} allowed (max 30).`,
+      toast.message(
+        `Added the first ${accepted.length} — 30 images is the max per listing.`,
       );
     set("images", [...form.images, ...accepted]);
     setPreviews((p) => [...p, ...accepted.map((f) => URL.createObjectURL(f))]);
@@ -1613,28 +1617,29 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       img.src = objectUrl;
     });
 
-  const uploadImagesEager = async (files) => {
-    const startIdx = imgProgress.length;
-    setImgProgress((p) => [
-      ...p,
-      ...files.map((f) => ({ name: f.name, status: "uploading" })),
-    ]);
-
-    const results = await Promise.allSettled(
-      files.map(async (file, i) => {
-        const compressed = await compressImage(file);
-        const path = `${Date.now()}-${compressed.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-        const { error } = await supabase.storage
-          .from("car-images")
-          .upload(path, compressed);
-        if (error) {
-          setImgProgress((p) =>
-            p.map((e, j) =>
-              j === startIdx + i ? { ...e, status: "error" } : e,
-            ),
-          );
-          throw error;
-        }
+  // Upload a single file with retries. Each file gets a unique path and uses
+  // upsert:true, so if a client-side timeout fires AFTER the object already
+  // landed server-side (the cause of "Failed" toasts on images that actually
+  // uploaded), the retry overwrites the same path and succeeds instead of
+  // erroring on a 409. Status only flips to "error" once all attempts fail.
+  const uploadOne = async (file, absIdx) => {
+    const compressed = await compressImage(file);
+    const rand =
+      (globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2));
+    // Store under the uploader's uid folder so the storage RLS delete policy
+    // (foldername[1] = auth.uid()) can match — flat root paths carried no owner
+    // and were undeletable. profile.id is the logged-in user's auth uid.
+    const folder = profile?.id ? `${profile.id}/` : "";
+    const path = `${folder}${Date.now()}-${rand}-${compressed.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    let lastErr = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { error } = await supabase.storage
+        .from("car-images")
+        .upload(path, compressed, {
+          upsert: true,
+          contentType: compressed.type || "image/jpeg",
+        });
+      if (!error) {
         const url = supabase.storage
           .from("car-images")
           .getPublicUrl(path).data.publicUrl;
@@ -1645,16 +1650,58 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           return { ...f, images: imgs };
         });
         setImgProgress((p) =>
-          p.map((e, j) =>
-            j === startIdx + i ? { ...e, status: "done" } : e,
-          ),
+          p.map((e, j) => (j === absIdx ? { ...e, status: "done" } : e)),
         );
         return url;
-      }),
+      }
+      lastErr = error;
+      await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+    }
+    setImgProgress((p) =>
+      p.map((e, j) => (j === absIdx ? { ...e, status: "error" } : e)),
+    );
+    throw lastErr;
+  };
+
+  const uploadImagesEager = async (files) => {
+    const startIdx = imgProgress.length;
+    setImgProgress((p) => [
+      ...p,
+      ...files.map((f) => ({ name: f.name, status: "uploading" })),
+    ]);
+
+    // Cap concurrency so a large batch (up to 30) doesn't exhaust the browser's
+    // connection pool / storage gateway — the root cause of uploads that land
+    // server-side but report "Failed" to the client. Files are pulled from a
+    // shared cursor by a small pool of workers.
+    const CONCURRENCY = 4;
+    const results = [];
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < files.length) {
+        const myIdx = cursor++;
+        try {
+          results[myIdx] = {
+            status: "fulfilled",
+            value: await uploadOne(files[myIdx], startIdx + myIdx),
+          };
+        } catch (err) {
+          results[myIdx] = { status: "rejected", reason: err };
+        }
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(CONCURRENCY, files.length) }, worker),
     );
 
-    const firstSuccess = results.find((r) => r.status === "fulfilled");
+    const firstSuccess = results.find((r) => r && r.status === "fulfilled");
     if (firstSuccess) createDraftIfNeeded(firstSuccess.value);
+
+    const failed = results.filter((r) => r && r.status === "rejected").length;
+    if (failed > 0)
+      toast.error(
+        `${failed} image${failed === 1 ? "" : "s"} failed to upload — tap Add to retry ${failed === 1 ? "it" : "them"}.`,
+      );
   };
 
   const moveToFirst = (i) => {
@@ -1856,10 +1903,13 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         urls.push(file);
         continue;
       }
-      const name = `${Date.now()}-${file.name}`;
+      // Same uid-folder scoping as the eager path, so images uploaded at publish
+      // are owner-scoped and deletable under the storage RLS delete policy.
+      const folder = profile?.id ? `${profile.id}/` : "";
+      const name = `${folder}${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
       const { error } = await supabase.storage
         .from("car-images")
-        .upload(name, file);
+        .upload(name, file, { upsert: true, contentType: file.type || "image/jpeg" });
       if (error) throw error;
       urls.push(
         supabase.storage.from("car-images").getPublicUrl(name).data.publicUrl,
@@ -2357,7 +2407,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               <p className="text-xs text-red-600 mt-1 font-semibold">This plate is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
             )}
           </Field>
-          <Field label="VIN Number" hint={isSalesman ? "17-char VIN — tap Decode to auto-fill specs" : "Vehicle Identification Number"}>
+          <Field label="VIN Number" hint={isPremiumSalesman ? "17-char VIN — tap Decode to auto-fill specs" : "Vehicle Identification Number"}>
             <div className="flex gap-2">
               <input
                 name="vin_number"
@@ -2368,7 +2418,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 className={`${inputCls} flex-1`}
                 style={{ textTransform: "uppercase" }}
               />
-              {isSalesman && (
+              {isPremiumSalesman && (
                 <button
                   type="button"
                   onClick={handleDecodeVin}

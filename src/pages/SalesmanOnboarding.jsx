@@ -459,7 +459,7 @@ export default function SalesmanOnboarding() {
         whatsapp_number: normalizePhone(form.phone),
         // IC is deferred-friendly: signing up no longer requires it. When provided,
         // it's hashed right after this upsert via set_my_ic (never stored plaintext).
-        // When skipped we stamp a soft deadline; the panel hard-enforces at 2 weeks.
+        // When skipped we stamp a soft deadline; the panel hard-enforces at 1 week.
         role: 'salesman',
         slug: form.slug,
         dealership: (form.brand || form.fullName).trim(),
@@ -473,7 +473,7 @@ export default function SalesmanOnboarding() {
         payment_status: tier === 'premium' ? 'pending' : null,
         pdpa_consent: true,
         pdpa_consent_at: new Date().toISOString(),
-        ic_deadline: form.icNumber ? null : new Date(Date.now() + 14 * 86400000).toISOString(),
+        ic_deadline: form.icNumber ? null : new Date(Date.now() + 7 * 86400000).toISOString(),
       }, { onConflict: 'id' });
       if (error) throw error;
       // Hash + persist the IC (never plaintext) once the profile row exists.
