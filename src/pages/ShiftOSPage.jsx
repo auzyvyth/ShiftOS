@@ -793,6 +793,11 @@ export default function ShiftOSPage() {
       setTimeout(() => pricingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
     } else if (location.hash === "#features") {
       setTimeout(() => featRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+    } else if (location.hash) {
+      // Any other in-page anchor (e.g. #feat-inventory from the footer's
+      // product links) — scroll to the matching element by id.
+      const el = document.getElementById(location.hash.slice(1));
+      if (el) setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
     }
   }, [location.hash, location.search]);
 
@@ -958,7 +963,7 @@ export default function ShiftOSPage() {
           <div className="sos-feat-grid">
             {FEATURES.map(({ Icon, key }, i) => (
               <Reveal key={key} delay={i * 30}>
-                <div className="sos-glass sos-feat" style={{ padding: 26, height: "100%" }}>
+                <div id={`feat-${key}`} className="sos-glass sos-feat" style={{ padding: 26, height: "100%", scrollMarginTop: 90 }}>
                   <div className="sos-icon" style={{ marginBottom: 18 }}><Icon size={20} color="#ef4444" /></div>
                   <p style={{ fontSize: 15, fontWeight: 600, color: "#f1f5f9", marginBottom: 9 }}>{t(`shiftos.features.items.${key}.title`)}</p>
                   <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.65 }}>{t(`shiftos.features.items.${key}.desc`)}</p>

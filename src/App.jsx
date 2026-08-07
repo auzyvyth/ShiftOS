@@ -48,6 +48,7 @@ const SalesmanSetup      = lazy(() => import("./pages/SalesmanSetup"));
 const ImportStockPage    = lazy(() => import("./pages/ImportStockPage"));
 const ComparePage        = lazy(() => import("./pages/ComparePage"));
 const AccountPage        = lazy(() => import("./pages/AccountPage"));
+const SavedCarsPage      = lazy(() => import("./pages/SavedCarsPage"));
 const GuidesPage         = lazy(() => import("./pages/GuidesPage"));
 const WaitlistPage       = lazy(() => import("./pages/WaitlistPage"));
 const TermsPage          = lazy(() => import("./pages/TermsPage"));
@@ -112,6 +113,7 @@ function App() {
           <Route path="/cars/:slug" element={<CarDetailPage />} />
           <Route path="/calculator" element={<CalculatorPage />} />
           <Route path="/compare" element={<ComparePage />} />
+          <Route path="/saved" element={<SavedCarsPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/guides/:slug" element={<GuidesPage />} />
           <Route path="/guides" element={<GuidesPage />} />
