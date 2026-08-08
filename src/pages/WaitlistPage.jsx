@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
+import LegalModal from "../components/LegalModal";
 import { useTranslation } from "react-i18next";
 
 const fmt = (n) => n?.toLocaleString("en-MY") ?? "—";
@@ -23,6 +24,7 @@ export default function WaitlistPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [consent, setConsent] = useState(false);
+  const [showLegal, setShowLegal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
@@ -111,7 +113,7 @@ export default function WaitlistPage() {
       />
       <span style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
         {t("waitlist.consentLabel")}{" "}
-        <Link to="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "#94a3b8", textDecoration: "underline" }}>{t("common.privacyPolicy")}</Link>
+        <button type="button" onClick={(e) => { e.preventDefault(); setShowLegal(true); }} style={{ background: "none", border: "none", padding: 0, color: "#dc2626", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>{t("common.privacyPolicy")}</button>
       </span>
     </label>
   );
@@ -358,6 +360,8 @@ export default function WaitlistPage() {
         input::placeholder { color: #334155; }
         input:focus { border-color: rgba(220,38,38,0.5) !important; }
       `}</style>
+
+      <LegalModal doc={showLegal ? 'privacy' : null} onClose={() => setShowLegal(false)} />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { markBuyerIntent, ensureBuyerProfile } from "../lib/buyerAuth";
 import { Heart, Bell, MessageCircle, Tag, Check, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import LegalModal from "../components/LegalModal";
 
 // Dedicated buyer login / sign-up. Sellers & staff use /login (universal seller
 // login) + /onboarding. This page is the marketplace shopper's front door: it
@@ -47,6 +48,7 @@ export default function BuyerAuthPage() {
   const [loading, setLoading] = useState(false);
   const [confirmSent, setConfirmSent] = useState(false);
   const [consent, setConsent] = useState(false);
+  const [legalDoc, setLegalDoc] = useState(null);
   const [showForgot, setShowForgot] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
@@ -398,9 +400,9 @@ export default function BuyerAuthPage() {
                 />
                 <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.6 }}>
                   I agree to the{" "}
-                  <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,0.8)", textDecoration: "underline" }}>Terms of Service</a>
+                  <button type="button" onClick={(e) => { e.preventDefault(); setLegalDoc("terms"); }} style={{ background: "none", border: "none", padding: 0, color: "#f87171", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Terms of Service</button>
                   {" "}and{" "}
-                  <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,0.8)", textDecoration: "underline" }}>Privacy Policy</a>.
+                  <button type="button" onClick={(e) => { e.preventDefault(); setLegalDoc("privacy"); }} style={{ background: "none", border: "none", padding: 0, color: "#f87171", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Privacy Policy</button>.
                 </span>
               </label>
             )}
@@ -421,6 +423,8 @@ export default function BuyerAuthPage() {
           <p className="ba-seller">Are you a dealer or agent? <a href="/login">Seller sign in</a></p>
         </div>
       </div>
+
+      <LegalModal doc={legalDoc} onClose={() => setLegalDoc(null)} />
     </>
   );
 }
