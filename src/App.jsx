@@ -8,14 +8,22 @@ import * as Sentry from "@sentry/react";
 const SentryRoutes = Sentry.withSentryReactRouterV7Routing(Routes);
 import ScrollToTop from "./components/ScrollToTop";
 import CompareBar from "./components/CompareBar";
+import { isSubdomain } from "./hooks/useTenant";
 import { useIdleLogout } from "./hooks/useIdleLogout";
 import "./i18n/config";
 
-// Eager — only true above-the-fold entry points
-import HomePage from "./pages/HomePage";
+// Eager — only true above-the-fold entry points. The public marketplace
+// (xdrive.my "/") is the highest-traffic page, so it lives in the entry bundle
+// and paints with no extra lazy-chunk hop.
+import MarketplacePage from "./pages/MarketplacePage";
 import CarListingPage from "./pages/CarListingPage";
 // Eager — tiny, and must render instantly (no blank Suspense flash) on bad URLs
 import NotFoundPage from "./pages/NotFoundPage";
+
+// Lazy — the dealer subdomain storefront. Only <sub>.xdrive.my visitors render
+// it, so its storefront-only weight (HeroCarousel etc.) must stay OUT of the
+// marketplace critical bundle. See RootRoute below.
+const HomePage        = lazy(() => import("./pages/HomePage"));
 
 // Lazy — navigated to, not landed on directly
 const CarDetailPage   = lazy(() => import("./pages/CarDetailPage"));
@@ -86,6 +94,17 @@ function MarketplaceRedirect() {
   return <Navigate to={`/${search}`} replace />;
 }
 
+// "/" serves two different surfaces depending on host. isSubdomain() is a
+// SYNCHRONOUS hostname check (no auth/tenant round-trip), so we can pick the
+// right component immediately instead of the old path where HomePage mounted,
+// showed a loader while useTenant resolved, then handed off to a lazy
+// MarketplacePage — a serial waterfall on the busiest page. Main domain
+// (xdrive.my) → the eager, self-contained MarketplacePage. A real dealer
+// storefront (<sub>.xdrive.my) → the lazy HomePage.
+function RootRoute() {
+  return isSubdomain() ? <HomePage /> : <MarketplacePage />;
+}
+
 function App() {
   useIdleLogout(); // sign out after 24h of inactivity
   return (
@@ -106,7 +125,7 @@ function App() {
       <Suspense fallback={null}>
         <SentryRoutes>
           {/* Public — XDrive */}
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<RootRoute />} />
           <Route path="/marketplace" element={<MarketplaceRedirect />} />
           <Route path="/showroom" element={<CarListingPage />} />
           <Route path="/showroom/:slug" element={<CarDetailPage />} />
