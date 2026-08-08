@@ -49,9 +49,9 @@ tech debt, not resilience.
       dealer_documents) live in a PRIVATE bucket served via short-lived signed URLs — NOT in the
       public `car-images` bucket. Path convention `dealer_id/...` so policies can enforce ownership.
 
-- [ ] **Audit log for privileged actions.** No `audit_logs` table exists. Log who/what/when
-      (+ old/new) for: role changes, price/commission edits, listing publish/unpublish, mark-sold,
-      document access. Separate table, RLS readable by superadmin only. Matters more as team roles grow.
+- [ ] **Audit log** — see dedicated "Activity log / user-session forensics" section below.
+      (Correction: an `activity_log` table already EXISTS and works; the work is hardening it,
+      not building it.)
 
 - [ ] **Server-side payload validation (Zod).** Not installed (0 refs). `api/` routes validate
       ad-hoc. Add Zod schemas to enquiry/booking/waitlist/whatsapp-lead/ai-messages payloads as
@@ -72,6 +72,64 @@ tech debt, not resilience.
 - [ ] **Backup / restore drill.** Document the Supabase recovery plan and actually test a restore
       (or PITR) once. Do not assume backups work untested.
 - [ ] `extension_in_public` + `materialized_view_in_api` advisor hygiene notes — cosmetic, batch later.
+
+## Activity log / user-session forensics
+
+Verified against the live DB (project lemdkdizdlcirhbzqlos) on 2026-08-08.
+
+### What already exists (do NOT rebuild)
+- `public.activity_log` — 1,367 rows, live (newest entry 3 days old), spanning 2026-05-18 to now.
+  Columns: `id, dealer_id, actor_id, actor_name, actor_role, table_name, record_id, action,
+  field_changes(jsonb), summary, is_anomaly, anomaly_reason, created_at`.
+- Written SERVER-SIDE by DB triggers (correct, tamper-resistant pattern):
+  `log_dealer_activity`, `approve_listing`, `reject_listing`, `set_listing_docs_verified`,
+  `gm_exception_alerts`.
+- RLS enabled; read scoped to own dealer + superadmin.
+- Purpose-built actions (approved, assigned, marked_sold, prices_updated, status_changed,
+  issued, docs_verified, encumbrance_updated, settings_updated) capture the actor at 0% null.
+- Supabase `auth.sessions` already stores `ip`, `user_agent`, `aal`, `refreshed_at` per session.
+
+### The three defects to fix
+
+- [ ] **1. Capture session/device context (the missing "session id and stuff") — HIGH.**
+      `activity_log` has no `session_id`, `ip`, or `user_agent`, so an action can't be tied to a
+      login session or device/location. Fix:
+      - `ALTER TABLE public.activity_log ADD COLUMN session_id uuid, ADD COLUMN ip text,
+        ADD COLUMN user_agent text;`
+      - Populate inside the triggers from context already available server-side — no client change:
+        - `session_id := (auth.jwt() ->> 'session_id')::uuid`  (every Supabase access token carries
+          this claim; it is the PK of `auth.sessions`).
+        - `ip := current_setting('request.headers', true)::json ->> 'x-forwarded-for'`
+        - `user_agent := current_setting('request.headers', true)::json ->> 'user-agent'`
+      - Result: `activity_log.session_id` joins directly to `auth.sessions.id` for full
+        who/what/when/where/which-device forensics.
+
+- [ ] **2. Lock the table to append-only + un-forgeable — HIGH (integrity hole).**
+      Current grants are far too broad: `authenticated` holds INSERT/UPDATE/DELETE/**TRUNCATE**;
+      `anon` holds INSERT/UPDATE/SELECT. RLS blocks per-row UPDATE/DELETE (no policy) but
+      **TRUNCATE is not governed by RLS** — a logged-in user with any direct SQL path could wipe
+      the whole log. Also the INSERT policy only checks `dealer_id`, NOT `actor_id = auth.uid()`,
+      so entries are forgeable within one's own dealer. Fix:
+      - `REVOKE INSERT, UPDATE, DELETE, TRUNCATE, TRIGGER, REFERENCES ON public.activity_log FROM authenticated;`
+      - `REVOKE ALL ON public.activity_log FROM anon;`
+      - Keep only `SELECT` for `authenticated` (RLS already scopes it). All writes go through the
+        `SECURITY DEFINER` triggers only.
+      - If any legitimate client-side insert path remains, add `actor_id = auth.uid()` to its
+        `WITH CHECK`. No UPDATE/DELETE policies at all → immutable by construction.
+
+- [ ] **3. Fix the null-actor catch-all — MEDIUM.**
+      `log_dealer_activity` on generic create/delete/update leaves `actor_id` NULL 88% (delete) /
+      83% (create) of the time, because it fires in service-role / cascade / trigger-chain contexts
+      where `auth.uid()` is NULL. Fix: when `auth.uid()` is NULL, stamp `actor_role = 'system'`
+      (and a source tag) instead of a blank actor, so "unknown" is distinguishable from
+      "system-initiated". Where a real user is behind a cascade, thread the actor through explicitly.
+
+### Related, lower priority
+- [ ] **Durable login history — LOW.** `auth.audit_log_entries` is empty (0 rows for 25 users) and
+      `auth.sessions` holds only CURRENT sessions, so there is no retained login/logout history.
+      If forensic login history matters, capture auth events yourself (Supabase auth hook, or a
+      daily snapshot of `auth.sessions` into an owned table). Skip until compliance requires it.
+- [ ] **Retire `error_logs` — LOW.** 3 rows, redundant with Sentry. Drop it or route to Sentry.
 
 ## Explicitly NOT doing (and why)
 - Kubernetes / containers / ECS — Vercel already gives stateless autoscaling.
