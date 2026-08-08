@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 const fmt = (n) => n?.toLocaleString("en-MY") ?? "—";
@@ -109,7 +109,10 @@ export default function WaitlistPage() {
         onChange={e => setConsent(e.target.checked)}
         style={{ marginTop: 2, flexShrink: 0, accentColor: "#dc2626", width: 15, height: 15, cursor: "pointer" }}
       />
-      <span style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>{t("waitlist.consentLabel")}</span>
+      <span style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
+        {t("waitlist.consentLabel")}{" "}
+        <Link to="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "#94a3b8", textDecoration: "underline" }}>{t("common.privacyPolicy")}</Link>
+      </span>
     </label>
   );
 

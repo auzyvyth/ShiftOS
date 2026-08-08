@@ -3675,6 +3675,9 @@ export default function CarDetailPage() {
               ))}
             </select>
             <Turnstile onToken={setEnquiryToken} action="enquiry" className="cdp-enq-turnstile" />
+            <p style={{ fontSize: 11, color: th.textMuted, lineHeight: 1.5, marginTop: 8 }}>
+              By continuing, you agree to our <Link to="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: th.textMuted, textDecoration: 'underline' }}>Privacy Policy</Link> and to being contacted about your enquiry.
+            </p>
             <button
               onClick={handleEnquirySubmit}
               disabled={!enquiryForm.name || enquirySubmitting}
@@ -3815,6 +3818,10 @@ export default function CarDetailPage() {
                       </span>
                     </label>
                   </div>
+
+                  <p style={{ fontSize:11, color:th.textMuted, lineHeight:1.5, marginBottom:10 }}>
+                    By continuing, you agree to our <Link to="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: th.textMuted, textDecoration: 'underline' }}>Privacy Policy</Link> and to being contacted about your booking.
+                  </p>
 
                   <button
                     type="submit"

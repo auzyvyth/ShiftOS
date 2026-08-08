@@ -46,6 +46,7 @@ export default function BuyerAuthPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [confirmSent, setConfirmSent] = useState(false);
+  const [consent, setConsent] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
@@ -120,6 +121,7 @@ export default function BuyerAuthPage() {
   const handleSignUp = async () => {
     if (!email || !password) { setError("Enter your email and a password."); return; }
     if (!pwValid) { setError("Please meet all the password requirements below."); return; }
+    if (!consent) { setError("Please agree to the Terms of Service and Privacy Policy to continue."); return; }
     setError(""); setLoading(true);
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
@@ -386,7 +388,24 @@ export default function BuyerAuthPage() {
               </div>
             )}
 
-            <button type="submit" className="ba-submit" disabled={loading || (isSignup && !pwValid)}>
+            {isSignup && (
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 9, margin: "4px 0 16px", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(e) => setConsent(e.target.checked)}
+                  style={{ marginTop: 2, flexShrink: 0, accentColor: "#dc2626", width: 15, height: 15, cursor: "pointer" }}
+                />
+                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.6 }}>
+                  I agree to the{" "}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,0.8)", textDecoration: "underline" }}>Terms of Service</a>
+                  {" "}and{" "}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,0.8)", textDecoration: "underline" }}>Privacy Policy</a>.
+                </span>
+              </label>
+            )}
+
+            <button type="submit" className="ba-submit" disabled={loading || (isSignup && (!pwValid || !consent))}>
               {loading ? "PLEASE WAIT…" : isSignup ? "CREATE ACCOUNT" : "SIGN IN"}
             </button>
           </form>

@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { getRef } from '../utils/refTracking';
 import Turnstile from './Turnstile';
 
@@ -8,6 +10,7 @@ import Turnstile from './Turnstile';
 // then opens WhatsApp. Phone isn't asked (lower friction) — the seller gets it
 // from the WhatsApp chat itself. Used by every public "WhatsApp" button.
 export default function ContactGate({ open, onClose, waUrl, dealerId, carId, carName, onConfirmed }) {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [token, setToken] = useState(null);
@@ -63,6 +66,11 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
           style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: 10, padding: '11px 13px', fontSize: 14, color: '#111827', outline: 'none', marginBottom: 12 }}
         />
         <Turnstile onToken={setToken} action="whatsapp_lead" className="cg-turnstile" />
+        <p style={{ margin: '10px 0 12px', fontSize: 11, color: '#9ca3af', lineHeight: 1.5 }}>
+          {t('common.privacyNoticePre')}
+          <Link to="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#6b7280', textDecoration: 'underline' }}>{t('common.privacyPolicy')}</Link>
+          {t('common.privacyNoticePost')}
+        </p>
         <button
           disabled={!name.trim() || busy}
           onClick={proceed}
