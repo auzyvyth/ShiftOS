@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 import { supabase } from '../supabaseClient';
 import { ensureBuyerProfile, markBuyerIntent } from '../lib/buyerAuth';
 import { isSubdomain } from '../hooks/useTenant';
@@ -82,6 +83,10 @@ export default function GoogleOneTap() {
         auto_select: false,
         cancel_on_tap_outside: true,
         context: 'signin',
+        // Google made FedCM mandatory for One Tap in current Chrome — without
+        // this flag the prompt is silently suppressed on up-to-date browsers
+        // (the "it just doesn't show" symptom). Opt in so it renders.
+        use_fedcm_for_prompt: true,
         callback: async (response) => {
           if (!response?.credential) return;
           const { data, error } = await supabase.auth.signInWithIdToken({
@@ -103,16 +108,31 @@ export default function GoogleOneTap() {
             return;
           }
           // One Tap sets the session directly (no /auth/callback), so materialise
-          // the buyer profile here, then land them on their buyer dashboard.
+          // the buyer profile here — but do NOT navigate. signInWithIdToken fires
+          // onAuthStateChange, which MarketplaceHeader listens to and uses to swap
+          // "Sign In" for a "My Account" link in place. The visitor stays on the
+          // page they were browsing and reaches their dashboard from the header
+          // whenever they want (the old forced redirect to /account yanked them
+          // off the listing they were on — the opposite of the intended UX).
           await ensureBuyerProfile(data.user);
-          window.location.assign('/account');
+          const name =
+            data.user?.user_metadata?.full_name ||
+            data.user?.user_metadata?.name ||
+            '';
+          toast.success(name ? `Signed in as ${name}` : 'Signed in', {
+            description: 'Your account is in the top-right menu whenever you need it.',
+          });
         },
       });
 
       window.google.accounts.id.prompt((notification) => {
-        if (notification.isSkippedMoment?.() || notification.isDismissedMoment?.()) {
-          try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* ignore */ }
-        }
+        // Under FedCM several of these moment-inspection methods are deprecated
+        // and can throw — guard so dismissal tracking never breaks the prompt.
+        try {
+          if (notification.isSkippedMoment?.() || notification.isDismissedMoment?.()) {
+            try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* ignore */ }
+          }
+        } catch { /* FedCM: moment inspection unsupported — ignore */ }
       });
     })();
 
