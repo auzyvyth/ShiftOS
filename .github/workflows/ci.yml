@@ -28,6 +28,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Dependency audit
+        # Non-blocking to start: surfaces high-severity advisories without failing CI.
+        # Tighten to a hard failure once the existing backlog is triaged.
+        run: npm audit --audit-level=high || true
+
       - name: Build
         run: npm run build
         env:

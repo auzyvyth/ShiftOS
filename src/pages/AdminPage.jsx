@@ -7,6 +7,8 @@ import FunnelTab from "../components/platform/FunnelTab";
 import ErrorsTab from "../components/platform/ErrorsTab";
 import BroadcastTab from "../components/platform/BroadcastTab";
 import ActivityLogTab from "../components/platform/ActivityLogTab";
+import SessionsTab from "../components/platform/SessionsTab";
+import PostureTab from "../components/platform/PostureTab";
 
 function MktSection({ label, hint, children }) {
   return (
@@ -469,12 +471,14 @@ export default function AdminPage() {
 
   const XDRIVE_TABS = [
     { id: "funnel", label: "Funnel" },
-    { id: "errors", label: "Errors" },
     { id: "broadcast", label: "Broadcast" },
   ];
 
   const SECURITY_TABS = [
     { id: "activity", label: "Activity Log" },
+    { id: "sessions", label: "Sessions" },
+    { id: "posture", label: "Posture" },
+    { id: "errors", label: "Errors" },
   ];
 
   return (
@@ -675,7 +679,6 @@ export default function AdminPage() {
                 </div>
                 <div className="adm-content" style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 28px 80px" }}>
                   {xdriveTab === "funnel" && <FunnelTab />}
-                  {xdriveTab === "errors" && <ErrorsTab />}
                   {xdriveTab === "broadcast" && <BroadcastTab dealers={dealers} salesmen={salesmen} />}
                 </div>
               </>
@@ -692,6 +695,9 @@ export default function AdminPage() {
                 </div>
                 <div className="adm-content" style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 28px 80px" }}>
                   {securityTab === "activity" && <ActivityLogTab />}
+                  {securityTab === "sessions" && <SessionsTab />}
+                  {securityTab === "posture" && <PostureTab />}
+                  {securityTab === "errors" && <ErrorsTab />}
                 </div>
               </>
             ) : (

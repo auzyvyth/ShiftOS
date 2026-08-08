@@ -13,7 +13,10 @@ if (_dsn) {
   Sentry.init({
     dsn: _dsn,
     environment: import.meta.env.MODE,
-    sendDefaultPii: true,
+    // Do not attach user IP / request PII to events. The dealer dashboard handles
+    // buyer PII (phone, IC, loan amounts) and error attribution comes from our own
+    // error_logs table, so Sentry does not need identifying data.
+    sendDefaultPii: false,
     integrations: [
       Sentry.reactRouterV7BrowserTracingIntegration({
         useEffect,
@@ -24,8 +27,14 @@ if (_dsn) {
       }),
       // Replay is loaded lazily after the page is idle so it doesn't block
       // the main thread during initial load (was causing ~35s TBT).
+      // Explicitly mask all text/inputs and block media so Session Replay cannot
+      // capture buyer PII rendered on the dealer dashboard.
       Sentry.lazyLoadIntegration('replayIntegration').then((integration) => {
-        Sentry.addIntegration(integration());
+        Sentry.addIntegration(integration({
+          maskAllText: true,
+          maskAllInputs: true,
+          blockAllMedia: true,
+        }));
       }).catch(() => {}),
     ],
     // 10% trace sampling — 100% was adding instrumentation overhead to every fetch.
