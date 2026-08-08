@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { supabase } from "../../supabaseClient";
+import InfoHint from "../ui/InfoHint";
 
 // XDrive Ops — client error monitoring. Reads two superadmin-guarded RPCs
 // (get_error_summary / get_error_logs). Errors are captured by src/utils/logError.js
@@ -96,7 +97,9 @@ export default function ErrorsTab() {
     <div>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
         <div>
-          <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>Error Monitoring</p>
+          <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>Error Monitoring
+            <InfoHint title="What is this?" text="App crashes and errors that happened in real users' browsers, grouped and attributed to the user and dealer. Expand a row for the technical detail. 'Block this user' flips their account to inactive — use it if an account is abusive or compromised." />
+          </p>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>Client errors captured across every session — user &amp; dealer attributed</p>
         </div>
         <div style={{ display: "flex", gap: 4, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: 3 }}>

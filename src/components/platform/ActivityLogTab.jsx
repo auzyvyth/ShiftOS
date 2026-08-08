@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { supabase } from "../../supabaseClient";
+import InfoHint from "../ui/InfoHint";
 
 // Security console — audit forensics. Reads two superadmin-guarded RPCs
 // (get_activity_summary / get_activity_log). activity_log is written server-side by
@@ -92,7 +93,9 @@ export default function ActivityLogTab() {
     <div>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
         <div>
-          <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>Activity Log</p>
+          <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>Activity Log
+            <InfoHint title="What is this?" text="A tamper-proof diary of who did what across every dealer — price edits, sales, assignments, and more. Each row can be expanded to see exactly what changed and from which login/device. 'Anomaly' flags unusual actions (e.g. a big price drop or an off-hours edit) for a closer look." />
+          </p>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>Audit trail across every dealer — actor, session and device attributed</p>
         </div>
         <div style={{ display: "flex", gap: 4, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: 3 }}>

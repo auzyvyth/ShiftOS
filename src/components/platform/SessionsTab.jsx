@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { supabase } from "../../supabaseClient";
+import InfoHint from "../ui/InfoHint";
 
 // Security console — login sessions. Reads the superadmin-guarded get_active_sessions
 // RPC (auth.sessions joined to profiles, enriched with each session's logged-action
@@ -80,7 +81,9 @@ export default function SessionsTab() {
     <div>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
         <div>
-          <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>Sessions &amp; Logins</p>
+          <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>Sessions &amp; Logins
+            <InfoHint title="What is this?" text="Everyone currently logged in, across all accounts — their device, network (IP), and how much they've done this session. 'AAL' is the login's assurance level (aal1 = password; aal2 = two-factor). Use it to spot logins you don't recognise." />
+          </p>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>Current login sessions across the platform — user, device, location</p>
         </div>
         <button onClick={load}

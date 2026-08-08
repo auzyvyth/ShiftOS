@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../../supabaseClient";
+import InfoHint from "../ui/InfoHint";
 
 // Security console — posture dashboard. Reads the superadmin-guarded
 // get_security_posture RPC, which computes live DB checks (RLS coverage, owner-run
@@ -50,7 +51,9 @@ export default function PostureTab() {
     <div>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
         <div>
-          <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>Security Posture</p>
+          <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>Security Posture
+            <InfoHint title="How to read this" text="A health check of the app's security. Green = good, Yellow = worth a look, Red = fix it, Grey = can't auto-check / not applicable. Cards marked 'live' are re-checked against the database every time you open this screen; the rest are 'attested' facts (like website settings) with a last-updated time. Tap any card for what to do about it." />
+          </p>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>Live checks + attestations of the platform's hardening state</p>
         </div>
         <button onClick={load}

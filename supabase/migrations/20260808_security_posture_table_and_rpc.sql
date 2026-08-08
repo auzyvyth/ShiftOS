@@ -22,8 +22,8 @@ INSERT INTO public.security_posture (key, category, label, status, value, detail
    'X-Frame-Options/nosniff/Referrer-Policy/Permissions-Policy enforced in vercel.json; CSP is in Report-Only mode — review violation reports on staging, then switch to enforced Content-Security-Policy.'),
   ('sentry_replay_masking', 'Auth & PII', 'Sentry replay PII masking', 'ok', 'maskAllText + blockAllMedia',
    'Session Replay masks all text and inputs and blocks media; sendDefaultPii disabled.'),
-  ('leaked_password_protection', 'Auth & PII', 'Leaked-password protection', 'unknown', 'verify in dashboard',
-   'Enable the HaveIBeenPwned check in Supabase Auth settings (dashboard toggle — no code).'),
+  ('leaked_password_protection', 'Auth & PII', 'Leaked-password protection', 'unknown', 'Pro plan only',
+   'Supabase leaked-password protection (HaveIBeenPwned) requires the Pro plan; not available on the current Hobby plan. Revisit when upgrading.'),
   ('dependency_audit', 'Dependencies', 'npm audit (high severity)', 'warn', 'see Dependabot',
    'CI runs npm audit --audit-level=high (non-blocking). Dependabot reports advisories on the default branch — triage the backlog, then make CI blocking.')
 ON CONFLICT (key) DO NOTHING;
