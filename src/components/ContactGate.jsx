@@ -1,16 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { getRef } from '../utils/refTracking';
 import Turnstile from './Turnstile';
+import LegalModal from './LegalModal';
 
 // Name-only gate shown before a buyer opens WhatsApp. Captures the buyer's name,
 // creates a real pipeline lead (create_lead_from_whatsapp RPC — anon-callable),
 // then opens WhatsApp. Phone isn't asked (lower friction) — the seller gets it
 // from the WhatsApp chat itself. Used by every public "WhatsApp" button.
 export default function ContactGate({ open, onClose, waUrl, dealerId, carId, carName, onConfirmed }) {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [token, setToken] = useState(null);
+  const [showLegal, setShowLegal] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -47,7 +51,9 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
     setName(''); setToken(null); setBusy(false); onClose();
   };
 
-  return createPortal(
+  return (
+    <>
+    {createPortal(
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, fontFamily: "system-ui,sans-serif" }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 380, background: '#fff', borderRadius: 16, padding: '22px 20px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
         <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#111827' }}>Before you chat</p>
@@ -63,6 +69,11 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
           style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: 10, padding: '11px 13px', fontSize: 14, color: '#111827', outline: 'none', marginBottom: 12 }}
         />
         <Turnstile onToken={setToken} action="whatsapp_lead" className="cg-turnstile" />
+        <p style={{ margin: '10px 0 12px', fontSize: 11, color: '#9ca3af', lineHeight: 1.5 }}>
+          {t('common.privacyNoticePre')}
+          <button type="button" onClick={() => setShowLegal(true)} style={{ background: 'none', border: 'none', padding: 0, color: '#dc2626', textDecoration: 'underline', cursor: 'pointer', font: 'inherit' }}>{t('common.privacyPolicy')}</button>
+          {t('common.privacyNoticePost')}
+        </p>
         <button
           disabled={!name.trim() || busy}
           onClick={proceed}
@@ -74,5 +85,8 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
       </div>
     </div>,
     document.body,
+    )}
+    <LegalModal doc={showLegal ? 'privacy' : null} onClose={() => setShowLegal(false)} />
+    </>
   );
 }

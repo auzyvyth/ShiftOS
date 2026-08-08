@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useSearchParams } from "react-router-dom";
+import LegalModal from "../components/LegalModal";
 import { useTranslation } from "react-i18next";
 
 const fmt = (n) => n?.toLocaleString("en-MY") ?? "—";
@@ -23,6 +24,7 @@ export default function WaitlistPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [consent, setConsent] = useState(false);
+  const [showLegal, setShowLegal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
@@ -109,7 +111,10 @@ export default function WaitlistPage() {
         onChange={e => setConsent(e.target.checked)}
         style={{ marginTop: 2, flexShrink: 0, accentColor: "#dc2626", width: 15, height: 15, cursor: "pointer" }}
       />
-      <span style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>{t("waitlist.consentLabel")}</span>
+      <span style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
+        {t("waitlist.consentLabel")}{" "}
+        <button type="button" onClick={(e) => { e.preventDefault(); setShowLegal(true); }} style={{ background: "none", border: "none", padding: 0, color: "#dc2626", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>{t("common.privacyPolicy")}</button>
+      </span>
     </label>
   );
 
@@ -355,6 +360,8 @@ export default function WaitlistPage() {
         input::placeholder { color: #334155; }
         input:focus { border-color: rgba(220,38,38,0.5) !important; }
       `}</style>
+
+      <LegalModal doc={showLegal ? 'privacy' : null} onClose={() => setShowLegal(false)} />
     </div>
   );
 }

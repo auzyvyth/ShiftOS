@@ -22,7 +22,10 @@
       "NEW": "NEW",
       "PRICE DROP": "PRICE DROP"
     },
-    "rm": "RM"
+    "rm": "RM",
+    "privacyNoticePre": "By continuing, you agree to our ",
+    "privacyPolicy": "Privacy Policy",
+    "privacyNoticePost": " and to being contacted about your enquiry."
   },
   "home": {
     "hero": {

@@ -47,6 +47,7 @@ import FinancingCalculator from "../components/FinancingCalculator";
 import CarCard from "../components/CarCard";
 import BookingCalendar from "../components/BookingCalendar";
 import Turnstile from "../components/Turnstile";
+import LegalModal from "../components/LegalModal";
 import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 import { captureRef, getRef } from "../utils/refTracking";
 import { isSubdomain } from "../hooks/useTenant";
@@ -602,6 +603,7 @@ export default function CarDetailPage() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showReservedPopup, setShowReservedPopup] = useState(false);
   const [bookingConsent, setBookingConsent] = useState({ appear: true, whatsapp: true });
+  const [legalDoc, setLegalDoc] = useState(null);
   const bookingRef = useRef(null);
 
   /* enquiry modal */
@@ -3675,6 +3677,9 @@ export default function CarDetailPage() {
               ))}
             </select>
             <Turnstile onToken={setEnquiryToken} action="enquiry" className="cdp-enq-turnstile" />
+            <p style={{ fontSize: 11, color: th.textMuted, lineHeight: 1.5, marginTop: 8 }}>
+              By continuing, you agree to our <button type="button" onClick={() => setLegalDoc('privacy')} style={{ background: 'none', border: 'none', padding: 0, color: '#dc2626', textDecoration: 'underline', cursor: 'pointer', font: 'inherit' }}>Privacy Policy</button> and to being contacted about your enquiry.
+            </p>
             <button
               onClick={handleEnquirySubmit}
               disabled={!enquiryForm.name || enquirySubmitting}
@@ -3816,6 +3821,10 @@ export default function CarDetailPage() {
                     </label>
                   </div>
 
+                  <p style={{ fontSize:11, color:th.textMuted, lineHeight:1.5, marginBottom:10 }}>
+                    By continuing, you agree to our <button type="button" onClick={() => setLegalDoc('privacy')} style={{ background: 'none', border: 'none', padding: 0, color: '#dc2626', textDecoration: 'underline', cursor: 'pointer', font: 'inherit' }}>Privacy Policy</button> and to being contacted about your booking.
+                  </p>
+
                   <button
                     type="submit"
                     disabled={submitting || !bookReady}
@@ -3844,6 +3853,8 @@ export default function CarDetailPage() {
           </div>
         </>
       )}
+
+      <LegalModal doc={legalDoc} onClose={() => setLegalDoc(null)} />
     </>
   );
 }

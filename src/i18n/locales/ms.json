@@ -22,7 +22,10 @@
       "NEW": "BARU",
       "PRICE DROP": "HARGA TURUN"
     },
-    "rm": "RM"
+    "rm": "RM",
+    "privacyNoticePre": "Dengan meneruskan, anda bersetuju dengan ",
+    "privacyPolicy": "Dasar Privasi",
+    "privacyNoticePost": " kami dan untuk dihubungi berkenaan pertanyaan anda."
   },
   "home": {
     "hero": {

@@ -296,6 +296,10 @@ const Footer = () => {
           <span className="ftr-bottom-text">
             © {currentYear} {dealershipName}. All rights reserved.
           </span>
+          <span style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+            <Link to="/terms" style={{ color: "#71717A", fontSize: "12px", textDecoration: "none" }}>Terms</Link>
+            <Link to="/privacy" style={{ color: "#71717A", fontSize: "12px", textDecoration: "none" }}>Privacy</Link>
+          </span>
           <span className="ftr-bottom-brand">
             Powered by
             <span style={{ color: "#DC2626", fontWeight: "600" }}>ShiftOS</span>

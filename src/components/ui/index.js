@@ -4,4 +4,5 @@ export { default as Stat } from './Stat';
 export { default as Badge } from './Badge';
 export { default as SectionHeader } from './SectionHeader';
 export { default as SubTabBar } from './SubTabBar';
+export { default as InfoHint } from './InfoHint';
 export { color, border, radius, font, stageColors, activityDot } from '../../theme/tokens';

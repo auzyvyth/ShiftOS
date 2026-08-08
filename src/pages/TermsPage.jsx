@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
+import { TERMS, LEGAL_META } from "../legal/legalDocs";
 
 const S = {
   page: { minHeight: "100vh", background: "#080C14", fontFamily: "system-ui, sans-serif", color: "#e8edf5" },
@@ -42,78 +43,20 @@ export default function TermsPage() {
           <span style={S.badge}>Legal</span>
           <h1 style={S.title}>Terms of Service</h1>
           <p style={S.meta}>
-            Effective Date: 20 May 2026 &nbsp;·&nbsp; ShiftOS / xdrive.my &nbsp;·&nbsp;
+            Effective Date: {LEGAL_META.effectiveDate} &nbsp;·&nbsp; {LEGAL_META.brand} &nbsp;·&nbsp;
             See also: <Link to="/privacy" style={{ color: "rgba(255,255,255,0.4)", textDecoration: "underline" }}>Privacy Policy</Link>
           </p>
 
           <div style={S.section}>
-            <p style={S.p}>These Terms govern your access to and use of the ShiftOS platform, including the XDrive dealer dashboard and the xdrive.my marketplace. By creating an account or using the Platform, you agree to be bound by these Terms.</p>
+            <p style={S.p}>{TERMS.intro}</p>
           </div>
 
-          <div style={S.section}>
-            <p style={S.h}>1. DEFINITIONS</p>
-            <p style={S.p}>"ShiftOS" / "we" / "us" refers to the Platform operated by ShiftOS (operated by Airy, sole proprietor). "Dealer" refers to a subscribed business user. "Salesman" refers to a sub-user account linked to a Dealer. "User" refers to any person accessing the Platform. "Content" refers to vehicle listings, images, descriptions, and other data uploaded. "Customer Data" refers to buyer information, leads, enquiries and other data uploaded by Dealers.</p>
-          </div>
-
-          <div style={S.section}>
-            <p style={S.h}>2. ACCOUNT REGISTRATION</p>
-            <p style={S.p}>To access the dealer dashboard you must register and provide accurate, complete information. You agree to: provide truthful registration information including your name, IC number, and business details; maintain the security of your login credentials and not share them with unauthorised persons; notify us immediately of any unauthorised access; ensure your use complies with all applicable Malaysian laws and regulations. We reserve the right to suspend or terminate accounts that provide false information or violate these Terms.</p>
-          </div>
-
-          <div style={S.section}>
-            <p style={S.h}>3. SUBSCRIPTION PLANS AND PAYMENT</p>
-            <p style={S.p}>Standard Plan: RM 1,000/month. Premium Plan: RM 2,500/month. Salesman Lite: Free (limited features, subject to fair use). All prices are in MYR and exclusive of applicable taxes. New dealer accounts receive a 14-day free trial with full platform access. No payment information is required during the trial. Subscriptions are billed monthly in advance. You may cancel at any time by contacting legal@xdrive.my. Cancellation takes effect at the end of the current billing period. No refunds for partial months. Data remains accessible for 30 days after cancellation before deletion.</p>
-          </div>
-
-          <div style={S.section}>
-            <p style={S.h}>4. ACCEPTABLE USE</p>
-            <p style={S.p}>You agree not to: upload fraudulent, stolen, or non-existent vehicle listings; misrepresent vehicle condition, mileage, ownership history, or specifications; collect or process customer data without appropriate consent; violate any applicable Malaysian law including the Road Transport Act 1987, Consumer Protection Act 1999, or PDPA 2010; attempt to circumvent, reverse engineer, or compromise the Platform's security; use the Platform to harass, defraud, or deceive any person; upload defamatory, obscene, or intellectual-property-infringing content. Violation may result in immediate account suspension without refund.</p>
-          </div>
-
-          <div style={S.section}>
-            <p style={S.h}>5. YOUR CONTENT AND DATA</p>
-            <p style={S.p}>You retain ownership of all Content and Customer Data you upload. By uploading Content, you grant ShiftOS a non-exclusive, royalty-free licence to store, display, and process that Content solely for providing the Platform services. You are the data controller for your customers' personal data and are responsible for: obtaining valid consent from customers before uploading their personal data; ensuring compliance with PDPA 2010; responding to customer data access and correction requests. ShiftOS acts as a data processor on your behalf. Vehicle listings marked "available" will be publicly visible on xdrive.my.</p>
-          </div>
-
-          <div style={S.section}>
-            <p style={S.h}>6. PLATFORM AVAILABILITY</p>
-            <p style={S.p}>We aim to maintain 99% uptime, excluding scheduled maintenance. We will provide advance notice of planned maintenance where possible. We are not liable for downtime caused by third-party infrastructure providers, force majeure events, or circumstances beyond our reasonable control.</p>
-          </div>
-
-          <div style={S.section}>
-            <p style={S.h}>7. INTELLECTUAL PROPERTY</p>
-            <p style={S.p}>ShiftOS, XDrive, xdrive.my and associated branding are the intellectual property of the Platform operator. You may not use our trademarks, logos or branding without prior written consent. The Platform software, design, and underlying technology remain our exclusive property.</p>
-          </div>
-
-          <div style={S.section}>
-            <p style={S.h}>8. LIMITATION OF LIABILITY</p>
-            <p style={S.p}>ShiftOS is a software tool. We are not a party to any vehicle sale transaction between a dealer and a buyer. We are not liable for any loss arising from vehicle transactions facilitated by the Platform. Our total aggregate liability for any claim shall not exceed the total subscription fees paid by you in the three months preceding the claim. We exclude liability for indirect, consequential, special or punitive damages of any kind.</p>
-          </div>
-
-          <div style={S.section}>
-            <p style={S.h}>9. INDEMNIFICATION</p>
-            <p style={S.p}>You agree to indemnify and hold harmless ShiftOS and its operators from any claims, damages, losses or expenses (including legal fees) arising from: (a) your use of the Platform in violation of these Terms; (b) your vehicle listings or customer data; (c) your violation of any applicable law; or (d) any dispute between you and a buyer or third party.</p>
-          </div>
-
-          <div style={S.section}>
-            <p style={S.h}>10. TERMINATION</p>
-            <p style={S.p}>We may suspend or terminate your account immediately if you: breach any provision of these Terms; fail to pay subscription fees within 14 days of the due date; engage in fraudulent, illegal, or abusive conduct. Upon termination, access ceases and data is retained for 30 days during which you may request an export, after which it will be permanently deleted.</p>
-          </div>
-
-          <div style={S.section}>
-            <p style={S.h}>11. GOVERNING LAW</p>
-            <p style={S.p}>These Terms are governed by the laws of Malaysia. Any dispute shall be subject to the exclusive jurisdiction of the courts of Malaysia.</p>
-          </div>
-
-          <div style={S.section}>
-            <p style={S.h}>12. CHANGES TO THESE TERMS</p>
-            <p style={S.p}>We may update these Terms from time to time with at least 14 days notice of material changes via in-app notification or email. Continued use after the effective date constitutes acceptance.</p>
-          </div>
-
-          <div style={S.section}>
-            <p style={S.h}>13. CONTACT</p>
-            <p style={S.p}>For questions regarding these Terms: Email: legal@xdrive.my · Website: https://xdrive.my</p>
-          </div>
+          {TERMS.sections.map((sec) => (
+            <div style={S.section} key={sec.h}>
+              <p style={S.h}>{sec.h}</p>
+              {sec.p.map((para, i) => <p style={S.p} key={i}>{para}</p>)}
+            </div>
+          ))}
 
           <div style={S.divider} />
 
