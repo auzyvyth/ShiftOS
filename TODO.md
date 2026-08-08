@@ -229,6 +229,58 @@ by what unblocks closing Tier 2 dealers first.
   still shows only the green reminder — appraise those units from the detail drawer
   after adding.
 
+### MARKETPLACE PERFORMANCE — 2nd audit (2026-08-08)
+
+Context: DB is NOT the bottleneck. Measured `public_car_listings` default query
+= ~27ms exec on a tiny dataset (69 listings, 42 active, 23 profiles). The prior
+PERF-1..5 audit already fixed the query/RLS layer. Remaining slowness is the
+FRONTEND load architecture of the main marketplace (xdrive.my).
+
+- [ ] **MPERF-1 (HIGH): Main marketplace loads through a wasted HomePage shell.**
+  App.jsx routes "/" → `HomePage` (EAGER). HomePage statically imports
+  HeroCarousel (1113 lines), CarCard (830), SearchAutocomplete, Header, Footer +
+  all storefront JSX — none of which a main-domain visitor ever sees. On the main
+  domain HomePage just shows `<SciFiLoader/>` until `useTenant` settles, then
+  renders the LAZY `<MarketplacePage/>` (a 2nd JS round-trip) which only THEN
+  fetches cars. Net: bloated eager critical bundle + a serial waterfall
+  (eager HP JS → tenant settle → lazy MP chunk → data fetch → paint) on the
+  highest-traffic page. FIX: branch on `isSubdomain()` (synchronous, hostname-
+  based — no auth wait) at the route level in App.jsx; when NOT a subdomain render
+  `MarketplacePage` directly as the "/" element (it is fully self-contained — own
+  MarketplaceHeader/Footer/cache, zero HomePage deps). Keep HomePage for the
+  subdomain storefront only, and lazy-load it. Removes the HeroCarousel/HomePage
+  weight from the marketplace critical path, the tenant-wait, and the extra chunk
+  hop in one change. Biggest single win.
+- [ ] **MPERF-2 (MED): HeroCarousel (1113 lines) is a static import in HomePage.**
+  Even on the subdomain storefront it sits in the critical bundle. Lazy-load it
+  with a lightweight placeholder so first paint isn't blocked on it.
+- [ ] **MPERF-3 (MED): Images depend on a free third-party proxy (wsrv.nl).**
+  `src/utils/img.js cdnImg` routes every storage image through weserv for
+  resize/WebP. Works, but adds an external dependency on the LCP path — first-hit
+  resize latency + a `cdnTimedOut` fallback already exists because it sometimes
+  stalls. When Supabase Pro lands, switch to native Supabase image transforms
+  (same-origin, no 3rd party); until then keep weserv but consider width caps.
+- [ ] **MPERF-4 (LOW): View still runs a LATERAL join + subquery per row.**
+  `public_car_listings` LEFT JOIN LATERAL stock_units (puspakom dates) executes
+  per row even though the marketplace CAR_FIELDS never selects those columns
+  (~75 buffers, 24 loops in the plan). Negligible at 42 rows but will scale badly.
+  Consider splitting a lean marketplace view (no LATERAL/no per-row subqueries)
+  from the detail view, or denormalizing seller_role/puspakom onto car_listings.
+
+### SALESMAN LITE — routing / back-button UX
+
+- [ ] **LITE-2: Make each Salesman Lite tab its own route (fix back/swipe = logout)** —
+  Today `SalesmanLite.jsx` switches tabs via internal state on a single route, so the
+  browser history has no per-tab entries. Result: pressing the phone back button (or
+  swipe-left-to-go-back on mobile) exits the whole app and can land the user back on
+  login instead of the previous tab. FIX: give each Lite tab its own URL/route
+  (e.g. `/salesman-lite/dashboard`, `/listings`, `/leads`, `/inbox`, `/performance`)
+  so tab switches push history entries and back/swipe returns to the last tab, not
+  login. Keep it mobile-first; preserve the existing pill nav (drive it off the route).
+  Reuse the modal-history pattern already in the codebase where useful. Check the other
+  salesman surfaces (Premium panel, linked Salesmanpanel) have the same single-route
+  smell and note whether they need the same treatment.
+
 ### FEATURE ROADMAP — ranked by priority + ROI
 
 #### TIER 1 — Core revenue intelligence (highest ROI, justify RM5k/month)
@@ -258,6 +310,41 @@ by what unblocks closing Tier 2 dealers first.
 #### TIER 4 — High complexity, longer-term
 
 - [ ] **NEW-10: Workshop module** — Full job card system: service job per vehicle, parts used, labor hours, technician assigned, cost vs. quote, completion status. Parts inventory per VIN/plate. Service history timeline. High build cost but transforms ShiftOS into a full aftersales DMS.
+
+- [ ] **NEW-11: AI car briefing on marketplace search (TikTok-style summary card)** —
+  FUTURE BUILD (owner: not now, capture the vision). When a buyer searches the XDrive
+  marketplace (e.g. "bmw m4 g82 csl 2024"), render an AI summary card BELOW the search
+  bar and ABOVE the showroom results — like TikTok's "Summarised by AI" card in the
+  reference screenshot. Owner scope = "full clone + better insights". Insights the card
+  must cover:
+    1. General car knowledge — engine/output, 0–100, body style, who it's for, key specs.
+    2. **Our database** — how many of this exact car XDrive has in stock, from RM X, avg
+       mileage, at N dealers, with a CTA into the already-filtered showroom results.
+    3. **Market price** — typical MY market range for that model/year/variant, so the
+       buyer can judge if a listing is fair.
+    4. **Ownership costs** — road tax (by engine CC, official JPJ scale), insurance
+       estimate, expected servicing/running cost band.
+    5. **Investment view** — is it a good buy / does it hold value (depreciation trend,
+       demand, collectibility for cars like the CSL).
+    6. Sentiment card (positive/negative %, TikTok-style) — owner wants the full clone.
+  BUILD DISCIPLINE (non-negotiable for accuracy — this is a big-ticket purchase, wrong
+  numbers = liability + lost trust):
+    - GROUND every hard number. Stock count / price / mileage / dealer count come from a
+      real `car_listings` query, NOT the LLM. Road tax comes from the official CC scale
+      (deterministic calc, not generated). The AI writes the narrative; facts are fed in.
+    - Sentiment %s and "good investment" claims MUST be grounded on real signal (scraped/
+      sourced review + resale data), not free-form model opinion — otherwise the card
+      fabricates confidence. If that data isn't available at build time, ship those two
+      sections LAST or gate them; do not let Claude invent them. Frame market/ownership
+      figures as estimates.
+    - CACHE HARD: normalize the free-text query to a canonical make/model/variant/year
+      key; cache generated summaries in a table with a TTL (~30–90d). 2nd search of the
+      same car = cache hit, not a paid API call. Without this, every search is billable.
+    - The query→canonical-car NORMALIZATION step is the hard part (drives both cache hits
+      and matching real listings) — prototype it first, on its own.
+    - Reuse the existing `ai-proxy` edge function + prompt-injection-hardened system
+      prompt (treat any listing text as untrusted). Slots into `src/pages/HomePage.jsx`
+      search flow. Mobile-first card (test at 375px), dark marketplace theme.
 
 ---
 
