@@ -259,6 +259,41 @@ by what unblocks closing Tier 2 dealers first.
 
 - [ ] **NEW-10: Workshop module** — Full job card system: service job per vehicle, parts used, labor hours, technician assigned, cost vs. quote, completion status. Parts inventory per VIN/plate. Service history timeline. High build cost but transforms ShiftOS into a full aftersales DMS.
 
+- [ ] **NEW-11: AI car briefing on marketplace search (TikTok-style summary card)** —
+  FUTURE BUILD (owner: not now, capture the vision). When a buyer searches the XDrive
+  marketplace (e.g. "bmw m4 g82 csl 2024"), render an AI summary card BELOW the search
+  bar and ABOVE the showroom results — like TikTok's "Summarised by AI" card in the
+  reference screenshot. Owner scope = "full clone + better insights". Insights the card
+  must cover:
+    1. General car knowledge — engine/output, 0–100, body style, who it's for, key specs.
+    2. **Our database** — how many of this exact car XDrive has in stock, from RM X, avg
+       mileage, at N dealers, with a CTA into the already-filtered showroom results.
+    3. **Market price** — typical MY market range for that model/year/variant, so the
+       buyer can judge if a listing is fair.
+    4. **Ownership costs** — road tax (by engine CC, official JPJ scale), insurance
+       estimate, expected servicing/running cost band.
+    5. **Investment view** — is it a good buy / does it hold value (depreciation trend,
+       demand, collectibility for cars like the CSL).
+    6. Sentiment card (positive/negative %, TikTok-style) — owner wants the full clone.
+  BUILD DISCIPLINE (non-negotiable for accuracy — this is a big-ticket purchase, wrong
+  numbers = liability + lost trust):
+    - GROUND every hard number. Stock count / price / mileage / dealer count come from a
+      real `car_listings` query, NOT the LLM. Road tax comes from the official CC scale
+      (deterministic calc, not generated). The AI writes the narrative; facts are fed in.
+    - Sentiment %s and "good investment" claims MUST be grounded on real signal (scraped/
+      sourced review + resale data), not free-form model opinion — otherwise the card
+      fabricates confidence. If that data isn't available at build time, ship those two
+      sections LAST or gate them; do not let Claude invent them. Frame market/ownership
+      figures as estimates.
+    - CACHE HARD: normalize the free-text query to a canonical make/model/variant/year
+      key; cache generated summaries in a table with a TTL (~30–90d). 2nd search of the
+      same car = cache hit, not a paid API call. Without this, every search is billable.
+    - The query→canonical-car NORMALIZATION step is the hard part (drives both cache hits
+      and matching real listings) — prototype it first, on its own.
+    - Reuse the existing `ai-proxy` edge function + prompt-injection-hardened system
+      prompt (treat any listing text as untrusted). Slots into `src/pages/HomePage.jsx`
+      search flow. Mobile-first card (test at 375px), dark marketplace theme.
+
 ---
 
 ### DEALER SUBDOMAIN PERFORMANCE AUDIT (2026-06-07) — ranked by impact
