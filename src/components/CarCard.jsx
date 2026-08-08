@@ -29,7 +29,11 @@ const formatAge = (days) => {
 
 const XDRIVE_PHONE = '60174155191';
 
-const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, showCompare = false, compact = false }) => {
+const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, showCompare = false, compact = false,
+  // Default assumes a full-width / 2-col grid slot. Contexts that render the
+  // card narrower (e.g. the 2-up body-type carousels) MUST pass their real
+  // rendered width so srcset stops fetching a ~2x-oversized image.
+  sizes = '(max-width: 520px) calc(100vw - 32px), (max-width: 768px) calc(50vw - 24px), 380px' }) => {
   const navigate = useNavigate();
   const [imgError, setImgError]   = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -376,7 +380,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
                 alt={`${year} ${brand} ${model}`}
                 loading={priority ? 'eager' : 'lazy'}
                 fetchPriority={priority ? 'high' : 'auto'}
-                sizes="(max-width: 520px) calc(100vw - 32px), (max-width: 768px) calc(50vw - 24px), 380px"
+                sizes={sizes}
                 onError={(e) => {
                   if (rawImage && !e.currentTarget.dataset.fb && e.currentTarget.src !== rawImage) {
                     e.currentTarget.dataset.fb = '1';
