@@ -16,9 +16,15 @@ import "./i18n/config";
 // (xdrive.my "/") is the highest-traffic page, so it lives in the entry bundle
 // and paints with no extra lazy-chunk hop.
 import MarketplacePage from "./pages/MarketplacePage";
-import CarListingPage from "./pages/CarListingPage";
 // Eager — tiny, and must render instantly (no blank Suspense flash) on bad URLs
 import NotFoundPage from "./pages/NotFoundPage";
+
+// Lazy — /showroom & /cars are navigated to, never the landing page, so this
+// heavy page (its own Header + the 3,700-line CarForm/@dnd-kit graph) must NOT
+// ride in the marketplace entry bundle. It was eager before, which is what
+// pulled the listing-form + drag-drop library onto the public landing page and
+// jammed first paint. Sibling CarDetailPage is already lazy for the same reason.
+const CarListingPage  = lazy(() => import("./pages/CarListingPage"));
 
 // Lazy — the dealer subdomain storefront. Only <sub>.xdrive.my visitors render
 // it, so its storefront-only weight (HeroCarousel etc.) must stay OUT of the
