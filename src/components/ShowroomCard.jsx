@@ -35,7 +35,9 @@ const XDRIVE_WA = '60174155191';
 //   onCompare  — callback to add/remove from compare
 // Resized WebP via weserv. (The old ?width= params on /object/public/ URLs were
 // silently ignored by Supabase, so full-res images were being served.)
-const toThumb = (url) => cdnImg(url, 640, 72);
+// The image column is 38% wide, capped at 210px, so ~420px covers a 2x screen.
+// 640px was ~1.5x oversized for every card in the grid.
+const toThumb = (url) => cdnImg(url, 480, 72);
 
 export default function ShowroomCard({ car, ctaContext, inCompare = false, compareFull = false, onCompare, priority = false, dark = false }) {
   const navigate = useNavigate();
