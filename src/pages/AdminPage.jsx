@@ -6,6 +6,7 @@ import { PLAN_CONFIG } from "../utils/planConfig";
 import FunnelTab from "../components/platform/FunnelTab";
 import ErrorsTab from "../components/platform/ErrorsTab";
 import BroadcastTab from "../components/platform/BroadcastTab";
+import ActivityLogTab from "../components/platform/ActivityLogTab";
 
 function MktSection({ label, hint, children }) {
   return (
@@ -148,10 +149,12 @@ export default function AdminPage() {
   const [dealerStats, setDealerStats] = useState({});
   const [expandedDealer, setExpandedDealer] = useState(null);
   const [activeTab, setActiveTab] = useState("dealers");
-  // Two top-level consoles in the superadmin panel. "shiftos" = the existing SaaS
-  // ops (dealers/approvals/billing…); "xdrive" = the public marketplace analytics.
+  // Top-level consoles in the superadmin panel. "shiftos" = the existing SaaS ops
+  // (dealers/approvals/billing…); "xdrive" = public marketplace analytics;
+  // "security" = audit forensics, sessions and posture.
   const [activeConsole, setActiveConsole] = useState("shiftos");
   const [xdriveTab, setXdriveTab] = useState("funnel");
+  const [securityTab, setSecurityTab] = useState("activity");
   const [salesmanSearch, setSalesmanSearch] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [waitlist, setWaitlist] = useState([]);
@@ -459,14 +462,19 @@ export default function AdminPage() {
   ];
 
   const CONSOLES = [
-    { id: "shiftos", label: "ShiftOS Ops", sub: "Dealers · approvals · billing" },
-    { id: "xdrive",  label: "XDrive Ops",  sub: "Marketplace analytics" },
+    { id: "shiftos",  label: "ShiftOS Ops", sub: "Dealers · approvals · billing" },
+    { id: "xdrive",   label: "XDrive Ops",  sub: "Marketplace analytics" },
+    { id: "security", label: "Security",    sub: "Audit · sessions · posture" },
   ];
 
   const XDRIVE_TABS = [
     { id: "funnel", label: "Funnel" },
     { id: "errors", label: "Errors" },
     { id: "broadcast", label: "Broadcast" },
+  ];
+
+  const SECURITY_TABS = [
+    { id: "activity", label: "Activity Log" },
   ];
 
   return (
@@ -669,6 +677,21 @@ export default function AdminPage() {
                   {xdriveTab === "funnel" && <FunnelTab />}
                   {xdriveTab === "errors" && <ErrorsTab />}
                   {xdriveTab === "broadcast" && <BroadcastTab dealers={dealers} salesmen={salesmen} />}
+                </div>
+              </>
+            ) : activeConsole === "security" ? (
+              /* ══ SECURITY CONSOLE ══ */
+              <>
+                <div className="adm-tabs" style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 28px", background: "rgba(255,255,255,0.01)" }}>
+                  {SECURITY_TABS.map(t => (
+                    <button key={t.id} className="adm-tab" onClick={() => setSecurityTab(t.id)}
+                      style={{ padding: "12px 16px", background: "none", border: "none", borderBottom: securityTab === t.id ? "2px solid #dc2626" : "2px solid transparent", color: securityTab === t.id ? "#fff" : "#6b7280", fontSize: 13, fontWeight: securityTab === t.id ? 600 : 400, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s", whiteSpace: "nowrap" }}>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="adm-content" style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 28px 80px" }}>
+                  {securityTab === "activity" && <ActivityLogTab />}
                 </div>
               </>
             ) : (
