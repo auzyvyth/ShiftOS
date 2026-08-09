@@ -2,16 +2,22 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { getRef } from '../utils/refTracking';
+import { loadBuyerDetails, saveBuyerDetails } from '../utils/consent';
 import Turnstile from './Turnstile';
 import LegalModal from './LegalModal';
 
-// Name-only gate shown before a buyer opens WhatsApp. Captures the buyer's name,
-// creates a real pipeline lead (create_lead_from_whatsapp RPC — anon-callable),
-// then opens WhatsApp. Phone isn't asked (lower friction) — the seller gets it
-// from the WhatsApp chat itself. Used by every public "WhatsApp" button.
+const MY_STATES = ['Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka','Negeri Sembilan','Pahang','Penang','Perak','Perlis','Putrajaya','Sabah','Sarawak','Selangor','Terengganu'];
+
+// Gate shown before a buyer opens WhatsApp. Captures the buyer's name (required)
+// plus phone and state (both optional, so friction stays low), creates a real
+// pipeline lead (create_lead_from_whatsapp RPC — anon-callable), then opens
+// WhatsApp. Matches the car-detail enquiry form's fields so salesmen get the same
+// info from every "WhatsApp" button. Used by every public "WhatsApp" button.
 export default function ContactGate({ open, onClose, waUrl, dealerId, carId, carName, onConfirmed }) {
   const { t } = useTranslation();
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [state, setState] = useState('');
   const [busy, setBusy] = useState(false);
   const [token, setToken] = useState(null);
   const [showLegal, setShowLegal] = useState(false);
@@ -19,6 +25,14 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
   useEffect(() => {
     if (!open) return;
     document.body.style.overflow = 'hidden';
+    // Prefill from device-remembered details (preferences consent tier; no-ops
+    // and returns null when the buyer hasn't granted it).
+    const saved = loadBuyerDetails();
+    if (saved) {
+      setName((v) => v || saved.name || '');
+      setPhone((v) => v || saved.phone || '');
+      setState((v) => v || saved.state || '');
+    }
     return () => { document.body.style.overflow = ''; };
   }, [open]);
 
@@ -33,6 +47,8 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
     // chat opens regardless, a captcha/rate-limit rejection on the write only
     // skips the CRM record — it never blocks the buyer reaching the seller.
     if (waUrl && waUrl !== '#') window.open(waUrl, '_blank', 'noopener,noreferrer');
+    // Remember on this device for next time (no-ops without preferences consent).
+    saveBuyerDetails({ name: nm, phone: phone.trim(), state });
     if (dealerId) {
       fetch('/api/whatsapp-lead', {
         method: 'POST',
@@ -41,14 +57,15 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
           dealerId,
           carId: carId || null,
           name: nm,
-          phone: null,
+          phone: phone.trim() || null,
+          state: state || null,
           refSlug: getRef() || null,
           token,
         }),
       }).catch((err) => console.error('whatsapp-lead:', err));
     }
     try { onConfirmed?.(); } catch { /* ignore */ }
-    setName(''); setToken(null); setBusy(false); onClose();
+    setName(''); setPhone(''); setState(''); setToken(null); setBusy(false); onClose();
   };
 
   return (
@@ -66,8 +83,26 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') proceed(); }}
           placeholder="Your name"
-          style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: 10, padding: '11px 13px', fontSize: 14, color: '#111827', outline: 'none', marginBottom: 12 }}
+          style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: 10, padding: '11px 13px', fontSize: 14, color: '#111827', outline: 'none', marginBottom: 10 }}
         />
+        <input
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') proceed(); }}
+          inputMode="tel"
+          placeholder="Phone number (optional)"
+          aria-label="Phone number"
+          style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: 10, padding: '11px 13px', fontSize: 14, color: '#111827', outline: 'none', marginBottom: 10 }}
+        />
+        <select
+          value={state}
+          onChange={(e) => setState(e.target.value)}
+          aria-label="Your state"
+          style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: 10, padding: '11px 13px', fontSize: 14, color: state ? '#111827' : '#9ca3af', outline: 'none', marginBottom: 12, cursor: 'pointer', background: '#fff' }}
+        >
+          <option value="">Your state (optional)</option>
+          {MY_STATES.map((s) => <option key={s} value={s} style={{ color: '#111827' }}>{s}</option>)}
+        </select>
         <Turnstile onToken={setToken} action="whatsapp_lead" className="cg-turnstile" />
         <p style={{ margin: '10px 0 12px', fontSize: 11, color: '#9ca3af', lineHeight: 1.5 }}>
           {t('common.privacyNoticePre')}

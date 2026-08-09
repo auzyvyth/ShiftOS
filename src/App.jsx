@@ -8,6 +8,7 @@ import * as Sentry from "@sentry/react";
 const SentryRoutes = Sentry.withSentryReactRouterV7Routing(Routes);
 import ScrollToTop from "./components/ScrollToTop";
 import CompareBar from "./components/CompareBar";
+import ConsentBanner from "./components/ConsentBanner";
 import { isSubdomain } from "./hooks/useTenant";
 import { useIdleLogout } from "./hooks/useIdleLogout";
 import "./i18n/config";
@@ -128,6 +129,7 @@ function App() {
         }}
       />
       <CompareBarGate />
+      <ConsentBanner />
       <Suspense fallback={null}>
         <SentryRoutes>
           {/* Public — XDrive */}

@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { dealerId, carId, name, phone, refSlug, token } = req.body || {};
+  const { dealerId, carId, name, phone, state, refSlug, token } = req.body || {};
 
   const nm = String(name || '').trim();
   if (!dealerId || !nm) {
@@ -52,6 +52,7 @@ export default async function handler(req, res) {
     p_name: nm.substring(0, 100),
     p_phone: phone ? String(phone).substring(0, 30) : null,
     p_ref_slug: refSlug || null,
+    p_state: state ? String(state).substring(0, 40) : null,
   });
 
   if (error) {

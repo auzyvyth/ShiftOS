@@ -50,6 +50,7 @@ import Turnstile from "../components/Turnstile";
 import LegalModal from "../components/LegalModal";
 import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 import { captureRef, getRef } from "../utils/refTracking";
+import { loadBuyerDetails, saveBuyerDetails } from "../utils/consent";
 import { isSubdomain } from "../hooks/useTenant";
 import { trackEvent, getSlugFromURL } from "../utils/analytics";
 import { useMarketplaceTracking } from "../hooks/useMarketplaceTracking";
@@ -1016,6 +1017,16 @@ export default function CarDetailPage() {
   }
 
   function handleWhatsApp() {
+    // Prefill from device-remembered details (preferences consent tier; returns
+    // null when not granted, so nothing is read back for opted-out buyers).
+    const saved = loadBuyerDetails();
+    if (saved) {
+      setEnquiryForm((p) => ({
+        name: p.name || saved.name || "",
+        phone: p.phone || saved.phone || "",
+        state: p.state || saved.state || "",
+      }));
+    }
     setShowEnquiryModal(true);
   }
 
@@ -1055,6 +1066,8 @@ export default function CarDetailPage() {
     } else {
       toast.error("This dealer hasn't added a WhatsApp number yet. We've saved your enquiry instead.");
     }
+    // Remember on this device for next time (no-ops without preferences consent).
+    saveBuyerDetails({ name: enquiryForm.name, phone: enquiryForm.phone, state: enquiryForm.state });
     setShowEnquiryModal(false);
     setEnquiryForm({ name: "", phone: "", state: "" });
 
