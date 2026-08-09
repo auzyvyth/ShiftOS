@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Helmet } from 'react-helmet';
-import { RotateCcw, Car, Users, SlidersHorizontal, Search, ArrowLeftRight, ArrowRight, X, ShieldCheck, FileCheck2, Ban } from 'lucide-react';
+import { RotateCcw, Car, Users, SlidersHorizontal, Search, ArrowLeftRight, ArrowRight, X, ShieldCheck, FileCheck2, Ban, ChevronDown } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
 import MarketplaceFooter from '../components/MarketplaceFooter';
 import ShowroomCard, { ShowroomCardSkeleton } from '@/components/ShowroomCard';
@@ -113,10 +113,6 @@ export default function MarketplacePage() {
   const carouselSectionRef = useRef(null);
   const carouselFetched = useRef(false);
   const heroSearchBarRef = useRef(null);
-
-  /* Sentinel for auto-load */
-  const sentinelRef = useRef(null);
-  const MAX_AUTO_PAGES = 3;
 
   /* Stats (fetched once) */
   const [stats, setStats] = useState({ listings: null, dealers: null, hotDeals: null });
@@ -271,17 +267,9 @@ export default function MarketplacePage() {
     fetchCars();
   }, [fetchCars]);
 
-  /* ── Sentinel: auto-load next page when bottom of grid enters viewport ── */
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    if (loading || cars.length >= totalCount || loadPage >= MAX_AUTO_PAGES) return;
-    const obs = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) setLoadPage(p => p + 1);
-    }, { rootMargin: '120px' });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [loading, cars.length, totalCount, loadPage]);
+  /* Load-more is manual (see the grid footer). Auto-load on scroll was removed:
+     it grew the grid as you scrolled and pushed the footer down, so the footer
+     kept running away from the user. One explicit "Load more", then "See all". */
 
   /* ── Filter helpers ── */
   const setParam = (key, value) => {
@@ -1050,7 +1038,7 @@ export default function MarketplacePage() {
               {/* Cars grid */}
               {!error && (
                 <div className="mp-cars-grid" style={S.carsGrid}>
-                  {loading
+                  {loading && loadPage === 1
                     ? Array.from({ length: PER_PAGE }).map((_, i) => <ShowroomCardSkeleton key={i} />)
                     : cars.length === 0
                       ? (
@@ -1082,45 +1070,53 @@ export default function MarketplacePage() {
                 </div>
               )}
 
-              {/* Sentinel — invisible trigger for auto-load */}
-              {!loading && !error && cars.length < totalCount && loadPage < MAX_AUTO_PAGES && (
-                <div ref={sentinelRef} style={{ height: 1 }} aria-hidden="true" />
-              )}
-
-              {/* Loading indicator for auto-load */}
+              {/* Loading indicator while a manual "Load more" is in flight */}
               {loading && loadPage > 1 && (
                 <div style={{ textAlign:'center', padding:'24px 0', fontFamily:"'Outfit',sans-serif", fontSize:'13px', color:'#9ca3af' }}>
                   Loading more…
                 </div>
               )}
 
-              {/* Browse all → Showroom (shown when auto-load cap reached or no more) */}
-              {!loading && !error && cars.length < totalCount && loadPage >= MAX_AUTO_PAGES && (
+              {/* Two-stage manual control (no auto-load): "Load more" once, then
+                  "See all" -> Showroom. Keeps the footer reachable and stops the
+                  grid from creeping down as you scroll. */}
+              {!loading && !error && cars.length > 0 && cars.length < totalCount && (
                 <div style={{ textAlign:'center', padding:'32px 0 60px' }}>
-                  <button
-                    onClick={() => {
-                      const p = new URLSearchParams();
-                      if (brand)        p.set('brand', brand);
-                      if (model)        p.set('model', model);
-                      if (variant)      p.set('variant', variant);
-                      if (bodyType)     p.set('body_type', bodyType);
-                      if (state)        p.set('state', state);
-                      if (minPrice)     p.set('min_price', minPrice);
-                      if (maxPrice)     p.set('max_price', maxPrice);
-                      if (transmission) p.set('transmission', transmission);
-                      if (condition)    p.set('condition', condition);
-                      if (fuelType)     p.set('fuel_type', fuelType);
-                      if (colour)       p.set('colour', colour);
-                      if (sellerType)   p.set('seller_type', sellerType);
-                      if (q)            p.set('q', q);
-                      navigate(`/showroom?${p.toString()}`);
-                    }}
-                    style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'#dc2626', border:'none', color:'#fff', fontSize:'14px', fontWeight:'700', padding:'13px 32px', borderRadius:'50px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", boxShadow:'0 4px 16px rgba(220,38,38,0.3)', transition:'all 0.15s' }}
-                    onMouseEnter={e=>e.currentTarget.style.background='#b91c1c'}
-                    onMouseLeave={e=>e.currentTarget.style.background='#dc2626'}
-                  >
-                    Browse all {totalCount.toLocaleString()} cars <ArrowRight size={14}/>
-                  </button>
+                  {loadPage < 2 ? (
+                    <button
+                      onClick={() => setLoadPage(p => p + 1)}
+                      style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'#fff', border:'1.5px solid #dc2626', color:'#dc2626', fontSize:'14px', fontWeight:'700', padding:'12px 30px', borderRadius:'50px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s' }}
+                      onMouseEnter={e=>{ e.currentTarget.style.background='#fef2f2'; }}
+                      onMouseLeave={e=>{ e.currentTarget.style.background='#fff'; }}
+                    >
+                      Load more cars <ChevronDown size={16}/>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        const p = new URLSearchParams();
+                        if (brand)        p.set('brand', brand);
+                        if (model)        p.set('model', model);
+                        if (variant)      p.set('variant', variant);
+                        if (bodyType)     p.set('body_type', bodyType);
+                        if (state)        p.set('state', state);
+                        if (minPrice)     p.set('min_price', minPrice);
+                        if (maxPrice)     p.set('max_price', maxPrice);
+                        if (transmission) p.set('transmission', transmission);
+                        if (condition)    p.set('condition', condition);
+                        if (fuelType)     p.set('fuel_type', fuelType);
+                        if (colour)       p.set('colour', colour);
+                        if (sellerType)   p.set('seller_type', sellerType);
+                        if (q)            p.set('q', q);
+                        navigate(`/showroom?${p.toString()}`);
+                      }}
+                      style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'#dc2626', border:'none', color:'#fff', fontSize:'14px', fontWeight:'700', padding:'13px 32px', borderRadius:'50px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", boxShadow:'0 4px 16px rgba(220,38,38,0.3)', transition:'all 0.15s' }}
+                      onMouseEnter={e=>e.currentTarget.style.background='#b91c1c'}
+                      onMouseLeave={e=>e.currentTarget.style.background='#dc2626'}
+                    >
+                      See all {totalCount.toLocaleString()} cars <ArrowRight size={14}/>
+                    </button>
+                  )}
                   <p style={{ marginTop:'10px', color:'#9ca3af', fontSize:'12px', fontFamily:"'Outfit',sans-serif" }}>Showing {cars.length} of {totalCount.toLocaleString()}</p>
                 </div>
               )}
