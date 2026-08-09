@@ -1,4 +1,5 @@
 import { getShareChannel } from "./refTracking";
+import { hasConsent } from "./consent";
 
 const SESSION_KEY = "xdrive_session_id";
 
@@ -20,6 +21,9 @@ export function getSlugFromURL() {
  * Automatically attaches session_id, page_path, referrer, and salesman_slug from URL.
  */
 export async function trackEvent(supabase, eventType, payload = {}) {
+  // Analytics tier of the cookie consent banner. No-op when the visitor has not
+  // granted analytics (necessary/security telemetry doesn't route through here).
+  if (!hasConsent("analytics")) return;
   try {
     const row = {
       event_type: eventType,

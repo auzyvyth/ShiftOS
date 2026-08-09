@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import { hasConsent } from '../utils/consent';
 
 const SESSION_KEY = 'shiftos_session';
 const REF_KEY     = 'shiftos_ref';
@@ -28,6 +29,7 @@ export function getRef() {
  * resolve it by: slug → salesman profile → dealership name → dealer profile.id
  */
 export async function trackEvent(eventType, { carId = null, carName = null, dealerId = null } = {}) {
+  if (!hasConsent('analytics')) return;
   const slug = getRef();
   if (!slug) return;
 

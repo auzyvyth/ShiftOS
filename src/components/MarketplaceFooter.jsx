@@ -4,6 +4,7 @@ import { MessageCircle, Instagram, Facebook, Mail, Shield, Zap, BookOpen, Car, U
 import { isSubdomain } from '../hooks/useTenant';
 import useMarketplaceSettings from '../hooks/useMarketplaceSettings';
 import { PLAN_CONFIG } from '../utils/planConfig';
+import { openConsentSettings } from '../utils/consent';
 
 const TRUST_ICONS = [Shield, BookOpen, Users, Car];
 
@@ -70,6 +71,7 @@ export default function MarketplaceFooter() {
         { label: 'FAQ',              to: '/guides/faq' },
         { label: 'Terms of Service', to: '/terms' },
         { label: 'Privacy Policy',   to: '/privacy' },
+        { label: 'Cookie Settings',  action: openConsentSettings },
         { label: 'Contact Us',       href: `mailto:${settings.support_email}` },
       ],
     },
@@ -182,12 +184,16 @@ export default function MarketplaceFooter() {
           <div key={heading}>
             <p className="text-[10px] font-bold uppercase tracking-[0.13em] text-gray-400 mb-4">{heading}</p>
             <ul className="space-y-2.5">
-              {links.map(({ label, to, href }) => (
+              {links.map(({ label, to, href, action }) => (
                 <li key={label}>
                   {to ? (
                     <Link to={to} className="text-[13px] text-gray-500 hover:text-red-600 transition-colors">
                       {label}
                     </Link>
+                  ) : action ? (
+                    <button onClick={action} className="text-[13px] text-gray-500 hover:text-red-600 transition-colors text-left">
+                      {label}
+                    </button>
                   ) : (
                     <a href={href} className="text-[13px] text-gray-500 hover:text-red-600 transition-colors">
                       {label}

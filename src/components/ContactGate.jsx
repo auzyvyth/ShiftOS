@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { getRef } from '../utils/refTracking';
+import { loadBuyerDetails, saveBuyerDetails } from '../utils/consent';
 import Turnstile from './Turnstile';
 import LegalModal from './LegalModal';
 
@@ -24,6 +25,14 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
   useEffect(() => {
     if (!open) return;
     document.body.style.overflow = 'hidden';
+    // Prefill from device-remembered details (preferences consent tier; no-ops
+    // and returns null when the buyer hasn't granted it).
+    const saved = loadBuyerDetails();
+    if (saved) {
+      setName((v) => v || saved.name || '');
+      setPhone((v) => v || saved.phone || '');
+      setState((v) => v || saved.state || '');
+    }
     return () => { document.body.style.overflow = ''; };
   }, [open]);
 
@@ -38,6 +47,8 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
     // chat opens regardless, a captcha/rate-limit rejection on the write only
     // skips the CRM record — it never blocks the buyer reaching the seller.
     if (waUrl && waUrl !== '#') window.open(waUrl, '_blank', 'noopener,noreferrer');
+    // Remember on this device for next time (no-ops without preferences consent).
+    saveBuyerDetails({ name: nm, phone: phone.trim(), state });
     if (dealerId) {
       fetch('/api/whatsapp-lead', {
         method: 'POST',
