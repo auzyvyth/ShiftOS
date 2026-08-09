@@ -269,17 +269,34 @@ FRONTEND load architecture of the main marketplace (xdrive.my).
 
 ### SALESMAN LITE — routing / back-button UX
 
-- [ ] **LITE-2: Make each Salesman Lite tab its own route (fix back/swipe = logout)** —
-  Today `SalesmanLite.jsx` switches tabs via internal state on a single route, so the
-  browser history has no per-tab entries. Result: pressing the phone back button (or
-  swipe-left-to-go-back on mobile) exits the whole app and can land the user back on
-  login instead of the previous tab. FIX: give each Lite tab its own URL/route
-  (e.g. `/salesman-lite/dashboard`, `/listings`, `/leads`, `/inbox`, `/performance`)
-  so tab switches push history entries and back/swipe returns to the last tab, not
-  login. Keep it mobile-first; preserve the existing pill nav (drive it off the route).
-  Reuse the modal-history pattern already in the codebase where useful. Check the other
-  salesman surfaces (Premium panel, linked Salesmanpanel) have the same single-route
-  smell and note whether they need the same treatment.
+- [x] **LITE-2: Make each Salesman Lite tab its own route (fix back/swipe = logout)** —
+  DONE (2026-08-09). `SalesmanLite.jsx` tabs are now real routes: added
+  `/salesman-lite/:tab` in App.jsx; `activeTab` is derived from `useParams()` and
+  `setActiveTab` navigates, so every tab switch pushes a history entry and Back/swipe
+  returns to the previous tab. Also fixed the second half of the bug — `LoginPage.jsx`
+  post-auth redirects now use `window.location.replace()` (via a `go()` helper) instead
+  of `window.location.href =`, so `/login` no longer sits in history and backing out of
+  the first tab exits cleanly instead of re-showing sign-in.
+  FOLLOW-UP (not done this session): Premium (`SalesmanPremium.jsx`) and the linked
+  panel (`Salesmanpanel.jsx`) have the same single-route `useState("dashboard")` smell —
+  apply the same per-tab routing to them. Also confirm `AuthCallbackPage.jsx`
+  (Google/OAuth) redirect uses `replace()`.
+
+### SALESMAN LITE — account deletion (self-service)
+
+- [x] **LITE-3: Delete-account flow (soft delete + 30-day grace)** — DONE (2026-08-09).
+  Settings → Danger Zone "Delete account" (typed-DELETE confirm modal) calls the new
+  `delete-account` edge function, which flips the caller's own profile to
+  `account_status='deleted'` + `is_active=false` + `deleted_at=now()` (solo salesman
+  only; linked salesmen are dealer-managed and blocked). Listings drop from the
+  marketplace immediately (`public_car_listings` now excludes deleted owners) and the
+  public mini page hides (get_salesman_by_slug already filters `is_active`). Logging back
+  in within 30 days shows a Reactivate gate that clears the flags. A daily cron
+  (`purge-deleted-accounts-daily`, 02:30 UTC) + the `purge-deleted-accounts` edge
+  function hard-delete the auth user after 30 days. Prereq shipped: hardened the
+  `NO ACTION` FKs to `profiles.id` (owned data → CASCADE, attribution pointers → SET NULL)
+  so the purge — and the existing admin delete in `invites` — cascade cleanly.
+  New column: `profiles.deleted_at`.
 
 ### FEATURE ROADMAP — ranked by priority + ROI
 
