@@ -116,6 +116,25 @@ silently rejected (no error). Canonical rule (both sides):
 Prior bug: the JS helper had no `salesman` branch, so a linked salesman resolved to their
 OWN id — handover board empty, salesman-logged calls/appointments silently RLS-rejected.
 
+## Inbound lead attribution — ONE resolver, never inline it again
+Every server-side path that turns an inbound contact into a `leads` row MUST get its
+`salesman_id` from the SECURITY DEFINER helper `resolve_lead_salesman(p_dealer_id, p_car_id,
+p_ref_slug, p_explicit)`. Do NOT re-implement the resolution inline — that drift is what
+made WhatsApp/enquiry leads vanish from a salesman's pipeline TWICE. Callers today:
+`create_lead_from_whatsapp` (ContactGate/WhatsApp tap) and the `enquiry_to_lead` trigger
+(enquiry form). Resolution order, first hit wins:
+  1. explicit rep the caller already resolved (e.g. api/enquiry.js set `salesman_id`)
+  2. `ref_slug` → must be `role='salesman'` AND scoped to this dealer (`id=dealer OR dealer_id=dealer`)
+  3. `car_listings.assigned_to` (the exclusivity-lock closer)
+  4. the "dealer" IS a self-owned salesman (`role='salesman' AND dealer_id IS NULL`) → attribute to them
+  5. else NULL → genuinely unassigned, stays in the shared dealer pool
+Why this matters per surface (all fetch by `salesman_id`):
+  - Salesman Lite (standalone, dealer_id NULL) → SalesmanLite.jsx  → rule 4 owns every inbound lead
+  - Salesman Premium (standalone, dealer_id NULL) → SalesmanPremium.jsx → same as Lite (rule 4)
+  - Salesman under a dealer (dealer_id set) → Salesmanpanel.jsx → rules 2/3 attribute; unassigned → dealer pool
+Routing: `dealer_id ? /salesman : plan==='salesman_full' ? /salesman-premium : /salesman-lite`.
+If a lead ever doesn't show for a rep, check `resolve_lead_salesman`, not the panel query.
+
 ## Post-sale handover (Module A)
 - Won deal (lead.stage = won/closed_won) → DB trigger `auto_create_customer_on_won` fires immediately: flips the linked car to `status='sold'` (sold_at + assigned_to), creates the customers row (name/phone/IC/email/car/plate/price) AND pre-seeds 8-step post_sale_tasks checklist (B7 auto-NA if not financed). Idempotent — safe to re-trigger.
 - src/components/postsale/{PostSaleBoard,PostSaleChecklist}.jsx + src/hooks/usePostSaleTasks.js + src/utils/postSaleSteps.js
