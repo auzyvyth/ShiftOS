@@ -129,30 +129,48 @@ export default function AuthCallbackPage() {
       return;
     }
 
-    // onAuthStateChange fires as soon as Supabase finishes exchanging
-    // the magic link / OAuth hash tokens — more reliable than getSession()
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' && session) {
-          subscription.unsubscribe();
-          clearTimeout(fallbackTimer);
-          try {
-            await routeSession(session);
-          } catch {
-            window.location.href = '/login?error=auth_failed';
-          }
-        }
-      }
-    );
+    let handled = false;
+    let subscription;
+    let fallbackTimer;
 
-    // Safety net: if nothing fires within 10s, bail out
-    const fallbackTimer = setTimeout(() => {
-      subscription.unsubscribe();
+    const finish = async (session) => {
+      if (handled || !session) return; // route exactly once, only with a session
+      handled = true;
+      subscription?.unsubscribe();
+      clearTimeout(fallbackTimer);
+      try {
+        await routeSession(session);
+      } catch {
+        window.location.href = '/login?error=auth_failed';
+      }
+    };
+
+    // Catch the session NO MATTER WHEN it lands. detectSessionInUrl can finish
+    // the PKCE code exchange BEFORE this effect subscribes — in that case the new
+    // listener never receives SIGNED_IN, only INITIAL_SESSION (already carrying the
+    // session). Listening for SIGNED_IN alone is a race that hangs until the 10s
+    // timeout fires -> ?error=auth_failed (this is exactly what broke Google
+    // sign-in on the Vercel preview). So act on every event that can carry a live
+    // session, and additionally read it directly in case we subscribed too late.
+    ({ data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED')) {
+        finish(session);
+      }
+    }));
+
+    // Belt-and-suspenders for the same race: if the exchange already completed,
+    // grab the session directly instead of waiting for an event we may have missed.
+    supabase.auth.getSession().then(({ data }) => finish(data.session)).catch(() => {});
+
+    // Safety net: if no session materialises within 10s, bail out
+    fallbackTimer = setTimeout(() => {
+      if (handled) return;
+      subscription?.unsubscribe();
       window.location.href = '/login?error=auth_failed';
     }, 10000);
 
     return () => {
-      subscription.unsubscribe();
+      subscription?.unsubscribe();
       clearTimeout(fallbackTimer);
     };
   }, []);
