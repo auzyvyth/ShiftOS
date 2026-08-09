@@ -2039,6 +2039,23 @@ export default function SalesmanLite() {
     }
   };
 
+  // Prefilled (editable) confirmation message + modal opener. Component-scope so
+  // BOTH the Bookings tab and the unconfirmed-booking cards surfaced in the
+  // Booked pipeline stage open the exact same confirm flow (sendConfirmBooking).
+  const buildConfirmBookingMsg = (apt) => {
+    const car = apt.car_listings;
+    const carName = car ? [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ") : "the car";
+    const aptDate = apt.appointment_date ? new Date(apt.appointment_date) : null;
+    const dateStr = aptDate ? aptDate.toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" }) : "";
+    const timeStr = aptDate ? aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "";
+    const when = dateStr ? ` on ${dateStr}${timeStr ? ` at ${timeStr}` : ""}` : "";
+    return `Hi ${apt.buyer_name || ""}! Your viewing for the ${carName} is confirmed${when}. See you then! Let me know if anything changes. 😊`;
+  };
+  const openConfirmBookingModal = (apt) => {
+    setConfirmBookingMsg(buildConfirmBookingMsg(apt));
+    setConfirmBookingApt(apt);
+  };
+
   // Confirm-booking modal "Send" — persist the confirm + lead advance FIRST,
   // then open WhatsApp. WhatsApp-first backgrounds the page on mobile before the
   // writes fire, which left confirmed bookings out of the Booked pipeline stage.
@@ -5297,6 +5314,26 @@ export default function SalesmanLite() {
       (l) => l.stage === "lost" || l.stage === "closed_lost",
     );
 
+    // Unconfirmed bookings (pending appointments) have no pipeline lead yet by
+    // design — they live in the Bookings tab until confirmed. Surface them at the
+    // TOP of the Booked stage too (marked with a blue square) so a pending
+    // request isn't missed while glancing at the pipeline. Same search filter as
+    // the leads so a query narrows both.
+    const pendingBookingApts = appointments
+      .filter((a) => a.status === "pending")
+      .filter((a) => {
+        if (!leadSearch.trim()) return true;
+        const q = leadSearch.toLowerCase();
+        const car = a.car_listings;
+        const carName = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : "";
+        return (
+          (a.buyer_name || "").toLowerCase().includes(q) ||
+          (a.buyer_phone || "").includes(q) ||
+          carName.toLowerCase().includes(q)
+        );
+      })
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
     const renderLeadCard = (lead) => {
       const car = lead.car_listings;
       const carName = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
@@ -5457,6 +5494,78 @@ export default function SalesmanLite() {
       );
     };
 
+    // Unconfirmed-booking card shown at the top of the Booked stage. Not a lead
+    // (a pending booking has no pipeline lead yet) — a lightweight card marked
+    // with a small blue square so it reads as "pending confirmation" without a
+    // saturated left accent bar. Tapping Confirm opens the same confirm flow the
+    // Bookings tab uses, which advances the resulting lead into Booked.
+    const renderPendingBookingCard = (apt) => {
+      const car = apt.car_listings;
+      const carName = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
+      const carPrice = car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
+      const d = apt.appointment_date ? new Date(apt.appointment_date) : null;
+      const whenStr = d && !isNaN(d)
+        ? d.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" }) + " · " + d.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })
+        : null;
+      const initials = (apt.buyer_name || "?").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+      const phone = (apt.buyer_phone || "").replace(/\D/g, "");
+      return (
+        <div
+          key={"apt-" + apt.id}
+          style={{
+            background: "rgba(59,130,246,0.06)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: 10,
+            overflow: "hidden",
+          }}
+        >
+          <div style={{ padding: "12px 14px 0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: "#3b82f6", flexShrink: 0 }} />
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#60a5fa" }}>
+                {t("salesmanLite.booked.unconfirmed", { defaultValue: "Unconfirmed booking" })}
+              </span>
+            </div>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 10 }}>
+              <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(59,130,246,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 600, color: "#93c5fd" }}>
+                {initials}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {apt.buyer_name || "—"}
+                </p>
+                {(carName || carPrice) && (
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 3, gap: 8 }}>
+                    {carName && <p style={{ margin: 0, fontSize: 12, color: "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carName}</p>}
+                    {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#e5e7eb", flexShrink: 0 }}>{carPrice}</p>}
+                  </div>
+                )}
+                {whenStr && <p style={{ margin: "3px 0 0", fontSize: 11, color: "#6b7280" }}>{whenStr}</p>}
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 6, padding: "0 14px 12px" }}>
+            <button
+              onClick={() => openConfirmBookingModal(apt)}
+              style={{ flex: 1, fontSize: 11, fontWeight: 600, padding: "6px 12px", borderRadius: 7, background: "rgba(59,130,246,0.14)", border: "1px solid rgba(59,130,246,0.3)", color: "#60a5fa", cursor: "pointer", textAlign: "center" }}
+            >
+              {t("salesmanLite.booked.confirmBooking", { defaultValue: "Confirm booking" })}
+            </button>
+            {phone && (
+              <a
+                href={`tel:${phone}`}
+                title="Call"
+                aria-label="Call buyer"
+                style={{ flexShrink: 0, fontSize: 11, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <Phone size={13} />
+              </a>
+            )}
+          </div>
+        </div>
+      );
+    };
+
     return (
       <div>
         <style>{`
@@ -5550,7 +5659,9 @@ export default function SalesmanLite() {
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "2px 0 10px", marginBottom: 12 }}>
               {activeStages.map((stage) => {
                 const stageLeadsForPill = searchedLeads.filter((l) => l.stage === stage);
-                const count = stageLeadsForPill.length;
+                // The Booked pill also counts unconfirmed bookings shown at the
+                // top of that stage, so the badge matches the cards inside.
+                const count = stageLeadsForPill.length + (stage === "viewing_booked" ? pendingBookingApts.length : 0);
                 const staleInStage = stageLeadsForPill.filter((l) => staleIdSet.has(l.id));
                 const needsFollowUp = staleInStage.length > 0;
                 const isActive = mobileLeadStage === stage;
@@ -5601,7 +5712,9 @@ export default function SalesmanLite() {
               const stageLeads = searchedLeads
                 .filter((l) => l.stage === mobileLeadStage)
                 .sort((a, b) => (heatMap.get(b.id)?.score ?? 0) - (heatMap.get(a.id)?.score ?? 0));
-              if (stageLeads.length === 0) {
+              // Unconfirmed bookings sit at the top of the Booked stage only.
+              const bookingCards = mobileLeadStage === "viewing_booked" ? pendingBookingApts : [];
+              if (stageLeads.length === 0 && bookingCards.length === 0) {
                 return (
                   <div style={{ height: 60, borderRadius: 10, border: "1px dashed rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <span style={{ fontSize: 11, color: "#374151" }}>Empty</span>
@@ -5610,6 +5723,7 @@ export default function SalesmanLite() {
               }
               return (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {bookingCards.map((apt) => renderPendingBookingCard(apt))}
                   {stageLeads.map((lead) => renderLeadCard(lead))}
                 </div>
               );
@@ -6211,15 +6325,9 @@ export default function SalesmanLite() {
     };
 
     // Prefilled (editable) confirmation message for the Confirm Booking modal.
-    const buildConfirmMessage = (apt) => {
-      const car = apt.car_listings;
-      const carName = car ? [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ") : "the car";
-      const aptDate = apt.appointment_date ? new Date(apt.appointment_date) : null;
-      const dateStr = aptDate ? aptDate.toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" }) : "";
-      const timeStr = aptDate ? aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "";
-      const when = dateStr ? ` on ${dateStr}${timeStr ? ` at ${timeStr}` : ""}` : "";
-      return `Hi ${apt.buyer_name || ""}! Your viewing for the ${carName} is confirmed${when}. See you then! Let me know if anything changes. 😊`;
-    };
+    // Delegates to the component-scope builder so the Bookings tab and the
+    // unconfirmed-booking cards in the Booked pipeline stage never drift apart.
+    const buildConfirmMessage = buildConfirmBookingMsg;
 
     const openConfirmModal = (apt) => {
       setConfirmBookingMsg(buildConfirmMessage(apt));
