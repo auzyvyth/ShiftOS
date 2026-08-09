@@ -75,7 +75,6 @@ import {
   Camera,
   ThumbsUp,
   ThumbsDown,
-  MoreVertical,
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
@@ -766,7 +765,9 @@ export default function SalesmanLite() {
   const [editingReminder, setEditingReminder] = useState(null);
   const [reminderMsg, setReminderMsg] = useState("");
   const [reminderPickerAptId, setReminderPickerAptId] = useState(null);
-  const [aptMenuId, setAptMenuId] = useState(null);
+  // Bookings-tab detail popup (compact card → tap ··· to open full details +
+  // secondary actions), mirroring the lead card's ··· → drawer pattern.
+  const [bookingDetailId, setBookingDetailId] = useState(null);
   const [selectedRemindAt, setSelectedRemindAt] = useState(null);
   const [reminderSaving, setReminderSaving] = useState(false);
 
@@ -796,6 +797,12 @@ export default function SalesmanLite() {
   const [sortBy, setSortBy] = useState("newest");
   const [filterStatus, setFilterStatus] = useState("available");
   useEffect(() => { if (activeTab === "listings") setFilterStatus("available"); }, [activeTab]);
+  // Lock body scroll while the booking-detail popup is open (overlay rule).
+  useEffect(() => {
+    if (!bookingDetailId) return;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [bookingDetailId]);
 
   // per-listing analytics (carStatsMap)
   const [carStatsMap, setCarStatsMap] = useState({});
@@ -5315,24 +5322,10 @@ export default function SalesmanLite() {
     );
 
     // Unconfirmed bookings (pending appointments) have no pipeline lead yet by
-    // design — they live in the Bookings tab until confirmed. Surface them at the
-    // TOP of the Booked stage too (marked with a blue square) so a pending
-    // request isn't missed while glancing at the pipeline. Same search filter as
-    // the leads so a query narrows both.
-    const pendingBookingApts = appointments
-      .filter((a) => a.status === "pending")
-      .filter((a) => {
-        if (!leadSearch.trim()) return true;
-        const q = leadSearch.toLowerCase();
-        const car = a.car_listings;
-        const carName = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : "";
-        return (
-          (a.buyer_name || "").toLowerCase().includes(q) ||
-          (a.buyer_phone || "").includes(q) ||
-          carName.toLowerCase().includes(q)
-        );
-      })
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    // design — they live in the Bookings tab until confirmed. Rather than mixing
+    // a non-lead card into the Booked stage, we surface a single "confirmation
+    // pending" banner under the search bar that jumps straight to the Bookings
+    // tab (see below). pendingBookingsCount (component scope) drives its badge.
 
     const renderLeadCard = (lead) => {
       const car = lead.car_listings;
@@ -5361,8 +5354,8 @@ export default function SalesmanLite() {
           key={lead.id}
           className={glowLeadIds.has(lead.id) ? "slite-lead-glow" : undefined}
           style={{
-            background: "#0d1117",
-            border: "1px solid rgba(255,255,255,0.07)",
+            background: "#1b2431",
+            border: "1px solid rgba(255,255,255,0.12)",
             borderRadius: 10,
             overflow: "hidden",
           }}
@@ -5387,12 +5380,12 @@ export default function SalesmanLite() {
                 </div>
                 {(carName || carPrice) && (
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 3, gap: 8 }}>
-                    {carName && <p style={{ margin: 0, fontSize: 12, color: "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carName}</p>}
-                    {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#e5e7eb", flexShrink: 0 }}>{carPrice}</p>}
+                    {carName && <p style={{ margin: 0, fontSize: 12, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carName}</p>}
+                    {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#f8fafc", flexShrink: 0 }}>{carPrice}</p>}
                   </div>
                 )}
                 {lead.updated_at && (
-                  <p style={{ margin: "3px 0 0", fontSize: 11, color: Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000 ? "#fb923c" : "#6b7280" }}>
+                  <p style={{ margin: "3px 0 0", fontSize: 11, color: Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000 ? "#fb923c" : "#94a3b8" }}>
                     Last contact: {timeAgo(lead.updated_at)}
                   </p>
                 )}
@@ -5419,9 +5412,9 @@ export default function SalesmanLite() {
                   <div key={s} style={{ flex: 1, height: 3, borderRadius: 99, background: i < currentProgressIdx ? "rgba(220,38,38,0.55)" : i === currentProgressIdx ? "#dc2626" : "rgba(255,255,255,0.08)" }} />
                 ))}
               </div>
-              <p style={{ margin: 0, fontSize: 11, color: "#6b7280" }}>
-                {t("salesmanLite.leads.stage")}: <span style={{ color: "#e5e7eb", fontWeight: 600, textTransform: "capitalize" }}>{stageLabel(normalizedStage || "new")}</span>
-                {currentProgressIdx >= 0 && <span style={{ color: "#6b7280" }}> · {currentProgressIdx + 1}/{progressStages.length}</span>}
+              <p style={{ margin: 0, fontSize: 11, color: "#94a3b8" }}>
+                {t("salesmanLite.leads.stage")}: <span style={{ color: "#f1f5f9", fontWeight: 700, textTransform: "capitalize" }}>{stageLabel(normalizedStage || "new")}</span>
+                {currentProgressIdx >= 0 && <span style={{ color: "#94a3b8" }}> · {currentProgressIdx + 1}/{progressStages.length}</span>}
               </p>
             </div>
 
@@ -5489,78 +5482,6 @@ export default function SalesmanLite() {
             >
               ···
             </button>
-          </div>
-        </div>
-      );
-    };
-
-    // Unconfirmed-booking card shown at the top of the Booked stage. Not a lead
-    // (a pending booking has no pipeline lead yet) — a lightweight card marked
-    // with a small blue square so it reads as "pending confirmation" without a
-    // saturated left accent bar. Tapping Confirm opens the same confirm flow the
-    // Bookings tab uses, which advances the resulting lead into Booked.
-    const renderPendingBookingCard = (apt) => {
-      const car = apt.car_listings;
-      const carName = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
-      const carPrice = car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
-      const d = apt.appointment_date ? new Date(apt.appointment_date) : null;
-      const whenStr = d && !isNaN(d)
-        ? d.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" }) + " · " + d.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })
-        : null;
-      const initials = (apt.buyer_name || "?").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
-      const phone = (apt.buyer_phone || "").replace(/\D/g, "");
-      return (
-        <div
-          key={"apt-" + apt.id}
-          style={{
-            background: "rgba(59,130,246,0.06)",
-            border: "1px solid rgba(255,255,255,0.07)",
-            borderRadius: 10,
-            overflow: "hidden",
-          }}
-        >
-          <div style={{ padding: "12px 14px 0" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 3, background: "#3b82f6", flexShrink: 0 }} />
-              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#60a5fa" }}>
-                {t("salesmanLite.booked.unconfirmed", { defaultValue: "Unconfirmed booking" })}
-              </span>
-            </div>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 10 }}>
-              <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(59,130,246,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 600, color: "#93c5fd" }}>
-                {initials}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {apt.buyer_name || "—"}
-                </p>
-                {(carName || carPrice) && (
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 3, gap: 8 }}>
-                    {carName && <p style={{ margin: 0, fontSize: 12, color: "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carName}</p>}
-                    {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#e5e7eb", flexShrink: 0 }}>{carPrice}</p>}
-                  </div>
-                )}
-                {whenStr && <p style={{ margin: "3px 0 0", fontSize: 11, color: "#6b7280" }}>{whenStr}</p>}
-              </div>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 6, padding: "0 14px 12px" }}>
-            <button
-              onClick={() => openConfirmBookingModal(apt)}
-              style={{ flex: 1, fontSize: 11, fontWeight: 600, padding: "6px 12px", borderRadius: 7, background: "rgba(59,130,246,0.14)", border: "1px solid rgba(59,130,246,0.3)", color: "#60a5fa", cursor: "pointer", textAlign: "center" }}
-            >
-              {t("salesmanLite.booked.confirmBooking", { defaultValue: "Confirm booking" })}
-            </button>
-            {phone && (
-              <a
-                href={`tel:${phone}`}
-                title="Call"
-                aria-label="Call buyer"
-                style={{ flexShrink: 0, fontSize: 11, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
-              >
-                <Phone size={13} />
-              </a>
-            )}
           </div>
         </div>
       );
@@ -5649,6 +5570,22 @@ export default function SalesmanLite() {
           )}
         </div>
 
+        {/* Confirmation-pending banner — pending bookings have no pipeline lead
+            yet; instead of a non-lead card inside the Booked stage, one tappable
+            banner surfaces the count and jumps straight to the Bookings tab. */}
+        {pendingBookingsCount > 0 && (
+          <button
+            onClick={() => { switchTab("enquiries"); setInboxSubTab("bookings"); }}
+            style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", marginBottom: 12, padding: "9px 12px", borderRadius: 8, background: "rgba(251,191,36,0.10)", border: "1px solid rgba(251,191,36,0.3)", color: "#fbbf24", cursor: "pointer", fontSize: 12.5, fontWeight: 600, fontFamily: "inherit", textAlign: "left" }}
+          >
+            <Clock size={14} style={{ flexShrink: 0 }} />
+            <span style={{ flex: 1, minWidth: 0 }}>
+              {t("salesmanLite.booked.pendingBanner", { count: pendingBookingsCount, defaultValue: `${pendingBookingsCount} booking${pendingBookingsCount > 1 ? "s" : ""} pending confirmation` })}
+            </span>
+            <ChevronRight size={15} style={{ flexShrink: 0 }} />
+          </button>
+        )}
+
         <>
             {/* Pill filter row (same on every screen size — no horizontal-scroll
                 kanban) — wraps onto a second row instead of scrolling sideways,
@@ -5659,9 +5596,7 @@ export default function SalesmanLite() {
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "2px 0 10px", marginBottom: 12 }}>
               {activeStages.map((stage) => {
                 const stageLeadsForPill = searchedLeads.filter((l) => l.stage === stage);
-                // The Booked pill also counts unconfirmed bookings shown at the
-                // top of that stage, so the badge matches the cards inside.
-                const count = stageLeadsForPill.length + (stage === "viewing_booked" ? pendingBookingApts.length : 0);
+                const count = stageLeadsForPill.length;
                 const staleInStage = stageLeadsForPill.filter((l) => staleIdSet.has(l.id));
                 const needsFollowUp = staleInStage.length > 0;
                 const isActive = mobileLeadStage === stage;
@@ -5712,9 +5647,7 @@ export default function SalesmanLite() {
               const stageLeads = searchedLeads
                 .filter((l) => l.stage === mobileLeadStage)
                 .sort((a, b) => (heatMap.get(b.id)?.score ?? 0) - (heatMap.get(a.id)?.score ?? 0));
-              // Unconfirmed bookings sit at the top of the Booked stage only.
-              const bookingCards = mobileLeadStage === "viewing_booked" ? pendingBookingApts : [];
-              if (stageLeads.length === 0 && bookingCards.length === 0) {
+              if (stageLeads.length === 0) {
                 return (
                   <div style={{ height: 60, borderRadius: 10, border: "1px dashed rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <span style={{ fontSize: 11, color: "#374151" }}>Empty</span>
@@ -5723,7 +5656,6 @@ export default function SalesmanLite() {
               }
               return (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {bookingCards.map((apt) => renderPendingBookingCard(apt))}
                   {stageLeads.map((lead) => renderLeadCard(lead))}
                 </div>
               );
@@ -5772,11 +5704,11 @@ export default function SalesmanLite() {
                   <div
                     key={lead.id}
                     style={{
-                      background: "#0d1117",
-                      border: "1px solid rgba(255,255,255,0.06)",
+                      background: "#1b2431",
+                      border: "1px solid rgba(255,255,255,0.1)",
                       borderRadius: 10,
                       padding: "10px 12px",
-                      opacity: 0.65,
+                      opacity: 0.7,
                     }}
                   >
                     <div
@@ -6401,289 +6333,306 @@ export default function SalesmanLite() {
       const car = apt.car_listings;
       const { dateStr, timeStr } = fmtAptDate(apt.appointment_date);
       const sc = statusColors[apt.status] || statusColors.pending;
+      const isRescheduled = apt.status === "rescheduled";
+      const isFuture = apt.appointment_date && new Date(apt.appointment_date) > new Date(nowTick);
+      const carTitle = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : "No car linked";
+      const carPrice = car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
+      const initials = (apt.buyer_name || "?").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+      const phone = (apt.buyer_phone || "").replace(/\D/g, "");
+      // A booking can be confirmed while it's still a live request.
+      const canConfirm = apt.status !== "confirmed" && apt.status !== "cancelled" && apt.status !== "completed";
+
+      // Compact card, sized like the pipeline lead card: header (buyer + status),
+      // car + price line, one highlighted date line, then a slim action row.
+      // Full details (car image, VIN, notes) + secondary actions (reschedule,
+      // reminder, cancel) live behind the ··· detail popup, mirroring the lead
+      // card's ··· → drawer.
+      return (
+        <div key={apt.id} style={{ background: "#1b2431", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, overflow: "hidden" }}>
+          <div style={{ padding: "12px 14px 0" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+              <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(96,165,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 600, color: "#93c5fd" }}>
+                {initials}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{apt.buyer_name || "Unknown Buyer"}</p>
+                    {aptIsNew(apt.created_at) && (
+                      <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.35)", color: "#f87171", flexShrink: 0 }}>NEW</span>
+                    )}
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize", flexShrink: 0 }}>
+                    {t("salesmanLite.inbox.status." + apt.status, { defaultValue: apt.status })}
+                  </span>
+                </div>
+                {(carTitle || carPrice) && (
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 3, gap: 8 }}>
+                    <p style={{ margin: 0, fontSize: 12, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carTitle}</p>
+                    {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#f8fafc", flexShrink: 0 }}>{carPrice}</p>}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Date line — the one highlighted data element on the card */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: isRescheduled ? "#c084fc" : "#bfdbfe", padding: "4px 10px", borderRadius: 7, background: isRescheduled ? "rgba(167,139,250,0.12)" : "rgba(96,165,250,0.12)", border: `1px solid ${isRescheduled ? "rgba(167,139,250,0.35)" : "rgba(96,165,250,0.28)"}` }}>
+                <Calendar size={13} /> {dateStr}{timeStr ? ` · ${timeStr}` : ""}
+              </span>
+              {isFuture && <span style={{ fontSize: 11, fontWeight: 600, color: "#4ade80" }}>{preciseUntil(apt.appointment_date, nowTick, timeLabels)}</span>}
+              {apt.remind_at && !apt.remind_sent && <Bell size={12} color="#fbbf24" />}
+            </div>
+          </div>
+
+          {/* Action row — primary CTA + call + ··· details, like the lead card */}
+          <div style={{ display: "flex", gap: 6, padding: "0 14px 12px" }}>
+            {canConfirm && apt.buyer_phone && (
+              <button onClick={() => openConfirmModal(apt)} title="Confirm this booking and message the buyer on WhatsApp"
+                style={{ flex: 1, fontSize: 11, fontWeight: 700, padding: "6px 12px", borderRadius: 7, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.38)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+                <Check size={13} /> {t("salesmanLite.inbox.confirmBooking")}
+              </button>
+            )}
+            {canConfirm && !apt.buyer_phone && (
+              <button onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }} title="Mark appointment as confirmed"
+                style={{ flex: 1, fontSize: 11, fontWeight: 700, padding: "6px 12px", borderRadius: 7, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.38)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+                <Check size={13} /> {t("salesmanLite.inbox.confirmBooking")}
+              </button>
+            )}
+            {apt.status === "confirmed" && apt.buyer_phone && (
+              <button onClick={() => {
+                  const p = apt.buyer_phone.replace(/\D/g, "");
+                  const msg = buildReminderMessage(apt);
+                  window.open(`https://wa.me/${p.startsWith("6") ? p : "6" + p}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
+                }} title="Send WhatsApp reminder message to buyer"
+                style={{ flex: 1, fontSize: 11, fontWeight: 600, padding: "6px 12px", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.28)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+                <MessageCircle size={13} /> {t("salesmanLite.inbox.message")}
+              </button>
+            )}
+            {phone && (
+              <a href={`tel:${phone}`} title="Call" aria-label="Call buyer"
+                style={{ flexShrink: 0, fontSize: 11, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Phone size={13} />
+              </a>
+            )}
+            <button onClick={() => setBookingDetailId(apt.id)} title="Booking details" aria-label="Booking details"
+              style={{ flexShrink: 0, fontSize: 13, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", letterSpacing: "0.05em", lineHeight: 1 }}>
+              ···
+            </button>
+          </div>
+        </div>
+      );
+    };
+
+    // Full booking detail popup — opened from a card's ··· button. Holds the car
+    // image + VIN + notes and the secondary actions (reschedule / set reminder /
+    // cancel) so the card itself stays compact. Portal + body-scroll-lock per the
+    // overlay rules; tapping the backdrop or × closes it.
+    const secBtn = { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 0", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
+    const renderBookingDetailModal = () => {
+      const apt = appointments.find((a) => a.id === bookingDetailId);
+      if (!apt) return null;
+      const car = apt.car_listings;
+      const { dateStr, timeStr } = fmtAptDate(apt.appointment_date);
+      const sc = statusColors[apt.status] || statusColors.pending;
       const isRescheduling = reschedulingAptId === apt.id;
       const isReminderPicking = reminderPickerAptId === apt.id;
       const isCancelConfirm = cancelConfirmId === apt.id;
       const notCancelled = apt.status !== "cancelled" && apt.status !== "completed";
-      const isRescheduled = apt.status === "rescheduled";
-
+      const anyExpander = isRescheduling || isReminderPicking || isCancelConfirm;
       const carImg = Array.isArray(car?.images) ? car.images[0] : null;
       const carTitle = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : "No car linked";
       const carVariant = car?.variant || "";
       const carVin = car?.vin_number || car?.plate_number || "";
       const carPrice = car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
       const isFuture = apt.appointment_date && new Date(apt.appointment_date) > new Date(nowTick);
+      const close = () => { setBookingDetailId(null); setReschedulingAptId(null); setReminderPickerAptId(null); setCancelConfirmId(null); setRescheduleDate(""); setSelectedRemindAt(null); };
 
-      // ── Car panel — image + full clarity (price, brand/model/variant/year, VIN)
-      const carPanel = (
-        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", minWidth: 0 }}>
-          {carImg ? (
-            <img src={carImg} alt="" style={{ width: 68, height: 52, objectFit: "cover", borderRadius: 8, flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)" }} />
-          ) : (
-            <div style={{ width: 68, height: 52, borderRadius: 8, flexShrink: 0, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Car size={18} color="#374151" />
-            </div>
-          )}
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{carTitle}</p>
-            {carVariant && <p style={{ margin: "0 0 3px", fontSize: 11, color: "#93c5fd", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{carVariant}</p>}
-            {carPrice && <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 700, color: "#4ade80" }}>{carPrice}</p>}
-            {carVin && <p style={{ margin: 0, fontSize: 10, color: "#6b7280", fontFamily: "ui-monospace, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{car?.vin_number ? "VIN " : "Plate "}{carVin}</p>}
-          </div>
-        </div>
-      );
-
-      // ── Lead panel — buyer name, phone, message
-      const leadPanel = (
-        <div style={{ minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{apt.buyer_name || "Unknown Buyer"}</p>
-            {aptIsNew(apt.created_at) && (
-              <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.35)", color: "#f87171", flexShrink: 0 }}>NEW</span>
-            )}
-          </div>
-          {apt.buyer_phone && <p style={{ margin: "0 0 3px", fontSize: 12, color: "#cbd5e1", display: "inline-flex", alignItems: "center", gap: 5 }}><Phone size={12} /> {apt.buyer_phone}</p>}
-          {apt.notes && <p style={{ margin: "3px 0 0", fontSize: 11, color: "#94a3b8", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>"{apt.notes}"</p>}
-        </div>
-      );
-
-      // ── Date panel — highlighted, minute-level countdown, reschedule flag
-      const datePanel = (
-        <div style={{ minWidth: 0 }}>
-          <div style={{ display: "inline-flex", flexDirection: "column", gap: 3, padding: "8px 12px", borderRadius: 9, background: isRescheduled ? "rgba(167,139,250,0.12)" : "rgba(96,165,250,0.10)", border: `1px solid ${isRescheduled ? "rgba(167,139,250,0.4)" : "rgba(96,165,250,0.28)"}`, width: isMobile ? "auto" : "100%", boxSizing: "border-box" }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: isRescheduled ? "#c084fc" : "#bfdbfe", display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <Calendar size={14} /> {dateStr}
-            </span>
-            {timeStr && <span style={{ fontSize: 18, fontWeight: 700, color: "#f8fafc", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1 }}>{timeStr}</span>}
-            {isFuture && <span style={{ fontSize: 11, fontWeight: 600, color: "#4ade80" }}>{preciseUntil(apt.appointment_date, nowTick, timeLabels)}</span>}
-          </div>
-          {isRescheduled && (
-            <p style={{ margin: "6px 0 0", fontSize: 10, fontWeight: 700, color: "#c084fc", display: "inline-flex", alignItems: "center", gap: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              <RefreshCw size={10} /> {t("salesmanLite.inbox.dateChanged")}
-            </p>
-          )}
-        </div>
-      );
-
-      const menuItem = { display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "8px 10px", borderRadius: 7, background: "none", border: "none", color: "#cbd5e1", fontSize: 12.5, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", textAlign: "left" };
-
-      return (
-        <div key={apt.id} style={{ position: "relative", background: "#0d1117", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: isMobile ? "13px 14px" : "14px 16px" }}>
-          {/* Status row — status pill + when-booked (left), overflow menu (right).
-              Secondary actions live in the menu so the card isn't a wall of
-              clashing coloured buttons. */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-              <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize", flexShrink: 0 }}>
+      return createPortal(
+        <div onClick={close} style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(3px)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: "92vh", overflowY: "auto", background: "#1b2431", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "16px 16px 0 0", padding: 20, fontFamily: "system-ui, sans-serif" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
                 {t("salesmanLite.inbox.status." + apt.status, { defaultValue: apt.status })}
               </span>
-              {apt.created_at && <span style={{ fontSize: 10, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("salesmanLite.inbox.booked")} {preciseAgo(apt.created_at, nowTick, timeLabels)}</span>}
+              <button onClick={close} aria-label="Close" style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <X size={16} />
+              </button>
             </div>
-            {notCancelled && (
-              <div style={{ position: "relative", flexShrink: 0 }}>
-                <button
-                  onClick={() => setAptMenuId(aptMenuId === apt.id ? null : apt.id)}
-                  style={{ width: 30, height: 30, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", background: aptMenuId === apt.id ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer" }}
-                  title={t("salesmanLite.inbox.moreActions", { defaultValue: "More actions" })}
-                >
-                  <MoreVertical size={15} />
-                </button>
-                {aptMenuId === apt.id && (
-                  <>
-                    <div onClick={() => setAptMenuId(null)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
-                    <div style={{ position: "absolute", top: 36, right: 0, zIndex: 41, minWidth: 176, background: "#161b22", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: 5, boxShadow: "0 14px 34px rgba(0,0,0,0.55)" }}>
-                      <button style={menuItem} onClick={() => {
-                        const existing = apt.appointment_date ? new Date(apt.appointment_date) : new Date();
-                        const pad = (n) => String(n).padStart(2, "0");
-                        setRescheduleDate(`${existing.getFullYear()}-${pad(existing.getMonth() + 1)}-${pad(existing.getDate())}T${pad(existing.getHours())}:${pad(existing.getMinutes())}`);
-                        setReschedulingAptId(apt.id); setCancelConfirmId(null); setReminderPickerAptId(null); setAptMenuId(null);
-                      }}><RefreshCw size={13} /> {t("salesmanLite.inbox.move")}</button>
-                      <button style={menuItem} onClick={() => {
-                        if (!profile?.telegram_chat_id) { setTelegramSetupModal(true); setAptMenuId(null); return; }
-                        setReminderPickerAptId(apt.id); setSelectedRemindAt(null); setCancelConfirmId(null); setReschedulingAptId(null); setAptMenuId(null);
-                      }}><Bell size={13} color={apt.remind_at ? "#fbbf24" : undefined} /> {t("salesmanLite.inbox.setReminder")}</button>
-                      <button style={{ ...menuItem, color: "#f87171" }} onClick={() => {
-                        setCancelConfirmId(apt.id); setReschedulingAptId(null); setReminderPickerAptId(null); setAptMenuId(null);
-                      }}><X size={13} /> {t("salesmanLite.inbox.cancelAppt")}</button>
-                    </div>
-                  </>
-                )}
+
+            {/* Car */}
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 14 }}>
+              {carImg ? (
+                <img src={carImg} alt="" style={{ width: 84, height: 64, objectFit: "cover", borderRadius: 8, flexShrink: 0, border: "1px solid rgba(255,255,255,0.1)" }} />
+              ) : (
+                <div style={{ width: 84, height: 64, borderRadius: 8, flexShrink: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Car size={20} color="#4b5563" />
+                </div>
+              )}
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{carTitle}</p>
+                {carVariant && <p style={{ margin: "0 0 3px", fontSize: 12, color: "#93c5fd" }}>{carVariant}</p>}
+                {carPrice && <p style={{ margin: "0 0 3px", fontSize: 14, fontWeight: 700, color: "#4ade80" }}>{carPrice}</p>}
+                {carVin && <p style={{ margin: 0, fontSize: 11, color: "#94a3b8", fontFamily: "ui-monospace, monospace" }}>{car?.vin_number ? "VIN " : "Plate "}{carVin}</p>}
+              </div>
+            </div>
+
+            {/* Buyer */}
+            <div style={{ marginBottom: 14 }}>
+              <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>{apt.buyer_name || "Unknown Buyer"}</p>
+              {apt.buyer_phone && <p style={{ margin: "0 0 4px", fontSize: 13, color: "#cbd5e1", display: "inline-flex", alignItems: "center", gap: 6 }}><Phone size={13} /> {apt.buyer_phone}</p>}
+              {apt.notes && <p style={{ margin: "4px 0 0", fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>&quot;{apt.notes}&quot;</p>}
+            </div>
+
+            {/* Date */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 3, padding: "10px 14px", borderRadius: 10, background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.28)", marginBottom: 14 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "#bfdbfe", display: "inline-flex", alignItems: "center", gap: 6 }}><Calendar size={14} /> {dateStr}</span>
+              {timeStr && <span style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1 }}>{timeStr}</span>}
+              {isFuture && <span style={{ fontSize: 12, fontWeight: 600, color: "#4ade80" }}>{preciseUntil(apt.appointment_date, nowTick, timeLabels)}</span>}
+            </div>
+
+            {/* Reminder indicator */}
+            {apt.remind_at && !apt.remind_sent ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 7, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)", marginBottom: 12 }}>
+                <Bell size={12} color="#4ade80" />
+                <span style={{ fontSize: 11, color: "#4ade80", flex: 1 }}>
+                  {t("salesmanLite.inbox.reminderLabel")}: {new Date(apt.remind_at).toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })} {new Date(apt.remind_at).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}
+                </span>
+                <button onClick={() => clearReminder(apt)} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 11, cursor: "pointer", padding: 0 }}>✕</button>
+              </div>
+            ) : apt.remind_sent ? (
+              <p style={{ fontSize: 11, color: "#6b7280", margin: "0 0 12px", display: "inline-flex", alignItems: "center", gap: 4 }}><Check size={11} /> {t("salesmanLite.inbox.reminderSent")}</p>
+            ) : null}
+
+            {/* Secondary actions */}
+            {notCancelled && !anyExpander && (
+              <div style={{ display: "flex", gap: 6 }}>
+                <button style={secBtn} onClick={() => {
+                  const existing = apt.appointment_date ? new Date(apt.appointment_date) : new Date();
+                  const pad = (n) => String(n).padStart(2, "0");
+                  setRescheduleDate(`${existing.getFullYear()}-${pad(existing.getMonth() + 1)}-${pad(existing.getDate())}T${pad(existing.getHours())}:${pad(existing.getMinutes())}`);
+                  setReschedulingAptId(apt.id); setCancelConfirmId(null); setReminderPickerAptId(null);
+                }}><RefreshCw size={13} /> {t("salesmanLite.inbox.move")}</button>
+                <button style={secBtn} onClick={() => {
+                  if (!profile?.telegram_chat_id) { setTelegramSetupModal(true); return; }
+                  setReminderPickerAptId(apt.id); setSelectedRemindAt(null); setCancelConfirmId(null); setReschedulingAptId(null);
+                }}><Bell size={13} color={apt.remind_at ? "#fbbf24" : undefined} /> {t("salesmanLite.inbox.setReminder")}</button>
+                <button style={{ ...secBtn, color: "#f87171" }} onClick={() => { setCancelConfirmId(apt.id); setReschedulingAptId(null); setReminderPickerAptId(null); }}><X size={13} /> {t("salesmanLite.inbox.cancelAppt")}</button>
+              </div>
+            )}
+
+            {/* Expand: reschedule date picker */}
+            {isRescheduling && (
+              <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <p style={{ margin: 0, fontSize: 11, color: "#c084fc", fontWeight: 600 }}>{t("salesmanLite.inbox.chooseNewTime")}</p>
+                  <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }} title={t("salesmanLite.inbox.cancel")} style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0, flexShrink: 0 }}>
+                    <X size={14} />
+                  </button>
+                </div>
+                <input type="datetime-local" value={rescheduleDate} onChange={(e) => setRescheduleDate(e.target.value)}
+                  style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "system-ui, sans-serif", marginBottom: 8 }}
+                />
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }}
+                    style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+                    {t("salesmanLite.inbox.cancel")}
+                  </button>
+                  <button onClick={async () => {
+                      if (!rescheduleDate) return;
+                      const newDate = new Date(rescheduleDate);
+                      const remindAt = new Date(newDate.getTime() - 60 * 60 * 1000).toISOString();
+                      await supabase.from("appointments").update({ appointment_date: newDate.toISOString(), status: "rescheduled", remind_at: remindAt, remind_sent: false }).eq("id", apt.id);
+                      setAppointments((p) => p.map((a) => a.id === apt.id ? { ...a, appointment_date: newDate.toISOString(), status: "rescheduled", remind_at: remindAt, remind_sent: false } : a));
+                      setReschedulingAptId(null);
+                      setRescheduleDate("");
+                      toast.success(t("salesmanLite.toast.appointmentRescheduled"));
+                    }}
+                    style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.35)", color: "#c084fc", cursor: "pointer" }}>
+                    {t("salesmanLite.inbox.saveNewTime")}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Expand: Telegram reminder time picker */}
+            {isReminderPicking && (
+              <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <p style={{ margin: 0, fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.inbox.scheduleReminderTitle")}</p>
+                  <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }} title={t("salesmanLite.inbox.cancel")} style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0, flexShrink: 0 }}>
+                    <X size={14} />
+                  </button>
+                </div>
+                <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
+                  {[
+                    { key: "1h", label: t("salesmanLite.inbox.reminderBefore1h") },
+                    { key: "2h", label: t("salesmanLite.inbox.reminderBefore2h") },
+                    { key: "day_before", label: t("salesmanLite.inbox.reminderDayBefore") },
+                    { key: "two_days", label: t("salesmanLite.inbox.reminderTwoDays") },
+                  ].map(({ key, label }) => {
+                    const rt = calcRemindAt(apt, key);
+                    const active = selectedRemindAt && rt.getTime() === selectedRemindAt.getTime();
+                    return (
+                      <button key={key} onClick={() => setSelectedRemindAt(rt)}
+                        style={{ fontSize: 11, padding: "4px 10px", borderRadius: 99, cursor: "pointer",
+                          background: active ? "rgba(96,165,250,0.15)" : "rgba(255,255,255,0.05)",
+                          border: active ? "1px solid rgba(96,165,250,0.4)" : "1px solid rgba(255,255,255,0.08)",
+                          color: active ? "#93c5fd" : "#6b7280" }}>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <input type="datetime-local"
+                  value={selectedRemindAt ? selectedRemindAt.toISOString().slice(0, 16) : ""}
+                  onChange={(e) => e.target.value && setSelectedRemindAt(new Date(e.target.value))}
+                  style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 12, padding: "7px 10px", outline: "none", marginBottom: 8, fontFamily: "inherit", boxSizing: "border-box" }}
+                />
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }}
+                    style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+                    {t("salesmanLite.inbox.cancel")}
+                  </button>
+                  <button onClick={() => selectedRemindAt && saveReminder(apt, selectedRemindAt)}
+                    disabled={!selectedRemindAt || reminderSaving}
+                    style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600,
+                      background: selectedRemindAt ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.04)",
+                      border: selectedRemindAt ? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(255,255,255,0.08)",
+                      color: selectedRemindAt ? "#4ade80" : "#374151",
+                      cursor: selectedRemindAt ? "pointer" : "not-allowed",
+                      opacity: reminderSaving ? 0.6 : 1 }}>
+                    {reminderSaving ? t("salesmanLite.inbox.saving") : t("salesmanLite.inbox.setReminder")}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Expand: cancel confirmation */}
+            {isCancelConfirm && (
+              <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8 }}>
+                <p style={{ margin: "0 0 8px", fontSize: 12, color: "#f87171" }}>{t("salesmanLite.inbox.cancelConfirmQ")}</p>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={() => setCancelConfirmId(null)}
+                    style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+                    {t("salesmanLite.inbox.keepIt")}
+                  </button>
+                  <button onClick={async () => { await updateApptStatus(apt.id, "cancelled"); setCancelConfirmId(null); setBookingDetailId(null); }}
+                    style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", cursor: "pointer" }}>
+                    {t("salesmanLite.inbox.cancelAppt")}
+                  </button>
+                </div>
               </div>
             )}
           </div>
-
-          {/* Body — desktop: car | lead | date 3-column; mobile: stacked */}
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.15fr 1fr 0.95fr", gap: isMobile ? 12 : 16, alignItems: "start", marginBottom: 10 }}>
-            {carPanel}
-            {leadPanel}
-            {datePanel}
-          </div>
-
-          {/* Telegram reminder indicator */}
-          {apt.remind_at && !apt.remind_sent ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)", marginBottom: 8 }}>
-              <Bell size={11} color="#4ade80" />
-              <span style={{ fontSize: 10, color: "#4ade80", flex: 1 }}>
-                {t("salesmanLite.inbox.reminderLabel")}: {new Date(apt.remind_at).toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })} {new Date(apt.remind_at).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}
-              </span>
-              <button onClick={() => clearReminder(apt)} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 10, cursor: "pointer", padding: 0 }}>✕</button>
-            </div>
-          ) : apt.remind_sent ? (
-            <p style={{ fontSize: 10, color: "#4b5563", margin: "0 0 8px", display: "inline-flex", alignItems: "center", gap: 4 }}><Check size={10} /> {t("salesmanLite.inbox.reminderSent")}</p>
-          ) : null}
-
-          {/* Expand: reschedule date picker */}
-          {isRescheduling && (
-            <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                <p style={{ margin: 0, fontSize: 11, color: "#c084fc", fontWeight: 600 }}>{t("salesmanLite.inbox.chooseNewTime")}</p>
-                <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }} title={t("salesmanLite.inbox.cancel")} style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0, flexShrink: 0 }}>
-                  <X size={14} />
-                </button>
-              </div>
-              <input
-                type="datetime-local"
-                value={rescheduleDate}
-                onChange={(e) => setRescheduleDate(e.target.value)}
-                style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "system-ui, sans-serif", marginBottom: 8 }}
-              />
-              <div style={{ display: "flex", gap: 6 }}>
-                <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }}
-                  style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
-                  Cancel
-                </button>
-                <button
-                  onClick={async () => {
-                    if (!rescheduleDate) return;
-                    const newDate = new Date(rescheduleDate);
-                    const remindAt = new Date(newDate.getTime() - 60 * 60 * 1000).toISOString();
-                    await supabase.from("appointments").update({ appointment_date: newDate.toISOString(), status: "rescheduled", remind_at: remindAt, remind_sent: false }).eq("id", apt.id);
-                    setAppointments((p) => p.map((a) => a.id === apt.id ? { ...a, appointment_date: newDate.toISOString(), status: "rescheduled", remind_at: remindAt, remind_sent: false } : a));
-                    setReschedulingAptId(null);
-                    setRescheduleDate("");
-                    toast.success(t("salesmanLite.toast.appointmentRescheduled"));
-                  }}
-                  style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.35)", color: "#c084fc", cursor: "pointer" }}>
-                  {t("salesmanLite.inbox.saveNewTime")}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Expand: Telegram reminder time picker */}
-          {isReminderPicking && (
-            <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                <p style={{ margin: 0, fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.inbox.scheduleReminderTitle")}</p>
-                <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }} title={t("salesmanLite.inbox.cancel")} style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0, flexShrink: 0 }}>
-                  <X size={14} />
-                </button>
-              </div>
-              <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
-                {[
-                  { key: "1h", label: t("salesmanLite.inbox.reminderBefore1h") },
-                  { key: "2h", label: t("salesmanLite.inbox.reminderBefore2h") },
-                  { key: "day_before", label: t("salesmanLite.inbox.reminderDayBefore") },
-                  { key: "two_days", label: t("salesmanLite.inbox.reminderTwoDays") },
-                ].map(({ key, label }) => {
-                  const t = calcRemindAt(apt, key);
-                  const active = selectedRemindAt && t.getTime() === selectedRemindAt.getTime();
-                  return (
-                    <button key={key} onClick={() => setSelectedRemindAt(t)}
-                      style={{ fontSize: 11, padding: "4px 10px", borderRadius: 99, cursor: "pointer",
-                        background: active ? "rgba(96,165,250,0.15)" : "rgba(255,255,255,0.05)",
-                        border: active ? "1px solid rgba(96,165,250,0.4)" : "1px solid rgba(255,255,255,0.08)",
-                        color: active ? "#93c5fd" : "#6b7280" }}>
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-              <input type="datetime-local"
-                value={selectedRemindAt ? selectedRemindAt.toISOString().slice(0, 16) : ""}
-                onChange={(e) => e.target.value && setSelectedRemindAt(new Date(e.target.value))}
-                style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 12, padding: "7px 10px", outline: "none", marginBottom: 8, fontFamily: "inherit", boxSizing: "border-box" }}
-              />
-              <div style={{ display: "flex", gap: 6 }}>
-                <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }}
-                  style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
-                  {t("salesmanLite.inbox.cancel")}
-                </button>
-                <button onClick={() => selectedRemindAt && saveReminder(apt, selectedRemindAt)}
-                  disabled={!selectedRemindAt || reminderSaving}
-                  style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600,
-                    background: selectedRemindAt ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.04)",
-                    border: selectedRemindAt ? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(255,255,255,0.08)",
-                    color: selectedRemindAt ? "#4ade80" : "#374151",
-                    cursor: selectedRemindAt ? "pointer" : "not-allowed",
-                    opacity: reminderSaving ? 0.6 : 1 }}>
-                  {reminderSaving ? t("salesmanLite.inbox.saving") : t("salesmanLite.inbox.setReminder")}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Expand: cancel confirmation */}
-          {isCancelConfirm && (
-            <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8 }}>
-              <p style={{ margin: "0 0 8px", fontSize: 12, color: "#f87171" }}>{t("salesmanLite.inbox.cancelConfirmQ")}</p>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button onClick={() => setCancelConfirmId(null)}
-                  style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
-                  {t("salesmanLite.inbox.keepIt")}
-                </button>
-                <button onClick={async () => { await updateApptStatus(apt.id, "cancelled"); setCancelConfirmId(null); }}
-                  style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", cursor: "pointer" }}>
-                  {t("salesmanLite.inbox.cancelAppt")}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Primary action — one clear CTA for the appointment's current state.
-              Reschedule / reminder / cancel live in the ⋮ menu above so the card
-              keeps a single accent instead of a row of competing colours. */}
-          {notCancelled && !isRescheduling && !isCancelConfirm && !isReminderPicking && (
-            <>
-              {apt.status !== "confirmed" && apt.buyer_phone && (
-                <button
-                  onClick={() => openConfirmModal(apt)}
-                  style={{ width: "100%", fontSize: 12.5, fontWeight: 700, padding: "10px 0", borderRadius: 8, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.38)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-                  title="Confirm this booking and message the buyer on WhatsApp"
-                >
-                  <Check size={14} /> {t("salesmanLite.inbox.confirmBooking")}
-                </button>
-              )}
-              {apt.status !== "confirmed" && !apt.buyer_phone && (
-                <button
-                  onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }}
-                  style={{ width: "100%", fontSize: 12.5, fontWeight: 700, padding: "10px 0", borderRadius: 8, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.38)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-                  title="Mark appointment as confirmed"
-                >
-                  <Check size={14} /> {t("salesmanLite.inbox.confirmBooking")}
-                </button>
-              )}
-              {apt.status === "confirmed" && apt.buyer_phone && (
-                <button
-                  onClick={() => {
-                    const phone = apt.buyer_phone.replace(/\D/g, "");
-                    const msg = buildReminderMessage(apt);
-                    window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
-                  }}
-                  style={{ width: "100%", fontSize: 12.5, fontWeight: 600, padding: "10px 0", borderRadius: 8, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.28)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-                  title="Send WhatsApp reminder message to buyer"
-                >
-                  <MessageCircle size={13} /> {t("salesmanLite.inbox.message")}
-                </button>
-              )}
-            </>
-          )}
-        </div>
+        </div>,
+        document.body,
       );
     };
 
     return (
       <div>
+        {renderBookingDetailModal()}
         <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
           {t("salesmanLite.inbox.bookings")} ({confirmedApts.length})
         </p>
