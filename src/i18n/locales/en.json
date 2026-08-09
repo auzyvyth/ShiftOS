@@ -680,6 +680,30 @@
       "language": "Language",
       "languageSubtext": "Switch between English and Malay"
     },
+    "dangerZone": {
+      "title": "Danger Zone",
+      "subtext": "Deleting your account hides your listings and profile immediately. Your data is kept for 30 days in case you change your mind, then permanently erased.",
+      "deleteBtn": "Delete account",
+      "modalTitle": "Delete your account?",
+      "modalBody": "This deactivates your account right away. You can restore it by logging back in within 30 days — after that it's gone for good.",
+      "point1": "Your listings and public page are hidden immediately",
+      "point2": "You'll be signed out on all devices",
+      "point3": "Everything is permanently erased after 30 days",
+      "confirmLabel": "Type DELETE to confirm",
+      "cancel": "Cancel",
+      "confirmDelete": "Delete account",
+      "deleting": "Deleting...",
+      "deleteFailed": "Could not delete your account. Please try again."
+    },
+    "deletedGate": {
+      "title": "Account scheduled for deletion",
+      "body": "Your account is deactivated and will be permanently deleted in {{days}} days. Changed your mind? Reactivate it now to keep everything.",
+      "reactivate": "Reactivate my account",
+      "reactivating": "Reactivating...",
+      "reactivateFailed": "Could not reactivate. Please try again.",
+      "signOut": "Sign out",
+      "reactivateSuccess": "Welcome back — your account is active again."
+    },
     "merge": {
       "title": "Join a Dealership",
       "subtitle": "Got an invite code from your dealer? Enter it below to merge your account into their ShiftOS system.",

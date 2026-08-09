@@ -671,6 +671,30 @@
       "language": "Bahasa",
       "languageSubtext": "Tukar antara Inggeris dan Melayu"
     },
+    "dangerZone": {
+      "title": "Zon Bahaya",
+      "subtext": "Memadam akaun anda akan menyembunyikan senarai dan profil anda serta-merta. Data anda disimpan selama 30 hari sekiranya anda berubah fikiran, kemudian dipadam secara kekal.",
+      "deleteBtn": "Padam akaun",
+      "modalTitle": "Padam akaun anda?",
+      "modalBody": "Ini menyahaktifkan akaun anda serta-merta. Anda boleh memulihkannya dengan log masuk semula dalam tempoh 30 hari — selepas itu ia dipadam selamanya.",
+      "point1": "Senarai dan halaman awam anda disembunyikan serta-merta",
+      "point2": "Anda akan dilog keluar dari semua peranti",
+      "point3": "Semuanya dipadam secara kekal selepas 30 hari",
+      "confirmLabel": "Taip DELETE untuk sahkan",
+      "cancel": "Batal",
+      "confirmDelete": "Padam akaun",
+      "deleting": "Memadam...",
+      "deleteFailed": "Tidak dapat memadam akaun anda. Sila cuba lagi."
+    },
+    "deletedGate": {
+      "title": "Akaun dijadualkan untuk dipadam",
+      "body": "Akaun anda telah dinyahaktifkan dan akan dipadam secara kekal dalam {{days}} hari. Berubah fikiran? Aktifkan semula sekarang untuk menyimpan semuanya.",
+      "reactivate": "Aktifkan semula akaun saya",
+      "reactivating": "Mengaktifkan semula...",
+      "reactivateFailed": "Tidak dapat mengaktifkan semula. Sila cuba lagi.",
+      "signOut": "Log keluar",
+      "reactivateSuccess": "Selamat kembali — akaun anda aktif semula."
+    },
     "merge": {
       "title": "Sertai Pengedar",
       "subtitle": "Ada kod jemputan dari pengedar anda? Masukkan di bawah untuk gabungkan akaun anda ke dalam sistem ShiftOS mereka.",

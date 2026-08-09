@@ -212,6 +212,10 @@ export default function LoginPage() {
 
   const redirectByRole = async (user, session = null) => {
     if (!user?.id) return;
+    // Use replace() for every post-auth redirect so /login does NOT stay in the
+    // browser history. Without this, pressing Back from the app's first screen
+    // (e.g. the Salesman Lite dashboard) re-shows the sign-in page.
+    const go = (url) => window.location.replace(url);
     const { data: profile } = await supabase
       .from("profiles")
       .select("subdomain, role, dealer_id, onboarding_complete, plan")
@@ -224,11 +228,11 @@ export default function LoginPage() {
     if (!profile) {
       const savedPlan = sessionStorage.getItem('ob_plan_slug');
       if (savedPlan === 'lite' || savedPlan === 'premium') {
-        window.location.href = `${base}/salesman-onboarding/${savedPlan}`;
+        go(`${base}/salesman-onboarding/${savedPlan}`);
       } else if (savedPlan === 'starter' || savedPlan === 'growth' || savedPlan === 'pro') {
-        window.location.href = `${base}/dealer-onboarding/${savedPlan}`;
+        go(`${base}/dealer-onboarding/${savedPlan}`);
       } else {
-        window.location.href = `${base}/onboarding`;
+        go(`${base}/onboarding`);
       }
       return;
     }
@@ -238,7 +242,7 @@ export default function LoginPage() {
 
     // Buyers live on /account, never a seller dashboard.
     if (role === "buyer") {
-      window.location.href = `${base}/account`;
+      go(`${base}/account`);
       return;
     }
 
@@ -252,20 +256,20 @@ export default function LoginPage() {
     // dashboard. Keeping it separate stops the admin account from landing on an
     // empty, onboarding-less dealer dashboard.
     if (role === "superadmin") {
-      window.location.href = `${base}/platform`;
+      go(`${base}/platform`);
       return;
     }
 
     if (role === "dealer" || role === "owner") {
       if (profile?.onboarding_complete === false && !subdomain) {
-        window.location.href = `${base}/onboarding`;
+        go(`${base}/onboarding`);
         return;
       }
       if (subdomain && isProd) {
         const activeSession = await getActiveSession();
-        window.location.href = `https://${subdomain}.xdrive.my/dashboard${handoffSuffix(activeSession)}`;
+        go(`https://${subdomain}.xdrive.my/dashboard${handoffSuffix(activeSession)}`);
       } else {
-        window.location.href = `${base}/dashboard`;
+        go(`${base}/dashboard`);
       }
     } else if (role === "salesman") {
       // A salesman who hasn't finished onboarding (no name/IC/phone/profile yet)
@@ -275,7 +279,7 @@ export default function LoginPage() {
       // restore) drops into an empty dashboard. Mirror the dealer branch above.
       if (profile?.onboarding_complete === false) {
         const tier = profile?.plan === "salesman_full" ? "premium" : "lite";
-        window.location.href = `${base}/salesman-onboarding/${tier}`;
+        go(`${base}/salesman-onboarding/${tier}`);
         return;
       }
       const activeSession = await getActiveSession();
@@ -285,11 +289,11 @@ export default function LoginPage() {
         ? "salesman-premium"
         : "salesman-lite";
       const suffix = isProd ? handoffSuffix(activeSession) : "";
-      window.location.href = `${base}/${target}${suffix}`;
+      go(`${base}/${target}${suffix}`);
     } else {
       const activeSession = await getActiveSession();
       const suffix = isProd ? handoffSuffix(activeSession) : "";
-      window.location.href = `${base}/salesman${suffix}`;
+      go(`${base}/salesman${suffix}`);
     }
   };
 

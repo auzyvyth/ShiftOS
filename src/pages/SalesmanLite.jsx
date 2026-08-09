@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Helmet } from "react-helmet";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
@@ -553,6 +553,10 @@ function SellerBookingModal({ lead, dateValue, onChangeDate, onClose, onConfirm,
   );
 }
 
+// Top-level Lite tabs, each backed by its own /salesman-lite/:tab route.
+// Anything not in this list falls back to the dashboard.
+const VALID_LITE_TABS = ["dashboard", "listings", "leads", "enquiries", "performance", "settings", "help"];
+
 export default function SalesmanLite() {
   const navigate = useNavigate();
   const isMobile = useWindowSize() < 768;
@@ -572,7 +576,14 @@ export default function SalesmanLite() {
   const [profile, setProfile] = useState(null);
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("dashboard");
+  // Each Lite tab is its own route (/salesman-lite/:tab) so tab switches push
+  // browser history — the phone Back button / swipe-back returns to the previous
+  // tab instead of exiting the whole app (and landing on the sign-in page). The
+  // route is the single source of truth for the active tab; `setActiveTab`
+  // navigates so every existing call site keeps working unchanged.
+  const { tab: routeTab } = useParams();
+  const activeTab = VALID_LITE_TABS.includes(routeTab) ? routeTab : "dashboard";
+  const setActiveTab = (tab) => navigate(`/salesman-lite/${tab}`);
   // Bookings are the primary inbox surface (real appointments to act on);
   // enquiries are demoted to a "Lead History" log behind them.
   const [inboxSubTab, setInboxSubTab] = useState("bookings");
@@ -590,6 +601,11 @@ export default function SalesmanLite() {
   const [sellerBookingSaving, setSellerBookingSaving] = useState(false);
   // Ticks once a minute so inbox relative-time labels stay live to the minute.
   const [nowTick, setNowTick] = useState(Date.now());
+  // Danger Zone — self-service account deletion (soft delete + 30-day grace).
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [reactivating, setReactivating] = useState(false);
 
   // Tabs whose data is seeded entirely by the salesman's own listings. They stay
   // reachable at all times (the intro tour walks through them, and a user can
@@ -1030,7 +1046,7 @@ export default function SalesmanLite() {
 
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, location, ic_hash, ic_last4, ic_verified_at, ic_deadline, created_at, account_status, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
+        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, location, ic_hash, ic_last4, ic_verified_at, ic_deadline, created_at, account_status, deleted_at, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
         .eq("id", uid)
         .maybeSingle();
 
@@ -1043,6 +1059,15 @@ export default function SalesmanLite() {
 
       if (profileData.account_status === "pending") {
         setProfile(profileData);
+        setLoading(false);
+        return;
+      }
+
+      // Soft-deleted account (within the 30-day grace) — short-circuit to the
+      // reactivate gate instead of loading the panel as an inactive user.
+      if (profileData.account_status === "deleted") {
+        setProfile(profileData);
+        setUserId(profileData.id);
         setLoading(false);
         return;
       }
@@ -1576,6 +1601,56 @@ export default function SalesmanLite() {
     if (error) console.error("signOut:", error);
     navigate("/login");
   };
+
+  // Danger Zone: soft-delete this account (reversible for 30 days). The
+  // delete-account edge function flips the caller's own profile to
+  // account_status='deleted' + is_active=false + deleted_at=now(); the cars and
+  // public page hide immediately and a daily cron hard-purges after the grace
+  // window. Sign out globally so no lingering session re-enters the panel.
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText.trim().toUpperCase() !== "DELETE") return;
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("delete-account");
+      if (error || (data && data.error)) {
+        console.error("delete-account:", error || data?.error);
+        toast.error(t("salesmanLite.dangerZone.deleteFailed"));
+        setDeleting(false);
+        return;
+      }
+      await supabase.auth.signOut({ scope: "global" });
+      navigate("/login");
+    } catch (e) {
+      console.error("delete-account:", e);
+      toast.error(t("salesmanLite.dangerZone.deleteFailed"));
+      setDeleting(false);
+    }
+  };
+
+  // Self-service restore within the grace window: clear the deletion flags on the
+  // caller's own row, then hard-reload so every downstream fetch re-runs clean.
+  const handleReactivate = async () => {
+    if (!userId) return;
+    setReactivating(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ account_status: "active", is_active: true, deleted_at: null })
+      .eq("id", userId);
+    if (error) {
+      console.error("reactivate:", error);
+      toast.error(t("salesmanLite.deletedGate.reactivateFailed"));
+      setReactivating(false);
+      return;
+    }
+    window.location.reload();
+  };
+
+  // Lock body scroll while the delete-confirm modal is open (overlay rule 2).
+  useEffect(() => {
+    if (!deleteModalOpen) return;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [deleteModalOpen]);
 
   const updateLeadStage = async (leadId, stage) => {
     setStageSavingId(leadId);
@@ -7122,10 +7197,152 @@ export default function SalesmanLite() {
           >
             {settingsSaving ? t("salesmanLite.settings.savingBtn") : t("salesmanLite.settings.saveBtn")}
           </button>
+
+          {/* Danger Zone — self-service account deletion */}
+          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: 8, paddingTop: 18 }}>
+            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "rgba(248,113,113,0.7)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+              {t("salesmanLite.dangerZone.title")}
+            </p>
+            <p style={{ margin: "0 0 12px", fontSize: 12, color: "#6b7280", lineHeight: 1.6, maxWidth: 460 }}>
+              {t("salesmanLite.dangerZone.subtext")}
+            </p>
+            <button
+              onClick={() => { setDeleteConfirmText(""); setDeleteModalOpen(true); }}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 8,
+                background: "transparent",
+                border: "1px solid rgba(248,113,113,0.4)",
+                color: "#f87171",
+                fontSize: 12.5,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              {t("salesmanLite.dangerZone.deleteBtn")}
+            </button>
+          </div>
         </div>
       </div>
     );
   };
+
+  // ── DELETE ACCOUNT MODAL ──────────────────────────────────────────────────
+  const renderDeleteModal = () =>
+    deleteModalOpen &&
+    createPortal(
+      <div
+        onClick={() => !deleting && setDeleteModalOpen(false)}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.8)",
+          backdropFilter: "blur(2px)",
+          zIndex: 1000,
+          display: "flex",
+          alignItems: isMobile ? "flex-end" : "center",
+          justifyContent: "center",
+          padding: isMobile ? 0 : 20,
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            background: "#111827",
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: isMobile ? "16px 16px 0 0" : 14,
+            width: isMobile ? "100%" : 440,
+            maxWidth: "100%",
+            padding: 24,
+            boxSizing: "border-box",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>
+              {t("salesmanLite.dangerZone.modalTitle")}
+            </p>
+            <button
+              onClick={() => !deleting && setDeleteModalOpen(false)}
+              style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer" }}
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <p style={{ margin: "0 0 12px", fontSize: 13, color: "#9ca3af", lineHeight: 1.65 }}>
+            {t("salesmanLite.dangerZone.modalBody")}
+          </p>
+          <ul style={{ margin: "0 0 16px", paddingLeft: 18, fontSize: 12.5, color: "#9ca3af", lineHeight: 1.7 }}>
+            <li>{t("salesmanLite.dangerZone.point1")}</li>
+            <li>{t("salesmanLite.dangerZone.point2")}</li>
+            <li>{t("salesmanLite.dangerZone.point3")}</li>
+          </ul>
+          <label style={{ display: "block", fontSize: 11, color: "#6b7280", marginBottom: 6 }}>
+            {t("salesmanLite.dangerZone.confirmLabel")}
+          </label>
+          <input
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            placeholder="DELETE"
+            autoFocus
+            style={{
+              width: "100%",
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              borderRadius: 8,
+              color: "#e5e7eb",
+              fontSize: 14,
+              padding: "10px 12px",
+              outline: "none",
+              boxSizing: "border-box",
+              fontFamily: "system-ui, sans-serif",
+              letterSpacing: "0.05em",
+              marginBottom: 18,
+            }}
+          />
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              onClick={() => setDeleteModalOpen(false)}
+              disabled={deleting}
+              style={{
+                flex: 1,
+                padding: "11px 14px",
+                borderRadius: 8,
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "#d1d5db",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              {t("salesmanLite.dangerZone.cancel")}
+            </button>
+            <button
+              onClick={handleDeleteAccount}
+              disabled={deleting || deleteConfirmText.trim().toUpperCase() !== "DELETE"}
+              style={{
+                flex: 1,
+                padding: "11px 14px",
+                borderRadius: 8,
+                background: "#dc2626",
+                border: "none",
+                color: "#fff",
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: deleting || deleteConfirmText.trim().toUpperCase() !== "DELETE" ? "not-allowed" : "pointer",
+                opacity: deleting || deleteConfirmText.trim().toUpperCase() !== "DELETE" ? 0.5 : 1,
+                fontFamily: "inherit",
+              }}
+            >
+              {deleting ? t("salesmanLite.dangerZone.deleting") : t("salesmanLite.dangerZone.confirmDelete")}
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    );
 
   // ── ADD LEAD MODAL ────────────────────────────────────────────────────────
 
@@ -7901,6 +8118,40 @@ export default function SalesmanLite() {
     );
   }
 
+  // ── SCHEDULED-DELETION GATE (self-service restore within 30-day grace) ─────
+  if (profile?.account_status === "deleted") {
+    const deletedAt = profile.deleted_at ? new Date(profile.deleted_at) : null;
+    const daysLeft = deletedAt
+      ? Math.max(0, 30 - Math.floor((Date.now() - deletedAt.getTime()) / 86400000))
+      : 30;
+    return (
+      <div style={{ minHeight: "100vh", background: "#05070e", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div style={{ maxWidth: 420, textAlign: "center" }}>
+          <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 28 }}>🗑️</div>
+          <h2 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.8rem", letterSpacing: 2, color: "#fff", marginBottom: 8 }}>
+            {t("salesmanLite.deletedGate.title")}
+          </h2>
+          <p style={{ fontSize: 14, color: "#9ca3af", lineHeight: 1.7, marginBottom: 24 }}>
+            {t("salesmanLite.deletedGate.body", { days: daysLeft })}
+          </p>
+          <button
+            onClick={handleReactivate}
+            disabled={reactivating}
+            style={{ padding: "11px 22px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", fontSize: 14, fontWeight: 700, cursor: reactivating ? "not-allowed" : "pointer", opacity: reactivating ? 0.6 : 1, fontFamily: "inherit" }}
+          >
+            {reactivating ? t("salesmanLite.deletedGate.reactivating") : t("salesmanLite.deletedGate.reactivate")}
+          </button>
+          <div>
+            <button onClick={handleLogout} style={{ marginTop: 20, fontSize: 12, color: "#4b5563", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+              {t("salesmanLite.deletedGate.signOut")}
+            </button>
+          </div>
+        </div>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+    );
+  }
+
   // ── MAIN RENDER ───────────────────────────────────────────────────────────
 
   // Listing-gated tabs render a locked preview once the intro tour is finished
@@ -8501,6 +8752,7 @@ export default function SalesmanLite() {
       {renderWAModal()}
       {renderLogCallModal()}
       {renderBatchWAModal()}
+      {renderDeleteModal()}
       <ConfirmBookingModal
         apt={confirmBookingApt}
         message={confirmBookingMsg}

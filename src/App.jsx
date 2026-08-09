@@ -183,6 +183,7 @@ function App() {
           <Route path="/dashboard/import-stock" element={<ImportStockPage />} />
           <Route path="/salesman" element={<SalesmanPanel />} />
           <Route path="/salesman-lite" element={<SalesmanLite />} />
+          <Route path="/salesman-lite/:tab" element={<SalesmanLite />} />
           <Route path="/salesman-premium" element={<SalesmanPremium />} />
           <Route path="/manager" element={<ManagerPanel />} />
           <Route path="/accountant" element={<AccountantPanel />} />
