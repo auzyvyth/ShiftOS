@@ -15,7 +15,11 @@ export default async function handler(req, res) {
 
   const { carId, name, phone, state, refSlug, token } = req.body || {};
 
-  if (!carId || !name?.trim() || !phone?.trim()) {
+  // Phone is OPTIONAL (the car-detail modal labels it so). Name is the only hard
+  // requirement — the buyer has already been sent to WhatsApp, where the seller
+  // gets their number from the chat. Requiring phone here silently 400'd every
+  // name-only enquiry, so those leads never reached the pipeline.
+  if (!carId || !name?.trim()) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
@@ -25,8 +29,9 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: 'captcha_failed', reason: check.reason });
   }
 
-  const phoneClean = String(phone).replace(/\D/g, '');
-  if (phoneClean.length < 9 || phoneClean.length > 15) {
+  // Validate phone only when one is supplied; a blank phone is allowed through.
+  const phoneClean = phone ? String(phone).replace(/\D/g, '') : '';
+  if (phoneClean && (phoneClean.length < 9 || phoneClean.length > 15)) {
     return res.status(400).json({ error: 'Invalid phone number' });
   }
 
@@ -65,7 +70,7 @@ export default async function handler(req, res) {
     salesman_id: salesmanId,
     listing_id: carId,
     buyer_name: name.trim().substring(0, 100),
-    buyer_phone: phoneClean,
+    buyer_phone: phoneClean || null,
     buyer_state: state || null,
     buyer_message: `Enquiry about listing`,
     ref_slug: refSlug || null,
