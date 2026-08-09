@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   X, MessageCircle, Phone, Calendar, Trash2, ExternalLink, User,
   Pencil, Check, ChevronRight, ChevronDown, ChevronUp, Send, Search,
-  AlertTriangle, FileText, Plus, Package, Link, Copy, Presentation, CreditCard,
+  AlertTriangle, FileText, Plus, Package, Link, Copy, Presentation, CreditCard, MapPin,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../supabaseClient';
@@ -945,6 +945,11 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                     </div>
                   )}
                   <LeadSourceBadge source={lead.lead_source} />
+                  {lead.buyer_state && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: '#6b7280', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 20, padding: '1px 8px', fontWeight: 600 }}>
+                      <MapPin style={{ width: 10, height: 10 }} />{lead.buyer_state}
+                    </span>
+                  )}
                   <span style={{ fontSize: 11, color: '#9ca3af' }}>{days === 0 ? 'Today' : `${days}d ago`}</span>
                 </div>
               </div>

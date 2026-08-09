@@ -1,4 +1,5 @@
 import React from 'react';
+import { MapPin } from 'lucide-react';
 import {
   getInitials, avatarGradient, getLeadAgeDays, ageTextColor, isLeadStale, canonicalStage,
 } from '../../lib/leadsHelpers';
@@ -77,6 +78,14 @@ export default function LeadGridCard({ lead, onOpen }) {
       }}>
         {carLabel || 'No car linked'}
       </div>
+
+      {/* Row 2b: buyer state */}
+      {lead.buyer_state && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10.5, color: '#6b7280', marginBottom: 6 }}>
+          <MapPin style={{ width: 10, height: 10, flexShrink: 0 }} />
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.buyer_state}</span>
+        </div>
+      )}
 
       {/* Row 3: price */}
       {carPrice && (
