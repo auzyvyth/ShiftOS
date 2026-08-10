@@ -20,7 +20,7 @@ export default function AuthCallbackPage() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, role, subdomain, dealer_id, onboarding_complete, plan')
+        .select('id, role, subdomain, dealer_id, onboarding_complete, plan, full_name, ic_number, dealership')
         .eq('id', session.user.id)
         .maybeSingle();
 
@@ -122,6 +122,25 @@ export default function AuthCallbackPage() {
       // method (password, Google, magic link) agrees on where superadmin lands.
       if (role === 'superadmin') {
         navigate('/platform');
+        return;
+      }
+
+      // Brand-new, context-less seller sign-in (e.g. the /login "Continue with
+      // Google" button): the trigger left a default dealer stub with zero
+      // onboarding progress, and there was no buyer intent (returned above) and no
+      // onboarding intent (override above). Rather than dumping them into the
+      // dealer flow, send them to the salesman plan chooser. Guarded to a BARE stub
+      // (no name/IC/dealership) so a dealer who is mid-onboarding still resumes
+      // /dealer-onboarding instead of being bounced to the chooser.
+      const bareStub =
+        profile.onboarding_complete === false &&
+        !subdomain &&
+        !profile.full_name &&
+        !profile.ic_number &&
+        !profile.dealership &&
+        ['dealer', 'owner', 'salesman'].includes(role);
+      if (bareStub) {
+        navigate('/choose-plan');
         return;
       }
 
