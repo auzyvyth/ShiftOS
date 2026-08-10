@@ -272,10 +272,14 @@ export default function SalesmanOnboarding() {
         return;
       }
 
+      // Google (or any OAuth) hands back a display name — use it when the profile
+      // doesn't already carry one, so a Google user doesn't retype what we have.
+      const metaName = (session.user?.user_metadata?.full_name || session.user?.user_metadata?.name || '').trim();
+
       if (profile) {
         setForm(p => ({
           ...p,
-          fullName: profile.full_name || p.fullName,
+          fullName: profile.full_name || metaName || p.fullName,
           icNumber: profile.ic_number || p.icNumber,
           phone: profile.phone || p.phone,
           slug: profile.slug || p.slug,
@@ -285,6 +289,7 @@ export default function SalesmanOnboarding() {
       }
 
       // Just completed OAuth — skip to identity (legal saved in sessionStorage)
+      if (metaName) setForm(p => ({ ...p, fullName: p.fullName || metaName }));
       const agreed = sessionStorage.getItem('ob_agreed') === '1';
       setStep(agreed ? 2 : 0);
     };

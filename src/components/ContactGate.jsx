@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { getRef } from '../utils/refTracking';
 import { loadBuyerDetails, saveBuyerDetails } from '../utils/consent';
+import { supabase } from '../supabaseClient';
 import Turnstile from './Turnstile';
 import LegalModal from './LegalModal';
 
@@ -21,6 +22,9 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
   const [busy, setBusy] = useState(false);
   const [token, setToken] = useState(null);
   const [showLegal, setShowLegal] = useState(false);
+  // The signed-in buyer's profile row, when there is one — used to prefill and
+  // to know which columns are still empty for the write-back below.
+  const [buyerProfile, setBuyerProfile] = useState(null);
 
   useEffect(() => {
     if (!open) return;
@@ -33,7 +37,24 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
       setPhone((v) => v || saved.phone || '');
       setState((v) => v || saved.state || '');
     }
-    return () => { document.body.style.overflow = ''; };
+    // Then, for a signed-in buyer, fill any still-empty field from their account
+    // so the "no re-typing your details" promise holds across devices. Only
+    // fills gaps — never overwrites what's already typed or device-remembered.
+    let active = true;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!active || !session) return;
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('full_name, phone')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      if (!active || !prof) return;
+      setBuyerProfile({ id: session.user.id, ...prof });
+      setName((v) => v || prof.full_name || '');
+      setPhone((v) => v || prof.phone || '');
+    })();
+    return () => { active = false; document.body.style.overflow = ''; };
   }, [open]);
 
   if (!open) return null;
@@ -63,6 +84,19 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
           token,
         }),
       }).catch((err) => console.error('whatsapp-lead:', err));
+    }
+    // Progressive profiling: seed a signed-in buyer's account from this enquiry
+    // so their next one (on any device) is truly pre-filled. Fill only columns
+    // that are still empty, so a name/phone they corrected in their account is
+    // never overwritten by an older enquiry. RLS permits this self-update.
+    if (buyerProfile?.id) {
+      const patch = {};
+      if (nm && !buyerProfile.full_name) patch.full_name = nm;
+      if (phone.trim() && !buyerProfile.phone) patch.phone = phone.trim();
+      if (Object.keys(patch).length) {
+        supabase.from('profiles').update(patch).eq('id', buyerProfile.id)
+          .then(({ error }) => { if (error) console.error('buyer profile write-back:', error.message); });
+      }
     }
     try { onConfirmed?.(); } catch { /* ignore */ }
     setName(''); setPhone(''); setState(''); setToken(null); setBusy(false); onClose();

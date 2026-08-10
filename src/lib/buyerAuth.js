@@ -31,16 +31,34 @@ export function consumeBuyerIntent() {
 // RLS (users_upsert_own_profile_no_escalation) allows a user to set their own
 // role to anything except 'superadmin', so this self-correction is permitted.
 // Returns the effective role.
+
+// Pull the display name + avatar Google (or any OAuth provider) hands back on
+// the auth user's metadata, so a buyer's profile carries their real name instead
+// of just an email. Returns only the keys that actually have a value.
+function identityFromMeta(user) {
+  const m = user?.user_metadata || {};
+  const out = {};
+  const name = (m.full_name || m.name || '').toString().trim();
+  const avatar = (m.avatar_url || m.picture || '').toString().trim();
+  if (name) out.full_name = name.slice(0, 100);
+  if (avatar) out.avatar_url = avatar;
+  return out;
+}
+
 export async function ensureBuyerProfile(user) {
   if (!user?.id) return null;
   const { data: existing } = await supabase
     .from('profiles')
-    .select('id, role, subdomain, onboarding_complete')
+    .select('id, role, subdomain, onboarding_complete, full_name, avatar_url')
     .eq('id', user.id)
     .maybeSingle();
 
+  const identity = identityFromMeta(user);
+
   if (!existing) {
-    await supabase.from('profiles').insert({ id: user.id, email: user.email, role: 'buyer', is_active: true });
+    await supabase.from('profiles').insert({
+      id: user.id, email: user.email, role: 'buyer', is_active: true, ...identity,
+    });
     return 'buyer';
   }
 
@@ -51,8 +69,22 @@ export async function ensureBuyerProfile(user) {
     ['dealer', 'owner', 'salesman'].includes(existing.role || 'dealer');
 
   if (isUnonboardedStub) {
-    await supabase.from('profiles').update({ role: 'buyer', is_active: true }).eq('id', user.id);
+    // Correct the trigger's default stub to a buyer, and seed name/avatar while
+    // we're here — but never clobber a value the row already carries.
+    const patch = { role: 'buyer', is_active: true };
+    if (identity.full_name && !existing.full_name) patch.full_name = identity.full_name;
+    if (identity.avatar_url && !existing.avatar_url) patch.avatar_url = identity.avatar_url;
+    await supabase.from('profiles').update(patch).eq('id', user.id);
     return 'buyer';
+  }
+
+  // Real buyer row already exists: backfill name/avatar for buyers who signed in
+  // before we captured it, filling only the columns that are still empty.
+  if (existing.role === 'buyer') {
+    const patch = {};
+    if (identity.full_name && !existing.full_name) patch.full_name = identity.full_name;
+    if (identity.avatar_url && !existing.avatar_url) patch.avatar_url = identity.avatar_url;
+    if (Object.keys(patch).length) await supabase.from('profiles').update(patch).eq('id', user.id);
   }
 
   return existing.role || null;

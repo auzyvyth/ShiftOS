@@ -69,6 +69,34 @@ export default function AuthCallbackPage() {
         if (role === 'buyer') { navigate('/account'); return; }
       }
 
+      // Onboarding-intent override. The handle_new_user trigger stamps a default
+      // role='dealer' stub the instant the auth user is created, so a SALESMAN who
+      // signed up with Google has a dealer stub by the time we get here — which
+      // would otherwise fall through to the dealer branch below and dump them in
+      // dealer onboarding. Honor the intent saved on the account (user_metadata,
+      // survives cross-device email confirm) or sessionStorage (same-device OAuth)
+      // and resume the RIGHT flow + tier. Guarded to un-onboarded stubs so a real
+      // onboarded dealer is never hijacked. Mirrors the !profile resume block above.
+      {
+        const meta = session.user?.user_metadata || {};
+        const obAcct = meta.account_type || sessionStorage.getItem('ob_account_type');
+        const obPlan = meta.tier || sessionStorage.getItem('ob_plan_slug');
+        const unonboardedStub =
+          profile.onboarding_complete === false &&
+          !profile.subdomain &&
+          ['dealer', 'owner', 'salesman'].includes(profile.role);
+        if (unonboardedStub && (obAcct === 'salesman' || obAcct === 'dealer')) {
+          sessionStorage.removeItem('ob_plan_slug');
+          sessionStorage.removeItem('ob_account_type');
+          if (obAcct === 'salesman') {
+            navigate(`/salesman-onboarding/${obPlan === 'premium' ? 'premium' : 'lite'}`);
+          } else {
+            navigate(`/dealer-onboarding/${['starter', 'growth', 'pro'].includes(obPlan) ? obPlan : 'starter'}`);
+          }
+          return;
+        }
+      }
+
       const { role, subdomain, dealer_id } = profile;
 
       // Platform superadmin has its own console (/platform) — never a dealer
