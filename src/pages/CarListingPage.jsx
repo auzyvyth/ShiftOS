@@ -426,18 +426,17 @@ export default function CarListingPage() {
 
   useEffect(() => setSearchInput(q), [q]);
 
-  /* Debounce search input → URL param */
-  useEffect(() => {
-    const t = setTimeout(() => {
-      const sq = san.q(searchInput);
-      if (sq === q) return;
-      const next = new URLSearchParams(searchParams);
-      sq ? next.set('q', sq) : next.delete('q');
-      next.delete('page');
-      setSearchParams(next, { replace:true });
-    }, 400);
-    return () => clearTimeout(t);
-  }, [searchInput]); // eslint-disable-line
+  // Search commits ONLY on submit (Enter / search-button), never per keystroke —
+  // a debounced live search fired a DB query on every pause in typing, burning
+  // database usage. commitSearch preserves the other active filters instead of
+  // navigating to a bare ?q= (which used to wipe them).
+  const commitSearch = (val) => {
+    const sq = san.q(val);
+    const next = new URLSearchParams(searchParams);
+    sq ? next.set('q', sq) : next.delete('q');
+    next.delete('page');
+    setSearchParams(next, { replace:true });
+  };
 
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? 'hidden' : '';
@@ -713,10 +712,7 @@ export default function CarListingPage() {
                 wrapClassName="cl-topbar-search"
                 wrapStyle={{ flex:1, minWidth:'160px' }}
                 navigateTo={basePath}
-                onSubmit={val=>{
-                  const sq = san.q(val);
-                  navigate(sq ? `${basePath}?q=${encodeURIComponent(sq)}` : basePath);
-                }}
+                onSubmit={commitSearch}
               />
               {/* Sort */}
               <div style={{ position:'relative', flexShrink:0 }}>
@@ -794,7 +790,7 @@ export default function CarListingPage() {
             {isMarketplace && (
               <PriceAlertButton
                 hasFilters={!!hasFilters}
-                filters={{ brand:brand||null, model:model||null, variant:variant||null, bodyType:bodyType||null, state:state||null, condition:condition||null, maxPrice:maxPrice||null, minYear:yearFrom||null, maxYear:yearTo||null }}
+                filters={{ keyword:q||null, brand:brand||null, model:model||null, variant:variant||null, bodyType:bodyType||null, state:state||null, condition:condition||null, maxPrice:maxPrice||null, minYear:yearFrom||null, maxYear:yearTo||null }}
               />
             )}
           </div>

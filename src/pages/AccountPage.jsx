@@ -298,7 +298,7 @@ export default function AccountPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {alerts.map(a => {
-                const parts = [a.brand, a.model, a.variant].filter(Boolean);
+                const parts = [a.keyword && `"${a.keyword}"`, a.brand, a.model, a.variant].filter(Boolean);
                 const tags = [
                   a.state,
                   a.max_price && `≤ RM ${(a.max_price / 1000).toFixed(0)}k`,
