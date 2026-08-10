@@ -8,6 +8,13 @@ import { POST_SALE_STEPS, STATUS_CONFIG } from '../utils/postSaleSteps';
 
 const STEP_LABEL = Object.fromEntries(POST_SALE_STEPS.map((s) => [s.key, s.label]));
 
+// The buyer-facing purchase/handover tracker is deferred to a future build: it
+// needs to connect to the lead cards in Salesman Premium + the dealer account
+// so sellers can update each step and the buyer sees it update in realtime.
+// Until that wiring exists, keep the UI + fetch fully built but switched OFF —
+// flip this to true to light it back up. Nothing below is deleted.
+const PURCHASE_TRACKER_ENABLED = false;
+
 // Business roles get bounced to their own panel — buyers only ever see /account.
 const SELLER_ROUTES = {
   superadmin: '/dashboard', dealer: '/dashboard', owner: '/dashboard',
@@ -57,7 +64,7 @@ export default function AccountPage() {
   // by deal. Re-fetches when the tab regains focus so the status stays current.
   const [purchases, setPurchases] = useState([]);
   useEffect(() => {
-    if (!session) return;
+    if (!PURCHASE_TRACKER_ENABLED || !session) return;
     let active = true;
     const load = async () => {
       const { data } = await supabase.rpc('get_my_purchase_tracker');
@@ -201,8 +208,8 @@ export default function AccountPage() {
           </div>
         </section>
 
-        {/* Purchase tracker */}
-        {purchases.length > 0 && (
+        {/* Purchase tracker — deferred (see PURCHASE_TRACKER_ENABLED). */}
+        {PURCHASE_TRACKER_ENABLED && purchases.length > 0 && (
           <section style={{ marginBottom: 44 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
               <PackageCheck size={18} color="#dc2626" />
