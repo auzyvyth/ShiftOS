@@ -41,12 +41,12 @@ const FINANCING_TYPES = [
 ];
 const MY_STATES = ['Kuala Lumpur','Selangor','Johor','Penang','Perak','Kedah','Pahang','Negeri Sembilan','Melaka','Sabah','Sarawak','Terengganu','Kelantan','Perlis'];
 const SORT_OPTIONS = [
-  { label:'Newest First',       value:'newest'      },
-  { label:'Price: Low to High', value:'price_asc'   },
-  { label:'Price: High to Low', value:'price_desc'  },
-  { label:'Year: Newest',       value:'year_desc'   },
-  { label:'Year: Oldest',       value:'year_asc'    },
-  { label:'Lowest Mileage',     value:'mileage_asc' },
+  { label:'Newest First',       short:'Newest',   value:'newest'      },
+  { label:'Price: Low to High', short:'Price ↑',  value:'price_asc'   },
+  { label:'Price: High to Low', short:'Price ↓',  value:'price_desc'  },
+  { label:'Year: Newest',       short:'Year ↓',   value:'year_desc'   },
+  { label:'Year: Oldest',       short:'Year ↑',   value:'year_asc'    },
+  { label:'Lowest Mileage',     short:'Mileage',  value:'mileage_asc' },
 ];
 const MILEAGE_OPTS = [
   { label:'Under 20,000 km',  value:'20000'  },
@@ -641,6 +641,10 @@ export default function CarListingPage() {
           .cl-grid { grid-template-columns:1fr !important; gap:10px !important }
           .cl-topbar { flex-wrap:wrap !important }
           .cl-topbar-search { width:100% !important; flex:unset !important }
+          /* Controls (sort + filters + save-search) drop to their own full-width
+             row under the search and never wrap again — keeps the alert bell at
+             the screen's right edge so its dropdown opens inward, not off-screen. */
+          .cl-topbar-controls { width:100% !important; }
         }
         @media(min-width:641px) and (max-width:900px) {
           .cl-grid { grid-template-columns:repeat(2,1fr) !important }
@@ -714,33 +718,40 @@ export default function CarListingPage() {
                 navigateTo={basePath}
                 onSubmit={commitSearch}
               />
-              {/* Sort */}
-              <div style={{ position:'relative', flexShrink:0 }}>
-                <select
-                  value={sort}
-                  onChange={e=>setParam('sort',e.target.value)}
-                  style={{ background:T.ctrlBg, border:`1px solid ${T.ctrlBorder}`, borderRadius:'9px', padding:'8px 32px 8px 12px', color:T.text, fontSize:'13px', fontWeight:'600', cursor:'pointer', appearance:'none', fontFamily:"'Outfit',sans-serif", outline:'none' }}
+              {/* Controls — sort, filters and save-search live in ONE row that
+                  drops under the search on mobile and never wraps internally. */}
+              <div className="cl-topbar-controls" style={{ display:'flex', gap:'8px', alignItems:'center', flexShrink:0 }}>
+                {/* Sort — custom pill: the native <select> sizes to its widest
+                    option, leaving a gap before the arrow, so we render a tight
+                    label + chevron and lay a transparent select over it. */}
+                <div style={{ position:'relative', flexShrink:0, display:'inline-flex', alignItems:'center', gap:'5px', background:T.ctrlBg, border:`1px solid ${T.ctrlBorder}`, borderRadius:'9px', padding:'8px 11px', cursor:'pointer' }}>
+                  <span style={{ fontSize:'13px', fontWeight:'600', color:T.text, whiteSpace:'nowrap' }}>{(SORT_OPTIONS.find(o=>o.value===sort)||SORT_OPTIONS[0]).short}</span>
+                  <ChevronDown size={12} style={{ color:'#9ca3af', flexShrink:0 }}/>
+                  <select
+                    value={sort}
+                    onChange={e=>setParam('sort',e.target.value)}
+                    aria-label="Sort"
+                    style={{ position:'absolute', inset:0, width:'100%', height:'100%', opacity:0, cursor:'pointer', border:'none', appearance:'none', fontFamily:"'Outfit',sans-serif" }}
+                  >
+                    {SORT_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+                {/* Filters — marginLeft:auto pushes it (and the save-search after
+                    it) to the right of the row so the alert bell hugs the screen
+                    edge; inert on desktop where the controls box is content-width. */}
+                <button
+                  onClick={()=>setDrawerOpen(true)}
+                  style={{ display:'flex', alignItems:'center', gap:'5px', flexShrink:0, marginLeft:'auto', background:activeChips.length>0?'rgba(220,38,38,0.07)':T.ctrlBg, border:`1px solid ${activeChips.length>0?'rgba(220,38,38,0.3)':T.ctrlBorder}`, borderRadius:'9px', padding:'8px 11px', color:activeChips.length>0?'#dc2626':T.textMuted, fontSize:'13px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.12s', whiteSpace:'nowrap' }}
                 >
-                  {SORT_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-                <ChevronDown size={12} style={{ position:'absolute', right:'10px', top:'50%', transform:'translateY(-50%)', color:'#9ca3af', pointerEvents:'none' }}/>
+                  <SlidersHorizontal size={13}/> Filters {activeChips.length>0&&`(${activeChips.length})`}
+                </button>
+                {isMarketplace && (
+                  <PriceAlertButton
+                    hasFilters={!!hasFilters}
+                    filters={{ keyword:q||null, brand:brand||null, model:model||null, variant:variant||null, bodyType:bodyType||null, state:state||null, condition:condition||null, maxPrice:maxPrice||null, minYear:yearFrom||null, maxYear:yearTo||null }}
+                  />
+                )}
               </div>
-              {/* Filters button */}
-              <button
-                onClick={()=>setDrawerOpen(true)}
-                style={{ display:'flex', alignItems:'center', gap:'6px', flexShrink:0, background:activeChips.length>0?'rgba(220,38,38,0.07)':T.ctrlBg, border:`1px solid ${activeChips.length>0?'rgba(220,38,38,0.3)':T.ctrlBorder}`, borderRadius:'9px', padding:'8px 14px', color:activeChips.length>0?'#dc2626':T.textMuted, fontSize:'13px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.12s' }}
-              >
-                <SlidersHorizontal size={13}/> Filters {activeChips.length>0&&`(${activeChips.length})`}
-              </button>
-              {/* Save-search — sits right of Filters so its dropdown anchors to the
-                  screen's right edge and opens inward (never clipped off-screen on
-                  mobile, which happened when it lived in the wrapped results row). */}
-              {isMarketplace && (
-                <PriceAlertButton
-                  hasFilters={!!hasFilters}
-                  filters={{ keyword:q||null, brand:brand||null, model:model||null, variant:variant||null, bodyType:bodyType||null, state:state||null, condition:condition||null, maxPrice:maxPrice||null, minYear:yearFrom||null, maxYear:yearTo||null }}
-                />
-              )}
             </div>
           </div>
         </div>

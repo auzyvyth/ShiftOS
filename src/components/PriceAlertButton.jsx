@@ -119,7 +119,7 @@ export default function PriceAlertButton({ filters, hasFilters }) {
   const isAlreadySaved = !!alertId;
 
   return (
-    <div ref={dropRef} style={{ position: 'relative', display: 'flex', gap: '6px', alignItems: 'center' }}>
+    <div ref={dropRef} style={{ position: 'relative', display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
       {/* Save button */}
       {hasFilters && (
         <button
@@ -127,12 +127,12 @@ export default function PriceAlertButton({ filters, hasFilters }) {
           disabled={loading}
           title={isAlreadySaved ? 'Remove alert' : session ? 'Save this search as an alert' : 'Sign in to save alert'}
           style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '7px 12px', borderRadius: '9px', cursor: loading ? 'wait' : 'pointer',
+            display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0,
+            padding: '6px 9px', borderRadius: '9px', cursor: loading ? 'wait' : 'pointer',
             border: isAlreadySaved ? '1px solid rgba(220,38,38,0.35)' : '1px solid rgba(0,0,0,0.1)',
             background: isAlreadySaved ? 'rgba(220,38,38,0.08)' : saved ? 'rgba(74,222,128,0.1)' : '#ffffff',
             color: isAlreadySaved ? '#dc2626' : saved ? '#4ade80' : '#6b7280',
-            fontSize: '13px', fontWeight: '600',
+            fontSize: '12px', fontWeight: '600',
             fontFamily: "'Outfit',sans-serif", transition: 'all 0.15s', whiteSpace: 'nowrap',
           }}
         >
