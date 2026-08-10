@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import LegalContent from '../components/onboarding/LegalContent';
 import PlanPickerModal from '../components/onboarding/PlanPickerModal';
 import { isReservedSubdomain } from '../utils/reservedSubdomains';
+import { isAdultFromIC } from '../utils/icAge';
 import DealerPendingApproval from '../components/DealerPendingApproval';
 
 // Same design system CSS as SalesmanOnboarding (eo- prefix)
@@ -227,6 +228,7 @@ export default function DealerOnboarding() {
   const [userId, setUserId] = useState(null);
   const [userEmail, setUserEmail] = useState('');
   const [legalScrolled, setLegalScrolled] = useState(false);
+  const [agreePdpa, setAgreePdpa] = useState(false);
   const [showResumeChoice, setShowResumeChoice] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [subTaken, setSubTaken] = useState(false);
@@ -313,6 +315,7 @@ export default function DealerOnboarding() {
   };
 
   const agreeLegal = () => {
+    if (!legalScrolled || !agreePdpa) return;
     sessionStorage.setItem('ob_agreed', '1');
     setErr('');
     setStep(1);
@@ -366,17 +369,28 @@ export default function DealerOnboarding() {
     setErr('');
     if (!form.fullName.trim()) { setErr('Full name is required'); return; }
     if (!validateIC(form.icNumber)) { setErr('Enter a valid 12-digit IC number (e.g. 901231-10-1234)'); return; }
+    // The MyKad already encodes the owner's date of birth — verify 18+ from it
+    // rather than asking for age again (redundant collection under PDPA).
+    if (isAdultFromIC(form.icNumber) === false) { setErr('The dealership owner must be at least 18 years old.'); return; }
     setLoading(true);
     try {
       if (userId) {
         const { error } = await supabase.from('profiles').upsert({
           id: userId,
           full_name: form.fullName.trim(),
-          ic_number: form.icNumber.replace(/-/g, ''),
           role: 'dealer',
           onboarding_complete: false,
         }, { onConflict: 'id' });
         if (error) throw error;
+        // Hash + store the IC (never plaintext). set_my_ic writes ic_hash +
+        // ic_last4 + ic_verified_at and nulls ic_number — same secure path the
+        // salesman flow uses. Previously the dealer flow wrote the raw IC into
+        // profiles.ic_number, leaving a national ID in the clear.
+        const icDigits = form.icNumber.replace(/\D/g, '');
+        if (icDigits.length === 12) {
+          const { error: icErr } = await supabase.rpc('set_my_ic', { p_ic: icDigits });
+          if (icErr) throw icErr;
+        }
       }
       setStep(3);
     } catch (e) {
@@ -423,12 +437,14 @@ export default function DealerOnboarding() {
         email: userEmail,
         full_name: form.fullName.trim(),
         phone: normalizePhone(form.phone),
-        ic_number: form.icNumber.replace(/-/g, ''),
+        // IC is already hashed via set_my_ic at the identity step — never write
+        // the raw number here (leaving a national ID in the clear breaches PDPA).
         role: 'dealer',
         dealership: form.dealerName.trim(),
         subdomain: form.subdomain,
         state: form.state,
         city: form.city || null,
+        location: form.address || null,
         ssm_number: form.ssmNumber || null,
         fleet_size: form.fleetSize || null,
         dealer_type: form.dealerType || null,
@@ -531,7 +547,12 @@ export default function DealerOnboarding() {
                     {legalScrolled ? 'Reviewed — you may now accept and continue' : 'Scroll to the bottom to enable the accept button'}
                   </div>
                 </div>
-                <button className="eo-btn" onClick={agreeLegal} disabled={!legalScrolled}>
+                <label style={{ display: 'flex', gap: 11, alignItems: 'flex-start', marginTop: 16, cursor: 'pointer', fontSize: 12.5, lineHeight: 1.55, color: 'rgba(255,255,255,0.55)' }}>
+                  <input type="checkbox" checked={agreePdpa} onChange={e => setAgreePdpa(e.target.checked)}
+                    style={{ width: 17, height: 17, marginTop: 1, flexShrink: 0, accentColor: '#dc2626', cursor: 'pointer' }} />
+                  <span>I consent to ShiftOS collecting and processing my personal data (including the owner's IC and business details) for account verification, in accordance with the PDPA 2010, and confirm the owner is at least 18 years old.</span>
+                </label>
+                <button className="eo-btn" onClick={agreeLegal} disabled={!legalScrolled || !agreePdpa}>
                   I AGREE — CONTINUE
                 </button>
               </>
