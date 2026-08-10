@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { supabase } from "../../supabaseClient";
+import { platformClient as supabase } from "../../lib/platformClient";
 import InfoHint from "../ui/InfoHint";
 
 // XDrive Ops — client error monitoring. Reads two superadmin-guarded RPCs

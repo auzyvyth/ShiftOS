@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { supabase } from "../../supabaseClient";
+import { platformClient as supabase } from "../../lib/platformClient";
 
 // XDrive Ops — platform-wide marketplace funnel.
 // Reads two superadmin-guarded RPCs (get_marketplace_funnel / get_marketplace_top)

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { supabase } from "../../supabaseClient";
+import { platformClient as supabase } from "../../lib/platformClient";
 import { PLAN_CONFIG } from "../../utils/planConfig";
 
 // XDrive Ops — in-app broadcast (warnings/announcements). Fans out to every

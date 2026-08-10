@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { supabase } from "../../supabaseClient";
+import { platformClient as supabase } from "../../lib/platformClient";
 import InfoHint from "../ui/InfoHint";
 
 // Security console — posture dashboard. Reads the superadmin-guarded

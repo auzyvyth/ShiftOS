@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+// The platform console runs on an ISOLATED auth client (its own storageKey) so a
+// dealer/salesman/buyer login in another tab can't clobber the superadmin
+// session. Everything in this file queries as that session. `mainClient` is only
+// used once, to adopt an existing superadmin session handed off from the public
+// /login redirect (see checkAuth).
+import { platformClient as supabase } from "../lib/platformClient";
+import { supabase as mainClient } from "../supabaseClient";
 import { invalidateMarketplaceSettingsCache, MARKETPLACE_FALLBACK } from "../hooks/useMarketplaceSettings";
 import { PLAN_CONFIG } from "../utils/planConfig";
 import FunnelTab from "../components/platform/FunnelTab";
@@ -136,7 +141,17 @@ function BillingTab({ dealers, dealerStats }) {
 }
 
 export default function AdminPage() {
-  const navigate = useNavigate();
+  // Auth gate for the isolated management console.
+  //   "checking" → verifying the platform session on mount
+  //   "login"    → no valid superadmin session; show the sign-in gate
+  //   "authed"   → superadmin confirmed; render the console
+  const [authState, setAuthState] = useState("checking");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPw, setLoginPw] = useState("");
+  const [loginBusy, setLoginBusy] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [mfaFactorId, setMfaFactorId] = useState(null);
+  const [mfaCode, setMfaCode] = useState("");
   const [dealers, setDealers] = useState([]);
   const [salesmen, setSalesmen] = useState([]);
   const [stats, setStats] = useState({
@@ -184,17 +199,97 @@ export default function AdminPage() {
 
   const MKT_ID = '00000000-0000-0000-0000-000000000001';
 
-  useEffect(() => {
-    async function init() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { navigate("/"); return; }
-      const { data: profile } = await supabase
-        .from("profiles").select("role").eq("id", user.id).maybeSingle();
-      if (profile?.role !== "superadmin") { navigate("/"); return; }
-      await loadAll();
+  useEffect(() => { checkAuth(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Gate the console on the ISOLATED platform session. Resolution order:
+  //   1. An existing platform session (this client's own storageKey).
+  //   2. Otherwise adopt a superadmin session handed off from the public /login
+  //      redirect: the main client has it, we copy it into the platform store so
+  //      from here on the two are independent (other-tab logins can't evict it).
+  //   3. Otherwise show the sign-in gate — a dealer/salesman/buyer session on the
+  //      main client is NEVER adopted, so the console can't run under one.
+  async function checkAuth() {
+    let { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      const { data: { session: mainSession } } = await mainClient.auth.getSession();
+      if (mainSession?.user?.id) {
+        const { data: prof } = await mainClient
+          .from("profiles").select("role").eq("id", mainSession.user.id).maybeSingle();
+        if (prof?.role === "superadmin") {
+          await supabase.auth.setSession({
+            access_token: mainSession.access_token,
+            refresh_token: mainSession.refresh_token,
+          });
+          session = mainSession;
+        }
+      }
     }
-    init();
-  }, []);
+    if (!session?.user?.id) { setAuthState("login"); return; }
+    await verifyAndLoad(session.user.id);
+  }
+
+  // Confirm the (platform) session belongs to a superadmin before rendering the
+  // console. A non-superadmin session is signed out locally, not just redirected.
+  async function verifyAndLoad(userId) {
+    const { data: profile } = await supabase
+      .from("profiles").select("role").eq("id", userId).maybeSingle();
+    if (profile?.role !== "superadmin") {
+      await supabase.auth.signOut({ scope: "local" });
+      setAuthError("That account is not a platform administrator.");
+      setAuthState("login");
+      return;
+    }
+    setAuthState("authed");
+    setLoginBusy(false);
+    await loadAll();
+  }
+
+  // Sign-in on the platform client only — separate credentials entry for the
+  // management console. 2FA is honoured if a verified TOTP factor exists.
+  async function handlePlatformLogin(e) {
+    e?.preventDefault();
+    if (loginBusy) return;
+    setAuthError("");
+    setLoginBusy(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: loginEmail.trim(),
+      password: loginPw,
+    });
+    if (error) { setAuthError(error.message); setLoginBusy(false); return; }
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal?.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const totp = (factors?.totp || []).find((f) => f.status === "verified");
+      if (totp) { setMfaFactorId(totp.id); setLoginBusy(false); return; }
+    }
+    const { data: { user } } = await supabase.auth.getUser();
+    await verifyAndLoad(user.id);
+  }
+
+  async function handlePlatformMfa(e) {
+    e?.preventDefault();
+    const code = mfaCode.trim();
+    if (code.length < 6) { setAuthError("Enter the 6-digit code."); return; }
+    setAuthError("");
+    setLoginBusy(true);
+    const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: mfaFactorId });
+    if (chErr) { setAuthError(chErr.message); setLoginBusy(false); return; }
+    const { error: vErr } = await supabase.auth.mfa.verify({ factorId: mfaFactorId, challengeId: ch.id, code });
+    if (vErr) { setAuthError("Invalid code. Please try again."); setLoginBusy(false); return; }
+    const { data: { user } } = await supabase.auth.getUser();
+    setMfaFactorId(null);
+    setMfaCode("");
+    await verifyAndLoad(user.id);
+  }
+
+  async function handlePlatformSignOut() {
+    // scope:local so signing out of the console does NOT revoke the superadmin's
+    // sessions elsewhere — only this isolated store is cleared.
+    await supabase.auth.signOut({ scope: "local" });
+    setDealers([]); setSalesmen([]); setPendingListings([]); setWaitlist([]);
+    setLoginEmail(""); setLoginPw(""); setMfaFactorId(null); setMfaCode("");
+    setAuthState("login");
+  }
 
   async function loadAll() {
     setLoading(true);
@@ -481,6 +576,81 @@ export default function AdminPage() {
     { id: "errors", label: "Errors" },
   ];
 
+  // ── Auth gate ──────────────────────────────────────────────────────────────
+  // The console never renders under a non-superadmin session. While the isolated
+  // session is being resolved we hold a neutral screen; with no valid management
+  // session we render a self-contained sign-in gate (its own credentials entry,
+  // separate from the public /login used by dealers/salesmen/buyers).
+  if (authState !== "authed") {
+    const gateWrap = {
+      minHeight: "100vh", background: "#0a0a0f", color: "#f5f5f5",
+      fontFamily: "system-ui, sans-serif", display: "flex",
+      alignItems: "center", justifyContent: "center", padding: 24,
+    };
+    if (authState === "checking") {
+      return <div style={gateWrap}><span style={{ color: "#4b5563", fontSize: 14 }}>Loading…</span></div>;
+    }
+    const mfaMode = !!mfaFactorId;
+    return (
+      <div style={gateWrap}>
+        <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');`}</style>
+        <form
+          onSubmit={mfaMode ? handlePlatformMfa : handlePlatformLogin}
+          style={{ width: "100%", maxWidth: 360, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "32px 28px" }}
+        >
+          <div style={{ textAlign: "center", marginBottom: 22 }}>
+            <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 26, letterSpacing: 3 }}>
+              Shift<span style={{ color: "#dc2626" }}>OS</span>
+            </span>
+            <p style={{ fontSize: 12, color: "#6b7280", marginTop: 4, letterSpacing: 1, textTransform: "uppercase" }}>Superadmin Console</p>
+          </div>
+
+          {mfaMode ? (
+            <>
+              <label style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>Authentication code</label>
+              <input
+                autoFocus inputMode="numeric" autoComplete="one-time-code" maxLength={6}
+                value={mfaCode} onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                placeholder="000000"
+                style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", fontSize: 20, letterSpacing: 6, textAlign: "center", padding: "12px 14px", borderRadius: 9, outline: "none", fontFamily: "monospace" }}
+              />
+            </>
+          ) : (
+            <>
+              <label style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>Email</label>
+              <input
+                type="email" autoFocus autoComplete="username" value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)} placeholder="you@company.com"
+                style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", fontSize: 14, padding: "11px 14px", borderRadius: 9, outline: "none", marginBottom: 14 }}
+              />
+              <label style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600, display: "block", marginBottom: 6 }}>Password</label>
+              <input
+                type="password" autoComplete="current-password" value={loginPw}
+                onChange={(e) => setLoginPw(e.target.value)} placeholder="••••••••"
+                style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", fontSize: 14, padding: "11px 14px", borderRadius: 9, outline: "none" }}
+              />
+            </>
+          )}
+
+          {authError && (
+            <p style={{ color: "#f87171", fontSize: 12, marginTop: 12 }}>{authError}</p>
+          )}
+
+          <button
+            type="submit" disabled={loginBusy}
+            style={{ width: "100%", marginTop: 20, background: loginBusy ? "rgba(220,38,38,0.4)" : "#dc2626", color: "#fff", fontSize: 14, fontWeight: 700, padding: "12px 0", borderRadius: 9, border: "none", cursor: loginBusy ? "not-allowed" : "pointer", fontFamily: "inherit" }}
+          >
+            {loginBusy ? "…" : mfaMode ? "Verify" : "Sign in"}
+          </button>
+
+          <p style={{ textAlign: "center", marginTop: 16, fontSize: 11, color: "#4b5563" }}>
+            Management access only. This console is separate from dealer, salesman and buyer accounts.
+          </p>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <>
       <style>{`
@@ -626,7 +796,7 @@ export default function AdminPage() {
               style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", fontSize: 12, padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit" }}>
               ↻ Refresh
             </button>
-            <button onClick={() => supabase.auth.signOut().then(() => navigate("/"))}
+            <button onClick={handlePlatformSignOut}
               style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171", fontSize: 12, padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit" }}>
               Sign out
             </button>

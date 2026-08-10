@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { supabase } from "../../supabaseClient";
+import { platformClient as supabase } from "../../lib/platformClient";
 import InfoHint from "../ui/InfoHint";
 
 // Security console — login sessions. Reads the superadmin-guarded get_active_sessions
