@@ -278,10 +278,14 @@ export default function DealerOnboarding() {
         return;
       }
 
+      // Google (or any OAuth) hands back a display name — use it when the profile
+      // doesn't already carry one, so a Google user doesn't retype what we have.
+      const metaName = (session.user?.user_metadata?.full_name || session.user?.user_metadata?.name || '').trim();
+
       if (profile) {
         setForm(p => ({
           ...p,
-          fullName: profile.full_name || p.fullName,
+          fullName: profile.full_name || metaName || p.fullName,
           icNumber: profile.ic_number || p.icNumber,
           phone: profile.phone || p.phone,
           dealerName: profile.dealership || p.dealerName,
@@ -290,6 +294,7 @@ export default function DealerOnboarding() {
         return;
       }
 
+      if (metaName) setForm(p => ({ ...p, fullName: p.fullName || metaName }));
       const agreed = sessionStorage.getItem('ob_agreed') === '1';
       setStep(agreed ? 2 : 0);
     };

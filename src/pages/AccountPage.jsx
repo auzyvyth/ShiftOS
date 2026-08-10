@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Heart, Bell, ArrowLeft, ArrowRight, LogOut, Store, Check, X, Clock, PackageCheck } from 'lucide-react';
+import { Heart, Bell, ArrowLeft, ArrowRight, LogOut, Store, Check, X, Clock, PackageCheck, User } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useSavedCars, useSavedCarsDetails } from '../hooks/useSavedCars';
 import CarCard from '../components/CarCard';
@@ -21,6 +21,7 @@ export default function AccountPage() {
   const { savedIds, ready } = useSavedCars();
   const { cars } = useSavedCarsDetails(savedIds, ready);
   const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [checking, setChecking] = useState(true);
   const [alerts, setAlerts] = useState([]);
 
@@ -31,12 +32,14 @@ export default function AccountPage() {
     supabase.auth.getSession().then(async ({ data }) => {
       if (!active) return;
       if (!data.session) { navigate('/buyer-login', { replace: true }); return; }
-      const { data: profile } = await supabase
-        .from('profiles').select('role').eq('id', data.session.user.id).maybeSingle();
+      const { data: prof } = await supabase
+        .from('profiles').select('role, full_name, avatar_url, phone')
+        .eq('id', data.session.user.id).maybeSingle();
       if (!active) return;
-      const sellerRoute = profile?.role && SELLER_ROUTES[profile.role];
+      const sellerRoute = prof?.role && SELLER_ROUTES[prof.role];
       if (sellerRoute) { navigate(sellerRoute, { replace: true }); return; }
       setSession(data.session);
+      setProfile(prof || null);
       setChecking(false);
     });
     return () => { active = false; };
@@ -77,6 +80,32 @@ export default function AccountPage() {
     return () => { active = false; window.removeEventListener('focus', onFocus); };
   }, [session]);
 
+  // Editable "Your details" — lets a buyer see/correct the name+phone we captured
+  // from Google (avatar/name) or seeded from their first WhatsApp enquiry. These
+  // feed ContactGate's prefill so they never retype on the next listing.
+  const [detailName, setDetailName] = useState('');
+  const [detailPhone, setDetailPhone] = useState('');
+  const [savingDetails, setSavingDetails] = useState(false);
+  const [detailsSaved, setDetailsSaved] = useState(false);
+  useEffect(() => {
+    if (!profile) return;
+    setDetailName(profile.full_name || '');
+    setDetailPhone(profile.phone || '');
+  }, [profile]);
+  const saveDetails = async () => {
+    if (!session || savingDetails) return;
+    setSavingDetails(true);
+    setDetailsSaved(false);
+    const patch = { full_name: detailName.trim() || null, phone: detailPhone.trim() || null };
+    const { error } = await supabase.from('profiles').update(patch).eq('id', session.user.id);
+    setSavingDetails(false);
+    if (!error) {
+      setProfile((p) => ({ ...(p || {}), ...patch }));
+      setDetailsSaved(true);
+      setTimeout(() => setDetailsSaved(false), 2500);
+    }
+  };
+
   const deleteAlert = async (id) => {
     await supabase.from('price_alerts').delete().eq('id', id);
     setAlerts(prev => prev.filter(a => a.id !== id));
@@ -89,6 +118,8 @@ export default function AccountPage() {
   }
 
   const email = session?.user?.email || 'Your account';
+  const displayName = profile?.full_name || '';
+  const avatarUrl = profile?.avatar_url || '';
 
   return (
     <div style={{ minHeight: '100vh', background: '#F7F6F2', fontFamily: "system-ui,sans-serif", color: '#111827' }}>
@@ -105,10 +136,21 @@ export default function AccountPage() {
       </div>
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px 80px' }}>
-        {/* Heading */}
-        <div style={{ marginBottom: 32 }}>
-          <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 38, letterSpacing: '0.04em', margin: 0, color: '#111827' }}>MY ACCOUNT</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 14, color: '#6b7280' }}>{email}</p>
+        {/* Heading — greet the buyer by name with their Google avatar when we have it */}
+        <div style={{ marginBottom: 32, display: 'flex', alignItems: 'center', gap: 16 }}>
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="" referrerPolicy="no-referrer" style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid #e5e7eb' }} />
+          ) : (
+            <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(220,38,38,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <User size={26} color="#dc2626" />
+            </div>
+          )}
+          <div style={{ minWidth: 0 }}>
+            <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 38, letterSpacing: '0.04em', margin: 0, color: '#111827', lineHeight: 1 }}>
+              {displayName ? displayName.toUpperCase() : 'MY ACCOUNT'}
+            </h1>
+            <p style={{ margin: '6px 0 0', fontSize: 14, color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis' }}>{email}</p>
+          </div>
         </div>
 
         {/* Become a seller — Salesman Lite */}
@@ -126,6 +168,38 @@ export default function AccountPage() {
             Start selling free <ArrowRight size={15} />
           </Link>
         </div>
+
+        {/* Your details — name + phone the marketplace pre-fills into enquiries */}
+        <section style={{ marginBottom: 40 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+            <User size={18} color="#dc2626" />
+            <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#111827' }}>Your Details</h2>
+          </div>
+          <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 16, padding: 20 }}>
+            <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6b7280', lineHeight: 1.5 }}>
+              We pre-fill these into your enquiries so you don't retype them on every listing.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 14 }}>
+              <label style={{ display: 'block' }}>
+                <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Name</span>
+                <input value={detailName} onChange={(e) => setDetailName(e.target.value)} placeholder="Your name"
+                  style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: 10, padding: '11px 13px', fontSize: 14, color: '#111827', outline: 'none' }} />
+              </label>
+              <label style={{ display: 'block' }}>
+                <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Phone</span>
+                <input value={detailPhone} onChange={(e) => setDetailPhone(e.target.value)} inputMode="tel" placeholder="Phone number"
+                  style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: 10, padding: '11px 13px', fontSize: 14, color: '#111827', outline: 'none' }} />
+              </label>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <button onClick={saveDetails} disabled={savingDetails}
+                style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 14, fontWeight: 700, cursor: savingDetails ? 'default' : 'pointer', opacity: savingDetails ? 0.7 : 1, fontFamily: 'inherit' }}>
+                {savingDetails ? 'Saving…' : 'Save'}
+              </button>
+              {detailsSaved && <span style={{ fontSize: 13, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 5 }}><Check size={14} /> Saved</span>}
+            </div>
+          </div>
+        </section>
 
         {/* Purchase tracker */}
         {purchases.length > 0 && (
