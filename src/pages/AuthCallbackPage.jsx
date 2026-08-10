@@ -28,12 +28,30 @@ export default function AuthCallbackPage() {
       // a buyer signup whose user metadata carries account_type=buyer.)
       const buyerIntent = consumeBuyerIntent() || session.user?.user_metadata?.account_type === 'buyer';
 
+      // A marketplace engagement button (save alert / write review / ask a
+      // question) stashes the page the buyer was on in post_auth_return so we can
+      // return them there after sign-in instead of dumping them on /account and
+      // losing their pending action. Read-and-clear; only honor a same-origin URL
+      // so a poisoned value can't become an open redirect. Falls back to /account.
+      const buyerDest = () => {
+        let dest = '/account';
+        try {
+          const raw = sessionStorage.getItem('post_auth_return');
+          sessionStorage.removeItem('post_auth_return');
+          if (raw) {
+            const u = new URL(raw, window.location.origin);
+            if (u.origin === window.location.origin) dest = u.pathname + u.search + u.hash;
+          }
+        } catch { /* ignore */ }
+        return dest;
+      };
+
       // No profile at all → brand new user. A buyer goes straight to their account;
       // everyone else falls through to seller onboarding.
       if (!profile) {
         if (buyerIntent) {
           await ensureBuyerProfile(session.user);
-          navigate('/account');
+          navigate(buyerDest());
           return;
         }
         // Resume the correct onboarding flow. Prefer the account_type/plan saved
@@ -66,7 +84,7 @@ export default function AuthCallbackPage() {
       // correct it to a buyer profile and route to /account, never a dealer panel.
       if (buyerIntent) {
         const role = await ensureBuyerProfile(session.user);
-        if (role === 'buyer') { navigate('/account'); return; }
+        if (role === 'buyer') { navigate(buyerDest()); return; }
       }
 
       // Onboarding-intent override. The handle_new_user trigger stamps a default
@@ -143,7 +161,7 @@ export default function AuthCallbackPage() {
       } else if (role === 'admin') {
         navigate('/admin');
       } else if (role === 'buyer') {
-        navigate('/account');
+        navigate(buyerDest());
       } else {
         navigate('/salesman');
       }
