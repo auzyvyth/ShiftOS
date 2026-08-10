@@ -114,6 +114,9 @@ export default function PuspakomB5B7Article() {
               </span>
               <span>XDrive Malaysia</span>
             </div>
+            <p style={{ margin: '14px 0 0', fontSize: 11, color: '#b8bcc4', fontStyle: 'italic' }}>
+              Artikel ini ditulis oleh AI.
+            </p>
           </header>
 
           {/* Summary box */}

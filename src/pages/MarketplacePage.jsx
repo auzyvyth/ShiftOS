@@ -688,8 +688,11 @@ export default function MarketplacePage() {
 
         /* Trust strip */
         .mp-trust-strip { padding: 16px 0; border-top: 1px solid rgba(255,255,255,.07); flex-shrink: 0; position: relative; z-index: 1; }
-        .mp-trust-grid  { max-width: 1360px; margin: 0 auto; padding: 0 16px; display: grid; grid-template-columns: 1fr 1fr; row-gap: 12px; }
-        .mp-trust-item  { padding: 4px 10px; display: flex; align-items: center; gap: 10px; }
+        .mp-trust-grid  { max-width: 1360px; margin: 0 auto; padding: 0 16px; display: grid; grid-template-columns: 1fr 1fr; row-gap: 14px; }
+        /* Mobile: balanced 2x2 with content centered in each cell and a single
+           divider down the middle (left-column cells only). */
+        .mp-trust-item  { padding: 6px 10px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .mp-trust-item:nth-child(odd) { border-right: 1px solid rgba(255,255,255,.08); }
 
         /* Budget cards */
         .mp-budget-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
@@ -718,6 +721,8 @@ export default function MarketplacePage() {
           .mp-trust-strip   { padding: 20px 0; }
           .mp-trust-grid    { grid-template-columns: repeat(4,1fr); padding: 0 clamp(20px,4vw,48px); row-gap: 0; }
           .mp-trust-item    { padding: 0 28px; }
+          /* Desktop: dividers between all four (last cell has none). */
+          .mp-trust-item:nth-child(even):not(:last-child) { border-right: 1px solid rgba(255,255,255,.08); }
           .mp-budget-grid   { gap: 10px; }
           .mp-budget-icon   { height: 80px; }
           .mp-filter-fab    { display: flex; }
@@ -887,8 +892,8 @@ export default function MarketplacePage() {
                 { icon: ShieldCheck, number: stats.dealers  != null ? stats.dealers + '+'                  : '—', label:'Verified dealers' },
                 { icon: FileCheck2,  number:'100%', label:'Docs required' },
                 { icon: Ban,         number:'0', label:'Phantom listings' },
-              ].map(({ icon: Icon, number, label }, i) => (
-                <div key={label} className="mp-trust-item" style={{ borderRight: i < 3 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
+              ].map(({ icon: Icon, number, label }) => (
+                <div key={label} className="mp-trust-item">
                   <div style={{ width:34, height:34, borderRadius:9, background:'rgba(220,38,38,0.12)', border:'1px solid rgba(220,38,38,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                     <Icon size={16} color="#f87171" />
                   </div>
