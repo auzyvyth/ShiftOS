@@ -177,7 +177,7 @@ export default function PriceAlertButton({ filters, hasFilters }) {
       {alertsOpen && (
         <div style={{
           position: 'absolute', top: 'calc(100% + 6px)', right: 0,
-          width: '300px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.1)',
+          width: 'min(300px, calc(100vw - 24px))', background: '#ffffff', border: '1px solid rgba(0,0,0,0.1)',
           borderRadius: '14px', boxShadow: '0 16px 48px rgba(0,0,0,0.12)',
           zIndex: 400, overflow: 'hidden',
         }}>
