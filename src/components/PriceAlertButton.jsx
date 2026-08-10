@@ -37,14 +37,24 @@ export default function PriceAlertButton({ filters, hasFilters }) {
       .then(({ data }) => setAlerts(data || []));
   }, [session, saved]);
 
-  // Check if this exact filter combo is already saved
+  // Check if this exact filter combo is already saved. Compare EVERY filter
+  // field — matching on only brand/model/price/state made "Toyota" and
+  // "Toyota SUV 2020+" collide as the same alert, so the button flipped to
+  // "Remove alert" and refused to save the second, more specific search (the
+  // "it only saves one" bug). Distinct searches must be distinctly saveable.
   useEffect(() => {
     if (!alerts.length) { setAlertId(null); return; }
+    const norm = (v) => (v === '' || v === undefined ? null : v);
     const match = alerts.find(a =>
-      (a.brand       || null) === (filters.brand    || null) &&
-      (a.model       || null) === (filters.model    || null) &&
-      (a.max_price   || null) === (filters.maxPrice || null) &&
-      (a.state       || null) === (filters.state    || null)
+      norm(a.brand)     === norm(filters.brand)    &&
+      norm(a.model)     === norm(filters.model)    &&
+      norm(a.variant)   === norm(filters.variant)  &&
+      norm(a.body_type) === norm(filters.bodyType) &&
+      norm(a.state)     === norm(filters.state)    &&
+      norm(a.condition) === norm(filters.condition) &&
+      norm(a.max_price) === norm(filters.maxPrice ? Number(filters.maxPrice) : null) &&
+      norm(a.min_year)  === norm(filters.minYear ? Number(filters.minYear) : null) &&
+      norm(a.max_year)  === norm(filters.maxYear ? Number(filters.maxYear) : null)
     );
     setAlertId(match?.id || null);
   }, [alerts, filters]);

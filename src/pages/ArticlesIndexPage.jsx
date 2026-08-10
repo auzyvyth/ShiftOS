@@ -105,6 +105,9 @@ export default function ArticlesIndexPage() {
             <p style={{ color: '#6b7280', fontSize: 15, lineHeight: 1.7, maxWidth: 560, margin: 0 }}>
               Semua yang perlu anda tahu tentang beli, jual, dan miliki kereta di Malaysia. Ditulis dalam Bahasa Malaysia, dikemas kini untuk 2026.
             </p>
+            <p style={{ margin: '12px 0 0', fontSize: 11, color: '#b8bcc4', fontStyle: 'italic' }}>
+              Semua panduan di sini ditulis oleh AI.
+            </p>
           </header>
 
           {/* Articles list */}

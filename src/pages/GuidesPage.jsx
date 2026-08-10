@@ -79,6 +79,9 @@ function HowItWorksPage() {
           }}>
             Start Browsing Cars <ChevronRight size={15} />
           </Link>
+          <p style={{ margin: '22px 0 0', fontSize: 11, color: 'rgba(255,255,255,0.35)', fontStyle: 'italic' }}>
+            This guide was written by AI.
+          </p>
         </div>
 
         {/* Steps */}

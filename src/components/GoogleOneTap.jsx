@@ -81,7 +81,12 @@ export default function GoogleOneTap() {
         client_id: CLIENT_ID,
         nonce: hashed,
         auto_select: false,
-        cancel_on_tap_outside: true,
+        // Keep the prompt alive when the visitor clicks elsewhere on the page
+        // (e.g. the cookie banner's "Accept"): an outside click used to dismiss
+        // One Tap AND bank a 24h cooldown, so tapping the cookie banner killed
+        // the sign-in prompt for a full day. The visitor closes it with its own
+        // ✕ instead.
+        cancel_on_tap_outside: false,
         context: 'signin',
         // Google made FedCM mandatory for One Tap in current Chrome — without
         // this flag the prompt is silently suppressed on up-to-date browsers
@@ -115,6 +120,12 @@ export default function GoogleOneTap() {
           // whenever they want (the old forced redirect to /account yanked them
           // off the listing they were on — the opposite of the intended UX).
           await ensureBuyerProfile(data.user);
+          // The header resolved the role on SIGNED_IN, which fired before the
+          // line above rewrote the trigger's default 'dealer' stub to 'buyer' —
+          // so it briefly showed a "Dashboard" link to /dashboard (which then
+          // bounces a buyer to /account). Now that the profile is corrected,
+          // tell the header to re-resolve so it shows "My Account" straight away.
+          window.dispatchEvent(new Event('xdrive:auth-refreshed'));
           const name =
             data.user?.user_metadata?.full_name ||
             data.user?.user_metadata?.name ||

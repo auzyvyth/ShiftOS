@@ -20,14 +20,34 @@ export default function ConsentBanner() {
   // Decide whether to show on mount, and honor re-open requests.
   useEffect(() => {
     const c = getConsent();
-    if (!c.decided) { setAnalytics(c.analytics); setPreferences(c.preferences); setOpen(true); }
+    let scrollHandler, timer;
+    if (!c.decided) {
+      setAnalytics(c.analytics); setPreferences(c.preferences);
+      // Defer the banner so it doesn't fight the Google One Tap prompt for the
+      // screen on first paint (One Tap only needs strictly-necessary auth
+      // storage, which is never gated). Reveal it once the visitor scrolls into
+      // the page, with a timed fallback so a non-scrolling visitor still gets
+      // the choice.
+      const reveal = () => {
+        setOpen(true);
+        window.removeEventListener('scroll', scrollHandler);
+        clearTimeout(timer);
+      };
+      scrollHandler = () => { if (window.scrollY > 250) reveal(); };
+      window.addEventListener('scroll', scrollHandler, { passive: true });
+      timer = setTimeout(reveal, 8000);
+    }
     const reopen = () => {
       const cur = getConsent();
       setAnalytics(cur.analytics); setPreferences(cur.preferences);
       setCustomize(true); setOpen(true);
     };
     window.addEventListener(CONSENT_OPEN_EVENT, reopen);
-    return () => window.removeEventListener(CONSENT_OPEN_EVENT, reopen);
+    return () => {
+      window.removeEventListener(CONSENT_OPEN_EVENT, reopen);
+      if (scrollHandler) window.removeEventListener('scroll', scrollHandler);
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   if (!open) return null;
@@ -50,21 +70,21 @@ export default function ConsentBanner() {
           aria-label="Cookie preferences"
           style={{
             position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 100000,
-            background: 'rgba(8,12,20,0.98)', backdropFilter: 'blur(8px)',
-            borderTop: '1px solid rgba(255,255,255,0.10)',
-            boxShadow: '0 -12px 40px rgba(0,0,0,0.45)',
-            padding: 'max(16px, env(safe-area-inset-bottom, 16px)) 16px 16px',
-            fontFamily: 'system-ui, sans-serif', color: 'rgba(255,255,255,0.92)',
+            background: '#ffffff',
+            borderTop: '1px solid #ECEAE3',
+            boxShadow: '0 -12px 40px rgba(15,23,42,0.14)',
+            padding: 'max(18px, env(safe-area-inset-bottom, 18px)) 18px 18px',
+            fontFamily: 'system-ui, sans-serif', color: '#0f1115',
           }}
         >
           <div style={{ maxWidth: 960, margin: '0 auto' }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 800 }}>We value your privacy</p>
-            <p style={{ margin: '6px 0 0', fontSize: 12.5, lineHeight: 1.55, color: 'rgba(255,255,255,0.72)' }}>
+            <p style={{ margin: 0, fontSize: 15.5, fontWeight: 800, color: '#0f1115' }}>We value your privacy</p>
+            <p style={{ margin: '7px 0 0', fontSize: 13.5, lineHeight: 1.6, color: '#4b5563' }}>
               We use first-party storage only (no third-party tracking cookies) to keep the site working, measure
               how listings perform, and remember your details on this device so you don&apos;t retype them. You choose
               what&apos;s on. See our{' '}
               <button type="button" onClick={() => setShowLegal(true)}
-                style={{ background: 'none', border: 'none', padding: 0, color: '#f87171', textDecoration: 'underline', cursor: 'pointer', font: 'inherit' }}>
+                style={{ background: 'none', border: 'none', padding: 0, color: '#dc2626', textDecoration: 'underline', fontWeight: 600, cursor: 'pointer', font: 'inherit' }}>
                 Privacy Policy
               </button>.
             </p>
@@ -88,11 +108,11 @@ export default function ConsentBanner() {
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14, alignItems: 'center' }}>
               <button onClick={acceptAll} style={{ ...btnBase, background: '#dc2626', color: '#fff' }}>Accept all</button>
-              <button onClick={rejectAll} style={{ ...btnBase, background: 'transparent', color: 'rgba(255,255,255,0.9)', border: '1px solid rgba(255,255,255,0.25)' }}>Reject non-essential</button>
+              <button onClick={rejectAll} style={{ ...btnBase, background: '#fff', color: '#0f1115', border: '1px solid #d1d5db' }}>Reject non-essential</button>
               {customize ? (
-                <button onClick={saveChoices} style={{ ...btnBase, background: 'rgba(255,255,255,0.10)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)' }}>Save choices</button>
+                <button onClick={saveChoices} style={{ ...btnBase, background: '#F5F3EE', color: '#0f1115', border: '1px solid #d1d5db' }}>Save choices</button>
               ) : (
-                <button onClick={() => setCustomize(true)} style={{ ...btnBase, background: 'transparent', color: 'rgba(255,255,255,0.6)', border: 'none', textDecoration: 'underline' }}>Customize</button>
+                <button onClick={() => setCustomize(true)} style={{ ...btnBase, background: 'transparent', color: '#6b7280', border: 'none', textDecoration: 'underline' }}>Customize</button>
               )}
             </div>
           </div>
@@ -112,18 +132,18 @@ function ConsentRow({ title, desc, checked, disabled, onChange }) {
         onClick={disabled ? undefined : onChange}
         style={{
           flexShrink: 0, marginTop: 2, width: 38, height: 22, borderRadius: 999, border: 'none',
-          background: checked ? '#dc2626' : 'rgba(255,255,255,0.22)', position: 'relative',
+          background: checked ? '#dc2626' : '#d1d5db', position: 'relative',
           cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1, transition: 'background 0.15s',
         }}
       >
         <span style={{
           position: 'absolute', top: 2, left: checked ? 18 : 2, width: 18, height: 18, borderRadius: '50%',
-          background: '#fff', transition: 'left 0.15s',
+          background: '#fff', boxShadow: '0 1px 2px rgba(0,0,0,0.2)', transition: 'left 0.15s',
         }} />
       </button>
       <span style={{ minWidth: 0 }}>
-        <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.92)' }}>{title}</span>
-        <span style={{ display: 'block', fontSize: 11.5, color: 'rgba(255,255,255,0.6)', lineHeight: 1.45 }}>{desc}</span>
+        <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: '#0f1115' }}>{title}</span>
+        <span style={{ display: 'block', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>{desc}</span>
       </span>
     </label>
   );

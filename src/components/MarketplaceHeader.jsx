@@ -86,7 +86,12 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
     };
     supabase.auth.getSession().then(({ data }) => resolve(data.session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => resolve(s));
-    return () => { active = false; subscription.unsubscribe(); };
+    // One Tap corrects a fresh signup's role AFTER SIGNED_IN fires; it dispatches
+    // this once the profile is a real 'buyer' so the link flips from the stale
+    // "Dashboard" to "My Account" without a page reload.
+    const reResolve = () => supabase.auth.getSession().then(({ data }) => resolve(data.session));
+    window.addEventListener('xdrive:auth-refreshed', reResolve);
+    return () => { active = false; subscription.unsubscribe(); window.removeEventListener('xdrive:auth-refreshed', reResolve); };
   }, []);
 
   useEffect(() => {

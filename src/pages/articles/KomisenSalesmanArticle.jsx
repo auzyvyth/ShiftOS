@@ -112,6 +112,9 @@ export default function KomisenSalesmanArticle() {
               </span>
               <span>ShiftOS by XDrive</span>
             </div>
+            <p style={{ margin: '14px 0 0', fontSize: 11, color: '#b8bcc4', fontStyle: 'italic' }}>
+              Artikel ini ditulis oleh AI.
+            </p>
           </header>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
