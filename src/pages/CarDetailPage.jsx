@@ -582,10 +582,23 @@ export default function CarDetailPage() {
 
   /* current user — used to suppress booking button on own listings */
   const [currentUserId, setCurrentUserId] = useState(null);
+  // The signed-in buyer's saved name/phone (from their account — set in
+  // AccountPage "Your Details"). Used to pre-fill the enquiry and booking forms
+  // so the "we pre-fill these so you don't retype" promise holds across devices,
+  // not just from this device's remembered details.
+  const [buyerProfile, setBuyerProfile] = useState(null);
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setCurrentUserId(data?.session?.user?.id || null);
+    let active = true;
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!active) return;
+      const uid = data?.session?.user?.id || null;
+      setCurrentUserId(uid);
+      if (!uid) return;
+      const { data: prof } = await supabase
+        .from("profiles").select("full_name, phone").eq("id", uid).maybeSingle();
+      if (active && prof) setBuyerProfile({ id: uid, ...prof });
     });
+    return () => { active = false; };
   }, []);
 
   /* booking */
@@ -1018,15 +1031,15 @@ export default function CarDetailPage() {
 
   function handleWhatsApp() {
     // Prefill from device-remembered details (preferences consent tier; returns
-    // null when not granted, so nothing is read back for opted-out buyers).
-    const saved = loadBuyerDetails();
-    if (saved) {
-      setEnquiryForm((p) => ({
-        name: p.name || saved.name || "",
-        phone: p.phone || saved.phone || "",
-        state: p.state || saved.state || "",
-      }));
-    }
+    // null when not granted) first, then fall back to the signed-in buyer's
+    // saved account details so a logged-in buyer never retypes — even on a
+    // fresh device. Only fills empty gaps; never overwrites what's typed.
+    const saved = loadBuyerDetails() || {};
+    setEnquiryForm((p) => ({
+      name: p.name || saved.name || buyerProfile?.full_name || "",
+      phone: p.phone || saved.phone || buyerProfile?.phone || "",
+      state: p.state || saved.state || "",
+    }));
     setShowEnquiryModal(true);
   }
 
@@ -1036,6 +1049,15 @@ export default function CarDetailPage() {
       return;
     }
     trackEvent(supabase, 'booking_click', { car_id: car.id, car_name: `${car.brand} ${car.model} ${car.year}`, dealer_id: car.dealer_id, metadata: { source: 'car_detail' } });
+    // Pre-fill name/phone from device-remembered details, then the signed-in
+    // buyer's saved account details — same promise as the enquiry form. Fills
+    // only empty gaps ("+60" counts as empty phone); never clobbers typed input.
+    const saved = loadBuyerDetails() || {};
+    setForm((f) => ({
+      ...f,
+      name: f.name || saved.name || buyerProfile?.full_name || "",
+      phone: (f.phone && f.phone !== "+60" ? f.phone : (saved.phone || buyerProfile?.phone || "+60")),
+    }));
     setBooked(false);
     setBookingConsent({ appear: true, whatsapp: true });
     setShowBookingModal(true);
