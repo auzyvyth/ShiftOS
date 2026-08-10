@@ -90,7 +90,7 @@ function PlanCard({ plan, current, onSelect }) {
   );
 }
 
-export default function PlanPickerModal({ currentTier, onClose }) {
+export default function PlanPickerModal({ currentTier, onClose, salesmanOnly = false }) {
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -130,11 +130,13 @@ export default function PlanPickerModal({ currentTier, onClose }) {
         </div>
 
         {section('For individual salesmen / agents', SALESMAN_PLANS, 2)}
-        {section('For dealerships', DEALER_PLANS, 3)}
+        {!salesmanOnly && section('For dealerships', DEALER_PLANS, 3)}
 
-        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', textAlign: 'center', marginTop: 4 }}>
-          Switching between salesman and dealer restarts that product's onboarding.
-        </p>
+        {!salesmanOnly && (
+          <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', textAlign: 'center', marginTop: 4 }}>
+            Switching between salesman and dealer restarts that product's onboarding.
+          </p>
+        )}
       </div>
     </div>,
     document.body

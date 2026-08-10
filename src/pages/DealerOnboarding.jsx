@@ -282,7 +282,12 @@ export default function DealerOnboarding() {
       // doesn't already carry one, so a Google user doesn't retype what we have.
       const metaName = (session.user?.user_metadata?.full_name || session.user?.user_metadata?.name || '').trim();
 
-      if (profile) {
+      // Only offer "resume or start over" when there's actual saved progress. A
+      // bare stub (the handle_new_user default row, or a Google sign-in that never
+      // filled anything in) has nothing to resume — treat it as a fresh start
+      // instead of prompting over an empty form.
+      const hasProgress = !!(profile && (profile.full_name || profile.dealership || profile.ic_number || profile.phone));
+      if (profile && hasProgress) {
         setForm(p => ({
           ...p,
           fullName: profile.full_name || metaName || p.fullName,

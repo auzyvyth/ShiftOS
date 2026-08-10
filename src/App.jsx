@@ -58,6 +58,7 @@ const DealerSlugRedirect = lazy(() => import("./pages/DealerSlugRedirect"));
 const SalesmanProfilePage= lazy(() => import("./pages/SalesmanProfilePage"));
 const AuthConfirmPage    = lazy(() => import("./pages/AuthConfirmPage"));
 const AuthCallbackPage   = lazy(() => import("./pages/AuthCallbackPage"));
+const ChoosePlanPage     = lazy(() => import("./pages/ChoosePlanPage"));
 const ResetPasswordPage  = lazy(() => import("./pages/ResetPasswordPage"));
 const SalesmanSetup      = lazy(() => import("./pages/SalesmanSetup"));
 const ImportStockPage    = lazy(() => import("./pages/ImportStockPage"));
@@ -171,6 +172,7 @@ function App() {
           <Route path="/salesman-onboarding/:tier" element={<SalesmanOnboarding />} />
           <Route path="/dealer-onboarding" element={<DealerOnboarding />} />
           <Route path="/dealer-onboarding/:tier" element={<DealerOnboarding />} />
+          <Route path="/choose-plan" element={<ChoosePlanPage />} />
           <Route path="/auth/confirm" element={<AuthConfirmPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/auth/reset" element={<ResetPasswordPage />} />

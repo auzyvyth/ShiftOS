@@ -276,7 +276,12 @@ export default function SalesmanOnboarding() {
       // doesn't already carry one, so a Google user doesn't retype what we have.
       const metaName = (session.user?.user_metadata?.full_name || session.user?.user_metadata?.name || '').trim();
 
-      if (profile) {
+      // Only offer "resume or start over" when there's actual saved progress. A
+      // bare stub (the handle_new_user default dealer row, or a Google sign-in that
+      // never filled anything in) has nothing to resume — treat it as a fresh start
+      // instead of prompting over an empty form.
+      const hasProgress = !!(profile && (profile.full_name || profile.slug || profile.ic_number || profile.phone));
+      if (profile && hasProgress) {
         setForm(p => ({
           ...p,
           fullName: profile.full_name || metaName || p.fullName,
@@ -288,7 +293,8 @@ export default function SalesmanOnboarding() {
         return;
       }
 
-      // Just completed OAuth — skip to identity (legal saved in sessionStorage)
+      // No profile, or a bare stub with zero progress → fresh start. Prefill the
+      // Google display name and go to the flow (Terms unless already agreed).
       if (metaName) setForm(p => ({ ...p, fullName: p.fullName || metaName }));
       const agreed = sessionStorage.getItem('ob_agreed') === '1';
       setStep(agreed ? 2 : 0);
