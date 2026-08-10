@@ -238,7 +238,45 @@ function buildCarHtml(car, dealer, canonical, baseUrl, carBase) {
 }
 
 // ── Listing index pages ───────────────────────────────────────────────────────
-function buildListingHtml({ title, description, h1, intro, cars, canonical, baseUrl, carBase }) {
+// Brand identity schema for the root homepage — mirrors HomePage.jsx Helmet.
+// This is what tells Google the domain IS the "XDrive" brand (brand-name ranking)
+// and enables the sitelinks search box. The bot render omitted it before, so the
+// crawler only ever saw an ItemList and never the Organization/WebSite signal.
+const BRAND_LD = [
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": `${SITE_URL}/#organization`,
+    name: "XDrive",
+    alternateName: "XDrive Malaysia",
+    url: SITE_URL,
+    logo: `${SITE_URL}/xdrivelogo.png`,
+    description:
+      "XDrive is a Malaysian marketplace for verified used, recon and new cars with transparent pricing and full vehicle history.",
+    areaServed: "MY",
+    sameAs: [
+      "https://facebook.com/xdrive.my",
+      "https://instagram.com/xdrive.my",
+      "https://tiktok.com/@xdrive.my",
+    ],
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${SITE_URL}/#website`,
+    name: "XDrive",
+    alternateName: "XDrive Malaysia",
+    url: SITE_URL,
+    publisher: { "@id": `${SITE_URL}/#organization` },
+    potentialAction: {
+      "@type": "SearchAction",
+      target: { "@type": "EntryPoint", urlTemplate: `${SITE_URL}/showroom?q={search_term_string}` },
+      "query-input": "required name=search_term_string",
+    },
+  },
+];
+
+function buildListingHtml({ title, description, h1, intro, cars, canonical, baseUrl, carBase, extraLd = [] }) {
   const items = cars.map((c) => {
     const name = [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
     const price = c.selling_price ? `RM ${Number(c.selling_price).toLocaleString("en-MY")}` : "";
@@ -263,7 +301,7 @@ function buildListingHtml({ title, description, h1, intro, cars, canonical, base
       ${items || "<li>New listings coming soon.</li>"}
     </ul>
   </main>`;
-  return htmlShell({ title, description, canonical, jsonLd: [itemList], body });
+  return htmlShell({ title, description, canonical, jsonLd: [...extraLd, itemList], body });
 }
 
 // ── Static content pages (mirror SPA Helmet) ──────────────────────────────────
@@ -529,7 +567,7 @@ export default async function handler(req) {
       }));
     }
     const META = {
-      "/": { title: "XDrive — Buy & Sell Used Cars in Malaysia", h1: "Buy & sell used cars in Malaysia", desc: "Browse verified used cars for sale in Malaysia from trusted dealers on XDrive — best prices, easy financing and quality-checked listings." },
+      "/": { title: "XDrive — Verified Used & Recon Cars in Malaysia", h1: "Verified used & recon cars in Malaysia", desc: "Buy verified used, recon and new cars in Malaysia with transparent pricing and full vehicle history. Trusted local dealers and easy financing on XDrive." },
       "/marketplace": { title: "Used Car Marketplace Malaysia — Browse & Compare | XDrive", h1: "Used car marketplace Malaysia", desc: "Malaysia's used car marketplace — browse, filter and compare thousands of quality-checked used cars from trusted dealers on XDrive." },
       "/showroom": { title: "Showroom — All Used Cars for Sale in Malaysia | XDrive", h1: "Used car showroom", desc: "Browse every used car for sale on XDrive — filter by brand, price, year, mileage and location across Malaysia." },
       "/cars": { title: "Showroom — All Used Cars for Sale in Malaysia | XDrive", h1: "Used car showroom", desc: "Browse every used car for sale on XDrive — filter by brand, price, year, mileage and location across Malaysia." },
@@ -537,7 +575,10 @@ export default async function handler(req) {
     const m = META[pathname];
     // /cars on root canonicalises to /showroom (same page); others self-canonical.
     const canonical = pathname === "/cars" ? `${SITE_URL}/showroom` : `${SITE_URL}${pathname === "/" ? "" : pathname}`;
-    return html(buildListingHtml({ title: m.title, description: m.desc, h1: m.h1, intro: m.desc, cars, canonical, baseUrl, carBase }));
+    // Root homepage carries the Organization + WebSite/SearchAction brand schema;
+    // the other index pages (marketplace/showroom/cars) stay ItemList-only.
+    const extraLd = pathname === "/" ? BRAND_LD : [];
+    return html(buildListingHtml({ title: m.title, description: m.desc, h1: m.h1, intro: m.desc, cars, canonical, baseUrl, carBase, extraLd }));
   }
 
   // 5. Fallback (unknown / dealer slug landing) — unique-ish, indexable.
