@@ -202,7 +202,7 @@ export default function AdminPage() {
     // Load dealers
     const { data: dealerData } = await supabase
       .from("profiles")
-      .select("id, full_name, email, dealership, subdomain, role, subscription_status, trial_ends_at, created_at, is_active, city, state, whatsapp_number, business_type, payment_status, plan, is_verified, ssm_number, ic_number")
+      .select("id, full_name, email, dealership, subdomain, role, subscription_status, trial_ends_at, created_at, is_active, city, state, whatsapp_number, business_type, payment_status, plan, is_verified, ssm_number, ic_number, ic_last4, ic_verified_at")
       .in("role", ["dealer", "owner", "superadmin"])
       .order("created_at", { ascending: false });
 
@@ -1682,7 +1682,7 @@ export default function AdminPage() {
                                       <p style={{ fontSize: 12, color: "#e5e7eb", marginBottom: 4 }}>{d.business_type || "—"}</p>
                                       <p style={{ fontSize: 12, color: "#9ca3af", marginBottom: 4 }}>{d.city}{d.state ? ", " + d.state : ""}</p>
                                       <p style={{ fontSize: 12, color: "#9ca3af", marginBottom: 4 }}>SSM: <span style={{ color: d.ssm_number ? "#e5e7eb" : "#6b7280" }}>{d.ssm_number || "not provided"}</span></p>
-                                      <p style={{ fontSize: 12, color: "#9ca3af" }}>IC: <span style={{ color: d.ic_number ? "#e5e7eb" : "#6b7280" }}>{d.ic_number || "not provided"}</span></p>
+                                      <p style={{ fontSize: 12, color: "#9ca3af" }}>IC: <span style={{ color: (d.ic_last4 || d.ic_number) ? "#e5e7eb" : "#6b7280" }}>{d.ic_last4 ? `•••••• •• ${d.ic_last4} (verified)` : d.ic_number || "not provided"}</span></p>
                                     </div>
                                     <div>
                                       <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Performance</p>

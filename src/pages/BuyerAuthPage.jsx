@@ -123,7 +123,7 @@ export default function BuyerAuthPage() {
   const handleSignUp = async () => {
     if (!email || !password) { setError("Enter your email and a password."); return; }
     if (!pwValid) { setError("Please meet all the password requirements below."); return; }
-    if (!consent) { setError("Please agree to the Terms of Service and Privacy Policy to continue."); return; }
+    if (!consent) { setError("Please confirm you're 18+ and agree to the Terms of Service and Privacy Policy to continue."); return; }
     setError(""); setLoading(true);
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
@@ -399,7 +399,7 @@ export default function BuyerAuthPage() {
                   style={{ marginTop: 2, flexShrink: 0, accentColor: "#dc2626", width: 15, height: 15, cursor: "pointer" }}
                 />
                 <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.6 }}>
-                  I agree to the{" "}
+                  I confirm I am at least 18 years old and agree to the{" "}
                   <button type="button" onClick={(e) => { e.preventDefault(); setLegalDoc("terms"); }} style={{ background: "none", border: "none", padding: 0, color: "#f87171", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Terms of Service</button>
                   {" "}and{" "}
                   <button type="button" onClick={(e) => { e.preventDefault(); setLegalDoc("privacy"); }} style={{ background: "none", border: "none", padding: 0, color: "#f87171", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Privacy Policy</button>.

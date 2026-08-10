@@ -426,18 +426,17 @@ export default function CarListingPage() {
 
   useEffect(() => setSearchInput(q), [q]);
 
-  /* Debounce search input → URL param */
-  useEffect(() => {
-    const t = setTimeout(() => {
-      const sq = san.q(searchInput);
-      if (sq === q) return;
-      const next = new URLSearchParams(searchParams);
-      sq ? next.set('q', sq) : next.delete('q');
-      next.delete('page');
-      setSearchParams(next, { replace:true });
-    }, 400);
-    return () => clearTimeout(t);
-  }, [searchInput]); // eslint-disable-line
+  // Search commits ONLY on submit (Enter / search-button), never per keystroke —
+  // a debounced live search fired a DB query on every pause in typing, burning
+  // database usage. commitSearch preserves the other active filters instead of
+  // navigating to a bare ?q= (which used to wipe them).
+  const commitSearch = (val) => {
+    const sq = san.q(val);
+    const next = new URLSearchParams(searchParams);
+    sq ? next.set('q', sq) : next.delete('q');
+    next.delete('page');
+    setSearchParams(next, { replace:true });
+  };
 
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? 'hidden' : '';
@@ -713,10 +712,7 @@ export default function CarListingPage() {
                 wrapClassName="cl-topbar-search"
                 wrapStyle={{ flex:1, minWidth:'160px' }}
                 navigateTo={basePath}
-                onSubmit={val=>{
-                  const sq = san.q(val);
-                  navigate(sq ? `${basePath}?q=${encodeURIComponent(sq)}` : basePath);
-                }}
+                onSubmit={commitSearch}
               />
               {/* Sort */}
               <div style={{ position:'relative', flexShrink:0 }}>
@@ -729,13 +725,22 @@ export default function CarListingPage() {
                 </select>
                 <ChevronDown size={12} style={{ position:'absolute', right:'10px', top:'50%', transform:'translateY(-50%)', color:'#9ca3af', pointerEvents:'none' }}/>
               </div>
-              {/* Filters button — always right-most */}
+              {/* Filters button */}
               <button
                 onClick={()=>setDrawerOpen(true)}
                 style={{ display:'flex', alignItems:'center', gap:'6px', flexShrink:0, background:activeChips.length>0?'rgba(220,38,38,0.07)':T.ctrlBg, border:`1px solid ${activeChips.length>0?'rgba(220,38,38,0.3)':T.ctrlBorder}`, borderRadius:'9px', padding:'8px 14px', color:activeChips.length>0?'#dc2626':T.textMuted, fontSize:'13px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.12s' }}
               >
                 <SlidersHorizontal size={13}/> Filters {activeChips.length>0&&`(${activeChips.length})`}
               </button>
+              {/* Save-search — sits right of Filters so its dropdown anchors to the
+                  screen's right edge and opens inward (never clipped off-screen on
+                  mobile, which happened when it lived in the wrapped results row). */}
+              {isMarketplace && (
+                <PriceAlertButton
+                  hasFilters={!!hasFilters}
+                  filters={{ keyword:q||null, brand:brand||null, model:model||null, variant:variant||null, bodyType:bodyType||null, state:state||null, condition:condition||null, maxPrice:maxPrice||null, minYear:yearFrom||null, maxYear:yearTo||null }}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -791,12 +796,6 @@ export default function CarListingPage() {
                 </button>
               )}
             </div>
-            {isMarketplace && (
-              <PriceAlertButton
-                hasFilters={!!hasFilters}
-                filters={{ brand:brand||null, model:model||null, variant:variant||null, bodyType:bodyType||null, state:state||null, condition:condition||null, maxPrice:maxPrice||null, minYear:yearFrom||null, maxYear:yearTo||null }}
-              />
-            )}
           </div>
 
           {/* ── Layout: grid LEFT + sidebar RIGHT ── */}

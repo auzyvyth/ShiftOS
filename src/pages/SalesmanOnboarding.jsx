@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import LegalContent from '../components/onboarding/LegalContent';
 import PlanPickerModal from '../components/onboarding/PlanPickerModal';
+import { isAdultFromIC } from '../utils/icAge';
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
@@ -383,6 +384,8 @@ export default function SalesmanOnboarding() {
     setErr('');
     if (!form.fullName.trim()) { setErr('Full name is required'); return; }
     if (!validateIC(form.icNumber)) { setErr('Enter a valid 12-digit IC number (e.g. 901231-10-1234)'); return; }
+    // The IC encodes date of birth — verify 18+ from it rather than asking again.
+    if (isAdultFromIC(form.icNumber) === false) { setErr('You must be at least 18 years old to sell on XDrive.'); return; }
     setLoading(true);
     try {
       if (userId) {
@@ -457,6 +460,11 @@ export default function SalesmanOnboarding() {
 
   const activate = async () => {
     setErr('');
+    // If an IC was provided (here or at the identity step), enforce 18+ from it.
+    if (form.icNumber && isAdultFromIC(form.icNumber) === false) {
+      setErr('You must be at least 18 years old to sell on XDrive.');
+      return;
+    }
     setLoading(true);
     try {
       const { error } = await supabase.from('profiles').upsert({

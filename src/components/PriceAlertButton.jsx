@@ -21,6 +21,7 @@ export default function PriceAlertButton({ filters, hasFilters }) {
   const [loading, setLoading]   = useState(false);
   const [alerts, setAlerts]     = useState([]);
   const [alertsOpen, setAlertsOpen] = useState(false);
+  const [limitHit, setLimitHit] = useState(false);
   const dropRef                 = useRef(null);
 
   // Track auth state
@@ -46,6 +47,7 @@ export default function PriceAlertButton({ filters, hasFilters }) {
     if (!alerts.length) { setAlertId(null); return; }
     const norm = (v) => (v === '' || v === undefined ? null : v);
     const match = alerts.find(a =>
+      norm(a.keyword)   === norm(filters.keyword)  &&
       norm(a.brand)     === norm(filters.brand)    &&
       norm(a.model)     === norm(filters.model)    &&
       norm(a.variant)   === norm(filters.variant)  &&
@@ -76,12 +78,22 @@ export default function PriceAlertButton({ filters, hasFilters }) {
     });
   };
 
+  const MAX_ALERTS = 20;
+
   const saveAlert = async () => {
     if (!session) { signInWithGoogle(); return; }
+    // Each distinct search is its own saved alert, up to a sane ceiling so one
+    // account can't accumulate unbounded rows (and email volume).
+    if (alerts.length >= MAX_ALERTS) {
+      setLimitHit(true);
+      setTimeout(() => setLimitHit(false), 3000);
+      return;
+    }
     setLoading(true);
     const { error } = await supabase.from('price_alerts').insert({
       user_id:   session.user.id,
       email:     session.user.email,  // trigger will overwrite with canonical value
+      keyword:   filters.keyword  || null,
       brand:     filters.brand    || null,
       model:     filters.model    || null,
       variant:   filters.variant  || null,
@@ -124,13 +136,15 @@ export default function PriceAlertButton({ filters, hasFilters }) {
             fontFamily: "'Outfit',sans-serif", transition: 'all 0.15s', whiteSpace: 'nowrap',
           }}
         >
-          {saved
-            ? <><Check size={13} /> Saved</>
-            : isAlreadySaved
-              ? <><BellOff size={13} /> Remove alert</>
-              : session
-                ? <><Bell size={13} /> Save search</>
-                : <><LogIn size={13} /> Save search</>
+          {limitHit
+            ? <>Limit reached ({MAX_ALERTS})</>
+            : saved
+              ? <><Check size={13} /> Saved</>
+              : isAlreadySaved
+                ? <><BellOff size={13} /> Remove alert</>
+                : session
+                  ? <><Bell size={13} /> Save search</>
+                  : <><LogIn size={13} /> Save search</>
           }
         </button>
       )}
@@ -163,7 +177,7 @@ export default function PriceAlertButton({ filters, hasFilters }) {
       {alertsOpen && (
         <div style={{
           position: 'absolute', top: 'calc(100% + 6px)', right: 0,
-          width: '300px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.1)',
+          width: 'min(300px, calc(100vw - 24px))', background: '#ffffff', border: '1px solid rgba(0,0,0,0.1)',
           borderRadius: '14px', boxShadow: '0 16px 48px rgba(0,0,0,0.12)',
           zIndex: 400, overflow: 'hidden',
         }}>
@@ -173,7 +187,7 @@ export default function PriceAlertButton({ filters, hasFilters }) {
           </div>
           <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
             {alerts.map(a => {
-              const parts = [a.brand, a.model, a.variant].filter(Boolean);
+              const parts = [a.keyword && `"${a.keyword}"`, a.brand, a.model, a.variant].filter(Boolean);
               const tags  = [
                 a.state       && a.state,
                 a.max_price   && `≤ RM ${(a.max_price/1000).toFixed(0)}k`,
