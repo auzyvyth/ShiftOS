@@ -15,7 +15,6 @@ import { readCache, writeCache, precacheImages } from '../utils/localCache';
 import { PRICE_STEPS } from '../components/PriceDrumPicker';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import BodyTypeCarousel from '../components/marketplace/BodyTypeCarousel';
-import BrandStrip from '../components/marketplace/BrandStrip';
 import AdvancedSearchModal from '../components/marketplace/AdvancedSearchModal';
 import SkeletonCard from '../components/ui/SkeletonCard';
 import {
@@ -986,12 +985,6 @@ export default function MarketplacePage() {
             </div>
           </div>
         </section>
-
-        {/* ── Brand strip ── */}
-        <BrandStrip
-          activeBrand={searchParams.get('brand') || ''}
-          hrefFor={(v) => (v ? `/showroom?brand=${encodeURIComponent(v)}` : '/showroom')}
-        />
 
         <div style={S.wrap}>
           {/* Two-column layout */}
