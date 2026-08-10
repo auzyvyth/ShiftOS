@@ -797,7 +797,7 @@ const HomePage = () => {
         <title>
           {profile
             ? `${profile.site_name || profile.dealership} — Used Cars in Malaysia`
-            : "XDrive — Buy & Sell Used Cars in Malaysia"}
+            : "XDrive — Verified Used & Recon Cars in Malaysia"}
         </title>
         <meta
           name="robots"
@@ -808,7 +808,7 @@ const HomePage = () => {
           content={
             profile
               ? `Browse verified used cars from ${profile.site_name || profile.dealership}. Find your perfect car today.`
-              : "Buy & sell verified used cars in Malaysia. Best prices, easy financing, trusted dealers on XDrive."
+              : "Buy verified used, recon and new cars in Malaysia with transparent pricing and full vehicle history. Trusted local dealers and easy financing on XDrive."
           }
         />
         <meta
@@ -816,7 +816,7 @@ const HomePage = () => {
           content={
             profile
               ? `${profile.site_name || profile.dealership} — Used Cars`
-              : "XDrive — Used Cars in Malaysia"
+              : "XDrive — Verified Used & Recon Cars in Malaysia"
           }
         />
         <meta
@@ -836,7 +836,7 @@ const HomePage = () => {
               url: "https://xdrive.my",
               logo: "https://xdrive.my/xdrivelogo.png",
               description:
-                "XDrive is a Malaysian used-car marketplace and the maker of ShiftOS, a used-car dealer management system (DMS) for inventory, leads CRM, sales and salesman commission.",
+                "XDrive is a Malaysian marketplace for verified used, recon and new cars with transparent pricing and full vehicle history, and the maker of ShiftOS, a used-car dealer management system (DMS).",
               areaServed: "MY",
               sameAs: [
                 "https://facebook.com/xdrive.my",
@@ -847,6 +847,27 @@ const HomePage = () => {
                 "@type": "ContactPoint",
                 contactType: "Customer Service",
                 availableLanguage: ["en", "ms"],
+              },
+            })}
+          </script>
+        )}
+        {!profile && (
+          <script type="application/ld+json">
+            {JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              "@id": "https://xdrive.my/#website",
+              name: "XDrive",
+              alternateName: "XDrive Malaysia",
+              url: "https://xdrive.my",
+              publisher: { "@id": "https://xdrive.my/#organization" },
+              potentialAction: {
+                "@type": "SearchAction",
+                target: {
+                  "@type": "EntryPoint",
+                  urlTemplate: "https://xdrive.my/showroom?q={search_term_string}",
+                },
+                "query-input": "required name=search_term_string",
               },
             })}
           </script>
