@@ -249,9 +249,14 @@ const circleImage = async (url, diamMm) => {
 
 const generateQuotationPDF = async ({ dealer, salesman, carDetails, calc, fmt }) => {
   const { jsPDF } = await import('jspdf');
-  const doc = new jsPDF({ format: 'a4', unit: 'mm' });
 
-  const PW = 210, MARGIN = 16, CW = PW - MARGIN * 2;
+  // Square 1:1 "Instagram post" page so the quote fills a phone screen and reads
+  // large — an A4 portrait shrinks to unreadable on mobile. The content is more
+  // than one square can hold at a legible size, so it's a two-slide carousel:
+  // slide 1 is the hook (car photo + seller + the two big numbers), slide 2 is
+  // the full breakdown with large rows.
+  const PW = 200, PH = 200, MARGIN = 14, CW = PW - MARGIN * 2;
+  const doc = new jsPDF({ format: [PW, PH], unit: 'mm' });
 
   // Palette — one red accent on white.
   const INK = [17, 24, 39], SUB = [107, 114, 128], FAINT = [156, 163, 175];
@@ -263,150 +268,168 @@ const generateQuotationPDF = async ({ dealer, salesman, carDetails, calc, fmt })
     doc.setTextColor(...color);
   };
 
-  const BANNER_H = 48;
+  const CAR_H = 72; // ~2.4:1 — a proper landscape car shot, not a thin letterbox
   // Load remote imagery up front (parallel) so the rest of the layout is sync.
   const [carImg, avatarImg] = await Promise.all([
-    coverImage(carDetails.image, CW, BANNER_H, 3),
-    circleImage(carDetails.sellerAvatar, 20),
+    coverImage(carDetails.image, CW, CAR_H, 4),
+    circleImage(carDetails.sellerAvatar, 24),
   ]);
 
-  let y = 16;
-
-  // ── Header: brand wordmark + quotation label + date ────────────────────────
   const brandName = dealer?.dealership || dealer?.site_name || salesman?.dealership || salesman?.site_name || null;
-  doc.setFillColor(...RED);
-  doc.rect(MARGIN, y - 4, 2, 7, 'F');
-  setFont(14, 'bold', INK);
-  doc.text(brandName || 'XDRIVE.MY', MARGIN + 5, y + 2);
-  setFont(8, 'normal', FAINT);
-  const dateStr = new Date().toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' });
-  doc.text(dateStr, PW - MARGIN, y - 1, { align: 'right' });
-  setFont(8, 'bold', RED);
-  doc.text('VEHICLE FINANCING QUOTATION', PW - MARGIN, y + 3.5, { align: 'right' });
-  y += 10;
-
-  // ── Car photo banner ───────────────────────────────────────────────────────
-  if (carImg) {
-    doc.addImage(carImg, 'JPEG', MARGIN, y, CW, BANNER_H);
-    doc.setDrawColor(...LINE);
-    doc.roundedRect(MARGIN, y, CW, BANNER_H, 3, 3, 'S');
-    y += BANNER_H + 6;
-  }
-
-  // Car name + listed price strip
-  setFont(13, 'bold', INK);
-  doc.text(carDetails.name || 'Vehicle', MARGIN, y);
-  const metaBits = [carDetails.year, carDetails.color].filter(Boolean).join('  ·  ');
-  if (metaBits) {
-    setFont(9, 'normal', SUB);
-    doc.text(metaBits, MARGIN, y + 5);
-  }
-  setFont(8, 'bold', FAINT);
-  doc.text('LISTED PRICE', PW - MARGIN, y - 1.5, { align: 'right' });
-  setFont(14, 'bold', RED);
-  doc.text(`RM ${fmt(carDetails.price)}`, PW - MARGIN, y + 4, { align: 'right' });
-  y += metaBits ? 12 : 9;
-
-  // ── Seller trust card ──────────────────────────────────────────────────────
   const sellerName = salesman?.full_name || salesman?.name || brandName || 'XDrive.my';
   const sellerContact = salesman?.whatsapp_number || salesman?.phone || dealer?.whatsapp_number || null;
   const sellerBio = salesman?.bio || null;
   const sellerRole = salesman ? (salesman.job_title || 'Sales Consultant') : (brandName ? 'Dealership' : null);
   const sellerVerified = !!(salesman?.is_verified || dealer?.is_verified);
-  const bioLines = sellerBio ? doc.splitTextToSize(`"${sellerBio}"`, CW - 34).slice(0, 2) : [];
-  const cardH = Math.max(26, 16 + bioLines.length * 4);
+  const dateStr = new Date().toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' });
 
+  // Small brand header, shared by both slides.
+  const drawHeader = (y, label) => {
+    doc.setFillColor(...RED);
+    doc.rect(MARGIN, y - 5, 2.5, 9, 'F');
+    setFont(16, 'bold', INK);
+    doc.text(brandName || 'XDRIVE.MY', MARGIN + 6.5, y + 2);
+    setFont(9, 'normal', FAINT);
+    doc.text(dateStr, PW - MARGIN, y - 1.5, { align: 'right' });
+    setFont(9, 'bold', RED);
+    doc.text(label, PW - MARGIN, y + 3.5, { align: 'right' });
+  };
+
+  // ════ SLIDE 1 — the hook ════════════════════════════════════════════════════
+  let y = 17;
+  drawHeader(y, 'VEHICLE FINANCING QUOTATION');
+  y += 13;
+
+  // Car photo
+  if (carImg) {
+    doc.addImage(carImg, 'JPEG', MARGIN, y, CW, CAR_H);
+    doc.setDrawColor(...LINE);
+    doc.roundedRect(MARGIN, y, CW, CAR_H, 4, 4, 'S');
+    y += CAR_H + 7;
+  }
+
+  // Car name + listed price. Shrink the name to fit the space left of the price
+  // block (long variant names like "Civic FL5 TYPE-R 2.0L HATCHBACK" otherwise
+  // collide with "RM 255,000"), then ellipsize if it's still too long.
+  let nm = carDetails.name || 'Vehicle';
+  const nameAvail = CW - 62;
+  let nameSize = 17;
+  setFont(nameSize, 'bold', INK);
+  while (doc.getTextWidth(nm) > nameAvail && nameSize > 12) { nameSize -= 0.5; doc.setFontSize(nameSize); }
+  if (doc.getTextWidth(nm) > nameAvail) {
+    while (nm.length > 4 && doc.getTextWidth(nm + '...') > nameAvail) nm = nm.slice(0, -1);
+    nm = nm.replace(/\s+$/, '') + '...';
+  }
+  doc.text(nm, MARGIN, y);
+  const metaBits = [carDetails.year, carDetails.color].filter(Boolean).join('  ·  ');
+  if (metaBits) {
+    setFont(10.5, 'normal', SUB);
+    doc.text(metaBits, MARGIN, y + 6);
+  }
+  setFont(9, 'bold', FAINT);
+  doc.text('LISTED PRICE', PW - MARGIN, y - 2, { align: 'right' });
+  setFont(18, 'bold', RED);
+  doc.text(`RM ${fmt(carDetails.price)}`, PW - MARGIN, y + 5, { align: 'right' });
+  y += metaBits ? 15 : 11;
+
+  // Seller trust card. Bio is capped at 2 lines; append an ellipsis when clipped
+  // so it reads as intentional rather than cut off mid-word.
+  const allBio = sellerBio ? doc.splitTextToSize(sellerBio, CW - 42) : [];
+  const bioLines = allBio.slice(0, 2);
+  if (allBio.length > 2 && bioLines.length === 2) {
+    bioLines[1] = bioLines[1].replace(/[\s.,]+$/, '') + '...';
+  }
+  const cardH = Math.max(36, 22 + bioLines.length * 4.8);
   doc.setFillColor(...TINT);
   doc.setDrawColor(...LINE);
-  doc.roundedRect(MARGIN, y, CW, cardH, 3, 3, 'FD');
+  doc.roundedRect(MARGIN, y, CW, cardH, 4, 4, 'FD');
 
-  const av = MARGIN + 4, avD = 20, avCy = y + cardH / 2;
+  const avD = 24, av = MARGIN + 5, avCy = y + cardH / 2;
   if (avatarImg) {
     doc.addImage(avatarImg, 'JPEG', av, avCy - avD / 2, avD, avD);
   } else {
     doc.setFillColor(...RED);
     doc.circle(av + avD / 2, avCy, avD / 2, 'F');
-    setFont(12, 'bold', [255, 255, 255]);
-    doc.text((sellerName[0] || 'X').toUpperCase(), av + avD / 2, avCy + 1.5, { align: 'center' });
+    setFont(15, 'bold', [255, 255, 255]);
+    doc.text((sellerName[0] || 'X').toUpperCase(), av + avD / 2, avCy + 2, { align: 'center' });
   }
 
-  const tx = av + avD + 5;
-  let ty = y + 7;
-  setFont(7, 'bold', FAINT);
+  const tx = av + avD + 6;
+  let ty = y + 9;
+  setFont(8, 'bold', FAINT);
   doc.text('PREPARED BY', tx, ty);
-  ty += 5;
-  setFont(12, 'bold', INK);
+  ty += 6.5;
+  setFont(15, 'bold', INK);
   doc.text(sellerName, tx, ty);
   const nameW = doc.getTextWidth(sellerName);
   if (sellerVerified) {
-    const bx = tx + nameW + 3.8, by = ty - 1.4;
+    const bx = tx + nameW + 4.6, by = ty - 1.8;
     doc.setFillColor(...RED);
-    doc.circle(bx, by, 2, 'F');
+    doc.circle(bx, by, 2.5, 'F');
     // White tick drawn as two strokes — cleaner and more trustworthy than "OK".
     doc.setDrawColor(255, 255, 255);
-    doc.setLineWidth(0.5);
-    doc.line(bx - 1, by + 0.1, bx - 0.3, by + 0.9);
-    doc.line(bx - 0.3, by + 0.9, bx + 1.1, by - 0.9);
+    doc.setLineWidth(0.6);
+    doc.line(bx - 1.2, by + 0.1, bx - 0.4, by + 1.1);
+    doc.line(bx - 0.4, by + 1.1, bx + 1.3, by - 1.1);
     doc.setLineWidth(0.2);
   }
-  ty += 4.5;
-  setFont(8.5, 'normal', SUB);
+  ty += 6;
+  setFont(10, 'normal', SUB);
   const contactLine = [sellerRole, sellerContact].filter(Boolean).join('   ·   ');
-  if (contactLine) { doc.text(contactLine, tx, ty); ty += 4.5; }
+  if (contactLine) { doc.text(contactLine, tx, ty); ty += 6; }
   if (bioLines.length) {
-    setFont(8.5, 'italic', [75, 85, 99]);
+    setFont(10, 'italic', [75, 85, 99]);
     doc.text(bioLines, tx, ty);
   }
-  y += cardH + 8;
+  y += cardH + 7;
 
-  // ── Hero: the two figures that matter, made large ──────────────────────────
-  const heroH = 24, halfW = CW / 2;
+  // Hero — the two figures that matter, made large.
+  const heroH = 28, halfW = CW / 2;
   doc.setDrawColor(...LINE);
-  doc.roundedRect(MARGIN, y, CW, heroH, 3, 3, 'S');
-  doc.setDrawColor(...LINE);
-  doc.line(MARGIN + halfW, y + 4, MARGIN + halfW, y + heroH - 4);
+  doc.roundedRect(MARGIN, y, CW, heroH, 4, 4, 'S');
+  doc.line(MARGIN + halfW, y + 4.5, MARGIN + halfW, y + heroH - 4.5);
+  setFont(9, 'bold', FAINT);
+  doc.text('MONTHLY INSTALLMENT', MARGIN + halfW / 2, y + 9, { align: 'center' });
+  setFont(25, 'bold', INK);
+  doc.text(`RM ${fmt(calc.monthly, 2)}`, MARGIN + halfW / 2, y + 21, { align: 'center' });
+  setFont(9, 'bold', FAINT);
+  doc.text('EST. ON-ROAD PRICE', MARGIN + halfW + halfW / 2, y + 9, { align: 'center' });
+  setFont(25, 'bold', RED);
+  doc.text(`RM ${fmt(calc.onRoadPrice)}`, MARGIN + halfW + halfW / 2, y + 21, { align: 'center' });
 
-  setFont(8, 'bold', FAINT);
-  doc.text('MONTHLY INSTALLMENT', MARGIN + halfW / 2, y + 8, { align: 'center' });
-  setFont(22, 'bold', INK);
-  doc.text(`RM ${fmt(calc.monthly, 2)}`, MARGIN + halfW / 2, y + 18, { align: 'center' });
+  // ════ SLIDE 2 — the breakdown ═══════════════════════════════════════════════
+  doc.addPage([PW, PH], 'portrait');
+  y = 18;
+  drawHeader(y, 'FINANCING SUMMARY');
+  setFont(10, 'normal', SUB);
+  doc.text(carDetails.name || 'Vehicle', MARGIN, y + 9);
+  y += 20;
 
-  setFont(8, 'bold', FAINT);
-  doc.text('EST. ON-ROAD PRICE', MARGIN + halfW + halfW / 2, y + 8, { align: 'center' });
-  setFont(22, 'bold', RED);
-  doc.text(`RM ${fmt(calc.onRoadPrice)}`, MARGIN + halfW + halfW / 2, y + 18, { align: 'center' });
-  y += heroH + 9;
-
-  // ── Table renderer ─────────────────────────────────────────────────────────
-  const RH = 6.4; // row height
-  // Break to a fresh page before a block that wouldn't fit, so a car photo plus
-  // a full insurance breakdown never clips the footer off the bottom edge.
-  const ensure = (need) => { if (y + need > 290) { doc.addPage(); y = 16; } };
+  const RH = 7; // large rows for phone legibility; both tables fit one slide
+  const ensure = (need) => { if (y + need > PH - 12) { doc.addPage([PW, PH], 'portrait'); y = 18; } };
   const sectionTitle = (label) => {
-    setFont(9, 'bold', INK);
+    setFont(11, 'bold', INK);
     doc.setFillColor(...RED);
-    doc.rect(MARGIN, y - 3.2, 1.6, 4.2, 'F');
-    doc.text(label, MARGIN + 4, y);
-    y += 6;
+    doc.rect(MARGIN, y - 3.6, 2, 5, 'F');
+    doc.text(label, MARGIN + 5, y);
+    y += 8;
   };
   const tableRows = (data) => {
     data.forEach(([label, value, opt = {}], i) => {
       const rowY = y + i * RH;
       if (i % 2 === 0) {
         doc.setFillColor(...TINT);
-        doc.rect(MARGIN, rowY - 4.6, CW, RH, 'F');
+        doc.rect(MARGIN, rowY - 5.8, CW, RH, 'F');
       }
-      const sub = opt.sub;
-      const strong = opt.strong;
-      setFont(9, strong ? 'bold' : 'normal', strong ? RED : sub ? FAINT : SUB);
-      doc.text(label, MARGIN + (sub ? 7 : 3), rowY);
-      setFont(9, strong ? 'bold' : 'bold', strong ? RED : sub ? FAINT : INK);
-      doc.text(value, PW - MARGIN - 3, rowY, { align: 'right' });
+      const sub = opt.sub, strong = opt.strong;
+      setFont(10.5, strong ? 'bold' : 'normal', strong ? RED : sub ? FAINT : SUB);
+      doc.text(label, MARGIN + (sub ? 8 : 4), rowY);
+      setFont(strong ? 12 : 10.5, 'bold', strong ? RED : sub ? FAINT : INK);
+      doc.text(value, PW - MARGIN - 4, rowY, { align: 'right' });
     });
-    y += data.length * RH + 6;
+    y += data.length * RH + 8;
   };
 
-  // ── Financing breakdown ────────────────────────────────────────────────────
   sectionTitle('FINANCING BREAKDOWN');
   tableRows([
     ['Car Price',            `RM ${fmt(calc.carPrice)}`],
@@ -419,9 +442,8 @@ const generateQuotationPDF = async ({ dealer, salesman, carDetails, calc, fmt })
     ['Total Loan Repayment', `RM ${fmt(calc.totalLoan)}`, { strong: true }],
   ]);
 
-  // ── On-road costs ──────────────────────────────────────────────────────────
   if (calc.roadTax != null || calc.insCalc != null) {
-    ensure(6 + 6 * RH + 6);
+    ensure(8 + 6 * RH + 8);
     sectionTitle('ON-ROAD COSTS (ESTIMATE)');
     const onRoad = [];
     if (calc.roadTax != null) {
@@ -442,21 +464,19 @@ const generateQuotationPDF = async ({ dealer, salesman, carDetails, calc, fmt })
     tableRows(onRoad);
   }
 
-  // ── Footer ─────────────────────────────────────────────────────────────────
-  // The two-up hero already states the monthly + on-road figures large; no need
-  // to restate them in a third band. Close with the validity note + credit.
-  ensure(15);
+  // Footer
+  ensure(18);
   doc.setDrawColor(...LINE);
   doc.line(MARGIN, y, PW - MARGIN, y);
-  y += 5;
-  setFont(7.5, 'italic', FAINT);
-  doc.text('Valid for 7 days, subject to change without notice. All figures are estimates; final pricing subject to confirmation.', MARGIN, y);
-  y += 7;
-  setFont(8, 'bold', RED);
+  y += 6;
+  setFont(8.5, 'italic', FAINT);
+  doc.text(doc.splitTextToSize('Valid for 7 days, subject to change without notice. All figures are estimates; final pricing subject to confirmation.', CW), MARGIN, y);
+  y += 9;
+  setFont(9, 'bold', RED);
   doc.text('Generated via XDrive.my', MARGIN, y);
   if (sellerContact) {
-    setFont(8, 'normal', SUB);
-    doc.text(`Questions? Contact ${sellerName} · ${sellerContact}`, PW - MARGIN, y, { align: 'right' });
+    setFont(9, 'normal', SUB);
+    doc.text(`${sellerName} · ${sellerContact}`, PW - MARGIN, y, { align: 'right' });
   }
 
   doc.save(`quotation-${Date.now()}.pdf`);
