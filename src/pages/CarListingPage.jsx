@@ -7,7 +7,6 @@ import { useCompare } from '../hooks/useCompare';
 import MarketplaceHeader from '../components/MarketplaceHeader';
 import Header from '../components/Header';
 import MarketplaceFooter from '../components/MarketplaceFooter';
-import BrandStrip from '../components/marketplace/BrandStrip';
 import StickyWhatsAppButton from '../components/StickyWhatsAppButton';
 import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
@@ -777,14 +776,6 @@ export default function CarListingPage() {
             </div>
           </div>
         </div>
-
-        {/* ── Brand strip — marketplace only ── */}
-        {isMarketplace && (
-          <BrandStrip
-            activeBrand={brand || ''}
-            hrefFor={(v) => (v ? `${basePath}?brand=${encodeURIComponent(v)}` : basePath)}
-          />
-        )}
 
         {/* ── Main content ── */}
         <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'20px 20px 80px' }}>
