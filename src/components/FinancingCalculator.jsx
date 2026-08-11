@@ -158,100 +158,257 @@ const ResultRow = ({ label, value, highlight, muted, borderTop }) => (
   </div>
 );
 
+// ─── PDF image helpers ─────────────────────────────────────────────────────────
+// Remote images (car photo, seller avatar) live on the Supabase CDN. jsPDF can't
+// take a URL — it needs raw image data — so we fetch → dataURL → redraw onto a
+// canvas. Redrawing does three jobs at once: (a) normalises any format (incl.
+// webp) to a jsPDF-safe JPEG/PNG, (b) cover-crops to the exact box we want, and
+// (c) rounds corners / clips to a circle. Every step is wrapped so a failed or
+// blocked image never breaks the quotation — the block simply doesn't render.
+
+const fetchDataUrl = (url) => new Promise((resolve) => {
+  if (!url) return resolve(null);
+  fetch(url, { mode: 'cors' })
+    .then((r) => (r.ok ? r.blob() : Promise.reject(new Error('bad status'))))
+    .then((blob) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.onerror = () => resolve(null);
+      fr.readAsDataURL(blob);
+    })
+    .catch(() => resolve(null));
+});
+
+const loadImg = (dataUrl) => new Promise((resolve) => {
+  if (!dataUrl) return resolve(null);
+  const img = new Image();
+  img.onload = () => resolve(img);
+  img.onerror = () => resolve(null);
+  img.src = dataUrl;
+});
+
+const roundRectPath = (ctx, x, y, w, h, r) => {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+};
+
+// Cover-crop an image into a wMm x hMm box (rendered at ~300dpi), rounded corners
+// drawn on a white ground so corners blend into the white page. Returns a JPEG
+// dataURL ready for doc.addImage.
+const coverImage = async (url, wMm, hMm, radiusMm = 0) => {
+  const img = await loadImg(await fetchDataUrl(url));
+  if (!img || !img.width || !img.height) return null;
+  const PX = 12; // px per mm ≈ 300dpi
+  const W = Math.round(wMm * PX), H = Math.round(hMm * PX), R = radiusMm * PX;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+  if (R > 0) { roundRectPath(ctx, 0, 0, W, H, R); ctx.clip(); }
+  const ar = img.width / img.height, tar = W / H;
+  let sw, sh, sx, sy;
+  if (ar > tar) { sh = img.height; sw = sh * tar; sx = (img.width - sw) / 2; sy = 0; }
+  else { sw = img.width; sh = sw / tar; sx = 0; sy = (img.height - sh) / 2; }
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, W, H);
+  return canvas.toDataURL('image/jpeg', 0.9);
+};
+
+// Centre-crop an image into a circle of the given diameter. Returns JPEG on a
+// white ground (corners = white, invisible over the white card).
+const circleImage = async (url, diamMm) => {
+  const img = await loadImg(await fetchDataUrl(url));
+  if (!img || !img.width || !img.height) return null;
+  const PX = 12;
+  const D = Math.round(diamMm * PX);
+  const canvas = document.createElement('canvas');
+  canvas.width = D; canvas.height = D;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, D, D);
+  ctx.beginPath();
+  ctx.arc(D / 2, D / 2, D / 2, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+  const s = Math.min(img.width, img.height);
+  ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, D, D);
+  return canvas.toDataURL('image/jpeg', 0.9);
+};
+
 // ─── PDF generation ───────────────────────────────────────────────────────────
+// Clean-white quotation. Beyond the numbers it carries TRUST signals — the car
+// photo, the seller's face, name, contact and bio — so a buyer who receives it
+// can see exactly who prepared it. The seller block is data-driven: pass a
+// salesman (Lite/Premium) or a dealer and it renders whatever is present, so the
+// same layout serves every tier without change.
 
 const generateQuotationPDF = async ({ dealer, salesman, carDetails, calc, fmt }) => {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ format: 'a4', unit: 'mm' });
 
-  const PW = 210, MARGIN = 18, CW = PW - MARGIN * 2;
-  let y = 0;
+  const PW = 210, MARGIN = 16, CW = PW - MARGIN * 2;
 
-  const setFont = (size, weight = 'normal', color = [30, 30, 30]) => {
+  // Palette — one red accent on white.
+  const INK = [17, 24, 39], SUB = [107, 114, 128], FAINT = [156, 163, 175];
+  const RED = [220, 38, 38], LINE = [229, 231, 235], TINT = [249, 250, 251];
+
+  const setFont = (size, weight = 'normal', color = INK) => {
     doc.setFontSize(size);
     doc.setFont('helvetica', weight);
     doc.setTextColor(...color);
   };
 
-  // ── Red header bar ─────────────────────────────────────────────────────────
-  doc.setFillColor(220, 38, 38);
-  doc.rect(0, 0, PW, 22, 'F');
+  const BANNER_H = 48;
+  // Load remote imagery up front (parallel) so the rest of the layout is sync.
+  const [carImg, avatarImg] = await Promise.all([
+    coverImage(carDetails.image, CW, BANNER_H, 3),
+    circleImage(carDetails.sellerAvatar, 20),
+  ]);
 
-  // Header text
-  setFont(14, 'bold', [255, 255, 255]);
-  doc.text('VEHICLE FINANCING QUOTATION', MARGIN, 14);
-  setFont(9, 'normal', [255, 200, 200]);
-  const dateStr = new Date().toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' });
-  doc.text(`Date: ${dateStr}`, PW - MARGIN, 14, { align: 'right' });
-  y = 32;
+  let y = 16;
 
-  // ── Dealership / brand info ────────────────────────────────────────────────
-  // Prefer the dealer's brand; sole agents (Salesman Lite/Premium) carry their
-  // own dealership/site_name on their own profile row since they have no
-  // separate dealer. Falls back to the XDrive.my brand only when neither is
-  // known — never left blank and never a random/unrelated dealer.
+  // ── Header: brand wordmark + quotation label + date ────────────────────────
   const brandName = dealer?.dealership || dealer?.site_name || salesman?.dealership || salesman?.site_name || null;
-  const brandContact = dealer?.whatsapp_number || salesman?.whatsapp_number || salesman?.phone || null;
-  if (brandName) {
-    setFont(13, 'bold', [30, 30, 30]);
-    doc.text(brandName, MARGIN, y);
-    y += 6;
-    if (brandContact) {
-      setFont(10, 'normal', [100, 100, 100]);
-      doc.text(`WhatsApp / Phone: ${brandContact}`, MARGIN, y);
-      y += 5;
-    }
-    y += 4;
-  } else {
-    setFont(13, 'bold', [220, 38, 38]);
-    doc.text('XDRIVE.MY', MARGIN, y);
-    y += 10;
-  }
-
-  // Divider
-  doc.setDrawColor(220, 220, 220);
-  doc.line(MARGIN, y, PW - MARGIN, y);
-  y += 8;
-
-  // ── Two-column: Salesman | Car Details ────────────────────────────────────
-  const colW = CW / 2 - 4;
-
-  // Left: Salesman
-  setFont(8, 'bold', [150, 150, 150]);
-  doc.text('PREPARED BY', MARGIN, y);
-  setFont(11, 'bold', [30, 30, 30]);
-  doc.text(salesman?.full_name || salesman?.name || brandName || 'XDrive.my', MARGIN, y + 6);
-  const preparedByContact = salesman?.phone || salesman?.whatsapp_number || (!salesman ? brandContact : null);
-  if (preparedByContact) {
-    setFont(9, 'normal', [80, 80, 80]);
-    doc.text(`Contact: ${preparedByContact}`, MARGIN, y + 12);
-  }
-
-  // Right: Car Details
-  const rx = MARGIN + colW + 8;
-  setFont(8, 'bold', [150, 150, 150]);
-  doc.text('VEHICLE DETAILS', rx, y);
-  setFont(11, 'bold', [30, 30, 30]);
-  doc.text(carDetails.name || 'Vehicle', rx, y + 6);
-  setFont(9, 'normal', [80, 80, 80]);
-  if (carDetails.year) doc.text(`Year: ${carDetails.year}`, rx, y + 12);
-  if (carDetails.color) doc.text(`Colour: ${carDetails.color}`, rx, y + 17);
-  setFont(10, 'bold', [220, 38, 38]);
-  doc.text(`Listed Price: RM ${fmt(carDetails.price)}`, rx, y + (carDetails.color ? 23 : 18));
-
-  y += 32;
-
-  // Divider
-  doc.setDrawColor(220, 220, 220);
-  doc.line(MARGIN, y, PW - MARGIN, y);
+  doc.setFillColor(...RED);
+  doc.rect(MARGIN, y - 4, 2, 7, 'F');
+  setFont(14, 'bold', INK);
+  doc.text(brandName || 'XDRIVE.MY', MARGIN + 5, y + 2);
+  setFont(8, 'normal', FAINT);
+  const dateStr = new Date().toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' });
+  doc.text(dateStr, PW - MARGIN, y - 1, { align: 'right' });
+  setFont(8, 'bold', RED);
+  doc.text('VEHICLE FINANCING QUOTATION', PW - MARGIN, y + 3.5, { align: 'right' });
   y += 10;
 
-  // ── Financing Breakdown ───────────────────────────────────────────────────
-  setFont(10, 'bold', [30, 30, 30]);
-  doc.text('FINANCING BREAKDOWN', MARGIN, y);
-  y += 8;
+  // ── Car photo banner ───────────────────────────────────────────────────────
+  if (carImg) {
+    doc.addImage(carImg, 'JPEG', MARGIN, y, CW, BANNER_H);
+    doc.setDrawColor(...LINE);
+    doc.roundedRect(MARGIN, y, CW, BANNER_H, 3, 3, 'S');
+    y += BANNER_H + 6;
+  }
 
-  const rows = [
+  // Car name + listed price strip
+  setFont(13, 'bold', INK);
+  doc.text(carDetails.name || 'Vehicle', MARGIN, y);
+  const metaBits = [carDetails.year, carDetails.color].filter(Boolean).join('  ·  ');
+  if (metaBits) {
+    setFont(9, 'normal', SUB);
+    doc.text(metaBits, MARGIN, y + 5);
+  }
+  setFont(8, 'bold', FAINT);
+  doc.text('LISTED PRICE', PW - MARGIN, y - 1.5, { align: 'right' });
+  setFont(14, 'bold', RED);
+  doc.text(`RM ${fmt(carDetails.price)}`, PW - MARGIN, y + 4, { align: 'right' });
+  y += metaBits ? 12 : 9;
+
+  // ── Seller trust card ──────────────────────────────────────────────────────
+  const sellerName = salesman?.full_name || salesman?.name || brandName || 'XDrive.my';
+  const sellerContact = salesman?.whatsapp_number || salesman?.phone || dealer?.whatsapp_number || null;
+  const sellerBio = salesman?.bio || null;
+  const sellerRole = salesman ? (salesman.job_title || 'Sales Consultant') : (brandName ? 'Dealership' : null);
+  const sellerVerified = !!(salesman?.is_verified || dealer?.is_verified);
+  const bioLines = sellerBio ? doc.splitTextToSize(`"${sellerBio}"`, CW - 34).slice(0, 2) : [];
+  const cardH = Math.max(26, 16 + bioLines.length * 4);
+
+  doc.setFillColor(...TINT);
+  doc.setDrawColor(...LINE);
+  doc.roundedRect(MARGIN, y, CW, cardH, 3, 3, 'FD');
+
+  const av = MARGIN + 4, avD = 20, avCy = y + cardH / 2;
+  if (avatarImg) {
+    doc.addImage(avatarImg, 'JPEG', av, avCy - avD / 2, avD, avD);
+  } else {
+    doc.setFillColor(...RED);
+    doc.circle(av + avD / 2, avCy, avD / 2, 'F');
+    setFont(12, 'bold', [255, 255, 255]);
+    doc.text((sellerName[0] || 'X').toUpperCase(), av + avD / 2, avCy + 1.5, { align: 'center' });
+  }
+
+  const tx = av + avD + 5;
+  let ty = y + 7;
+  setFont(7, 'bold', FAINT);
+  doc.text('PREPARED BY', tx, ty);
+  ty += 5;
+  setFont(12, 'bold', INK);
+  doc.text(sellerName, tx, ty);
+  const nameW = doc.getTextWidth(sellerName);
+  if (sellerVerified) {
+    const bx = tx + nameW + 3.8, by = ty - 1.4;
+    doc.setFillColor(...RED);
+    doc.circle(bx, by, 2, 'F');
+    // White tick drawn as two strokes — cleaner and more trustworthy than "OK".
+    doc.setDrawColor(255, 255, 255);
+    doc.setLineWidth(0.5);
+    doc.line(bx - 1, by + 0.1, bx - 0.3, by + 0.9);
+    doc.line(bx - 0.3, by + 0.9, bx + 1.1, by - 0.9);
+    doc.setLineWidth(0.2);
+  }
+  ty += 4.5;
+  setFont(8.5, 'normal', SUB);
+  const contactLine = [sellerRole, sellerContact].filter(Boolean).join('   ·   ');
+  if (contactLine) { doc.text(contactLine, tx, ty); ty += 4.5; }
+  if (bioLines.length) {
+    setFont(8.5, 'italic', [75, 85, 99]);
+    doc.text(bioLines, tx, ty);
+  }
+  y += cardH + 8;
+
+  // ── Hero: the two figures that matter, made large ──────────────────────────
+  const heroH = 24, halfW = CW / 2;
+  doc.setDrawColor(...LINE);
+  doc.roundedRect(MARGIN, y, CW, heroH, 3, 3, 'S');
+  doc.setDrawColor(...LINE);
+  doc.line(MARGIN + halfW, y + 4, MARGIN + halfW, y + heroH - 4);
+
+  setFont(8, 'bold', FAINT);
+  doc.text('MONTHLY INSTALLMENT', MARGIN + halfW / 2, y + 8, { align: 'center' });
+  setFont(22, 'bold', INK);
+  doc.text(`RM ${fmt(calc.monthly, 2)}`, MARGIN + halfW / 2, y + 18, { align: 'center' });
+
+  setFont(8, 'bold', FAINT);
+  doc.text('EST. ON-ROAD PRICE', MARGIN + halfW + halfW / 2, y + 8, { align: 'center' });
+  setFont(22, 'bold', RED);
+  doc.text(`RM ${fmt(calc.onRoadPrice)}`, MARGIN + halfW + halfW / 2, y + 18, { align: 'center' });
+  y += heroH + 9;
+
+  // ── Table renderer ─────────────────────────────────────────────────────────
+  const RH = 6.4; // row height
+  // Break to a fresh page before a block that wouldn't fit, so a car photo plus
+  // a full insurance breakdown never clips the footer off the bottom edge.
+  const ensure = (need) => { if (y + need > 290) { doc.addPage(); y = 16; } };
+  const sectionTitle = (label) => {
+    setFont(9, 'bold', INK);
+    doc.setFillColor(...RED);
+    doc.rect(MARGIN, y - 3.2, 1.6, 4.2, 'F');
+    doc.text(label, MARGIN + 4, y);
+    y += 6;
+  };
+  const tableRows = (data) => {
+    data.forEach(([label, value, opt = {}], i) => {
+      const rowY = y + i * RH;
+      if (i % 2 === 0) {
+        doc.setFillColor(...TINT);
+        doc.rect(MARGIN, rowY - 4.6, CW, RH, 'F');
+      }
+      const sub = opt.sub;
+      const strong = opt.strong;
+      setFont(9, strong ? 'bold' : 'normal', strong ? RED : sub ? FAINT : SUB);
+      doc.text(label, MARGIN + (sub ? 7 : 3), rowY);
+      setFont(9, strong ? 'bold' : 'bold', strong ? RED : sub ? FAINT : INK);
+      doc.text(value, PW - MARGIN - 3, rowY, { align: 'right' });
+    });
+    y += data.length * RH + 6;
+  };
+
+  // ── Financing breakdown ────────────────────────────────────────────────────
+  sectionTitle('FINANCING BREAKDOWN');
+  tableRows([
     ['Car Price',            `RM ${fmt(calc.carPrice)}`],
     ['Down Payment',         `RM ${fmt(calc.downPayment)} (${calc.dpPct}%)`],
     ['Loan Amount',          `RM ${fmt(calc.loanAmt)}`],
@@ -259,95 +416,48 @@ const generateQuotationPDF = async ({ dealer, salesman, carDetails, calc, fmt })
     ['Interest Rate (flat)', `${calc.intRate}% p.a.`],
     ['EIR (est.)',           `${calc.eir}% p.a.`],
     ['Total Interest',       `RM ${fmt(calc.interest)}`],
-    ['Total Loan Repayment', `RM ${fmt(calc.totalLoan)}`],
-    ['Monthly Installment',  `RM ${fmt(calc.monthly, 2)}/month`],
-  ];
+    ['Total Loan Repayment', `RM ${fmt(calc.totalLoan)}`, { strong: true }],
+  ]);
 
-  rows.forEach(([label, value], i) => {
-    const rowY = y + i * 8;
-    if (i % 2 === 0) {
-      doc.setFillColor(248, 248, 248);
-      doc.rect(MARGIN, rowY - 4, CW, 8, 'F');
-    }
-    setFont(9, 'normal', [80, 80, 80]);
-    doc.text(label, MARGIN + 3, rowY);
-    setFont(9, 'bold', [30, 30, 30]);
-    doc.text(value, PW - MARGIN - 3, rowY, { align: 'right' });
-  });
-
-  y += rows.length * 8 + 6;
-
-  // Road tax + insurance section
+  // ── On-road costs ──────────────────────────────────────────────────────────
   if (calc.roadTax != null || calc.insCalc != null) {
-    setFont(10, 'bold', [30, 30, 30]);
-    doc.text('ON-ROAD COSTS (ESTIMATE)', MARGIN, y);
-    y += 8;
-
-    const onRoadRows = [];
+    ensure(6 + 6 * RH + 6);
+    sectionTitle('ON-ROAD COSTS (ESTIMATE)');
+    const onRoad = [];
     if (calc.roadTax != null) {
-      const ccLabel = calc.rtCc ? `${Number(calc.rtCc).toLocaleString()}cc` : '';
-      onRoadRows.push([`Road Tax (annual)${ccLabel ? ` — ${ccLabel}` : ''}`, `RM ${fmt(Math.round(calc.roadTax))}`]);
+      const ccLabel = calc.rtCc ? ` — ${Number(calc.rtCc).toLocaleString()}cc` : '';
+      onRoad.push([`Road Tax (annual)${ccLabel}`, `RM ${fmt(Math.round(calc.roadTax))}`]);
     }
     if (calc.insCalc) {
       const ins = calc.insCalc;
       const vtLabel = calc.vehicleType === 'Non-Saloon' ? 'SUV/MPV/Pickup' : 'Saloon/Sedan';
-      onRoadRows.push([`Insurance gross (${vtLabel})`,         `RM ${fmt(ins.gross)}`]);
-      onRoadRows.push([`  NCD ${calc.insNcd}% savings`,        `- RM ${fmt(ins.gross - ins.netPremium)}`]);
-      onRoadRows.push([`  SST (8%)`,                           `RM ${fmt(ins.sst)}`]);
-      onRoadRows.push([`  Stamp duty`,                         `RM 10`]);
-      onRoadRows.push([`Insurance total`,                      `RM ${fmt(ins.total)}`]);
+      onRoad.push([`Insurance gross (${vtLabel})`, `RM ${fmt(ins.gross)}`]);
+      // Plain ASCII hyphen — jsPDF's Helvetica lacks the U+2212 minus glyph and
+      // renders it as garbage, corrupting the amount that follows.
+      onRoad.push([`NCD ${calc.insNcd}% savings`, `- RM ${fmt(ins.gross - ins.netPremium)}`, { sub: true }]);
+      onRoad.push([`SST (8%)`, `RM ${fmt(ins.sst)}`, { sub: true }]);
+      onRoad.push([`Stamp duty`, `RM 10`, { sub: true }]);
+      onRoad.push([`Insurance total`, `RM ${fmt(ins.total)}`, { strong: true }]);
     }
-
-    onRoadRows.forEach(([label, value], i) => {
-      const rowY = y + i * 8;
-      const isInsTotal = label === 'Insurance total';
-      if (isInsTotal) {
-        doc.setFillColor(255, 240, 240);
-        doc.rect(MARGIN, rowY - 4, CW, 8, 'F');
-        setFont(9, 'bold', [180, 30, 30]);
-        doc.text(label, MARGIN + 3, rowY);
-        setFont(9, 'bold', [180, 30, 30]);
-        doc.text(value, PW - MARGIN - 3, rowY, { align: 'right' });
-      } else {
-        if (i % 2 === 0) {
-          doc.setFillColor(248, 248, 248);
-          doc.rect(MARGIN, rowY - 4, CW, 8, 'F');
-        }
-        const isSubRow = label.startsWith('  ');
-        setFont(9, 'normal', isSubRow ? [130, 130, 130] : [80, 80, 80]);
-        doc.text(label, MARGIN + (isSubRow ? 8 : 3), rowY);
-        setFont(9, isSubRow ? 'normal' : 'bold', isSubRow ? [130, 130, 130] : [30, 30, 30]);
-        doc.text(value, PW - MARGIN - 3, rowY, { align: 'right' });
-      }
-    });
-
-    y += onRoadRows.length * 8 + 6;
+    tableRows(onRoad);
   }
 
-  // Grand total
-  doc.setFillColor(220, 38, 38);
-  doc.rect(MARGIN, y, CW, 12, 'F');
-  setFont(10, 'bold', [255, 255, 255]);
-  doc.text('ESTIMATED ON-ROAD PRICE', MARGIN + 3, y + 8);
-  doc.text(`RM ${fmt(calc.onRoadPrice)}`, PW - MARGIN - 3, y + 8, { align: 'right' });
-  y += 20;
-
-  // ── Footer ────────────────────────────────────────────────────────────────
-  doc.setDrawColor(220, 220, 220);
+  // ── Footer ─────────────────────────────────────────────────────────────────
+  // The two-up hero already states the monthly + on-road figures large; no need
+  // to restate them in a third band. Close with the validity note + credit.
+  ensure(15);
+  doc.setDrawColor(...LINE);
   doc.line(MARGIN, y, PW - MARGIN, y);
-  y += 6;
-
-  setFont(8, 'italic', [150, 150, 150]);
-  doc.text('This quotation is valid for 7 days and is subject to change without prior notice.', MARGIN, y);
   y += 5;
-  doc.text('All figures shown are estimates only. Final pricing subject to confirmation from the dealership.', MARGIN, y);
-  y += 8;
-
-  // Always credit the tool that generated this, even when the quote is
-  // prepared under a dealer/agent's own name above — the calculator itself
-  // is an XDrive.my product, not something the dealer built.
-  setFont(8, 'bold', [220, 38, 38]);
+  setFont(7.5, 'italic', FAINT);
+  doc.text('Valid for 7 days, subject to change without notice. All figures are estimates; final pricing subject to confirmation.', MARGIN, y);
+  y += 7;
+  setFont(8, 'bold', RED);
   doc.text('Generated via XDrive.my', MARGIN, y);
+  if (sellerContact) {
+    setFont(8, 'normal', SUB);
+    doc.text(`Questions? Contact ${sellerName} · ${sellerContact}`, PW - MARGIN, y, { align: 'right' });
+  }
 
   doc.save(`quotation-${Date.now()}.pdf`);
 };
@@ -356,7 +466,7 @@ const generateQuotationPDF = async ({ dealer, salesman, carDetails, calc, fmt })
 
 const FinancingCalculator = ({
   initialPrice = 85000, engineCc = null, bodyType = null,
-  carName: carNameProp = '', carYear: carYearProp = '', carColor: carColorProp = '', light = false,
+  carName: carNameProp = '', carYear: carYearProp = '', carColor: carColorProp = '', carImage = null, light = false,
   // Seller context for the PDF's "prepared by" / dealership header. Pass explicit
   // dealer/salesman (even null, meaning "known to have no seller") when the page
   // already knows who's selling — e.g. a specific car's dealer, or a dealer's own
@@ -480,7 +590,7 @@ const FinancingCalculator = ({
         if (user) {
           const { data: myProfile } = await supabase
             .from('profiles')
-            .select('id, role, dealer_id, full_name, phone, dealership, site_name, whatsapp_number, avatar_url')
+            .select('id, role, dealer_id, full_name, phone, dealership, site_name, whatsapp_number, avatar_url, bio, job_title, is_verified')
             .eq('id', user.id)
             .maybeSingle();
           if (myProfile) {
@@ -506,6 +616,10 @@ const FinancingCalculator = ({
           year:  carYear,
           color: carColor,
           price: carPrice,
+          image: carImage,
+          // Face of the quote: the salesman's photo when we have one, else the
+          // dealer's logo. The PDF renders whichever is present.
+          sellerAvatar: resolvedSalesman?.avatar_url || resolvedDealer?.avatar_url || resolvedDealer?.site_logo_url || null,
         },
         calc: {
           carPrice, downPayment, dpPct, loanAmt, loanTerm, intRate,
