@@ -6201,6 +6201,7 @@ function ListingDetailDrawer({
                 carName={`${listing.brand} ${listing.model}${listing.variant ? ` ${listing.variant}` : ''}`}
                 carYear={listing.year ? String(listing.year) : ''}
                 carColor={listing.colour || ''}
+                carImage={listing.images?.length ? listing.images[0] : null}
                 light
               />
             </div>

@@ -3585,6 +3585,7 @@ export default function CarDetailPage() {
                   carName={carTitle}
                   carYear={car.year ? String(car.year) : ''}
                   carColor={car.colour || ''}
+                  carImage={car.images?.length ? car.images[0] : null}
                   light={isXdrive}
                   dealer={dealer}
                   salesman={salesmanProfile}
