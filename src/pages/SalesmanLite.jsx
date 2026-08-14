@@ -7902,51 +7902,71 @@ export default function SalesmanLite() {
         zIndex: 1002,
       };
     } else if (isMobile) {
-      // Mobile: nav at bottom → bubble sits above the highlighted tab
+      // Mobile: most steps highlight the bottom nav, so the bubble sits ABOVE the
+      // tab. But some anchors (e.g. the Bookings sub-tab pill) now live near the top
+      // of the screen — anchoring above them pushes the bubble off the top edge and
+      // clips it. So flip BELOW the target whenever there isn't enough room above,
+      // keeping the whole bubble in frame on any device height.
       const centerX = tourTarget.left + tourTarget.width / 2;
       const bubbleLeft = Math.max(8, Math.min(centerX - BUBBLE_W / 2, window.innerWidth - BUBBLE_W - 8));
+      // Rough bubble height — only used to decide above vs below; exact value not critical.
+      const EST_BUBBLE_H = 250;
+      const roomAbove = tourTarget.top - PAD;
+      const placeBelow = roomAbove < EST_BUBBLE_H + 8;
       bubbleStyle = {
         position: "fixed",
-        bottom: window.innerHeight - tourTarget.top + PAD,
+        ...(placeBelow
+          ? { top: Math.max(8, Math.min(tourTarget.bottom + PAD, window.innerHeight - EST_BUBBLE_H - 8)) }
+          : { bottom: window.innerHeight - tourTarget.top + PAD }),
         left: bubbleLeft,
         width: BUBBLE_W,
         zIndex: 1002,
       };
-      // Arrow pointing down toward the tab
+      // Arrow points toward the tab: up when the bubble sits below it, down when above.
       const arrowLeft = centerX - bubbleLeft - 8;
       arrowEl = (
         <div style={{
           position: "absolute",
-          bottom: -8,
+          ...(placeBelow ? { top: -8 } : { bottom: -8 }),
           left: Math.max(12, Math.min(arrowLeft, BUBBLE_W - 28)),
           width: 0,
           height: 0,
           borderLeft: "8px solid transparent",
           borderRight: "8px solid transparent",
-          borderTop: "8px solid #1e2d3d",
+          ...(placeBelow
+            ? { borderBottom: "8px solid #1e2d3d" }
+            : { borderTop: "8px solid #1e2d3d" }),
         }} />
       );
     } else {
-      // Desktop: sidebar at left → bubble sits to the right of the highlighted item
+      // Desktop: sidebar at left → bubble sits to the right of the highlighted item.
+      // But anchors that aren't in the sidebar (e.g. the Bookings sub-tab pill) can
+      // sit far right, where a right-side bubble would overflow the viewport — so
+      // flip it to the LEFT of the target when there isn't room on the right.
       const topPos = Math.max(8, Math.min(tourTarget.top + tourTarget.height / 2 - 80, window.innerHeight - 220));
+      const placeLeft = tourTarget.right + PAD + BUBBLE_W > window.innerWidth - 8;
       bubbleStyle = {
         position: "fixed",
         top: topPos,
-        left: tourTarget.right + PAD,
+        left: placeLeft
+          ? Math.max(8, tourTarget.left - PAD - BUBBLE_W)
+          : tourTarget.right + PAD,
         width: BUBBLE_W,
         zIndex: 1002,
       };
-      // Arrow pointing left toward the sidebar item
+      // Arrow points toward the item: left when the bubble is on its right, right when on its left.
       arrowEl = (
         <div style={{
           position: "absolute",
-          left: -8,
+          ...(placeLeft ? { right: -8 } : { left: -8 }),
           top: Math.min(60, tourTarget.height / 2 + 8),
           width: 0,
           height: 0,
           borderTop: "8px solid transparent",
           borderBottom: "8px solid transparent",
-          borderRight: "8px solid #1e2d3d",
+          ...(placeLeft
+            ? { borderLeft: "8px solid #1e2d3d" }
+            : { borderRight: "8px solid #1e2d3d" }),
         }} />
       );
     }
