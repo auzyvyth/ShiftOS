@@ -1,4 +1,5 @@
 import { createClient, processLock } from "@supabase/supabase-js";
+import { crossSubdomainStorage } from "./lib/sessionStorage";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://lemdkdizdlcirhbzqlos.supabase.co";
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxlbWRrZGl6ZGxjaXJoYnpxbG9zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MjY2MTUsImV4cCI6MjA4ODIwMjYxNX0.KhD0skeM_lgmWfq94nIISvRWzEGUmBc8BReTLdPKji4";
@@ -8,6 +9,11 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    // Share the session across every *.xdrive.my origin via a domain-scoped
+    // cookie (falls back to localStorage on non-xdrive hosts). Without this the
+    // session was per-origin, so the public showroom on xdrive.my could not see
+    // a login made on another subdomain. See lib/sessionStorage.js.
+    storage: crossSubdomainStorage,
     // Use the in-memory lock instead of the browser Web Locks API. The default
     // navigatorLock serializes every auth call (getSession runs before every
     // PostgREST query) across tabs and, on timeout, retries with { steal: true },
