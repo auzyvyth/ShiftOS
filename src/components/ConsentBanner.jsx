@@ -1,7 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useLocation } from 'react-router-dom';
 import { getConsent, setConsent, CONSENT_OPEN_EVENT } from '../utils/consent';
 import LegalModal from './LegalModal';
+
+// The consent banner governs first-party analytics + enquiry prefill, which only
+// exist on the public marketplace (xdrive.my) and dealer storefronts (sub.xdrive.my).
+// It has no business on the login flow or any authenticated/internal system page, so
+// suppress it there. Path-based, not host-based: internal pages live on the same
+// hosts as the public surfaces, so the route is the real discriminator. Boundary-aware
+// match (exact or `<prefix>/…`) so a public route can't be caught by a shared prefix.
+const INTERNAL_PREFIXES = [
+  // auth + onboarding
+  '/login', '/buyer-login', '/buyer-signup', '/signup', '/register',
+  '/onboarding', '/salesman-onboarding', '/dealer-onboarding', '/choose-plan',
+  '/auth', '/reset-password', '/salesman-setup',
+  // authenticated panels / internal system
+  '/dashboard', '/salesman', '/salesman-lite', '/salesman-premium',
+  '/manager', '/accountant', '/fi', '/admin', '/accounts', '/platform', '/account',
+];
+function isInternalPath(pathname) {
+  return INTERNAL_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'));
+}
 
 // Tiered first-party cookie/consent banner for the public marketplace + storefronts.
 // No third-party cookies are used anywhere — this governs first-party analytics
@@ -16,9 +36,12 @@ export default function ConsentBanner() {
   const [analytics, setAnalytics] = useState(true);
   const [preferences, setPreferences] = useState(true);
   const [showLegal, setShowLegal] = useState(false);
+  const { pathname } = useLocation();
+  const suppressed = isInternalPath(pathname);
 
   // Decide whether to show on mount, and honor re-open requests.
   useEffect(() => {
+    if (suppressed) { setOpen(false); return; }
     const c = getConsent();
     let scrollHandler, timer;
     if (!c.decided) {
@@ -48,9 +71,9 @@ export default function ConsentBanner() {
       if (scrollHandler) window.removeEventListener('scroll', scrollHandler);
       if (timer) clearTimeout(timer);
     };
-  }, []);
+  }, [suppressed]);
 
-  if (!open) return null;
+  if (suppressed || !open) return null;
 
   const save = (a, p) => { setConsent({ analytics: a, preferences: p }); setOpen(false); setCustomize(false); };
   const acceptAll = () => save(true, true);
