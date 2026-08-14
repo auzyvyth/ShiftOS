@@ -307,7 +307,7 @@ export default function AdminPage() {
     // Load ALL salesmen with plan info
     const { data: salesmanData } = await supabase
       .from("profiles")
-      .select("id, full_name, email, created_at, is_active, role, dealer_id, subdomain, subscription_status, plan, slug, payment_status")
+      .select("id, full_name, email, created_at, is_active, account_status, deleted_at, role, dealer_id, subdomain, subscription_status, plan, slug, payment_status")
       .eq("role", "salesman")
       .order("created_at", { ascending: false });
     setSalesmen(salesmanData || []);
@@ -488,6 +488,23 @@ export default function AdminPage() {
   function trialDaysLeft(str) {
     if (!str) return null;
     return Math.ceil((new Date(str) - Date.now()) / 86400000);
+  }
+
+  // Account status label — distinguishes a soft-deleted account (LITE-3, 30-day
+  // purge grace) from a genuinely suspended one. Deleted rows also have
+  // is_active=false, so this must be checked BEFORE the suspended branch.
+  function accountStatus(row) {
+    if (row.account_status === "deleted") {
+      const purgeDays = row.deleted_at
+        ? Math.max(0, 30 - Math.floor((Date.now() - new Date(row.deleted_at)) / 86400000))
+        : null;
+      return {
+        text: purgeDays !== null ? `⊘ Deleted · purges in ${purgeDays}d` : "⊘ Deleted",
+        color: "#9ca3af",
+      };
+    }
+    if (row.is_active === false) return { text: "○ Suspended", color: "#f87171" };
+    return { text: "● Active", color: "#4ade80" };
   }
 
   function toDateInputVal(str) {
@@ -1421,9 +1438,9 @@ export default function AdminPage() {
                                 </td>
                                 <td style={{ padding: "10px 14px", color: "#6b7280", whiteSpace: "nowrap" }}>{fmtDate(sm.created_at)}</td>
                                 <td style={{ padding: "10px 14px" }}>
-                                  <span style={{ fontSize: 11, fontWeight: 600, color: sm.is_active === false ? "#f87171" : "#4ade80" }}>
-                                    {sm.is_active === false ? "○ Suspended" : "● Active"}
-                                  </span>
+                                  {(() => { const st = accountStatus(sm); return (
+                                    <span style={{ fontSize: 11, fontWeight: 600, color: st.color }}>{st.text}</span>
+                                  ); })()}
                                   {sm.plan === 'salesman_full' && (
                                     <span style={{ display: "block", marginTop: 4, fontSize: 10, fontWeight: 700, color: sm.payment_status === 'pending' ? "#fbbf24" : "#c084fc" }}>
                                       {sm.payment_status === 'pending' ? "◷ Premium · Pending payment" : "★ Premium"}
@@ -1494,9 +1511,9 @@ export default function AdminPage() {
                                 <td style={{ padding: "10px 14px", color: "#6b7280", fontSize: 11, fontFamily: "monospace" }}>{sm.dealer_id?.slice(0, 12)}…</td>
                                 <td style={{ padding: "10px 14px", color: "#6b7280", whiteSpace: "nowrap" }}>{fmtDate(sm.created_at)}</td>
                                 <td style={{ padding: "10px 14px" }}>
-                                  <span style={{ fontSize: 11, fontWeight: 600, color: sm.is_active === false ? "#f87171" : "#4ade80" }}>
-                                    {sm.is_active === false ? "○ Suspended" : "● Active"}
-                                  </span>
+                                  {(() => { const st = accountStatus(sm); return (
+                                    <span style={{ fontSize: 11, fontWeight: 600, color: st.color }}>{st.text}</span>
+                                  ); })()}
                                 </td>
                                 <td style={{ padding: "10px 14px" }}>
                                   <div style={{ display: "flex", gap: 5 }}>
