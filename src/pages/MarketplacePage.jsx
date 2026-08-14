@@ -10,6 +10,7 @@ import MarketplaceHeader from '../components/MarketplaceHeader';
 import GoogleOneTap from '../components/GoogleOneTap';
 import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
+import { runWithAuthRetry } from '../lib/authRetry';
 import { trackEvent } from '../utils/analytics';
 import { readCache, writeCache, precacheImages } from '../utils/localCache';
 import { PRICE_STEPS } from '../components/PriceDrumPicker';
@@ -187,45 +188,50 @@ export default function MarketplacePage() {
       // COUNT over the aggregate-heavy view, roughly doubling its cost per page;
       // the total result-set size doesn't change between pages, so page 1's
       // count stays valid for the whole scroll.
-      let query = supabase
-        .from('public_car_listings')
-        .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, loadPage === 1 ? { count: 'exact' } : undefined)
-        .in('status', ['available', 'reserved']);
+      // Built fresh per attempt: a supabase builder captures its auth header at
+      // creation, so a post-refresh/anon retry needs a new builder to pick up the
+      // updated token (see runWithAuthRetry).
+      const buildQuery = () => {
+        let query = supabase
+          .from('public_car_listings')
+          .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, loadPage === 1 ? { count: 'exact' } : undefined)
+          .in('status', ['available', 'reserved']);
 
-      if (q) {
-        const tokens = q.trim().split(/\s+/).filter(Boolean).slice(0, 6);
-        tokens.forEach(t => {
-          const s = t.replace(/[%_\\]/g, '');
-          if (s) query = query.or(`brand.ilike.%${s}%,model.ilike.%${s}%,variant.ilike.%${s}%`);
-        });
-      }
-      if (brand)        query = query.eq('brand', brand);
-      if (bodyType)     query = query.eq('body_type', bodyType);
-      if (state)        query = query.eq('state', state);
-      if (minPrice)     query = query.gte('selling_price', minPrice);
-      if (maxPrice)     query = query.lte('selling_price', maxPrice);
-      if (financing)    query = query.eq('financing_type', financing);
-      if (yearFrom)     query = query.gte('year', yearFrom);
-      if (yearTo)       query = query.lte('year', yearTo);
-      if (mileageMax)   query = query.lte('mileage', mileageMax);
-      if (hotDeals)     query = query.not('original_price', 'is', null).gt('original_price', 0);
-      if (condition)    query = query.eq('condition', condition);
-      if (transmission) {
-        const txVal = transmission === 'Auto' ? ['Auto','Automatic','AT'] : ['Manual','MT'];
-        query = query.in('transmission', txVal);
-      }
-      if (fuelType)   query = query.eq('fuel_type', fuelType);
-      if (colour)     query = query.ilike('colour', `%${colour}%`);
-      if (model)      query = query.eq('model', model);
-      if (variant)    query = query.ilike('variant', `%${variant}%`);
+        if (q) {
+          const tokens = q.trim().split(/\s+/).filter(Boolean).slice(0, 6);
+          tokens.forEach(t => {
+            const s = t.replace(/[%_\\]/g, '');
+            if (s) query = query.or(`brand.ilike.%${s}%,model.ilike.%${s}%,variant.ilike.%${s}%`);
+          });
+        }
+        if (brand)        query = query.eq('brand', brand);
+        if (bodyType)     query = query.eq('body_type', bodyType);
+        if (state)        query = query.eq('state', state);
+        if (minPrice)     query = query.gte('selling_price', minPrice);
+        if (maxPrice)     query = query.lte('selling_price', maxPrice);
+        if (financing)    query = query.eq('financing_type', financing);
+        if (yearFrom)     query = query.gte('year', yearFrom);
+        if (yearTo)       query = query.lte('year', yearTo);
+        if (mileageMax)   query = query.lte('mileage', mileageMax);
+        if (hotDeals)     query = query.not('original_price', 'is', null).gt('original_price', 0);
+        if (condition)    query = query.eq('condition', condition);
+        if (transmission) {
+          const txVal = transmission === 'Auto' ? ['Auto','Automatic','AT'] : ['Manual','MT'];
+          query = query.in('transmission', txVal);
+        }
+        if (fuelType)   query = query.eq('fuel_type', fuelType);
+        if (colour)     query = query.ilike('colour', `%${colour}%`);
+        if (model)      query = query.eq('model', model);
+        if (variant)    query = query.ilike('variant', `%${variant}%`);
 
-      if (sort === 'price_asc')  query = query.order('selling_price', { ascending: true });
-      else if (sort === 'price_desc') query = query.order('selling_price', { ascending: false });
-      else                        query = query.order('created_at',    { ascending: false });
+        if (sort === 'price_asc')  query = query.order('selling_price', { ascending: true });
+        else if (sort === 'price_desc') query = query.order('selling_price', { ascending: false });
+        else                        query = query.order('created_at',    { ascending: false });
 
-      query = query.range(from, to);
+        return query.range(from, to);
+      };
 
-      const { data, error: err, count } = await query;
+      const { data, error: err, count } = await runWithAuthRetry(supabase, () => buildQuery());
       if (err) throw err;
 
       const rows = data || [];

@@ -10,6 +10,7 @@ import MarketplaceFooter from '../components/MarketplaceFooter';
 import StickyWhatsAppButton from '../components/StickyWhatsAppButton';
 import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
+import { runWithAuthRetry } from '../lib/authRetry';
 import { trackEvent } from '../utils/analytics';
 import { useMarketplaceTracking } from '../hooks/useMarketplaceTracking';
 import useTenant, { isSubdomain } from '../hooks/useTenant';
@@ -488,56 +489,69 @@ export default function CarListingPage() {
     setError(null);
     try {
       const from = (page-1)*PER_PAGE, to = from+PER_PAGE-1;
-      let query = supabase
-        .from('public_car_listings')
-        .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, { count:'exact' })
-        .in('status', ['available', 'reserved']);
+      // Build the query FRESH on each attempt: a supabase builder captures the
+      // auth header when it's created, so after a session refresh / drop the
+      // retry must construct a new builder to pick up the updated (or anon) token.
+      const buildQuery = () => {
+        let query = supabase
+          .from('public_car_listings')
+          .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, { count:'exact' })
+          .in('status', ['available', 'reserved']);
 
-      if (!isMarketplace && tenant?.id) query = query.eq('dealer_id', tenant.id);
+        if (!isMarketplace && tenant?.id) query = query.eq('dealer_id', tenant.id);
 
-      if (q) {
-        q.trim().split(/\s+/).filter(Boolean).slice(0,6).forEach(t => {
-          const s = t.replace(/[%_\\]/g,'');
-          if (s) query = query.or(`brand.ilike.%${s}%,model.ilike.%${s}%,variant.ilike.%${s}%`);
-        });
-      }
-      if (brand)        query = query.eq('brand', brand);
-      if (model)        query = query.ilike('model', model);        // case-insensitive
-      if (variant)      query = query.ilike('variant', `%${variant}%`);
-      if (bodyType)     query = query.eq('body_type', bodyType);
-      if (state)        query = query.eq('state', state);
-      if (minPrice)     query = query.gte('selling_price', minPrice);
-      if (maxPrice)     query = query.lte('selling_price', maxPrice);
-      if (financing)    query = query.eq('financing_type', financing);
-      if (yearFrom)     query = query.gte('year', yearFrom);
-      if (yearTo)       query = query.lte('year', yearTo);
-      if (mileageMax)   query = query.lte('mileage', mileageMax);
-      if (hotDeals)     query = query.not('original_price','is',null).gt('original_price',0);
-      if (condition)    query = query.eq('condition', condition);
-      if (transmission) query = query.in('transmission', transmission==='Auto' ? ['Auto','Automatic','AT'] : ['Manual','MT']);
-      if (fuelType)     query = query.eq('fuel_type', fuelType);
-      if (colour)       query = query.ilike('colour', `%${colour}%`);
-      if (isMarketplace && sellerType) query = query.filter('profiles!dealer_id.role','eq', sellerType==='agent'?'salesman':'dealer');
+        if (q) {
+          q.trim().split(/\s+/).filter(Boolean).slice(0,6).forEach(t => {
+            const s = t.replace(/[%_\\]/g,'');
+            if (s) query = query.or(`brand.ilike.%${s}%,model.ilike.%${s}%,variant.ilike.%${s}%`);
+          });
+        }
+        if (brand)        query = query.eq('brand', brand);
+        if (model)        query = query.ilike('model', model);        // case-insensitive
+        if (variant)      query = query.ilike('variant', `%${variant}%`);
+        if (bodyType)     query = query.eq('body_type', bodyType);
+        if (state)        query = query.eq('state', state);
+        if (minPrice)     query = query.gte('selling_price', minPrice);
+        if (maxPrice)     query = query.lte('selling_price', maxPrice);
+        if (financing)    query = query.eq('financing_type', financing);
+        if (yearFrom)     query = query.gte('year', yearFrom);
+        if (yearTo)       query = query.lte('year', yearTo);
+        if (mileageMax)   query = query.lte('mileage', mileageMax);
+        if (hotDeals)     query = query.not('original_price','is',null).gt('original_price',0);
+        if (condition)    query = query.eq('condition', condition);
+        if (transmission) query = query.in('transmission', transmission==='Auto' ? ['Auto','Automatic','AT'] : ['Manual','MT']);
+        if (fuelType)     query = query.eq('fuel_type', fuelType);
+        if (colour)       query = query.ilike('colour', `%${colour}%`);
+        if (isMarketplace && sellerType) query = query.filter('profiles!dealer_id.role','eq', sellerType==='agent'?'salesman':'dealer');
 
-      if (sort==='price_asc')    query = query.order('selling_price', { ascending:true });
-      else if (sort==='price_desc')  query = query.order('selling_price', { ascending:false });
-      else if (sort==='year_desc')   query = query.order('year', { ascending:false });
-      else if (sort==='year_asc')    query = query.order('year', { ascending:true });
-      else if (sort==='mileage_asc') query = query.order('mileage', { ascending:true, nullsFirst:false });
-      else                           query = query.order('created_at', { ascending:false });
+        if (sort==='price_asc')    query = query.order('selling_price', { ascending:true });
+        else if (sort==='price_desc')  query = query.order('selling_price', { ascending:false });
+        else if (sort==='year_desc')   query = query.order('year', { ascending:false });
+        else if (sort==='year_asc')    query = query.order('year', { ascending:true });
+        else if (sort==='mileage_asc') query = query.order('mileage', { ascending:true, nullsFirst:false });
+        else                           query = query.order('created_at', { ascending:false });
 
-      query = query.range(from, to);
+        return query.range(from, to);
+      };
       // Hard timeout: on a flaky mobile / in-app-webview connection a request can
       // neither resolve nor reject, leaving the spinner up forever. Race the query
       // against a timeout so it always settles into either data or the retry state.
-      const { data, error:err, count } = await Promise.race([
-        query,
+      const run = () => Promise.race([
+        buildQuery(),
         new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000)),
       ]);
+      // A stale/expired session token on this origin makes PostgREST 401 the read
+      // even though public_car_listings is anon-readable; recover once (refresh
+      // the session, or drop the dead token and retry anon) instead of surfacing
+      // the opaque "Failed to load listings".
+      const { data, error:err, count } = await runWithAuthRetry(supabase, run);
       if (err) throw err;
       if (myReq !== reqSeq.current) return; // a newer fetch superseded this one
       setCars(data||[]); setTotal(count||0);
-    } catch { if (myReq === reqSeq.current) setError('Failed to load listings. Please try again.'); }
+    } catch (e) {
+      console.error('[CarListing fetchCars]', e?.message || e?.code || e);
+      if (myReq === reqSeq.current) setError('Failed to load listings. Please try again.');
+    }
     finally { if (myReq === reqSeq.current) { setLoading(false); setFetching(false); initialLoad.current = false; } }
   }, [page, brand, model, variant, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, fuelType, colour, sellerType, sort, isMarketplace, tenant?.id, tenantLoading]); // eslint-disable-line
 
