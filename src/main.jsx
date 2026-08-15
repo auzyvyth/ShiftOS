@@ -34,6 +34,18 @@ function isChunkLoadError(msg = '') {
   );
 }
 
+// Benign clipboard rejections: the Clipboard API throws NotAllowedError when a
+// copy fires while the document isn't focused (tab switch, mid-gesture) or the
+// permission is denied. Nothing broke, nothing to fix — it's pure ops noise, so
+// it must never reach error_logs (and never wake the ops Telegram alert).
+function isBenignClipboardError(msg = '') {
+  return (
+    msg.includes("execute 'writeText' on 'Clipboard'") ||
+    msg.includes('Document is not focused') ||
+    (msg.includes('clipboard') && msg.includes('not allowed'))
+  );
+}
+
 // Cache-busting reload. A plain location.reload() is not enough in aggressively
 // caching in-app webviews (Facebook/Instagram): they re-serve the stale
 // index.html from cache, which still references the missing chunk hash, so the
@@ -92,6 +104,10 @@ window.addEventListener('unhandledrejection', (event) => {
     event.preventDefault();
     reloadOnceForChunk();
     return;
+  }
+  if (isBenignClipboardError(event.reason?.message)) {
+    event.preventDefault();
+    return; // copy-while-unfocused — harmless, don't log
   }
   // Chunk reloads self-heal and are noise; everything else is a real ops signal.
   logError(event.reason, { code: 'unhandledrejection', context: 'window.unhandledrejection' });
