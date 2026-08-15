@@ -39,50 +39,8 @@
   inline verify against siteverify) before create_lead_from_whatsapp / hunt insert.
   Until done, public lead/hunt writes rely on DB rate limits alone. (Audit F5, 2026-08-03.)
 
-- **ACT-11: Verify Upstash env vars are actually set in Vercel prod** — `middleware.js`
-  rate-limits the 6 public API routes (enquiry/whatsapp-lead/booking/waitlist/ai-messages/
-  car-specs) via Upstash, but `buildLimiters()` returns null and the middleware **fails
-  open silently** when `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` are missing —
-  so an unconfigured prod has NO rate limiting and looks identical to a working one. Could
-  not verify from the web session (the agent proxy 403s `xdrive.my`). Check Vercel →
-  Settings → Environment Variables for both keys on Production, or run locally:
-  `for i in 1 2 3 4 5; do curl -s -o /dev/null -w "%{http_code}\n" https://xdrive.my/api/waitlist; done`
-  — a GET writes nothing (handler 405s) but still counts against the limiter, so requests
-  4–5 MUST return 429. If they all return 405, the limiter is off. (Infra audit, 2026-08-15.)
-  Var names verified correct against `middleware.js:31-32` — `UPSTASH_REDIS_REST_URL` +
-  `UPSTASH_REDIS_REST_TOKEN`, URL shape `https://<slug>.upstash.io`. THREE gotchas:
-  (1) **a malformed value is WORSE than a missing one** — missing → `buildLimiters()`
-  returns null → passes through → fails OPEN (silent, no protection); malformed (e.g. the
-  surrounding double quotes pasted into Vercel's UI, which does NOT strip them the way a
-  `.env` file does) → returns a truthy limiter → `.limit()` rejects at request time → fails
-  CLOSED with **500s on all six public endpoints**, including `/api/enquiry` and
-  `/api/whatsapp-lead`. So a 500 on those routes = bad env VALUE, not a code bug — do not
-  go hunting in the handlers. (2) Vercel scopes env vars per environment — must be set on
-  **Production**, not just Preview/Development. (3) Env var changes need a **redeploy** to
-  reach an already-running deployment.
-  **PROBE METHOD (no local machine needed — the agent proxy 403s BOTH `xdrive.my` and
-  `*.vercel.app`, so curl from a web session is out):** use the Vercel MCP —
-  `web_fetch_vercel_url` against the deployment's `*.vercel.app` URL to send the requests,
-  and `get_runtime_logs` (`source=edge-middleware`, or `group_by statusCode`) to read what
-  the middleware actually did. `/api/booking` is the best target: a GET 405s before touching
-  Supabase (writes nothing) and its limit is the tightest at 3/60s.
-  **MEASURED 2026-08-15, after the env re-paste + production redeploy (`dpl_37csYE2Lx`):**
-  15 requests (5 → `/api/waitlist`, limit 3/300s; 10 → `/api/booking`, limit 3/60s) returned
-  **15x 405, zero 429, zero errors/warnings**. Logs confirm `source=middleware` fired on
-  every one, so the middleware IS deployed and matching the routes — it just passes
-  everything through. That is the fail-open signature (`buildLimiters()` returning null on a
-  falsy url/token). Zero 500s also proves the values are NOT malformed, so lead capture is
-  not at risk. ONE ALTERNATIVE NOT YET EXCLUDED: the limiter keys on `x-forwarded-for` and
-  Vercel's fetcher may rotate source IPs, which would also produce all-405s from a WORKING
-  limiter (would need >=4 distinct IPs to explain the booking burst alone).
-  **DECISIVE CHECK, browser-only:** open the Upstash console → the Redis DB → Data Browser
-  and look for keys prefixed `rl:booking` / `rl:waitlist` / `rl:enquiry`, or check
-  Usage/Metrics for command activity during the probe window. Keys present = limiter is live
-  (IP rotation explains the 405s, nothing to fix). Empty DB / no commands = the limiter never
-  ran, so the vars are not reaching the Production runtime — most likely they exist but the
-  **Production** checkbox was not ticked when they were added.
 
-> Reminder protocol: while ACT-2, ACT-4, ACT-9, ACT-10 or ACT-11 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. **ACT-8 was found ALREADY COMPLETE and removed 2026-08-15** — `package.json` AND `package-lock.json` both resolve `xlsx` to `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, and `vercel.json` CSP already whitelists `cdn.sheetjs.com` in connect-src; it had been sitting in this list as a blocked user-action for weeks after the fact. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then.) LESSON: verify an ACT item against the code before re-surfacing it — a stale nag costs a session's attention every time.
+> Reminder protocol: while ACT-2, ACT-4, ACT-9 or ACT-10 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. **ACT-8 was found ALREADY COMPLETE and removed 2026-08-15** — `package.json` AND `package-lock.json` both resolve `xlsx` to `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, and `vercel.json` CSP already whitelists `cdn.sheetjs.com` in connect-src; it had been sitting in this list as a blocked user-action for weeks after the fact. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then.) LESSON: verify an ACT item against the code before re-surfacing it — a stale nag costs a session's attention every time.
 
 ## Dev tasks
 
@@ -544,6 +502,31 @@ to the client, which is the intent.
   earn their keep at scale — but every one is write cost on every listing insert/update
   today. Re-check against the `unused_index` advisor once there is real marketplace traffic
   and drop whatever never gets scanned.
+- [x] **INFRA-8: Edge rate limiter VERIFIED WORKING (was ACT-11, closed 2026-08-15).**
+  The Upstash limiter in `middleware.js` protecting the 6 public API routes is live in
+  production. Env vars were correct and present all along; no change was needed.
+  **How it was proven, and the trap to avoid repeating:** the obvious probe — burst requests
+  at a protected route and expect a 429 — **gives a FALSE NEGATIVE from any cloud/agent
+  session.** The limiter keys on `x-forwarded-for`, and Vercel's fetcher
+  (`web_fetch_vercel_url`, the only way out when the agent proxy 403s both `xdrive.my` AND
+  `*.vercel.app`) rotates source IPs, so every request lands on its own counter and NOTHING
+  ever trips. 26 probe requests across `/api/waitlist`, `/api/booking` and `/api/enquiry`
+  returned 26x 405 / zero 429 — which reads exactly like a dead limiter but is not.
+  **The reliable test is the Upstash Usage counter, not the response codes:** note COMMANDS
+  before, fire a burst, refresh. Measured: 193 → 249 (+56 commands for 11 requests, ~5 per
+  `limit()` call = the sliding-window Lua footprint) and STORAGE 0 B → 136 B as the `rl:*`
+  keys materialised. That is proof the middleware reached Redis.
+  Corollary: real users have stable IPs, so production IS protected even though a cloud
+  probe cannot demonstrate it. Do NOT "fix" a non-existent fail-open based on 405s alone.
+  Also do NOT trust the Upstash **Data Browser** for this — sliding-window keys carry a TTL
+  equal to the window (60s for booking, 300s for waitlist), so it reads empty minutes later
+  regardless of whether the limiter works. Usage counters are cumulative and TTL-proof.
+  Still true and worth keeping: a MALFORMED value (e.g. the surrounding double quotes from
+  the Upstash console's `.env`-style Connect snippet pasted into Vercel's UI, which does not
+  strip them) fails CLOSED with 500s on all six endpoints — so a 500 on `/api/enquiry` or
+  `/api/whatsapp-lead` means a bad env VALUE, not a handler bug. Vercel env vars are also
+  scoped per environment (Production must be ticked) and need a redeploy to reach a running
+  deployment.
 
 #### Mobile / app-store readiness
 Reality check: the PWA foundation is genuinely good — `vite.config.js` VitePWA is carefully
