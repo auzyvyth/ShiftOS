@@ -1,8 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { getConsent, setConsent, CONSENT_OPEN_EVENT } from '../utils/consent';
-import LegalModal from './LegalModal';
+
+// Lazy: the banner itself renders on first load, but the legal modal only opens
+// if the visitor taps through to the policy. LegalModal statically pulls
+// src/legal/legalDocs.js (the full Terms + Privacy + DPA prose, ~6 KB gzipped),
+// which has no business in the entry bundle for a click most visitors never make.
+const LegalModal = lazy(() => import('./LegalModal'));
 
 // The consent banner governs first-party analytics + enquiry prefill, which only
 // exist on the public marketplace (xdrive.my) and dealer storefronts (sub.xdrive.my).
@@ -142,7 +147,11 @@ export default function ConsentBanner() {
         </div>,
         document.body,
       )}
-      <LegalModal doc={showLegal ? 'privacy' : null} onClose={() => setShowLegal(false)} />
+      {showLegal && (
+        <Suspense fallback={null}>
+          <LegalModal doc="privacy" onClose={() => setShowLegal(false)} />
+        </Suspense>
+      )}
     </>
   );
 }

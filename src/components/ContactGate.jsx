@@ -1,11 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { getRef } from '../utils/refTracking';
 import { loadBuyerDetails, saveBuyerDetails } from '../utils/consent';
 import { supabase } from '../supabaseClient';
 import Turnstile from './Turnstile';
-import LegalModal from './LegalModal';
+
+// Lazy for the same reason as in ConsentBanner: this component is reachable from
+// every car card, so a static import would drag the full legal prose onto the
+// marketplace entry bundle for a link almost nobody taps.
+const LegalModal = lazy(() => import('./LegalModal'));
 
 const MY_STATES = ['Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka','Negeri Sembilan','Pahang','Penang','Perak','Perlis','Putrajaya','Sabah','Sarawak','Selangor','Terengganu'];
 
@@ -155,7 +159,11 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
     </div>,
     document.body,
     )}
-    <LegalModal doc={showLegal ? 'privacy' : null} onClose={() => setShowLegal(false)} />
+    {showLegal && (
+      <Suspense fallback={null}>
+        <LegalModal doc="privacy" onClose={() => setShowLegal(false)} />
+      </Suspense>
+    )}
     </>
   );
 }

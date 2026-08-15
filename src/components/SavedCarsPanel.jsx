@@ -1,8 +1,23 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, lazy, Suspense } from 'react';
 import { X, Heart, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSavedCars, useSavedCarsDetails } from '../hooks/useSavedCars';
-import CarCard from './CarCard';
+
+// Lazy: this drawer is mounted by MarketplaceHeader on every marketplace page
+// load (it has to stay mounted for its slide-in transition), so a static CarCard
+// import here put ~10 KB gzipped into the entry bundle for a panel that only
+// shows content after the visitor taps the heart icon. The panel chrome and
+// animation are unaffected — only the card list inside it is deferred.
+const CarCard = lazy(() => import('./CarCard'));
+
+// Matches the existing loading skeleton so the swap is invisible.
+const CardSkeleton = () => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    {[1,2,3].map(i => (
+      <div key={i} style={{ height: 200, borderRadius: 12, background: 'rgba(255,255,255,0.04)', animation: 'cc-shimmer 1.5s infinite', backgroundSize: '200% 100%' }} />
+    ))}
+  </div>
+);
 
 export default function SavedCarsPanel({ open, onClose }) {
   const { savedIds, toggleSave, ready } = useSavedCars();
@@ -116,13 +131,15 @@ export default function SavedCarsPanel({ open, onClose }) {
               </Link>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {cars.map(car => (
-                <div key={car.id} onClick={onClose}>
-                  <CarCard car={car} showDiscountBadge />
-                </div>
-              ))}
-            </div>
+            <Suspense fallback={<CardSkeleton />}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {cars.map(car => (
+                  <div key={car.id} onClick={onClose}>
+                    <CarCard car={car} showDiscountBadge />
+                  </div>
+                ))}
+              </div>
+            </Suspense>
           )}
         </div>
       </div>
