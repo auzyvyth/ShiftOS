@@ -210,9 +210,16 @@ export default function SalesmanProfilePage() {
       <Helmet>
         <title>{profile.full_name} · XDrive</title>
         <meta name="description" content={profile.about_text || `Browse cars from ${profile.full_name} on XDrive`} />
+        <meta property="og:type" content="profile" />
         <meta property="og:title" content={`${profile.full_name} · Car Agent on XDrive`} />
         <meta property="og:description" content={profile.about_text || `${listings.length} cars available`} />
-        {profile.avatar_url && <meta property="og:image" content={profile.avatar_url} />}
+        {/* Prefer the cover banner (a wide, landscape image) for the link
+            preview so a shared mini-page shows the agent's own banner, not a
+            square avatar or the generic site image. */}
+        {(profile.cover_url || profile.avatar_url) && (
+          <meta property="og:image" content={profile.cover_url || profile.avatar_url} />
+        )}
+        <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
