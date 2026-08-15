@@ -60,6 +60,27 @@
   go hunting in the handlers. (2) Vercel scopes env vars per environment — must be set on
   **Production**, not just Preview/Development. (3) Env var changes need a **redeploy** to
   reach an already-running deployment.
+  **PROBE METHOD (no local machine needed — the agent proxy 403s BOTH `xdrive.my` and
+  `*.vercel.app`, so curl from a web session is out):** use the Vercel MCP —
+  `web_fetch_vercel_url` against the deployment's `*.vercel.app` URL to send the requests,
+  and `get_runtime_logs` (`source=edge-middleware`, or `group_by statusCode`) to read what
+  the middleware actually did. `/api/booking` is the best target: a GET 405s before touching
+  Supabase (writes nothing) and its limit is the tightest at 3/60s.
+  **MEASURED 2026-08-15, after the env re-paste + production redeploy (`dpl_37csYE2Lx`):**
+  15 requests (5 → `/api/waitlist`, limit 3/300s; 10 → `/api/booking`, limit 3/60s) returned
+  **15x 405, zero 429, zero errors/warnings**. Logs confirm `source=middleware` fired on
+  every one, so the middleware IS deployed and matching the routes — it just passes
+  everything through. That is the fail-open signature (`buildLimiters()` returning null on a
+  falsy url/token). Zero 500s also proves the values are NOT malformed, so lead capture is
+  not at risk. ONE ALTERNATIVE NOT YET EXCLUDED: the limiter keys on `x-forwarded-for` and
+  Vercel's fetcher may rotate source IPs, which would also produce all-405s from a WORKING
+  limiter (would need >=4 distinct IPs to explain the booking burst alone).
+  **DECISIVE CHECK, browser-only:** open the Upstash console → the Redis DB → Data Browser
+  and look for keys prefixed `rl:booking` / `rl:waitlist` / `rl:enquiry`, or check
+  Usage/Metrics for command activity during the probe window. Keys present = limiter is live
+  (IP rotation explains the 405s, nothing to fix). Empty DB / no commands = the limiter never
+  ran, so the vars are not reaching the Production runtime — most likely they exist but the
+  **Production** checkbox was not ticked when they were added.
 
 > Reminder protocol: while ACT-2, ACT-4, ACT-9, ACT-10 or ACT-11 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. **ACT-8 was found ALREADY COMPLETE and removed 2026-08-15** — `package.json` AND `package-lock.json` both resolve `xlsx` to `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, and `vercel.json` CSP already whitelists `cdn.sheetjs.com` in connect-src; it had been sitting in this list as a blocked user-action for weeks after the fact. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then.) LESSON: verify an ACT item against the code before re-surfacing it — a stale nag costs a session's attention every time.
 
