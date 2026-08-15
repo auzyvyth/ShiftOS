@@ -672,9 +672,11 @@ export default function CarDetailPage() {
     }
 
     /* clipboard fallback */
-    await navigator.clipboard.writeText(`${title}\n${infoLines.join(' · ')}\n${url}`);
-    setShareCopied(true);
-    setTimeout(() => setShareCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(`${title}\n${infoLines.join(' · ')}\n${url}`);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch {} // clipboard blocked (page unfocused / no permission) — nothing to recover
   };
 
   /* document accordion */
