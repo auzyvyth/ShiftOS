@@ -231,7 +231,10 @@ Context: DB is NOT the bottleneck. Measured `public_car_listings` default query
 PERF-1..5 audit already fixed the query/RLS layer. Remaining slowness is the
 FRONTEND load architecture of the main marketplace (xdrive.my).
 
-- [ ] **MPERF-1 (HIGH): Main marketplace loads through a wasted HomePage shell.**
+- [x] **MPERF-1 (HIGH): Main marketplace loads through a wasted HomePage shell.**
+  DONE. `App.jsx` now has a `RootRoute` that branches on the synchronous
+  `isSubdomain()`; the main domain renders `MarketplacePage` eagerly and `HomePage`
+  is lazy (storefront only). Original note below.
   App.jsx routes "/" → `HomePage` (EAGER). HomePage statically imports
   HeroCarousel (1113 lines), CarCard (830), SearchAutocomplete, Header, Footer +
   all storefront JSX — none of which a main-domain visitor ever sees. On the main
@@ -249,6 +252,9 @@ FRONTEND load architecture of the main marketplace (xdrive.my).
 - [ ] **MPERF-2 (MED): HeroCarousel (1113 lines) is a static import in HomePage.**
   Even on the subdomain storefront it sits in the critical bundle. Lazy-load it
   with a lightweight placeholder so first paint isn't blocked on it.
+  CORRECTION (2026-08-15): HeroCarousel does NOT pull framer-motion — verified.
+  Lazy-loading it saves ~10 KB gzipped of its own source and nothing more; do not
+  expect the vendor-motion chunk to move with it (see MPERF-8).
 - [ ] **MPERF-3 (MED): Images depend on a free third-party proxy (wsrv.nl).**
   `src/utils/img.js cdnImg` routes every storage image through weserv for
   resize/WebP. Works, but adds an external dependency on the LCP path — first-hit
@@ -261,6 +267,50 @@ FRONTEND load architecture of the main marketplace (xdrive.my).
   (~75 buffers, 24 loops in the plan). Negligible at 42 rows but will scale badly.
   Consider splitting a lean marketplace view (no LATERAL/no per-row subqueries)
   from the detail view, or denormalizing seller_role/puspakom onto car_listings.
+
+#### Bundle audit follow-up (2026-08-15)
+
+Method note for whoever picks these up: measured with a static import-graph walk
+from `src/main.jsx` (follows local static imports, stops at `import()` boundaries)
+plus per-file `gzip -9`. A real `vite build` was NOT possible in the web session —
+`npm ci` 403s on `cdn.sheetjs.com` (the ACT-8 xlsx pin) and `npm install` is
+sandboxed. Re-measure with a real build before trusting absolute numbers; the
+rankings are sound, but gz-of-source overstates JS (it minifies further) and is
+accurate for JSON (it does not).
+
+- [x] **MPERF-5: Entry-bundle dead weight** — DONE (2026-08-15). Entry graph went
+  52 modules / 448 KB source → 43 / 328 KB. Five things: (1) only the `en` locale
+  is bundled now, `ms.json` is a chunk fetched when Malay is active (16 KB gz, the
+  single biggest item and an exact saving since JSON does not minify); (2) CarCard
+  made lazy at `BodyTypeCarousel` + `SavedCarsPanel` — it had re-entered the entry
+  bundle through those two side doors after MPERF-1 removed the HomePage route;
+  (3) `LegalModal` lazy in `ConsentBanner` AND `ContactGate` (the latter is the one
+  that mattered — it is reachable from every car card); (4) `GoogleOneTap` behind a
+  build-time env gate, it was shipping only to return null; (5) deleted the mount of
+  a second, entirely unused toast system. NOT yet browser-tested — needs a staging pass.
+- [ ] **MPERF-6 (MED, redundancy not perf): two card components render cars on the
+  same page.** The marketplace grid uses `ShowroomCard` (6.9 KB gz) and the body-type
+  carousels use `CarCard` (10.1 KB gz) — two implementations of one job, ~17 KB gz
+  total, on a single route. MPERF-5 deferred CarCard's cost but did not remove the
+  duplication. Decide which is canonical and collapse; `CarCard` is the heavier and
+  more general one (it also drags `ContactGate` + `GradeBadge`), `ShowroomCard` is
+  the leaner marketplace-specific one. Do this as its own pass — it is a component
+  consolidation with visual regression risk, not a bundle tweak.
+- [ ] **MPERF-7 (LOW): dead radix toast files.** `src/components/ui/toast.jsx`,
+  `src/components/ui/toaster.jsx` and `src/hooks/use-toast.js` now have zero
+  importers (sonner is the real toast system, 20 importers). They cost nothing at
+  runtime once unreferenced, so this is hygiene only — delete them and drop
+  `@radix-ui/react-toast` from package.json in a session that can run npm.
+- [ ] **MPERF-8 (MED): framer-motion sits on the storefront critical path for two
+  trivial animations.** It enters the HomePage chunk via `Header.jsx` (the mobile
+  menu panel, gated on `mobileOpen`) and `StickyWhatsAppButton.jsx` (one button
+  fade) — nothing else in that graph uses it. That is the whole `vendor-motion`
+  chunk (~35 KB gz) for a drawer transition and a fade, both of which are plain CSS.
+  Either convert both to CSS transitions and drop the dependency from these two
+  components, or lazy-load the drawer. Check the other framer-motion users
+  (`CarGallery`, `CalculatorPage`, `FinancingCalculator`, `AmortizationSchedule`,
+  `CalculatorInfoSection`) before removing the dep outright — they are all on lazy
+  routes, so they can keep it.
 
 ### SALESMAN LITE — routing / back-button UX
 
