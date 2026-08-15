@@ -49,6 +49,17 @@
   `for i in 1 2 3 4 5; do curl -s -o /dev/null -w "%{http_code}\n" https://xdrive.my/api/waitlist; done`
   — a GET writes nothing (handler 405s) but still counts against the limiter, so requests
   4–5 MUST return 429. If they all return 405, the limiter is off. (Infra audit, 2026-08-15.)
+  Var names verified correct against `middleware.js:31-32` — `UPSTASH_REDIS_REST_URL` +
+  `UPSTASH_REDIS_REST_TOKEN`, URL shape `https://<slug>.upstash.io`. THREE gotchas:
+  (1) **a malformed value is WORSE than a missing one** — missing → `buildLimiters()`
+  returns null → passes through → fails OPEN (silent, no protection); malformed (e.g. the
+  surrounding double quotes pasted into Vercel's UI, which does NOT strip them the way a
+  `.env` file does) → returns a truthy limiter → `.limit()` rejects at request time → fails
+  CLOSED with **500s on all six public endpoints**, including `/api/enquiry` and
+  `/api/whatsapp-lead`. So a 500 on those routes = bad env VALUE, not a code bug — do not
+  go hunting in the handlers. (2) Vercel scopes env vars per environment — must be set on
+  **Production**, not just Preview/Development. (3) Env var changes need a **redeploy** to
+  reach an already-running deployment.
 
 > Reminder protocol: while ACT-2, ACT-4, ACT-9, ACT-10 or ACT-11 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. **ACT-8 was found ALREADY COMPLETE and removed 2026-08-15** — `package.json` AND `package-lock.json` both resolve `xlsx` to `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, and `vercel.json` CSP already whitelists `cdn.sheetjs.com` in connect-src; it had been sitting in this list as a blocked user-action for weeks after the fact. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then.) LESSON: verify an ACT item against the code before re-surfacing it — a stale nag costs a session's attention every time.
 
