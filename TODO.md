@@ -21,14 +21,6 @@
   ResetPasswordPage/`type=recovery`), so it needs its own tested pass — do NOT
   flip it blindly. Deferred from the audit to avoid regressing reset/confirm.
 
-- **ACT-8: Pin xlsx to the SheetJS official build** — `xlsx@0.18.5` (npm) has a
-  HIGH prototype-pollution + ReDoS advisory with NO npm fix (SheetJS ships fixes
-  only from their own CDN). Surface is narrow (an authenticated dealer parsing a
-  crafted `.xlsx` in ImportStockPage — mostly self-harm) but it should be pinned.
-  The web session's proxy blocks `cdn.sheetjs.com` (403), so this must be run in
-  a local/unrestricted env: `npm install xlsx@https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`
-  then `npm run build`. (Audit follow-up, 2026-07-20.)
-
 - **ACT-9 (dev-only): vite 5 -> 8 major upgrade** — vite `5.4.21` + its esbuild
   carry HIGH/MODERATE **dev-server** advisories (path traversal, dev-server CORS,
   Windows fs.deny bypass). Production is a static Vercel build, so it is NOT
@@ -58,7 +50,7 @@
   — a GET writes nothing (handler 405s) but still counts against the limiter, so requests
   4–5 MUST return 429. If they all return 405, the limiter is off. (Infra audit, 2026-08-15.)
 
-> Reminder protocol: while ACT-2, ACT-4, ACT-8, ACT-9, ACT-10 or ACT-11 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then.)
+> Reminder protocol: while ACT-2, ACT-4, ACT-9, ACT-10 or ACT-11 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. **ACT-8 was found ALREADY COMPLETE and removed 2026-08-15** — `package.json` AND `package-lock.json` both resolve `xlsx` to `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, and `vercel.json` CSP already whitelists `cdn.sheetjs.com` in connect-src; it had been sitting in this list as a blocked user-action for weeks after the fact. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then.) LESSON: verify an ACT item against the code before re-surfacing it — a stale nag costs a session's attention every time.
 
 ## Dev tasks
 
