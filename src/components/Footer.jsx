@@ -7,6 +7,11 @@ import { isSubdomain } from "../hooks/useTenant";
 // Superadmin profile is the fallback for xdrive.my main domain
 const SUPERADMIN_ID = "1e7bf24e-5b71-4c64-8d03-b60db5e59316";
 
+// App version — injected from package.json at build time (see vite.config.js).
+// Falls back to "dev" when running outside a Vite build (e.g. tests).
+/* global __APP_VERSION__ */
+const APP_VERSION = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "dev";
+
 const FOOTER_CSS = `
 
   .ftr-root {
@@ -295,6 +300,7 @@ const Footer = () => {
         <div className="ftr-bottom">
           <span className="ftr-bottom-text">
             © {currentYear} {dealershipName}. All rights reserved.
+            <span style={{ color: "#3F3F46", marginLeft: "8px" }}>v{APP_VERSION}</span>
           </span>
           <span style={{ display: "flex", gap: "16px", alignItems: "center" }}>
             <Link to="/terms" style={{ color: "#71717A", fontSize: "12px", textDecoration: "none" }}>Terms</Link>
