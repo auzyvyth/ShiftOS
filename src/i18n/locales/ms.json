@@ -661,6 +661,9 @@
       "icNumber": "No. IC",
       "icPrivate": "(peribadi — admin sahaja)",
       "icHint": "Diperlukan untuk pengesahan. Tidak ditunjukkan kepada umum.",
+      "icVerified": "Disahkan",
+      "icVerifyBtn": "Sahkan IC anda",
+      "profileSection": "Profil",
       "socialSection": "Pautan Sosial",
       "changePhoto": "Tukar foto",
       "uploading": "Memuat naik…",
@@ -675,6 +678,12 @@
       "savingBtn": "Menyimpan...",
       "language": "Bahasa",
       "languageSubtext": "Tukar antara Inggeris dan Melayu"
+    },
+    "logout": {
+      "title": "Log keluar?",
+      "body": "Anda perlu log masuk semula untuk kembali ke panel anda.",
+      "cancel": "Batal",
+      "confirm": "Log keluar"
     },
     "dangerZone": {
       "title": "Zon Bahaya",

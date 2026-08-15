@@ -670,6 +670,9 @@
       "icNumber": "IC Number",
       "icPrivate": "(private — admin only)",
       "icHint": "Required for verification. Never shown publicly.",
+      "icVerified": "Verified",
+      "icVerifyBtn": "Verify your IC",
+      "profileSection": "Profile",
       "socialSection": "Social Links",
       "changePhoto": "Change photo",
       "uploading": "Uploading…",
@@ -684,6 +687,12 @@
       "savingBtn": "Saving...",
       "language": "Language",
       "languageSubtext": "Switch between English and Malay"
+    },
+    "logout": {
+      "title": "Log out?",
+      "body": "You'll need to sign in again to get back into your panel.",
+      "cancel": "Cancel",
+      "confirm": "Log out"
     },
     "dangerZone": {
       "title": "Danger Zone",

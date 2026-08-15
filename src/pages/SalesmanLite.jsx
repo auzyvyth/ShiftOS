@@ -468,6 +468,55 @@ function ConfirmBookingModal({ apt, message, onChangeMessage, onClose, onSend, o
   );
 }
 
+// Logout confirmation — a small guard so an accidental tap on the header
+// logout icon doesn't sign the salesman out mid-task. Own × / overlay-click
+// close controls, so it does NOT register useModalHistory (per overlay rules).
+function LogoutConfirmModal({ open, onClose, onConfirm }) {
+  const { t } = useTranslation();
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.8)", backdropFilter: "blur(2px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: "#111827", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, width: "100%", maxWidth: 360, padding: 24, fontFamily: "system-ui, sans-serif" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+          <div style={{ width: 38, height: 38, borderRadius: "50%", background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.25)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <LogOut size={17} style={{ color: "#f87171" }} />
+          </div>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanLite.logout.title")}</p>
+        </div>
+        <p style={{ margin: "0 0 18px", fontSize: 13, color: "#9ca3af", lineHeight: 1.6 }}>{t("salesmanLite.logout.body")}</p>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            onClick={onClose}
+            style={{ flex: 1, padding: "10px 0", borderRadius: 9, fontSize: 13, fontWeight: 600, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#d1d5db", cursor: "pointer", fontFamily: "inherit" }}
+          >
+            {t("salesmanLite.logout.cancel")}
+          </button>
+          <button
+            onClick={onConfirm}
+            style={{ flex: 1, padding: "10px 0", borderRadius: 9, fontSize: 13, fontWeight: 700, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontFamily: "inherit" }}
+          >
+            {t("salesmanLite.logout.confirm")}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 // Seller-initiated booking modal — when the salesman moves a lead into the
 // booking stage, this asks "Confirm this lead's booking at ..." and captures
 // the date/time (defaults pre-filled, editable). Confirming creates a CONFIRMED
@@ -599,6 +648,8 @@ export default function SalesmanLite() {
   const [sellerBookingSaving, setSellerBookingSaving] = useState(false);
   // Ticks once a minute so inbox relative-time labels stay live to the minute.
   const [nowTick, setNowTick] = useState(Date.now());
+  // Logout confirmation — guard against accidental taps on the header logout icon.
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   // Danger Zone — self-service account deletion (soft delete + 30-day grace).
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
@@ -633,10 +684,13 @@ export default function SalesmanLite() {
     setIcGateSaving(true);
     try {
       // Hash + store server-side (set_my_ic): the IC is never persisted in
-      // plaintext, only a per-user-salted SHA-256 hash + last-4 for display.
-      const { data: last4, error } = await supabase.rpc("set_my_ic", { p_ic: digits });
+      // plaintext, only a per-user-salted SHA-256 hash. We ignore the returned
+      // last-4 — the badge shows verified status only, no digits.
+      const { error } = await supabase.rpc("set_my_ic", { p_ic: digits });
       if (error) throw error;
-      setProfile((p) => ({ ...p, ic_hash: "set", ic_last4: last4 || digits.slice(-4), ic_verified_at: new Date().toISOString(), ic_deadline: null }));
+      // Don't stash the last-4 in client state — the badge shows verified
+      // status only, so there's no reason to hold IC digits in the browser.
+      setProfile((p) => ({ ...p, ic_hash: "set", ic_verified_at: new Date().toISOString(), ic_deadline: null }));
       setIcGateOpen(false);
       // Only jump into the add-listing form when the gate was opened from that
       // flow — the 1-week enforcement gate can fire with no form pending.
@@ -1033,7 +1087,7 @@ export default function SalesmanLite() {
 
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, location, ic_hash, ic_last4, ic_verified_at, ic_deadline, created_at, account_status, deleted_at, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
+        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, location, ic_hash, ic_verified_at, ic_deadline, created_at, account_status, deleted_at, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
         .eq("id", uid)
         .maybeSingle();
 
@@ -6763,6 +6817,10 @@ export default function SalesmanLite() {
       boxSizing: "border-box",
       fontFamily: "system-ui, sans-serif",
     };
+    // Shared card + section-heading styling so every settings group reads as
+    // one consistent, scannable block instead of loose fields hugging the sidebar.
+    const cardStyle = { padding: 16, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 };
+    const sectionLabelStyle = { margin: "0 0 12px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" };
 
     // Strip the country code AND any leading trunk 0 — a MY mobile under +60 is
     // written without the leading 0 (011… -> +6011…). Without the /^0+/ strip a
@@ -6883,7 +6941,7 @@ export default function SalesmanLite() {
     const initials = (profile?.full_name || profile?.slug || "S")[0].toUpperCase();
 
     return (
-      <div style={{ maxWidth: 480 }}>
+      <div style={{ maxWidth: 560, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
         <p style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
           {t("salesmanLite.settings.title")}
         </p>
@@ -6946,6 +7004,10 @@ export default function SalesmanLite() {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Profile basics */}
+          <div style={cardStyle}>
+            <p style={sectionLabelStyle}>{t("salesmanLite.settings.profileSection")}</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
             <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanLite.settings.fullName")}</label>
             <input
@@ -7001,10 +7063,12 @@ export default function SalesmanLite() {
             />
             <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.settings.slugHint")}</p>
           </div>
+            </div>
+          </div>
 
           {/* Location + IC */}
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 16 }}>
-            <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.settings.locationSection")}</p>
+          <div style={cardStyle}>
+            <p style={sectionLabelStyle}>{t("salesmanLite.settings.locationSection")}</p>
             <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
               <div style={{ flex: 1 }}>
                 <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.city")}</label>
@@ -7029,19 +7093,20 @@ export default function SalesmanLite() {
             <div>
               <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.icNumber")} <span style={{ color: "#4b5563" }}>{t("salesmanLite.settings.icPrivate")}</span></label>
               {/* IC is verify-only: stored hashed via set_my_ic, never editable as
-                  plaintext. Verified rows show a masked last-4; unverified show a
-                  button that opens the hashing gate. */}
+                  plaintext, and never read back to the client. Verified rows
+                  show a status badge only (no digits); unverified show a button
+                  that opens the hashing gate. */}
               {profile?.ic_hash ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 13px", borderRadius: 8, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)" }}>
                   <ShieldCheck size={15} style={{ color: "#22c55e", flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, color: "#e5e7eb", fontWeight: 600 }}>Verified · •••• •• {profile.ic_last4 || "••••"}</span>
+                  <span style={{ fontSize: 13, color: "#e5e7eb", fontWeight: 600 }}>{t("salesmanLite.settings.icVerified")}</span>
                 </div>
               ) : (
                 <button
                   onClick={() => { setIcGateVal(""); setIcGateOpen(true); }}
                   style={{ display: "flex", alignItems: "center", gap: 7, padding: "11px 13px", borderRadius: 8, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", width: "100%" }}
                 >
-                  <ShieldCheck size={15} style={{ flexShrink: 0 }} /> Verify your IC
+                  <ShieldCheck size={15} style={{ flexShrink: 0 }} /> {t("salesmanLite.settings.icVerifyBtn")}
                 </button>
               )}
               <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.settings.icHint")}</p>
@@ -7049,8 +7114,8 @@ export default function SalesmanLite() {
           </div>
 
           {/* Social links */}
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 16 }}>
-            <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.settings.socialSection")}</p>
+          <div style={cardStyle}>
+            <p style={sectionLabelStyle}>{t("salesmanLite.settings.socialSection")}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[
                 { key: "instagram", label: "Instagram", placeholder: "@yourusername", prefix: "instagram.com/" },
@@ -7077,8 +7142,8 @@ export default function SalesmanLite() {
           </div>
 
           {/* Language toggle */}
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 16 }}>
-            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.settings.language")}</p>
+          <div style={cardStyle}>
+            <p style={{ ...sectionLabelStyle, marginBottom: 8 }}>{t("salesmanLite.settings.language")}</p>
             <p style={{ margin: "0 0 10px", fontSize: 11, color: "#374151" }}>{t("salesmanLite.settings.languageSubtext")}</p>
             <div style={{ display: "flex", gap: 8 }}>
               {[{ code: "en", label: "English" }, { code: "ms", label: "Malay" }].map(({ code, label }) => (
@@ -7123,7 +7188,7 @@ export default function SalesmanLite() {
           </button>
 
           {/* Danger Zone — self-service account deletion */}
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: 8, paddingTop: 18 }}>
+          <div style={{ ...cardStyle, border: "1px solid rgba(248,113,113,0.2)", background: "rgba(248,113,113,0.03)", marginTop: 8 }}>
             <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "rgba(248,113,113,0.7)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
               {t("salesmanLite.dangerZone.title")}
             </p>
@@ -8377,7 +8442,7 @@ export default function SalesmanLite() {
               <p style={{ fontSize: 10, color: "#4b5563", margin: 0 }}>lite</p>
             </div>
             <button
-              onClick={handleLogout}
+              onClick={() => setLogoutConfirmOpen(true)}
               title="Log out"
               aria-label="Log out"
               style={{
@@ -8504,7 +8569,7 @@ export default function SalesmanLite() {
                 ?
               </button>
               <button
-                onClick={handleLogout}
+                onClick={() => setLogoutConfirmOpen(true)}
                 title="Log out"
                 aria-label="Log out"
                 style={{
@@ -8694,6 +8759,11 @@ export default function SalesmanLite() {
       {renderLogCallModal()}
       {renderBatchWAModal()}
       {renderDeleteModal()}
+      <LogoutConfirmModal
+        open={logoutConfirmOpen}
+        onClose={() => setLogoutConfirmOpen(false)}
+        onConfirm={handleLogout}
+      />
       <ConfirmBookingModal
         apt={confirmBookingApt}
         message={confirmBookingMsg}
