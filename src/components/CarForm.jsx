@@ -299,26 +299,19 @@ export function buildCopyText(l) {
     : 0;
   const isHot = discountPct >= 3;
 
-  // Auto hashtags — luxury/exotic listings get premium tags instead of budget
-  // ones ("#keretamurah" = "cheap car", "#jualbeli" = "buy-sell") that read as
-  // mismatched/damaging against a RM1m+ asking price.
+  // Auto hashtags — built only from the listing's own name + features, never
+  // generic budget tags ("#keretamurah" = "cheap car", "#keretabekas" = "used
+  // car") that undersell the listing regardless of its price point.
   const brand = (l.brand || "").toLowerCase().replace(/\s+/g, "");
   const model = (l.model || "").toLowerCase().replace(/\s+/g, "");
-  const state = (l.state || "").toLowerCase().replace(/\s+/g, "");
-  const cond = (l.condition || "").toLowerCase();
   const isHighValue = Number(l.selling_price) > HIGH_VALUE_THRESHOLD;
-  const tags = [
-    isHighValue ? "#supercar" : "#keretamurah",
-    isHighValue ? "#exoticcarsmalaysia" : "#keretamalaysia",
-    `#${brand}`,
-    `#${model}`,
-    state ? `#kereta${state}` : "",
-    `#${cond}`,
-    isHighValue ? "" : "#keretabekas",
-    isHighValue ? "" : "#jualbeli",
-  ]
+  const featureTags = (l.features || "")
+    .split(/[\n,]+/)
+    .map((f) => f.trim())
     .filter(Boolean)
-    .join(" ");
+    .map((f) => `#${f.toLowerCase().replace(/[^a-z0-9]+/g, "")}`)
+    .filter((f) => f.length > 1);
+  const tags = [`#${brand}`, `#${model}`, ...featureTags].filter(Boolean).join(" ");
 
   const lines = [];
   lines.push(`━━━━━━━━━━━━━━━━━━━━`);
