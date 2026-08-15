@@ -1,10 +1,19 @@
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 
+// Single source of truth for the app version: package.json "version".
+// Bumped with `npm version <patch|minor|major>` on each prod release, which
+// also creates the matching git tag. Exposed to the client as __APP_VERSION__.
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url)));
+
 export default defineConfig({
+	define: {
+		__APP_VERSION__: JSON.stringify(pkg.version),
+	},
 	plugins: [
 		react(),
 		sentryVitePlugin({
