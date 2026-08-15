@@ -47,7 +47,18 @@
   inline verify against siteverify) before create_lead_from_whatsapp / hunt insert.
   Until done, public lead/hunt writes rely on DB rate limits alone. (Audit F5, 2026-08-03.)
 
-> Reminder protocol: while ACT-2, ACT-4, ACT-8, ACT-9 or ACT-10 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then.)
+- **ACT-11: Verify Upstash env vars are actually set in Vercel prod** — `middleware.js`
+  rate-limits the 6 public API routes (enquiry/whatsapp-lead/booking/waitlist/ai-messages/
+  car-specs) via Upstash, but `buildLimiters()` returns null and the middleware **fails
+  open silently** when `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` are missing —
+  so an unconfigured prod has NO rate limiting and looks identical to a working one. Could
+  not verify from the web session (the agent proxy 403s `xdrive.my`). Check Vercel →
+  Settings → Environment Variables for both keys on Production, or run locally:
+  `for i in 1 2 3 4 5; do curl -s -o /dev/null -w "%{http_code}\n" https://xdrive.my/api/waitlist; done`
+  — a GET writes nothing (handler 405s) but still counts against the limiter, so requests
+  4–5 MUST return 429. If they all return 405, the limiter is off. (Infra audit, 2026-08-15.)
+
+> Reminder protocol: while ACT-2, ACT-4, ACT-8, ACT-9, ACT-10 or ACT-11 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then.)
 
 ## Dev tasks
 
@@ -443,6 +454,116 @@ Redeploy the other four when convenient to prevent the same Sentry preflight iss
   OPTIONAL future enhancement (not blocking): a `verified_purchase` flag tied to
   a won deal to show "verified" stars — deliberately omitted for now, and the
   component is honest that reviews are not purchase-verified.
+
+### INFRASTRUCTURE & APP-STORE READINESS AUDIT (2026-08-15)
+
+Scope: infra rating + "do we need load balancing" + what it takes to ship on the App
+Store / Play Store later. Verified against LIVE state (Supabase MCP advisors, `pg_indexes`,
+`pg_stat_user_tables`, Vercel project API), not from memory.
+
+**Headline: there is nothing to load-balance.** Vercel and Supabase both autoscale their
+own compute — there is no LB for us to configure and no need for one. The real ceiling is
+the Supabase PLAN TIER: org `Xdrive` is on **free** (nano compute, `max_connections=60`,
+no read replica, no autoscale). Live now: 43 MB DB, 14 open connections, biggest table
+`analytics_events` at 6,847 rows. Current scale is trivial; the constraint only bites when
+mobile traffic patterns (background refresh, push-triggered opens) land. That is a
+"upgrade the box" problem, not an architecture problem — do NOT build sharding/LB/queueing
+for it.
+
+Verified benign (do not re-audit): the 3 `rls_enabled_no_policy` INFO lints
+(`auth_login_throttle`, `ops_alert_state`, `plan_config`) are correct-by-design — all three
+are server/SECURITY-DEFINER-only tables, and `plan_config` is mirrored client-side as a
+plain JS file (`src/utils/planConfig.js`), never queried. RLS-on + zero-policies = deny-all
+to the client, which is the intent.
+
+#### DB scale debt (from Supabase advisors — real counts, all currently harmless at 43 MB)
+- [x] **INFRA-2: Drop duplicate indexes** — DONE (2026-08-15). Two identical index pairs
+  were costing double write amplification for zero read benefit: `leads`
+  {`idx_leads_dealer_stage`, `leads_dealer_stage_idx`} and `deal_products`
+  {`deal_products_dealer_id_idx`, `idx_deal_products_dealer_id`}. Dropped the redundant
+  one from each pair (kept the `idx_`-prefixed name for consistency).
+- [ ] **INFRA-3 (HIGH at scale): `auth_rls_initplan` — 115 policies re-evaluate `auth.uid()`
+  PER ROW.** Worst on the hot tables: `car_listings` (13), `leads` (7), `profiles` (5),
+  `appointments` (5), `salesman_notifications` (5). FIX: wrap the call as
+  `(select auth.uid())` so Postgres evaluates it once per query instead of per row. Same
+  CLASS of bug as the shipped PERF-1 fix (marking helpers STABLE) but a different mechanism
+  — PERF-1 did NOT fix this. NOT a quick job: 115 policies, and CLAUDE.md's RLS rule
+  ("test with a real row read before shipping") applies to every one. Do it as its own
+  session, hot tables first, and re-run the advisor after.
+- [ ] **INFRA-4 (MED at scale): `multiple_permissive_policies` — 150 instances.**
+  `profiles` (24), `car_listings` (19), `leads` (18), `appointments` (12),
+  `loan_applications` (10). Every redundant PERMISSIVE policy on the same table+action is
+  OR'd and evaluated per row, so they multiply RLS cost. Consolidate overlapping policies
+  per (table, role, action). Pairs naturally with INFRA-3 — same tables, same test pass.
+- [ ] **INFRA-5 (LOW, deliberately deferred): 62 unindexed foreign keys.** DO NOT bulk-add
+  all 62 — that is cargo-culting the linter. Live row counts say every flagged table is
+  tiny (`lead_activities` 196, `leads` 130, `appointments` 88, `car_listings` 69,
+  `workshop_jobs` 0 — that module isn't built). Postgres seq-scans these faster than an
+  index scan, and the advisor ALREADY flags 27 `unused_index` — adding 62 more makes write
+  amplification and advisor noise worse today for zero read benefit. TRIGGER TO REVISIT:
+  when `leads` or `lead_activities` clears ~10k rows, or the advisor starts reporting real
+  seq scans on them. Then add only the hot-path ones: `leads.car_listing_id`,
+  `lead_activities.dealer_id`, `appointments.car_listing_id`, `salesman_listings.listing_id`
+  (the composite UNIQUE(salesman_id, listing_id) does NOT cover a listing_id-only lookup —
+  wrong leading column).
+- [ ] **INFRA-6 (REVIEW, not a fix): 2 `security_definer_view` ERRORs** — `public_car_listings`
+  and `public_dealer_profiles`. These are DELIBERATE (CRIT-0: anon marketplace read without
+  reopening a broad anon SELECT policy on `profiles`) and must stay. But SECURITY DEFINER
+  views bypass RLS entirely, so a future `ALTER TABLE car_listings/profiles ADD COLUMN`
+  can silently start exposing that column to anonymous visitors. ACTION: do a one-time
+  column-by-column review of what each view selects, and add a standing rule — after ANY
+  column added to `car_listings` or `profiles`, re-check both views. (This is the same
+  discipline CLAUDE.md already requires for keeping `public_car_listings` updated; it needs
+  a SECURITY note attached, not just a "remember to add the column" note.)
+- [ ] **INFRA-7 (LOW): `car_listings` carries 20 indexes on 69 rows.** Clearly built for the
+  marketplace filter paths (brand/year/price/state/body_type/trgm partials) so most will
+  earn their keep at scale — but every one is write cost on every listing insert/update
+  today. Re-check against the `unused_index` advisor once there is real marketplace traffic
+  and drop whatever never gets scanned.
+
+#### Mobile / app-store readiness
+Reality check: the PWA foundation is genuinely good — `vite.config.js` VitePWA is carefully
+configured (manifest, 192/512 icons, standalone, deliberate `registerType:'prompt'` +
+globIgnores to dodge the stale-SW blank-page trap), and `PrivacyPage.jsx` / `TermsPage.jsx`
+already exist (both stores require them). Android via a Trusted Web Activity would work
+close to as-is. iOS will NOT accept a bare WebView wrapper (App Review guideline 4.2,
+"minimum functionality"). The items below are what actually stands between us and a
+native build.
+
+- [ ] **MOBILE-1 (DO THIS ONE EARLY — ACT-7 reclassified): migrate auth to PKCE.**
+  `src/supabaseClient.js` sets no `flowType`, so it defaults to **implicit** (tokens land in
+  the URL hash). TODO has this filed as ACT-7 "optional, deferred". For a native/wrapped app
+  it stops being optional: OAuth, magic-link and password-reset callbacks inside a
+  Capacitor/RN WebView need PKCE + a custom URL scheme or Universal/App Links, and implicit
+  flow does not survive that handoff reliably. This is the ONE item where deferring makes it
+  MORE expensive — the risk is regressing `AuthConfirmPage` (token_hash) and
+  `ResetPasswordPage` (`type=recovery`) parsing, and that blast radius only grows with the
+  user base. Do it now while it's small, with its own tested pass. Do NOT flip `flowType`
+  blindly.
+- [ ] **MOBILE-2 (BLOCKING DECISION — gates MOBILE-3 and MOBILE-4): pick the native path.**
+  Capacitor-wrapping this React app vs a separate React Native client. This single call
+  determines the shape of the push-notification work, the CORS allowlist change, and whether
+  iOS 4.2 is satisfiable. Decide before any native work starts. Recommendation: Capacitor —
+  it reuses this codebase, and 4.2 is clearable by shipping native capabilities (push,
+  camera for listing photos, biometric unlock) rather than a rebuild.
+- [ ] **MOBILE-3: no push notification infrastructure exists** (no FCM/APNs anywhere in the
+  repo). Today "notifications" are DB rows (`dealer_notifications` / `salesman_notifications`)
+  visible only while a tab is open. For a lead-response CRM, an app that cannot notify while
+  closed is materially WORSE than the web version — this is the main thing that would make a
+  native build worth downloading at all. Not urgent now, but keep the notification data model
+  additive so FCM/APNs slots in without a rework. Note: expiry-reminders + overdue-handover
+  already generate the right events; only delivery is missing.
+- [ ] **MOBILE-4: edge function CORS allowlist will reject the native origin.** `invites`,
+  `create-salesman`, `send-document` and `import-drive-images` all hard-allowlist
+  `https://xdrive.my` / `*.xdrive.my` / localhost. A native shell's origin
+  (`capacitor://localhost` or similar) gets silently rejected by every one of them. Cheap
+  one-line fix per function — but easy to forget until a store build mysteriously breaks, so
+  it is logged here. Depends on MOBILE-2 for the exact origin string.
+- [ ] **MOBILE-5: subdomain tenancy does not map onto a single app bundle.** `useTenant.js`
+  resolves the dealer from the hostname (`<sub>.xdrive.my`); a native app has one fixed
+  origin and no address bar. Not a bug today — but decide the in-app dealer-switching model
+  (login-derived tenant vs an explicit picker) BEFORE more logic gets baked into hostname
+  detection, or this becomes a rewrite instead of an addition.
 
 ### INFRASTRUCTURE
 
