@@ -21,14 +21,6 @@
   ResetPasswordPage/`type=recovery`), so it needs its own tested pass — do NOT
   flip it blindly. Deferred from the audit to avoid regressing reset/confirm.
 
-- **ACT-8: Pin xlsx to the SheetJS official build** — `xlsx@0.18.5` (npm) has a
-  HIGH prototype-pollution + ReDoS advisory with NO npm fix (SheetJS ships fixes
-  only from their own CDN). Surface is narrow (an authenticated dealer parsing a
-  crafted `.xlsx` in ImportStockPage — mostly self-harm) but it should be pinned.
-  The web session's proxy blocks `cdn.sheetjs.com` (403), so this must be run in
-  a local/unrestricted env: `npm install xlsx@https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`
-  then `npm run build`. (Audit follow-up, 2026-07-20.)
-
 - **ACT-9 (dev-only): vite 5 -> 8 major upgrade** — vite `5.4.21` + its esbuild
   carry HIGH/MODERATE **dev-server** advisories (path traversal, dev-server CORS,
   Windows fs.deny bypass). Production is a static Vercel build, so it is NOT
@@ -47,7 +39,7 @@
   inline verify against siteverify) before create_lead_from_whatsapp / hunt insert.
   Until done, public lead/hunt writes rely on DB rate limits alone. (Audit F5, 2026-08-03.)
 
-> Reminder protocol: while ACT-2, ACT-4, ACT-8, ACT-9 or ACT-10 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then.)
+> Reminder protocol: while ACT-2, ACT-4, ACT-9 or ACT-10 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. **ACT-8 was found ALREADY COMPLETE and removed 2026-08-15** — `package.json` AND `package-lock.json` both resolve `xlsx` to `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, and `vercel.json` CSP already whitelists `cdn.sheetjs.com` in connect-src; it had been sitting in this list as a blocked user-action for weeks after the fact. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then.) LESSON: verify an ACT item against the code before re-surfacing it — a stale nag costs a session's attention every time.
 
 ## Dev tasks
 
@@ -81,8 +73,11 @@
   `redirectTo` prop; realtime auto-forwards on approval. AdminPage now surfaces
   solo premium salesmen (were invisible) with a "Mark Paid" action
   (superadmin RLS). Grandfathered premium rows (payment_status null) pass through.
-  Original note below for reference:
-  Salesman Premium (`salesman_full`, RM50/mo) previously activated for FREE at onboarding
+  Original note below for reference (its "RM50/mo" was stale prose — corrected
+  2026-08-15: live price is RM20/mo, and `plan_config` in the DB matches
+  `src/utils/planConfig.js` exactly on all six plans, so C4 held. No pricing
+  drift exists in code; this line was the only wrong copy):
+  Salesman Premium (`salesman_full`, RM20/mo) previously activated for FREE at onboarding
   (`SalesmanOnboarding.activate()` sets `plan:'salesman_full'` with no payment).
   Apply the same pattern already shipped for dealers: on premium signup set
   `payment_status:'pending'`, show a QR pending screen (generalise/rename the
@@ -236,7 +231,10 @@ Context: DB is NOT the bottleneck. Measured `public_car_listings` default query
 PERF-1..5 audit already fixed the query/RLS layer. Remaining slowness is the
 FRONTEND load architecture of the main marketplace (xdrive.my).
 
-- [ ] **MPERF-1 (HIGH): Main marketplace loads through a wasted HomePage shell.**
+- [x] **MPERF-1 (HIGH): Main marketplace loads through a wasted HomePage shell.**
+  DONE. `App.jsx` now has a `RootRoute` that branches on the synchronous
+  `isSubdomain()`; the main domain renders `MarketplacePage` eagerly and `HomePage`
+  is lazy (storefront only). Original note below.
   App.jsx routes "/" → `HomePage` (EAGER). HomePage statically imports
   HeroCarousel (1113 lines), CarCard (830), SearchAutocomplete, Header, Footer +
   all storefront JSX — none of which a main-domain visitor ever sees. On the main
@@ -254,6 +252,9 @@ FRONTEND load architecture of the main marketplace (xdrive.my).
 - [ ] **MPERF-2 (MED): HeroCarousel (1113 lines) is a static import in HomePage.**
   Even on the subdomain storefront it sits in the critical bundle. Lazy-load it
   with a lightweight placeholder so first paint isn't blocked on it.
+  CORRECTION (2026-08-15): HeroCarousel does NOT pull framer-motion — verified.
+  Lazy-loading it saves ~10 KB gzipped of its own source and nothing more; do not
+  expect the vendor-motion chunk to move with it (see MPERF-8).
 - [ ] **MPERF-3 (MED): Images depend on a free third-party proxy (wsrv.nl).**
   `src/utils/img.js cdnImg` routes every storage image through weserv for
   resize/WebP. Works, but adds an external dependency on the LCP path — first-hit
@@ -266,6 +267,50 @@ FRONTEND load architecture of the main marketplace (xdrive.my).
   (~75 buffers, 24 loops in the plan). Negligible at 42 rows but will scale badly.
   Consider splitting a lean marketplace view (no LATERAL/no per-row subqueries)
   from the detail view, or denormalizing seller_role/puspakom onto car_listings.
+
+#### Bundle audit follow-up (2026-08-15)
+
+Method note for whoever picks these up: measured with a static import-graph walk
+from `src/main.jsx` (follows local static imports, stops at `import()` boundaries)
+plus per-file `gzip -9`. A real `vite build` was NOT possible in the web session —
+`npm ci` 403s on `cdn.sheetjs.com` (the ACT-8 xlsx pin) and `npm install` is
+sandboxed. Re-measure with a real build before trusting absolute numbers; the
+rankings are sound, but gz-of-source overstates JS (it minifies further) and is
+accurate for JSON (it does not).
+
+- [x] **MPERF-5: Entry-bundle dead weight** — DONE (2026-08-15). Entry graph went
+  52 modules / 448 KB source → 43 / 328 KB. Five things: (1) only the `en` locale
+  is bundled now, `ms.json` is a chunk fetched when Malay is active (16 KB gz, the
+  single biggest item and an exact saving since JSON does not minify); (2) CarCard
+  made lazy at `BodyTypeCarousel` + `SavedCarsPanel` — it had re-entered the entry
+  bundle through those two side doors after MPERF-1 removed the HomePage route;
+  (3) `LegalModal` lazy in `ConsentBanner` AND `ContactGate` (the latter is the one
+  that mattered — it is reachable from every car card); (4) `GoogleOneTap` behind a
+  build-time env gate, it was shipping only to return null; (5) deleted the mount of
+  a second, entirely unused toast system. NOT yet browser-tested — needs a staging pass.
+- [ ] **MPERF-6 (MED, redundancy not perf): two card components render cars on the
+  same page.** The marketplace grid uses `ShowroomCard` (6.9 KB gz) and the body-type
+  carousels use `CarCard` (10.1 KB gz) — two implementations of one job, ~17 KB gz
+  total, on a single route. MPERF-5 deferred CarCard's cost but did not remove the
+  duplication. Decide which is canonical and collapse; `CarCard` is the heavier and
+  more general one (it also drags `ContactGate` + `GradeBadge`), `ShowroomCard` is
+  the leaner marketplace-specific one. Do this as its own pass — it is a component
+  consolidation with visual regression risk, not a bundle tweak.
+- [ ] **MPERF-7 (LOW): dead radix toast files.** `src/components/ui/toast.jsx`,
+  `src/components/ui/toaster.jsx` and `src/hooks/use-toast.js` now have zero
+  importers (sonner is the real toast system, 20 importers). They cost nothing at
+  runtime once unreferenced, so this is hygiene only — delete them and drop
+  `@radix-ui/react-toast` from package.json in a session that can run npm.
+- [ ] **MPERF-8 (MED): framer-motion sits on the storefront critical path for two
+  trivial animations.** It enters the HomePage chunk via `Header.jsx` (the mobile
+  menu panel, gated on `mobileOpen`) and `StickyWhatsAppButton.jsx` (one button
+  fade) — nothing else in that graph uses it. That is the whole `vendor-motion`
+  chunk (~35 KB gz) for a drawer transition and a fade, both of which are plain CSS.
+  Either convert both to CSS transitions and drop the dependency from these two
+  components, or lazy-load the drawer. Check the other framer-motion users
+  (`CarGallery`, `CalculatorPage`, `FinancingCalculator`, `AmortizationSchedule`,
+  `CalculatorInfoSection`) before removing the dep outright — they are all on lazy
+  routes, so they can keep it.
 
 ### SALESMAN LITE — routing / back-button UX
 
@@ -443,6 +488,141 @@ Redeploy the other four when convenient to prevent the same Sentry preflight iss
   OPTIONAL future enhancement (not blocking): a `verified_purchase` flag tied to
   a won deal to show "verified" stars — deliberately omitted for now, and the
   component is honest that reviews are not purchase-verified.
+
+### INFRASTRUCTURE & APP-STORE READINESS AUDIT (2026-08-15)
+
+Scope: infra rating + "do we need load balancing" + what it takes to ship on the App
+Store / Play Store later. Verified against LIVE state (Supabase MCP advisors, `pg_indexes`,
+`pg_stat_user_tables`, Vercel project API), not from memory.
+
+**Headline: there is nothing to load-balance.** Vercel and Supabase both autoscale their
+own compute — there is no LB for us to configure and no need for one. The real ceiling is
+the Supabase PLAN TIER: org `Xdrive` is on **free** (nano compute, `max_connections=60`,
+no read replica, no autoscale). Live now: 43 MB DB, 14 open connections, biggest table
+`analytics_events` at 6,847 rows. Current scale is trivial; the constraint only bites when
+mobile traffic patterns (background refresh, push-triggered opens) land. That is a
+"upgrade the box" problem, not an architecture problem — do NOT build sharding/LB/queueing
+for it.
+
+Verified benign (do not re-audit): the 3 `rls_enabled_no_policy` INFO lints
+(`auth_login_throttle`, `ops_alert_state`, `plan_config`) are correct-by-design — all three
+are server/SECURITY-DEFINER-only tables, and `plan_config` is mirrored client-side as a
+plain JS file (`src/utils/planConfig.js`), never queried. RLS-on + zero-policies = deny-all
+to the client, which is the intent.
+
+#### DB scale debt (from Supabase advisors — real counts, all currently harmless at 43 MB)
+- [x] **INFRA-2: Drop duplicate indexes** — DONE (2026-08-15). Two identical index pairs
+  were costing double write amplification for zero read benefit: `leads`
+  {`idx_leads_dealer_stage`, `leads_dealer_stage_idx`} and `deal_products`
+  {`deal_products_dealer_id_idx`, `idx_deal_products_dealer_id`}. Dropped the redundant
+  one from each pair (kept the `idx_`-prefixed name for consistency).
+- [ ] **INFRA-3 (HIGH at scale): `auth_rls_initplan` — 115 policies re-evaluate `auth.uid()`
+  PER ROW.** Worst on the hot tables: `car_listings` (13), `leads` (7), `profiles` (5),
+  `appointments` (5), `salesman_notifications` (5). FIX: wrap the call as
+  `(select auth.uid())` so Postgres evaluates it once per query instead of per row. Same
+  CLASS of bug as the shipped PERF-1 fix (marking helpers STABLE) but a different mechanism
+  — PERF-1 did NOT fix this. NOT a quick job: 115 policies, and CLAUDE.md's RLS rule
+  ("test with a real row read before shipping") applies to every one. Do it as its own
+  session, hot tables first, and re-run the advisor after.
+- [ ] **INFRA-4 (MED at scale): `multiple_permissive_policies` — 150 instances.**
+  `profiles` (24), `car_listings` (19), `leads` (18), `appointments` (12),
+  `loan_applications` (10). Every redundant PERMISSIVE policy on the same table+action is
+  OR'd and evaluated per row, so they multiply RLS cost. Consolidate overlapping policies
+  per (table, role, action). Pairs naturally with INFRA-3 — same tables, same test pass.
+- [ ] **INFRA-5 (LOW, deliberately deferred): 62 unindexed foreign keys.** DO NOT bulk-add
+  all 62 — that is cargo-culting the linter. Live row counts say every flagged table is
+  tiny (`lead_activities` 196, `leads` 130, `appointments` 88, `car_listings` 69,
+  `workshop_jobs` 0 — that module isn't built). Postgres seq-scans these faster than an
+  index scan, and the advisor ALREADY flags 27 `unused_index` — adding 62 more makes write
+  amplification and advisor noise worse today for zero read benefit. TRIGGER TO REVISIT:
+  when `leads` or `lead_activities` clears ~10k rows, or the advisor starts reporting real
+  seq scans on them. Then add only the hot-path ones: `leads.car_listing_id`,
+  `lead_activities.dealer_id`, `appointments.car_listing_id`, `salesman_listings.listing_id`
+  (the composite UNIQUE(salesman_id, listing_id) does NOT cover a listing_id-only lookup —
+  wrong leading column).
+- [ ] **INFRA-6 (REVIEW, not a fix): 2 `security_definer_view` ERRORs** — `public_car_listings`
+  and `public_dealer_profiles`. These are DELIBERATE (CRIT-0: anon marketplace read without
+  reopening a broad anon SELECT policy on `profiles`) and must stay. But SECURITY DEFINER
+  views bypass RLS entirely, so a future `ALTER TABLE car_listings/profiles ADD COLUMN`
+  can silently start exposing that column to anonymous visitors. ACTION: do a one-time
+  column-by-column review of what each view selects, and add a standing rule — after ANY
+  column added to `car_listings` or `profiles`, re-check both views. (This is the same
+  discipline CLAUDE.md already requires for keeping `public_car_listings` updated; it needs
+  a SECURITY note attached, not just a "remember to add the column" note.)
+- [ ] **INFRA-7 (LOW): `car_listings` carries 20 indexes on 69 rows.** Clearly built for the
+  marketplace filter paths (brand/year/price/state/body_type/trgm partials) so most will
+  earn their keep at scale — but every one is write cost on every listing insert/update
+  today. Re-check against the `unused_index` advisor once there is real marketplace traffic
+  and drop whatever never gets scanned.
+- [x] **INFRA-8: Edge rate limiter VERIFIED WORKING (was ACT-11, closed 2026-08-15).**
+  The Upstash limiter in `middleware.js` protecting the 6 public API routes is live in
+  production. Env vars were correct and present all along; no change was needed.
+  **How it was proven, and the trap to avoid repeating:** the obvious probe — burst requests
+  at a protected route and expect a 429 — **gives a FALSE NEGATIVE from any cloud/agent
+  session.** The limiter keys on `x-forwarded-for`, and Vercel's fetcher
+  (`web_fetch_vercel_url`, the only way out when the agent proxy 403s both `xdrive.my` AND
+  `*.vercel.app`) rotates source IPs, so every request lands on its own counter and NOTHING
+  ever trips. 26 probe requests across `/api/waitlist`, `/api/booking` and `/api/enquiry`
+  returned 26x 405 / zero 429 — which reads exactly like a dead limiter but is not.
+  **The reliable test is the Upstash Usage counter, not the response codes:** note COMMANDS
+  before, fire a burst, refresh. Measured: 193 → 249 (+56 commands for 11 requests, ~5 per
+  `limit()` call = the sliding-window Lua footprint) and STORAGE 0 B → 136 B as the `rl:*`
+  keys materialised. That is proof the middleware reached Redis.
+  Corollary: real users have stable IPs, so production IS protected even though a cloud
+  probe cannot demonstrate it. Do NOT "fix" a non-existent fail-open based on 405s alone.
+  Also do NOT trust the Upstash **Data Browser** for this — sliding-window keys carry a TTL
+  equal to the window (60s for booking, 300s for waitlist), so it reads empty minutes later
+  regardless of whether the limiter works. Usage counters are cumulative and TTL-proof.
+  Still true and worth keeping: a MALFORMED value (e.g. the surrounding double quotes from
+  the Upstash console's `.env`-style Connect snippet pasted into Vercel's UI, which does not
+  strip them) fails CLOSED with 500s on all six endpoints — so a 500 on `/api/enquiry` or
+  `/api/whatsapp-lead` means a bad env VALUE, not a handler bug. Vercel env vars are also
+  scoped per environment (Production must be ticked) and need a redeploy to reach a running
+  deployment.
+
+#### Mobile / app-store readiness
+Reality check: the PWA foundation is genuinely good — `vite.config.js` VitePWA is carefully
+configured (manifest, 192/512 icons, standalone, deliberate `registerType:'prompt'` +
+globIgnores to dodge the stale-SW blank-page trap), and `PrivacyPage.jsx` / `TermsPage.jsx`
+already exist (both stores require them). Android via a Trusted Web Activity would work
+close to as-is. iOS will NOT accept a bare WebView wrapper (App Review guideline 4.2,
+"minimum functionality"). The items below are what actually stands between us and a
+native build.
+
+- [ ] **MOBILE-1 (DO THIS ONE EARLY — ACT-7 reclassified): migrate auth to PKCE.**
+  `src/supabaseClient.js` sets no `flowType`, so it defaults to **implicit** (tokens land in
+  the URL hash). TODO has this filed as ACT-7 "optional, deferred". For a native/wrapped app
+  it stops being optional: OAuth, magic-link and password-reset callbacks inside a
+  Capacitor/RN WebView need PKCE + a custom URL scheme or Universal/App Links, and implicit
+  flow does not survive that handoff reliably. This is the ONE item where deferring makes it
+  MORE expensive — the risk is regressing `AuthConfirmPage` (token_hash) and
+  `ResetPasswordPage` (`type=recovery`) parsing, and that blast radius only grows with the
+  user base. Do it now while it's small, with its own tested pass. Do NOT flip `flowType`
+  blindly.
+- [ ] **MOBILE-2 (BLOCKING DECISION — gates MOBILE-3 and MOBILE-4): pick the native path.**
+  Capacitor-wrapping this React app vs a separate React Native client. This single call
+  determines the shape of the push-notification work, the CORS allowlist change, and whether
+  iOS 4.2 is satisfiable. Decide before any native work starts. Recommendation: Capacitor —
+  it reuses this codebase, and 4.2 is clearable by shipping native capabilities (push,
+  camera for listing photos, biometric unlock) rather than a rebuild.
+- [ ] **MOBILE-3: no push notification infrastructure exists** (no FCM/APNs anywhere in the
+  repo). Today "notifications" are DB rows (`dealer_notifications` / `salesman_notifications`)
+  visible only while a tab is open. For a lead-response CRM, an app that cannot notify while
+  closed is materially WORSE than the web version — this is the main thing that would make a
+  native build worth downloading at all. Not urgent now, but keep the notification data model
+  additive so FCM/APNs slots in without a rework. Note: expiry-reminders + overdue-handover
+  already generate the right events; only delivery is missing.
+- [ ] **MOBILE-4: edge function CORS allowlist will reject the native origin.** `invites`,
+  `create-salesman`, `send-document` and `import-drive-images` all hard-allowlist
+  `https://xdrive.my` / `*.xdrive.my` / localhost. A native shell's origin
+  (`capacitor://localhost` or similar) gets silently rejected by every one of them. Cheap
+  one-line fix per function — but easy to forget until a store build mysteriously breaks, so
+  it is logged here. Depends on MOBILE-2 for the exact origin string.
+- [ ] **MOBILE-5: subdomain tenancy does not map onto a single app bundle.** `useTenant.js`
+  resolves the dealer from the hostname (`<sub>.xdrive.my`); a native app has one fixed
+  origin and no address bar. Not a bug today — but decide the in-app dealer-switching model
+  (login-derived tenant vs an explicit picker) BEFORE more logic gets baked into hostname
+  detection, or this becomes a rewrite instead of an addition.
 
 ### INFRASTRUCTURE
 

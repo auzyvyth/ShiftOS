@@ -1,7 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import CarCard from '@/components/CarCard';
+
+// Lazy: these carousels sit below the fold, but a static import put CarCard
+// (~10 KB gzipped, plus ContactGate and GradeBadge) into the marketplace ENTRY
+// bundle — the exact weight MPERF-1 removed when it stopped routing "/" through
+// HomePage. It came back through this import. The Suspense fallback below is the
+// same skeleton the `loading` state already renders, so there is no visual
+// change and no layout shift.
+const CarCard = lazy(() => import('@/components/CarCard'));
 
 const CAROUSEL_GAP = 12;
 
@@ -118,11 +125,15 @@ export default function BodyTypeCarousel({ title, eyebrow, cars, loading, bodyTy
               ? [...Array(4)].map((_, i) => <SkeletonCarouselCard key={i} width={cardW} />)
               : isEmpty
               ? <div style={{ width: '100%', padding: '32px 0', color: '#9ca3af', fontSize: 13, fontFamily: "'Outfit',sans-serif", textAlign: 'center' }}>No {title.toLowerCase()} listed yet</div>
-              : cars.map(car => (
-                <div key={car.id} style={{ width: cardW, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
-                  <CarCard car={car} ctaContext={ctaContext} compact sizes={cardW ? `${cardW}px` : undefined} />
-                </div>
-              ))
+              : (
+                <Suspense fallback={[...Array(4)].map((_, i) => <SkeletonCarouselCard key={i} width={cardW} />)}>
+                  {cars.map(car => (
+                    <div key={car.id} style={{ width: cardW, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+                      <CarCard car={car} ctaContext={ctaContext} compact sizes={cardW ? `${cardW}px` : undefined} />
+                    </div>
+                  ))}
+                </Suspense>
+              )
             }
           </div>
         </div>

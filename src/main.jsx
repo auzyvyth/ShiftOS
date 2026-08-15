@@ -3,9 +3,8 @@ import React, { Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import * as Sentry from '@sentry/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import './i18n/config';
+import { i18nReady } from './i18n/config';
 import App from '@/App';
-import { Toaster } from '@/components/ui/toaster';
 import { logError } from '@/utils/logError';
 import '@/index.css';
 
@@ -172,21 +171,26 @@ if ('serviceWorker' in navigator) {
   } catch { /* ignore */ }
 })();
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <Sentry.ErrorBoundary
-    fallback={<ErrorFallback />}
-    onError={(error) => {
-      // Lazy-route failures are caught here (not as unhandledrejection), so the
-      // reload must be triggered from the boundary too.
-      if (isChunkLoadError(error?.message)) { reloadOnceForChunk(); return; }
-      logError(error, { code: 'react_error_boundary', context: 'Sentry.ErrorBoundary' });
-    }}
-  >
-    <QueryClientProvider client={queryClient}>
-      <Suspense fallback={null}>
-        <App />
-        <Toaster />
-      </Suspense>
-    </QueryClientProvider>
-  </Sentry.ErrorBoundary>
-);
+// i18nReady resolves in a microtask for English visitors (en is bundled) and
+// awaits one small chunk for Malay ones, so the first paint is already in the
+// right language instead of flashing English. It never rejects — a failed
+// locale fetch falls back to en — so the app always mounts.
+i18nReady.then(() => {
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    <Sentry.ErrorBoundary
+      fallback={<ErrorFallback />}
+      onError={(error) => {
+        // Lazy-route failures are caught here (not as unhandledrejection), so the
+        // reload must be triggered from the boundary too.
+        if (isChunkLoadError(error?.message)) { reloadOnceForChunk(); return; }
+        logError(error, { code: 'react_error_boundary', context: 'Sentry.ErrorBoundary' });
+      }}
+    >
+      <QueryClientProvider client={queryClient}>
+        <Suspense fallback={null}>
+          <App />
+        </Suspense>
+      </QueryClientProvider>
+    </Sentry.ErrorBoundary>
+  );
+});
