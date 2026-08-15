@@ -51,6 +51,29 @@ async function sbFetch(path) {
   }
 }
 
+// RPC caller — needed for SECURITY DEFINER functions like get_salesman_by_slug,
+// which is the only anon-safe path to a salesman profile (RLS blocks anon from
+// reading the profiles table directly, so a plain sbFetch would come back empty).
+async function sbRpc(fn, body) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+      method: "POST",
+      headers: { ...sbHeaders, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (Array.isArray(data)) return data;
+    return data ? [data] : [];
+  } catch {
+    return [];
+  }
+}
+
+async function getSalesmanData(slug) {
+  const [s] = await sbRpc("get_salesman_by_slug", { p_slug: slug });
+  return s ?? null;
+}
+
 // Query the public_car_listings VIEW: the anon key has no grant on the base
 // car_listings table, so hitting it here returned nothing and every car page
 // 404'd for crawlers. The view exposes the same columns and is granted to anon.
@@ -302,6 +325,56 @@ function buildListingHtml({ title, description, h1, intro, cars, canonical, base
     </ul>
   </main>`;
   return htmlShell({ title, description, canonical, jsonLd: [...extraLd, itemList], body });
+}
+
+// ── Salesman mini page (/s/:slug) ─────────────────────────────────────────────
+// The salesman's public storefront. The OG image is their own cover banner
+// (falling back to avatar, then the site default) so a shared link previews the
+// agent's page — not the generic XDrive/ShiftOS banner it fell through to before.
+function buildSalesmanHtml(s, cars, canonical, baseUrl) {
+  const name = s.full_name || s.dealership || s.slug;
+  const location = [s.city, s.state].filter(Boolean).join(", ");
+  const image = s.cover_url || s.avatar_url || `${SITE_URL}/og-default.jpg`;
+  const title = `${name} — Car Agent${location ? ` in ${location}` : ""} | XDrive`;
+  const description =
+    s.about_text ||
+    s.bio ||
+    `Browse ${cars.length ? `${cars.length} ` : ""}cars for sale from ${name}${location ? ` in ${location}` : ""} on XDrive.${s.whatsapp_number ? " Contact directly on WhatsApp." : ""}`;
+  const items = cars
+    .map((c) => {
+      const cname = [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
+      const price = c.selling_price ? `RM ${Number(c.selling_price).toLocaleString("en-MY")}` : "";
+      const loc = c.state ? ` · ${c.state}` : "";
+      return `<li><a href="${baseUrl}/showroom/${esc(c.slug)}">${esc(cname)} — ${esc(price)}${esc(loc)}</a></li>`;
+    })
+    .join("\n      ");
+  const personLd = JSON.parse(
+    JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Person",
+      name,
+      jobTitle: s.job_title || "Car Sales Agent",
+      image: s.avatar_url || undefined,
+      url: canonical,
+      worksFor: s.dealership ? { "@type": "AutoDealer", name: s.dealership } : undefined,
+      address: location
+        ? { "@type": "PostalAddress", addressLocality: s.city || undefined, addressRegion: s.state || undefined, addressCountry: "MY" }
+        : undefined,
+      telephone: s.whatsapp_number || undefined,
+    }),
+  );
+  const body = `  <main>
+    <h1>${esc(name)}</h1>
+    ${s.dealership ? `<p>${esc(s.dealership)}</p>` : ""}
+    ${location ? `<p>${esc(location)}</p>` : ""}
+    ${s.about_text || s.bio ? `<p>${esc(s.about_text || s.bio)}</p>` : ""}
+    <h2>Cars for sale</h2>
+    <ul>
+      ${items || "<li>New listings coming soon.</li>"}
+    </ul>
+    <p><a href="${SITE_URL}/showroom">Browse all used cars on xdrive.my</a></p>
+  </main>`;
+  return htmlShell({ title, description, canonical, image, jsonLd: [personLd], body });
 }
 
 // ── Static content pages (mirror SPA Helmet) ──────────────────────────────────
@@ -579,6 +652,18 @@ export default async function handler(req) {
     // the other index pages (marketplace/showroom/cars) stay ItemList-only.
     const extraLd = pathname === "/" ? BRAND_LD : [];
     return html(buildListingHtml({ title: m.title, description: m.desc, h1: m.h1, intro: m.desc, cars, canonical, baseUrl, carBase, extraLd }));
+  }
+
+  // 4c. Salesman mini page (/s/:slug) — the agent's public storefront. Uses the
+  // salesman's own cover banner as the OG image so shared links preview their
+  // page instead of the generic site banner.
+  const salesmanMatch = pathname.match(/^\/s\/([^/]+)$/);
+  if (salesmanMatch) {
+    const s = await getSalesmanData(decodeURIComponent(salesmanMatch[1]));
+    if (s) {
+      const cars = await getRecentListings(s.id, 48);
+      return html(buildSalesmanHtml(s, cars, `${baseUrl}${pathname}`, baseUrl));
+    }
   }
 
   // 5. Fallback (unknown / dealer slug landing) — unique-ish, indexable.

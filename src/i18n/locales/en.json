@@ -326,10 +326,15 @@
       "acrossListings_one": "across {{count}} live listing",
       "acrossListings_other": "across {{count}} live listings",
       "headlinedBy": "Headlined by your {{car}} — RM {{price}}",
-      "buyerViews": "Buyer Views",
+      "buyerViews": "Views",
       "waTaps": "WA Taps",
       "pageVisits": "Page Visits",
       "minipageTrafficBy": "Mini page traffic by platform",
+      "openMinipage": "View your mini page",
+      "openMinipageTitle": "Open your mini page in a new tab",
+      "copy": "Copy",
+      "share": "Share",
+      "shareMyListingsCaption": "Check out my car listings on XDrive",
       "live": "Live",
       "days30": "30 days",
       "myPerformance": "My Performance",
@@ -624,7 +629,7 @@
     "confirmModal": {
       "title": "Confirm booking",
       "messageLabel": "Message to buyer",
-      "cancel": "Cancel",
+      "moveToPipeline": "Move to Pipeline",
       "send": "Confirm & Send WhatsApp"
     },
     "sellerBooking": {
@@ -665,6 +670,9 @@
       "icNumber": "IC Number",
       "icPrivate": "(private — admin only)",
       "icHint": "Required for verification. Never shown publicly.",
+      "icVerified": "Verified",
+      "icVerifyBtn": "Verify your IC",
+      "profileSection": "Profile",
       "socialSection": "Social Links",
       "changePhoto": "Change photo",
       "uploading": "Uploading…",
@@ -679,6 +687,12 @@
       "savingBtn": "Saving...",
       "language": "Language",
       "languageSubtext": "Switch between English and Malay"
+    },
+    "logout": {
+      "title": "Log out?",
+      "body": "You'll need to sign in again to get back into your panel.",
+      "cancel": "Cancel",
+      "confirm": "Log out"
     },
     "dangerZone": {
       "title": "Danger Zone",

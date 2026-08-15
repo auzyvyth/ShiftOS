@@ -33,8 +33,6 @@ import {
   MessageCircle,
   Link as LinkIcon,
   ExternalLink,
-  AlertCircle,
-  CheckCircle2,
   Trash2,
   Send,
   Pencil,
@@ -386,7 +384,7 @@ function PrevMonthModal({ open, onClose, monthLabel, commission, count, trendPct
 // WhatsApp AND marks the booking confirmed (via onSend). Portal + body-scroll
 // lock per the app's overlay rules; own × / overlay-click close so it does NOT
 // register useModalHistory.
-function ConfirmBookingModal({ apt, message, onChangeMessage, onClose, onSend }) {
+function ConfirmBookingModal({ apt, message, onChangeMessage, onClose, onSend, onMoveToPipeline }) {
   const { t } = useTranslation();
   useEffect(() => {
     if (!apt) return;
@@ -451,10 +449,10 @@ function ConfirmBookingModal({ apt, message, onChangeMessage, onClose, onSend })
 
         <div style={{ display: "flex", gap: 8 }}>
           <button
-            onClick={onClose}
+            onClick={onMoveToPipeline}
             style={{ flex: 1, padding: "11px 0", borderRadius: 9, fontSize: 13, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontFamily: "inherit" }}
           >
-            {t("salesmanLite.confirmModal.cancel")}
+            {t("salesmanLite.confirmModal.moveToPipeline")}
           </button>
           <button
             onClick={onSend}
@@ -462,6 +460,55 @@ function ConfirmBookingModal({ apt, message, onChangeMessage, onClose, onSend })
             style={{ flex: 2, padding: "11px 0", borderRadius: 9, fontSize: 13, fontWeight: 700, background: "rgba(37,211,102,0.16)", border: "1px solid rgba(37,211,102,0.45)", color: "#4ade80", cursor: apt.buyer_phone && message.trim() ? "pointer" : "not-allowed", opacity: apt.buyer_phone && message.trim() ? 1 : 0.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, fontFamily: "inherit" }}
           >
             <MessageCircle size={15} /> {t("salesmanLite.confirmModal.send")}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+// Logout confirmation — a small guard so an accidental tap on the header
+// logout icon doesn't sign the salesman out mid-task. Own × / overlay-click
+// close controls, so it does NOT register useModalHistory (per overlay rules).
+function LogoutConfirmModal({ open, onClose, onConfirm }) {
+  const { t } = useTranslation();
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.8)", backdropFilter: "blur(2px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: "#111827", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, width: "100%", maxWidth: 360, padding: 24, fontFamily: "system-ui, sans-serif" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+          <div style={{ width: 38, height: 38, borderRadius: "50%", background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.25)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <LogOut size={17} style={{ color: "#f87171" }} />
+          </div>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanLite.logout.title")}</p>
+        </div>
+        <p style={{ margin: "0 0 18px", fontSize: 13, color: "#9ca3af", lineHeight: 1.6 }}>{t("salesmanLite.logout.body")}</p>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            onClick={onClose}
+            style={{ flex: 1, padding: "10px 0", borderRadius: 9, fontSize: 13, fontWeight: 600, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#d1d5db", cursor: "pointer", fontFamily: "inherit" }}
+          >
+            {t("salesmanLite.logout.cancel")}
+          </button>
+          <button
+            onClick={onConfirm}
+            style={{ flex: 1, padding: "10px 0", borderRadius: 9, fontSize: 13, fontWeight: 700, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontFamily: "inherit" }}
+          >
+            {t("salesmanLite.logout.confirm")}
           </button>
         </div>
       </div>
@@ -601,6 +648,8 @@ export default function SalesmanLite() {
   const [sellerBookingSaving, setSellerBookingSaving] = useState(false);
   // Ticks once a minute so inbox relative-time labels stay live to the minute.
   const [nowTick, setNowTick] = useState(Date.now());
+  // Logout confirmation — guard against accidental taps on the header logout icon.
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   // Danger Zone — self-service account deletion (soft delete + 30-day grace).
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
@@ -635,10 +684,13 @@ export default function SalesmanLite() {
     setIcGateSaving(true);
     try {
       // Hash + store server-side (set_my_ic): the IC is never persisted in
-      // plaintext, only a per-user-salted SHA-256 hash + last-4 for display.
-      const { data: last4, error } = await supabase.rpc("set_my_ic", { p_ic: digits });
+      // plaintext, only a per-user-salted SHA-256 hash. We ignore the returned
+      // last-4 — the badge shows verified status only, no digits.
+      const { error } = await supabase.rpc("set_my_ic", { p_ic: digits });
       if (error) throw error;
-      setProfile((p) => ({ ...p, ic_hash: "set", ic_last4: last4 || digits.slice(-4), ic_verified_at: new Date().toISOString(), ic_deadline: null }));
+      // Don't stash the last-4 in client state — the badge shows verified
+      // status only, so there's no reason to hold IC digits in the browser.
+      setProfile((p) => ({ ...p, ic_hash: "set", ic_verified_at: new Date().toISOString(), ic_deadline: null }));
       setIcGateOpen(false);
       // Only jump into the add-listing form when the gate was opened from that
       // flow — the 1-week enforcement gate can fire with no form pending.
@@ -775,7 +827,6 @@ export default function SalesmanLite() {
   const [coverUrl, setCoverUrl] = useState("");
   const [coverUploading, setCoverUploading] = useState(false);
   const coverInputRef = useRef(null);
-  const broadcastCancelRef = useRef(false);
   const pendingStageRef = useRef({});
   const [cancelConfirmId, setCancelConfirmId] = useState(null);
   const [editingReminder, setEditingReminder] = useState(null);
@@ -838,16 +889,6 @@ export default function SalesmanLite() {
   // tour
   const [tourStep, setTourStep] = useState(null);
   const [tourTarget, setTourTarget] = useState(null);
-
-  // broadcast
-  const [broadcastCar, setBroadcastCar] = useState(null);
-  const [broadcastMsg, setBroadcastMsg] = useState("");
-  const [broadcastProgress, setBroadcastProgress] = useState(null);
-  const [broadcastDone, setBroadcastDone] = useState(false);
-
-  // boost placeholder
-  const [boostCarId, setBoostCarId] = useState(null);
-  const [boostWaitlisted, setBoostWaitlisted] = useState(false);
 
   // listing status change
   const [statusMenuCarId, setStatusMenuCarId] = useState(null);
@@ -1046,7 +1087,7 @@ export default function SalesmanLite() {
 
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, location, ic_hash, ic_last4, ic_verified_at, ic_deadline, created_at, account_status, deleted_at, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
+        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, location, ic_hash, ic_verified_at, ic_deadline, created_at, account_status, deleted_at, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
         .eq("id", uid)
         .maybeSingle();
 
@@ -1990,21 +2031,19 @@ export default function SalesmanLite() {
   const fireTemplate = async (enq, key) => {
     const msg = buildTemplate(enq, key);
     navigator.clipboard.writeText(msg).catch((e) => { console.error("clipboard write:", e); });
-    const phone = (enq.buyer_phone || "").replace(/\D/g, "");
-    if (phone) {
-      window.open(
-        `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(msg)}`,
-        "_blank",
-        "noopener,noreferrer",
-      );
-    }
     setTemplateToast(enq.id + "_" + key);
     setTimeout(() => setTemplateToast(null), 2000);
     setOpenTemplateId(null);
+    // Persist first, WhatsApp hand-off last — navigating the current tab to
+    // WhatsApp can suspend the page before pending writes finish.
     if (enq.status === "new") {
       await supabase.from("whatsapp_enquiries").update({ status: "responded" }).eq("id", enq.id);
       setEnquiries((p) => p.map((e) => e.id === enq.id ? { ...e, status: "responded" } : e));
       await autoCreateLeadFromEnq(enq);
+    }
+    const phone = (enq.buyer_phone || "").replace(/\D/g, "");
+    if (phone) {
+      window.location.href = `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(msg)}`;
     }
   };
 
@@ -2139,8 +2178,11 @@ export default function SalesmanLite() {
   };
 
   // Confirm-booking modal "Send" — persist the confirm + lead advance FIRST,
-  // then open WhatsApp. WhatsApp-first backgrounds the page on mobile before the
-  // writes fire, which left confirmed bookings out of the Booked pipeline stage.
+  // then hand off to WhatsApp. WhatsApp-first backgrounds the page on mobile
+  // before the writes fire, which left confirmed bookings out of the Booked
+  // pipeline stage. Navigating the current tab (instead of opening a new one)
+  // hands off straight to the WhatsApp app on mobile instead of surfacing a
+  // WhatsApp Web tab.
   const sendConfirmBooking = async () => {
     const apt = confirmBookingApt;
     if (!apt || !apt.buyer_phone) return;
@@ -2149,19 +2191,25 @@ export default function SalesmanLite() {
     const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(confirmBookingMsg)}`;
     setConfirmBookingApt(null);
     setConfirmBookingMsg("");
-    // Persist the confirm + advance the lead into the "Booked" pipeline stage
-    // BEFORE opening WhatsApp. Opening WhatsApp first backgrounds this page on
-    // mobile before these requests are dispatched, so the booking confirmed but
-    // the lead never moved into Booked. Writes first (page still foregrounded),
-    // WhatsApp second.
     await updateApptStatus(apt.id, "confirmed");
     await autoUpsertLeadFromAppt(apt);
     scheduleAptReminder(apt);
     toast.success(t("salesmanLite.toast.bookingConfirmed"));
-    // After the awaits we're outside the tap gesture, so a popup can be blocked
-    // on mobile — fall back to a same-tab navigation, which is never blocked.
-    const waWin = window.open(waUrl, "_blank", "noopener,noreferrer");
-    if (!waWin) window.location.href = waUrl;
+    window.location.href = waUrl;
+  };
+
+  // Confirm-booking modal "Move to Pipeline" — confirms the booking and
+  // advances the lead without sending a WhatsApp message, for when the
+  // salesman has already reached the buyer another way.
+  const moveConfirmBookingToPipeline = async () => {
+    const apt = confirmBookingApt;
+    if (!apt) return;
+    setConfirmBookingApt(null);
+    setConfirmBookingMsg("");
+    await updateApptStatus(apt.id, "confirmed");
+    await autoUpsertLeadFromAppt(apt);
+    scheduleAptReminder(apt);
+    toast.success(t("salesmanLite.toast.bookingConfirmed"));
   };
 
   // Default seller-booking slot: tomorrow 11:00, formatted for datetime-local.
@@ -2287,51 +2335,6 @@ export default function SalesmanLite() {
       () => setListingCopied((prev) => ({ ...prev, [car.id]: null })),
       1500,
     );
-  };
-
-  const openBroadcast = (car) => {
-    const name = [car.year, car.brand, car.model, car.variant]
-      .filter(Boolean)
-      .join(" ");
-    const price = car.selling_price
-      ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
-      : null;
-    const link = car.slug ? `https://xdrive.my/cars/${car.slug}?ref=${profile?.slug || ""}` : null;
-    const msg = [
-      `Hi! 👋 Tengok ni — ${name} dah ada dalam lineup kita!`,
-      price ? `💰 Harga: ${price}` : null,
-      `Kereta ni memang worth it — jangan sampai kena kebas orang lain 😬`,
-      link ? `🔗 Details: ${link}` : null,
-      `\nInterested? Whatsapp saya terus, boleh discuss!`,
-    ]
-      .filter(Boolean)
-      .join("\n");
-    setBroadcastCar(car);
-    setBroadcastMsg(msg);
-    setBroadcastProgress(null);
-    setBroadcastDone(false);
-  };
-
-  const runBroadcast = (eligibleLeads) => {
-    const msgSnapshot = broadcastMsg;
-    const capped = eligibleLeads.slice(0, 10);
-    broadcastCancelRef.current = false;
-    setBroadcastProgress({ current: 0, total: capped.length });
-    capped.forEach((lead, i) => {
-      setTimeout(() => {
-        if (broadcastCancelRef.current) return;
-        const phone = (lead.phone || "").replace(/\D/g, "");
-        if (phone) {
-          window.open(
-            `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(msgSnapshot)}`,
-            "_blank",
-            "noopener,noreferrer",
-          );
-        }
-        setBroadcastProgress({ current: i + 1, total: capped.length });
-        if (i === capped.length - 1) setBroadcastDone(true);
-      }, i * 600);
-    });
   };
 
   // ── TABS ──────────────────────────────────────────────────────────────────
@@ -2848,17 +2851,17 @@ export default function SalesmanLite() {
                   >
                     <LinkIcon size={11} />
                     <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>xdrive.my/s/{profile.slug}</span>
-                    <span style={{ fontSize: 10, color: "#475569", flexShrink: 0 }}>Salin</span>
+                    <span style={{ fontSize: 10, color: "#475569", flexShrink: 0 }}>{t("salesmanLite.dash.copy")}</span>
                   </button>
                   <a
                     href={`/s/${profile.slug}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    title="Buka halaman mini anda dalam tab baharu"
+                    title={t("salesmanLite.dash.openMinipageTitle")}
                     style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 180px", minWidth: 0, fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(37,99,235,0.07)", border: "1px solid rgba(37,99,235,0.2)", color: "#93c5fd", textDecoration: "none", fontWeight: 600, fontFamily: "inherit" }}
                   >
                     <ExternalLink size={11} />
-                    <span style={{ flex: 1 }}>Lihat halaman mini anda</span>
+                    <span style={{ flex: 1 }}>{t("salesmanLite.dash.openMinipage")}</span>
                     <ChevronRight size={11} style={{ flexShrink: 0, opacity: 0.5 }} />
                   </a>
                   {/* Per-platform share: each option tags the link with ?src=<channel>
@@ -2869,9 +2872,9 @@ export default function SalesmanLite() {
                   <ShareMenu
                     baseUrl={`https://xdrive.my/s/${profile.slug}`}
                     refSlug={profile.slug}
-                    waCaption={(url) => `Tengok senarai kereta saya di XDrive:\n${url}`}
+                    waCaption={(url) => `${t("salesmanLite.dash.shareMyListingsCaption")}:\n${url}`}
                     dark
-                    label="Kongsi"
+                    label={t("salesmanLite.dash.share")}
                     style={{ flex: "1 1 120px", justifyContent: "center", padding: "9px 12px", fontSize: 11 }}
                   />
                 </div>
@@ -4367,14 +4370,6 @@ export default function SalesmanLite() {
                             <ClipboardPen size={11} />
                             {listingCopied[car.id] === "wa" ? "Copied" : "Caption"}
                           </button>
-                          {/* Boost */}
-                          <button
-                            onClick={() => { setBoostCarId(car.id); setBoostWaitlisted(false); }}
-                            title="Boost listing"
-                            style={{ flex: 1, fontSize: 11, padding: "6px 0", borderRadius: 7, background: "rgba(168,85,247,0.06)", border: "1px dashed rgba(168,85,247,0.25)", color: "#a78bfa", cursor: "pointer", opacity: 0.75, display: "flex", alignItems: "center", justifyContent: "center", gap: 3 }}
-                          >
-                            <Zap size={11} /> Boost
-                          </button>
                           {/* Edit */}
                           <button
                             onClick={() => setEditListing(car)}
@@ -4406,12 +4401,6 @@ export default function SalesmanLite() {
                                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                                   Brief
                                 </button>
-                                {!isReserved && (
-                                  <button onClick={() => { openBroadcast(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: "#fb923c", fontSize: 12, textAlign: "left" }}>
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg>
-                                    Broadcast
-                                  </button>
-                                )}
                                 <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "2px 0" }} />
                               </>
                             )}
@@ -5123,19 +5112,6 @@ export default function SalesmanLite() {
                   listingCopied[car.id] === "wa" ? "rgba(34,197,94,0.3)" : "rgba(37,211,102,0.2)",
                   () => handleListingCopy(car, "wa"),
                 )}
-                {actionBtn(
-                  <>
-                    <Bell size={13} style={{ flexShrink: 0 }} /> Broadcast
-                  </>,
-                  "#fb923c",
-                  "rgba(249,115,22,0.08)",
-                  "rgba(249,115,22,0.25)",
-                  () => {
-                    openBroadcast(car);
-                    close();
-                  },
-                )}
-
                 {/* Performance */}
                 <div
                   style={{
@@ -6227,7 +6203,6 @@ export default function SalesmanLite() {
                   {isExpanded && (
                     <a
                       href={`https://wa.me/${enq.buyer_phone.replace(/\D/g, "").replace(/^0/, "6")}?text=${encodeURIComponent(`Hi ${enq.buyer_name || ""}! 😊`)}`}
-                      target="_blank" rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
                       style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", textDecoration: "none" }}
                     >WA</a>
@@ -6248,10 +6223,13 @@ export default function SalesmanLite() {
                         const enqCar = enq.car_listings;
                         const carName = enqCar ? `${enqCar.brand} ${enqCar.model}` : "kereta";
                         const msg = encodeURIComponent(`Hi ${enq.buyer_name || ""}! Thank you for your enquiry on the ${carName}. I'm here to help — when would be a good time to chat? 😊`);
-                        window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${msg}`, "_blank", "noopener,noreferrer");
+                        // Persist first, WhatsApp hand-off last — navigating the
+                        // current tab to WhatsApp can suspend the page before
+                        // pending writes finish.
                         await supabase.from("whatsapp_enquiries").update({ status: "responded" }).eq("id", enq.id);
                         setEnquiries((p) => p.map((e) => e.id === enq.id ? { ...e, status: "responded" } : e));
                         await autoCreateLeadFromEnq(enq);
+                        window.location.href = `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${msg}`;
                       }}
                       style={{ fontSize: 10, padding: "6px 11px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}
                     >
@@ -6478,7 +6456,7 @@ export default function SalesmanLite() {
               <button onClick={() => {
                   const p = apt.buyer_phone.replace(/\D/g, "");
                   const msg = buildReminderMessage(apt);
-                  window.open(`https://wa.me/${p.startsWith("6") ? p : "6" + p}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
+                  window.location.href = `https://wa.me/${p.startsWith("6") ? p : "6" + p}?text=${encodeURIComponent(msg)}`;
                 }} title="Send WhatsApp reminder message to buyer"
                 style={{ flex: 1, fontSize: 11, fontWeight: 600, padding: "6px 12px", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.28)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
                 <MessageCircle size={13} /> {t("salesmanLite.inbox.message")}
@@ -6839,6 +6817,10 @@ export default function SalesmanLite() {
       boxSizing: "border-box",
       fontFamily: "system-ui, sans-serif",
     };
+    // Shared card + section-heading styling so every settings group reads as
+    // one consistent, scannable block instead of loose fields hugging the sidebar.
+    const cardStyle = { padding: 16, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 };
+    const sectionLabelStyle = { margin: "0 0 12px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" };
 
     // Strip the country code AND any leading trunk 0 — a MY mobile under +60 is
     // written without the leading 0 (011… -> +6011…). Without the /^0+/ strip a
@@ -6959,7 +6941,7 @@ export default function SalesmanLite() {
     const initials = (profile?.full_name || profile?.slug || "S")[0].toUpperCase();
 
     return (
-      <div style={{ maxWidth: 480 }}>
+      <div style={{ maxWidth: 560, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
         <p style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
           {t("salesmanLite.settings.title")}
         </p>
@@ -7022,6 +7004,10 @@ export default function SalesmanLite() {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Profile basics */}
+          <div style={cardStyle}>
+            <p style={sectionLabelStyle}>{t("salesmanLite.settings.profileSection")}</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
             <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanLite.settings.fullName")}</label>
             <input
@@ -7077,10 +7063,12 @@ export default function SalesmanLite() {
             />
             <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.settings.slugHint")}</p>
           </div>
+            </div>
+          </div>
 
           {/* Location + IC */}
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 16 }}>
-            <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.settings.locationSection")}</p>
+          <div style={cardStyle}>
+            <p style={sectionLabelStyle}>{t("salesmanLite.settings.locationSection")}</p>
             <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
               <div style={{ flex: 1 }}>
                 <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.city")}</label>
@@ -7105,19 +7093,20 @@ export default function SalesmanLite() {
             <div>
               <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.icNumber")} <span style={{ color: "#4b5563" }}>{t("salesmanLite.settings.icPrivate")}</span></label>
               {/* IC is verify-only: stored hashed via set_my_ic, never editable as
-                  plaintext. Verified rows show a masked last-4; unverified show a
-                  button that opens the hashing gate. */}
+                  plaintext, and never read back to the client. Verified rows
+                  show a status badge only (no digits); unverified show a button
+                  that opens the hashing gate. */}
               {profile?.ic_hash ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 13px", borderRadius: 8, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)" }}>
                   <ShieldCheck size={15} style={{ color: "#22c55e", flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, color: "#e5e7eb", fontWeight: 600 }}>Verified · •••• •• {profile.ic_last4 || "••••"}</span>
+                  <span style={{ fontSize: 13, color: "#e5e7eb", fontWeight: 600 }}>{t("salesmanLite.settings.icVerified")}</span>
                 </div>
               ) : (
                 <button
                   onClick={() => { setIcGateVal(""); setIcGateOpen(true); }}
                   style={{ display: "flex", alignItems: "center", gap: 7, padding: "11px 13px", borderRadius: 8, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", width: "100%" }}
                 >
-                  <ShieldCheck size={15} style={{ flexShrink: 0 }} /> Verify your IC
+                  <ShieldCheck size={15} style={{ flexShrink: 0 }} /> {t("salesmanLite.settings.icVerifyBtn")}
                 </button>
               )}
               <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.settings.icHint")}</p>
@@ -7125,8 +7114,8 @@ export default function SalesmanLite() {
           </div>
 
           {/* Social links */}
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 16 }}>
-            <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.settings.socialSection")}</p>
+          <div style={cardStyle}>
+            <p style={sectionLabelStyle}>{t("salesmanLite.settings.socialSection")}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[
                 { key: "instagram", label: "Instagram", placeholder: "@yourusername", prefix: "instagram.com/" },
@@ -7153,8 +7142,8 @@ export default function SalesmanLite() {
           </div>
 
           {/* Language toggle */}
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 16 }}>
-            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.settings.language")}</p>
+          <div style={cardStyle}>
+            <p style={{ ...sectionLabelStyle, marginBottom: 8 }}>{t("salesmanLite.settings.language")}</p>
             <p style={{ margin: "0 0 10px", fontSize: 11, color: "#374151" }}>{t("salesmanLite.settings.languageSubtext")}</p>
             <div style={{ display: "flex", gap: 8 }}>
               {[{ code: "en", label: "English" }, { code: "ms", label: "Malay" }].map(({ code, label }) => (
@@ -7199,7 +7188,7 @@ export default function SalesmanLite() {
           </button>
 
           {/* Danger Zone — self-service account deletion */}
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: 8, paddingTop: 18 }}>
+          <div style={{ ...cardStyle, border: "1px solid rgba(248,113,113,0.2)", background: "rgba(248,113,113,0.03)", marginTop: 8 }}>
             <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "rgba(248,113,113,0.7)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
               {t("salesmanLite.dangerZone.title")}
             </p>
@@ -7778,10 +7767,7 @@ export default function SalesmanLite() {
               });
               const phone = (waModalLead.phone || "").replace(/\D/g, "");
               if (phone) {
-                window.open(
-                  `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(waModalMsg)}`,
-                  "_blank", "noopener,noreferrer",
-                );
+                window.location.href = `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(waModalMsg)}`;
               }
             }}
             disabled={!waModalMsg.trim() || !waModalLead.phone}
@@ -8456,7 +8442,7 @@ export default function SalesmanLite() {
               <p style={{ fontSize: 10, color: "#4b5563", margin: 0 }}>lite</p>
             </div>
             <button
-              onClick={handleLogout}
+              onClick={() => setLogoutConfirmOpen(true)}
               title="Log out"
               aria-label="Log out"
               style={{
@@ -8583,7 +8569,7 @@ export default function SalesmanLite() {
                 ?
               </button>
               <button
-                onClick={handleLogout}
+                onClick={() => setLogoutConfirmOpen(true)}
                 title="Log out"
                 aria-label="Log out"
                 style={{
@@ -8773,12 +8759,18 @@ export default function SalesmanLite() {
       {renderLogCallModal()}
       {renderBatchWAModal()}
       {renderDeleteModal()}
+      <LogoutConfirmModal
+        open={logoutConfirmOpen}
+        onClose={() => setLogoutConfirmOpen(false)}
+        onConfirm={handleLogout}
+      />
       <ConfirmBookingModal
         apt={confirmBookingApt}
         message={confirmBookingMsg}
         onChangeMessage={setConfirmBookingMsg}
         onClose={() => { setConfirmBookingApt(null); setConfirmBookingMsg(""); }}
         onSend={sendConfirmBooking}
+        onMoveToPipeline={moveConfirmBookingToPipeline}
       />
       <SellerBookingModal
         lead={sellerBookingLead}
@@ -9019,179 +9011,6 @@ export default function SalesmanLite() {
         </div>
       )}
 
-      {/* Broadcast modal */}
-      {broadcastCar &&
-        (() => {
-          const eligible = leads.filter(
-            (l) =>
-              l.stage !== "won" &&
-              l.stage !== "lost" &&
-              (l.phone || "").replace(/\D/g, "").length > 0,
-          );
-          const capped = eligible.slice(0, 10);
-          const carName = [
-            broadcastCar.year,
-            broadcastCar.brand,
-            broadcastCar.model,
-          ]
-            .filter(Boolean)
-            .join(" ");
-          return (
-            <div
-              onClick={() => {
-                if (!broadcastProgress || broadcastDone) setBroadcastCar(null);
-              }}
-              style={{
-                position: "fixed",
-                inset: 0,
-                background: "rgba(0,0,0,0.78)",
-                zIndex: 999,
-                display: "flex",
-                alignItems: "flex-end",
-                justifyContent: "center",
-              }}
-            >
-              <div
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  background: "#111827",
-                  borderRadius: "16px 16px 0 0",
-                  width: "100%",
-                  maxWidth: 480,
-                  padding: 24,
-                  paddingBottom: 36,
-                }}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    <Send className="w-4 h-4 text-orange-400" />
-                    <p className="text-white font-semibold text-sm">
-                      Broadcast to Leads
-                    </p>
-                  </div>
-                  {(!broadcastProgress || broadcastDone) && (
-                    <button
-                      onClick={() => setBroadcastCar(null)}
-                      className="text-gray-400 hover:text-white"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  )}
-                </div>
-                <p className="text-gray-400 text-xs mb-4">{carName}</p>
-
-                <div
-                  className="flex items-start gap-2 mb-3 px-3 py-2 rounded-lg"
-                  style={{
-                    background: "rgba(249,115,22,0.08)",
-                    border: "1px solid rgba(249,115,22,0.2)",
-                  }}
-                >
-                  <AlertCircle className="w-3.5 h-3.5 text-orange-400 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-orange-300">
-                    {eligible.length === 0
-                      ? "No active leads with a phone number to broadcast to."
-                      : eligible.length > 10
-                        ? `This will open ${capped.length} WhatsApp tabs (capped from ${eligible.length} — only first 10 will be contacted).`
-                        : `This will open ${capped.length} WhatsApp tab${capped.length !== 1 ? "s" : ""}.`}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 mb-3">
-                  <span
-                    className="text-xs font-medium px-2 py-0.5 rounded-full"
-                    style={{
-                      background: "rgba(255,255,255,0.07)",
-                      color: "#9ca3af",
-                    }}
-                  >
-                    {eligible.length} eligible lead
-                    {eligible.length !== 1 ? "s" : ""} (not won/lost)
-                  </span>
-                </div>
-
-                <p style={{ fontSize: 10, color: "#4b5563", margin: "0 0 4px" }}>Edit message before sending — personalise it</p>
-                <textarea
-                  value={broadcastMsg}
-                  onChange={(e) => setBroadcastMsg(e.target.value)}
-                  disabled={!!broadcastProgress && !broadcastDone}
-                  rows={7}
-                  style={{
-                    width: "100%",
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    borderRadius: 10,
-                    color: "#e5e7eb",
-                    fontSize: 12,
-                    lineHeight: 1.6,
-                    padding: "10px 12px",
-                    resize: "vertical",
-                    outline: "none",
-                    marginBottom: 4,
-                    fontFamily: "inherit",
-                  }}
-                />
-                <p style={{ fontSize: 10, color: "#374151", textAlign: "right", margin: "0 0 8px" }}>{broadcastMsg.length} chars</p>
-
-                {broadcastDone ? (
-                  <div className="flex items-center gap-2 justify-center py-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-400" />
-                    <p className="text-green-400 text-sm font-medium">
-                      All {capped.length} tabs opened!
-                    </p>
-                  </div>
-                ) : broadcastProgress ? (
-                  <div style={{ textAlign: "center", paddingTop: 8, paddingBottom: 8 }}>
-                    <p style={{ margin: "0 0 8px", color: "#fdba74", fontSize: 13, fontWeight: 500 }}>
-                      Opening {broadcastProgress.current} of {broadcastProgress.total}…
-                    </p>
-                    <div style={{ height: 4, background: "rgba(255,255,255,0.08)", borderRadius: 99, overflow: "hidden", marginBottom: 10 }}>
-                      <div style={{ height: "100%", width: `${(broadcastProgress.current / broadcastProgress.total) * 100}%`, background: "#f97316", transition: "width 0.3s ease", borderRadius: 99 }} />
-                    </div>
-                    <button
-                      onClick={() => { broadcastCancelRef.current = true; setBroadcastProgress(null); setBroadcastDone(false); }}
-                      style={{ fontSize: 11, padding: "4px 14px", borderRadius: 6, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171", cursor: "pointer" }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() =>
-                      eligible.length > 0 && runBroadcast(eligible)
-                    }
-                    disabled={eligible.length === 0}
-                    style={{
-                      width: "100%",
-                      padding: "11px 0",
-                      borderRadius: 10,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      background:
-                        eligible.length === 0
-                          ? "rgba(255,255,255,0.05)"
-                          : "rgba(249,115,22,0.18)",
-                      border:
-                        eligible.length === 0
-                          ? "1px solid rgba(255,255,255,0.08)"
-                          : "1px solid rgba(249,115,22,0.4)",
-                      color: eligible.length === 0 ? "#6b7280" : "#fb923c",
-                      cursor: eligible.length === 0 ? "not-allowed" : "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <Send className="w-4 h-4" />
-                    Open WA for each lead
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })()}
-
       {editListing && (
         <CarFormModal
           title="Edit Listing"
@@ -9210,41 +9029,6 @@ export default function SalesmanLite() {
           />
         </CarFormModal>
       )}
-
-      {/* ── Boost modal ── */}
-      {boostCarId && (() => {
-        const car = myListings.find(c => c.id === boostCarId);
-        const name = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : "this listing";
-        return (
-          <div onClick={() => setBoostCarId(null)} style={{ position: "fixed", inset: 0, zIndex: 9000, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-            <div onClick={e => e.stopPropagation()} style={{ background: "#0d1117", border: "1px solid rgba(168,85,247,0.3)", borderRadius: 16, padding: 24, maxWidth: 320, width: "100%", fontFamily: "system-ui,sans-serif" }}>
-              <div style={{ textAlign: "center", marginBottom: 16 }}>
-                <Zap size={32} style={{ color: "#a78bfa", margin: "0 auto 8px", display: "block" }} />
-                <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#e5e7eb" }}>Boost this listing</p>
-                <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.5 }}>Pin <strong style={{ color: "#c4b5fd" }}>{name}</strong> to the top of XDrive search for 7 days and get up to 5× more views.</p>
-              </div>
-              <div style={{ background: "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.15)", borderRadius: 10, padding: "10px 14px", marginBottom: 16 }}>
-                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#a78bfa", display: "flex", alignItems: "center", gap: 4 }}><Zap size={11} /> Coming soon — Premium feature</p>
-                <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>Join the waitlist and we'll notify you when Boost launches.</p>
-              </div>
-              {boostWaitlisted ? (
-                <p style={{ textAlign: "center", fontSize: 13, color: "#4ade80", fontWeight: 600, margin: "0 0 12px" }}>✓ You're on the waitlist!</p>
-              ) : (
-                <button
-                  onClick={() => {
-                    const msg = encodeURIComponent(`Hi! I want to join the Boost waitlist for my XDrive listing: ${name}`);
-                    const waNum = "60123456789";
-                    window.open(`https://wa.me/${waNum}?text=${msg}`, "_blank");
-                    setBoostWaitlisted(true);
-                  }}
-                  style={{ width: "100%", padding: "10px", borderRadius: 9, background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.35)", color: "#c4b5fd", fontSize: 13, fontWeight: 700, cursor: "pointer", marginBottom: 10, fontFamily: "inherit" }}
-                >Join Waitlist →</button>
-              )}
-              <button onClick={() => setBoostCarId(null)} style={{ width: "100%", padding: "8px", borderRadius: 9, background: "transparent", border: "1px solid rgba(255,255,255,0.07)", color: "#4b5563", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>Maybe later</button>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* ── Quick Brief Modal ── */}
       {quickBriefCar && (() => {
@@ -9414,7 +9198,7 @@ export default function SalesmanLite() {
                 <button
                   onClick={() => {
                     const phone = (lead.phone || "").replace(/\D/g, "");
-                    if (phone) window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(receipt)}`, "_blank", "noopener,noreferrer");
+                    if (phone) window.location.href = `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(receipt)}`;
                     setDepositModal(null);
                   }}
                   style={{ padding: "10px 0", borderRadius: 10, fontSize: 12, fontWeight: 700, background: "rgba(37,211,102,0.12)", border: "1px solid rgba(37,211,102,0.3)", color: "#4ade80", cursor: "pointer" }}
