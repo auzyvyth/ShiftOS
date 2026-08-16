@@ -2,6 +2,7 @@ import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { getConsent, setConsent, CONSENT_OPEN_EVENT } from '../utils/consent';
+import { matchesPathPrefix } from '../utils/routeMatch';
 
 // Lazy: the banner itself renders on first load, but the legal modal only opens
 // if the visitor taps through to the policy. LegalModal statically pulls
@@ -25,7 +26,7 @@ const INTERNAL_PREFIXES = [
   '/manager', '/accountant', '/fi', '/admin', '/accounts', '/platform', '/account',
 ];
 function isInternalPath(pathname) {
-  return INTERNAL_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'));
+  return matchesPathPrefix(pathname, INTERNAL_PREFIXES);
 }
 
 // Tiered first-party cookie/consent banner for the public marketplace + storefronts.
