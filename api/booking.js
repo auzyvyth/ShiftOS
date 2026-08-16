@@ -49,7 +49,7 @@ export default async function handler(req, res) {
   // (public reads go through this view), so anon must look it up here.
   const { data: listing } = await supabase
     .from('public_car_listings')
-    .select('dealer_id, assigned_to, brand, model, year')
+    .select('dealer_id, assigned_to')
     .eq('id', carId)
     .maybeSingle();
 
@@ -57,16 +57,14 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: 'Listing not found' });
   }
 
-  // Resolve salesman from refSlug if provided, else fall back to listing's assigned_to
-  let salesmanId = assignedTo || listing.assigned_to || null;
-  if (refSlug) {
-    const { data: sm } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('slug', refSlug)
-      .maybeSingle();
-    if (sm?.id) salesmanId = sm.id;
-  }
+  // Salesman attribution is resolved DB-side, never here. This handler runs as
+  // the anon role, and RLS on profiles returns zero rows to anon — so the old
+  // inline `profiles.eq('slug', refSlug)` lookup that used to sit here could
+  // never match and silently did nothing. refSlug is forwarded raw instead:
+  // create_lead_from_booking hands it to resolve_lead_salesman (the ONE resolver,
+  // SECURITY DEFINER so it can actually read profiles), and the appointment row
+  // is backfilled by the set_appointment_salesman trigger using the same helper.
+  const salesmanId = assignedTo || listing.assigned_to || null;
 
   const cleanNotes = notes?.trim().substring(0, 500) || null;
   const notesWithIntent = intentLabel
@@ -128,16 +126,13 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Booking failed. Please try again.' });
   }
 
-  // Non-fatal: record a completed-booking analytics event so it shows in the
-  // dealer's Listing Performance chart (booking_click only tracks button clicks).
-  const carName = [listing.year, listing.brand, listing.model].filter(Boolean).join(' ') || null;
-  await supabase.from('analytics_events').insert({
-    event_type: 'booking',
-    dealer_id: listing.dealer_id,
-    car_id: carId,
-    car_name: carName,
-    metadata: { source: 'car_detail', booking_type: bookingType || null },
-  });
+  // NOTE: this used to insert an analytics_events row with event_type 'booking'.
+  // That write could never succeed and nothing read it: the analytics_insert_v2
+  // RLS policy only accepts a fixed event_type list (which has no 'booking') and
+  // requires a browser session_id, which a server handler does not have. The
+  // error was never checked, so it failed silently. The record of a completed
+  // booking is the appointments row above (read by the dealer Bookings tab);
+  // booking INTENT is already tracked client-side as 'booking_click'.
 
   return res.status(200).json({ success: true });
 }

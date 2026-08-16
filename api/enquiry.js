@@ -54,16 +54,13 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: 'Listing not found' });
   }
 
-  // Resolve salesman from refSlug (mirrors api/booking.js behaviour)
-  let salesmanId = listing.assigned_to || null;
-  if (refSlug) {
-    const { data: sm } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('slug', refSlug)
-      .maybeSingle();
-    if (sm?.id) salesmanId = sm.id;
-  }
+  // Salesman attribution is resolved DB-side, never here. This handler runs as
+  // the anon role and RLS on profiles returns zero rows to anon, so the inline
+  // `profiles.eq('slug', refSlug)` lookup that used to sit here could never
+  // match. ref_slug is stored on the enquiry row below and the enquiry_to_lead
+  // trigger resolves it through resolve_lead_salesman (the ONE resolver), which
+  // is SECURITY DEFINER and can read profiles.
+  const salesmanId = listing.assigned_to || null;
 
   const { error: enqErr } = await supabase.from('whatsapp_enquiries').insert({
     dealer_id: listing.dealer_id,
