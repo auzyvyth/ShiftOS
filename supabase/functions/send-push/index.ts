@@ -16,7 +16,16 @@ const ALLOWED_ORIGINS = [
 
 function corsHeaders(origin: string | null) {
   // Subdomain storefronts (<dealer>.xdrive.my) are authenticated surfaces too.
-  const allowed = origin && (ALLOWED_ORIGINS.includes(origin) || /^https:\/\/[a-z0-9-]+\.xdrive\.my$/.test(origin))
+  // Vercel previews are allowed so the staging branch can be tested end to end —
+  // without this the "Send test" button fails CORS on every preview URL. The
+  // blast radius is nil: a page on some other *.vercel.app still has to present
+  // either the shared secret (server-only) or a logged-in ShiftOS user's token,
+  // and a token-authenticated caller can only ever notify themselves.
+  const allowed = origin && (
+    ALLOWED_ORIGINS.includes(origin)
+    || /^https:\/\/[a-z0-9-]+\.xdrive\.my$/.test(origin)
+    || /^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)
+  )
     ? origin
     : ALLOWED_ORIGINS[0];
   return {
