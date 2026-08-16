@@ -6,6 +6,7 @@ import { supabase } from '../supabaseClient';
 // so the post-auth router can tell an intentional buyer from a half-finished seller.
 
 const INTENT_KEY = 'auth_intent';
+const CONSENT_KEY = 'auth_pdpa_consent';
 
 export function markBuyerIntent() {
   try { sessionStorage.setItem(INTENT_KEY, 'buyer'); } catch { /* ignore */ }
@@ -17,6 +18,22 @@ export function consumeBuyerIntent() {
     const v = sessionStorage.getItem(INTENT_KEY);
     if (v) sessionStorage.removeItem(INTENT_KEY);
     return v === 'buyer';
+  } catch { return false; }
+}
+
+// PDPA consent has to survive the OAuth/magic-link round trip: the user ticks the
+// box on our page, then leaves for Google and comes back to /auth/callback, where
+// the profile row is actually created. Same read-and-clear shape as the intent flag.
+// Only ever set this from a surface that genuinely showed the consent text.
+export function markBuyerConsent() {
+  try { sessionStorage.setItem(CONSENT_KEY, '1'); } catch { /* ignore */ }
+}
+
+export function consumeBuyerConsent() {
+  try {
+    const v = sessionStorage.getItem(CONSENT_KEY);
+    if (v) sessionStorage.removeItem(CONSENT_KEY);
+    return v === '1';
   } catch { return false; }
 }
 
@@ -45,11 +62,20 @@ function identityFromMeta(user) {
   return out;
 }
 
-export async function ensureBuyerProfile(user) {
+// PDPA 2010 requires the consent to be recorded, not just collected. The buyer auth
+// page has always required a consent tick before signup, but nothing wrote it to the
+// profile, so every buyer account read as "no consent given" and there was no evidence
+// we could show. Pass { consent: true } ONLY from a path where the user actually
+// agreed — never default it on, or the column becomes a fabricated compliance record.
+function consentPatch(consent) {
+  return consent ? { pdpa_consent: true, pdpa_consent_at: new Date().toISOString() } : {};
+}
+
+export async function ensureBuyerProfile(user, { consent = false } = {}) {
   if (!user?.id) return null;
   const { data: existing } = await supabase
     .from('profiles')
-    .select('id, role, subdomain, onboarding_complete, full_name, avatar_url')
+    .select('id, role, subdomain, onboarding_complete, full_name, avatar_url, pdpa_consent')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -57,7 +83,8 @@ export async function ensureBuyerProfile(user) {
 
   if (!existing) {
     await supabase.from('profiles').insert({
-      id: user.id, email: user.email, role: 'buyer', is_active: true, ...identity,
+      id: user.id, email: user.email, role: 'buyer', is_active: true,
+      ...identity, ...consentPatch(consent),
     });
     return 'buyer';
   }
@@ -71,7 +98,7 @@ export async function ensureBuyerProfile(user) {
   if (isUnonboardedStub) {
     // Correct the trigger's default stub to a buyer, and seed name/avatar while
     // we're here — but never clobber a value the row already carries.
-    const patch = { role: 'buyer', is_active: true };
+    const patch = { role: 'buyer', is_active: true, ...consentPatch(consent) };
     if (identity.full_name && !existing.full_name) patch.full_name = identity.full_name;
     if (identity.avatar_url && !existing.avatar_url) patch.avatar_url = identity.avatar_url;
     await supabase.from('profiles').update(patch).eq('id', user.id);
@@ -84,6 +111,9 @@ export async function ensureBuyerProfile(user) {
     const patch = {};
     if (identity.full_name && !existing.full_name) patch.full_name = identity.full_name;
     if (identity.avatar_url && !existing.avatar_url) patch.avatar_url = identity.avatar_url;
+    // Record consent for a buyer who signed up before we captured it, the first time
+    // they come back through a surface that asks. Never overwrite an existing yes.
+    if (consent && !existing.pdpa_consent) Object.assign(patch, consentPatch(true));
     if (Object.keys(patch).length) await supabase.from('profiles').update(patch).eq('id', user.id);
   }
 
