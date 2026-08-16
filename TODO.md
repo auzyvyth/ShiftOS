@@ -39,7 +39,31 @@
   inline verify against siteverify) before create_lead_from_whatsapp / hunt insert.
   Until done, public lead/hunt writes rely on DB rate limits alone. (Audit F5, 2026-08-03.)
 
-> Reminder protocol: while ACT-2, ACT-4, ACT-9 or ACT-10 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. **ACT-8 was found ALREADY COMPLETE and removed 2026-08-15** — `package.json` AND `package-lock.json` both resolve `xlsx` to `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, and `vercel.json` CSP already whitelists `cdn.sheetjs.com` in connect-src; it had been sitting in this list as a blocked user-action for weeks after the fact. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then.) LESSON: verify an ACT item against the code before re-surfacing it — a stale nag costs a session's attention every time.
+- **ACT-12: three values to set before push notifications can deliver (2026-08-16)** — the
+  code side is done and deployed; these are the only things left, and all three are dashboard
+  paste jobs. Push is currently dead until they are set, and fails safely (no spam) meanwhile.
+  1. **Supabase → Edge Functions → Secrets → `VAPID_PRIVATE_KEY` is MALFORMED.** `send-push`
+     returns `{"error":"vapid_misconfigured","detail":"Vapid private key must be a URL safe
+     Base 64 (without \"=\")"}`. It must be 43 characters of base64url: only `A-Z a-z 0-9 - _`,
+     no `=` padding, no `+`, no `/`. If the current value is standard base64, converting it
+     (`+`→`-`, `/`→`_`, strip `=`) preserves the SAME key and keeps existing subscriptions
+     alive. If it is a PEM/JWK or otherwise unrecoverable, generate a fresh pair — see note
+     below on why that is currently free.
+  2. **Supabase → Edge Functions → Secrets → `PUSH_SHARED_SECRET`** = the value stored in
+     Vault as `push_shared_secret` (`select public.get_push_secret();`). The DB triggers
+     already send it as the `x-push-secret` header; send-push rejects everything without it.
+  3. **Vercel → env → `VITE_VAPID_PUBLIC_KEY`** = the same value as the `VAPID_PUBLIC_KEY`
+     edge secret (87 chars, starts with `B`). Must be ticked for Production and needs a
+     redeploy. Until set, the notification toggle renders but says "not finished being set
+     up" rather than failing silently.
+  NOTE ON REGENERATING: normally swapping VAPID keys is unforgivable because every existing
+  subscription dies. Right now it costs nothing — `send-push` never booted, so not one of the
+  8 stored subscriptions has ever received anything, and both those users can re-enable with
+  one tap on the new toggle. If key 1 is at all awkward to recover, generate a clean pair and
+  `delete from push_subscriptions;`. This is a one-time window — once real users subscribe
+  against a working key, the keys are permanent.
+
+> Reminder protocol: while ACT-2, ACT-4, ACT-9, ACT-10 or ACT-12 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. **ACT-8 was found ALREADY COMPLETE and removed 2026-08-15** — `package.json` AND `package-lock.json` both resolve `xlsx` to `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, and `vercel.json` CSP already whitelists `cdn.sheetjs.com` in connect-src; it had been sitting in this list as a blocked user-action for weeks after the fact. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then.) LESSON: verify an ACT item against the code before re-surfacing it — a stale nag costs a session's attention every time.
 
 ## Dev tasks
 
@@ -674,13 +698,54 @@ native build.
   iOS 4.2 is satisfiable. Decide before any native work starts. Recommendation: Capacitor —
   it reuses this codebase, and 4.2 is clearable by shipping native capabilities (push,
   camera for listing photos, biometric unlock) rather than a rebuild.
-- [ ] **MOBILE-3: no push notification infrastructure exists** (no FCM/APNs anywhere in the
-  repo). Today "notifications" are DB rows (`dealer_notifications` / `salesman_notifications`)
-  visible only while a tab is open. For a lead-response CRM, an app that cannot notify while
-  closed is materially WORSE than the web version — this is the main thing that would make a
-  native build worth downloading at all. Not urgent now, but keep the notification data model
-  additive so FCM/APNs slots in without a rework. Note: expiry-reminders + overdue-handover
-  already generate the right events; only delivery is missing.
+- [x] **MOBILE-3 — CORRECTED AND LARGELY DONE (2026-08-16).** The original entry said "no
+  push notification infrastructure exists (no FCM/APNs anywhere in the repo)". That was
+  wrong, and wrong in the expensive direction: **web push was ~60% built months ago, live
+  on Supabase, and simply never committed to this repo.** `grep` over `src/` found nothing
+  because none of it was ever in git — the DB and the deployed edge functions were the only
+  record. LESSON: never conclude a backend feature "does not exist" from a repo search;
+  check `list_edge_functions`, `pg_proc` and `pg_trigger` first.
+  What already existed: `send-push` + `send-push-warm-leads` edge functions, the
+  `push_subscriptions` table (8 rows / 2 users, all 2026-05-27), and triggers
+  `trg_push_on_enquiry` / `trg_push_on_appointment`. Also note web push needs NO native
+  wrapper — it does not depend on MOBILE-2, and iOS works once the PWA is installed (PWA-1).
+  FOUR separate faults were keeping it dead, all now fixed:
+  1. **`send-push` had never booted, not once.** `webpush.setVapidDetails()` ran at module
+     scope and threw on a malformed `VAPID_PRIVATE_KEY`, killing the worker before `serve()`
+     — every call returned an opaque `WORKER_ERROR`. Now wrapped in try/catch and returns
+     `{error:'vapid_misconfigured', detail:...}` so the cause is visible.
+  2. **Both triggers were no-ops.** They gated on `current_setting('app.anon_key')`, which
+     was never set, so every enquiry/appointment hit the early return. Repointed at a new
+     `public.push_to_users()` sender that reads a Vault secret.
+  3. **No subscribe path existed anywhere in git history.** Added
+     `src/hooks/usePushNotifications.js` + `src/components/PushToggle.jsx`, wired into
+     Salesman Lite, Salesman Premium, the linked salesman panel and the dealer dashboard.
+  4. **No service-worker `push` handler**, so a delivered push would have shown Chrome's
+     generic "site updated in background". Added `public/push-sw.js` via workbox
+     `importScripts` (NOT injectManifest — that would rebuild the precache config behind
+     the two outages documented in vite.config.js).
+  Also fixed while in there: `send-push` was publicly callable (verify_jwt=false, CORS `*`,
+  `user_ids` straight from the body = anyone could push to any user). Now requires either
+  the shared secret (servers, any target) or a user JWT (forced to self), failing closed.
+  New DB objects: `public.push_to_users`, `public.get_push_secret`, `public.get_cron_edge_key`,
+  triggers `trg_push_on_dealer_notification` / `trg_push_on_salesman_notification`.
+  BLOCKED ON ACT-12 (below) for the final end-to-end test.
+
+- [x] **CRON-1: two cron jobs had never once succeeded (found + fixed 2026-08-16).**
+  `expiry-reminders-daily` and `warm-leads-push` both built their auth header as
+  `'Bearer ' || current_setting('app.service_role_key'|'app.anon_key', true)`. Neither GUC
+  has ever been set, and in SQL `'text' || NULL` is NULL — so the entire headers value went
+  NULL and the statement errored. `cron.job_run_details` showed status='failed' for every
+  run. **Consequence: the road tax / insurance / overdue-handover reminder system (NEW-6,
+  NEW-7) has never delivered a single notification since it shipped.** Fixed by copying the
+  working token from `appointment-reminders` (the only job that was succeeding, because it
+  carries a literal) into Vault as `cron_edge_key`, adding `public.get_cron_edge_key()`, and
+  rebuilding both commands with `jsonb_build_object` so a null value can never collapse the
+  whole object again. NOT yet verified end-to-end — next scheduled runs are 00:00 UTC
+  (expiry-reminders) and 09:00 UTC (warm-leads). Check `cron.job_run_details` after those.
+  WATCH: `notify-price-alerts` and `appointment-reminders` carry literal JWTs inline in
+  `cron.job.command`. They work, but the token is sitting in plaintext in the job table and
+  will break silently whenever it is rotated — move them to `get_cron_edge_key()` too.
 - [ ] **MOBILE-4: edge function CORS allowlist will reject the native origin.** `invites`,
   `create-salesman`, `send-document` and `import-drive-images` all hard-allowlist
   `https://xdrive.my` / `*.xdrive.my` / localhost. A native shell's origin

@@ -66,6 +66,7 @@ import OutreachHub from "../components/crm/OutreachHub";
 import UpgradeBanner from "../components/ai/UpgradeBanner";
 import AiLoadingState from "../components/ai/AiLoadingState";
 import AiQuotaBadge from "../components/ai/AiQuotaBadge";
+import PushToggle from "../components/PushToggle";
 
 function useWindowSize() {
  const [w, setW] = useState(window.innerWidth);
@@ -5163,6 +5164,13 @@ export default function SalesmanPremium() {
  return (
  <div style={{ maxWidth: 480 }}>
  <p style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Profile Settings</p>
+
+ {/* Push alerts on this device. Own id, not a dealer id — push_subscriptions
+     RLS is auth.uid() = user_id. */}
+ <div style={{ marginBottom: 24 }}>
+ <PushToggle userId={profile?.id} theme="dark"
+ style={{ padding: 16, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }} />
+ </div>
 
  <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
  <div style={{ position: "relative", flexShrink: 0 }}>

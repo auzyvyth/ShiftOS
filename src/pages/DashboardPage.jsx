@@ -95,6 +95,7 @@ import { getCategoryCfg, PRODUCT_CATEGORY_OPTIONS } from "../utils/serviceCatego
 import OwnerCarPanel from "../components/inventory/OwnerCarPanel";
 import CustomersTab from "../components/crm/CustomersTab";
 import AppraisalChecklist, { summarizeAppraisal } from "../components/AppraisalChecklist";
+import PushToggle from "../components/PushToggle";
 import { getPlanConfig, nextDealerPlan } from "../utils/planConfig";
 import { color, border, radius, font } from "../theme/tokens";
 import { getEmbedUrl } from "../utils/videoEmbed";
@@ -2355,13 +2356,22 @@ function SettingsTab({ profile, onProfileUpdate }) {
         </div>
       </SettingsSection>}
       {effectiveNav === 'telegram' && <SettingsSection
-        title="Telegram Auto-Post"
-        subtitle="Automatically post new listings to your Telegram channel"
+        title="Notifications"
+        subtitle="Push alerts on your devices, and Telegram auto-posting for new listings"
         icon={Send}
         iconColor="text-sky-400"
         iconBg="rgba(56,189,248,0.08)"
         iconBorder="rgba(56,189,248,0.18)"
       >
+        {/* Push sits with Telegram because both are "how alerts reach me".
+            theme="light" — this whole settings surface is white cards.
+            userId is the LOGGED-IN user's own id, deliberately NOT
+            getDealerIdFromProfile(): push_subscriptions RLS is
+            `auth.uid() = user_id`, so a manager/admin (whose dealer id is their
+            parent's) would have every insert silently rejected. A device belongs
+            to the person holding it, not to the dealership. */}
+        <PushToggle userId={profile?.id} theme="light" />
+
         <div className="rounded-xl p-4 space-y-3" style={{ background: "rgba(56,189,248,0.04)", border: "1px solid rgba(56,189,248,0.1)" }}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">

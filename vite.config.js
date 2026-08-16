@@ -60,6 +60,12 @@ export default defineConfig({
 				],
 			},
 			workbox: {
+				// Pulls the push/notificationclick handlers into the generated SW.
+				// generateSW writes sw.js from scratch every build, so this is the only
+				// place custom handlers can live without switching to injectManifest —
+				// which would mean rebuilding the precache config below, the exact thing
+				// that caused the two outages its comments describe. See public/push-sw.js.
+				importScripts: ['/push-sw.js'],
 				// MUST be explicitly `null` (workbox only accepts null|string here), not
 				// just omitted — vite-plugin-pwa's own resolver hardcodes a
 				// `navigateFallback: 'index.html'` default that silently backfills any

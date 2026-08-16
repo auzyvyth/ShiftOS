@@ -85,6 +85,7 @@ import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import UpgradeBanner from "../components/ai/UpgradeBanner";
 import AiLoadingState from "../components/ai/AiLoadingState";
 import AiQuotaBadge from "../components/ai/AiQuotaBadge";
+import PushToggle from "../components/PushToggle";
 
 // ShiftOS Studio — full-screen marketing-content editor (camera overlay +
 // branded templates). Lazy so the panel's initial bundle stays lean.
@@ -6987,6 +6988,10 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  Get appointment + handover reminders on Telegram. Open Telegram, search <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd', textDecoration: 'none' }}>@userinfobot</a>, send /start, copy the Id number.
  </p>
  </div>
+ {/* Push alerts on this device. userId is this rep's OWN id — a linked
+     salesman's dealer id would be their parent's, and push_subscriptions
+     RLS (auth.uid() = user_id) would reject the insert. */}
+ <PushToggle userId={profile?.id} theme="dark" />
  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
  <div>
  <label style={labelStyle}>City</label>

@@ -16,6 +16,7 @@ import SalesmanLiteHelp from "../components/SalesmanLiteHelp";
 import ChannelBreakdown from "../components/ChannelBreakdown";
 import ShareMenu from "../components/ShareMenu";
 import ReportBugButton from "../components/ReportBugButton";
+import PushToggle from "../components/PushToggle";
 import {
   LogOut,
   Copy,
@@ -7124,6 +7125,10 @@ export default function SalesmanLite() {
           </div>
             </div>
           </div>
+
+          {/* Push notifications — works with the app closed, unlike the in-tab
+              Notification API banner used elsewhere in this file. */}
+          <PushToggle userId={userId} theme="dark" style={cardStyle} />
 
           {/* Location + IC */}
           <div style={cardStyle}>
