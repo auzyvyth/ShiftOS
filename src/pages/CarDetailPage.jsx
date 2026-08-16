@@ -630,6 +630,9 @@ export default function CarDetailPage() {
   // card's "Chat with X" button so the buyer reaches THAT rep and the lead is
   // attributed to them via ref_slug (resolve_lead_salesman rule 2).
   const [enquiryTarget, setEnquiryTarget] = useState(null);
+  // Call button is async now (number is fetched on tap, never shipped with the
+  // page) — guard against double-taps while the request is in flight.
+  const [callLoading, setCallLoading] = useState(false);
 
   /* view count */
   const [viewCount, setViewCount] = useState(0);
@@ -1073,9 +1076,14 @@ export default function CarDetailPage() {
     setShowBookingModal(true);
   }
 
-  function handleCall() {
-    const phone = contactPhone?.replace(/\D/g, "");
-    if (!phone) return;
+  // The call number is deliberately NOT part of the page payload — it is fetched
+  // on tap from /api/call-number, which resolves the seller responsible for THIS
+  // listing (the assigned rep, else the dealer) and prefers profiles.phone over
+  // the WhatsApp number. Keeping it off the page means there is nothing for a
+  // scraper to lift out of the HTML, and the endpoint is rate-limited per IP.
+  async function handleCall() {
+    if (callLoading) return;
+    setCallLoading(true);
     trackEvent(supabase, "call_click", {
       car_id: car.id,
       car_name: `${car.brand} ${car.model} ${car.year}`,
@@ -1083,7 +1091,29 @@ export default function CarDetailPage() {
       salesman_slug: getSlugFromURL() || car.salesman_slug || salesmanProfile?.slug || null,
       metadata: { source: "car_detail" },
     });
-    window.location.href = `tel:+${phone}`;
+    try {
+      const res = await fetch("/api/call-number", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ carId: car.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      const phone = String(data.phone || "").replace(/\D/g, "");
+      if (!res.ok || !phone) {
+        toast.error(
+          res.status === 429
+            ? "Too many attempts. Please wait a moment and try again."
+            : "This seller hasn't added a phone number yet. Try WhatsApp instead.",
+        );
+        return;
+      }
+      window.location.href = `tel:+${phone}`;
+    } catch (err) {
+      console.error("[handleCall]", err);
+      toast.error("Couldn't reach the seller right now. Try WhatsApp instead.");
+    } finally {
+      setCallLoading(false);
+    }
   }
 
   function handleEnquirySubmit() {
@@ -2074,9 +2104,9 @@ export default function CarDetailPage() {
                 WhatsApp
               </button>
               {contactPhone && (
-                <button onClick={handleCall}
-                  style={{ flex:1, background: th.card2, border:`1px solid ${th.border}`, color: th.textSec, borderRadius:10, padding:'12px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:"system-ui,sans-serif" }}>
-                  <Phone size={13} /> Call
+                <button onClick={handleCall} disabled={callLoading} aria-busy={callLoading}
+                  style={{ flex:1, background: th.card2, border:`1px solid ${th.border}`, color: th.textSec, borderRadius:10, padding:'12px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:13, fontWeight:500, cursor: callLoading ? 'wait' : 'pointer', opacity: callLoading ? 0.6 : 1, fontFamily:"system-ui,sans-serif" }}>
+                  <Phone size={13} /> {callLoading ? 'Connecting' : 'Call'}
                 </button>
               )}
             </div>
@@ -3522,9 +3552,9 @@ export default function CarDetailPage() {
                 WhatsApp
               </button>
               {contactPhone && (
-                <button onClick={handleCall}
-                  style={{ flex: 1, background: th.inputBg, border: '1px solid rgba(255,255,255,0.1)', color: th.textSec, borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', fontFamily: "system-ui,sans-serif", fontSize: 13, transition: 'all .2s' }}>
-                  <Phone size={13} /> Call
+                <button onClick={handleCall} disabled={callLoading} aria-busy={callLoading}
+                  style={{ flex: 1, background: th.inputBg, border: '1px solid rgba(255,255,255,0.1)', color: th.textSec, borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: callLoading ? 'wait' : 'pointer', opacity: callLoading ? 0.6 : 1, fontFamily: "system-ui,sans-serif", fontSize: 13, transition: 'all .2s' }}>
+                  <Phone size={13} /> {callLoading ? 'Connecting' : 'Call'}
                 </button>
               )}
             </div>

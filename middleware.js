@@ -10,6 +10,7 @@ const PROTECTED = new Set([
   '/api/enquiry',
   '/api/whatsapp-lead',
   '/api/booking',
+  '/api/call-number',
   '/api/waitlist',
   '/api/ai-messages',
   '/api/car-specs',
@@ -20,6 +21,9 @@ const LIMITS = {
   '/api/enquiry':      { window: '60 s',  max: 5,  prefix: 'rl:enquiry' },
   '/api/whatsapp-lead':{ window: '60 s',  max: 8,  prefix: 'rl:walead' },
   '/api/booking':      { window: '60 s',  max: 3,  prefix: 'rl:booking' },
+  // Low enough that bulk harvesting a number per listing is impractical, high
+  // enough that a real buyer comparing a few cars never hits it.
+  '/api/call-number':  { window: '60 s',  max: 6,  prefix: 'rl:callnum' },
   '/api/waitlist':     { window: '300 s', max: 3,  prefix: 'rl:waitlist' },
   '/api/ai-messages':  { window: '60 s',  max: 20, prefix: 'rl:ai' },
   '/api/car-specs':    { window: '60 s',  max: 30, prefix: 'rl:carspecs' },
@@ -75,5 +79,5 @@ export default async function middleware(req) {
 }
 
 export const config = {
-  matcher: ['/api/enquiry', '/api/whatsapp-lead', '/api/booking', '/api/waitlist', '/api/ai-messages', '/api/car-specs'],
+  matcher: ['/api/enquiry', '/api/whatsapp-lead', '/api/booking', '/api/call-number', '/api/waitlist', '/api/ai-messages', '/api/car-specs'],
 };
