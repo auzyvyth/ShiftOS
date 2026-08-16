@@ -14,8 +14,12 @@ const FOOTER_TIERS = [
   { key: 'dealer_starter',  href: '/shiftos#pricing' },
   { key: 'dealer_growth',   href: '/shiftos#pricing' },
   { key: 'dealer_pro',      href: '/shiftos#pricing' },
-  { key: 'salesman_lite',   href: '/shiftos?for=salesman#pricing' },
-  { key: 'salesman_full',   href: '/shiftos?for=salesman#pricing' },
+  // The salesman tiers point at the dedicated Lite landing page, not the
+  // ShiftOS salesman track. /for-salesmen is the page the whole Lite pitch is
+  // written for (and the one that's in the sitemap); /shiftos?for=salesman is
+  // a second, thinner telling of the same story on the dealer page.
+  { key: 'salesman_lite',   href: '/for-salesmen' },
+  { key: 'salesman_full',   href: '/for-salesmen' },
 ];
 const tierCaps = (k) => {
   const c = PLAN_CONFIG[k];
@@ -46,6 +50,7 @@ export default function MarketplaceFooter() {
     {
       heading: 'Product',
       links: [
+        { label: 'Salesman Lite (Free)', to: '/for-salesmen' },
         { label: 'ShiftOS DMS',        to: '/shiftos' },
         { label: 'Smart Inventory',    to: '/features/smart-inventory' },
         { label: 'Leads CRM',          to: '/features/leads-crm' },

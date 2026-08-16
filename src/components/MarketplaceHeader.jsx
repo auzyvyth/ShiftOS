@@ -32,7 +32,13 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
   // → "My Account" (/account). null = not logged in.
   const [authLink, setAuthLink]     = useState(null);
   const [signinOpen, setSigninOpen] = useState(false);
+  // "Get Started" is the header's loudest control. It used to hard-link to
+  // /shiftos#pricing (the RM299 dealer plan), so the free Salesman Lite tier —
+  // the product we actually market for volume — was priced out at first touch.
+  // It now opens the same two-way chooser pattern the Sign In control uses.
+  const [startOpen, setStartOpen]   = useState(false);
   const signinRef = useRef(null);
+  const startRef  = useRef(null);
   const rootRef = useRef(null);
   const searchInputRef = useRef(null);
   const navigate = useNavigate();
@@ -73,6 +79,14 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
   }, [signinOpen]);
+
+  // Same for the Get Started agent/dealer chooser.
+  useEffect(() => {
+    if (!startOpen) return;
+    const h = (e) => { if (startRef.current && !startRef.current.contains(e.target)) setStartOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [startOpen]);
 
   useEffect(() => {
     let active = true;
@@ -219,6 +233,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
         .mh-signin-item-s { display:block; font-size:11px; color:#6b7280; margin-top:1px; }
         .mh-getstarted { display:flex; align-items:center; gap:6px; background:#0f1115; color:#fff; font-size:13.5px; font-weight:700; padding:11px 18px; border-radius:11px; text-decoration:none; white-space:nowrap; transition:background .15s,transform .12s,box-shadow .15s; box-shadow:0 1px 2px rgba(0,0,0,.18); }
         .mh-getstarted:hover { background:#dc2626; transform:translateY(-1px); box-shadow:0 8px 22px rgba(220,38,38,.26); }
+        .mh-getstarted-wrap { position:relative; }
 
         /* search drawer */
         .mh-search-drawer { max-height:0; overflow:hidden; transition:max-height .28s ease; border-top:0 solid #ECEAE3; }
@@ -241,13 +256,14 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
         .mh-m-sub { display:flex; flex-direction:column; padding:2px 0 10px 16px; }
         .mh-m-sub a { color:#5b626e; font-size:13.5px; font-weight:500; text-decoration:none; padding:10px 0; display:flex; align-items:center; gap:9px; }
         .mh-m-cta { margin-top:12px; display:flex; align-items:center; justify-content:center; gap:7px; background:#dc2626; color:#fff; font-size:15px; font-weight:700; padding:14px; border-radius:12px; text-decoration:none; }
+        .mh-m-cta-alt { margin-top:8px; display:flex; align-items:center; justify-content:center; gap:6px; background:#fff; color:#0f1115; border:1.5px solid #E7E4DB; font-size:14px; font-weight:600; padding:13px; border-radius:12px; text-decoration:none; }
         .mh-m-signin { margin-top:8px; text-align:center; color:#0f1115; font-weight:600; text-decoration:none; padding:12px; }
 
         /* keep mega panels inside the viewport on mid-size screens */
         @media (max-width:1240px) { .mh-mega-promo { display:none; } }
         @media (max-width:1100px) { .mh-mega-grid { grid-template-columns:1fr; width:300px; } }
         @media (max-width:980px) {
-          .mh-nav, .mh-vsep, .mh-signin, .mh-getstarted { display:none!important; }
+          .mh-nav, .mh-vsep, .mh-signin, .mh-getstarted, .mh-getstarted-wrap { display:none!important; }
           .mh-burger { display:flex!important; }
           .mh-mobile.open { display:flex!important; }
           .mh-bar { height:64px; }
@@ -315,7 +331,35 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
                 )}
               </div>
             )}
-            <a href="/shiftos#pricing" className="mh-getstarted">Get Started <ArrowUpRight size={14} /></a>
+            <div className="mh-getstarted-wrap" ref={startRef}>
+              <button
+                className="mh-getstarted"
+                aria-expanded={startOpen}
+                onClick={() => setStartOpen(o => !o)}
+                style={{ border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Get Started
+                <ChevronDown size={14} style={{ transform: startOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
+              </button>
+              {startOpen && (
+                <div className="mh-signin-menu">
+                  <Link to="/for-salesmen" className="mh-signin-item" onClick={() => setStartOpen(false)}>
+                    <User size={17} style={{ color: '#dc2626', flexShrink: 0 }} />
+                    <span>
+                      <span className="mh-signin-item-t">I'm a car agent</span>
+                      <span className="mh-signin-item-s">Your own page &mdash; free forever</span>
+                    </span>
+                  </Link>
+                  <Link to="/shiftos#pricing" className="mh-signin-item" onClick={() => setStartOpen(false)}>
+                    <Store size={17} style={{ color: '#dc2626', flexShrink: 0 }} />
+                    <span>
+                      <span className="mh-signin-item-t">I run a dealership</span>
+                      <span className="mh-signin-item-s">Full DMS &mdash; from RM299/mo</span>
+                    </span>
+                  </Link>
+                </div>
+              )}
+            </div>
             <button className="mh-burger" aria-label="Menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}>
               {menuOpen ? <X size={19} /> : <Menu size={19} />}
             </button>
@@ -377,7 +421,14 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
             </span>
           </button>
 
-          <a href="/shiftos#pricing" className="mh-m-cta" onClick={() => setMenuOpen(false)}>Get Started <ArrowUpRight size={15} /></a>
+          {/* Mobile gets the chooser as two stacked controls — a dropdown inside
+              an already-scrolling sheet would be a worse tap target. */}
+          <Link to="/for-salesmen" className="mh-m-cta" onClick={() => setMenuOpen(false)}>
+            Get started free &mdash; I'm an agent <ArrowUpRight size={15} />
+          </Link>
+          <Link to="/shiftos#pricing" className="mh-m-cta-alt" onClick={() => setMenuOpen(false)}>
+            I run a dealership <ArrowUpRight size={14} />
+          </Link>
           {authLink ? (
             <a href={authLink.to} className="mh-m-signin" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }} onClick={() => setMenuOpen(false)}>
               <LayoutDashboard size={16} /> {authLink.label}
