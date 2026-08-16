@@ -625,6 +625,14 @@ export default function CarDetailPage() {
   const [enquiryForm, setEnquiryForm] = useState({ name: "", phone: "", state: "" });
   const [enquiryToken, setEnquiryToken] = useState(null);
   const [enquirySubmitting, setEnquirySubmitting] = useState(false);
+  // Who this enquiry is aimed at. null = the listing's default contact (dealer,
+  // else the listing's agent). Set to { phone, slug, name } by the salesman
+  // card's "Chat with X" button so the buyer reaches THAT rep and the lead is
+  // attributed to them via ref_slug (resolve_lead_salesman rule 2).
+  const [enquiryTarget, setEnquiryTarget] = useState(null);
+  // Call button is async now (number is fetched on tap, never shipped with the
+  // page) — guard against double-taps while the request is in flight.
+  const [callLoading, setCallLoading] = useState(false);
 
   /* view count */
   const [viewCount, setViewCount] = useState(0);
@@ -1031,7 +1039,10 @@ export default function CarDetailPage() {
     );
   }
 
-  function handleWhatsApp() {
+  function handleWhatsApp(target) {
+    // Most call sites are onClick={handleWhatsApp}, so the first arg is a
+    // MouseEvent — only treat it as a target when it actually carries a phone.
+    setEnquiryTarget(target && typeof target === "object" && target.phone ? target : null);
     // Prefill from device-remembered details (preferences consent tier; returns
     // null when not granted) first, then fall back to the signed-in buyer's
     // saved account details so a logged-in buyer never retypes — even on a
@@ -1065,9 +1076,14 @@ export default function CarDetailPage() {
     setShowBookingModal(true);
   }
 
-  function handleCall() {
-    const phone = contactPhone?.replace(/\D/g, "");
-    if (!phone) return;
+  // The call number is deliberately NOT part of the page payload — it is fetched
+  // on tap from /api/call-number, which resolves the seller responsible for THIS
+  // listing (the assigned rep, else the dealer) and prefers profiles.phone over
+  // the WhatsApp number. Keeping it off the page means there is nothing for a
+  // scraper to lift out of the HTML, and the endpoint is rate-limited per IP.
+  async function handleCall() {
+    if (callLoading) return;
+    setCallLoading(true);
     trackEvent(supabase, "call_click", {
       car_id: car.id,
       car_name: `${car.brand} ${car.model} ${car.year}`,
@@ -1075,14 +1091,41 @@ export default function CarDetailPage() {
       salesman_slug: getSlugFromURL() || car.salesman_slug || salesmanProfile?.slug || null,
       metadata: { source: "car_detail" },
     });
-    window.location.href = `tel:+${phone}`;
+    try {
+      const res = await fetch("/api/call-number", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ carId: car.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      const phone = String(data.phone || "").replace(/\D/g, "");
+      if (!res.ok || !phone) {
+        toast.error(
+          res.status === 429
+            ? "Too many attempts. Please wait a moment and try again."
+            : "This seller hasn't added a phone number yet. Try WhatsApp instead.",
+        );
+        return;
+      }
+      window.location.href = `tel:+${phone}`;
+    } catch (err) {
+      console.error("[handleCall]", err);
+      toast.error("Couldn't reach the seller right now. Try WhatsApp instead.");
+    } finally {
+      setCallLoading(false);
+    }
   }
 
   function handleEnquirySubmit() {
     // Open WhatsApp immediately — must happen synchronously in the click handler
     // before any await, otherwise popup blockers will intercept window.open.
     const message = `Hi, I'm ${enquiryForm.name}. I'm interested in the ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""} listed at RM ${car.selling_price?.toLocaleString()}.`;
-    const waUrl = buildWaUrl(ctaCtx, contactPhone, message);
+    // A targeted enquiry ("Chat with <agent>") must reach THAT agent, not the
+    // dealer's main line that buildWaUrl would otherwise prefer.
+    const targetPhone = enquiryTarget?.phone?.replace(/\D/g, "") || null;
+    const waUrl = targetPhone
+      ? `https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`
+      : buildWaUrl(ctaCtx, contactPhone, message);
     // buildWaUrl returns '#' when no phone is resolvable — opening that just
     // reloads the current page in a new tab, so guard against it.
     if (waUrl && waUrl !== "#") {
@@ -1100,7 +1143,7 @@ export default function CarDetailPage() {
       car_id: car.id,
       car_name: `${car.brand} ${car.model} ${car.year}`,
       dealer_id: car.dealer_id,
-      salesman_slug: getSlugFromURL() || car.salesman_slug || salesmanProfile?.slug || null,
+      salesman_slug: enquiryTarget?.slug || getSlugFromURL() || car.salesman_slug || salesmanProfile?.slug || null,
       metadata: { source: "storefront", price: car.selling_price },
     });
     // /api/enquiry records the enquiry + creates the pipeline lead DB-side (via
@@ -1115,11 +1158,15 @@ export default function CarDetailPage() {
         name: enquiryForm.name,
         phone: enquiryForm.phone,
         state: enquiryForm.state || null,
-        refSlug: getRef() || car.salesman_slug || null,
+        // The targeted agent wins over the ?ref= that brought the buyer here —
+        // they tapped that rep's own button. The slug is stored on the enquiry
+        // row and resolved DB-side by enquiry_to_lead -> resolve_lead_salesman.
+        refSlug: enquiryTarget?.slug || getRef() || car.salesman_slug || null,
         token: enquiryToken,
       }),
     }).catch((err) => console.error("[handleEnquirySubmit] fetch error:", err));
     setEnquiryToken(null);
+    setEnquiryTarget(null);
   }
 
   async function handleBook(e) {
@@ -1142,7 +1189,10 @@ export default function CarDetailPage() {
           appointmentDate: dt.toISOString(),
           bookingType: form.timeline || null,
           notes: form.notes || null,
-          refSlug: getRef() || null,
+          // Same fallback chain the enquiry path uses. Without car.salesman_slug
+          // a booking on an agent's listing with no ?ref= lost that attribution
+          // hop and leaned on assigned_to alone.
+          refSlug: getRef() || car.salesman_slug || null,
         }),
       });
       if (!res.ok) {
@@ -2054,9 +2104,9 @@ export default function CarDetailPage() {
                 WhatsApp
               </button>
               {contactPhone && (
-                <button onClick={handleCall}
-                  style={{ flex:1, background: th.card2, border:`1px solid ${th.border}`, color: th.textSec, borderRadius:10, padding:'12px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:"system-ui,sans-serif" }}>
-                  <Phone size={13} /> Call
+                <button onClick={handleCall} disabled={callLoading} aria-busy={callLoading}
+                  style={{ flex:1, background: th.card2, border:`1px solid ${th.border}`, color: th.textSec, borderRadius:10, padding:'12px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:13, fontWeight:500, cursor: callLoading ? 'wait' : 'pointer', opacity: callLoading ? 0.6 : 1, fontFamily:"system-ui,sans-serif" }}>
+                  <Phone size={13} /> {callLoading ? 'Connecting' : 'Call'}
                 </button>
               )}
             </div>
@@ -2485,7 +2535,7 @@ export default function CarDetailPage() {
         {/* M7 — Salesman card */}
         {salesmanProfile && (() => {
           const waPhone = (salesmanProfile.whatsapp_number || '').replace(/\D/g, '');
-          const waHref = waPhone ? `https://wa.me/${waPhone.startsWith('6') ? waPhone : '6' + waPhone}` : null;
+          const waNumber = waPhone ? (waPhone.startsWith('6') ? waPhone : '6' + waPhone) : null;
           const firstName = (salesmanProfile.full_name || 'Agent').split(' ')[0];
           return (
             <div className="cdp-mobile-only" style={{ padding:'0 20px', marginBottom:32 }}>
@@ -2503,11 +2553,12 @@ export default function CarDetailPage() {
                     <p style={{ fontSize:11, color:'#1e293b', margin:'2px 0 0', letterSpacing:'0.05em' }}>Independent Agent · XDrive</p>
                   </div>
                 </div>
-                {waHref && (
-                  <a href={waHref} target="_blank" rel="noopener noreferrer"
-                    style={{ display:'block', width:'100%', background:'#22c55e', color:'white', borderRadius:9, padding:'12px 0', fontWeight:700, fontSize:13, fontFamily:"system-ui,sans-serif", textAlign:'center', textDecoration:'none', boxSizing:'border-box', letterSpacing:'0.02em' }}>
+                {waNumber && (
+                  <button
+                    onClick={() => handleWhatsApp({ phone: waNumber, slug: salesmanProfile.slug, name: firstName })}
+                    style={{ display:'block', width:'100%', background:'#22c55e', color:'white', border:'none', cursor:'pointer', borderRadius:9, padding:'12px 0', fontWeight:700, fontSize:13, fontFamily:"system-ui,sans-serif", textAlign:'center', boxSizing:'border-box', letterSpacing:'0.02em' }}>
                     Chat with {firstName}
-                  </a>
+                  </button>
                 )}
                 {salesmanProfile.slug && (
                   <Link to={`/s/${salesmanProfile.slug}`} style={{ display:'block', textAlign:'center', marginTop:10, fontSize:12, color: th.textSec, fontWeight:600, textDecoration:'none' }}>
@@ -3501,9 +3552,9 @@ export default function CarDetailPage() {
                 WhatsApp
               </button>
               {contactPhone && (
-                <button onClick={handleCall}
-                  style={{ flex: 1, background: th.inputBg, border: '1px solid rgba(255,255,255,0.1)', color: th.textSec, borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', fontFamily: "system-ui,sans-serif", fontSize: 13, transition: 'all .2s' }}>
-                  <Phone size={13} /> Call
+                <button onClick={handleCall} disabled={callLoading} aria-busy={callLoading}
+                  style={{ flex: 1, background: th.inputBg, border: '1px solid rgba(255,255,255,0.1)', color: th.textSec, borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: callLoading ? 'wait' : 'pointer', opacity: callLoading ? 0.6 : 1, fontFamily: "system-ui,sans-serif", fontSize: 13, transition: 'all .2s' }}>
+                  <Phone size={13} /> {callLoading ? 'Connecting' : 'Call'}
                 </button>
               )}
             </div>
@@ -3525,7 +3576,7 @@ export default function CarDetailPage() {
             {/* SALESMAN CARD */}
             {salesmanProfile && (() => {
               const waPhone = (salesmanProfile.whatsapp_number || '').replace(/\D/g, '');
-              const waHref = waPhone ? `https://wa.me/${waPhone.startsWith('6') ? waPhone : '6' + waPhone}` : null;
+              const waNumber = waPhone ? (waPhone.startsWith('6') ? waPhone : '6' + waPhone) : null;
               const firstName = (salesmanProfile.full_name || 'Agent').split(' ')[0];
               return (
                 <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
@@ -3542,11 +3593,12 @@ export default function CarDetailPage() {
                       <p style={{ fontSize: 11, color: '#1e293b', margin: '2px 0 0', letterSpacing: '0.05em' }}>Independent Agent · XDrive</p>
                     </div>
                   </div>
-                  {waHref && (
-                    <a href={waHref} target="_blank" rel="noopener noreferrer"
-                      style={{ display: 'block', width: '100%', background: '#22c55e', color: 'white', borderRadius: 9, padding: '12px 0', fontWeight: 700, fontSize: 13, fontFamily: "system-ui,sans-serif", textAlign: 'center', textDecoration: 'none', boxSizing: 'border-box', letterSpacing: '0.02em' }}>
+                  {waNumber && (
+                    <button
+                      onClick={() => handleWhatsApp({ phone: waNumber, slug: salesmanProfile.slug, name: firstName })}
+                      style={{ display: 'block', width: '100%', background: '#22c55e', color: 'white', border: 'none', cursor: 'pointer', borderRadius: 9, padding: '12px 0', fontWeight: 700, fontSize: 13, fontFamily: "system-ui,sans-serif", textAlign: 'center', boxSizing: 'border-box', letterSpacing: '0.02em' }}>
                       Chat with {firstName}
-                    </a>
+                    </button>
                   )}
                   {salesmanProfile.slug && (
                     <Link to={`/s/${salesmanProfile.slug}`} style={{ display: 'block', textAlign: 'center', marginTop: 10, fontSize: 12, color: th.textSec, fontWeight: 600, textDecoration: 'none' }}>
@@ -3679,8 +3731,14 @@ export default function CarDetailPage() {
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
           onClick={e => { if (e.target === e.currentTarget) setShowEnquiryModal(false); }}>
           <div style={{ background: th.card, border: `1px solid ${th.border}`, borderRadius: '20px' }} className="p-6 w-full max-w-sm">
-            <h3 className="font-semibold text-lg mb-1" style={{ color: th.text }}>Contact Dealer</h3>
-            <p className="text-sm mb-4" style={{ color: th.textMuted }}>Enter your details to continue to WhatsApp</p>
+            <h3 className="font-semibold text-lg mb-1" style={{ color: th.text }}>
+              {enquiryTarget?.name ? `Contact ${enquiryTarget.name}` : 'Contact Dealer'}
+            </h3>
+            <p className="text-sm mb-4" style={{ color: th.textMuted }}>
+              {enquiryTarget?.name
+                ? `Enter your details to continue to ${enquiryTarget.name} on WhatsApp`
+                : 'Enter your details to continue to WhatsApp'}
+            </p>
             <input
               placeholder="Your name"
               aria-label="Your name"

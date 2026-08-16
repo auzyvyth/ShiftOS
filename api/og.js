@@ -87,7 +87,10 @@ async function getListingData(slug) {
 async function getDealerData(dealerId) {
   if (!dealerId) return null;
   const [dealer] = await sbFetch(
-    `profiles?id=eq.${dealerId}&select=dealership,subdomain,whatsapp_number,city,state&limit=1`,
+    // whatsapp_number deliberately not selected — nothing in the prerendered
+    // dealer output uses it now that the telephone field is gone, and the
+    // prerenderer should not hold a number it cannot need.
+    `profiles?id=eq.${dealerId}&select=dealership,subdomain,city,state&limit=1`,
   );
   return dealer ?? null;
 }
@@ -200,7 +203,13 @@ function buildCarSchema(car, dealer, canonicalUrl, feats = []) {
             "@type": "AutoDealer",
             name: dealer.dealership ?? "xdrive.my",
             url: dealerUrl,
-            telephone: dealer.whatsapp_number ?? undefined,
+            // NO telephone here. This block is served to crawlers (see the
+            // user-agent rewrite in vercel.json), which includes googlebot,
+            // bingbot and the AI scrapers (GPTBot, ClaudeBot, PerplexityBot,
+            // ia_archiver). A telephone field handed every one of them the
+            // seller's number in a structured, trivially-parsed form. Buyers
+            // reach the seller through the Call button, which fetches the number
+            // on tap via /api/call-number.
             address: { "@type": "PostalAddress", addressLocality: dealer.city ?? car.city ?? undefined, addressRegion: dealer.state ?? car.state ?? undefined, addressCountry: "MY" },
           }
         : { "@type": "AutoDealer", name: "xdrive.my", url: SITE_URL },
@@ -360,7 +369,9 @@ function buildSalesmanHtml(s, cars, canonical, baseUrl) {
       address: location
         ? { "@type": "PostalAddress", addressLocality: s.city || undefined, addressRegion: s.state || undefined, addressCountry: "MY" }
         : undefined,
-      telephone: s.whatsapp_number || undefined,
+      // NO telephone — same reason as the dealer block above: this HTML is
+      // served to crawlers and AI scrapers, and an agent's personal mobile is
+      // the last thing that should sit in a machine-readable field.
     }),
   );
   const body = `  <main>

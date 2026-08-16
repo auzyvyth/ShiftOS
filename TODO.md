@@ -731,6 +731,65 @@ native build.
   triggers `trg_push_on_dealer_notification` / `trg_push_on_salesman_notification`.
   BLOCKED ON ACT-12 (below) for the final end-to-end test.
 
+- [x] **PUSH-3 (CRITICAL, found + fixed 2026-08-16): `push_to_users` took down BOTH public
+  lead-capture paths.** It passed the request body to `net.http_post` as `::text`, but pg_net
+  0.20 only exposes `http_post(url, body jsonb, params, headers, timeout)`. No overload
+  matched → `42883` → the whole calling transaction aborted. Because every insert into
+  `salesman_notifications` / `dealer_notifications` fires a push trigger, this killed the
+  public booking form (`appointments` → `notify_salesman_new_booking`) AND every WhatsApp
+  enquiry (`whatsapp_enquiries` → `notify_new_enquiry`). Both returned 500; no lead reached
+  any pipeline. Shipped with the push work in #278 and live for the whole window.
+  Fixed: body is jsonb; plus an `exception when others` guard in `push_to_users` and in both
+  `notify_push_on_*_notification` triggers so a notification failure can NEVER roll back the
+  business write that triggered it. LESSON: a trigger that decorates a core write (push,
+  Telegram, analytics) must be non-fatal by construction — `notify_ops_telegram` already had
+  the guard, the push path did not. Check this on any new AFTER-INSERT notifier.
+
+- [ ] **CDP-1 (LOW): `salesmanProfile.job_title` never renders.** Both salesman cards on
+  `src/pages/CarDetailPage.jsx` (mobile ~:2522, desktop ~:3562) render
+  `{salesmanProfile.job_title && ...}`, but the profile comes from the `get_salesman_by_id`
+  RPC, whose RETURNS TABLE has no `job_title` column — so it is always `undefined` and the
+  line is dead. Fix: add `job_title` to the RPC's return, or drop the line. Noticed while
+  fixing the contact buttons; not touched to keep that change focused.
+
+- [x] **CDP-2 (HIGH, fixed 2026-08-16): the Call button leaked the seller's number to
+  crawlers and dialled the wrong line.** Three separate faults, all real:
+  1. CRAWLABLE. `vercel.json` rewrites bot user-agents to `/api/og`, and that handler emitted
+     the number as structured JSON-LD — `AutoDealer.telephone` on every car page and
+     `Person.telephone` on every agent page. The UA list includes googlebot, bingbot and the
+     AI scrapers (GPTBot, ClaudeBot, PerplexityBot, ia_archiver). Both fields removed, and
+     `whatsapp_number` dropped from the prerenderer's dealer select since nothing uses it now.
+  2. WRONG NUMBER. It dialled `whatsapp_number`, but `profiles.phone` exists and is populated
+     on 13/14 sellers — and DIFFERS from the WhatsApp number on 3 of them, so those sellers
+     were getting calls on the wrong line. It also read `dealer?.whatsapp_number ||
+     salesmanProfile?.whatsapp_number`, so the dealer's main line beat the rep who actually
+     owns the listing.
+  3. HARVESTABLE. The number shipped in the page payload on load, and `get_dealer_profile_by_id`
+     / `get_salesman_by_*` hand one out to anon for ANY id, with dealer ids enumerable straight
+     out of `public_car_listings` — so a bot never even had to load the page.
+  Fix: new `get_listing_call_number(p_listing_id)` SECURITY DEFINER RPC returns ONE number for
+  ONE listing, resolving the responsible seller via `resolve_lead_salesman` (rep, else dealer)
+  and preferring `phone` over `whatsapp_number`. It refuses any listing the public cannot see
+  (not available/reserved, or inactive dealer) and answers 404 identically for "no number" and
+  "not visible" so it cannot be used to probe what exists. Called only on tap through the new
+  `/api/call-number` route, rate-limited 6/IP/min in `middleware.js`. Nothing lands in the page
+  payload. Verified as anon: assigned-rep listing returns the REP's line where the old code
+  returned the dealer's; sold and bogus listing ids both return null.
+  NOTE: deliberately NOT gated behind a form (owner decision). A buyer tapping Call is the
+  highest-intent action on the page and pre-call friction loses calls, so Call still captures
+  no lead — that is intended, not a missing-lead bug.
+
+- [ ] **CDP-3 (MED): WhatsApp numbers still ship in the page payload.** CDP-2 closed the Call
+  button and the crawler surface, but the wa.me CTAs still need a number at page-load time, so
+  `get_dealer_profile_by_id` / `get_salesman_by_id` / `get_salesman_by_slug` /
+  `get_dealer_profile_by_subdomain` continue to return `whatsapp_number` to anon for any id —
+  the bulk-harvest vector is open for WhatsApp even though it is closed for the call line.
+  Closing it means moving every wa.me build to on-tap (the enquiry modal already defers the
+  actual open to submit time, so CarDetailPage is most of the way there) and then stripping the
+  number from those RPCs. Blast radius is why it was deferred: storefront header,
+  StickyWhatsAppButton, car cards, ContactGate and useCTAContext all read it at load. Needs its
+  own tested pass with a full staging sweep.
+
 - [ ] **PUSH-2 (MED): solo Salesman Lite gets no `salesman_notifications` row for an organic
   enquiry.** `notify_salesman_new_enquiry` resolves the rep from `NEW.salesman_id`, then
   `ref_slug`, then falls back to looping `profiles WHERE dealer_id = NEW.dealer_id`. A solo
