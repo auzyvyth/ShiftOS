@@ -622,6 +622,42 @@ close to as-is. iOS will NOT accept a bare WebView wrapper (App Review guideline
 "minimum functionality"). The items below are what actually stands between us and a
 native build.
 
+- [x] **PWA-1: installability pass — DONE (2026-08-16).** The manifest and service
+  worker were solid, but nothing in the app ever invited an install and iOS had no
+  icon. Shipped: (a) `index.html` gained `apple-touch-icon` (iOS reads almost none of
+  the web manifest for Add to Home Screen — without it iOS screenshots the PAGE and
+  uses that as the home-screen icon), `theme-color`, `apple-mobile-web-app-capable` +
+  `-title`, and `viewport-fit=cover`; status bar is `black` not `black-translucent`
+  on purpose, since translucent extends the webview under the notch and would need a
+  safe-area audit of every panel. (b) manifest gained `id: '/'` (pins install
+  identity — without it the identity derives from `start_url`, so changing start_url
+  later would orphan existing installs), `scope`, `lang`; `orientation` left unset on
+  purpose because the wide stock/P&L tables are better in landscape on a tablet.
+  (c) new `InstallPrompt` — Android via `beforeinstallprompt`, iOS Safari via a
+  Share-sheet hint, 30-day snooze on dismiss, suppressed in in-app webviews
+  (FB/IG/TikTok cannot install). Scoped to the authenticated panels ONLY, the inverse
+  of ConsentBanner's gate: install is worth real money to a daily dealer/salesman user
+  and ~nothing to a marketplace buyer, so the public surfaces stay clean. Verified:
+  lint + build clean, precache still excludes `index.html`/`index-*.js` (stale-SW
+  guard intact), 375px screenshot, entry bundle +0.75 kB gzip with the card split into
+  its own lazy chunk.
+- [ ] **PWA-2: offline fallback page.** Split out of PWA-1 deliberately — it is the one
+  piece that touches service-worker CONFIG, which has burned this repo before. Do NOT
+  reach for workbox `navigateFallback`: it serves the cached shell on every navigation
+  miss, which is exactly the stale-`index.html` trap the comments in `vite.config.js`
+  describe. The safe shape is a `runtimeCaching` entry matching
+  `request.mode === 'navigate'` with handler `NetworkOnly` plus a `handlerDidError`
+  plugin returning a precached, never-changing `/offline.html`. That keeps index.html
+  network-fresh and only substitutes the fallback when the network genuinely fails.
+  Give it its own tested pass.
+- [ ] **PWA-3: icon does not match brand (design decision needed).** `pwa-512x512.png`
+  is the logo on a WHITE background, but the manifest declares
+  `theme_color`/`background_color: #080C14`, so the Android splash renders a white
+  icon block on near-black. The logo does sit inside the maskable safe circle, so
+  `purpose: 'any maskable'` is fine as-is. Deliberately not changed — regenerating a
+  brand asset is your call, not a silent refactor. Options: (a) leave it, (b) re-cut
+  the icon on the #080C14 background, (c) set `background_color` to white so the
+  splash matches the icon.
 - [ ] **MOBILE-1 (DO THIS ONE EARLY — ACT-7 reclassified): migrate auth to PKCE.**
   `src/supabaseClient.js` sets no `flowType`, so it defaults to **implicit** (tokens land in
   the URL hash). TODO has this filed as ACT-7 "optional, deferred". For a native/wrapped app

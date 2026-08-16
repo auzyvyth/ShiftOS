@@ -36,10 +36,24 @@ export default defineConfig({
 				name: 'ShiftOS by XDrive',
 				short_name: 'ShiftOS',
 				description: 'Car dealership management platform',
+				lang: 'en',
 				theme_color: '#080C14',
 				background_color: '#080C14',
 				display: 'standalone',
 				start_url: '/',
+				// `id` pins the install identity. With no id the browser derives it
+				// from start_url, so ever changing start_url (e.g. routing installed
+				// users straight to /dashboard) would read as a DIFFERENT app —
+				// existing installs orphan instead of updating. Setting it now, while
+				// the install base is small, makes start_url safe to change later.
+				id: '/',
+				// Explicit scope. The default is start_url's directory, which happens
+				// to be the same thing here; stating it keeps it from silently moving
+				// if start_url ever gains a path.
+				scope: '/',
+				// NOTE: orientation is deliberately unset. The dealer dashboard has
+				// wide stock/P&L tables that are genuinely better in landscape on a
+				// tablet, so locking to portrait would be hostile.
 				icons: [
 					{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
 					{ src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },

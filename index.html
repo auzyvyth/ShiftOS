@@ -4,7 +4,29 @@
 		<meta charset="UTF-8" />
 		<link rel="icon" type="image/png" href="/xdrivelogo.png" />
 		<meta name="generator" content="ShiftOS" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+		<!--
+			Installability. iOS reads NONE of the web manifest for Add to Home Screen
+			apart from (since 16.4) the icons, and even there apple-touch-icon still
+			wins — without this link iOS screenshots the page and uses THAT as the
+			home-screen icon. Points at the existing 192px asset rather than shipping
+			a third icon file: iOS downscales to 180 itself, and the PNG is already
+			opaque RGB (no alpha), which is what iOS wants since it composites any
+			transparency onto black.
+
+			Status bar is 'black', not 'black-translucent': translucent extends the
+			web view under the notch and would need safe-area padding auditing on
+			every panel. 'black' keeps the current layout exactly as-is and matches
+			the #080C14 brand background. viewport-fit=cover is still set so
+			env(safe-area-inset-*) resolves for components that opt into it.
+		-->
+		<link rel="apple-touch-icon" href="/pwa-192x192.png" />
+		<meta name="theme-color" content="#080C14" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+		<meta name="apple-mobile-web-app-title" content="ShiftOS" />
 		<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
 		<title>XDrive — Verified Used & Recon Cars in Malaysia</title>
 		<meta name="description" content="Buy verified used, recon and new cars in Malaysia with transparent pricing and full vehicle history. Trusted local dealers and easy financing on XDrive." />

@@ -4,6 +4,10 @@ import ReactDOM from 'react-dom/client';
 import * as Sentry from '@sentry/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { i18nReady } from './i18n/config';
+// Side-effect import, and it must stay ABOVE the render: this registers the
+// `beforeinstallprompt` listener at module scope. React mounts behind the
+// i18nReady promise below, so a component-level listener can miss the event.
+import './utils/installPrompt';
 import App from '@/App';
 import { logError } from '@/utils/logError';
 import '@/index.css';
