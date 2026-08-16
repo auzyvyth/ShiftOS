@@ -288,19 +288,45 @@ accurate for JSON (it does not).
   that mattered — it is reachable from every car card); (4) `GoogleOneTap` behind a
   build-time env gate, it was shipping only to return null; (5) deleted the mount of
   a second, entirely unused toast system. NOT yet browser-tested — needs a staging pass.
-- [ ] **MPERF-6 (MED, redundancy not perf): two card components render cars on the
-  same page.** The marketplace grid uses `ShowroomCard` (6.9 KB gz) and the body-type
-  carousels use `CarCard` (10.1 KB gz) — two implementations of one job, ~17 KB gz
-  total, on a single route. MPERF-5 deferred CarCard's cost but did not remove the
-  duplication. Decide which is canonical and collapse; `CarCard` is the heavier and
-  more general one (it also drags `ContactGate` + `GradeBadge`), `ShowroomCard` is
-  the leaner marketplace-specific one. Do this as its own pass — it is a component
-  consolidation with visual regression risk, not a bundle tweak.
-- [ ] **MPERF-7 (LOW): dead radix toast files.** `src/components/ui/toast.jsx`,
-  `src/components/ui/toaster.jsx` and `src/hooks/use-toast.js` now have zero
-  importers (sonner is the real toast system, 20 importers). They cost nothing at
-  runtime once unreferenced, so this is hygiene only — delete them and drop
-  `@radix-ui/react-toast` from package.json in a session that can run npm.
+- [~] **MPERF-6 — PREMISE CORRECTED 2026-08-16, NEEDS A DECISION (do not implement as
+  originally written).** The original entry said ShowroomCard and CarCard are "two
+  implementations of one job" to be collapsed. Reading both files says otherwise:
+  - `ShowroomCard` is a **horizontal row** (`flexDirection:'row'`, 38%/max-210px image
+    column, min-height 190px) — built for the marketplace list.
+  - `CarCard` is a **vertical tile** (`flexDirection:'column'`, image on top + `cc-body`)
+    — built for carousels and card grids.
+  They are two LAYOUTS, not two implementations. Merging them yields one component with
+  a layout branch — no code removed, and every consumer of both inherits a shared
+  regression surface.
+  FEATURE DELTA runs one way. CarCard has, ShowroomCard lacks: reserved banner, listing-age
+  labels, market price band (below/fair/above), VERIFIED badge, high-value financing
+  threshold, `useCompare` integration (ShowroomCard takes compare via props), responsive
+  `cdnSrcSet` (ShowroomCard uses a single fixed 480px `cdnImg`), compact mode, subdomain
+  theming. Collapsing onto ShowroomCard DROPS those from 6 surfaces incl. the storefront;
+  collapsing onto CarCard makes the marketplace grid heavier (opposite of the goal) and
+  needs a horizontal mode built.
+  FACTUAL CORRECTION: the original entry claimed CarCard "also drags ContactGate +
+  GradeBadge" as a differentiator. ShowroomCard imports BOTH (`ShowroomCard.jsx:5`, `:11`).
+  That differentiator does not exist.
+  PERF PREMISE ALREADY SPENT: the duplication on the marketplace route is real
+  (MarketplacePage grid = ShowroomCard, BodyTypeCarousel on the same route = CarCard), but
+  MPERF-5 already made that CarCard `lazy()`. It is a below-fold chunk, NOT entry-bundle
+  weight — the "~17 KB gz on one route" figure counts a chunk MPERF-5 deliberately deferred.
+  OPEN DECISION (owner): leave the two as-is (recommended — they are correctly separate),
+  or fold CarCard's missing features into ShowroomCard and retire CarCard from the
+  marketplace carousels only. Do NOT do a blanket merge.
+- [x] **MPERF-7: dead radix toast files — DONE (2026-08-16).** Deleted
+  `src/components/ui/toast.jsx`, `src/components/ui/toaster.jsx`, `src/hooks/use-toast.js`
+  and dropped `@radix-ui/react-toast` from package.json + package-lock.json (lockfile
+  regenerated with `npm install --package-lock-only`, which works even though a full
+  `npm ci` still 403s on the cdn.sheetjs.com xlsx pin). Also deleted
+  `src/components/CarCardMarket.jsx` — a THIRD card component (141 lines) with zero
+  importers that the MPERF audit missed entirely. Verified: sonner remains the only toast
+  system and its `<Toaster>` is still mounted (`App.jsx:121`); the only surviving textual
+  references are a stale diagram label (`MindMapPage.jsx:484`) and an inert name-map entry
+  in `tools/install-missing-components.js:26` (that tool only acts on names that are
+  actually imported, so it cannot resurrect the files). NOT lint/build-verified — no
+  `node_modules` in the web session; the change is pure deletion of zero-importer files.
 - [ ] **MPERF-8 (MED): framer-motion sits on the storefront critical path for two
   trivial animations.** It enters the HomePage chunk via `Header.jsx` (the mobile
   menu panel, gated on `mobileOpen`) and `StickyWhatsAppButton.jsx` (one button
