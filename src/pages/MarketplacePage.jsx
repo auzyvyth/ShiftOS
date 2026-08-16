@@ -71,7 +71,7 @@ export default function MarketplacePage() {
   const [heroBudget,   setHeroBudget]   = useState('');
   const [heroState,    setHeroState]    = useState('');
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [heroTab, setHeroTab] = useState(0);
+  const [heroTab, setHeroTab] = useState('find');
 
   // Single nav path for every hero-search entry point (Enter, search icon,
   // Find Cars button) — carries the typed query plus budget/state selects.
@@ -218,6 +218,12 @@ export default function MarketplacePage() {
       if (colour)     query = query.ilike('colour', `%${colour}%`);
       if (model)      query = query.eq('model', model);
       if (variant)    query = query.ilike('variant', `%${variant}%`);
+      // seller_role comes from public_car_listings (the listing owner's profile
+      // role). Mirror ShowroomCard's badge rule exactly — role 'salesman' reads
+      // as "Agent", everything else as "Dealer" — so the filter and the badge
+      // can never disagree about what a card is.
+      if (sellerType === 'agent')  query = query.eq('seller_role', 'salesman');
+      else if (sellerType === 'dealer') query = query.neq('seller_role', 'salesman');
 
       if (sort === 'price_asc')  query = query.order('selling_price', { ascending: true });
       else if (sort === 'price_desc') query = query.order('selling_price', { ascending: false });
@@ -588,8 +594,10 @@ export default function MarketplacePage() {
             "query-input": "required name=search_term_string"
           }
         })}</script>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        {/* No font <link> here — index.html already preconnects and loads
+            Bebas Neue + Outfit (300-900) asynchronously. A second stylesheet
+            link in Helmet re-requests the same fonts and blocks render while
+            it resolves. */}
       </Helmet>
 
       <style>{`
@@ -776,21 +784,26 @@ export default function MarketplacePage() {
                 New &middot; Used &middot; Recon &mdash; Verified Dealers, Full Docs, Zero Phantom Listings.
               </p>
 
-              {/* Tabs */}
+              {/* Tabs — "Browse Hot Deals" is hidden while there are no hot
+                  deals to browse. It set hot_deals=true and scrolled to the
+                  grid, so with an empty shelf every tap landed the visitor on
+                  "No cars match your filters" — an advertised dead end on the
+                  first screen. Tabs carry explicit ids rather than map indexes
+                  so hiding one can't shift another's active state. */}
               <div className="mp-hero-tabs">
                 {[
-                  { label:'Find a Car', action:() => setHeroTab(0) },
-                  { label:'Browse Hot Deals', action:() => { setHeroTab(1); setParam('hot_deals','true'); document.getElementById('mp-results')?.scrollIntoView({ behavior:'smooth', block:'start' }); } },
-                  { label:'Finance Calculator', action:() => { setHeroTab(2); navigate('/calculator'); } },
-                ].map(({ label, action }, i) => (
+                  { id:'find', label:'Find a Car', action:() => setHeroTab('find') },
+                  stats.hotDeals > 0 && { id:'hot', label:'Browse Hot Deals', action:() => { setHeroTab('hot'); setParam('hot_deals','true'); document.getElementById('mp-results')?.scrollIntoView({ behavior:'smooth', block:'start' }); } },
+                  { id:'calc', label:'Finance Calculator', action:() => { setHeroTab('calc'); navigate('/calculator'); } },
+                ].filter(Boolean).map(({ id, label, action }) => (
                   <button
-                    key={label}
+                    key={id}
                     onClick={() => action()}
                     style={{
                       padding:'8px 16px', borderRadius:'9px', fontSize:'12px', fontWeight:'600',
                       fontFamily:"'Outfit',sans-serif", cursor:'pointer', border:'none',
-                      background: heroTab === i ? '#dc2626' : 'transparent',
-                      color: heroTab === i ? '#fff' : 'rgba(255,255,255,0.5)',
+                      background: heroTab === id ? '#dc2626' : 'transparent',
+                      color: heroTab === id ? '#fff' : 'rgba(255,255,255,0.5)',
                       transition:'all 0.2s', whiteSpace:'nowrap',
                     }}
                   >{label}</button>

@@ -210,7 +210,14 @@ export default function SalesmanProfilePage() {
       <Helmet>
         <title>{profile.full_name} · XDrive</title>
         <meta name="description" content={profile.about_text || `Browse cars from ${profile.full_name} on XDrive`} />
+        {/* This page is the whole Salesman Lite pitch ("your page at
+            xdrive.my/s/yourname") and gets shared as a link constantly, so it
+            needs a canonical + og:url of its own. Without them every share
+            lands on a URL Google can't consolidate onto one address. */}
+        <link rel="canonical" href={`https://xdrive.my/s/${slug}`} />
+        <meta property="og:url" content={`https://xdrive.my/s/${slug}`} />
         <meta property="og:type" content="profile" />
+        <meta property="og:site_name" content="XDrive" />
         <meta property="og:title" content={`${profile.full_name} · Car Agent on XDrive`} />
         <meta property="og:description" content={profile.about_text || `${listings.length} cars available`} />
         {/* Prefer the cover banner (a wide, landscape image) for the link
@@ -222,7 +229,7 @@ export default function SalesmanProfilePage() {
         <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+        /* Bebas Neue comes from index.html — no @import here (it blocks render). */
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         /* minmax(0,1fr) — not plain 1fr — so a long non-wrapping car name can't
            blow a column past its share and push the grid wider than the screen

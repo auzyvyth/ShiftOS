@@ -124,7 +124,10 @@ export default function MarketplaceFooter() {
               >
                 Start Free Trial <ArrowUpRight size={13} />
               </Link>
-              <p className="text-gray-600 text-[11px] text-center">From RM 1,000/mo · No setup fee</p>
+              {/* Price must track plan_config / src/utils/planConfig.js — the
+                  cheapest dealer tier (dealer_starter). Do not hardcode a
+                  number that isn't in that table. */}
+              <p className="text-gray-600 text-[11px] text-center">From RM 299/mo · No setup fee</p>
             </div>
           </div>
         </div>

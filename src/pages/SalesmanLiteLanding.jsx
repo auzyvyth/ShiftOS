@@ -371,7 +371,10 @@ export default function SalesmanLiteLanding() {
 }
 
 const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap');
+  /* No @import here — index.html loads Outfit 300-900 (incl. the 900 this page
+     uses for .sll-h1 / .sll-plan-price / .sll-final-h) asynchronously. An
+     @import inside a <style> tag is the slowest way to fetch a font: it blocks
+     render until it resolves, on the one page the whole Lite campaign lands on. */
   .sll { font-family: 'Outfit', system-ui, sans-serif; background: #ffffff; color: #0a0a0a; -webkit-font-smoothing: antialiased; }
   .sll-wrap { max-width: 1080px; margin: 0 auto; padding: 0 22px; }
   .sll-wrap-narrow { max-width: 760px; }
