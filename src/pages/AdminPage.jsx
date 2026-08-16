@@ -316,7 +316,13 @@ export default function AdminPage() {
     const active = dealers.filter(d => d.subscription_status === "active").length;
     const trial  = dealers.filter(d => d.subscription_status === "trial").length;
     const expired = dealers.filter(d => d.subscription_status === "expired").length;
-    const mrr = active * 1000;
+    // Sum each active dealer's ACTUAL plan price rather than a flat per-head
+    // figure — a Starter (RM299) and a Group (RM2,999) are not the same revenue.
+    // PLAN_CONFIG mirrors the plan_config table; unknown/legacy plans count 0
+    // rather than silently inflating MRR.
+    const mrr = dealers
+      .filter(d => d.subscription_status === "active")
+      .reduce((sum, d) => sum + (PLAN_CONFIG[d.plan]?.price ?? 0), 0);
 
     const { count: totalListings } = await supabase
       .from("car_listings").select("*", { count: "exact", head: true });
@@ -1353,7 +1359,7 @@ export default function AdminPage() {
                 <StatCard label="Expired" value={stats.expired} color="#f87171" />
                 <StatCard label="Total Listings" value={stats.totalListings.toLocaleString()} />
                 <StatCard label="Total Enquiries" value={stats.totalEnquiries.toLocaleString()} />
-                <StatCard label="Est. MRR" value={`RM ${stats.mrr.toLocaleString()}`} color="#dc2626" sub="Active × RM1,000" />
+                <StatCard label="Est. MRR" value={`RM ${stats.mrr.toLocaleString()}`} color="#dc2626" sub="Sum of active plan prices" />
               </div>
               <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: 24 }}>
                 <p style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16 }}>Subscription Breakdown</p>

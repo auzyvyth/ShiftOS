@@ -64,7 +64,7 @@ const blankForm = {
   asking_price: "", min_price: "", commission_amount: "",
   warranty_months: "",
   // Publish
-  images: [], original_price: "", publish: false,
+  images: [], publish: false,
   included_services: [],
 };
 
@@ -347,7 +347,6 @@ export default function AddCarForm({ onPublished, onStocked, mode, onBack, onCon
           vin_number: form.vin_number || null, is_recon: form.is_recon,
           condition: form.condition,
           selling_price: num(form.asking_price),
-          original_price: num(form.original_price) || null,
           base_price: num(form.purchase_price),
           purchase_price: num(form.purchase_price),
           recon_cost: num(form.recon_cost),
@@ -621,7 +620,10 @@ export default function AddCarForm({ onPublished, onStocked, mode, onBack, onCon
             </div>
           </div>
 
-          <Field label="Original / 'was' price (RM)" hint="Shows a discount badge on the listing"><FText k="original_price" ph="58000" type="number" /></Field>
+          {/* "Original / was price" removed — see CarForm.jsx. A seller-typed
+              anchor price is not a price the car was ever listed at. It is now
+              recorded only when a dealer really drops a price
+              (PriceEditModal, DashboardPage.jsx:2654). */}
 
           {/* Included services */}
           <div>

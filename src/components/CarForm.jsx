@@ -66,7 +66,6 @@ const initialListing = {
   city: "",
   basePrice: "",
   sellingPrice: "",
-  originalPrice: "",
   commissionAmount: "",
   specs: "",
   options: "",
@@ -993,9 +992,6 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         sellingPrice: listing.selling_price
           ? String(listing.selling_price)
           : "",
-        originalPrice: listing.original_price
-          ? String(listing.original_price)
-          : "",
         commissionAmount: listing.commission_amount
           ? String(listing.commission_amount)
           : "",
@@ -1205,21 +1201,6 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     return "3";
   }, [form.mileage, form.year]);
 
-  // Discount preview calculations
-  const originalPriceVal = form.originalPrice
-    ? parseFloat(form.originalPrice)
-    : null;
-  const sellingPriceVal = form.sellingPrice
-    ? parseFloat(form.sellingPrice)
-    : null;
-  const hasDiscount =
-    originalPriceVal && sellingPriceVal && originalPriceVal > sellingPriceVal;
-  const discountAmt = hasDiscount ? originalPriceVal - sellingPriceVal : null;
-  const discountPct = hasDiscount
-    ? ((discountAmt / originalPriceVal) * 100).toFixed(1)
-    : null;
-  const isHotDeal = hasDiscount && parseFloat(discountPct) >= 3;
-
   // ── Copy listing data handler ──
   const handleCopy = () => {
     const src = listing || {
@@ -1239,7 +1220,6 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       state: form.state,
       city: form.city,
       selling_price: form.sellingPrice,
-      original_price: form.originalPrice,
       specs: form.specs,
       options: form.options,
       features: form.features,
@@ -1639,9 +1619,6 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     const mileage = parseInt(form.mileage);
     const basePrice = form.basePrice ? parseFloat(form.basePrice) : 0;
     const sellingPrice = form.sellingPrice ? parseFloat(form.sellingPrice) : 0;
-    const originalPrice = form.originalPrice
-      ? parseFloat(form.originalPrice)
-      : null;
     const year = parseInt(form.year);
     const engineCc = form.engineCc ? parseInt(form.engineCc) : null;
 
@@ -1664,10 +1641,6 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     }
     if (isNaN(year) || year < 1900) {
       toast.error("Invalid year");
-      return;
-    }
-    if (originalPrice !== null && originalPrice <= sellingPrice) {
-      toast.error("Original price must be higher than the selling price");
       return;
     }
 
@@ -1716,7 +1689,10 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         features: form.features,
         base_price: basePrice,
         selling_price: sellingPrice,
-        original_price: originalPrice,
+        // original_price is deliberately absent, not null. This payload is used
+        // for updates too, and an absent key leaves the stored value alone —
+        // sending null would wipe a genuine price drop recorded by
+        // PriceEditModal every time someone edited the listing.
         engine_cc: engineCc,
         horsepower:       form.horsepower     ? parseInt(form.horsepower)         : null,
         cylinders:        form.cylinders      ? parseInt(form.cylinders)          : null,
@@ -2774,51 +2750,14 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               />
             </div>
           </Field>
-          <Field
-            label="Original Price (RM)"
-            hint="Optional — set if this is a discounted price"
-          >
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">
-                RM
-              </span>
-              <input
-                type="number"
-                name="originalPrice"
-                value={form.originalPrice}
-                onChange={handleChange}
-                placeholder="Leave blank if no discount"
-                min="0"
-                className={`${inputCls} pl-12`}
-              />
-            </div>
-            <p className="text-xs text-gray-600 mt-1.5">
-              This becomes the crossed-out "was" price on the listing card. Must
-              be higher than selling price.
-            </p>
-            {hasDiscount && (
-              <div
-                className={`flex items-center gap-3 mt-3 px-4 py-3 rounded-xl border ${isHotDeal ? "bg-red-500/10 border-red-500/20" : "bg-green-500/10 border-green-500/20"}`}
-              >
-                <span className="text-2xl leading-none">
-                  {isHotDeal ? "🔥" : "↓"}
-                </span>
-                <div>
-                  <p
-                    className={`text-sm font-semibold ${isHotDeal ? "text-red-400" : "text-green-400"}`}
-                  >
-                    RM {discountAmt.toLocaleString()} off ({discountPct}%)
-                    {isHotDeal && " — qualifies as Hot Deal!"}
-                  </p>
-                  <p className="text-gray-500 text-xs mt-0.5">
-                    {isHotDeal
-                      ? "This listing will appear in the Hot Deals section on the homepage"
-                      : `Needs ≥3% discount for Hot Deals. Currently ${discountPct}%`}
-                  </p>
-                </div>
-              </div>
-            )}
-          </Field>
+          {/* The manual "Original Price" input was removed here. A seller typing
+              their own crossed-out "was" price is an anchor they invent, not a
+              price the car was ever listed at — a misleading price indication
+              under the Trade Descriptions Act 2011, and it made the Hot Deals
+              feed meaningless. original_price is still recorded, but only by
+              PriceEditModal (DashboardPage.jsx:2654) when a dealer actually
+              drops a live listing's price, so a crossed-out price on a card is
+              now always a real one. */}
           {form.basePrice && form.sellingPrice && (
             <div
               className={`px-4 py-3 rounded-xl text-sm font-medium border ${parseFloat(form.sellingPrice) >= parseFloat(form.basePrice) ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-red-500/10 text-red-600 border-red-500/20"}`}
@@ -3259,7 +3198,6 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 ) : (
                   <>
                     <ReviewItem label="Selling price" value={rm(form.sellingPrice)} />
-                    <ReviewItem label="Was price" value={rm(form.originalPrice)} />
                     <ReviewItem label="Base / cost" value={rm(form.basePrice)} />
                     <ReviewItem label="Commission" value={rm(form.commissionAmount)} />
                     <ReviewItem label="Deposit to reserve" value={rm(form.deposit_amount)} />

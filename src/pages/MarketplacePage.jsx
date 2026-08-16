@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Helmet } from 'react-helmet';
-import { RotateCcw, Car, Users, SlidersHorizontal, Search, ArrowLeftRight, ArrowRight, X, ShieldCheck, FileCheck2, Ban, ChevronDown } from 'lucide-react';
+import { RotateCcw, Car, Users, SlidersHorizontal, Search, ArrowLeftRight, ArrowRight, X, ShieldCheck, FileCheck2, Ban, ChevronDown, Check } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
 import MarketplaceFooter from '../components/MarketplaceFooter';
 import ShowroomCard, { ShowroomCardSkeleton } from '@/components/ShowroomCard';
@@ -71,7 +71,7 @@ export default function MarketplacePage() {
   const [heroBudget,   setHeroBudget]   = useState('');
   const [heroState,    setHeroState]    = useState('');
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [heroTab, setHeroTab] = useState(0);
+  const [heroTab, setHeroTab] = useState('find');
 
   // Single nav path for every hero-search entry point (Enter, search icon,
   // Find Cars button) — carries the typed query plus budget/state selects.
@@ -218,6 +218,12 @@ export default function MarketplacePage() {
       if (colour)     query = query.ilike('colour', `%${colour}%`);
       if (model)      query = query.eq('model', model);
       if (variant)    query = query.ilike('variant', `%${variant}%`);
+      // seller_role comes from public_car_listings (the listing owner's profile
+      // role). Mirror ShowroomCard's badge rule exactly — role 'salesman' reads
+      // as "Agent", everything else as "Dealer" — so the filter and the badge
+      // can never disagree about what a card is.
+      if (sellerType === 'agent')  query = query.eq('seller_role', 'salesman');
+      else if (sellerType === 'dealer') query = query.neq('seller_role', 'salesman');
 
       if (sort === 'price_asc')  query = query.order('selling_price', { ascending: true });
       else if (sort === 'price_desc') query = query.order('selling_price', { ascending: false });
@@ -588,8 +594,10 @@ export default function MarketplacePage() {
             "query-input": "required name=search_term_string"
           }
         })}</script>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        {/* No font <link> here — index.html already preconnects and loads
+            Bebas Neue + Outfit (300-900) asynchronously. A second stylesheet
+            link in Helmet re-requests the same fonts and blocks render while
+            it resolves. */}
       </Helmet>
 
       <style>{`
@@ -741,6 +749,54 @@ export default function MarketplacePage() {
           .mp-search-btn   { padding:14px !important;justify-content:center;border-radius:0 0 14px 14px !important; }
           .mp-featured-strip { grid-template-columns:1fr !important; }
         }
+
+        /* ── Agent band — the only seller-facing block on the buyer page.
+              Sits below the results so it never competes with the search. ── */
+        .mp-agent-band {
+          background:#EDEAE3;
+          border-top:1px solid rgba(0,0,0,0.06);
+          padding:48px 0;
+        }
+        .mp-agent-wrap {
+          max-width:1360px; margin:0 auto;
+          padding:0 clamp(20px, 4vw, 48px);
+          display:flex; align-items:center; justify-content:space-between;
+          gap:32px; flex-wrap:wrap;
+        }
+        .mp-agent-copy   { flex:1 1 420px; min-width:0; }
+        .mp-agent-eyebrow{
+          font-family:'Outfit',sans-serif; font-size:11px; font-weight:700;
+          text-transform:uppercase; letter-spacing:0.14em; color:#dc2626; margin:0 0 8px;
+        }
+        .mp-agent-h {
+          font-family:'Bebas Neue',sans-serif; font-size:clamp(22px,3vw,44px);
+          line-height:1.0; letter-spacing:0.02em; color:#111827; margin:0 0 10px;
+        }
+        .mp-agent-sub {
+          font-family:'Outfit',sans-serif; font-size:15px; font-weight:400;
+          line-height:1.5; color:#4b5563; margin:0; max-width:56ch;
+        }
+        .mp-agent-actions{ flex:0 0 auto; display:flex; flex-direction:column; gap:10px; }
+        .mp-agent-cta {
+          display:inline-flex; align-items:center; justify-content:center; gap:8px;
+          background:#dc2626; color:#fff; text-decoration:none;
+          font-family:'Outfit',sans-serif; font-size:14px; font-weight:700;
+          padding:13px 32px; border-radius:50px; white-space:nowrap;
+          transition:background 0.15s ease;
+        }
+        .mp-agent-cta:hover { background:#b91c1c; }
+        .mp-agent-trust {
+          display:flex; gap:16px; flex-wrap:wrap; justify-content:center;
+          font-family:'Outfit',sans-serif; font-size:12px; color:#6b7280; margin:0;
+        }
+        .mp-agent-trust span { display:inline-flex; align-items:center; gap:5px; }
+        @media(max-width:720px) {
+          .mp-agent-band    { padding:40px 0; }
+          .mp-agent-wrap    { flex-direction:column; align-items:flex-start; gap:20px; }
+          .mp-agent-actions { width:100%; }
+          .mp-agent-cta     { width:100%; }
+          .mp-agent-trust   { justify-content:flex-start; }
+        }
       `}</style>
 
       <MarketplaceHeader />
@@ -776,21 +832,26 @@ export default function MarketplacePage() {
                 New &middot; Used &middot; Recon &mdash; Verified Dealers, Full Docs, Zero Phantom Listings.
               </p>
 
-              {/* Tabs */}
+              {/* Tabs — "Browse Hot Deals" is hidden while there are no hot
+                  deals to browse. It set hot_deals=true and scrolled to the
+                  grid, so with an empty shelf every tap landed the visitor on
+                  "No cars match your filters" — an advertised dead end on the
+                  first screen. Tabs carry explicit ids rather than map indexes
+                  so hiding one can't shift another's active state. */}
               <div className="mp-hero-tabs">
                 {[
-                  { label:'Find a Car', action:() => setHeroTab(0) },
-                  { label:'Browse Hot Deals', action:() => { setHeroTab(1); setParam('hot_deals','true'); document.getElementById('mp-results')?.scrollIntoView({ behavior:'smooth', block:'start' }); } },
-                  { label:'Finance Calculator', action:() => { setHeroTab(2); navigate('/calculator'); } },
-                ].map(({ label, action }, i) => (
+                  { id:'find', label:'Find a Car', action:() => setHeroTab('find') },
+                  stats.hotDeals > 0 && { id:'hot', label:'Browse Hot Deals', action:() => { setHeroTab('hot'); setParam('hot_deals','true'); document.getElementById('mp-results')?.scrollIntoView({ behavior:'smooth', block:'start' }); } },
+                  { id:'calc', label:'Finance Calculator', action:() => { setHeroTab('calc'); navigate('/calculator'); } },
+                ].filter(Boolean).map(({ id, label, action }) => (
                   <button
-                    key={label}
+                    key={id}
                     onClick={() => action()}
                     style={{
                       padding:'8px 16px', borderRadius:'9px', fontSize:'12px', fontWeight:'600',
                       fontFamily:"'Outfit',sans-serif", cursor:'pointer', border:'none',
-                      background: heroTab === i ? '#dc2626' : 'transparent',
-                      color: heroTab === i ? '#fff' : 'rgba(255,255,255,0.5)',
+                      background: heroTab === id ? '#dc2626' : 'transparent',
+                      color: heroTab === id ? '#fff' : 'rgba(255,255,255,0.5)',
                       transition:'all 0.2s', whiteSpace:'nowrap',
                     }}
                   >{label}</button>
@@ -1122,6 +1183,39 @@ export default function MarketplacePage() {
           </div>
         </div>
       </main>
+
+      {/* ── Agent band ──────────────────────────────────────────────────────
+          The marketplace had no route to Salesman Lite anywhere in its body —
+          every loud CTA pointed at the RM299 dealer plan, so the free product
+          we actually market was invisible on our highest-traffic page. Placed
+          below the results deliberately: the buyer's job is done by the time
+          they reach it, so it recruits sellers without taxing the search. */}
+      <section className="mp-agent-band">
+        <div className="mp-agent-wrap">
+          <div className="mp-agent-copy">
+            <p className="mp-agent-eyebrow">For car agents</p>
+            <h2 className="mp-agent-h">Sell cars for a living? List yours here, free.</h2>
+            <p className="mp-agent-sub">
+              Get your own XDrive page — every car you have, one link you can send a buyer,
+              with a WhatsApp button on each listing. No fees, no credit card.
+            </p>
+          </div>
+          <div className="mp-agent-actions">
+            {/* Deliberately un-instrumented: analytics_events.event_type has a
+                CHECK that would silently reject a new 'agent_band_cta' value,
+                and tagging the link ?src= would overwrite the visitor's real
+                acquisition channel (refTracking.js:17 — an explicit src wins).
+                Measuring this band needs its own CHECK migration. */}
+            <Link to="/for-salesmen" className="mp-agent-cta">
+              Get your free page <ArrowRight size={15} />
+            </Link>
+            <p className="mp-agent-trust">
+              <span><Check size={13} /> Free forever</span>
+              <span><Check size={13} /> No credit card</span>
+            </p>
+          </div>
+        </div>
+      </section>
 
       <MarketplaceFooter />
     </>
