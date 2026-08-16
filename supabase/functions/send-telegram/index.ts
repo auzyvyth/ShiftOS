@@ -13,6 +13,8 @@ function corsHeaders(origin: string | null) {
   return {
     "Access-Control-Allow-Origin": allowed,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, baggage, sentry-trace",
+    // The allowed origin varies per request, so any shared cache must key on it.
+    "Vary": "Origin",
   };
 }
 
@@ -45,14 +47,19 @@ serve(async (req) => {
       return new Response(JSON.stringify({ ok: false, error: "missing fields" }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
-    // Fetch token server-side — never sent to the browser
+    // Fetch the dealer's own bot token server-side — never sent to the browser.
     const { data: profile } = await supabase
       .from("profiles")
       .select("telegram_bot_token")
       .eq("id", dealer_id)
       .maybeSingle();
 
-    const token = (profile?.telegram_bot_token || "").trim();
+    // Solo salesmen (Salesman Lite/Premium) resolve dealer_id to their OWN profile,
+    // which has no bot token and no UI to set one. Fall back to the platform bot so
+    // they get reminders without being asked to create a BotFather bot.
+    const dealerToken = (profile?.telegram_bot_token || "").trim();
+    const platformToken = (Deno.env.get("TELEGRAM_BOT_TOKEN") || "").trim();
+    const token = dealerToken || platformToken;
     if (!token) {
       return new Response(JSON.stringify({ ok: false, error: "no_token" }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
     }
@@ -63,6 +70,25 @@ serve(async (req) => {
       body: JSON.stringify({ chat_id: channel_id, text: message }),
     });
     const tgData = await tgRes.json();
+
+    // A Telegram bot cannot open a conversation — the user must press Start first.
+    // Until they do, sendMessage fails with "chat not found" (400) or, after a block,
+    // 403. Both read as a wrong Chat ID to the user, so name the real cause and hand
+    // the UI the bot's @username to link to. getMe is only called on this failure
+    // path, and only the username is returned — the token never leaves the server.
+    if (!tgData?.ok && (tgData?.error_code === 400 || tgData?.error_code === 403)) {
+      let botUsername: string | null = null;
+      try {
+        const meRes = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+        const meData = await meRes.json();
+        botUsername = meData?.result?.username || null;
+      } catch { /* username is a nicety — the error below still stands without it */ }
+      return new Response(JSON.stringify({
+        ...tgData,
+        error: "not_started",
+        bot_username: botUsername,
+      }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+    }
 
     return new Response(JSON.stringify(tgData), {
       status: 200,
