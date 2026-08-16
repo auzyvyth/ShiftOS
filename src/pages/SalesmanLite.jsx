@@ -16,6 +16,7 @@ import SalesmanLiteHelp from "../components/SalesmanLiteHelp";
 import ChannelBreakdown from "../components/ChannelBreakdown";
 import ShareMenu from "../components/ShareMenu";
 import ReportBugButton from "../components/ReportBugButton";
+import PushToggle from "../components/PushToggle";
 import {
   LogOut,
   Copy,
@@ -844,6 +845,7 @@ export default function SalesmanLite() {
 
   // telegram setup nudge modal
   const [telegramSetupModal, setTelegramSetupModal] = useState(false);
+  const [tgTesting, setTgTesting] = useState(false);
 
   // browser push notifications + batch WA
   const [browserNotifPerm, setBrowserNotifPerm] = useState(() =>
@@ -6896,6 +6898,49 @@ export default function SalesmanLite() {
       toast.success(t("salesmanLite.toast.coverPhotoUpdated"));
     };
 
+    // Send a test message to the salesman's own Telegram chat. Solo Lite accounts
+    // have no bot token of their own, so send-telegram falls back to the platform
+    // bot — the chat id typed here is the only thing the user has to get right.
+    // Saves it first so a test that works is a test of what gets persisted.
+    const testTelegramConnection = async () => {
+      const chatId = (settingsForm.telegram_chat_id || "").trim();
+      if (!chatId) { toast.error(t("salesmanLite.toast.telegramNeedChatId")); return; }
+      setTgTesting(true);
+      try {
+        const { error: chatIdErr } = await supabase
+          .from("profiles").update({ telegram_chat_id: chatId }).eq("id", userId);
+        if (chatIdErr) {
+          console.error("testTelegramConnection save:", chatIdErr);
+          toast.error(t("salesmanLite.toast.telegramTestFailed"));
+          return;
+        }
+        const { data: { session } } = await supabase.auth.getSession();
+        const { data } = await supabase.functions.invoke("send-telegram", {
+          body: {
+            dealer_id: getDealerIdFromProfile(profile),
+            channel_id: chatId,
+            message: t("salesmanLite.toast.telegramTestBody", { name: profile?.full_name || "ShiftOS" }),
+          },
+          headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+        });
+        if (data?.ok) {
+          setProfile((p) => ({ ...p, telegram_chat_id: chatId }));
+          toast.success(t("salesmanLite.toast.telegramTestSent"));
+        } else if (data?.error === "not_started") {
+          toast.error(t("salesmanLite.toast.telegramNotStarted", { bot: data.bot_username ? "@" + data.bot_username : t("salesmanLite.toast.telegramTheBot") }));
+        } else if (data?.error === "no_token") {
+          toast.error(t("salesmanLite.toast.telegramNoToken"));
+        } else {
+          toast.error(data?.description || t("salesmanLite.toast.telegramTestFailed"));
+        }
+      } catch (err) {
+        console.error("testTelegramConnection:", err);
+        toast.error(t("salesmanLite.toast.telegramNetworkError"));
+      } finally {
+        setTgTesting(false);
+      }
+    };
+
     const handleSave = async () => {
       setSettingsSaving(true);
       const cleanLocal = localPhone.replace(/\D/g, "").replace(/^0+/, "");
@@ -7048,6 +7093,21 @@ export default function SalesmanLite() {
               placeholder={t("salesmanLite.settings.telegramPlaceholder")}
               style={inputStyle}
             />
+            <button
+              type="button"
+              onClick={testTelegramConnection}
+              disabled={tgTesting || !settingsForm.telegram_chat_id.trim()}
+              style={{
+                marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6,
+                fontSize: 12, fontWeight: 600, padding: "8px 14px", borderRadius: 8,
+                background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.3)",
+                color: "#93c5fd", fontFamily: "inherit",
+                cursor: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? "not-allowed" : "pointer",
+                opacity: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? 0.55 : 1,
+              }}
+            >
+              <Send size={13} /> {tgTesting ? t("salesmanLite.settings.telegramTesting") : t("salesmanLite.settings.telegramTest")}
+            </button>
             <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151", lineHeight: 1.6 }}>
               {t("salesmanLite.settings.telegramHint").split("@userinfobot").map((part, i) =>
                 i === 0 ? part : <React.Fragment key={i}><a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: "#93c5fd", textDecoration: "none" }}>@userinfobot</a>{part}</React.Fragment>
@@ -7065,6 +7125,10 @@ export default function SalesmanLite() {
           </div>
             </div>
           </div>
+
+          {/* Push notifications — works with the app closed, unlike the in-tab
+              Notification API banner used elsewhere in this file. */}
+          <PushToggle userId={userId} theme="dark" style={cardStyle} />
 
           {/* Location + IC */}
           <div style={cardStyle}>

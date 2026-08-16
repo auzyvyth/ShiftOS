@@ -33,6 +33,23 @@ the better option with reasoning — then let me make the final call.
 - This is not permission to bikeshed or refuse work — make the case concisely, and
   if I still want it my way, do it my way.
 
+## How to talk to me — plain English + always show me the code
+I am not reading this to be impressed. Explain things in SIMPLE terms.
+- Use plain words. If a technical term is unavoidable, define it in half a sentence
+  the first time ("VAPID keys — the keypair that proves to Google/Apple that a push
+  is really from us").
+- Lead with what it means for me / the product, then the mechanism. Not the reverse.
+- No jargon walls, no acronym soup, no showing off. Short sentences.
+- ALWAYS attach a code reference to any claim about the codebase or any change you
+  made — `src/pages/SalesmanLite.jsx:7095`, `supabase/functions/send-push/index.ts:42`,
+  or the DB object name (`trg_push_on_appointment` on `appointments`). "I added a
+  button to settings" is useless; "added the test button at
+  `src/pages/SalesmanLite.jsx:7095`" is what I need to go look at it.
+- Same rule for bugs: name the exact file:line or DB object where the problem lives,
+  not just a description of it.
+- When something has a gotcha, say the consequence in one line ("change this key and
+  all 8 existing subscriptions die silently"), not a paragraph of theory.
+
 ## Stack
 React + Vite, Supabase, Tailwind CSS, deployed on Vercel
 
@@ -237,13 +254,67 @@ histories "diverge" even though the content is identical — `git log branch..ma
 - Always update public_car_listings VIEW after adding columns to car_listings
 - Supabase branch (isolated staging DB) available at ~$9.70/month — ask user before enabling
 
-## Edge functions (Supabase)
-- send-telegram — sends Telegram message server-side; reads bot token from DB, never exposed to client
-- telegram-notify — webhook; auto-posts new listings to dealer Telegram channel
+## Edge functions — THE REPO IS NOT THE SOURCE OF TRUTH (read before touching one)
+Plain version: what is running on Supabase is often NOT what is in `supabase/functions/`.
+Some functions were built straight in the Supabase dashboard and never committed; others
+were edited in the repo and never redeployed. Both directions exist RIGHT NOW.
+- **ALWAYS run `mcp__Supabase__get_edge_function` and diff it against the repo file
+  BEFORE you edit or redeploy anything.** Redeploying "the repo version" without
+  checking silently deletes whatever only exists in the deployed version.
+- Same rule for discovery: `mcp__Supabase__list_edge_functions` is the real inventory.
+  As of 2026-08-16 there were **16 deployed but only 10 in the repo**. Missing from the
+  repo entirely: `send-push`, `send-push-warm-leads`, `notify-price-alerts`,
+  `appointment-reminder`, `telegram-enquiry-notify`, `bootstrap-superadmin-alias`.
+- When you touch a drifted function, commit the deployed source into the repo as part
+  of the same change so the gap closes instead of growing.
+- Caught this way (2026-08-16, `send-telegram`): deployed v10 had a
+  `TELEGRAM_BOT_TOKEN` platform-bot fallback that the repo lacked, while the repo had
+  the `baggage, sentry-trace` CORS fix (DASH-5) that the deployed version lacked. A
+  plain redeploy from the repo would have killed Telegram for every solo salesman.
+  Fix was to MERGE both (`supabase/functions/send-telegram/index.ts`), not pick a side.
+- The same trap applies to DB objects. Triggers/functions built in the dashboard do not
+  appear in the repo at all — search `pg_proc` / `pg_trigger` before declaring something
+  "doesn't exist yet". `grep` over `src/` is not evidence about the database.
+
+### Function list (repo + deployed)
+- send-telegram — sends a Telegram message server-side; reads the dealer bot token from
+  the DB (never exposed to the client), falls back to the platform bot (`TELEGRAM_BOT_TOKEN`
+  edge secret) for solo salesmen who have no bot of their own
+- telegram-notify — webhook; auto-posts new listings to the dealer Telegram channel
+- telegram-enquiry-notify — deployed only, not in repo
 - invites — creates auth user + profile for manager/admin/accountant/fi_officer roles
-- send-document — emails issued dealer_documents to buyer via Resend. BLOCKED: needs RESEND_API_KEY + RESEND_FROM_EMAIL secrets set in Supabase dashboard
-- expiry-reminders — daily cron (00:00 UTC = 8am KL); fires dealer_notifications for road tax/insurance expiring in 30 or 7 days, and for overdue post_sale_tasks steps. Also notifies salesman_notifications. 24h dedup.
+- create-salesman — creates salesman accounts + `resend_setup` action
+- send-document — emails issued dealer_documents to the buyer via Resend
+- expiry-reminders — daily cron (00:00 UTC = 8am KL); fires dealer_notifications for road
+  tax/insurance expiring in 30 or 7 days, and for overdue post_sale_tasks steps. Also
+  notifies salesman_notifications. 24h dedup.
 - ai-proxy — proxies Claude API calls for AI features
+- delete-account / purge-deleted-accounts — LITE-3 self-service deletion + 30-day purge
+- import-drive-images — rehosts Google Drive folder images into the car-images bucket
+- send-push — web push sender (see below)
+- send-push-warm-leads — deployed only; pushes dealers when warm leads sit 3+ days
+- notify-price-alerts, appointment-reminder, bootstrap-superadmin-alias — deployed only
+
+## Web push — most of it already exists, do NOT rebuild it
+Plain version: push notifications were about 60% built months ago, live on Supabase but
+never committed to this repo, and dead because of a few missing pieces. Anyone picking up
+"add push notifications" must read this first or they will build a duplicate.
+- Sender: `send-push` edge function. Reads `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` edge
+  secrets, subject hardcoded `mailto:support@xdrive.my`. Deletes subscriptions on a 410
+  response (that is the correct way to clear dead ones).
+- Storage: `push_subscriptions` (user_id, endpoint, subscription jsonb, created_at).
+- Producers: DB triggers `trg_push_on_enquiry` (on `whatsapp_enquiries`) and
+  `trg_push_on_appointment` (on `appointments`) POST to send-push via `net.http_post`.
+- **VAPID keys are permanent. NEVER regenerate them.** Every push subscription is
+  cryptographically bound to the public key it was created with. Swap the key and every
+  existing subscription dies silently — no error the user ever sees, they just stop
+  getting notifications and cannot be migrated. If a key must change, every user has to
+  re-subscribe from scratch. There is also no such thing as running two keys side by side.
+- iOS only allows web push for a PWA installed to the home screen (16.4+). PWA-1 shipped
+  the install prompt, so that prerequisite is met — `src/components/InstallPrompt.jsx`.
+- The local `Notification.permission` code in Salesman Lite
+  (`src/pages/SalesmanLite.jsx:849`) is NOT push. It only fires while the tab is open.
+  Do not confuse the two.
 
 ## P&L model (StockTab)
 fetchPnl in DashboardPage.jsx computes per-unit gross in two parts:
