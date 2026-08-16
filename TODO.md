@@ -69,6 +69,25 @@
 
 ---
 
+### SESSION 2026-08-16 — found while building the Buyers tab (not fixed, out of scope)
+
+- **BUY-A: two session-id implementations disagree** — `src/utils/analytics.js:4` stores
+  the visitor id under `"xdrive_session_id"`, `src/lib/analytics.js:4` stores it under
+  `'shiftos_session'`. The same visitor therefore gets TWO different `session_id` values
+  in `analytics_events` depending on which module fired the event, which inflates every
+  distinct-session count (Funnel tab, `get_activity_summary`'s `distinct_sessions`).
+  Fix: collapse to one module and one storage key; keep reading the old key once on
+  migration so in-flight sessions are not double-counted.
+- **BUY-B: `saved_cars` and `price_alerts` have no migration files** — both tables were
+  created outside `supabase/migrations/`, so their schema and RLS are not version
+  controlled. Same class of drift as the edge functions. Fix: dump the live definitions
+  (columns + policies) into a migration so a rebuild reproduces them.
+- **BUY-C: CLAUDE.md key-tables list is wrong about `leads`** — it documents a `source`
+  column; the real column is `lead_source` (the one carrying the CHECK constraint).
+  Cost a debugging round this session. Fix the line in CLAUDE.md.
+
+---
+
 ### SESSION 2026-07-05 — ROLES & STOREFRONT FIXES (adding roles under dealer)
 
 #### CRITICAL — do first
