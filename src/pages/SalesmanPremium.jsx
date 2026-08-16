@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
@@ -192,6 +192,10 @@ function StatusBadge({ status }) {
  );
 }
 
+// Top-level Premium tabs, each backed by its own /salesman-premium/:tab route.
+// Anything not in this list falls back to the dashboard.
+const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "analytics", "loans", "outreach", "merge", "settings"];
+
 export default function SalesmanPremium() {
  const navigate = useNavigate();
  const isMobile = useWindowSize() < 768;
@@ -204,7 +208,14 @@ export default function SalesmanPremium() {
  const { permissions } = usePermissions(profile);
  // Owner-granted extra: Outreach Hub (scoped to this salesman's own leads).
  const showOutreach = hasFeature('salesman', 'outreach', permissions);
- const [activeTab, setActiveTab] = useState("dashboard");
+ // Each Premium tab is its own route (/salesman-premium/:tab) so tab switches push
+ // browser history — the phone Back button / swipe-back returns to the previous tab
+ // instead of exiting the whole app (and landing on the sign-in page). The route is
+ // the single source of truth for the active tab; `setActiveTab` navigates so every
+ // existing call site keeps working unchanged.
+ const { tab: routeTab } = useParams();
+ const activeTab = VALID_PREMIUM_TABS.includes(routeTab) ? routeTab : "dashboard";
+ const setActiveTab = (tab) => navigate(`/salesman-premium/${tab}`);
  const [newBookingsCount, setNewBookingsCount] = useState(0);
 
  function switchTab(tab) {

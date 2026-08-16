@@ -7,6 +7,13 @@ import { consumeBuyerIntent, ensureBuyerProfile } from '../lib/buyerAuth';
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
 
+  // Every redirect out of the callback REPLACES the history entry — /auth/callback
+  // must never sit in history. If it does, the Back button (or an Android swipe
+  // back) from the first panel tab lands on this page again, which re-runs the
+  // routing effect and bounces the user forward, or fails and dumps them on the
+  // sign-in page. Same fix as LoginPage (LITE-2).
+  const go = (path) => navigate(path, { replace: true });
+
   useEffect(() => {
     const routeSession = async (session) => {
       const params = new URLSearchParams(window.location.search);
@@ -14,7 +21,7 @@ export default function AuthCallbackPage() {
       const type = params.get('type') || hashParams.get('type');
 
       if (type === 'recovery') {
-        navigate('/reset-password');
+        go('/reset-password');
         return;
       }
 
@@ -51,7 +58,7 @@ export default function AuthCallbackPage() {
       if (!profile) {
         if (buyerIntent) {
           await ensureBuyerProfile(session.user);
-          navigate(buyerDest());
+          go(buyerDest());
           return;
         }
         // Resume the correct onboarding flow. Prefer the account_type/plan saved
@@ -65,17 +72,17 @@ export default function AuthCallbackPage() {
         sessionStorage.removeItem("ob_account_type");
 
         if (acctType === 'salesman') {
-          navigate(`/salesman-onboarding/${savedPlan === 'premium' ? 'premium' : 'lite'}`);
+          go(`/salesman-onboarding/${savedPlan === 'premium' ? 'premium' : 'lite'}`);
         } else if (acctType === 'dealer') {
-          navigate(`/dealer-onboarding/${['starter', 'growth', 'pro'].includes(savedPlan) ? savedPlan : 'starter'}`);
+          go(`/dealer-onboarding/${['starter', 'growth', 'pro'].includes(savedPlan) ? savedPlan : 'starter'}`);
         } else if (savedPlan === 'lite' || savedPlan === 'premium') {
-          navigate(`/salesman-onboarding/${savedPlan}`);
+          go(`/salesman-onboarding/${savedPlan}`);
         } else if (savedPlan === 'starter' || savedPlan === 'growth' || savedPlan === 'pro') {
-          navigate(`/dealer-onboarding/${savedPlan}`);
+          go(`/dealer-onboarding/${savedPlan}`);
         } else {
           // Unknown context → default to salesman-lite (the most common signup),
           // never the dealer flow.
-          navigate('/onboarding');
+          go('/onboarding');
         }
         return;
       }
@@ -84,7 +91,7 @@ export default function AuthCallbackPage() {
       // correct it to a buyer profile and route to /account, never a dealer panel.
       if (buyerIntent) {
         const role = await ensureBuyerProfile(session.user);
-        if (role === 'buyer') { navigate(buyerDest()); return; }
+        if (role === 'buyer') { go(buyerDest()); return; }
       }
 
       // Onboarding-intent override. The handle_new_user trigger stamps a default
@@ -107,9 +114,9 @@ export default function AuthCallbackPage() {
           sessionStorage.removeItem('ob_plan_slug');
           sessionStorage.removeItem('ob_account_type');
           if (obAcct === 'salesman') {
-            navigate(`/salesman-onboarding/${obPlan === 'premium' ? 'premium' : 'lite'}`);
+            go(`/salesman-onboarding/${obPlan === 'premium' ? 'premium' : 'lite'}`);
           } else {
-            navigate(`/dealer-onboarding/${['starter', 'growth', 'pro'].includes(obPlan) ? obPlan : 'starter'}`);
+            go(`/dealer-onboarding/${['starter', 'growth', 'pro'].includes(obPlan) ? obPlan : 'starter'}`);
           }
           return;
         }
@@ -121,7 +128,7 @@ export default function AuthCallbackPage() {
       // dashboard or a subdomain. Mirror LoginPage.redirectByRole so every auth
       // method (password, Google, magic link) agrees on where superadmin lands.
       if (role === 'superadmin') {
-        navigate('/platform');
+        go('/platform');
         return;
       }
 
@@ -140,7 +147,7 @@ export default function AuthCallbackPage() {
         !profile.dealership &&
         ['dealer', 'owner', 'salesman'].includes(role);
       if (bareStub) {
-        navigate('/choose-plan');
+        go('/choose-plan');
         return;
       }
 
@@ -148,7 +155,7 @@ export default function AuthCallbackPage() {
       // A dealer with a subdomain has completed onboarding regardless of the flag —
       // use subdomain as the authoritative signal to prevent flag drift locking users out.
       if (role === 'dealer' && profile.onboarding_complete === false && !subdomain) {
-        navigate('/dealer-onboarding');
+        go('/dealer-onboarding');
         return;
       }
 
@@ -158,31 +165,31 @@ export default function AuthCallbackPage() {
         // a premium signup back to the free plan.
         const savedPlan = session.user?.user_metadata?.tier || profile.plan;
         const isPremium = savedPlan === 'premium' || savedPlan === 'salesman_full';
-        navigate(isPremium ? '/salesman-onboarding/premium' : '/salesman-onboarding');
+        go(isPremium ? '/salesman-onboarding/premium' : '/salesman-onboarding');
         return;
       }
 
       if (role === 'dealer') {
         if (subdomain) {
-          window.location.href = `https://${subdomain}.xdrive.my/dashboard${handoffSuffix(session)}`;
+          window.location.replace(`https://${subdomain}.xdrive.my/dashboard${handoffSuffix(session)}`);
         } else {
-          navigate('/dashboard');
+          go('/dashboard');
         }
       } else if (role === 'salesman') {
         const target = dealer_id ? 'salesman' : 'salesman-lite';
-        window.location.href = `https://xdrive.my/${target}${handoffSuffix(session)}`;
+        window.location.replace(`https://xdrive.my/${target}${handoffSuffix(session)}`);
       } else if (role === 'manager') {
-        navigate('/manager');
+        go('/manager');
       } else if (role === 'accountant') {
-        navigate('/accountant');
+        go('/accountant');
       } else if (role === 'fi_officer') {
-        navigate('/fi');
+        go('/fi');
       } else if (role === 'admin') {
-        navigate('/admin');
+        go('/admin');
       } else if (role === 'buyer') {
-        navigate(buyerDest());
+        go(buyerDest());
       } else {
-        navigate('/salesman');
+        go('/salesman');
       }
     };
 
@@ -190,7 +197,7 @@ export default function AuthCallbackPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.slice(1));
     if (urlParams.get('error') || hashParams.get('error')) {
-      window.location.href = '/login?error=auth_failed';
+      window.location.replace('/login?error=auth_failed');
       return;
     }
 
@@ -206,7 +213,7 @@ export default function AuthCallbackPage() {
       try {
         await routeSession(session);
       } catch {
-        window.location.href = '/login?error=auth_failed';
+        window.location.replace('/login?error=auth_failed');
       }
     };
 
@@ -231,7 +238,7 @@ export default function AuthCallbackPage() {
     fallbackTimer = setTimeout(() => {
       if (handled) return;
       subscription?.unsubscribe();
-      window.location.href = '/login?error=auth_failed';
+      window.location.replace('/login?error=auth_failed');
     }, 10000);
 
     return () => {
