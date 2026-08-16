@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import SuspendedBanner from "../components/SuspendedBanner";
 import { Helmet } from "react-helmet";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
@@ -154,6 +154,10 @@ function loadJSZip() {
  return _zipPromise;
 }
 
+// Top-level panel tabs, each backed by its own /salesman/:tab route.
+// Anything not in this list falls back to the dashboard.
+const VALID_PANEL_TABS = ["dashboard", "listings", "incoming", "leads", "analytics", "enquiries", "loans", "handover", "outreach", "customers", "team", "settings", "help"];
+
 export default function SalesmanPanel() {
  const navigate = useNavigate();
  const { t } = useTranslation();
@@ -169,7 +173,14 @@ export default function SalesmanPanel() {
  usePresence(profile?.dealer_id || profile?.id || null);
  const [userId, setUserId] = useState(null);
  const [loading, setLoading] = useState(true);
- const [activeTab, setActiveTab] = useState("dashboard");
+ // Each panel tab is its own route (/salesman/:tab) so tab switches push browser
+ // history — the phone Back button / swipe-back returns to the previous tab instead
+ // of exiting the whole app (and landing on the sign-in page). The route is the
+ // single source of truth for the active tab; `setActiveTab` navigates so every
+ // existing call site keeps working unchanged.
+ const { tab: routeTab } = useParams();
+ const activeTab = VALID_PANEL_TABS.includes(routeTab) ? routeTab : "dashboard";
+ const setActiveTab = (tab) => navigate(`/salesman/${tab}`);
  const [moreOpen, setMoreOpen] = useState(false);
  const [subTab, setSubTab] = useState("overview");
  const [chartJsLoaded, setChartJsLoaded] = useState(!!window.Chart);

@@ -355,10 +355,15 @@ accurate for JSON (it does not).
   post-auth redirects now use `window.location.replace()` (via a `go()` helper) instead
   of `window.location.href =`, so `/login` no longer sits in history and backing out of
   the first tab exits cleanly instead of re-showing sign-in.
-  FOLLOW-UP (not done this session): Premium (`SalesmanPremium.jsx`) and the linked
-  panel (`Salesmanpanel.jsx`) have the same single-route `useState("dashboard")` smell —
-  apply the same per-tab routing to them. Also confirm `AuthCallbackPage.jsx`
-  (Google/OAuth) redirect uses `replace()`.
+  FOLLOW-UP — DONE (2026-08-16). Same per-tab routing applied to Premium
+  (`/salesman-premium/:tab`) and the linked panel (`/salesman/:tab`): route is the single
+  source of truth for `activeTab`, `setActiveTab` navigates, unknown tab falls back to
+  dashboard, both routes added in App.jsx. `AuthCallbackPage.jsx` was NOT using replace —
+  every in-app redirect now goes through a `go()` helper (`navigate(path, {replace:true})`)
+  and the cross-domain/error redirects use `window.location.replace()`, so `/auth/callback`
+  no longer sits in history and backing out of the first tab can't bounce through it.
+  Verified by esbuild parse only (no `node_modules` in the web session) — needs a staging
+  click-through on mobile.
 
 ### SALESMAN LITE — account deletion (self-service)
 
