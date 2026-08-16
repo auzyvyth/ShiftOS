@@ -731,6 +731,35 @@ native build.
   triggers `trg_push_on_dealer_notification` / `trg_push_on_salesman_notification`.
   BLOCKED ON ACT-12 (below) for the final end-to-end test.
 
+- [x] **PUSH-3 (CRITICAL, found + fixed 2026-08-16): `push_to_users` took down BOTH public
+  lead-capture paths.** It passed the request body to `net.http_post` as `::text`, but pg_net
+  0.20 only exposes `http_post(url, body jsonb, params, headers, timeout)`. No overload
+  matched → `42883` → the whole calling transaction aborted. Because every insert into
+  `salesman_notifications` / `dealer_notifications` fires a push trigger, this killed the
+  public booking form (`appointments` → `notify_salesman_new_booking`) AND every WhatsApp
+  enquiry (`whatsapp_enquiries` → `notify_new_enquiry`). Both returned 500; no lead reached
+  any pipeline. Shipped with the push work in #278 and live for the whole window.
+  Fixed: body is jsonb; plus an `exception when others` guard in `push_to_users` and in both
+  `notify_push_on_*_notification` triggers so a notification failure can NEVER roll back the
+  business write that triggered it. LESSON: a trigger that decorates a core write (push,
+  Telegram, analytics) must be non-fatal by construction — `notify_ops_telegram` already had
+  the guard, the push path did not. Check this on any new AFTER-INSERT notifier.
+
+- [ ] **CDP-1 (LOW): `salesmanProfile.job_title` never renders.** Both salesman cards on
+  `src/pages/CarDetailPage.jsx` (mobile ~:2522, desktop ~:3562) render
+  `{salesmanProfile.job_title && ...}`, but the profile comes from the `get_salesman_by_id`
+  RPC, whose RETURNS TABLE has no `job_title` column — so it is always `undefined` and the
+  line is dead. Fix: add `job_title` to the RPC's return, or drop the line. Noticed while
+  fixing the contact buttons; not touched to keep that change focused.
+
+- [ ] **CDP-2 (decision, not a bug): the Call button captures nothing.** `handleCall`
+  (`src/pages/CarDetailPage.jsx:1076`) fires a `call_click` analytics event then hands off to
+  `tel:`. It creates no lead, because at that moment we hold no buyer data at all — no name,
+  no number, no consent. Deliberately NOT gated behind the enquiry form: a buyer tapping Call
+  is the highest-intent action on the page and putting a form in front of it loses calls.
+  If the pipeline gap ever needs closing, the honest option is a post-call "was that you?"
+  prompt, not pre-call friction. Recorded so it is not re-filed as a missing-lead bug.
+
 - [ ] **PUSH-2 (MED): solo Salesman Lite gets no `salesman_notifications` row for an organic
   enquiry.** `notify_salesman_new_enquiry` resolves the rep from `NEW.salesman_id`, then
   `ref_slug`, then falls back to looping `profiles WHERE dealer_id = NEW.dealer_id`. A solo
