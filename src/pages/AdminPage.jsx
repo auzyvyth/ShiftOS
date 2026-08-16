@@ -9,6 +9,7 @@ import { supabase as mainClient } from "../supabaseClient";
 import { invalidateMarketplaceSettingsCache, MARKETPLACE_FALLBACK } from "../hooks/useMarketplaceSettings";
 import { PLAN_CONFIG } from "../utils/planConfig";
 import FunnelTab from "../components/platform/FunnelTab";
+import BuyersTab from "../components/platform/BuyersTab";
 import ErrorsTab from "../components/platform/ErrorsTab";
 import BroadcastTab from "../components/platform/BroadcastTab";
 import ActivityLogTab from "../components/platform/ActivityLogTab";
@@ -589,6 +590,7 @@ export default function AdminPage() {
 
   const XDRIVE_TABS = [
     { id: "funnel", label: "Funnel" },
+    { id: "buyers", label: "Buyers" },
     { id: "broadcast", label: "Broadcast" },
   ];
 
@@ -872,6 +874,7 @@ export default function AdminPage() {
                 </div>
                 <div className="adm-content" style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 28px 80px" }}>
                   {xdriveTab === "funnel" && <FunnelTab />}
+                  {xdriveTab === "buyers" && <BuyersTab />}
                   {xdriveTab === "broadcast" && <BroadcastTab dealers={dealers} salesmen={salesmen} />}
                 </div>
               </>

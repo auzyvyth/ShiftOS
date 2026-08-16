@@ -69,6 +69,39 @@
 
 ---
 
+### SESSION 2026-08-16 — found while building the Buyers tab (not fixed, out of scope)
+
+- **BUY-A: two session-id implementations disagree** — `src/utils/analytics.js:4` stores
+  the visitor id under `"xdrive_session_id"`, `src/lib/analytics.js:4` stores it under
+  `'shiftos_session'`. The same visitor therefore gets TWO different `session_id` values
+  in `analytics_events` depending on which module fired the event, which inflates every
+  distinct-session count (Funnel tab, `get_activity_summary`'s `distinct_sessions`).
+  Fix: collapse to one module and one storage key; keep reading the old key once on
+  migration so in-flight sessions are not double-counted.
+- **BUY-B: `saved_cars` and `price_alerts` have no migration files** — both tables were
+  created outside `supabase/migrations/`, so their schema and RLS are not version
+  controlled. Same class of drift as the edge functions. Fix: dump the live definitions
+  (columns + policies) into a migration so a rebuild reproduces them.
+- **BUY-C: CLAUDE.md key-tables list is wrong about `leads`** — it documents a `source`
+  column; the real column is `lead_source` (the one carrying the CHECK constraint).
+  Cost a debugging round this session. Fix the line in CLAUDE.md.
+- **BUY-D: Google One Tap bypasses the PDPA consent gate** — buyer signup now records
+  `pdpa_consent` on every path that shows the tick box (email, Google button, magic
+  link), but `src/components/GoogleOneTap.jsx:122` calls `ensureBuyerProfile` with no
+  consent because One Tap is a Google-rendered popup we cannot put our consent text
+  inside. Harmless today — One Tap no-ops until `VITE_GOOGLE_CLIENT_ID` is set (ACT-4)
+  — but the moment ACT-4 is done, One Tap signups will land with consent unrecorded.
+  Fix before enabling ACT-4: either show a one-time consent step on first landing for
+  a One Tap account, or suppress One Tap until the marketplace consent line is
+  acknowledged. Visible meanwhile in /platform → XDrive Ops → Buyers (PDPA consent).
+- **BUY-E: existing buyers have no recorded consent** — the 6 accounts created before
+  this fix show "Not given" and are deliberately NOT backfilled: stamping consent
+  nobody gave would be a fabricated compliance record. `ensureBuyerProfile` records it
+  the first time they return through a surface that asks. If they need to be cleared
+  sooner, prompt them on `/account` rather than writing the column directly.
+
+---
+
 ### SESSION 2026-07-05 — ROLES & STOREFRONT FIXES (adding roles under dealer)
 
 #### CRITICAL — do first

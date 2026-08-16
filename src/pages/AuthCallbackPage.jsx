@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { handoffSuffix } from '../lib/authHandoff';
-import { consumeBuyerIntent, ensureBuyerProfile } from '../lib/buyerAuth';
+import { consumeBuyerIntent, consumeBuyerConsent, ensureBuyerProfile } from '../lib/buyerAuth';
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
@@ -27,6 +27,10 @@ export default function AuthCallbackPage() {
       // Did this auth flow start as a buyer? (marketplace buyer login/One Tap, or
       // a buyer signup whose user metadata carries account_type=buyer.)
       const buyerIntent = consumeBuyerIntent() || session.user?.user_metadata?.account_type === 'buyer';
+      // Ticked on the buyer auth page before we redirected out to Google / the email
+      // link. This is the only point where the profile row gets created for those
+      // flows, so it is the only place the consent can be recorded.
+      const buyerConsent = consumeBuyerConsent();
 
       // A marketplace engagement button (save alert / write review / ask a
       // question) stashes the page the buyer was on in post_auth_return so we can
@@ -50,7 +54,7 @@ export default function AuthCallbackPage() {
       // everyone else falls through to seller onboarding.
       if (!profile) {
         if (buyerIntent) {
-          await ensureBuyerProfile(session.user);
+          await ensureBuyerProfile(session.user, { consent: buyerConsent });
           navigate(buyerDest());
           return;
         }
@@ -83,7 +87,7 @@ export default function AuthCallbackPage() {
       // A buyer-intent sign-in where the trigger pre-stamped a default dealer stub:
       // correct it to a buyer profile and route to /account, never a dealer panel.
       if (buyerIntent) {
-        const role = await ensureBuyerProfile(session.user);
+        const role = await ensureBuyerProfile(session.user, { consent: buyerConsent });
         if (role === 'buyer') { navigate(buyerDest()); return; }
       }
 

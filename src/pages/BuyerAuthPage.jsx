@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import { markBuyerIntent, ensureBuyerProfile } from "../lib/buyerAuth";
+import { markBuyerIntent, markBuyerConsent, ensureBuyerProfile } from "../lib/buyerAuth";
 import { Heart, Bell, MessageCircle, Tag, Check, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import LegalModal from "../components/LegalModal";
+
+const CONSENT_ERR =
+  "Please confirm you're 18+ and agree to the Terms of Service and Privacy Policy to continue.";
 
 // Dedicated buyer login / sign-up. Sellers & staff use /login (universal seller
 // login) + /onboarding. This page is the marketplace shopper's front door: it
@@ -77,6 +80,8 @@ export default function BuyerAuthPage() {
   const switchMode = (m) => { setMode(m); setError(""); setConfirmSent(false); setShowForgot(false); setShowMagic(false); setMagicSent(false); };
 
   const sendMagicLink = async () => {
+    if (isSignup && !consent) { setError(CONSENT_ERR); return; }
+    if (isSignup) markBuyerConsent();
     setMagicLoading(true);
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
@@ -87,7 +92,11 @@ export default function BuyerAuthPage() {
   };
 
   const handleGoogle = async () => {
+    // Signing up via Google still needs the consent tick — the profile row is created
+    // over at /auth/callback, so the answer rides across the redirect in sessionStorage.
+    if (isSignup && !consent) { setError(CONSENT_ERR); return; }
     markBuyerIntent(); // OAuth callback materialises a buyer profile -> /account
+    if (isSignup) markBuyerConsent();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${base}/auth/callback` },
@@ -123,7 +132,7 @@ export default function BuyerAuthPage() {
   const handleSignUp = async () => {
     if (!email || !password) { setError("Enter your email and a password."); return; }
     if (!pwValid) { setError("Please meet all the password requirements below."); return; }
-    if (!consent) { setError("Please confirm you're 18+ and agree to the Terms of Service and Privacy Policy to continue."); return; }
+    if (!consent) { setError(CONSENT_ERR); return; }
     setError(""); setLoading(true);
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
@@ -138,10 +147,13 @@ export default function BuyerAuthPage() {
       return;
     }
     if (data.session) {
-      await ensureBuyerProfile(data.user);
+      await ensureBuyerProfile(data.user, { consent: true });
       window.location.href = `${base}/account`;
       return;
     }
+    // No session means email confirmation is on; the profile is created at
+    // /auth/callback instead, so hand the consent over the same way OAuth does.
+    markBuyerConsent();
     setLoading(false);
     setConfirmSent(true);
   };
@@ -309,7 +321,28 @@ export default function BuyerAuthPage() {
             <p className="ba-head-sub">{isSignup ? "Join XDrive to save cars, set alerts & enquire faster" : "Sign in to your XDrive buyer account"}</p>
           </div>
 
-          <button type="button" className="ba-google" onClick={handleGoogle}>
+          {/* Sits above both sign-up paths on purpose: Google and email each create the
+              account, so the consent has to gate them both rather than only the form. */}
+          {isSignup && (
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 9, margin: "0 0 16px", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+                style={{ marginTop: 2, flexShrink: 0, accentColor: "#dc2626", width: 15, height: 15, cursor: "pointer" }}
+              />
+              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.6 }}>
+                I confirm I am at least 18 years old and agree to the{" "}
+                <button type="button" onClick={(e) => { e.preventDefault(); setLegalDoc("terms"); }} style={{ background: "none", border: "none", padding: 0, color: "#f87171", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Terms of Service</button>
+                {" "}and{" "}
+                <button type="button" onClick={(e) => { e.preventDefault(); setLegalDoc("privacy"); }} style={{ background: "none", border: "none", padding: 0, color: "#f87171", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Privacy Policy</button>.
+              </span>
+            </label>
+          )}
+
+          <button type="button" className="ba-google" onClick={handleGoogle}
+            disabled={isSignup && !consent}
+            style={isSignup && !consent ? { opacity: 0.45, cursor: "not-allowed" } : undefined}>
             <GoogleIcon /> Continue with Google
           </button>
 
@@ -388,23 +421,6 @@ export default function BuyerAuthPage() {
                 <p className="ba-note-t">Check your inbox</p>
                 <p className="ba-note-b">We sent a confirmation link to {email}. Click it to finish creating your account, then sign in.</p>
               </div>
-            )}
-
-            {isSignup && (
-              <label style={{ display: "flex", alignItems: "flex-start", gap: 9, margin: "4px 0 16px", cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={consent}
-                  onChange={(e) => setConsent(e.target.checked)}
-                  style={{ marginTop: 2, flexShrink: 0, accentColor: "#dc2626", width: 15, height: 15, cursor: "pointer" }}
-                />
-                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.6 }}>
-                  I confirm I am at least 18 years old and agree to the{" "}
-                  <button type="button" onClick={(e) => { e.preventDefault(); setLegalDoc("terms"); }} style={{ background: "none", border: "none", padding: 0, color: "#f87171", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Terms of Service</button>
-                  {" "}and{" "}
-                  <button type="button" onClick={(e) => { e.preventDefault(); setLegalDoc("privacy"); }} style={{ background: "none", border: "none", padding: 0, color: "#f87171", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Privacy Policy</button>.
-                </span>
-              </label>
             )}
 
             <button type="submit" className="ba-submit" disabled={loading || (isSignup && (!pwValid || !consent))}>
