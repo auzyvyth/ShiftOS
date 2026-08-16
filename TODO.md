@@ -731,6 +731,20 @@ native build.
   triggers `trg_push_on_dealer_notification` / `trg_push_on_salesman_notification`.
   BLOCKED ON ACT-12 (below) for the final end-to-end test.
 
+- [ ] **PUSH-2 (MED): solo Salesman Lite gets no `salesman_notifications` row for an organic
+  enquiry.** `notify_salesman_new_enquiry` resolves the rep from `NEW.salesman_id`, then
+  `ref_slug`, then falls back to looping `profiles WHERE dealer_id = NEW.dealer_id`. A solo
+  Lite salesman owns themselves (`dealer_id IS NULL`), so that loop matches NOBODY and no
+  salesman notification is written. It is missing rule 4 of the `resolve_lead_salesman`
+  doctrine in CLAUDE.md ("the dealer IS a self-owned salesman → attribute to them") — the
+  exact inline-reimplementation drift that section was written to prevent.
+  IMPACT IS LIMITED, which is why this is not a blocker: the Lite user still gets the PUSH,
+  because they are their own dealer and `notify_new_enquiry` writes a `dealer_notifications`
+  row that the push fan-out picks up. What they miss is the in-app salesman bell entry.
+  FIX: make `notify_salesman_new_enquiry` call `resolve_lead_salesman()` instead of its own
+  inline resolution, so there is one resolver again. Verify no double-notify results (the
+  same person would then be both dealer and salesman for that enquiry — dedupe by user id).
+
 - [x] **CRON-1: two cron jobs had never once succeeded (found + fixed 2026-08-16).**
   `expiry-reminders-daily` and `warm-leads-push` both built their auth header as
   `'Bearer ' || current_setting('app.service_role_key'|'app.anon_key', true)`. Neither GUC
