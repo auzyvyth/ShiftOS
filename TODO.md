@@ -288,9 +288,10 @@ accurate for JSON (it does not).
   that mattered — it is reachable from every car card); (4) `GoogleOneTap` behind a
   build-time env gate, it was shipping only to return null; (5) deleted the mount of
   a second, entirely unused toast system. NOT yet browser-tested — needs a staging pass.
-- [~] **MPERF-6 — PREMISE CORRECTED 2026-08-16, NEEDS A DECISION (do not implement as
-  originally written).** The original entry said ShowroomCard and CarCard are "two
-  implementations of one job" to be collapsed. Reading both files says otherwise:
+- [x] **MPERF-6 — CLOSED AS WON'T-DO (owner decision, 2026-08-16). Do not re-open this
+  as a perf item; the premise was wrong.** The original entry said ShowroomCard and
+  CarCard are "two implementations of one job" to be collapsed. Reading both files says
+  otherwise:
   - `ShowroomCard` is a **horizontal row** (`flexDirection:'row'`, 38%/max-210px image
     column, min-height 190px) — built for the marketplace list.
   - `CarCard` is a **vertical tile** (`flexDirection:'column'`, image on top + `cc-body`)
@@ -312,9 +313,15 @@ accurate for JSON (it does not).
   (MarketplacePage grid = ShowroomCard, BodyTypeCarousel on the same route = CarCard), but
   MPERF-5 already made that CarCard `lazy()`. It is a below-fold chunk, NOT entry-bundle
   weight — the "~17 KB gz on one route" figure counts a chunk MPERF-5 deliberately deferred.
-  OPEN DECISION (owner): leave the two as-is (recommended — they are correctly separate),
-  or fold CarCard's missing features into ShowroomCard and retire CarCard from the
-  marketplace carousels only. Do NOT do a blanket merge.
+  DECISION (owner, 2026-08-16): leave the two as-is — they are correctly separate
+  components serving different layouts, and keeping them costs nothing now that CarCard
+  is lazy on the marketplace route. The alternatives considered and rejected were
+  (a) porting CarCard's features into ShowroomCard + adding a vertical mode so the
+  carousels could drop CarCard, and (b) a blanket merge into one component with a layout
+  branch. Both traded real regression risk across 6 surfaces for no bundle saving.
+  LESSON for future audits: "two components doing the same thing" needs a layout/feature
+  diff before it is filed as duplication — and a lazy-loaded chunk is not entry-bundle
+  weight, so do not price it as though it were.
 - [x] **MPERF-7: dead radix toast files — DONE (2026-08-16).** Deleted
   `src/components/ui/toast.jsx`, `src/components/ui/toaster.jsx`, `src/hooks/use-toast.js`
   and dropped `@radix-ui/react-toast` from package.json + package-lock.json (lockfile
