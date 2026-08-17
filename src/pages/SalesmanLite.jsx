@@ -673,7 +673,7 @@ function SellerBookingModal({ lead, dateValue, onChangeDate, onClose, onConfirm,
 
 // Top-level Lite tabs, each backed by its own /salesman-lite/:tab route.
 // Anything not in this list falls back to the dashboard.
-const VALID_LITE_TABS = ["dashboard", "listings", "leads", "enquiries", "performance", "settings", "help"];
+const VALID_LITE_TABS = ["dashboard", "listings", "leads", "enquiries", "performance", "services", "settings", "help"];
 
 export default function SalesmanLite() {
   const navigate = useNavigate();
