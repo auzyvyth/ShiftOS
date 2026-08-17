@@ -158,13 +158,12 @@ const ResultRow = ({ label, value, highlight, muted, borderTop }) => (
   </div>
 );
 
-// ─── PDF image helpers ─────────────────────────────────────────────────────────
-// Remote images (car photo, seller avatar) live on the Supabase CDN. jsPDF can't
-// take a URL — it needs raw image data — so we fetch → dataURL → redraw onto a
-// canvas. Redrawing does three jobs at once: (a) normalises any format (incl.
-// webp) to a jsPDF-safe JPEG/PNG, (b) cover-crops to the exact box we want, and
-// (c) rounds corners / clips to a circle. Every step is wrapped so a failed or
-// blocked image never breaks the quotation — the block simply doesn't render.
+// ─── Poster image helpers ───────────────────────────────────────────────────────
+// Remote images (car photo, seller avatar) live on the Supabase CDN. A <canvas>
+// can only draw a fully-loaded, same-origin-safe HTMLImageElement, so we fetch →
+// dataURL → decode into an Image first (this also normalises any format, incl.
+// webp). Every step is wrapped so a failed or blocked image never breaks the
+// poster — that element simply doesn't render and the layout falls back.
 
 const fetchDataUrl = (url) => new Promise((resolve) => {
   if (!url) return resolve(null);
@@ -197,82 +196,89 @@ const roundRectPath = (ctx, x, y, w, h, r) => {
   ctx.closePath();
 };
 
-// Cover-crop an image into a wMm x hMm box (rendered at ~300dpi), rounded corners
-// drawn on a white ground so corners blend into the white page. Returns a JPEG
-// dataURL ready for doc.addImage.
-const coverImage = async (url, wMm, hMm, radiusMm = 0) => {
-  const img = await loadImg(await fetchDataUrl(url));
-  if (!img || !img.width || !img.height) return null;
-  const PX = 12; // px per mm ≈ 300dpi
-  const W = Math.round(wMm * PX), H = Math.round(hMm * PX), R = radiusMm * PX;
-  const canvas = document.createElement('canvas');
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, W, H);
-  if (R > 0) { roundRectPath(ctx, 0, 0, W, H, R); ctx.clip(); }
-  const ar = img.width / img.height, tar = W / H;
+// Cover-crop a loaded image directly into a rounded box on the poster canvas
+// (the box fills, centre-crops to the box's aspect, and clips to rounded corners).
+const drawCover = (ctx, img, x, y, w, h, r = 0) => {
+  ctx.save();
+  if (r > 0) { roundRectPath(ctx, x, y, w, h, r); ctx.clip(); }
+  const ar = img.width / img.height, tar = w / h;
   let sw, sh, sx, sy;
   if (ar > tar) { sh = img.height; sw = sh * tar; sx = (img.width - sw) / 2; sy = 0; }
   else { sw = img.width; sh = sw / tar; sx = 0; sy = (img.height - sh) / 2; }
-  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, W, H);
-  return canvas.toDataURL('image/jpeg', 0.9);
+  ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+  ctx.restore();
 };
 
-// Centre-crop an image into a circle of the given diameter. Returns JPEG on a
-// white ground (corners = white, invisible over the white card).
-const circleImage = async (url, diamMm) => {
-  const img = await loadImg(await fetchDataUrl(url));
-  if (!img || !img.width || !img.height) return null;
-  const PX = 12;
-  const D = Math.round(diamMm * PX);
-  const canvas = document.createElement('canvas');
-  canvas.width = D; canvas.height = D;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, D, D);
+// Centre-crop a loaded image into a circle on the poster canvas.
+const drawCircle = (ctx, img, cx, cy, r) => {
+  ctx.save();
   ctx.beginPath();
-  ctx.arc(D / 2, D / 2, D / 2, 0, Math.PI * 2);
-  ctx.closePath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.clip();
   const s = Math.min(img.width, img.height);
-  ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, D, D);
-  return canvas.toDataURL('image/jpeg', 0.9);
+  ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, cx - r, cy - r, r * 2, r * 2);
+  ctx.restore();
 };
 
-// ─── PDF generation ───────────────────────────────────────────────────────────
-// Clean-white quotation. Beyond the numbers it carries TRUST signals — the car
-// photo, the seller's face, name, contact and bio — so a buyer who receives it
-// can see exactly who prepared it. The seller block is data-driven: pass a
-// salesman (Lite/Premium) or a dealer and it renders whatever is present, so the
-// same layout serves every tier without change.
+// ─── Poster generation (single shareable image) ────────────────────────────────
+// A social-ready quotation POSTER rendered to ONE portrait JPEG — not a PDF. PDFs
+// don't preview on Instagram / WhatsApp / Facebook (they show a grey file icon or
+// force a download) and the old A4 quote spilled to two pages. This is one
+// 1080×1350 (4:5) frame — the largest portrait size every feed shows uncropped.
+// Layout top→bottom: [car photo | name · monthly · price] hero row, then the
+// seller TRUST card, then all the financing / on-road numbers. The seller block is
+// data-driven: pass a salesman (Lite/Premium) or a dealer and it renders whatever
+// is present, so the same poster serves every tier without change.
 
-const generateQuotationPDF = async ({ dealer, salesman, carDetails, calc, fmt }) => {
-  const { jsPDF } = await import('jspdf');
-
-  // Square 1:1 "Instagram post" page so the quote fills a phone screen and reads
-  // large — an A4 portrait shrinks to unreadable on mobile. The content is more
-  // than one square can hold at a legible size, so it's a two-slide carousel:
-  // slide 1 is the hook (car photo + seller + the two big numbers), slide 2 is
-  // the full breakdown with large rows.
-  const PW = 200, PH = 200, MARGIN = 14, CW = PW - MARGIN * 2;
-  const doc = new jsPDF({ format: [PW, PH], unit: 'mm' });
+const generateQuotationImage = async ({ dealer, salesman, carDetails, calc, fmt }) => {
+  // Design space is 1080×1350; render at 2× so text stays crisp when downscaled.
+  const W = 1080, H = 1350, P = 60, CW = W - P * 2, DPR = 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = W * DPR;
+  canvas.height = H * DPR;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(DPR, DPR);
+  ctx.textBaseline = 'alphabetic';
 
   // Palette — one red accent on white.
-  const INK = [17, 24, 39], SUB = [107, 114, 128], FAINT = [156, 163, 175];
-  const RED = [220, 38, 38], LINE = [229, 231, 235], TINT = [249, 250, 251];
+  const INK = '#111827', SUB = '#6b7280', FAINT = '#9ca3af';
+  const RED = '#dc2626', LINE = '#e5e7eb', TINT = '#f9fafb', BIO = '#4b5563';
 
-  const setFont = (size, weight = 'normal', color = INK) => {
-    doc.setFontSize(size);
-    doc.setFont('helvetica', weight);
-    doc.setTextColor(...color);
+  const font = (size, weight = 400, italic = false) =>
+    `${italic ? 'italic ' : ''}${weight} ${size}px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif`;
+  const text = (str, x, y, { size = 14, weight = 400, color = INK, align = 'left', italic = false } = {}) => {
+    ctx.font = font(size, weight, italic);
+    ctx.fillStyle = color;
+    ctx.textAlign = align;
+    ctx.fillText(str, x, y);
+  };
+  const measure = (str, size, weight = 400) => { ctx.font = font(size, weight); return ctx.measureText(str).width; };
+  // Canvas has no splitTextToSize — wrap on whole words to a max pixel width.
+  const wrap = (str, maxW, size, weight = 400) => {
+    ctx.font = font(size, weight);
+    const out = []; let line = '';
+    for (const word of String(str).split(/\s+/)) {
+      const test = line ? `${line} ${word}` : word;
+      if (ctx.measureText(test).width > maxW && line) { out.push(line); line = word; }
+      else line = test;
+    }
+    if (line) out.push(line);
+    return out;
+  };
+  const rrect = (x, y, w, h, r, fill, stroke) => {
+    roundRectPath(ctx, x, y, w, h, r);
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke(); }
   };
 
-  const CAR_H = 72; // ~2.4:1 — a proper landscape car shot, not a thin letterbox
-  // Load remote imagery up front (parallel) so the rest of the layout is sync.
+  // White ground.
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+
+  // Remote imagery loaded up front (parallel) so the draw pass is synchronous.
   const [carImg, avatarImg] = await Promise.all([
-    coverImage(carDetails.image, CW, CAR_H, 4),
-    circleImage(carDetails.sellerAvatar, 24),
+    loadImg(await fetchDataUrl(carDetails.image)),
+    loadImg(await fetchDataUrl(carDetails.sellerAvatar)),
   ]);
 
   const brandName = dealer?.dealership || dealer?.site_name || salesman?.dealership || salesman?.site_name || null;
@@ -283,203 +289,172 @@ const generateQuotationPDF = async ({ dealer, salesman, carDetails, calc, fmt })
   const sellerVerified = !!(salesman?.is_verified || dealer?.is_verified);
   const dateStr = new Date().toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' });
 
-  // Small brand header, shared by both slides.
-  const drawHeader = (y, label) => {
-    doc.setFillColor(...RED);
-    doc.rect(MARGIN, y - 5, 2.5, 9, 'F');
-    setFont(16, 'bold', INK);
-    doc.text(brandName || 'XDRIVE.MY', MARGIN + 6.5, y + 2);
-    setFont(9, 'normal', FAINT);
-    doc.text(dateStr, PW - MARGIN, y - 1.5, { align: 'right' });
-    setFont(9, 'bold', RED);
-    doc.text(label, PW - MARGIN, y + 3.5, { align: 'right' });
-  };
+  // ── Header ────────────────────────────────────────────────────────────────
+  ctx.fillStyle = RED;
+  ctx.fillRect(P, 58, 7, 34);
+  text(brandName || 'XDRIVE.MY', P + 22, 86, { size: 33, weight: 700 });
+  text(dateStr, W - P, 74, { size: 17, color: FAINT, align: 'right' });
+  text('VEHICLE FINANCING QUOTATION', W - P, 98, { size: 15, weight: 700, color: RED, align: 'right' });
 
-  // ════ SLIDE 1 — the hook ════════════════════════════════════════════════════
-  let y = 17;
-  drawHeader(y, 'VEHICLE FINANCING QUOTATION');
-  y += 13;
-
-  // Car photo
-  if (carImg) {
-    doc.addImage(carImg, 'JPEG', MARGIN, y, CW, CAR_H);
-    doc.setDrawColor(...LINE);
-    doc.roundedRect(MARGIN, y, CW, CAR_H, 4, 4, 'S');
-    y += CAR_H + 7;
-  }
-
-  // Car name + listed price. Shrink the name to fit the space left of the price
-  // block (long variant names like "Civic FL5 TYPE-R 2.0L HATCHBACK" otherwise
-  // collide with "RM 255,000"), then ellipsize if it's still too long.
-  let nm = carDetails.name || 'Vehicle';
-  const nameAvail = CW - 62;
-  let nameSize = 17;
-  setFont(nameSize, 'bold', INK);
-  while (doc.getTextWidth(nm) > nameAvail && nameSize > 12) { nameSize -= 0.5; doc.setFontSize(nameSize); }
-  if (doc.getTextWidth(nm) > nameAvail) {
-    while (nm.length > 4 && doc.getTextWidth(nm + '...') > nameAvail) nm = nm.slice(0, -1);
-    nm = nm.replace(/\s+$/, '') + '...';
-  }
-  doc.text(nm, MARGIN, y);
-  const metaBits = [carDetails.year, carDetails.color].filter(Boolean).join('  ·  ');
-  if (metaBits) {
-    setFont(10.5, 'normal', SUB);
-    doc.text(metaBits, MARGIN, y + 6);
-  }
-  setFont(9, 'bold', FAINT);
-  doc.text('LISTED PRICE', PW - MARGIN, y - 2, { align: 'right' });
-  setFont(18, 'bold', RED);
-  doc.text(`RM ${fmt(carDetails.price)}`, PW - MARGIN, y + 5, { align: 'right' });
-  y += metaBits ? 15 : 11;
-
-  // Seller trust card. Bio is capped at 2 lines; append an ellipsis when clipped
-  // so it reads as intentional rather than cut off mid-word.
-  const allBio = sellerBio ? doc.splitTextToSize(sellerBio, CW - 42) : [];
-  const bioLines = allBio.slice(0, 2);
-  if (allBio.length > 2 && bioLines.length === 2) {
-    bioLines[1] = bioLines[1].replace(/[\s.,]+$/, '') + '...';
-  }
-  const cardH = Math.max(36, 22 + bioLines.length * 4.8);
-  doc.setFillColor(...TINT);
-  doc.setDrawColor(...LINE);
-  doc.roundedRect(MARGIN, y, CW, cardH, 4, 4, 'FD');
-
-  const avD = 24, av = MARGIN + 5, avCy = y + cardH / 2;
-  if (avatarImg) {
-    doc.addImage(avatarImg, 'JPEG', av, avCy - avD / 2, avD, avD);
+  // ── Hero: car photo (left) + name / monthly / price (right) ─────────────────
+  const CAR_X = P, CAR_Y = 140, CAR_W = 420, CAR_H = 315;
+  if (carImg && carImg.width) {
+    drawCover(ctx, carImg, CAR_X, CAR_Y, CAR_W, CAR_H, 16);
+    rrect(CAR_X, CAR_Y, CAR_W, CAR_H, 16, null, LINE);
   } else {
-    doc.setFillColor(...RED);
-    doc.circle(av + avD / 2, avCy, avD / 2, 'F');
-    setFont(15, 'bold', [255, 255, 255]);
-    doc.text((sellerName[0] || 'X').toUpperCase(), av + avD / 2, avCy + 2, { align: 'center' });
+    rrect(CAR_X, CAR_Y, CAR_W, CAR_H, 16, TINT, LINE);
+    text('No photo', CAR_X + CAR_W / 2, CAR_Y + CAR_H / 2 + 6, { size: 18, color: FAINT, align: 'center' });
   }
 
-  const tx = av + avD + 6;
-  let ty = y + 9;
-  setFont(8, 'bold', FAINT);
-  doc.text('PREPARED BY', tx, ty);
-  ty += 6.5;
-  setFont(15, 'bold', INK);
-  doc.text(sellerName, tx, ty);
-  const nameW = doc.getTextWidth(sellerName);
+  const ix = CAR_X + CAR_W + 40;         // info column x
+  const iw = W - ix - P;                 // info column width
+  // Car name — shrink to fit the column, then ellipsize if still too long.
+  let nm = carDetails.name || 'Vehicle';
+  let nmSize = 40;
+  while (measure(nm, nmSize, 700) > iw && nmSize > 26) nmSize -= 1;
+  if (measure(nm, nmSize, 700) > iw) {
+    while (nm.length > 4 && measure(`${nm}…`, nmSize, 700) > iw) nm = nm.slice(0, -1);
+    nm = `${nm.replace(/\s+$/, '')}…`;
+  }
+  let iy = CAR_Y + 44;
+  text(nm, ix, iy, { size: nmSize, weight: 700 });
+  const metaBits = [carDetails.year, carDetails.color].filter(Boolean).join('   ·   ');
+  if (metaBits) { iy += 30; text(metaBits, ix, iy, { size: 19, color: SUB }); }
+
+  // Monthly installment — the hook, made large and red.
+  iy += 66;
+  text('MONTHLY INSTALLMENT', ix, iy, { size: 14, weight: 700, color: FAINT });
+  iy += 46;
+  const monthlyStr = `RM ${fmt(calc.monthly, 0)}`;
+  text(monthlyStr, ix, iy, { size: 46, weight: 700, color: RED });
+  text('/mo', ix + measure(monthlyStr, 46, 700) + 8, iy, { size: 20, weight: 600, color: FAINT });
+
+  // Listed price.
+  iy += 60;
+  text('LISTED PRICE', ix, iy, { size: 14, weight: 700, color: FAINT });
+  iy += 40;
+  text(`RM ${fmt(carDetails.price)}`, ix, iy, { size: 32, weight: 700, color: INK });
+
+  // ── Seller trust card (full width) ──────────────────────────────────────────
+  let y = Math.max(CAR_Y + CAR_H, iy + 8) + 44;   // clear the taller of photo / info
+  const avR = 48, avCx = P + 34 + avR;
+  const tx = avCx + avR + 28;
+  // Bio capped at 2 lines; ellipsis on clip so it reads as intentional.
+  const allBio = sellerBio ? wrap(sellerBio, W - P - 30 - tx, 18) : [];
+  const bioLines = allBio.slice(0, 2);
+  if (allBio.length > 2 && bioLines.length === 2) bioLines[1] = `${bioLines[1].replace(/[\s.,]+$/, '')}…`;
+  const cardH = bioLines.length ? 172 : 138;
+  rrect(P, y, CW, cardH, 16, TINT, LINE);
+  const avCy = y + cardH / 2;
+  if (avatarImg && avatarImg.width) {
+    drawCircle(ctx, avatarImg, avCx, avCy, avR);
+  } else {
+    ctx.beginPath(); ctx.arc(avCx, avCy, avR, 0, Math.PI * 2);
+    ctx.fillStyle = RED; ctx.fill();
+    text((sellerName[0] || 'X').toUpperCase(), avCx, avCy + 12, { size: 34, weight: 700, color: '#fff', align: 'center' });
+  }
+  let ty = y + 44;
+  text('PREPARED BY', tx, ty, { size: 13, weight: 700, color: FAINT });
+  ty += 34;
+  text(sellerName, tx, ty, { size: 28, weight: 700 });
   if (sellerVerified) {
-    const bx = tx + nameW + 4.6, by = ty - 1.8;
-    doc.setFillColor(...RED);
-    doc.circle(bx, by, 2.5, 'F');
-    // White tick drawn as two strokes — cleaner and more trustworthy than "OK".
-    doc.setDrawColor(255, 255, 255);
-    doc.setLineWidth(0.6);
-    doc.line(bx - 1.2, by + 0.1, bx - 0.4, by + 1.1);
-    doc.line(bx - 0.4, by + 1.1, bx + 1.3, by - 1.1);
-    doc.setLineWidth(0.2);
+    const bx = tx + measure(sellerName, 28, 700) + 18, by = ty - 9;
+    ctx.beginPath(); ctx.arc(bx, by, 10, 0, Math.PI * 2);
+    ctx.fillStyle = RED; ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.4; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(bx - 4.5, by + 0.5);
+    ctx.lineTo(bx - 1.5, by + 4);
+    ctx.lineTo(bx + 4.5, by - 4);
+    ctx.stroke();
+    ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
   }
-  ty += 6;
-  setFont(10, 'normal', SUB);
+  ty += 30;
   const contactLine = [sellerRole, sellerContact].filter(Boolean).join('   ·   ');
-  if (contactLine) { doc.text(contactLine, tx, ty); ty += 6; }
-  if (bioLines.length) {
-    setFont(10, 'italic', [75, 85, 99]);
-    doc.text(bioLines, tx, ty);
+  if (contactLine) { text(contactLine, tx, ty, { size: 18, color: SUB }); ty += 28; }
+  bioLines.forEach((ln, i) => text(ln, tx, ty + i * 24, { size: 18, italic: true, color: BIO }));
+  y += cardH + 40;
+
+  // ── The numbers ─────────────────────────────────────────────────────────────
+  const financing = [
+    ['Car Price',        `RM ${fmt(calc.carPrice)}`],
+    ['Down Payment',     `RM ${fmt(calc.downPayment)} (${calc.dpPct}%)`],
+    ['Loan Amount',      `RM ${fmt(calc.loanAmt)}`],
+    ['Loan Tenure',      `${calc.loanTerm} years`],
+    ['Interest (flat)',  `${calc.intRate}% p.a.`],
+    ['EIR (est.)',       `${calc.eir}% p.a.`],
+    ['Total Interest',   `RM ${fmt(calc.interest)}`],
+    ['Total Repayment',  `RM ${fmt(calc.totalLoan)}`, { strong: true }],
+  ];
+  const onRoad = [];
+  if (calc.roadTax != null) {
+    const ccLabel = calc.rtCc ? ` · ${Number(calc.rtCc).toLocaleString()}cc` : '';
+    onRoad.push([`Road Tax${ccLabel}`, `RM ${fmt(Math.round(calc.roadTax))}`]);
   }
-  y += cardH + 7;
+  if (calc.insCalc) {
+    const ins = calc.insCalc;
+    const vtLabel = calc.vehicleType === 'Non-Saloon' ? 'SUV/MPV' : 'Saloon';
+    onRoad.push([`Insurance (${vtLabel})`, `RM ${fmt(ins.gross)}`]);
+    // Canvas renders the real U+2212 minus fine (unlike jsPDF's Helvetica).
+    onRoad.push([`NCD ${calc.insNcd}% saved`, `− RM ${fmt(ins.gross - ins.netPremium)}`, { sub: true }]);
+    onRoad.push([`SST (8%)`, `RM ${fmt(ins.sst)}`, { sub: true }]);
+    onRoad.push([`Stamp duty`, `RM 10`, { sub: true }]);
+    onRoad.push([`Insurance total`, `RM ${fmt(ins.total)}`, { strong: true }]);
+  }
 
-  // Hero — the two figures that matter, made large.
-  const heroH = 28, halfW = CW / 2;
-  doc.setDrawColor(...LINE);
-  doc.roundedRect(MARGIN, y, CW, heroH, 4, 4, 'S');
-  doc.line(MARGIN + halfW, y + 4.5, MARGIN + halfW, y + heroH - 4.5);
-  setFont(9, 'bold', FAINT);
-  doc.text('MONTHLY INSTALLMENT', MARGIN + halfW / 2, y + 9, { align: 'center' });
-  setFont(25, 'bold', INK);
-  doc.text(`RM ${fmt(calc.monthly, 2)}`, MARGIN + halfW / 2, y + 21, { align: 'center' });
-  setFont(9, 'bold', FAINT);
-  doc.text('EST. ON-ROAD PRICE', MARGIN + halfW + halfW / 2, y + 9, { align: 'center' });
-  setFont(25, 'bold', RED);
-  doc.text(`RM ${fmt(calc.onRoadPrice)}`, MARGIN + halfW + halfW / 2, y + 21, { align: 'center' });
-
-  // ════ SLIDE 2 — the breakdown ═══════════════════════════════════════════════
-  doc.addPage([PW, PH], 'portrait');
-  y = 18;
-  drawHeader(y, 'FINANCING SUMMARY');
-  setFont(10, 'normal', SUB);
-  doc.text(carDetails.name || 'Vehicle', MARGIN, y + 9);
-  y += 20;
-
-  const RH = 7; // large rows for phone legibility; both tables fit one slide
-  const ensure = (need) => { if (y + need > PH - 12) { doc.addPage([PW, PH], 'portrait'); y = 18; } };
-  const sectionTitle = (label) => {
-    setFont(11, 'bold', INK);
-    doc.setFillColor(...RED);
-    doc.rect(MARGIN, y - 3.6, 2, 5, 'F');
-    doc.text(label, MARGIN + 5, y);
-    y += 8;
-  };
-  const tableRows = (data) => {
-    data.forEach(([label, value, opt = {}], i) => {
-      const rowY = y + i * RH;
-      if (i % 2 === 0) {
-        doc.setFillColor(...TINT);
-        doc.rect(MARGIN, rowY - 5.8, CW, RH, 'F');
-      }
-      const sub = opt.sub, strong = opt.strong;
-      setFont(10.5, strong ? 'bold' : 'normal', strong ? RED : sub ? FAINT : SUB);
-      doc.text(label, MARGIN + (sub ? 8 : 4), rowY);
-      setFont(strong ? 12 : 10.5, 'bold', strong ? RED : sub ? FAINT : INK);
-      doc.text(value, PW - MARGIN - 4, rowY, { align: 'right' });
+  const RH = 50;
+  const drawTable = (colX, startY, colW, title, rows) => {
+    ctx.fillStyle = RED;
+    ctx.fillRect(colX, startY, 5, 20);
+    text(title, colX + 14, startY + 16, { size: 18, weight: 700 });
+    let ry = startY + 34;
+    rows.forEach(([label, value, opt = {}], i) => {
+      if (i % 2 === 0) { ctx.fillStyle = TINT; ctx.fillRect(colX, ry, colW, RH); }
+      const { strong, sub } = opt;
+      const cy = ry + RH / 2 + 6;
+      text(label, colX + (sub ? 22 : 12), cy, { size: 17, weight: strong ? 700 : 400, color: strong ? RED : sub ? FAINT : SUB });
+      text(value, colX + colW - 12, cy, { size: strong ? 19 : 17, weight: 700, color: strong ? RED : sub ? FAINT : INK, align: 'right' });
+      ry += RH;
     });
-    y += data.length * RH + 8;
+    return ry;
   };
 
-  sectionTitle('FINANCING BREAKDOWN');
-  tableRows([
-    ['Car Price',            `RM ${fmt(calc.carPrice)}`],
-    ['Down Payment',         `RM ${fmt(calc.downPayment)} (${calc.dpPct}%)`],
-    ['Loan Amount',          `RM ${fmt(calc.loanAmt)}`],
-    ['Loan Tenure',          `${calc.loanTerm} years`],
-    ['Interest Rate (flat)', `${calc.intRate}% p.a.`],
-    ['EIR (est.)',           `${calc.eir}% p.a.`],
-    ['Total Interest',       `RM ${fmt(calc.interest)}`],
-    ['Total Loan Repayment', `RM ${fmt(calc.totalLoan)}`, { strong: true }],
-  ]);
-
-  if (calc.roadTax != null || calc.insCalc != null) {
-    ensure(8 + 6 * RH + 8);
-    sectionTitle('ON-ROAD COSTS (ESTIMATE)');
-    const onRoad = [];
-    if (calc.roadTax != null) {
-      const ccLabel = calc.rtCc ? ` — ${Number(calc.rtCc).toLocaleString()}cc` : '';
-      onRoad.push([`Road Tax (annual)${ccLabel}`, `RM ${fmt(Math.round(calc.roadTax))}`]);
-    }
-    if (calc.insCalc) {
-      const ins = calc.insCalc;
-      const vtLabel = calc.vehicleType === 'Non-Saloon' ? 'SUV/MPV/Pickup' : 'Saloon/Sedan';
-      onRoad.push([`Insurance gross (${vtLabel})`, `RM ${fmt(ins.gross)}`]);
-      // Plain ASCII hyphen — jsPDF's Helvetica lacks the U+2212 minus glyph and
-      // renders it as garbage, corrupting the amount that follows.
-      onRoad.push([`NCD ${calc.insNcd}% savings`, `- RM ${fmt(ins.gross - ins.netPremium)}`, { sub: true }]);
-      onRoad.push([`SST (8%)`, `RM ${fmt(ins.sst)}`, { sub: true }]);
-      onRoad.push([`Stamp duty`, `RM 10`, { sub: true }]);
-      onRoad.push([`Insurance total`, `RM ${fmt(ins.total)}`, { strong: true }]);
-    }
-    tableRows(onRoad);
+  if (onRoad.length) {
+    // Two columns side by side so all the numbers stay on one screen.
+    const colGap = 34, colW = (CW - colGap) / 2;
+    const leftEnd = drawTable(P, y, colW, 'FINANCING BREAKDOWN', financing);
+    const rightEnd = drawTable(P + colW + colGap, y, colW, 'ON-ROAD COSTS (EST.)', onRoad);
+    y = Math.max(leftEnd, rightEnd);
+  } else {
+    y = drawTable(P, y, CW, 'FINANCING BREAKDOWN', financing);
   }
+  y += 26;
 
-  // Footer
-  ensure(18);
-  doc.setDrawColor(...LINE);
-  doc.line(MARGIN, y, PW - MARGIN, y);
-  y += 6;
-  setFont(8.5, 'italic', FAINT);
-  doc.text(doc.splitTextToSize('Valid for 7 days, subject to change without notice. All figures are estimates; final pricing subject to confirmation.', CW), MARGIN, y);
-  y += 9;
-  setFont(9, 'bold', RED);
-  doc.text('Generated via XDrive.my', MARGIN, y);
-  if (sellerContact) {
-    setFont(9, 'normal', SUB);
-    doc.text(`${sellerName} · ${sellerContact}`, PW - MARGIN, y, { align: 'right' });
-  }
+  // ── Footer ──────────────────────────────────────────────────────────────────
+  ctx.strokeStyle = LINE; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(P, y); ctx.lineTo(W - P, y); ctx.stroke();
+  y += 26;
+  wrap('Valid for 7 days, subject to change without notice. All figures are estimates; final pricing subject to confirmation.', CW, 14, false)
+    .forEach((ln, i) => text(ln, P, y + i * 20, { size: 14, italic: true, color: FAINT }));
+  y += 46;
+  text('Generated via XDrive.my', P, y, { size: 15, weight: 700, color: RED });
+  if (sellerContact) text(`${sellerName} · ${sellerContact}`, W - P, y, { size: 15, color: SUB, align: 'right' });
 
-  doc.save(`quotation-${Date.now()}.pdf`);
+  // Export the single frame as a JPEG the salesman can attach to any post.
+  await new Promise((resolve) => {
+    canvas.toBlob((blob) => {
+      if (!blob) return resolve();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `xdrive-quote-${Date.now()}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      resolve();
+    }, 'image/jpeg', 0.92);
+  });
 };
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -487,7 +462,7 @@ const generateQuotationPDF = async ({ dealer, salesman, carDetails, calc, fmt })
 const FinancingCalculator = ({
   initialPrice = 85000, engineCc = null, bodyType = null,
   carName: carNameProp = '', carYear: carYearProp = '', carColor: carColorProp = '', carImage = null, light = false,
-  // Seller context for the PDF's "prepared by" / dealership header. Pass explicit
+  // Seller context for the poster's "prepared by" / dealership header. Pass explicit
   // dealer/salesman (even null, meaning "known to have no seller") when the page
   // already knows who's selling — e.g. a specific car's dealer, or a dealer's own
   // subdomain. Leave resolveFromSession at its default only for internal tools
@@ -511,13 +486,13 @@ const FinancingCalculator = ({
   const [insNcd, setInsNcd] = useState(55);
   const [vehicleType, setVehicleType] = useState('Saloon'); // 'Saloon' | 'Non-Saloon'
 
-  // Car details for PDF (pre-filled from props when coming from a listing)
+  // Car details for the poster (pre-filled from props when coming from a listing)
   const [carName,  setCarName]  = useState(carNameProp);
   const [carYear,  setCarYear]  = useState(carYearProp);
   const [carColor, setCarColor] = useState(carColorProp);
 
-  // PDF state
-  const [pdfLoading, setPdfLoading] = useState(false);
+  // Poster (image) generation state
+  const [imgLoading, setImgLoading] = useState(false);
 
   useEffect(() => { setCarPrice(initialPrice); setInsSum(initialPrice); }, [initialPrice]);
   useEffect(() => { if (engineCc) setRtCc(String(engineCc)); }, [engineCc]);
@@ -594,8 +569,8 @@ const FinancingCalculator = ({
     selectOption:  '#0d1117',
   };
 
-  const handleDownloadPDF = async () => {
-    setPdfLoading(true);
+  const handleDownloadImage = async () => {
+    setImgLoading(true);
     try {
       let resolvedDealer = dealer;
       let resolvedSalesman = salesman;
@@ -628,7 +603,7 @@ const FinancingCalculator = ({
         }
       }
 
-      await generateQuotationPDF({
+      await generateQuotationImage({
         dealer: resolvedDealer,
         salesman: resolvedSalesman,
         carDetails: {
@@ -638,7 +613,7 @@ const FinancingCalculator = ({
           price: carPrice,
           image: carImage,
           // Face of the quote: the salesman's photo when we have one, else the
-          // dealer's logo. The PDF renders whichever is present.
+          // dealer's logo. The poster renders whichever is present.
           sellerAvatar: resolvedSalesman?.avatar_url || resolvedDealer?.avatar_url || resolvedDealer?.site_logo_url || null,
         },
         calc: {
@@ -652,9 +627,9 @@ const FinancingCalculator = ({
         fmt,
       });
     } catch (err) {
-      console.error('PDF generation failed:', err);
+      console.error('Quotation poster generation failed:', err);
     } finally {
-      setPdfLoading(false);
+      setImgLoading(false);
     }
   };
 
@@ -888,9 +863,9 @@ const FinancingCalculator = ({
               </div>
             </div>
 
-            {/* Car Details for PDF (optional) */}
+            {/* Car Details for the quotation poster (optional) */}
             <div style={card}>
-              {sectionTitle('Car Details (for Quotation PDF)')}
+              {sectionTitle('Car Details (for Quotation Poster)')}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <div style={{ gridColumn: '1 / -1' }}>
                   <Label>Car Name / Model</Label>
@@ -986,19 +961,19 @@ const FinancingCalculator = ({
               {/* Actions */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <button
-                  onClick={handleDownloadPDF}
-                  disabled={pdfLoading}
+                  onClick={handleDownloadImage}
+                  disabled={imgLoading}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                    background: pdfLoading ? 'rgba(220,38,38,0.3)' : 'linear-gradient(135deg,#dc2626,#b91c1c)',
+                    background: imgLoading ? 'rgba(220,38,38,0.3)' : 'linear-gradient(135deg,#dc2626,#b91c1c)',
                     border: 'none', borderRadius: 10, color: 'white', fontSize: 13, fontWeight: 700,
-                    padding: '11px', cursor: pdfLoading ? 'not-allowed' : 'pointer',
+                    padding: '11px', cursor: imgLoading ? 'not-allowed' : 'pointer',
                     boxShadow: '0 2px 12px rgba(220,38,38,0.3)', transition: 'all 0.2s',
                     fontFamily: "system-ui,sans-serif",
                   }}
                 >
                   <Download size={14} />
-                  {pdfLoading ? 'Generating…' : 'Download Quotation PDF'}
+                  {imgLoading ? 'Generating…' : 'Download Quotation Poster'}
                 </button>
 
                 <a href={preApprovedLink} target="_blank" rel="noopener noreferrer"
