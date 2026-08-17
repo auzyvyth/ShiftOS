@@ -498,7 +498,9 @@ export default function CarListingPage() {
 
       if (q) {
         q.trim().split(/\s+/).filter(Boolean).slice(0,6).forEach(t => {
-          const s = t.replace(/[%_\\]/g,'');
+          // Strip LIKE wildcards (% _ \) AND PostgREST filter delimiters ( , ( ) )
+          // so a search token can't corrupt the .or() filter tree below.
+          const s = t.replace(/[%_\\(),]/g,'');
           if (!s) return;
           // Search name + free-text spec fields so feature queries ("bucket
           // seats", "sunroof") match, plus chassis-code expansion ("g82" → M4).

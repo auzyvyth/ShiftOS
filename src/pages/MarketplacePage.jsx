@@ -196,7 +196,9 @@ export default function MarketplacePage() {
       if (q) {
         const tokens = q.trim().split(/\s+/).filter(Boolean).slice(0, 6);
         tokens.forEach(t => {
-          const s = t.replace(/[%_\\]/g, '');
+          // Strip LIKE wildcards (% _ \) AND PostgREST filter delimiters ( , ( ) )
+          // so a search token can't corrupt the .or() filter tree below.
+          const s = t.replace(/[%_\\(),]/g, '');
           if (!s) return;
           // Match the token across name AND the free-text spec fields, so buyers
           // can search by feature ("bucket seats", "sunroof", "carbon pack") not
