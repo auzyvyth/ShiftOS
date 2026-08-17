@@ -765,6 +765,17 @@
         "timing": "Masa",
         "competitor": "Pesaing",
         "ghost": "Hilang diam"
+      },
+      "addons": {
+        "title": "Add-on",
+        "empty": "Belum ada produk aktif — tambah satu dalam tab Perkhidmatan anda.",
+        "selectProduct": "— Pilih produk —",
+        "pricePlaceholder": "Harga jual (RM)",
+        "attachCta": "Add-on",
+        "adding": "Menambah…",
+        "submit": "Tambah",
+        "attached": "Add-on ditambah",
+        "attachFailed": "Gagal tambah add-on"
       }
     },
     "addLead": {
