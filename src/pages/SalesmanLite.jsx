@@ -841,6 +841,10 @@ export default function SalesmanLite() {
   // a free perk bundled into the sale — this is the paid-attach counterpart
   // the Services tab already promises exists.
   const [dealAddons, setDealAddons] = useState([]);
+  // Lead ids that have at least one deal_products row — powers the small
+  // blue "Add-on" badge on the pipeline card, fetched once alongside leads
+  // rather than per-card (a full-catalogue fetch per card would be N+1).
+  const [leadIdsWithAddons, setLeadIdsWithAddons] = useState(() => new Set());
   const [addonCatalogue, setAddonCatalogue] = useState([]);
   const [addonsLoading, setAddonsLoading] = useState(false);
   const [showAttachAddon, setShowAttachAddon] = useState(false);
@@ -882,10 +886,18 @@ export default function SalesmanLite() {
     setAddonForm({ product_id: "", sold_price: "" });
     setShowAttachAddon(false);
     toast.success(t("salesmanLite.drawer.addons.attached"));
+    setLeadIdsWithAddons((p) => new Set(p).add(drawerLeadId));
   };
   const handleRemoveAddon = async (id) => {
     await supabase.from("deal_products").delete().eq("id", id);
-    setDealAddons((p) => p.filter((a) => a.id !== id));
+    setDealAddons((p) => {
+      const next = p.filter((a) => a.id !== id);
+      // Last add-on on this lead just got removed — drop the pipeline badge.
+      if (next.length === 0 && drawerLeadId) {
+        setLeadIdsWithAddons((s) => { const n = new Set(s); n.delete(drawerLeadId); return n; });
+      }
+      return next;
+    });
   };
   const [stageSavingId, setStageSavingId] = useState(null);
   const [editingNoteId, setEditingNoteId] = useState(null);
@@ -1468,6 +1480,17 @@ export default function SalesmanLite() {
           setLeads(fetchedLeads);
           setLeadsLoading(false);
           writeCache(`slite_leads_${uid}`, fetchedLeads);
+
+          // Which of these leads already have a paid add-on attached — feeds
+          // the pipeline card badge (see leadIdsWithAddons).
+          supabase
+            .from("deal_products")
+            .select("lead_id")
+            .eq("dealer_id", getDealerIdFromProfile(profileData))
+            .then(({ data: addonRows, error: addonErr }) => {
+              if (addonErr) { console.error("fetchLeadAddonFlags:", addonErr); return; }
+              setLeadIdsWithAddons(new Set((addonRows || []).map((r) => r.lead_id).filter(Boolean)));
+            });
 
           // fetch enquiries after leads are settled to avoid race-condition overwrite
           supabase
@@ -5579,6 +5602,7 @@ export default function SalesmanLite() {
           key={lead.id}
           className={glowLeadIds.has(lead.id) ? "slite-lead-glow" : undefined}
           style={{
+            position: "relative",
             background: "#1b2431",
             border: "1px solid rgba(255,255,255,0.12)",
             borderRadius: 10,
@@ -5597,11 +5621,21 @@ export default function SalesmanLite() {
                   <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {lead.buyer_name || "—"}
                   </p>
-                  {!heat.terminal && (
-                    <span title="Lead urgency — based on pipeline stage and how recently this lead moved" style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", flexShrink: 0, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                      {t("salesmanLite.heat." + heat.label, { defaultValue: heat.label })}
-                    </span>
-                  )}
+                  {/* Top-right corner badges — heat + add-on flag share this
+                      slot via normal flow (not position:absolute) so a lead
+                      that's both hot AND has an add-on doesn't overlap. */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                    {leadIdsWithAddons.has(lead.id) && (
+                      <span title="This deal has a paid add-on attached" style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, borderRadius: 99, padding: "2px 7px", background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.35)", color: "#93c5fd", whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                        <Package size={9} /> Add-on
+                      </span>
+                    )}
+                    {!heat.terminal && (
+                      <span title="Lead urgency — based on pipeline stage and how recently this lead moved" style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", flexShrink: 0, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        {t("salesmanLite.heat." + heat.label, { defaultValue: heat.label })}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 {(carName || carPrice) && (
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 3, gap: 8 }}>
