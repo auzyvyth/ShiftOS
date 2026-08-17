@@ -382,6 +382,74 @@ function PrevMonthModal({ open, onClose, monthLabel, commission, count, trendPct
   );
 }
 
+// "Give them something worth keeping" — a lightweight celebration sheet that
+// fires right after a deal closes (handleMarkWon) or a monthly goal is hit
+// (see the goal-smashed effect near saveGoal), offering to share the
+// mini-storefront link via the existing ShareMenu channels. Deliberately never
+// shows the commission figure — that stays private, only the win + a link to
+// the salesman's other listings goes out. Portal + body-scroll lock per the
+// app's overlay rules; own × / overlay-click close, so it does NOT register
+// useModalHistory.
+function WinShareCard({ prompt, onClose, slug }) {
+  const { t } = useTranslation();
+  useEffect(() => {
+    if (!prompt) return;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [prompt]);
+
+  if (!prompt) return null;
+  const isGoal = prompt.kind === "goal";
+  const storeUrl = slug ? `https://xdrive.my/s/${slug}` : null;
+
+  return createPortal(
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 0 env(safe-area-inset-bottom)" }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: "#0d1117", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, padding: "24px 24px 32px", border: "1px solid rgba(255,255,255,0.08)", borderBottom: "none" }}
+      >
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
+          <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Sparkles size={22} style={{ color: "#f87171" }} />
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 4, display: "flex" }}>
+            <X size={18} />
+          </button>
+        </div>
+        <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>
+          {isGoal ? t("salesmanLite.win.goalTitle") : t("salesmanLite.win.dealTitle")}
+        </p>
+        <p style={{ margin: "0 0 20px", fontSize: 13, color: "#6b7280" }}>
+          {isGoal ? t("salesmanLite.win.goalSubtitle") : (prompt.carLabel || t("salesmanLite.win.dealSubtitleGeneric"))}
+        </p>
+        {storeUrl ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <ShareMenu
+              baseUrl={storeUrl}
+              refSlug={slug}
+              waCaption={(url) => `${isGoal ? t("salesmanLite.win.shareGoalCaption") : t("salesmanLite.win.shareDealCaption")}:\n${url}`}
+              dark
+              label={t("salesmanLite.win.shareCta")}
+              style={{ width: "100%", justifyContent: "center", padding: "13px 16px", fontSize: 14, fontWeight: 700 }}
+            />
+            <button onClick={onClose} style={{ width: "100%", padding: "10px", borderRadius: 10, background: "transparent", border: "none", color: "#4b5563", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+              {t("salesmanLite.win.notNow")}
+            </button>
+          </div>
+        ) : (
+          <button onClick={onClose} style={{ width: "100%", padding: "13px 16px", borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+            {t("salesmanLite.win.close")}
+          </button>
+        )}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 // Confirm-booking modal — shows the buyer + car + date at full clarity, with an
 // editable WhatsApp message the salesman sends to the buyer. "Send" opens
 // WhatsApp AND marks the booking confirmed (via onSend). Portal + body-scroll
@@ -737,6 +805,11 @@ export default function SalesmanLite() {
   // leads
   const [leads, setLeads] = useState([]);
   const [staleLeads, setStaleLeads] = useState([]);
+  // "Reward the comeback" — true for this session only, when the salesman is
+  // opening Lite after a 3+ day gap. Swaps the stale-leads scold in the
+  // greeting for a welcome-back line instead (see the profile-load effect
+  // that sets this, and personalizedLine in renderDashboard).
+  const [isReturning, setIsReturning] = useState(false);
   const [leadsLoading, setLeadsLoading] = useState(true);
   const [lostOpen, setLostOpen] = useState(false);
   const [showAddLead, setShowAddLead] = useState(false);
@@ -753,6 +826,7 @@ export default function SalesmanLite() {
   const [testDriveConfirm, setTestDriveConfirm] = useState(null); // { lead, nextStage }
   const [wonPrompt, setWonPrompt] = useState(null); // { lead }
   const [wonSaving, setWonSaving] = useState(false);
+  const [shareWinPrompt, setShareWinPrompt] = useState(null); // { kind: 'deal'|'goal', carLabel? } — drives WinShareCard
   const [deletingLeadId, setDeletingLeadId] = useState(null);
   const [lostPromptId, setLostPromptId] = useState(null);
   const [lostSavingId, setLostSavingId] = useState(null);
@@ -807,6 +881,27 @@ export default function SalesmanLite() {
       if (error) console.error("saveGoal:", error);
     });
   };
+
+  // "Give them something worth keeping" — fires the WinShareCard once per
+  // calendar month per user, the moment commission earned this month first
+  // reaches the goal target. localStorage flag prevents re-opening on every
+  // reload/render once it's already been shown for this month.
+  useEffect(() => {
+    if (!userId || !goal.target || goal.target <= 0) return;
+    const now = new Date();
+    const soldThisMonth = myListings
+      .filter((c) => c.status === "sold" && c.sold_at)
+      .filter((c) => {
+        const d = new Date(c.sold_at);
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      })
+      .reduce((sum, c) => sum + (Number(c.commission_amount) || 0), 0);
+    if (soldThisMonth < goal.target) return;
+    const flagKey = `slite_goal_shared_${userId}_${now.getFullYear()}-${now.getMonth()}`;
+    if (localStorage.getItem(flagKey)) return;
+    localStorage.setItem(flagKey, "1");
+    setShareWinPrompt({ kind: "goal" });
+  }, [myListings, goal.target, userId]);
 
   // settings
   const [settingsForm, setSettingsForm] = useState({
@@ -1155,6 +1250,18 @@ export default function SalesmanLite() {
 
       setProfile(profileData);
       setLoading(false);
+
+      // "Reward the comeback" — detect a 3+ day gap since the last visit so
+      // the greeting welcomes the salesman back instead of leading with a
+      // stale-leads scold. Pure client-side (localStorage), no schema change.
+      try {
+        const lastVisitKey = `slite_last_visit_${uid}`;
+        const lastVisit = Number(localStorage.getItem(lastVisitKey) || 0);
+        if (lastVisit && Date.now() - lastVisit >= 3 * 24 * 60 * 60 * 1000) {
+          setIsReturning(true);
+        }
+        localStorage.setItem(lastVisitKey, String(Date.now()));
+      } catch {}
 
       if (profileData.lite_goal) {
         setGoal(prev => ({ ...prev, ...profileData.lite_goal }));
@@ -1988,6 +2095,7 @@ export default function SalesmanLite() {
     const car = lead.car_listings;
     const carLabel = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
     toast.success(carLabel ? t("salesmanLite.toast.wonWithCar", { car: carLabel }) : t("salesmanLite.toast.wonNoCar"));
+    setShareWinPrompt({ kind: "deal", carLabel });
   };
 
   // ── notifications ──────────────────────────────────────────────────────────
@@ -2790,6 +2898,10 @@ export default function SalesmanLite() {
     })();
     const personalizedLine = isNewUser
       ? t("salesmanLite.dash.newUser")
+      : isReturning
+      ? (staleLeads.length > 0
+          ? t("salesmanLite.dash.welcomeBack", { count: staleLeads.length })
+          : t("salesmanLite.dash.welcomeBackClear"))
       : staleLeads.length > 0
       ? t("salesmanLite.dash.stale", { count: staleLeads.length })
       : todayAppts > 0
@@ -9026,6 +9138,12 @@ export default function SalesmanLite() {
           </div>
         );
       })()}
+
+      <WinShareCard
+        prompt={shareWinPrompt}
+        onClose={() => setShareWinPrompt(null)}
+        slug={profile?.slug}
+      />
 
       {renderFollowUpModal()}
       {renderNotifPanel()}
