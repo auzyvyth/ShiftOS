@@ -673,7 +673,7 @@ function SellerBookingModal({ lead, dateValue, onChangeDate, onClose, onConfirm,
 
 // Top-level Lite tabs, each backed by its own /salesman-lite/:tab route.
 // Anything not in this list falls back to the dashboard.
-const VALID_LITE_TABS = ["dashboard", "listings", "leads", "enquiries", "performance", "settings", "help"];
+const VALID_LITE_TABS = ["dashboard", "listings", "leads", "enquiries", "performance", "services", "settings", "help"];
 
 export default function SalesmanLite() {
   const navigate = useNavigate();
@@ -835,6 +835,70 @@ export default function SalesmanLite() {
   useEffect(() => {
     setExpandedActivityLeadId(drawerLeadId || null);
   }, [drawerLeadId]);
+  // Deal add-ons — attach a product from the salesman's own catalogue
+  // (Services tab, dealer_products) to this lead as a paid upsell, tracked in
+  // deal_products. Distinct from included_services on a car listing, which is
+  // a free perk bundled into the sale — this is the paid-attach counterpart
+  // the Services tab already promises exists.
+  const [dealAddons, setDealAddons] = useState([]);
+  // Lead ids that have at least one deal_products row — powers the small
+  // blue "Add-on" badge on the pipeline card, fetched once alongside leads
+  // rather than per-card (a full-catalogue fetch per card would be N+1).
+  const [leadIdsWithAddons, setLeadIdsWithAddons] = useState(() => new Set());
+  const [addonCatalogue, setAddonCatalogue] = useState([]);
+  const [addonsLoading, setAddonsLoading] = useState(false);
+  const [showAttachAddon, setShowAttachAddon] = useState(false);
+  const [addonForm, setAddonForm] = useState({ product_id: "", sold_price: "" });
+  const [attachingAddon, setAttachingAddon] = useState(false);
+  useEffect(() => {
+    if (!drawerLeadId) { setDealAddons([]); setAddonCatalogue([]); setShowAttachAddon(false); return; }
+    const dealerId = getDealerIdFromProfile(profile);
+    if (!dealerId) return;
+    setAddonsLoading(true);
+    Promise.all([
+      supabase.from("dealer_products").select("id, name, category, selling_price").eq("dealer_id", dealerId).eq("is_active", true).order("name"),
+      supabase.from("deal_products").select("id, sold_price, product_id, dealer_products(name, category)").eq("lead_id", drawerLeadId),
+    ]).then(([catRes, dealRes]) => {
+      setAddonCatalogue(catRes.data || []);
+      setDealAddons(dealRes.data || []);
+      setAddonsLoading(false);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerLeadId]);
+  const handleAttachAddon = async () => {
+    if (!drawerLeadId || !addonForm.product_id || !addonForm.sold_price) return;
+    const pl = leads.find((l) => l.id === drawerLeadId);
+    setAttachingAddon(true);
+    const { data, error } = await supabase
+      .from("deal_products")
+      .insert({
+        dealer_id: getDealerIdFromProfile(profile),
+        lead_id: drawerLeadId,
+        listing_id: pl?.car_listing_id || null,
+        product_id: addonForm.product_id,
+        sold_price: Number(addonForm.sold_price),
+      })
+      .select("id, sold_price, product_id, dealer_products(name, category)")
+      .single();
+    setAttachingAddon(false);
+    if (error) { toast.error(t("salesmanLite.drawer.addons.attachFailed")); return; }
+    if (data) setDealAddons((p) => [...p, data]);
+    setAddonForm({ product_id: "", sold_price: "" });
+    setShowAttachAddon(false);
+    toast.success(t("salesmanLite.drawer.addons.attached"));
+    setLeadIdsWithAddons((p) => new Set(p).add(drawerLeadId));
+  };
+  const handleRemoveAddon = async (id) => {
+    await supabase.from("deal_products").delete().eq("id", id);
+    setDealAddons((p) => {
+      const next = p.filter((a) => a.id !== id);
+      // Last add-on on this lead just got removed — drop the pipeline badge.
+      if (next.length === 0 && drawerLeadId) {
+        setLeadIdsWithAddons((s) => { const n = new Set(s); n.delete(drawerLeadId); return n; });
+      }
+      return next;
+    });
+  };
   const [stageSavingId, setStageSavingId] = useState(null);
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [editNoteVal, setEditNoteVal] = useState("");
@@ -1416,6 +1480,17 @@ export default function SalesmanLite() {
           setLeads(fetchedLeads);
           setLeadsLoading(false);
           writeCache(`slite_leads_${uid}`, fetchedLeads);
+
+          // Which of these leads already have a paid add-on attached — feeds
+          // the pipeline card badge (see leadIdsWithAddons).
+          supabase
+            .from("deal_products")
+            .select("lead_id")
+            .eq("dealer_id", getDealerIdFromProfile(profileData))
+            .then(({ data: addonRows, error: addonErr }) => {
+              if (addonErr) { console.error("fetchLeadAddonFlags:", addonErr); return; }
+              setLeadIdsWithAddons(new Set((addonRows || []).map((r) => r.lead_id).filter(Boolean)));
+            });
 
           // fetch enquiries after leads are settled to avoid race-condition overwrite
           supabase
@@ -5527,6 +5602,7 @@ export default function SalesmanLite() {
           key={lead.id}
           className={glowLeadIds.has(lead.id) ? "slite-lead-glow" : undefined}
           style={{
+            position: "relative",
             background: "#1b2431",
             border: "1px solid rgba(255,255,255,0.12)",
             borderRadius: 10,
@@ -5545,11 +5621,21 @@ export default function SalesmanLite() {
                   <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {lead.buyer_name || "—"}
                   </p>
-                  {!heat.terminal && (
-                    <span title="Lead urgency — based on pipeline stage and how recently this lead moved" style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", flexShrink: 0, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                      {t("salesmanLite.heat." + heat.label, { defaultValue: heat.label })}
-                    </span>
-                  )}
+                  {/* Top-right corner badges — heat + add-on flag share this
+                      slot via normal flow (not position:absolute) so a lead
+                      that's both hot AND has an add-on doesn't overlap. */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                    {leadIdsWithAddons.has(lead.id) && (
+                      <span title="This deal has a paid add-on attached" style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, borderRadius: 99, padding: "2px 7px", background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.35)", color: "#93c5fd", whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                        <Package size={9} /> Add-on
+                      </span>
+                    )}
+                    {!heat.terminal && (
+                      <span title="Lead urgency — based on pipeline stage and how recently this lead moved" style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", flexShrink: 0, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        {t("salesmanLite.heat." + heat.label, { defaultValue: heat.label })}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 {(carName || carPrice) && (
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 3, gap: 8 }}>
@@ -6173,6 +6259,74 @@ export default function SalesmanLite() {
                       )}
                     </div>
                   )}
+
+                  {/* Add-ons — paid upsells from the salesman's own catalogue,
+                      attached to this specific deal (deal_products). */}
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                      <p style={{ margin: 0, fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>{t("salesmanLite.drawer.addons.title")}</p>
+                      {dealAddons.length > 0 && (
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "#f87171" }}>
+                          RM {dealAddons.reduce((s, a) => s + Number(a.sold_price), 0).toLocaleString("en-MY")}
+                        </span>
+                      )}
+                    </div>
+                    {addonsLoading ? (
+                      <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>{t("salesmanLite.drawer.loading")}</p>
+                    ) : (
+                      <>
+                        {dealAddons.map((a) => (
+                          <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "8px 10px", marginBottom: 4, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8 }}>
+                            <span style={{ fontSize: 13, color: "#e5e7eb", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.dealer_products?.name || "—"}</span>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: "#f87171", flexShrink: 0 }}>RM {Number(a.sold_price).toLocaleString("en-MY")}</span>
+                            <button onClick={() => handleRemoveAddon(a.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", display: "flex", padding: 2, flexShrink: 0 }}>
+                              <X size={13} />
+                            </button>
+                          </div>
+                        ))}
+                        {!showAttachAddon ? (
+                          <button onClick={() => { setShowAttachAddon(true); setAddonForm({ product_id: "", sold_price: "" }); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", fontSize: 12, fontWeight: 600, padding: "8px 12px", borderRadius: 8, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", fontFamily: "inherit" }}>
+                            <Plus size={12} /> {t("salesmanLite.drawer.addons.attachCta")}
+                          </button>
+                        ) : (
+                          <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: 12 }}>
+                            {addonCatalogue.length === 0 ? (
+                              <p style={{ fontSize: 12, color: "#6b7280", margin: "0 0 8px" }}>{t("salesmanLite.drawer.addons.empty")}</p>
+                            ) : (
+                              <>
+                                <select
+                                  value={addonForm.product_id}
+                                  onChange={(e) => { const sel = addonCatalogue.find((p) => p.id === e.target.value); setAddonForm((f) => ({ ...f, product_id: e.target.value, sold_price: sel ? String(sel.selling_price) : f.sold_price })); }}
+                                  style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 7, padding: "8px 10px", color: "#e5e7eb", fontSize: 12, fontFamily: "inherit", marginBottom: 6, boxSizing: "border-box" }}
+                                >
+                                  <option value="">{t("salesmanLite.drawer.addons.selectProduct")}</option>
+                                  {addonCatalogue.map((p) => (
+                                    <option key={p.id} value={p.id}>{p.name} — RM {Number(p.selling_price).toLocaleString("en-MY")}</option>
+                                  ))}
+                                </select>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={addonForm.sold_price}
+                                  onChange={(e) => setAddonForm((f) => ({ ...f, sold_price: e.target.value }))}
+                                  placeholder={t("salesmanLite.drawer.addons.pricePlaceholder")}
+                                  style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 7, padding: "8px 10px", color: "#e5e7eb", fontSize: 12, fontFamily: "inherit", marginBottom: 8, boxSizing: "border-box" }}
+                                />
+                              </>
+                            )}
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button onClick={() => setShowAttachAddon(false)} style={{ flex: 1, padding: "7px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanLite.drawer.cancel")}</button>
+                              {addonCatalogue.length > 0 && (
+                                <button onClick={handleAttachAddon} disabled={attachingAddon || !addonForm.product_id || !addonForm.sold_price} style={{ flex: 1, padding: "7px", borderRadius: 7, background: "#dc2626", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", opacity: (!addonForm.product_id || !addonForm.sold_price || attachingAddon) ? 0.5 : 1, fontFamily: "inherit" }}>
+                                  {attachingAddon ? t("salesmanLite.drawer.addons.adding") : t("salesmanLite.drawer.addons.submit")}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
 
                   {/* Divider */}
                   <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} />

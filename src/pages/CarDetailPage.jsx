@@ -694,8 +694,19 @@ export default function CarDetailPage() {
   /* fuel range calculator */
   const [fuelDist, setFuelDist] = useState(250);
 
-  /* detail tabs */
+  /* detail tabs — default to "What You Get" the instant a car with included
+     perks loads, since that's the highest-value info on the page and was
+     previously buried below the specs tabs (the original complaint: buyers
+     had to scroll well past the fold to find it). */
   const [detailTab, setDetailTab] = useState("specs");
+  const detailTabDefaultedRef = useRef(false);
+  useEffect(() => {
+    if (detailTabDefaultedRef.current) return;
+    if (Array.isArray(car?.included_services) && car.included_services.length > 0) {
+      setDetailTab("included");
+      detailTabDefaultedRef.current = true;
+    }
+  }, [car?.id]);
 
   /* lightbox */
   const [lbOpen, setLbOpen] = useState(false);
@@ -2172,6 +2183,7 @@ export default function CarDetailPage() {
           {/* Tabs */}
           {(() => {
             const tabs = [
+              ...(Array.isArray(car.included_services) && car.included_services.length > 0 ? [{ key:'included', label:'What You Get' }] : []),
               { key:'specs', label:'Specs' },
               ...(parseTags(car.features).length > 0 ? [{ key:'features', label:'Features' }] : []),
               ...(parseTags(car.options).length  > 0 ? [{ key:'options',  label:'Options'  }] : []),
@@ -2186,6 +2198,28 @@ export default function CarDetailPage() {
                     </button>
                   ))}
                 </div>
+                {detailTab === 'included' && (
+                  <div>
+                    <p style={{ fontSize:12, color: th.textSec, marginBottom:14, lineHeight:1.6 }}>
+                      Included free with this car — no extra cost to you.
+                    </p>
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                      {car.included_services.map((svc, i) => {
+                        const cfg = getCategoryCfg(svc.category);
+                        const CatIcon = cfg.icon;
+                        return (
+                          <div key={i} style={{ display:'flex', alignItems:'center', gap:6, background:`${cfg.color}10`, border:`1px solid ${cfg.color}28`, borderRadius:8, padding:'6px 13px' }}>
+                            <CatIcon size={13} style={{ color:cfg.color, flexShrink:0 }} />
+                            <span style={{ fontSize:12, color:cfg.color, fontWeight:600 }}>{svc.name}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {car.included_services_cost > 0 && (
+                      <p style={{ fontSize:11, color: th.textMuted, marginTop:12 }}>Total value included at no extra cost: <span style={{ color:'#dc2626', fontWeight:700 }}>RM {Number(car.included_services_cost).toLocaleString()}</span></p>
+                    )}
+                  </div>
+                )}
                 {detailTab === 'specs' && (
                   <div>
                     {[
@@ -2236,27 +2270,6 @@ export default function CarDetailPage() {
               </>
             );
           })()}
-          {/* What's included */}
-          {Array.isArray(car.included_services) && car.included_services.length > 0 && (
-            <div style={{ marginTop:32, paddingTop:28, borderTop:`1px solid ${th.border}` }}>
-              <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color: th.textMuted, fontWeight:700, marginBottom:14 }}>What's Included</p>
-              <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
-                {car.included_services.map((svc, i) => {
-                  const cfg = getCategoryCfg(svc.category);
-                  const CatIcon = cfg.icon;
-                  return (
-                    <div key={i} style={{ display:'flex', alignItems:'center', gap:6, background:`${cfg.color}10`, border:`1px solid ${cfg.color}28`, borderRadius:8, padding:'6px 13px' }}>
-                      <CatIcon size={13} style={{ color:cfg.color, flexShrink:0 }} />
-                      <span style={{ fontSize:12, color:cfg.color, fontWeight:600 }}>{svc.name}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              {car.included_services_cost > 0 && (
-                <p style={{ fontSize:11, color: th.textMuted, marginTop:12 }}>Estimated add-on value: <span style={{ color:'#dc2626', fontWeight:700 }}>RM {Number(car.included_services_cost).toLocaleString()}</span></p>
-              )}
-            </div>
-          )}
           {/* Video */}
           {car.video_url && getEmbedUrl(car.video_url) && (
             <div style={{ marginTop:32, paddingTop:28, borderTop:`1px solid ${th.border}` }}>
@@ -2827,6 +2840,9 @@ export default function CarDetailPage() {
             {/* Tabbed specs / features / options */}
             {(() => {
               const tabs = [
+                ...(Array.isArray(car.included_services) && car.included_services.length > 0
+                  ? [{ key: "included", label: "What You Get" }]
+                  : []),
                 { key: "specs", label: "Specs" },
                 ...(parseTags(car.features).length > 0
                   ? [{ key: "features", label: "Features" }]
@@ -2871,6 +2887,45 @@ export default function CarDetailPage() {
                       </button>
                     ))}
                   </div>
+
+                  {detailTab === "included" && (
+                    <div>
+                      <p style={{ fontSize: 12, color: th.textSec, marginBottom: 14, lineHeight: 1.6 }}>
+                        Included free with this car — no extra cost to you.
+                      </p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        {car.included_services.map((svc, i) => {
+                          const cfg = getCategoryCfg(svc.category);
+                          const CatIcon = cfg.icon;
+                          return (
+                            <div
+                              key={i}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                background: `${cfg.color}10`,
+                                border: `1px solid ${cfg.color}28`,
+                                borderRadius: 8,
+                                padding: "6px 13px",
+                              }}
+                            >
+                              <CatIcon size={13} style={{ color: cfg.color, flexShrink: 0 }} />
+                              <span style={{ fontSize: 12, color: cfg.color, fontWeight: 600 }}>{svc.name}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {car.included_services_cost > 0 && (
+                        <p style={{ fontSize: 11, color: th.textMuted, marginTop: 12 }}>
+                          Total value included at no extra cost:{" "}
+                          <span style={{ color: "#dc2626", fontWeight: 700 }}>
+                            RM {Number(car.included_services_cost).toLocaleString()}
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   {detailTab === "specs" && (
                     <div>
@@ -3057,75 +3112,6 @@ export default function CarDetailPage() {
                 </>
               );
             })()}
-
-            {/* What's included */}
-            {Array.isArray(car.included_services) &&
-              car.included_services.length > 0 && (
-                <div
-                  style={{
-                    marginTop: 40,
-                    paddingTop: 32,
-                    borderTop: "1px solid rgba(255,255,255,0.05)",
-                  }}
-                >
-                  <p
-                    style={{
-                      fontSize: 10,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.18em",
-                      color: "#334155",
-                      fontWeight: 700,
-                      marginBottom: 16,
-                    }}
-                  >
-                    What's Included
-                  </p>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {car.included_services.map((svc, i) => {
-                      const cfg = getCategoryCfg(svc.category);
-                      const CatIcon = cfg.icon;
-                      return (
-                        <div
-                          key={i}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                            background: `${cfg.color}10`,
-                            border: `1px solid ${cfg.color}28`,
-                            borderRadius: 8,
-                            padding: "6px 13px",
-                          }}
-                        >
-                          <CatIcon
-                            size={13}
-                            style={{ color: cfg.color, flexShrink: 0 }}
-                          />
-                          <span
-                            style={{
-                              fontSize: 12,
-                              color: cfg.color,
-                              fontWeight: 600,
-                            }}
-                          >
-                            {svc.name}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {car.included_services_cost > 0 && (
-                    <p
-                      style={{ fontSize: 11, color: "#334155", marginTop: 12 }}
-                    >
-                      Estimated add-on value:{" "}
-                      <span style={{ color: "#dc2626", fontWeight: 700 }}>
-                        RM {Number(car.included_services_cost).toLocaleString()}
-                      </span>
-                    </p>
-                  )}
-                </div>
-              )}
 
             {/* VIDEO WALKTHROUGH */}
             {car.video_url && getEmbedUrl(car.video_url) && (

@@ -775,6 +775,17 @@
         "timing": "Timing",
         "competitor": "Competitor",
         "ghost": "Ghost"
+      },
+      "addons": {
+        "title": "Add-ons",
+        "empty": "No active products yet — add one in your Services tab.",
+        "selectProduct": "— Select product —",
+        "pricePlaceholder": "Sold price (RM)",
+        "attachCta": "Add-on",
+        "adding": "Adding…",
+        "submit": "Add",
+        "attached": "Add-on attached",
+        "attachFailed": "Failed to attach add-on"
       }
     },
     "addLead": {

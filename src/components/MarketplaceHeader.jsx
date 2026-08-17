@@ -65,6 +65,14 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
     { to: '/articles/cara-pindah-milik-kereta-mysikap', Icon: FileText,  label: 'Cara Pindah Milik MySikap', desc: 'Ownership transfer steps' },
     { to: '/articles/beza-kereta-recon-dan-terpakai',   Icon: GitCompare,label: 'Kereta Recon vs Terpakai',  desc: 'Which one is right for you' },
   ];
+  // Mobile sheet only: Browse folds in Hot Deals + Compare so they're not
+  // separate top-level rows competing with the CTAs for space. Desktop keeps
+  // its own top-nav links for these — different constraint, more room.
+  const BROWSE_MOBILE = [
+    ...BROWSE,
+    { href: '/?hot_deals=true', Icon: Flame,      label: 'Hot Deals' },
+    { to: '/compare',           Icon: GitCompare, label: 'Compare Cars' },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -249,9 +257,6 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
         /* Full-height solid sheet so the dark hero can never show through/below it.
            Body scroll is locked while it's open (see effect), so it stays put. */
         .mh-mobile { display:none; flex-direction:column; padding:14px 18px 22px; border-top:1px solid #ECEAE3; background:#fff; gap:2px; height:calc(100dvh - 64px); overflow-y:auto; -webkit-overflow-scrolling:touch; }
-        .mh-m-search { display:flex; align-items:center; gap:9px; background:#F4F3EF; border:1.5px solid #E7E4DB; border-radius:12px; padding:0 6px 0 13px; height:48px; margin-bottom:10px; }
-        .mh-m-search input { flex:1; min-width:0; border:none; background:none; outline:none; font-family:inherit; font-size:14px; color:#0f1115; }
-        .mh-m-search button { flex-shrink:0; background:#dc2626; color:#fff; border:none; border-radius:9px; height:36px; padding:0 14px; font-weight:700; font-size:13px; cursor:pointer; }
         .mh-m-link, .mh-m-acc { color:#1f2733; font-size:15px; font-weight:600; text-decoration:none; padding:13px 6px; border-bottom:1px solid #F1EFE9; display:flex; align-items:center; gap:10px; justify-content:space-between; background:none; border-left:none; border-right:none; border-top:none; cursor:pointer; width:100%; font-family:inherit; }
         .mh-m-sub { display:flex; flex-direction:column; padding:2px 0 10px 16px; }
         .mh-m-sub a { color:#5b626e; font-size:13.5px; font-weight:500; text-decoration:none; padding:10px 0; display:flex; align-items:center; gap:9px; }
@@ -377,18 +382,14 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
           </form>
         </div>
 
-        {/* Mobile sheet */}
+        {/* Mobile sheet. Search and Saved Cars are deliberately NOT duplicated
+            here — both icon buttons stay visible in the header bar itself
+            (mh-icon-btn isn't hidden at the mobile breakpoint), so repeating
+            them inside the sheet was two ways to do the same thing. */}
         <div className={`mh-mobile${menuOpen ? ' open' : ''}`}>
-          <div className="mh-m-search">
-            <Search size={16} style={{ color:'#9ca3af', flexShrink:0 }} />
-            <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search cars…" onKeyDown={e => e.key === 'Enter' && submitSearch()} />
-            <button type="button" onClick={() => submitSearch()}>Search</button>
-          </div>
-
           {[
-            { id:'browse',  label:'Browse Cars',       Icon:Car,      items:BROWSE },
-            { id:'dealers', label:'For Dealers',       Icon:LayoutDashboard, items:DEALERS },
-            { id:'guides',  label:'Panduan & Artikel', Icon:BookOpen, items:GUIDES },
+            { id:'browse',  label:'Browse Cars', Icon:Car,             items:BROWSE_MOBILE },
+            { id:'dealers', label:'For Dealers',  Icon:LayoutDashboard, items:DEALERS },
           ].map(({ id, label, Icon, items }) => (
             <React.Fragment key={id}>
               <button className="mh-m-acc" onClick={() => setMSection(s => s === id ? null : id)}>
@@ -406,20 +407,13 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
             </React.Fragment>
           ))}
 
-          <a href="/?hot_deals=true" className="mh-m-link" style={{ color:'#ea580c' }} onClick={() => setMenuOpen(false)}>
-            <span style={{ display:'flex', alignItems:'center', gap:10 }}><Flame size={17} /> Hot Deals</span>
-          </a>
-          <Link to="/compare" className="mh-m-link" onClick={() => setMenuOpen(false)}>
-            <span style={{ display:'flex', alignItems:'center', gap:10 }}><GitCompare size={17} /> Compare Cars</span>
+          {/* Guides collapsed to one link instead of its own accordion — the
+              /articles index is the real browse surface for these, a nested
+              4-item accordion here was extra depth for content that isn't
+              part of the core buy/sell flow. */}
+          <Link to="/articles" className="mh-m-link" onClick={() => setMenuOpen(false)}>
+            <span style={{ display:'flex', alignItems:'center', gap:10 }}><BookOpen size={17} /> Panduan &amp; Artikel</span>
           </Link>
-          <Link to="/for-salesmen" className="mh-m-link" onClick={() => setMenuOpen(false)}>
-            <span style={{ display:'flex', alignItems:'center', gap:10 }}><Store size={17} /> Salesman Lite</span>
-          </Link>
-          <button className="mh-m-link" onClick={() => { setMenuOpen(false); setSavedOpen(true); }}>
-            <span style={{ display:'flex', alignItems:'center', gap:10, color: savedIds.size > 0 ? '#dc2626' : '#1f2733' }}>
-              <Heart size={17} fill={savedIds.size > 0 ? '#dc2626' : 'none'} stroke="currentColor" /> Saved Cars {savedIds.size > 0 && `(${savedIds.size})`}
-            </span>
-          </button>
 
           {/* Mobile gets the chooser as two stacked controls — a dropdown inside
               an already-scrolling sheet would be a worse tap target. */}

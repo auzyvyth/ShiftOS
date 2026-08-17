@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, Package } from "lucide-react";
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, Package, Gift, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../../supabaseClient";
 import { SERVICE_CATEGORY_OPTIONS } from "../../utils/serviceCategories";
@@ -12,7 +12,7 @@ import { SERVICE_CATEGORY_OPTIONS } from "../../utils/serviceCategories";
 // picker (CarForm.jsx ~line 1148) with zero extra wiring.
 
 const CATEGORIES = SERVICE_CATEGORY_OPTIONS;
-const EMPTY_FORM = { name: "", category: "protection", cost_price: "", selling_price: "", description: "", is_active: true };
+const EMPTY_FORM = { name: "", category: "protection", cost_price: "", selling_price: "", is_active: true };
 const CARD = { background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14 };
 
 const fmtRM = (n) => (n == null ? "—" : `RM ${Number(n).toLocaleString("en-MY")}`);
@@ -97,7 +97,6 @@ export default function ServicesAddonsTab({ dealerId }) {
       category: p.category,
       cost_price: String(p.cost_price ?? ""),
       selling_price: String(p.selling_price),
-      description: p.description || "",
       is_active: p.is_active,
     });
     setEditTarget(p);
@@ -117,7 +116,6 @@ export default function ServicesAddonsTab({ dealerId }) {
       category: form.category,
       cost_price: Number(form.cost_price) || 0,
       selling_price: Number(form.selling_price),
-      description: form.description.trim() || null,
       is_active: form.is_active,
       updated_at: new Date().toISOString(),
     };
@@ -157,7 +155,7 @@ export default function ServicesAddonsTab({ dealerId }) {
             Services &amp; Add-ons
           </h2>
           <p style={{ fontSize: 12, color: "#6b7280", margin: "2px 0 0" }}>
-            Products buyers can add to a deal — appears as "Included Services" when you create a listing
+            Your product catalogue — used two ways, both explained below
           </p>
         </div>
         <button
@@ -166,6 +164,25 @@ export default function ServicesAddonsTab({ dealerId }) {
         >
           <Plus size={13} /> Add Product
         </button>
+      </div>
+
+      {/* Every product here can be used two different ways, and mixing them up
+          costs real money (marking a paid upsell "Included" gives it away free;
+          not realising an "Included" item can also be pitched as a paid add-on
+          leaves revenue on the table). Spelled out once, up front. */}
+      <div style={{ ...CARD, padding: "12px 14px", marginBottom: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
+          <Gift size={15} style={{ color: "#4ade80", flexShrink: 0, marginTop: 1 }} />
+          <p style={{ fontSize: 12, color: "#9ca3af", margin: 0, lineHeight: 1.5 }}>
+            Mark one <strong style={{ color: "#e5e7eb" }}>Included</strong> on a listing (in your Listings tab) → it's a <strong style={{ color: "#4ade80" }}>free perk for the buyer</strong>, no extra charge, shown on the car page to make your listing stand out.
+          </p>
+        </div>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
+          <Wallet size={15} style={{ color: "#fbbf24", flexShrink: 0, marginTop: 1 }} />
+          <p style={{ fontSize: 12, color: "#9ca3af", margin: 0, lineHeight: 1.5 }}>
+            Attach one to a deal in your <strong style={{ color: "#e5e7eb" }}>Leads</strong> tab instead → it's a <strong style={{ color: "#fbbf24" }}>paid add-on</strong>, the buyer pays for it, and it counts as extra revenue for you.
+          </p>
+        </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 16 }}>
@@ -305,10 +322,6 @@ function ProductPanel({ form, setForm, editTarget, saving, onSave, onClose }) {
           {form.selling_price && (
             <p style={{ fontSize: 12, fontWeight: 600, color: marginColor(mPct), margin: "-8px 0 0" }}>Margin: {mPct}%</p>
           )}
-          <div>
-            <label style={label}>Description (optional)</label>
-            <textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} placeholder="Short description…" rows={3} style={{ ...inp, resize: "vertical" }} />
-          </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 0" }}>
             <span style={{ fontSize: 13, color: "#9ca3af" }}>Active</span>
             <button onClick={() => setForm((p) => ({ ...p, is_active: !p.is_active }))} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex" }}>
