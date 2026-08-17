@@ -819,13 +819,17 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   // ── Car search & link ────────────────────────────────────────────────────────
   async function searchCars(q) {
     if (!lead?.dealer_id) return;
+    // Strip LIKE wildcards (% _ \) and PostgREST filter delimiters ( , ( ) ) so a
+    // typed search term can't corrupt the .or() filter or act as a wildcard.
+    const s = String(q || '').replace(/[%_\\(),]/g, '').trim();
+    if (!s) { setCarResults([]); return; }
     setCarSearching(true);
     const { data } = await supabase
       .from('car_listings')
       .select('id, brand, model, year, selling_price, images, city, state, slug')
       .eq('dealer_id', lead.dealer_id)
       .neq('status', 'sold')
-      .or(`brand.ilike.%${q}%,model.ilike.%${q}%`)
+      .or(`brand.ilike.%${s}%,model.ilike.%${s}%`)
       .limit(8);
     setCarResults(data || []);
     setCarSearching(false);
