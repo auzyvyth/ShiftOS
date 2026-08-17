@@ -230,7 +230,7 @@ const drawCircle = (ctx, img, cx, cy, r) => {
 // data-driven: pass a salesman (Lite/Premium) or a dealer and it renders whatever
 // is present, so the same poster serves every tier without change.
 
-const generateQuotationImage = async ({ dealer, salesman, carDetails, calc, fmt }) => {
+const generateQuotationImage = async ({ dealer, salesman, sellerPageUrl, carDetails, calc, fmt }) => {
   // Design space is 1080×1350; render at 2× so text stays crisp when downscaled.
   const W = 1080, H = 1350, P = 60, CW = W - P * 2, DPR = 2;
   const canvas = document.createElement('canvas');
@@ -264,6 +264,13 @@ const generateQuotationImage = async ({ dealer, salesman, carDetails, calc, fmt 
     }
     if (line) out.push(line);
     return out;
+  };
+  // Truncate to one line with a trailing ellipsis when it overruns maxW.
+  const ellipsize = (str, maxW, size, weight = 400) => {
+    if (!str || measure(str, size, weight) <= maxW) return str || '';
+    let s = str;
+    while (s.length > 1 && measure(`${s}…`, size, weight) > maxW) s = s.slice(0, -1);
+    return `${s.replace(/\s+$/, '')}…`;
   };
   const rrect = (x, y, w, h, r, fill, stroke) => {
     roundRectPath(ctx, x, y, w, h, r);
@@ -335,12 +342,27 @@ const generateQuotationImage = async ({ dealer, salesman, carDetails, calc, fmt 
   iy += 40;
   text(`RM ${fmt(carDetails.price)}`, ix, iy, { size: 32, weight: 700, color: INK });
 
-  // ── Seller trust card (full width) ──────────────────────────────────────────
+  // ── Seller trust card (full width): avatar + info on the left, the seller's
+  //    mini-page / storefront link on the right ─────────────────────────────────
   let y = Math.max(CAR_Y + CAR_H, iy + 8) + 44;   // clear the taller of photo / info
   const avR = 48, avCx = P + 34 + avR;
   const tx = avCx + avR + 28;
+
+  // Right-side link chip — the whole reason a buyer keeps the poster: it routes
+  // them back to everything else this seller has listed. Drawn as a pill so it
+  // reads as "go here". Strip the scheme for a cleaner, more typeable URL. The
+  // info column below is capped short of the chip so nothing collides.
+  const linkText = sellerPageUrl ? sellerPageUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '') : null;
+  const URL_SIZE = 19, PILL_H = 42, PILL_R = 10;
+  let pillW = 0, pillX = W - P - 24;
+  if (linkText) {
+    pillW = measure(linkText, URL_SIZE, 700) + 32;
+    pillX = W - P - 24 - pillW;
+  }
+  const textRight = linkText ? pillX - 24 : W - P - 30;   // info column right edge
+
   // Bio capped at 2 lines; ellipsis on clip so it reads as intentional.
-  const allBio = sellerBio ? wrap(sellerBio, W - P - 30 - tx, 18) : [];
+  const allBio = sellerBio ? wrap(sellerBio, textRight - tx, 18) : [];
   const bioLines = allBio.slice(0, 2);
   if (allBio.length > 2 && bioLines.length === 2) bioLines[1] = `${bioLines[1].replace(/[\s.,]+$/, '')}…`;
   const cardH = bioLines.length ? 172 : 138;
@@ -356,9 +378,10 @@ const generateQuotationImage = async ({ dealer, salesman, carDetails, calc, fmt 
   let ty = y + 44;
   text('PREPARED BY', tx, ty, { size: 13, weight: 700, color: FAINT });
   ty += 34;
-  text(sellerName, tx, ty, { size: 28, weight: 700 });
+  const nameStr = ellipsize(sellerName, textRight - tx - (sellerVerified ? 30 : 0), 28, 700);
+  text(nameStr, tx, ty, { size: 28, weight: 700 });
   if (sellerVerified) {
-    const bx = tx + measure(sellerName, 28, 700) + 18, by = ty - 9;
+    const bx = tx + measure(nameStr, 28, 700) + 18, by = ty - 9;
     ctx.beginPath(); ctx.arc(bx, by, 10, 0, Math.PI * 2);
     ctx.fillStyle = RED; ctx.fill();
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.4; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
@@ -370,9 +393,16 @@ const generateQuotationImage = async ({ dealer, salesman, carDetails, calc, fmt 
     ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
   }
   ty += 30;
-  const contactLine = [sellerRole, sellerContact].filter(Boolean).join('   ·   ');
+  const contactLine = ellipsize([sellerRole, sellerContact].filter(Boolean).join('   ·   '), textRight - tx, 18);
   if (contactLine) { text(contactLine, tx, ty, { size: 18, color: SUB }); ty += 28; }
   bioLines.forEach((ln, i) => text(ln, tx, ty + i * 24, { size: 18, italic: true, color: BIO }));
+
+  if (linkText) {
+    text('VIEW ALL LISTINGS', pillX + pillW, avCy - 16, { size: 12, weight: 700, color: FAINT, align: 'right' });
+    const pillY = avCy - 4;
+    rrect(pillX, pillY, pillW, PILL_H, PILL_R, '#fdeaea', RED);
+    text(linkText, pillX + pillW / 2, pillY + PILL_H / 2 + 6, { size: URL_SIZE, weight: 700, color: RED, align: 'center' });
+  }
   y += cardH + 40;
 
   // ── The numbers ─────────────────────────────────────────────────────────────
@@ -468,6 +498,9 @@ const FinancingCalculator = ({
   // subdomain. Leave resolveFromSession at its default only for internal tools
   // (dashboard, F&I panel) where the logged-in user IS the preparer.
   dealer = null, salesman = null, resolveFromSession = dealer === null && salesman === null,
+  // Ready-made mini-page URL (salesman /s/slug or dealer subdomain) printed on the
+  // poster's trust card. When null the download handler derives it from the seller.
+  sellerPageUrl = null,
 }) => {
   const { t } = useTranslation();
 
@@ -585,7 +618,7 @@ const FinancingCalculator = ({
         if (user) {
           const { data: myProfile } = await supabase
             .from('profiles')
-            .select('id, role, dealer_id, full_name, phone, dealership, site_name, whatsapp_number, avatar_url, bio, job_title, is_verified')
+            .select('id, role, dealer_id, full_name, phone, dealership, site_name, whatsapp_number, avatar_url, bio, job_title, is_verified, slug, subdomain')
             .eq('id', user.id)
             .maybeSingle();
           if (myProfile) {
@@ -603,9 +636,23 @@ const FinancingCalculator = ({
         }
       }
 
+      // The mini-page link printed on the poster. Prefer an explicit URL from a
+      // caller that already knows the seller (CarDetailPage). Otherwise derive it
+      // from the resolved profiles: a salesman promotes their own /s/slug mini
+      // page, a dealer promotes their <subdomain>.xdrive.my storefront. Mirrors
+      // CarDetailPage's sellerPageUrl and src/utils/sharePack.js buildShareUrl.
+      const resolvedPageUrl = sellerPageUrl || (() => {
+        if (resolvedSalesman?.role === 'salesman' && resolvedSalesman?.slug) return `https://xdrive.my/s/${resolvedSalesman.slug}`;
+        if (resolvedDealer?.subdomain) return `https://${resolvedDealer.subdomain}.xdrive.my`;
+        if (resolvedDealer?.slug) return `https://xdrive.my/s/${resolvedDealer.slug}`;
+        if (resolvedSalesman?.slug) return `https://xdrive.my/s/${resolvedSalesman.slug}`;
+        return null;
+      })();
+
       await generateQuotationImage({
         dealer: resolvedDealer,
         salesman: resolvedSalesman,
+        sellerPageUrl: resolvedPageUrl,
         carDetails: {
           name:  carName  || `${carYear ? carYear + ' ' : ''}Vehicle`,
           year:  carYear,

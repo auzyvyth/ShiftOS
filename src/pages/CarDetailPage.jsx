@@ -3629,6 +3629,7 @@ export default function CarDetailPage() {
                   light={isXdrive}
                   dealer={dealer}
                   salesman={salesmanProfile}
+                  sellerPageUrl={sellerPageUrl}
                   resolveFromSession={false}
                 />
               </div>
