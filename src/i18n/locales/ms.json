@@ -316,6 +316,8 @@
     },
     "dash": {
       "newUser": "Tambah kereta pertama anda untuk mula bina portfolio.",
+      "welcomeBack_other": "Selamat kembali! {{count}} lead sedia untuk disambung semula.",
+      "welcomeBackClear": "Selamat kembali! Pipeline anda kemas — masa sesuai untuk hubungi pembeli lama.",
       "stale_other": "{{count}} lead menunggu follow-up — jangan biar yang panas jadi sejuk.",
       "today_other": "Anda ada {{count}} temujanji hari ini. Jadikan ia berbaloi.",
       "motion_other": "{{count}} deal sedang berjalan sekarang.",
@@ -371,6 +373,17 @@
       "bestToPush": "Terbaik untuk push",
       "unpin": "Nyahsemat",
       "pin": "Semat"
+    },
+    "win": {
+      "dealTitle": "Deal berjaya!",
+      "dealSubtitleGeneric": "Satu lagi berjaya.",
+      "goalTitle": "Sasaran tercapai!",
+      "goalSubtitle": "Anda capai sasaran komisen bulanan.",
+      "shareCta": "Kongsi kejayaan",
+      "shareDealCaption": "Baru berjaya jual satu lagi — tengok kereta lain saya",
+      "shareGoalCaption": "Capai sasaran jualan bulan ini — tengok kereta saya",
+      "notNow": "Tidak sekarang",
+      "close": "Tutup"
     },
     "checklist": {
       "intro": "Ini cara untuk buat jualan pertama anda:",
