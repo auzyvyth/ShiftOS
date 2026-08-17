@@ -40,6 +40,7 @@ import {
 import HeartButton from "../components/HeartButton";
 import { useCompare } from "../hooks/useCompare";
 import { getCategoryCfg } from "../utils/serviceCategories";
+import { getChassisCode } from "../utils/chassisCodes";
 import DamageMap from "../components/DamageMap";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { supabase } from "../supabaseClient";
@@ -1340,13 +1341,16 @@ export default function CarDetailPage() {
   const prevIdx = (activeIdx - 1 + imgCount) % imgCount;
   const nextIdx = (activeIdx + 1) % imgCount;
   const siteName = dealer?.site_name || dealer?.dealership || "XDrive";
+  // Chassis/generation code (e.g. "G82") so buyers searching "m4 g82" match us.
+  const chassis = car ? getChassisCode(car.brand, car.model, car.year, car.variant) : null;
+  const chassisSuffix = chassis ? ` (${chassis})` : "";
 
   return (
     <>
       <Helmet>
         <title>
           {car
-            ? `${car.year} ${car.brand} ${car.model} for sale in Malaysia | ${siteName}`
+            ? `${car.year} ${car.brand} ${car.model}${chassisSuffix} for sale in Malaysia | ${siteName}`
             : `Car Listing | ${siteName}`}
         </title>
         <meta
@@ -1355,7 +1359,7 @@ export default function CarDetailPage() {
         />
         {(() => {
           const desc = car
-            ? `${car.year} ${car.brand} ${car.model}${car.variant ? ` ${car.variant}` : ""} for sale${car.state ? ` in ${car.state}` : ' in Malaysia'}. RM ${Number(car.selling_price).toLocaleString("en-MY")}. ${car.mileage ? `${Number(car.mileage).toLocaleString("en-MY")}km` : ""}${car.transmission ? `, ${car.transmission}` : ""}${car.fuel_type ? `, ${car.fuel_type}` : ""}. Verified dealer on XDrive.`
+            ? `${car.year} ${car.brand} ${car.model}${car.variant ? ` ${car.variant}` : ""}${chassisSuffix} for sale${car.state ? ` in ${car.state}` : ' in Malaysia'}. RM ${Number(car.selling_price).toLocaleString("en-MY")}. ${car.mileage ? `${Number(car.mileage).toLocaleString("en-MY")}km` : ""}${car.transmission ? `, ${car.transmission}` : ""}${car.fuel_type ? `, ${car.fuel_type}` : ""}. Verified dealer on XDrive.`
             : "";
           const origin = typeof window !== 'undefined' ? window.location.origin : 'https://xdrive.my';
           const img = car?.images?.[0] || `${origin}/og-default.jpg`;

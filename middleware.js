@@ -56,8 +56,14 @@ export default async function middleware(req) {
   if (!limiters) limiters = buildLimiters();
   if (!limiters) return; // Upstash not configured — pass through
 
+  // Rate-limit key = the client IP. Prefer x-real-ip, which Vercel's edge sets to
+  // the true connecting IP; the FIRST token of x-forwarded-for is client-supplied,
+  // so keying on it alone let an attacker rotate a spoofed value to slip the
+  // throttle. Fall back to XFF (then localhost) only when x-real-ip is absent.
   const ip =
-    req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? '127.0.0.1';
+    req.headers.get('x-real-ip')?.trim() ||
+    req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+    '127.0.0.1';
 
   const { success, limit, remaining, reset } = await limiters[pathname].limit(ip);
 

@@ -5,6 +5,8 @@
 // crawlers discover sublinks), (3) static content pages (/shiftos, articles,
 // etc.) with route-specific meta + schema mirroring the SPA's Helmet.
 
+import { getChassisCode } from "../src/utils/chassisCodes.js";
+
 export const config = { runtime: "edge" };
 
 const SITE_URL = "https://xdrive.my";
@@ -172,8 +174,9 @@ function carFeatures(car) {
 }
 
 // ── Car detail ────────────────────────────────────────────────────────────────
-function buildCarSchema(car, dealer, canonicalUrl, feats = []) {
-  const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
+function buildCarSchema(car, dealer, canonicalUrl, feats = [], code = null) {
+  const baseName = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
+  const name = code ? `${baseName} (${code})` : baseName;
   const dealerUrl = dealer?.subdomain ? `https://${dealer.subdomain}.${ROOT_DOMAIN}` : SITE_URL;
   return JSON.parse(JSON.stringify({
     "@context": "https://schema.org",
@@ -218,7 +221,11 @@ function buildCarSchema(car, dealer, canonicalUrl, feats = []) {
 }
 
 function buildCarHtml(car, dealer, canonical, baseUrl, carBase) {
-  const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
+  const baseName = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
+  // Chassis/generation code (e.g. "G82") — enthusiasts search "m4 g82"; surfacing
+  // it in the title/H1/description is what lets Google match those queries to us.
+  const chassis = getChassisCode(car.brand, car.model, car.year, car.variant);
+  const name = chassis ? `${baseName} (${chassis})` : baseName;
   const priceFormatted = `RM ${Number(car.selling_price).toLocaleString("en-MY")}`;
   const image = car.images?.[0] ?? `${SITE_URL}/og-default.jpg`;
   const location = [car.city, car.state].filter(Boolean).join(", ") || "Malaysia";
@@ -264,7 +271,7 @@ function buildCarHtml(car, dealer, canonical, baseUrl, carBase) {
     title: `${name} — ${priceFormatted} | xdrive.my`,
     description: `${name} for ${priceFormatted}. ${specs}.${feats.length ? ` Features: ${feats.slice(0, 6).join(", ")}.` : ""} Located in ${location}. Browse on xdrive.my.`,
     canonical, image,
-    jsonLd: [buildCarSchema(car, dealer, canonical, feats)],
+    jsonLd: [buildCarSchema(car, dealer, canonical, feats, chassis)],
     body,
   });
 }
@@ -671,10 +678,12 @@ export default async function handler(req) {
   const salesmanMatch = pathname.match(/^\/s\/([^/]+)$/);
   if (salesmanMatch) {
     const s = await getSalesmanData(decodeURIComponent(salesmanMatch[1]));
-    if (s) {
-      const cars = await getRecentListings(s.id, 48);
-      return html(buildSalesmanHtml(s, cars, `${baseUrl}${pathname}`, baseUrl));
-    }
+    // Unknown / deleted agent slug → a real 404, NOT the generic fallback page.
+    // Returning 200 for a non-existent /s/<slug> makes Google flag it "Soft 404".
+    // Same hard-404 contract as the car-detail branch above.
+    if (!s) return new Response("Not found", { status: 404 });
+    const cars = await getRecentListings(s.id, 48);
+    return html(buildSalesmanHtml(s, cars, `${baseUrl}${pathname}`, baseUrl));
   }
 
   // 5. Fallback (unknown / dealer slug landing) — unique-ish, indexable.

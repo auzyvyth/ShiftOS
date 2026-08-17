@@ -11,6 +11,7 @@ import StickyWhatsAppButton from '../components/StickyWhatsAppButton';
 import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
 import { trackEvent } from '../utils/analytics';
+import { chassisSearch } from '../utils/chassisCodes';
 import { useMarketplaceTracking } from '../hooks/useMarketplaceTracking';
 import useTenant, { isSubdomain } from '../hooks/useTenant';
 import { PRICE_STEPS } from '../components/PriceDrumPicker';
@@ -497,8 +498,22 @@ export default function CarListingPage() {
 
       if (q) {
         q.trim().split(/\s+/).filter(Boolean).slice(0,6).forEach(t => {
-          const s = t.replace(/[%_\\]/g,'');
-          if (s) query = query.or(`brand.ilike.%${s}%,model.ilike.%${s}%,variant.ilike.%${s}%`);
+          // Strip LIKE wildcards (% _ \) AND PostgREST filter delimiters ( , ( ) )
+          // so a search token can't corrupt the .or() filter tree below.
+          const s = t.replace(/[%_\\(),]/g,'');
+          if (!s) return;
+          // Search name + free-text spec fields so feature queries ("bucket
+          // seats", "sunroof") match, plus chassis-code expansion ("g82" → M4).
+          const parts = [
+            `brand.ilike.%${s}%`, `model.ilike.%${s}%`, `variant.ilike.%${s}%`,
+            `options.ilike.%${s}%`, `features.ilike.%${s}%`, `specs.ilike.%${s}%`,
+          ];
+          const cc = chassisSearch(s);
+          if (cc) {
+            const ors = cc.models.flatMap(m => [`model.ilike.%${m}%`, `variant.ilike.%${m}%`]);
+            parts.push(`and(brand.ilike.%${cc.brand}%,or(${ors.join(',')}))`);
+          }
+          query = query.or(parts.join(','));
         });
       }
       if (brand)        query = query.eq('brand', brand);

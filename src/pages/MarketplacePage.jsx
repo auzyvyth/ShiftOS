@@ -11,6 +11,7 @@ import GoogleOneTapSlot from '../components/GoogleOneTapSlot';
 import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
 import { trackEvent } from '../utils/analytics';
+import { chassisSearch } from '../utils/chassisCodes';
 import { readCache, writeCache, precacheImages } from '../utils/localCache';
 import { PRICE_STEPS } from '../components/PriceDrumPicker';
 import SearchAutocomplete from '../components/SearchAutocomplete';
@@ -195,8 +196,26 @@ export default function MarketplacePage() {
       if (q) {
         const tokens = q.trim().split(/\s+/).filter(Boolean).slice(0, 6);
         tokens.forEach(t => {
-          const s = t.replace(/[%_\\]/g, '');
-          if (s) query = query.or(`brand.ilike.%${s}%,model.ilike.%${s}%,variant.ilike.%${s}%`);
+          // Strip LIKE wildcards (% _ \) AND PostgREST filter delimiters ( , ( ) )
+          // so a search token can't corrupt the .or() filter tree below.
+          const s = t.replace(/[%_\\(),]/g, '');
+          if (!s) return;
+          // Match the token across name AND the free-text spec fields, so buyers
+          // can search by feature ("bucket seats", "sunroof", "carbon pack") not
+          // just brand/model/variant — the columns already hold this data.
+          const parts = [
+            `brand.ilike.%${s}%`, `model.ilike.%${s}%`, `variant.ilike.%${s}%`,
+            `options.ilike.%${s}%`, `features.ilike.%${s}%`, `specs.ilike.%${s}%`,
+          ];
+          // If the token is a known chassis code (e.g. "g82"), also match the
+          // brand+model it denotes — we don't store the code, so this expands the
+          // query to the actual cars. and(...) keeps it precise (BMW AND an M4).
+          const cc = chassisSearch(s);
+          if (cc) {
+            const ors = cc.models.flatMap(m => [`model.ilike.%${m}%`, `variant.ilike.%${m}%`]);
+            parts.push(`and(brand.ilike.%${cc.brand}%,or(${ors.join(',')}))`);
+          }
+          query = query.or(parts.join(','));
         });
       }
       if (brand)        query = query.eq('brand', brand);
