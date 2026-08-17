@@ -12,6 +12,7 @@ import { compressImageFile } from "../utils/compressImage";
 import CarForm, { buildCopyText } from "../components/CarForm";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { getCategoryCfg } from "../utils/serviceCategories";
+import ServicesAddonsTab from "../components/salesman/ServicesAddonsTab";
 import SalesmanLiteHelp from "../components/SalesmanLiteHelp";
 import ChannelBreakdown from "../components/ChannelBreakdown";
 import ShareMenu from "../components/ShareMenu";
@@ -71,6 +72,7 @@ import {
   Voicemail,
   CheckCircle,
   BookOpen,
+  Package,
   Camera,
   ThumbsUp,
   ThumbsDown,
@@ -2377,6 +2379,11 @@ export default function SalesmanLite() {
       icon: <BarChart2 style={{ width: 14, height: 14 }} />,
     },
     {
+      tab: "services",
+      label: t("salesmanLite.tabs.services", { defaultValue: "Services" }),
+      icon: <Package style={{ width: 14, height: 14 }} />,
+    },
+    {
       tab: "settings",
       label: t("salesmanLite.tabs.settings"),
       icon: <Settings style={{ width: 14, height: 14 }} />,
@@ -2409,6 +2416,7 @@ export default function SalesmanLite() {
       badge: (enquiries.filter((e) => e.status === "new").length + pendingBookingsCount) || null,
     },
     { tab: "performance", label: t("salesmanLite.tabs.performanceMobile"), icon: <BarChart2 size={18} /> },
+    { tab: "services", label: t("salesmanLite.tabs.services", { defaultValue: "Services" }), icon: <Package size={18} /> },
     { tab: "settings", label: t("salesmanLite.tabs.settings"), icon: <Settings size={18} /> },
     { tab: "help", label: t("salesmanLite.tabs.help"), icon: <BookOpen size={18} /> },
   ];
@@ -8787,6 +8795,9 @@ export default function SalesmanLite() {
               {inboxSubTab === "enquiries" ? renderEnquiries() : renderBookings()}
             </div>
           ))}
+          {activeTab === "services" && (
+            <ServicesAddonsTab dealerId={getDealerIdFromProfile(profile)} />
+          )}
           {activeTab === "settings" && renderSettings()}
           {activeTab === "help" && <SalesmanLiteHelp />}
         </div>
