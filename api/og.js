@@ -678,10 +678,12 @@ export default async function handler(req) {
   const salesmanMatch = pathname.match(/^\/s\/([^/]+)$/);
   if (salesmanMatch) {
     const s = await getSalesmanData(decodeURIComponent(salesmanMatch[1]));
-    if (s) {
-      const cars = await getRecentListings(s.id, 48);
-      return html(buildSalesmanHtml(s, cars, `${baseUrl}${pathname}`, baseUrl));
-    }
+    // Unknown / deleted agent slug → a real 404, NOT the generic fallback page.
+    // Returning 200 for a non-existent /s/<slug> makes Google flag it "Soft 404".
+    // Same hard-404 contract as the car-detail branch above.
+    if (!s) return new Response("Not found", { status: 404 });
+    const cars = await getRecentListings(s.id, 48);
+    return html(buildSalesmanHtml(s, cars, `${baseUrl}${pathname}`, baseUrl));
   }
 
   // 5. Fallback (unknown / dealer slug landing) — unique-ish, indexable.
