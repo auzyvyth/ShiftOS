@@ -3014,7 +3014,7 @@ export default function SalesmanLite() {
                 }}
                 style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 99, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.18)", flexShrink: 0, cursor: "pointer", fontFamily: "inherit" }}
               >
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", flexShrink: 0 }} />
+                <Bell size={11} color="#ef4444" strokeWidth={2.5} />
                 <span style={{ fontSize: 11, fontWeight: 600, color: "#ef4444" }}>{staleLeads.length} {t("salesmanLite.kpi.overdue")}</span>
               </button>
             )}
@@ -3104,7 +3104,9 @@ export default function SalesmanLite() {
           <div style={CARD}>
             <div style={CARD_HEADER}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444" }} />
+                <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 6, background: "rgba(239,68,68,0.12)", color: "#ef4444", flexShrink: 0 }}>
+                  <Bell size={12} strokeWidth={2.5} />
+                </span>
                 <span>{t("salesmanLite.dash.followUpNeeded")}</span>
                 <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 18, height: 18, borderRadius: 99, background: "rgba(239,68,68,0.15)", color: "#ef4444", fontSize: 10, fontWeight: 800, padding: "0 5px" }}>{staleLeads.length}</span>
               </div>
@@ -3174,7 +3176,9 @@ export default function SalesmanLite() {
                   with the actual date so a last-week slot never reads as "today". */}
               {missedAppts.map((a) => (
                 <div key={a.id} onClick={() => goToLeadForAppt(a)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
-                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ef4444", flexShrink: 0, boxShadow: "0 0 0 3px rgba(239,68,68,0.15)" }} />
+                  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: 7, background: "rgba(239,68,68,0.12)", color: "#ef4444", flexShrink: 0 }}>
+                    <History size={13} strokeWidth={2.5} />
+                  </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.buyer_name || "—"}</p>
                     <p style={{ margin: 0, fontSize: 11, color: "#f87171" }}>{t("salesmanLite.dash.missedAppt", { defaultValue: "Missed appointment" })}{a.car_listings ? ` · ${a.car_listings.brand} ${a.car_listings.model}` : ""}</p>
@@ -3185,7 +3189,9 @@ export default function SalesmanLite() {
               {/* Today's appointments */}
               {agendaAppts.map((a) => (
                 <div key={a.id} onClick={() => goToLeadForAppt(a)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
-                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#3b82f6", flexShrink: 0, boxShadow: "0 0 0 3px rgba(59,130,246,0.15)" }} />
+                  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: 7, background: "rgba(59,130,246,0.12)", color: "#3b82f6", flexShrink: 0 }}>
+                    <Calendar size={13} strokeWidth={2.5} />
+                  </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.buyer_name || "—"}</p>
                     <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{t("salesmanLite.dash.testDrive")}{a.car_listings ? ` · ${a.car_listings.brand} ${a.car_listings.model}` : ""}</p>
@@ -3196,7 +3202,9 @@ export default function SalesmanLite() {
               {/* Today's scheduled follow-ups */}
               {agendaFollowUps.map((l) => (
                 <div key={l.id} onClick={() => { setActiveTab("leads"); setMobileLeadStage(l.stage); triggerGlow([l.id]); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
-                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#eab308", flexShrink: 0, boxShadow: "0 0 0 3px rgba(234,179,8,0.15)" }} />
+                  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: 7, background: "rgba(234,179,8,0.12)", color: "#eab308", flexShrink: 0 }}>
+                    <Clock size={13} strokeWidth={2.5} />
+                  </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.buyer_name || "—"}</p>
                     <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{t("salesmanLite.dash.scheduledFollowUp")} · {l.car_listings ? `${l.car_listings.brand} ${l.car_listings.model}` : t("salesmanLite.dash.noCar")}</p>
@@ -3268,14 +3276,16 @@ export default function SalesmanLite() {
         {/* ── KPI strip — separated stat tiles (spans full grid width, top) ── */}
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: 10, order: -2, gridColumn: "1 / -1" }}>
           {[
-            { label: t("salesmanLite.kpi.pipeline"), value: activeLeads.length, accent: "#3b82f6" },
-            { label: t("salesmanLite.kpi.liveListings"), value: myListings.filter(c => c.status === "available").length, accent: "#22c55e" },
-            { label: t("salesmanLite.kpi.followUps"), value: staleLeads.length, accent: staleLeads.length > 0 ? "#ef4444" : "#475569" },
-            { label: t("salesmanLite.kpi.todayAppts"), value: todayAppts, accent: "#3b82f6" },
-            { label: t("salesmanLite.kpi.closed"), value: closedThisMonth.length, accent: "#22c55e" },
-          ].map(({ label, value, accent }) => (
+            { label: t("salesmanLite.kpi.pipeline"), value: activeLeads.length, accent: "#3b82f6", Icon: Users },
+            { label: t("salesmanLite.kpi.liveListings"), value: myListings.filter(c => c.status === "available").length, accent: "#22c55e", Icon: Car },
+            { label: t("salesmanLite.kpi.followUps"), value: staleLeads.length, accent: staleLeads.length > 0 ? "#ef4444" : "#475569", Icon: Bell },
+            { label: t("salesmanLite.kpi.todayAppts"), value: todayAppts, accent: "#3b82f6", Icon: Calendar },
+            { label: t("salesmanLite.kpi.closed"), value: closedThisMonth.length, accent: "#22c55e", Icon: CheckCircle },
+          ].map(({ label, value, accent, Icon }) => (
             <div key={label} style={{ ...CARD, padding: "14px 14px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: accent, boxShadow: `0 0 0 3px ${accent}22` }} />
+              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 6, background: `${accent}1a`, color: accent }}>
+                <Icon size={13} strokeWidth={2.5} />
+              </span>
               <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.03em", lineHeight: 1 }}>{value}</p>
               <p style={{ margin: 0, fontSize: 9.5, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</p>
             </div>
