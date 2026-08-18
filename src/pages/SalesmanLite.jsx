@@ -3036,7 +3036,7 @@ export default function SalesmanLite() {
                   </div>
                 ))}
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 5, marginLeft: "auto", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", animation: "live-glow 2s ease-in-out infinite" }} />
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e" }} />
                   {t("salesmanLite.dash.days30")}
                 </span>
               </div>
@@ -3984,7 +3984,7 @@ export default function SalesmanLite() {
         {/* Store exposure bar */}
         {!showAddForm && profile?.slug && myListings.filter(c => c.status === "available").length > 0 && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 12px", padding: "7px 12px", borderRadius: 8, background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.13)" }}>
-            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#10b981", flexShrink: 0, animation: "pulse-green 2s ease-in-out infinite" }} />
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#10b981", flexShrink: 0 }} />
             <span style={{ fontSize: 10, color: "#6b7280", flex: 1 }}>
               Your listings are <strong style={{ color: "#10b981" }}>live on XDrive</strong> — buyers can find you at xdrive.my/s/{profile.slug}
             </span>
@@ -4325,7 +4325,7 @@ export default function SalesmanLite() {
                   {/* Live on XDrive bar — only for available listings */}
                   {!isSold && !isReserved && !isPending && !isRejected && (
                     <div style={{ background: "rgba(16,185,129,0.05)", borderBottom: "1px solid rgba(16,185,129,0.13)", padding: "4px 14px", display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#10b981", flexShrink: 0, animation: "pulse-green 2s ease-in-out infinite" }} />
+                      <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#10b981", flexShrink: 0 }} />
                       <span style={{ fontSize: 9, fontWeight: 700, color: "#10b981", letterSpacing: "0.1em", textTransform: "uppercase" }}>Live on XDrive</span>
                       <span style={{ marginLeft: "auto", fontSize: 9, color: "#374151" }}>{views > 0 ? `${views} view${views !== 1 ? "s" : ""}` : "accepting buyers"}</span>
                     </div>
@@ -6466,7 +6466,7 @@ export default function SalesmanLite() {
               )}
               {/* Message — always show when expanded or new */}
               {(isNew || isExpanded) && enq.buyer_message && (
-                <div style={{ margin: "4px 0 8px", padding: "8px 11px", background: "rgba(255,255,255,0.05)", borderLeft: "3px solid rgba(96,165,250,0.5)", borderRadius: "0 6px 6px 0" }}>
+                <div style={{ margin: "4px 0 8px", padding: "8px 11px", background: "rgba(255,255,255,0.05)", borderRadius: 6 }}>
                   <p style={{ margin: 0, fontSize: 13, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {enq.buyer_message}
                   </p>
@@ -8518,8 +8518,6 @@ export default function SalesmanLite() {
       </Helmet>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
-        @keyframes pulse-green{ 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.45;transform:scale(0.8)} }
-        @keyframes live-glow{ 0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.4)} 50%{box-shadow:0 0 0 5px rgba(16,185,129,0)} }
         @keyframes slite-nudge-reveal{ from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
         .slite-nudge-reveal{ animation: slite-nudge-reveal 0.2s ease; }
       `}</style>
