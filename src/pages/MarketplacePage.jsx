@@ -593,11 +593,11 @@ export default function MarketplacePage() {
         <meta property="og:site_name"   content="XDrive" />
         <meta property="og:title"       content={pageTitle} />
         <meta property="og:description" content={pageDesc} />
-        <meta property="og:image"       content="https://xdrive.my/og-marketplace.jpg" />
+        <meta property="og:image"       content="https://xdrive.my/og-default.jpg" />
         <meta name="twitter:card"        content="summary_large_image" />
         <meta name="twitter:title"       content={pageTitle} />
         <meta name="twitter:description" content={pageDesc} />
-        <meta name="twitter:image"       content="https://xdrive.my/og-marketplace.jpg" />
+        <meta name="twitter:image"       content="https://xdrive.my/og-default.jpg" />
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",
           "@type": "WebSite",
