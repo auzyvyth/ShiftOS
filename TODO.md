@@ -69,6 +69,13 @@
 
 ---
 
+### SESSION 2026-08-18 — Salesman Lite design cleanup
+
+- **DESIGN-1: Replace Salesman Lite logo** — current logo needs a redesign/replacement.
+  Not started; need the new logo asset/direction from the owner before implementing.
+
+---
+
 ### SESSION 2026-08-16 — found while building the Buyers tab (not fixed, out of scope)
 
 - **BUY-A: two session-id implementations disagree** — `src/utils/analytics.js:4` stores

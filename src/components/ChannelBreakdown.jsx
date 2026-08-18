@@ -1,5 +1,25 @@
 import React from "react";
+import { MessageCircle, Users, Camera, Music2, Send, AtSign, Search, Copy, Globe, BookOpen } from "lucide-react";
 import { channelMeta } from "../utils/detectChannel";
+
+// Icon per traffic source — swapped in for the old plain colour dot so each
+// row reads at a glance instead of relying on a decorative glowing bullet.
+const CHANNEL_ICONS = {
+  whatsapp: MessageCircle,
+  messenger: MessageCircle,
+  facebook: Users,
+  instagram: Camera,
+  tiktok: Music2,
+  telegram: Send,
+  twitter: AtSign,
+  line: MessageCircle,
+  wechat: MessageCircle,
+  snapchat: Camera,
+  xiaohongshu: BookOpen,
+  google: Search,
+  copy: Copy,
+  direct: Globe,
+};
 
 // Renders "where did this traffic come from" as a ranked set of platform bars.
 // Fed pre-aggregated rows [{ channel, views, enquiries }] — either summed across
@@ -52,6 +72,7 @@ export default function ChannelBreakdown({
         <div style={{ display: "flex", flexDirection: "column", gap: compact ? 8 : 10 }}>
           {list.map((r) => {
             const meta = channelMeta(r.channel);
+            const Icon = CHANNEL_ICONS[r.channel] || Globe;
             const pct = Math.max(4, Math.round(((r[metric] || 0) / max) * 100));
             return (
               <div key={r.channel} style={{ minWidth: 0 }}>
@@ -77,14 +98,19 @@ export default function ChannelBreakdown({
                   >
                     <span
                       style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        background: meta.color,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: 18,
+                        height: 18,
+                        borderRadius: 5,
+                        background: `${meta.color}1a`,
+                        color: meta.color,
                         flexShrink: 0,
-                        boxShadow: `0 0 0 2px ${meta.color}22`,
                       }}
-                    />
+                    >
+                      <Icon size={11} strokeWidth={2.5} />
+                    </span>
                     <span
                       style={{
                         overflow: "hidden",
