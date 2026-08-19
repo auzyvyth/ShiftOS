@@ -10,6 +10,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import CompareBar from "./components/CompareBar";
 import ConsentBanner from "./components/ConsentBanner";
 import InstallPrompt from "./components/InstallPrompt";
+import OfflineBanner from "./components/OfflineBanner";
 import { isSubdomain } from "./hooks/useTenant";
 import { useIdleLogout } from "./hooks/useIdleLogout";
 import "./i18n/config";
@@ -133,6 +134,7 @@ function App() {
       <CompareBarGate />
       <ConsentBanner />
       <InstallPrompt />
+      <OfflineBanner />
       <Suspense fallback={null}>
         <SentryRoutes>
           {/* Public — XDrive */}

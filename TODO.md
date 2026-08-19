@@ -705,15 +705,19 @@ native build.
   lint + build clean, precache still excludes `index.html`/`index-*.js` (stale-SW
   guard intact), 375px screenshot, entry bundle +0.75 kB gzip with the card split into
   its own lazy chunk.
-- [ ] **PWA-2: offline fallback page.** Split out of PWA-1 deliberately — it is the one
-  piece that touches service-worker CONFIG, which has burned this repo before. Do NOT
-  reach for workbox `navigateFallback`: it serves the cached shell on every navigation
-  miss, which is exactly the stale-`index.html` trap the comments in `vite.config.js`
-  describe. The safe shape is a `runtimeCaching` entry matching
+- [x] **PWA-2: offline fallback page — DONE.** `runtimeCaching` entry matching
   `request.mode === 'navigate'` with handler `NetworkOnly` plus a `handlerDidError`
-  plugin returning a precached, never-changing `/offline.html`. That keeps index.html
-  network-fresh and only substitutes the fallback when the network genuinely fails.
-  Give it its own tested pass.
+  plugin returning `caches.match('/offline.html')` (`vite.config.js`), precached via
+  `additionalManifestEntries` with revision pinned to `pkg.version`. index.html stays
+  network-fresh; only a genuine network failure on a real navigation gets the fallback.
+  Verified in a real build: `/offline.html` shows up in the generated precache list and
+  the navigate route registers exactly as intended; the stale-`index.html` guard
+  (globIgnores) is untouched. Also added `OfflineBanner` (mounted in `App.jsx`,
+  `src/components/OfflineBanner.jsx`) for the more common case this alone doesn't
+  cover — losing connectivity mid-session inside the SPA, where no navigation ever
+  happens so the service-worker fallback never triggers. It listens for
+  `online`/`offline` and shows/auto-hides a small top toast; no dismiss button, it
+  disappears on its own once `navigator.onLine` flips back.
 - [ ] **PWA-3: icon does not match brand (design decision needed).** `pwa-512x512.png`
   is the logo on a WHITE background, but the manifest declares
   `theme_color`/`background_color: #080C14`, so the Android splash renders a white

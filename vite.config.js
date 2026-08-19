@@ -113,6 +113,30 @@ export default defineConfig({
 					'**/vendor-xlsx*', '**/html2canvas*', '**/pdf.worker*',
 				],
 				maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+				// PWA-2: offline fallback. Deliberately NOT navigateFallback (see the
+				// comment on that key above) — this only substitutes offline.html when
+				// a navigation genuinely fails, and never touches index.html's
+				// network-fresh behaviour otherwise.
+				runtimeCaching: [
+					{
+						urlPattern: ({ request }) => request.mode === 'navigate',
+						handler: 'NetworkOnly',
+						options: {
+							plugins: [{
+								handlerDidError: async () => caches.match('/offline.html'),
+							}],
+						},
+					},
+				],
+				// offline.html has to be in the precache from the very first SW
+				// install, not fetched on demand — by definition it's only ever
+				// needed once the network has already failed. Revision is tied to
+				// the app version (bumped by `npm version`, same as __APP_VERSION__
+				// above) so editing the page invalidates the cached copy on the next
+				// release instead of needing a manual revision bump.
+				additionalManifestEntries: [
+					{ url: '/offline.html', revision: pkg.version },
+				],
 			},
 		}),
 	],
