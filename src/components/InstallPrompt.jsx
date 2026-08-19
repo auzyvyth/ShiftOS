@@ -7,6 +7,7 @@ import {
   isIOSSafari,
   isInstallPromptSnoozed,
   isStandalone,
+  logPwaInstallIfStandalone,
   showInstallDialog,
   snoozeInstallPrompt,
   subscribeInstallPrompt,
@@ -58,6 +59,15 @@ export default function InstallPrompt() {
 
   const onAppRoute = matchesPathPrefix(pathname, APP_PREFIXES);
   const mode = deferred ? 'native' : (iosSafari ? 'ios' : null);
+
+  // Credits an install the first time this device is seen running standalone
+  // on an app route — the only signal iOS gives us (see installPrompt.js).
+  // Gated to app routes so a buyer who somehow installed from the marketplace
+  // doesn't get counted in what this metric is meant to represent (operator
+  // adoption), matching the scoping rationale above.
+  useEffect(() => {
+    if (onAppRoute) logPwaInstallIfStandalone();
+  }, [onAppRoute]);
 
   useEffect(() => {
     if (!eligible || !onAppRoute || !mode) { setVisible(false); return undefined; }
