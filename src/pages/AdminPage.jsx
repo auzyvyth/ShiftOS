@@ -10,6 +10,7 @@ import { invalidateMarketplaceSettingsCache, MARKETPLACE_FALLBACK } from "../hoo
 import { PLAN_CONFIG } from "../utils/planConfig";
 import FunnelTab from "../components/platform/FunnelTab";
 import EngagementTab from "../components/platform/EngagementTab";
+import UserApprovalsTab from "../components/platform/UserApprovalsTab";
 import BuyersTab from "../components/platform/BuyersTab";
 import ErrorsTab from "../components/platform/ErrorsTab";
 import BroadcastTab from "../components/platform/BroadcastTab";
@@ -179,6 +180,7 @@ export default function AdminPage() {
   const [waitlist, setWaitlist] = useState([]);
   const [waitlistSearch, setWaitlistSearch] = useState("");
   const [pendingListings, setPendingListings] = useState([]);
+  const [pendingUsersCount, setPendingUsersCount] = useState(0);
   const [rejectingId, setRejectingId] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
   const [approvalActioning, setApprovalActioning] = useState(null);
@@ -414,6 +416,10 @@ export default function AdminPage() {
         _sharedPhoneAccounts: shared > 1 ? shared : 0,
       };
     }));
+
+    // Badge count for the identity-approval queue (self-signup sellers pending
+    // review). Cheap superadmin RPC; the Verify tab loads the full rows itself.
+    supabase.rpc("get_pending_approvals").then(({ data }) => setPendingUsersCount((data || []).length));
   }
 
   async function saveField(id, field, value) {
@@ -576,6 +582,7 @@ export default function AdminPage() {
   const TABS = [
     { id: "dealers",  label: `Dealers (${stats.total})` },
     { id: "salesman", label: `Salesmen (${salesmen.length})` },
+    { id: "verify", label: "Verify", badge: pendingUsersCount },
     { id: "approvals", label: "Approvals", badge: pendingListings.length },
     { id: "waitlist", label: `Waitlist (${waitlist.length})` },
     { id: "platform",    label: "Platform Stats" },
@@ -920,6 +927,9 @@ export default function AdminPage() {
         <div className="adm-content" style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 28px 80px" }}>
           {loading ? (
             <div style={{ textAlign: "center", padding: 80, color: "#4b5563" }}>Loading…</div>
+          ) : activeTab === "verify" ? (
+            /* ── USER APPROVALS (identity/KYC) TAB ── */
+            <UserApprovalsTab />
           ) : activeTab === "approvals" ? (
             /* ── APPROVALS TAB ── */
             <div>

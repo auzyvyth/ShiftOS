@@ -67,6 +67,7 @@ import UpgradeBanner from "../components/ai/UpgradeBanner";
 import AiLoadingState from "../components/ai/AiLoadingState";
 import AiQuotaBadge from "../components/ai/AiQuotaBadge";
 import PushToggle from "../components/PushToggle";
+import PendingApproval from "../components/PendingApproval";
 
 function useWindowSize() {
  const [w, setW] = useState(window.innerWidth);
@@ -6243,6 +6244,12 @@ export default function SalesmanPremium() {
  <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
  </div>
  );
+ }
+
+ // Identity gate — before payment. Self-signup premium salesman still pending or
+ // rejected review must upload their IC docs / wait before reaching the panel.
+ if (profile && profile.approval_status && profile.approval_status !== "approved") {
+ return <PendingApproval profile={profile} redirectTo="/salesman-premium" />;
  }
 
  // Payment gate — premium salesman awaiting payment confirmation (manual QR flow).

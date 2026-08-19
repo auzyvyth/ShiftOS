@@ -80,6 +80,7 @@ import {
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import AvailabilityEditor from "../components/AvailabilityEditor";
+import PendingApproval from "../components/PendingApproval";
 
 // Price visual weight — a RM45k car and a RM2.4M car shouldn't read at the
 // same size/color; scale the price figure up for higher tiers so the card
@@ -1250,7 +1251,7 @@ export default function SalesmanLite() {
 
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, location, ic_hash, ic_verified_at, ic_deadline, created_at, account_status, deleted_at, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
+        .select("id, email, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, location, ic_hash, ic_last4, ic_verified_at, ic_deadline, created_at, account_status, approval_status, rejection_reason, kyc_submitted_at, deleted_at, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
         .eq("id", uid)
         .maybeSingle();
 
@@ -8454,7 +8455,15 @@ export default function SalesmanLite() {
     );
   }
 
-  // ── PENDING APPROVAL GATE ─────────────────────────────────────────────────
+  // ── IDENTITY APPROVAL GATE ────────────────────────────────────────────────
+  // Self-signup salesman whose account is still pending/rejected review. Free
+  // (Lite) submits just the IC number captured at onboarding; the gate handles
+  // the waiting + resubmit states and forwards on approval.
+  if (profile && profile.approval_status && profile.approval_status !== "approved") {
+    return <PendingApproval profile={profile} redirectTo="/salesman-lite" />;
+  }
+
+  // ── LEGACY PENDING GATE (account_status) ──────────────────────────────────
   if (profile?.account_status === "pending") {
     return (
       <div style={{ minHeight: "100vh", background: "#05070e", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>

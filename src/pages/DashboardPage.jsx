@@ -23,6 +23,7 @@ import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import { establishSessionFromHandoff } from "../lib/authHandoff";
 import SciFiLoader from "../components/SciFiLoader";
 import DealerPendingApproval from "../components/DealerPendingApproval";
+import PendingApproval from "../components/PendingApproval";
 
 class TabErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -10109,6 +10110,15 @@ export default function DashboardPage() {
   const showOnboardingBanner = profile && profile.onboarding_complete === false && !onboardingDismissed;
 
   if (!profile) return <SciFiLoader />;
+
+  // Identity gate comes FIRST — before payment/trial. A self-signup seller whose
+  // account is still 'pending' (or was 'rejected') can't reach the dashboard
+  // until the superadmin approves them in /platform. Only self-signup sellers
+  // ever carry a non-approved status (invited managers/admins are auto-approved),
+  // so this never traps dealer staff.
+  if (profile.approval_status && profile.approval_status !== 'approved') {
+    return <PendingApproval profile={profile} />;
+  }
 
   // Paid dealer whose payment isn't yet confirmed — gate the whole dashboard
   // behind the pending/payment screen until an admin marks payment received.
