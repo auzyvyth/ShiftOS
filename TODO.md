@@ -1,5 +1,23 @@
 # ShiftOS — Pending Tasks
 
+## 💡 Ideas (unrefined — capture only, not scheduled)
+
+Raw ideas as they come up in conversation, so none get lost. Not vetted,
+not scoped, not prioritized — just parked here until picked up on purpose.
+
+- **IDEA-1: Regional bump (paid visibility, by state/region)** — instead of a
+  flat "bump my listing" button, let a salesman/dealer see (from their own
+  dashboard analytics) which state/region is sending them the most views,
+  and pay to bump specifically for that region — more eyes where the buyers
+  already are → better CVR. Should support picking multiple regions.
+  Needs real design work (pricing, how "region" is inferred per viewer,
+  UI). BLOCKED on scale: owner's read is that bumping needs a real
+  inventory base (~1k+ listings) before the infra is worth building — the
+  marketplace doesn't have that yet, so this stays an idea, not a build.
+  (Came up 2026-08-19 while fixing the /for-salesmen comparison copy —
+  the old copy wrongly implied Mudah/Carlist charge "per listing"; the
+  real model is per-bump, which is what sparked this.)
+
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
 
 - **ACT-1: Enable TOTP in Supabase dashboard — DEFERRED until revenue (user: paid)** — 2FA (SEC-1) will not work end-to-end until the TOTP factor type is enabled: Supabase → Authentication → Settings → Multi-Factor → enable **TOTP**. Until then, the "Enable 2FA" button in Settings will error on enroll. Owner is deferring this until revenue/Supabase Pro (treats it as a paid feature — note: standard app-based TOTP MFA is typically free on Supabase; the paid MFA add-on is Phone/SMS, which we are avoiding anyway — worth re-checking billing before permanently shelving). Interim idea from owner: keep Gmail/Google link verification and add an email verification code as a lightweight second factor. NOTE (2026-08-05): TOTP is NOT deprecated — Bank Negara's RMiT (28 Nov 2025) bans **SMS OTP** as a standalone factor, not TOTP. TOTP (authenticator-app codes, RFC 6238) is offline/device-local and is one of the regulator's recommended interception-resistant replacements, so it stays the correct choice here. Do NOT enable Supabase's Phone/SMS OTP factor. Passkeys (FIDO2/WebAuthn) are the gold standard but are not a native Supabase MFA factor yet.
