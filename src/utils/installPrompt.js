@@ -14,12 +14,33 @@
 const SNOOZE_KEY = 'xdrive_install_snooze';
 const SNOOZE_DAYS = 30;
 
+// Counts a real install exactly once per device, ever. 'appinstalled' only
+// fires on Chromium/Android; iOS has no install event at all (see
+// isStandalone below), so the fallback in logPwaInstallIfStandalone catches
+// it — and this flag is what stops the two paths from double-counting the
+// same device.
+const INSTALL_LOGGED_KEY = 'xdrive_pwa_install_logged';
+
 let deferredEvent = null;
 const listeners = new Set();
 
 function emit() {
   listeners.forEach((fn) => {
     try { fn(deferredEvent); } catch { /* a bad subscriber must not break the rest */ }
+  });
+}
+
+function logInstallOnce() {
+  const ls = safeLocal();
+  try {
+    if (ls && ls.getItem(INSTALL_LOGGED_KEY)) return;
+    ls && ls.setItem(INSTALL_LOGGED_KEY, '1');
+  } catch { /* private mode / quota — best effort, may recount */ }
+  // Lazy import: this module is loaded eagerly at app boot (see file header),
+  // before the main supabase client and analytics helper are needed for
+  // anything else, so pull them in only when there's actually an install to log.
+  import('../supabaseClient').then(({ supabase }) => {
+    import('./analytics').then(({ trackEvent }) => trackEvent(supabase, 'pwa_installed'));
   });
 }
 
@@ -34,8 +55,18 @@ if (typeof window !== 'undefined') {
   window.addEventListener('appinstalled', () => {
     deferredEvent = null;
     snoozeInstallPrompt(); // belt-and-braces; the standalone check is the real guard
+    logInstallOnce();
     emit();
   });
+}
+
+// iOS has no 'appinstalled' event, so this is the only signal available for
+// it: called on mount from InstallPrompt (scoped to authenticated app
+// routes), it credits an install the first time this device is seen running
+// standalone. Also the fallback for any Android case where 'appinstalled'
+// didn't fire — logInstallOnce's flag makes calling this redundantly safe.
+export function logPwaInstallIfStandalone() {
+  if (isStandalone()) logInstallOnce();
 }
 
 export function getDeferredPrompt() {
