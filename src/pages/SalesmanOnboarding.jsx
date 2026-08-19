@@ -297,8 +297,15 @@ export default function SalesmanOnboarding() {
       // No profile, or a bare stub with zero progress → fresh start. Prefill the
       // Google display name and go to the flow (Terms unless already agreed).
       if (metaName) setForm(p => ({ ...p, fullName: p.fullName || metaName }));
-      const agreed = sessionStorage.getItem('ob_agreed') === '1';
-      setStep(agreed ? 2 : 0);
+      // Two independent signals, either is enough: sessionStorage (same-tab resume)
+      // OR the durable `consent` flag stamped into user_metadata at signUp() below
+      // (survives the email-confirm link opening in a NEW tab/app, which has its
+      // own empty sessionStorage — this was the actual bug: every email-confirm
+      // signup has no ob_agreed in the new tab and got bounced back to Terms even
+      // though they'd already agreed to reach the signup form in the first place).
+      const agreedThisTab = sessionStorage.getItem('ob_agreed') === '1';
+      const agreedOnAccount = session.user?.user_metadata?.consent === true;
+      setStep((agreedThisTab || agreedOnAccount) ? 2 : 0);
     };
     init();
   }, []);
@@ -339,7 +346,11 @@ export default function SalesmanOnboarding() {
         // resumes the correct (salesman) flow at the right tier.
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: { account_type: 'salesman', tier },
+          // consent: true is the durable backup for the sessionStorage 'ob_agreed'
+          // flag read in the init() resume check above — this one lives on the
+          // account itself, so it's still there when the email-confirm link opens
+          // in a different tab/device than the one that filled out this form.
+          data: { account_type: 'salesman', tier, consent: true },
         },
       });
       if (error) throw error;
