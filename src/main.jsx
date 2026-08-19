@@ -28,13 +28,26 @@ const queryClient = new QueryClient({
 // to load module script" / MIME error). Auto-reload once so the client picks up
 // the fresh build instead of white-screening.
 function isChunkLoadError(msg = '') {
-  return (
+  if (
     msg.includes('Failed to fetch dynamically imported module') ||
     msg.includes('Importing a module script failed') ||
     msg.includes('error loading dynamically imported module') ||
     msg.includes('Failed to load module script') ||
-    msg.includes('dynamically imported module')
-  );
+    msg.includes('dynamically imported module') ||
+    // Safari/WebKit's wording for the exact same stale-chunk failure (this is
+    // what iOS Mail's in-app browser throws — it does NOT match any of the
+    // Chrome/Firefox strings above, so it fell through to the OOPS screen
+    // instead of self-healing). This is React.lazy() choking on an import()
+    // that didn't resolve to a real module.
+    msg.includes("Cannot read properties of undefined (reading 'default')")
+  ) return true;
+  // Backup layer: catch wording variants we haven't seen yet without needing a
+  // new patch every time a browser phrases this differently. Still scoped to
+  // the same failure family (a dynamic import/module chunk that didn't load
+  // cleanly) — not a blanket catch-all for unrelated crashes.
+  return /\b(chunk|module script|dynamically imported)\b/i.test(msg) ||
+    /Unexpected token ['"<]/.test(msg) ||
+    /Cannot read propert(y|ies) of undefined \(reading '(default|then)'\)/.test(msg);
 }
 
 // Benign clipboard rejections: the Clipboard API throws NotAllowedError when a
