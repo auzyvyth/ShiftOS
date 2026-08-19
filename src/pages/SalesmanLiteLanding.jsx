@@ -4,7 +4,7 @@ import { Helmet } from "react-helmet";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight, Check, Globe, Car, MessageCircle, LineChart,
-  Link2, Wallet, ChevronDown, Share2, ShieldCheck,
+  Link2, Wallet, ChevronDown, Share2, ShieldCheck, X as XIcon,
   Smartphone, Zap, Lock, Eye, ListChecks,
 } from "lucide-react";
 import MarketplaceHeader from "../components/MarketplaceHeader";
@@ -73,7 +73,7 @@ const FAQ_LD = {
 };
 
 const COMPARE_ROWS = [
-  { label: "Cost", old: "Pay per listing", lite: "RM0, always" },
+  { label: "Cost", old: "Free to list, but you pay per bump to actually get seen — and bumps aren't cheap", lite: "RM0. No bumps, no paying to be seen" },
   { label: "Who gets the lead", old: "Platform sits in between", lite: "Straight to your WhatsApp" },
   { label: "Your own page", old: "No — one listing in a feed", lite: "Yes — xdrive.my/s/yourname" },
   { label: "Follow-up / CRM", old: "None — just chat threads", lite: "Built-in lead pipeline" },
@@ -189,25 +189,20 @@ export default function SalesmanLiteLanding() {
           <div className="sll-wrap">
             <p className="sll-kicker">Sound familiar?</p>
             <h2 className="sll-h2">Selling cars online shouldn't cost you the lead.</h2>
-            <div className="sll-compare-scroll">
-              <table className="sll-compare-table">
-                <thead>
-                  <tr>
-                    <th></th>
-                    <th>Mudah / Carlist</th>
-                    <th className="sll-compare-hl">Salesman Lite</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {COMPARE_ROWS.map((r) => (
-                    <tr key={r.label}>
-                      <td>{r.label}</td>
-                      <td>{r.old}</td>
-                      <td className="sll-compare-hl">{r.lite}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="sll-compare-list">
+              {COMPARE_ROWS.map((r) => (
+                <div key={r.label} className="sll-compare-item">
+                  <p className="sll-compare-label">{r.label}</p>
+                  <div className="sll-compare-row sll-compare-row-old">
+                    <XIcon size={14} className="sll-compare-x" />
+                    <span><strong>Mudah / Carlist:</strong> {r.old}</span>
+                  </div>
+                  <div className="sll-compare-row sll-compare-row-new">
+                    <Check size={14} className="sll-tick" />
+                    <span><strong>Salesman Lite:</strong> {r.lite}</span>
+                  </div>
+                </div>
+              ))}
             </div>
             <p className="sll-pain-fix">Salesman Lite fixes all four — for free.</p>
           </div>
@@ -445,14 +440,15 @@ const CSS = `
   .sll-h2 { font-size: clamp(28px, 4.5vw, 44px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; margin: 0 0 40px; }
   .sll-h2-light { color: #fff; }
 
-  /* Pain → comparison table */
-  .sll-compare-scroll { overflow-x: auto; margin-bottom: 26px; border: 1px solid #eceaea; border-radius: 14px; -webkit-overflow-scrolling: touch; }
-  .sll-compare-table { width: 100%; min-width: 480px; border-collapse: collapse; font-size: 14.5px; }
-  .sll-compare-table th, .sll-compare-table td { padding: 14px 18px; text-align: left; border-bottom: 1px solid #eceaea; }
-  .sll-compare-table th { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #6b7280; background: #fafafa; }
-  .sll-compare-table tr:last-child td { border-bottom: none; }
-  .sll-compare-table td:first-child { font-weight: 600; color: #1f2733; white-space: nowrap; }
-  .sll-compare-hl { color: #dc2626; font-weight: 700; background: #fef2f2; }
+  /* Pain → comparison list (stacked, never needs a sideways scroll) */
+  .sll-compare-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 26px; }
+  .sll-compare-item { border: 1px solid #eceaea; border-radius: 12px; padding: 16px 18px; }
+  .sll-compare-label { font-size: 11.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #9ca3af; margin: 0 0 10px; }
+  .sll-compare-row { display: flex; align-items: flex-start; gap: 9px; font-size: 14.5px; line-height: 1.5; padding: 5px 0; }
+  .sll-compare-row-old { color: #6b7280; }
+  .sll-compare-row-old strong { color: #4b5563; font-weight: 600; }
+  .sll-compare-row-new { color: #0a0a0a; font-weight: 600; }
+  .sll-compare-x { color: #9ca3af; flex-shrink: 0; margin-top: 3px; }
   .sll-pain-fix { font-size: clamp(18px, 2.4vw, 24px); font-weight: 800; letter-spacing: -0.01em; margin: 0; }
 
   /* Last-updated stamp (FAQ) */
@@ -547,8 +543,6 @@ const CSS = `
 
   @media (max-width: 860px) {
     .sll-grid, .sll-steps, .sll-plans, .sll-why, .sll-showcase { grid-template-columns: 1fr; }
-    .sll-compare-table { min-width: 420px; font-size: 13.5px; }
-    .sll-compare-table th, .sll-compare-table td { padding: 11px 14px; }
     .sll-hero { padding: 64px 0 48px; }
     .sll-phone { max-width: 340px; margin: 0 auto; }
     .sll-midcta-inner { flex-direction: column; align-items: flex-start; }
