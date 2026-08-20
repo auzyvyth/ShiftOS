@@ -106,15 +106,15 @@ const STEPS = [
 // Decorative mock of the Salesman panel home screen — fills the empty
 // right-hand space in the hero on desktop. Static sample numbers only.
 const DASH_STATS = [
-  { n: "129", l: "Views" },
-  { n: "21", l: "Page visits", cls: "sll-dash-stat-blue" },
-  { n: "15", l: "WA taps", cls: "sll-dash-stat-green" },
-  { n: "6", l: "Live listings" },
+  { n: "512", l: "Views" },
+  { n: "187", l: "Page visits", cls: "sll-dash-stat-blue" },
+  { n: "64", l: "WA taps", cls: "sll-dash-stat-green" },
+  { n: "9", l: "Live listings" },
 ];
 const DASH_PLATFORMS = [
-  { Icon: Globe, name: "Direct", visits: 13, clicks: 4, pct: 100, color: "rgba(255,255,255,0.4)" },
-  { Icon: Instagram, name: "Instagram", visits: 5, clicks: 1, pct: 38, color: "#ec4899" },
-  { Icon: Facebook, name: "Facebook", visits: 3, clicks: 1, pct: 23, color: "#3b82f6" },
+  { Icon: Globe, name: "Direct", visits: 96, clicks: 34, pct: 100, color: "rgba(255,255,255,0.4)" },
+  { Icon: Instagram, name: "Instagram", visits: 58, clicks: 19, pct: 60, color: "#ec4899" },
+  { Icon: Facebook, name: "Facebook", visits: 33, clicks: 11, pct: 34, color: "#3b82f6" },
 ];
 
 const SHOWCASE_CARS = [
@@ -197,9 +197,9 @@ export default function SalesmanLiteLanding() {
               <div className="sll-dash-top">
                 <div>
                   <div className="sll-dash-greet">Good evening, Airy.</div>
-                  <div className="sll-dash-sub">11 leads waiting on a follow-up — don't let a hot one go cold.</div>
+                  <div className="sll-dash-sub">5 leads waiting on a follow-up — don't let a hot one go cold.</div>
                 </div>
-                <span className="sll-dash-overdue"><Bell size={11} /> 11 overdue</span>
+                <span className="sll-dash-overdue"><Bell size={11} /> 5 overdue</span>
               </div>
 
               <div className="sll-dash-period"><span className="sll-dash-dot" /> 30 DAYS</div>
