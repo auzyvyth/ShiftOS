@@ -24,6 +24,30 @@ invent a new one.
 - **Search-forward, not image-forward.** The hero's job is headline + obvious
   search/filter. Imagery and effects are secondary.
 
+## AI-slop tells checklist
+Concrete banned patterns, adapted from github.com/Leonxlnx/taste-skill. Run
+through this before shipping any new public-facing section or copy.
+- **No em-dash (`—`/`–`) anywhere in UI copy.** Headlines, labels, buttons,
+  captions, testimonials. Use a period, comma, or hyphen instead.
+- **No AI-copywriting clichés:** "Elevate", "Seamless", "Unleash", "Next-Gen",
+  "Revolutionize", "Quietly trusted by". Use plain, concrete verbs.
+- **No fake-precise numbers** in stats/trust strips (`99.99%`, round `50%`,
+  `1234567`). Use real data or organic-looking figures.
+- **No duplicate-intent CTAs on one page** — "Get in touch" + "Contact us" +
+  "Let's talk" are the same intent. Pick one label, reuse it everywhere.
+- **CTA text must fit one line** at desktop; button label readable against its
+  own background (WCAG AA 4.5:1) — audit every new button.
+- **Eyebrow restraint:** max 1 eyebrow (small uppercase label above a
+  headline) per 3 sections. Every section does not need one.
+- **No "3 equal cards in a row"** as the default feature layout — vary with
+  asymmetric grid, zig-zag (max 2 in a row), or a different family entirely.
+- **No scroll cues, version labels, or section-numbering eyebrows**
+  (`Scroll to explore`, `BETA`, `00 / INDEX`) — decoration, not content.
+- **No generic placeholder names/brands** in mock or seed content ("John Doe",
+  "Acme", "SmartFlow") — use realistic, locale-appropriate ones.
+- Quotes/testimonials: **max 3 lines** of body, clean attribution (name +
+  role, no em-dash).
+
 ## Type
 - **Display / headlines:** `'Bebas Neue', sans-serif` — uppercase, tight
   line-height (0.92–1.0), letter-spacing ~0.02em. Hero h1 `clamp(38px,10vw,96px)`.
