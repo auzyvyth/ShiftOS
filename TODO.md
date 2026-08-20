@@ -248,6 +248,28 @@ link** attached to the row. Current text-only extraction captures NONE of them.
   http(s) on drive.google.com/googleusercontent or a direct image path, else
   null — junk like `http://taha40-0011092/` and `javascript:` is dropped.
   Verified with unit tests on the sanitizer/validator.
+- [ ] **IMP-7: PDF pre-upload safety check-up (pdfjs-dist arbitrary-JS-execution
+  advisory)** — `pdfjs-dist` is pinned `^5.7.284` (`package.json:50`), which falls
+  inside the vulnerable range `>=5.6.83 <6.2.108` (GHSA-hq66-cqwq-w95j: a crafted
+  PDF can execute arbitrary JS when parsed). It runs client-side in the dealer's
+  own authenticated dashboard tab at `ImportStockPage.jsx:196-201`
+  (`pdfjsLib.getDocument(...)`), so a malicious upload here is a real session-
+  hijack vector, not a DB-write problem — a pre-upload content check on the
+  extracted DATA (rows/prices/text) happens too late, since the exploit fires
+  during parsing itself, before any "check" step could run.
+  Two-part fix, do both:
+  1. **The real fix:** bump `pdfjs-dist` to `>=6.2.108` (breaking change per
+     `npm audit`) and retest the whole Import Stock flow (Step1Upload → parse →
+     annotation/link extraction IMP-1 → Claude mapping → insert). Currently
+     deferred — no test PDFs / API tokens on hand yet.
+  2. **Defense-in-depth (do regardless of #1):** the existing magic-byte sniff
+     (IMP-0) only confirms the file *starts* with `%PDF`; it doesn't rule out a
+     crafted body. Move the actual `pdfjsLib.getDocument()` parse into an
+     isolated Web Worker (or an edge function, server-side) so a JS-execution
+     exploit lands in a sandboxed/no-DOM-access context instead of the dealer's
+     live dashboard origin with their session token in reach.
+  Not urgent while dealer dash isn't opened to real users — revisit before that
+  launches, or before staff process a PDF handed to them by an outside dealer.
 
 ### LAUNCH PAGE AUDIT — ranked by conversion impact
 
