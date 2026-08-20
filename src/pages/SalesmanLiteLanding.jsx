@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight, Check, Globe, Car, MessageCircle, LineChart,
   Link2, Wallet, ChevronDown, Share2, ShieldCheck, X as XIcon,
@@ -8,6 +9,19 @@ import {
 } from "lucide-react";
 import MarketplaceHeader from "../components/MarketplaceHeader";
 import MarketplaceFooter from "../components/MarketplaceFooter";
+
+// ─── Scroll-reveal (restrained on purpose — see DESIGN.md: no ambient/looping
+// decoration). One-shot fade+rise per section, staggered per grid item, so
+// the page's existing light/dark section rhythm reads as a felt cadence
+// instead of everything just appearing. Honors prefers-reduced-motion.
+const fadeUp = {
+  hidden: { opacity: 0, y: 18 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
+};
+const staggerParent = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08 } },
+};
 
 // ─── SEO ─────────────────────────────────────────────────────────────────────
 const CANON = "https://xdrive.my/for-salesmen";
@@ -58,11 +72,11 @@ const FAQ_LD = {
   })),
 };
 
-const PAINS = [
-  "Your best cars sit buried under 200 others on Mudah.",
-  "You pay per listing — then the platform keeps the lead, not you.",
-  "Buyers ask \"got other cars?\" and you're forwarding photos one by one.",
-  "You've got no page to send anyone. Just screenshots in a chat.",
+const COMPARE_ROWS = [
+  { label: "Cost", old: "Free to list, but you pay per bump to actually get seen — and bumps aren't cheap", lite: "RM0. No bumps, no paying to be seen" },
+  { label: "Who gets the lead", old: "Platform sits in between", lite: "Straight to your WhatsApp" },
+  { label: "Your own page", old: "No — one listing in a feed", lite: "Yes — xdrive.my/s/yourname" },
+  { label: "Follow-up / CRM", old: "None — just chat threads", lite: "Built-in lead pipeline" },
 ];
 
 const FEATURES = [
@@ -108,6 +122,11 @@ function Faq({ q, a }) {
 }
 
 export default function SalesmanLiteLanding() {
+  const reduceMotion = useReducedMotion();
+  const reveal = reduceMotion
+    ? {}
+    : { initial: "hidden", whileInView: "show", viewport: { once: true, amount: 0.2 } };
+
   return (
     <>
       <Helmet>
@@ -165,42 +184,49 @@ export default function SalesmanLiteLanding() {
           </div>
         </div>
 
-        {/* ── Pain ── */}
-        <section className="sll-section">
+        {/* ── Pain → comparison ── */}
+        <motion.section className="sll-section" variants={fadeUp} {...reveal}>
           <div className="sll-wrap">
             <p className="sll-kicker">Sound familiar?</p>
             <h2 className="sll-h2">Selling cars online shouldn't cost you the lead.</h2>
-            <div className="sll-pains">
-              {PAINS.map((p) => (
-                <div key={p} className="sll-pain">
-                  <span className="sll-pain-x"><XIcon size={15} /></span>
-                  <span>{p}</span>
+            <div className="sll-compare-list">
+              {COMPARE_ROWS.map((r) => (
+                <div key={r.label} className="sll-compare-item">
+                  <p className="sll-compare-label">{r.label}</p>
+                  <div className="sll-compare-row sll-compare-row-old">
+                    <XIcon size={14} className="sll-compare-x" />
+                    <span><strong>Mudah / Carlist:</strong> {r.old}</span>
+                  </div>
+                  <div className="sll-compare-row sll-compare-row-new">
+                    <Check size={14} className="sll-tick" />
+                    <span><strong>Salesman Lite:</strong> {r.lite}</span>
+                  </div>
                 </div>
               ))}
             </div>
             <p className="sll-pain-fix">Salesman Lite fixes all four — for free.</p>
           </div>
-        </section>
+        </motion.section>
 
         {/* ── Features ── */}
         <section className="sll-section sll-section-alt">
           <div className="sll-wrap">
             <p className="sll-kicker">What you get</p>
             <h2 className="sll-h2">Everything to sell online. Nothing to pay.</h2>
-            <div className="sll-grid">
+            <motion.div className="sll-grid" variants={staggerParent} {...reveal}>
               {FEATURES.map((f) => (
-                <div key={f.title} className="sll-card">
+                <motion.div key={f.title} className="sll-card" variants={fadeUp}>
                   <div className="sll-card-ic"><f.Icon size={20} /></div>
                   <h3 className="sll-card-t">{f.title}</h3>
                   <p className="sll-card-b">{f.body}</p>
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           </div>
         </section>
 
         {/* ── Page showcase ── */}
-        <section className="sll-section">
+        <motion.section className="sll-section" variants={fadeUp} {...reveal}>
           <div className="sll-wrap sll-showcase">
             <div className="sll-showcase-copy">
               <p className="sll-kicker">Your page does the selling</p>
@@ -239,22 +265,22 @@ export default function SalesmanLiteLanding() {
               ))}
             </div>
           </div>
-        </section>
+        </motion.section>
 
         {/* ── How it works (inverted) ── */}
         <section className="sll-dark" id="how">
           <div className="sll-wrap">
             <p className="sll-kicker sll-kicker-light">How it works</p>
             <h2 className="sll-h2 sll-h2-light">Live in three steps.</h2>
-            <div className="sll-steps">
+            <motion.div className="sll-steps" variants={staggerParent} {...reveal}>
               {STEPS.map((s) => (
-                <div key={s.n} className="sll-step">
+                <motion.div key={s.n} className="sll-step" variants={fadeUp}>
                   <span className="sll-step-n">{s.n}</span>
                   <h3 className="sll-step-t">{s.title}</h3>
                   <p className="sll-step-b">{s.body}</p>
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
             <div className="sll-dark-cta">
               <Link to="/salesman-onboarding/lite" className="sll-btn sll-btn-red">
                 Create my free page <ArrowRight size={17} />
@@ -268,22 +294,22 @@ export default function SalesmanLiteLanding() {
           <div className="sll-wrap">
             <p className="sll-kicker">Built for how you actually sell</p>
             <h2 className="sll-h2">Made for agents, not office desks.</h2>
-            <div className="sll-why">
+            <motion.div className="sll-why" variants={staggerParent} {...reveal}>
               {WHY.map((w) => (
-                <div key={w.title} className="sll-why-item">
+                <motion.div key={w.title} className="sll-why-item" variants={fadeUp}>
                   <div className="sll-why-ic"><w.Icon size={18} /></div>
                   <div>
                     <h3 className="sll-why-t">{w.title}</h3>
                     <p className="sll-why-b">{w.body}</p>
                   </div>
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           </div>
         </section>
 
         {/* ── Mid CTA band ── */}
-        <section className="sll-midcta">
+        <motion.section className="sll-midcta" variants={fadeUp} {...reveal}>
           <div className="sll-wrap sll-midcta-inner">
             <div>
               <h3 className="sll-midcta-h">Ready when you are.</h3>
@@ -293,7 +319,7 @@ export default function SalesmanLiteLanding() {
               Sign up free <ArrowRight size={17} />
             </Link>
           </div>
-        </section>
+        </motion.section>
 
         {/* ── Lite vs Premium ── */}
         <section className="sll-section sll-section-alt">
@@ -336,18 +362,19 @@ export default function SalesmanLiteLanding() {
         </section>
 
         {/* ── FAQ ── */}
-        <section className="sll-section sll-faq-sec">
+        <motion.section className="sll-section sll-faq-sec" variants={fadeUp} {...reveal}>
           <div className="sll-wrap sll-wrap-narrow">
             <p className="sll-kicker">Questions</p>
-            <h2 className="sll-h2">Good to know.</h2>
+            <h2 className="sll-h2" style={{ marginBottom: 8 }}>Good to know.</h2>
+            <p className="sll-updated">Page last reviewed August 2026.</p>
             <div className="sll-faqs">
               {FAQS.map((f) => <Faq key={f.q} {...f} />)}
             </div>
           </div>
-        </section>
+        </motion.section>
 
         {/* ── Final CTA ── */}
-        <section className="sll-final">
+        <motion.section className="sll-final" variants={fadeUp} {...reveal}>
           <div className="sll-wrap">
             <h2 className="sll-final-h">Your free car-sales page<br />is minutes away.</h2>
             <p className="sll-final-p">Join the Malaysian agents putting their whole stock behind one link.</p>
@@ -362,7 +389,7 @@ export default function SalesmanLiteLanding() {
               <span className="sll-microtrust-item"><Wallet size={14} /> RM0</span>
             </p>
           </div>
-        </section>
+        </motion.section>
       </main>
 
       <MarketplaceFooter />
@@ -413,11 +440,19 @@ const CSS = `
   .sll-h2 { font-size: clamp(28px, 4.5vw, 44px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; margin: 0 0 40px; }
   .sll-h2-light { color: #fff; }
 
-  /* Pain */
-  .sll-pains { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 26px; }
-  .sll-pain { display: flex; gap: 12px; align-items: flex-start; font-size: 16px; font-weight: 500; color: #1f2733; line-height: 1.5; padding: 18px 20px; border: 1px solid #eceaea; border-radius: 12px; }
-  .sll-pain-x { width: 26px; height: 26px; border-radius: 7px; background: #fef2f2; color: #dc2626; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  /* Pain → comparison list (stacked, never needs a sideways scroll) */
+  .sll-compare-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 26px; }
+  .sll-compare-item { border: 1px solid #eceaea; border-radius: 12px; padding: 16px 18px; }
+  .sll-compare-label { font-size: 11.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #9ca3af; margin: 0 0 10px; }
+  .sll-compare-row { display: flex; align-items: flex-start; gap: 9px; font-size: 14.5px; line-height: 1.5; padding: 5px 0; }
+  .sll-compare-row-old { color: #6b7280; }
+  .sll-compare-row-old strong { color: #4b5563; font-weight: 600; }
+  .sll-compare-row-new { color: #0a0a0a; font-weight: 600; }
+  .sll-compare-x { color: #9ca3af; flex-shrink: 0; margin-top: 3px; }
   .sll-pain-fix { font-size: clamp(18px, 2.4vw, 24px); font-weight: 800; letter-spacing: -0.01em; margin: 0; }
+
+  /* Last-updated stamp (FAQ) */
+  .sll-updated { font-size: 12.5px; color: #9ca3af; margin: 0 0 28px; }
 
   /* Features grid */
   .sll-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
@@ -507,7 +542,7 @@ const CSS = `
   .sll-final .sll-microtrust { color: rgba(255,255,255,0.5); justify-content: center; }
 
   @media (max-width: 860px) {
-    .sll-grid, .sll-steps, .sll-plans, .sll-pains, .sll-why, .sll-showcase { grid-template-columns: 1fr; }
+    .sll-grid, .sll-steps, .sll-plans, .sll-why, .sll-showcase { grid-template-columns: 1fr; }
     .sll-hero { padding: 64px 0 48px; }
     .sll-phone { max-width: 340px; margin: 0 auto; }
     .sll-midcta-inner { flex-direction: column; align-items: flex-start; }

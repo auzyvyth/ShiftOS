@@ -6,6 +6,17 @@
 3. After completing an item, delete it from `TODO.md`, commit the updated file, and push.
 4. Do not start work without asking the user which item to tackle.
 
+## Capturing ideas — do this any time, unprompted
+Whenever the user floats a product/feature idea mid-conversation (not a direct
+task request — a "what if" / "I once had an idea" / brainstorm aside), add it
+to the `## 💡 Ideas` section at the top of `TODO.md` as its own `IDEA-N` bullet,
+commit, and push. Don't wait to be asked each time — the user loses most of
+their ideas otherwise, so capture-by-default is the point. Keep it short: what
+the idea is, why, and any constraint that blocks building it now. Do NOT treat
+an idea as a scheduled task (no checkbox, don't present it as a pending item to
+tackle) until the user explicitly decides to build it — at that point move it
+out of Ideas into a normal dev-task entry.
+
 ## Session end protocol — "FFT"
 When the user says "FFT", produce a handoff summary for the next agent. No questions, just write it. Structure:
 1. **Deploy status** — what merged to prod (PR #, commit sha), CI state, branch sync state, whether local main / staging / feature branch are aligned.

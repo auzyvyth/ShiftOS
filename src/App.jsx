@@ -188,8 +188,21 @@ function App() {
           <Route path="/dashboard/:tab" element={<DashboardPage />} />
           <Route path="/dashboard/import-stock" element={<ImportStockPage />} />
           <Route path="/salesman" element={<SalesmanPanel />} />
-          <Route path="/salesman-lite" element={<SalesmanLite />} />
-          <Route path="/salesman-lite/:tab" element={<SalesmanLite />} />
+          {/* ONE route with an optional :tab segment, not two separate Route
+              entries for the same component. Two entries (one for the bare
+              path, one for :tab) meant navigating from /salesman-lite to
+              /salesman-lite/:tab crossed a route-id boundary and remounted
+              SalesmanLite, wiping local state (tourStep). That looped the
+              first-run intro: pick a language -> the tour's tab-switch effect
+              fires -> remount -> mount effect sees onboarding_tour_done still
+              false -> resets to the language chooser, forever. A single
+              route (param changes, no remount) fixes it. Do NOT split this
+              back into two Routes, and do NOT redirect the bare path with
+              <Navigate> either — cross-subdomain login hands the session off
+              via tokens in the URL HASH (src/lib/authHandoff.js) landing on
+              this exact bare path, and Navigate's `to` does not carry the
+              current hash over, which would silently break that handoff. */}
+          <Route path="/salesman-lite/:tab?" element={<SalesmanLite />} />
           <Route path="/salesman-premium" element={<SalesmanPremium />} />
           <Route path="/manager" element={<ManagerPanel />} />
           <Route path="/accountant" element={<AccountantPanel />} />
