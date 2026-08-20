@@ -5,7 +5,8 @@ import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight, Check, Globe, Car, MessageCircle, LineChart,
   Link2, Wallet, ChevronDown, Share2, ShieldCheck, X as XIcon,
-  Smartphone, Zap, Lock, Eye, ListChecks,
+  Smartphone, Zap, Lock, Eye, ListChecks, Bell, Copy, ExternalLink,
+  Instagram, Facebook,
 } from "lucide-react";
 import MarketplaceHeader from "../components/MarketplaceHeader";
 import MarketplaceFooter from "../components/MarketplaceFooter";
@@ -102,6 +103,20 @@ const STEPS = [
   { n: "03", title: "Share & sell", body: "Send your one link. Buyers browse your stock and WhatsApp you straight away." },
 ];
 
+// Decorative mock of the Salesman panel home screen — fills the empty
+// right-hand space in the hero on desktop. Static sample numbers only.
+const DASH_STATS = [
+  { n: "512", l: "Views" },
+  { n: "187", l: "Page visits", cls: "sll-dash-stat-blue" },
+  { n: "64", l: "WA taps", cls: "sll-dash-stat-green" },
+  { n: "9", l: "Live listings" },
+];
+const DASH_PLATFORMS = [
+  { Icon: Globe, name: "Direct", visits: 96, clicks: 34, pct: 100, color: "rgba(255,255,255,0.4)" },
+  { Icon: Instagram, name: "Instagram", visits: 58, clicks: 19, pct: 60, color: "#ec4899" },
+  { Icon: Facebook, name: "Facebook", visits: 33, clicks: 11, pct: 34, color: "#3b82f6" },
+];
+
 const SHOWCASE_CARS = [
   { name: "2019 Honda Civic 1.5 TC-P", price: "RM 98,800", tag: "Low mileage" },
   { name: "2021 Perodua Ativa 1.0 AV", price: "RM 62,500", tag: "Under warranty" },
@@ -153,27 +168,70 @@ export default function SalesmanLiteLanding() {
       <main className="sll">
         {/* ── Hero ── */}
         <section className="sll-hero">
-          <div className="sll-wrap">
-            <span className="sll-eyebrow">Salesman Lite · <span className="sll-red">Free forever</span></span>
-            <h1 className="sll-h1">
-              One link.<br />All your cars.<br /><span className="sll-red">Zero ringgit.</span>
-            </h1>
-            <p className="sll-lead">
-              Salesman Lite is a free page on XDrive built for Malaysian car agents.
-              List your stock, share one link, and let buyers WhatsApp you directly —
-              no website to build, nothing to pay, no lead sold out from under you.
-            </p>
-            <div className="sll-cta-row">
-              <Link to="/salesman-onboarding/lite" className="sll-btn sll-btn-red">
-                Sign up free <ArrowRight size={17} />
-              </Link>
-              <a href="#how" className="sll-btn sll-btn-ghost">See how it works</a>
+          <div className="sll-wrap sll-hero-inner">
+            <div className="sll-hero-copy">
+              <span className="sll-eyebrow">Salesman Lite · <span className="sll-red">Free forever</span></span>
+              <h1 className="sll-h1">
+                One link.<br />All your cars.<br /><span className="sll-red">Zero ringgit.</span>
+              </h1>
+              <p className="sll-lead">
+                Salesman Lite is a free page on XDrive built for Malaysian car agents.
+                List your stock, share one link, and let buyers WhatsApp you directly —
+                no website to build, nothing to pay, no lead sold out from under you.
+              </p>
+              <div className="sll-cta-row">
+                <Link to="/salesman-onboarding/lite" className="sll-btn sll-btn-red">
+                  Sign up free <ArrowRight size={17} />
+                </Link>
+                <a href="#how" className="sll-btn sll-btn-ghost">See how it works</a>
+              </div>
+              <p className="sll-microtrust">
+                <span className="sll-microtrust-item"><Check size={14} /> Free forever</span>
+                <span className="sll-microtrust-item"><Check size={14} /> No credit card</span>
+                <span className="sll-microtrust-item"><Check size={14} /> Live in minutes</span>
+              </p>
             </div>
-            <p className="sll-microtrust">
-              <span className="sll-microtrust-item"><Check size={14} /> Free forever</span>
-              <span className="sll-microtrust-item"><Check size={14} /> No credit card</span>
-              <span className="sll-microtrust-item"><Check size={14} /> Live in minutes</span>
-            </p>
+
+            {/* Mock of the salesman panel home screen — decorative, static numbers */}
+            <div className="sll-dash" aria-hidden="true">
+              <div className="sll-dash-top">
+                <div>
+                  <div className="sll-dash-greet">Good evening, Airy.</div>
+                  <div className="sll-dash-sub">5 leads waiting on a follow-up — don't let a hot one go cold.</div>
+                </div>
+                <span className="sll-dash-overdue"><Bell size={11} /> 5 overdue</span>
+              </div>
+
+              <div className="sll-dash-period"><span className="sll-dash-dot" /> 30 DAYS</div>
+              <div className="sll-dash-stats">
+                {DASH_STATS.map((s) => (
+                  <div key={s.l} className={`sll-dash-stat ${s.cls || ""}`}>
+                    <span className="sll-dash-stat-n">{s.n}</span>
+                    <span className="sll-dash-stat-l">{s.l}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="sll-dash-row">
+                <span className="sll-dash-link"><Link2 size={12} /> xdrive.my/s/airymotors <Copy size={12} style={{ marginLeft: "auto" }} /></span>
+                <span className="sll-dash-btn sll-dash-btn-primary"><ExternalLink size={12} /> View your mini page</span>
+                <span className="sll-dash-btn sll-dash-btn-ghost"><Share2 size={12} /> Share</span>
+              </div>
+
+              <p className="sll-dash-traffic-h">Mini page traffic by platform</p>
+              {DASH_PLATFORMS.map((p) => (
+                <div key={p.name} className="sll-dash-plat">
+                  <div className="sll-dash-plat-top">
+                    <span className="sll-dash-plat-name"><p.Icon size={13} style={{ color: p.color }} /> {p.name}</span>
+                    <span className="sll-dash-plat-meta">{p.visits} visits · {p.clicks} clicks</span>
+                  </div>
+                  <div className="sll-dash-bar">
+                    <div className="sll-dash-bar-fill" style={{ width: `${p.pct}%`, background: p.color }} />
+                  </div>
+                </div>
+              ))}
+              <p className="sll-dash-foot">Direct = organic or untagged visits we couldn't attribute to a platform.</p>
+            </div>
           </div>
         </section>
 
@@ -409,6 +467,7 @@ const CSS = `
 
   /* Hero */
   .sll-hero { padding: 84px 0 60px; border-bottom: 1px solid #eceaea; }
+  .sll-hero-inner { display: grid; grid-template-columns: 1fr minmax(300px, 380px); gap: 56px; align-items: start; }
   .sll-eyebrow { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #6b7280; margin-bottom: 22px; }
   .sll-h1 { font-size: clamp(40px, 7vw, 76px); font-weight: 900; line-height: 0.98; letter-spacing: -0.03em; margin: 0 0 22px; }
   .sll-lead { font-size: clamp(15px, 2vw, 18px); line-height: 1.65; color: #4b5563; max-width: 580px; margin: 0 0 30px; }
@@ -431,6 +490,35 @@ const CSS = `
 
   .sll-band-line { background: #0a0a0a; color: #fff; padding: 15px 0; font-size: 14px; font-weight: 500; text-align: center; }
   .sll-band-line strong { color: #fff; font-weight: 800; }
+
+  /* Hero dashboard preview — decorative mock, not a live component */
+  .sll-dash { background: #0a0a0a; border-radius: 20px; padding: 22px 20px; box-shadow: 0 30px 70px rgba(10,10,10,0.22); border: 1px solid rgba(255,255,255,0.06); }
+  .sll-dash-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+  .sll-dash-greet { font-size: 14.5px; font-weight: 800; color: #fff; margin-bottom: 4px; }
+  .sll-dash-sub { font-size: 11px; line-height: 1.5; color: rgba(255,255,255,0.5); max-width: 200px; }
+  .sll-dash-overdue { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; color: #fca5a5; background: rgba(220,38,38,0.14); border: 1px solid rgba(220,38,38,0.3); padding: 5px 9px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; }
+  .sll-dash-period { display: flex; align-items: center; justify-content: flex-end; gap: 5px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; color: rgba(255,255,255,0.35); margin-bottom: 8px; }
+  .sll-dash-dot { width: 5px; height: 5px; border-radius: 50%; background: #4ade80; }
+  .sll-dash-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 16px; }
+  .sll-dash-stat-n { display: block; font-size: 19px; font-weight: 900; color: #fff; letter-spacing: -0.02em; }
+  .sll-dash-stat-l { display: block; font-size: 9px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-top: 2px; }
+  .sll-dash-stat-blue .sll-dash-stat-n { color: #60a5fa; }
+  .sll-dash-stat-green .sll-dash-stat-n { color: #4ade80; }
+  .sll-dash-row { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 20px; }
+  .sll-dash-link { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 600; color: rgba(255,255,255,0.65); background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); padding: 8px 10px; border-radius: 10px; flex: 1 1 100%; }
+  .sll-dash-link svg:first-child { color: rgba(255,255,255,0.35); flex-shrink: 0; }
+  .sll-dash-btn { display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 10.5px; font-weight: 700; padding: 8px 10px; border-radius: 10px; flex: 1; white-space: nowrap; }
+  .sll-dash-btn-primary { background: rgba(220,38,38,0.14); border: 1px solid rgba(220,38,38,0.3); color: #f87171; }
+  .sll-dash-btn-ghost { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.65); }
+  .sll-dash-traffic-h { font-size: 9px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin: 0 0 12px; }
+  .sll-dash-plat { margin-bottom: 12px; }
+  .sll-dash-plat:last-of-type { margin-bottom: 0; }
+  .sll-dash-plat-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+  .sll-dash-plat-name { display: flex; align-items: center; gap: 6px; }
+  .sll-dash-plat-meta { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.4); }
+  .sll-dash-bar { height: 4px; border-radius: 4px; background: rgba(255,255,255,0.08); overflow: hidden; }
+  .sll-dash-bar-fill { height: 100%; border-radius: 4px; }
+  .sll-dash-foot { font-size: 9.5px; line-height: 1.5; color: rgba(255,255,255,0.3); margin: 14px 0 0; }
 
   /* Sections */
   .sll-section { padding: 74px 0; }
@@ -542,8 +630,10 @@ const CSS = `
   .sll-final .sll-microtrust { color: rgba(255,255,255,0.5); justify-content: center; }
 
   @media (max-width: 860px) {
-    .sll-grid, .sll-steps, .sll-plans, .sll-why, .sll-showcase { grid-template-columns: 1fr; }
+    .sll-grid, .sll-steps, .sll-plans, .sll-why, .sll-showcase, .sll-hero-inner { grid-template-columns: 1fr; }
     .sll-hero { padding: 64px 0 48px; }
+    .sll-hero-inner { gap: 36px; }
+    .sll-dash { max-width: 380px; margin: 0 auto; }
     .sll-phone { max-width: 340px; margin: 0 auto; }
     .sll-midcta-inner { flex-direction: column; align-items: flex-start; }
     /* Three items in one wrapped inline row read as clanky on narrow screens
