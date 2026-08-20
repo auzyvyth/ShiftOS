@@ -674,7 +674,7 @@ export default function MarketplacePage() {
               the "Find Cars" button and clipping. Row layout returns at the
               ≥900px hero breakpoint below. ── */
         .mp-hero-search { flex-direction:column; }
-        .mp-hero-search > button { width:100%; justify-content:center; }
+        .mp-hero-search > button { width:100%; justify-content:center; padding:0 22px; }
 
         /* ════════════════════════════════════════
            HERO — MOBILE FIRST
@@ -756,11 +756,16 @@ export default function MarketplacePage() {
           .mp-filter-fab    { display: flex; }
           .mp-cars-layout   { flex-direction: row; }
           .mp-hero-search   { flex-direction: row; }
-          .mp-hero-search > button { width: auto; }
+          /* Row layout starts here but the hero column is still narrow at the
+             low end (900-1024px) - a wide fixed padding squeezes the input
+             down to a few characters. Moderate width here, fuller width once
+             there's more room at the 1024px breakpoint below. */
+          .mp-hero-search > button { width: auto; padding: 0 44px; }
         }
 
         /* ── Large desktop ≥1024px ── */
         @media(min-width:1024px) {
+          .mp-hero-search > button { padding: 0 64px; }
           .mp-filter-fab      { display: none; }
           .mp-desktop-sidebar { display: flex !important; }
         }
@@ -899,7 +904,7 @@ export default function MarketplacePage() {
                     />
                   </div>
                   <button type="button" onClick={() => runHeroSearch(heroQ)}
-                    style={{ flexShrink:0, background:'#dc2626', color:'#fff', border:'none', padding:'0 22px', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', gap:'6px', borderRadius:'10px' }}
+                    style={{ flexShrink:0, background:'#dc2626', color:'#fff', border:'none', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', borderRadius:'10px' }}
                     onMouseEnter={e=>e.currentTarget.style.background='#b91c1c'}
                     onMouseLeave={e=>e.currentTarget.style.background='#dc2626'}
                   ><Search size={14}/> Find Cars</button>
