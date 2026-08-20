@@ -1692,7 +1692,24 @@ export default function SalesmanLite() {
       if (event === "SIGNED_OUT") navigate("/login");
     });
     return () => authSub.unsubscribe();
-  }, [navigate]);
+    // Mount-once by design — `navigate` is only called imperatively in here
+    // (login/role redirects), never reacted to. Depending on it was the real
+    // cause of the first-run tour's "loops back to the language chooser"
+    // bug: useNavigate() returns a NEW function identity on every route change
+    // in this react-router-dom version, so with `[navigate]` this entire
+    // ~470-line effect (session + profile fetch, tour-trigger check, listings/
+    // leads/enquiries/appointments fetch) re-ran on EVERY switchTab() call —
+    // including every step of the tour itself, since each step navigates to a
+    // new tab. Re-running re-fetched the profile, saw onboarding_tour_done
+    // still false (nothing marks it done until dismissTour()), and reset
+    // tourStep back to 0 — mid-tour, every single step. Collapsing the
+    // /salesman-lite routes into one (see App.jsx) fixed a real but separate
+    // remount bug; it did not fix this one, since no remount is needed to
+    // reset tourStep — just this effect re-running. Also means every tab
+    // click, for every user, was silently re-fetching this entire payload
+    // from scratch — this fix removes that too.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     return () => {
