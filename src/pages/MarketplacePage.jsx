@@ -899,7 +899,7 @@ export default function MarketplacePage() {
                     />
                   </div>
                   <button type="button" onClick={() => runHeroSearch(heroQ)}
-                    style={{ flexShrink:0, background:'#dc2626', color:'#fff', border:'none', padding:'0 22px', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', gap:'6px', borderRadius:'10px' }}
+                    style={{ flexShrink:0, background:'#dc2626', color:'#fff', border:'none', padding:'0 44px', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', borderRadius:'10px' }}
                     onMouseEnter={e=>e.currentTarget.style.background='#b91c1c'}
                     onMouseLeave={e=>e.currentTarget.style.background='#dc2626'}
                   ><Search size={14}/> Find Cars</button>
