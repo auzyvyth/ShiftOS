@@ -383,7 +383,7 @@ export default function AdminPage() {
     const sellerPhones = [...new Set((pending || [])
       .map(l => (l.profiles?.phone || l.profiles?.whatsapp_number || "").replace(/\D/g, ""))
       .filter(Boolean))];
-    const [{ data: rejections }, { data: plateMatches }, { data: phoneOwners }] = await Promise.all([
+    const [{ data: rejections }, { data: plateMatches }, { data: phoneOwners }, { data: liveListings }] = await Promise.all([
       supabase.from("car_listings").select("dealer_id").eq("status", "rejected").in("dealer_id", (pending || []).map(l => l.dealer_id)),
       plates.length > 0
         ? supabase.from("car_listings").select("id, plate_number, dealer_id").in("plate_number", plates).neq("status", "rejected")
@@ -391,6 +391,7 @@ export default function AdminPage() {
       sellerPhones.length > 0
         ? supabase.from("profiles").select("id, phone, whatsapp_number")
         : Promise.resolve({ data: [] }),
+      supabase.from("car_listings").select("dealer_id").eq("status", "available").in("dealer_id", (pending || []).map(l => l.dealer_id)),
     ]);
     const rejectionCounts = {};
     (rejections || []).forEach(r => { rejectionCounts[r.dealer_id] = (rejectionCounts[r.dealer_id] || 0) + 1; });
@@ -405,6 +406,11 @@ export default function AdminPage() {
         (phoneAccounts[ph] = phoneAccounts[ph] || new Set()).add(p.id);
       });
     });
+    // How many cars this seller already has LIVE in the marketplace right now —
+    // a fast trust signal separate from listing_count_cache (which counts every
+    // status, including past rejections).
+    const liveCounts = {};
+    (liveListings || []).forEach(l => { liveCounts[l.dealer_id] = (liveCounts[l.dealer_id] || 0) + 1; });
 
     setPendingListings((pending || []).map(l => {
       const ph = (l.profiles?.phone || l.profiles?.whatsapp_number || "").replace(/\D/g, "");
@@ -414,6 +420,7 @@ export default function AdminPage() {
         _rejectionCount: rejectionCounts[l.dealer_id] || 0,
         _duplicatePlate: l.plate_number ? (plateCounts[l.plate_number] || 0) > 1 : false,
         _sharedPhoneAccounts: shared > 1 ? shared : 0,
+        _liveListingCount: liveCounts[l.dealer_id] || 0,
       };
     }));
 
@@ -1040,7 +1047,8 @@ export default function AdminPage() {
                       if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
                       return `${Math.floor(s / 86400)}d ago`;
                     })();
-                    const isActioning = approvalActioning === listing.id;
+                    const isActioning = approvalActioning === listing.id || approvalActioning === listing.id + ":seller";
+                    const isActioningSeller = approvalActioning === listing.id + ":seller";
                     const isRejecting = rejectingId === listing.id;
 
                     const flags = [
@@ -1124,7 +1132,8 @@ export default function AdminPage() {
                             </p>
                             <p style={{ margin: "4px 0 0", fontSize: 10, color: "#374151" }}>
                               IC {salesman?.ic_verified_at ? "✓ submitted" : "✗ not submitted"}
-                              {" · "}{salesman?.listing_count_cache ?? 0} listings
+                              {" · "}{listing._liveListingCount || 0} live now
+                              {" · "}{salesman?.listing_count_cache ?? 0} listings total
                               {" · "}{listing._rejectionCount || 0} rejection{(listing._rejectionCount || 0) === 1 ? "" : "s"}
                               {accountAgeHrs !== null && <> · account {accountAgeHrs < 24 ? `${Math.round(accountAgeHrs)}h` : `${Math.round(accountAgeHrs / 24)}d`} old</>}
                             </p>
@@ -1155,7 +1164,24 @@ export default function AdminPage() {
                                 }}
                                 style={{ fontSize: 12, fontWeight: 700, padding: "7px 16px", borderRadius: 8, background: isActioning ? "rgba(34,197,94,0.06)" : "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", color: "#4ade80", cursor: isActioning ? "not-allowed" : "pointer", opacity: isActioning ? 0.6 : 1 }}
                               >
-                                {isActioning ? "…" : "✓ Approve"}
+                                {isActioning && !isActioningSeller ? "…" : "✓ Approve"}
+                              </button>
+                              <button
+                                disabled={isActioning}
+                                title="Approve this listing and mark the seller as verified"
+                                onClick={async () => {
+                                  setApprovalActioning(listing.id + ":seller");
+                                  const [{ error: listingErr }, { error: sellerErr }] = await Promise.all([
+                                    supabase.rpc("approve_listing", { p_listing_id: listing.id }),
+                                    supabase.rpc("decide_user_approval", { p_user_id: listing.dealer_id, p_approve: true }),
+                                  ]);
+                                  if (listingErr || sellerErr) { alert("Error: " + (listingErr?.message || sellerErr?.message)); }
+                                  else { setPendingListings(p => p.filter(l => l.id !== listing.id)); }
+                                  setApprovalActioning(null);
+                                }}
+                                style={{ fontSize: 12, fontWeight: 700, padding: "7px 16px", borderRadius: 8, background: isActioning ? "rgba(96,165,250,0.06)" : "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd", cursor: isActioning ? "not-allowed" : "pointer", opacity: isActioning ? 0.6 : 1 }}
+                              >
+                                {isActioningSeller ? "…" : "✓ Approve car + seller"}
                               </button>
                               <button
                                 onClick={() => { setRejectingId(listing.id); setRejectReason(""); }}

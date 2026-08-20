@@ -80,7 +80,6 @@ import {
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import AvailabilityEditor from "../components/AvailabilityEditor";
-import PendingApproval from "../components/PendingApproval";
 
 // Price visual weight — a RM45k car and a RM2.4M car shouldn't read at the
 // same size/color; scale the price figure up for higher tiers so the card
@@ -1774,7 +1773,7 @@ export default function SalesmanLite() {
     if (tourStep === null) { setTourTarget(null); return; }
     // Index-aligned with TOUR_STEPS. "bookings" resolves to the enquiries tab's
     // bookings sub-tab below; the rest map 1:1 to nav data-tour-id anchors.
-    const TOUR_TABS = [null, "dashboard", "listings", "leads", "enquiries", "bookings", "performance", "settings", "help"];
+    const TOUR_TABS = [null, "dashboard", "listings", "leads", "enquiries", "bookings", "performance", "services", "settings", "help"];
     const tab = TOUR_TABS[tourStep];
     if (!tab) { setTourTarget(null); return; }
     if (tab === "bookings") {
@@ -8182,6 +8181,7 @@ export default function SalesmanLite() {
     { icon: MessageSquare, title: t("salesmanLite.tour.steps.inbox.title"),      body: t("salesmanLite.tour.steps.inbox.body") },
     { icon: Calendar,     title: t("salesmanLite.tour.steps.bookings.title"),    body: t("salesmanLite.tour.steps.bookings.body") },
     { icon: BarChart2,    title: t("salesmanLite.tour.steps.performance.title"), body: t("salesmanLite.tour.steps.performance.body") },
+    { icon: Package,      title: t("salesmanLite.tour.steps.services.title"),    body: t("salesmanLite.tour.steps.services.body") },
     { icon: Settings,     title: t("salesmanLite.tour.steps.settings.title"),    body: t("salesmanLite.tour.steps.settings.body") },
     { icon: BookOpen,     title: t("salesmanLite.tour.steps.help.title"),        body: t("salesmanLite.tour.steps.help.body") },
   ];
@@ -8470,14 +8470,6 @@ export default function SalesmanLite() {
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     );
-  }
-
-  // ── IDENTITY APPROVAL GATE ────────────────────────────────────────────────
-  // Self-signup salesman whose account is still pending/rejected review. Free
-  // (Lite) submits just the IC number captured at onboarding; the gate handles
-  // the waiting + resubmit states and forwards on approval.
-  if (profile && profile.approval_status && profile.approval_status !== "approved") {
-    return <PendingApproval profile={profile} redirectTo="/salesman-lite" />;
   }
 
   // ── LEGACY PENDING GATE (account_status) ──────────────────────────────────

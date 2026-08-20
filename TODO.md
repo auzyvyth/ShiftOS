@@ -87,47 +87,6 @@ not scoped, not prioritized — just parked here until picked up on purpose.
 
 ---
 
-### SESSION 2026-08-20 — approval flow redesign + admin notifications
-
-- **APPR-1: Collapse the two approval gates into one (Listing Approval tab, 2 buttons)**
-  — DECIDED, not built. Today there are two separate gates: `profiles.approval_status`
-  blocks a brand-new signup from ever reaching the dashboard (`src/components/PendingApproval.jsx`,
-  rendered from `DashboardPage.jsx:10120`, `SalesmanLite.jsx:8480`, `SalesmanPremium.jsx:6252`;
-  admin side is `UserApprovalsTab.jsx` inside `AdminPage.jsx:932`), AND listings have their
-  own approval step (`supabase/migrations/20260517_listing_approval.sql`). Two gates = one
-  big friction point before a new seller ever lists a car.
-  New flow (owner-decided): remove the signup gate entirely — new users (dealer, salesman-lite,
-  etc.) land straight in the dashboard, no waiting screen. They CAN list a car immediately, but
-  every listing still needs approval before it's public (existing gate stays). In the admin
-  panel's Listing Approval tab, each pending listing gets **two buttons** instead of one:
-  "Approve car" (listing goes live, seller stays unverified) and "Approve car + seller"
-  (listing goes live AND flips the seller to verified in one action). Also show, next to each
-  pending listing, how many cars that seller already has live — gives the owner a fast trust
-  signal before deciding which button to press.
-  To build: (1) stop rendering `PendingApproval` from the three dashboard entry points above
-  (or gate it off `approval_status` entirely — decide whether to keep the column for future
-  use or drop the check), (2) find/build the actual Listing Approval tab in the admin panel
-  and add the seller-car-count query + the second button, (3) wire "Approve car + seller" to
-  also set `profiles.approval_status`/verified flag for that listing's owner.
-
-- **APPR-2: Admin push notifications for new pending listings + new signups — start with Telegram**
-  — Owner wants a ping the moment a car listing or a new user needs approval, instead of having
-  to check the admin panel. Web push (`send-push` edge function, `push_subscriptions` table —
-  see the "Web push" section above) is the eventual channel but token budget is tight this
-  session, so ship it via the existing `send-telegram` edge function first (already sends
-  server-side Telegram messages, has a platform-bot fallback — see Edge Functions section
-  above) and swap/add push later. Trigger points: new row in `car_listings` with pending
-  approval status, and new `profiles` row (or `approval_status='pending'` — reconcile against
-  however APPR-1 ends up shaping the signup gate).
-
-- **APPR-3: Onboarding walkthrough is missing a step for the Add-on page** — the intro tour
-  (`src/pages/SalesmanLite.jsx`, tour logic also touches `src/pages/CarDetailPage.jsx`,
-  `src/components/CarForm.jsx`, `src/App.jsx` — grep `introTour`/`onboarding_step`) was built
-  before the add-on/services page existed, so it never got a step pointing new users at it.
-  Add one more tour step introducing the add-on page.
-
----
-
 ### SESSION 2026-08-18 — Salesman Lite design cleanup
 
 - **DESIGN-1: Replace Salesman Lite logo** — current logo needs a redesign/replacement.
