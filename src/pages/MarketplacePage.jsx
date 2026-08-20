@@ -669,10 +669,12 @@ export default function MarketplacePage() {
         .mp-feat-img  { transition:transform .45s ease;width:100%;height:100%;object-fit:cover;display:block }
         .mp-feat-card:hover .mp-feat-img { transform:scale(1.06) }
 
-        /* ── Listings search ── */
-        .mp-search-outer { transition:border-color .2s,box-shadow .2s }
-        .mp-search-outer:focus-within { border-color:rgba(220,38,38,.45) !important;box-shadow:0 4px 24px rgba(0,0,0,.1),0 0 0 3px rgba(220,38,38,.1) }
-        .mp-search-btn:hover { background:#b91c1c !important }
+        /* ── Hero search bar — mobile-first: stacked column so the input gets
+              full width for its placeholder instead of being squeezed next to
+              the "Find Cars" button and clipping. Row layout returns at the
+              ≥900px hero breakpoint below. ── */
+        .mp-hero-search { flex-direction:column; }
+        .mp-hero-search > button { width:100%; justify-content:center; }
 
         /* ════════════════════════════════════════
            HERO — MOBILE FIRST
@@ -753,6 +755,8 @@ export default function MarketplacePage() {
           .mp-budget-icon   { height: 80px; }
           .mp-filter-fab    { display: flex; }
           .mp-cars-layout   { flex-direction: row; }
+          .mp-hero-search   { flex-direction: row; }
+          .mp-hero-search > button { width: auto; }
         }
 
         /* ── Large desktop ≥1024px ── */
@@ -761,11 +765,7 @@ export default function MarketplacePage() {
           .mp-desktop-sidebar { display: flex !important; }
         }
 
-        /* ── Listings search bar collapse on small screens ── */
         @media(max-width:640px) {
-          .mp-search-outer { flex-direction:column !important;border-radius:16px !important; }
-          .mp-search-field { border-right:none !important;border-bottom:1px solid rgba(0,0,0,.08) !important;padding:12px 18px !important; }
-          .mp-search-btn   { padding:14px !important;justify-content:center;border-radius:0 0 14px 14px !important; }
           .mp-featured-strip { grid-template-columns:1fr !important; }
         }
 
@@ -788,7 +788,7 @@ export default function MarketplacePage() {
           text-transform:uppercase; letter-spacing:0.14em; color:#dc2626; margin:0 0 8px;
         }
         .mp-agent-h {
-          font-family:'Bebas Neue',sans-serif; font-size:clamp(22px,3vw,44px);
+          font-family:'Bebas Neue',sans-serif; font-weight:700; font-size:clamp(22px,3vw,44px);
           line-height:1.0; letter-spacing:0.02em; color:#111827; margin:0 0 10px;
         }
         .mp-agent-sub {
@@ -811,7 +811,12 @@ export default function MarketplacePage() {
         .mp-agent-trust span { display:inline-flex; align-items:center; gap:5px; }
         @media(max-width:720px) {
           .mp-agent-band    { padding:40px 0; }
-          .mp-agent-wrap    { flex-direction:column; align-items:flex-start; gap:20px; }
+          .mp-agent-wrap    { flex-direction:column; align-items:flex-start; justify-content:flex-start; gap:20px; }
+          /* flex:1 1 420px on .mp-agent-copy sets a 420px *width* basis for the
+             desktop row layout — once the wrap flips to column, flex-basis
+             follows the main axis and that 420px becomes a forced *height*,
+             leaving a huge empty gap below the copy before the CTA button. */
+          .mp-agent-copy    { flex:1 1 auto; }
           .mp-agent-actions { width:100%; }
           .mp-agent-cta     { width:100%; }
           .mp-agent-trust   { justify-content:flex-start; }
@@ -880,13 +885,13 @@ export default function MarketplacePage() {
               {/* Search bar — no wrapping <form> (SearchAutocomplete has its own;
                   nested forms broke navigation). Each entry point navigates via runHeroSearch. */}
               <div>
-                <div ref={heroSearchBarRef} style={{ display:'flex', alignItems:'stretch', gap:'5px', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'14px', padding:'5px', marginBottom:'10px' }}>
+                <div ref={heroSearchBarRef} className="mp-hero-search" style={{ display:'flex', alignItems:'stretch', gap:'5px', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'14px', padding:'5px', marginBottom:'10px' }}>
                   <div style={{ flex:1, minWidth:0 }}>
                     <SearchAutocomplete
                       dark
                       value={heroQ}
                       onChange={setHeroQ}
-                      placeholder="Search make, model or variant…"
+                      placeholder="Make, model or variant…"
                       navigateTo="/showroom"
                       onSubmit={val => runHeroSearch(val)}
                       inputStyle={{ padding:'11px 14px', fontSize:'14px' }}

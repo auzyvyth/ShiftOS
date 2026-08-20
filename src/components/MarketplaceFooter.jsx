@@ -141,11 +141,11 @@ export default function MarketplaceFooter() {
       {/* ── Trust bar — same guarantee language as the hero trust strip, given
             equivalent visual weight here rather than small throwaway text. ── */}
       <div className="border-b border-gray-100" style={{ background: '#F2F0EC' }}>
-        <div className="max-w-6xl mx-auto px-5 py-6 flex flex-wrap justify-center gap-x-10 gap-y-4">
+        <div className="max-w-xl mx-auto px-5 py-6 grid grid-cols-2 gap-x-6 gap-y-4">
           {(settings.trust_badges || []).map(({ text }, i) => {
             const Icon = TRUST_ICONS[i % TRUST_ICONS.length];
             return (
-              <div key={i} className="flex items-center gap-3">
+              <div key={i} className="flex items-center gap-3 min-w-0">
                 <div
                   className="flex items-center justify-center flex-shrink-0"
                   style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)' }}
