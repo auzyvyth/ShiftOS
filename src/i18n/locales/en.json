@@ -446,6 +446,10 @@
           "title": "Performance",
           "body": "Your sales stats — commission earned, units sold, and ad performance over time. Know what's working."
         },
+        "services": {
+          "title": "Add-ons",
+          "body": "Build your own catalogue of extras — tint, warranty, insurance and more. Attach them to a listing or a deal to add margin on top of the car sale."
+        },
         "merge": {
           "title": "Join Dealership",
           "body": "Have an invite code from your dealer? Enter it here to unlock the full panel — shared stock, shared leads, commission tracker and more."

@@ -87,16 +87,6 @@ not scoped, not prioritized — just parked here until picked up on purpose.
 
 ---
 
-### SESSION 2026-08-20 — approval flow redesign + admin notifications
-
-- **APPR-3: Onboarding walkthrough is missing a step for the Add-on page** — the intro tour
-  (`src/pages/SalesmanLite.jsx`, tour logic also touches `src/pages/CarDetailPage.jsx`,
-  `src/components/CarForm.jsx`, `src/App.jsx` — grep `introTour`/`onboarding_step`) was built
-  before the add-on/services page existed, so it never got a step pointing new users at it.
-  Add one more tour step introducing the add-on page.
-
----
-
 ### SESSION 2026-08-18 — Salesman Lite design cleanup
 
 - **DESIGN-1: Replace Salesman Lite logo** — current logo needs a redesign/replacement.

@@ -1773,7 +1773,7 @@ export default function SalesmanLite() {
     if (tourStep === null) { setTourTarget(null); return; }
     // Index-aligned with TOUR_STEPS. "bookings" resolves to the enquiries tab's
     // bookings sub-tab below; the rest map 1:1 to nav data-tour-id anchors.
-    const TOUR_TABS = [null, "dashboard", "listings", "leads", "enquiries", "bookings", "performance", "settings", "help"];
+    const TOUR_TABS = [null, "dashboard", "listings", "leads", "enquiries", "bookings", "performance", "services", "settings", "help"];
     const tab = TOUR_TABS[tourStep];
     if (!tab) { setTourTarget(null); return; }
     if (tab === "bookings") {
@@ -8181,6 +8181,7 @@ export default function SalesmanLite() {
     { icon: MessageSquare, title: t("salesmanLite.tour.steps.inbox.title"),      body: t("salesmanLite.tour.steps.inbox.body") },
     { icon: Calendar,     title: t("salesmanLite.tour.steps.bookings.title"),    body: t("salesmanLite.tour.steps.bookings.body") },
     { icon: BarChart2,    title: t("salesmanLite.tour.steps.performance.title"), body: t("salesmanLite.tour.steps.performance.body") },
+    { icon: Package,      title: t("salesmanLite.tour.steps.services.title"),    body: t("salesmanLite.tour.steps.services.body") },
     { icon: Settings,     title: t("salesmanLite.tour.steps.settings.title"),    body: t("salesmanLite.tour.steps.settings.body") },
     { icon: BookOpen,     title: t("salesmanLite.tour.steps.help.title"),        body: t("salesmanLite.tour.steps.help.body") },
   ];
