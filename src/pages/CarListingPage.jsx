@@ -13,7 +13,7 @@ import { supabase } from '../supabaseClient';
 import { trackEvent } from '../utils/analytics';
 import { chassisSearch } from '../utils/chassisCodes';
 import { useMarketplaceTracking } from '../hooks/useMarketplaceTracking';
-import useTenant, { isSubdomain } from '../hooks/useTenant';
+import useTenant, { isSubdomain, getSubdomain, getStorefrontUrl } from '../hooks/useTenant';
 import { PRICE_STEPS } from '../components/PriceDrumPicker';
 import { CAR_DATA } from '../data/carData';
 import SearchAutocomplete from '../components/SearchAutocomplete';
@@ -362,6 +362,13 @@ export default function CarListingPage() {
   const { addToCompare, removeFromCompare, isInCompare, compareIds } = useCompare();
   const ctaCtx = useCTAContext();
   const basePath = isMarketplace ? '/showroom' : '/cars';
+  // Bug fix (2026-08-20): this used to hardcode `https://xdrive.my${basePath}`
+  // even on a dealer subdomain, so every dealer storefront's /cars page told
+  // Google "the real version of me is the root marketplace" — a different
+  // page with different inventory. Point subdomain pages at their own host.
+  const canonicalUrl = isMarketplace
+    ? `https://xdrive.my${basePath}`
+    : `${getStorefrontUrl(getSubdomain())}${basePath}`;
 
   // Subdomain storefront = dark theme (matches the rest of the dealer page);
   // marketplace = light. Drives the page surfaces below.
@@ -633,7 +640,7 @@ export default function CarListingPage() {
         })()}</title>
         <meta name="description" content={`Browse verified cars for sale${state?' in '+state:' in Malaysia'}. Filter by brand, price, body type and more on XDrive.`}/>
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"/>
-        <link rel="canonical" href={`https://xdrive.my${basePath}`}/>
+        <link rel="canonical" href={canonicalUrl}/>
         <link rel="preconnect" href="https://fonts.googleapis.com"/>
         <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
       </Helmet>
