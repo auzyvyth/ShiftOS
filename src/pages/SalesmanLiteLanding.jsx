@@ -467,7 +467,7 @@ const CSS = `
 
   /* Hero */
   .sll-hero { padding: 84px 0 60px; border-bottom: 1px solid #eceaea; }
-  .sll-hero-inner { display: grid; grid-template-columns: 1fr minmax(300px, 380px); gap: 56px; align-items: center; }
+  .sll-hero-inner { display: grid; grid-template-columns: 1fr minmax(300px, 380px); gap: 56px; align-items: start; }
   .sll-eyebrow { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #6b7280; margin-bottom: 22px; }
   .sll-h1 { font-size: clamp(40px, 7vw, 76px); font-weight: 900; line-height: 0.98; letter-spacing: -0.03em; margin: 0 0 22px; }
   .sll-lead { font-size: clamp(15px, 2vw, 18px); line-height: 1.65; color: #4b5563; max-width: 580px; margin: 0 0 30px; }
