@@ -184,8 +184,18 @@ function App() {
           <Route path="/salesman-setup" element={<SalesmanSetup />} />
 
           {/* Protected — XDrive */}
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/dashboard/:tab" element={<DashboardPage />} />
+          {/* ONE route with an optional :tab segment — see the identical fix
+              (and full writeup of why) on /salesman-lite below. Two separate
+              Route entries for the same component means navigating from the
+              bare path to a tab crosses a route-id boundary and remounts the
+              page, silently wiping whatever local state it's holding (open
+              modals, unsaved drafts, filters, scroll position) at that
+              instant. This one hadn't visibly misfired yet, but it was the
+              same landmine. /dashboard/import-stock stays a separate static
+              route — it renders a different component and React Router
+              ranks static segments above dynamic ones, so it still matches
+              ahead of :tab regardless of order. */}
+          <Route path="/dashboard/:tab?" element={<DashboardPage />} />
           <Route path="/dashboard/import-stock" element={<ImportStockPage />} />
           <Route path="/salesman" element={<SalesmanPanel />} />
           {/* ONE route with an optional :tab segment, not two separate Route
