@@ -1632,14 +1632,14 @@ export default function AdminPage() {
                         style={{ flex: 1, minWidth: 240 }}
                       />
                     </MktField>
-                    <MktField label="WhatsApp Number" hint="Digits only, no + sign (e.g. 60174155191)">
+                    <MktField label="WhatsApp Number" hint="Digits only, no + sign (e.g. 601111521742)">
                       <input
                         type="text"
                         value={mktSettings.support_whatsapp || ""}
                         onChange={e => setMktSettings(s => ({ ...s, support_whatsapp: e.target.value.replace(/\D/g, "") }))}
                         className="adm-input"
                         style={{ flex: 1, minWidth: 240 }}
-                        placeholder="60174155191"
+                        placeholder="601111521742"
                       />
                     </MktField>
                     <MktField label="Phone Display Text" hint="Human-readable format shown in header/footer">
@@ -1649,7 +1649,7 @@ export default function AdminPage() {
                         onChange={e => setMktSettings(s => ({ ...s, support_phone: e.target.value }))}
                         className="adm-input"
                         style={{ flex: 1, minWidth: 240 }}
-                        placeholder="+60 17-415 5191"
+                        placeholder="+60 11-1152 1742"
                       />
                     </MktField>
                   </MktSection>

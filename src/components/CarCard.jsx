@@ -27,7 +27,7 @@ const formatAge = (days) => {
   return `Listed ${Math.floor(days / 30)}mo ago`;
 };
 
-const XDRIVE_PHONE = '60174155191';
+const XDRIVE_PHONE = '601111521742';
 
 const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, showCompare = false, compact = false,
   // Default assumes a full-width / 2-col grid slot. Contexts that render the

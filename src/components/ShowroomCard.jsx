@@ -24,7 +24,7 @@ if (typeof document !== 'undefined') {
 }
 
 // Fallback WhatsApp for listings with no dealer profile attached.
-const XDRIVE_WA = '60174155191';
+const XDRIVE_WA = '601111521742';
 
 // Horizontal card used in ShowroomPage listings.
 // Props:

@@ -181,7 +181,7 @@ const CONTENT = {
       { q: 'What is the Handover tab for?', a: 'It is the post-sale checklist that gets the car legally transferred to the buyer — loan settlement, insurance, Puspakom, JPJ pindah milik, road tax, geran and handover. It is created automatically when a deal is won. Overdue steps ping you first, then your dealer.' },
       { q: 'How do I get Telegram reminders?', a: 'In Settings, add your Telegram Chat ID (search @userinfobot in Telegram, send /start, copy the Id). Once connected you get appointment reminders and overdue-handover pings instantly.' },
       { q: 'What does "featuring" a car mean?', a: 'In Listings → Available Inventory, "Add to my listings" features a dealer car on your profile so you can sell it. It does NOT create a lead — your pipeline stays for real buyers only. The car appears under My Listings immediately.' },
-      { q: 'I need help or found a bug', a: 'WhatsApp our support line at +60174155191 or email support@xdrive.my. Please include a screenshot and your account email.' },
+      { q: 'I need help or found a bug', a: 'WhatsApp our support line at +601111521742 or email support@xdrive.my. Please include a screenshot and your account email.' },
     ],
   },
 
@@ -336,7 +336,7 @@ const CONTENT = {
       { q: 'Apakah fungsi tab Serahan?', a: 'Ia adalah senarai semak pasca-jualan yang memindahkan kereta secara sah kepada pembeli — penyelesaian pinjaman, insurans, Puspakom, JPJ pindah milik, cukai jalan, geran dan serahan. Ia dicipta secara automatik apabila deal menang. Langkah yang tertunggak memberi pings kepada anda dahulu, kemudian dealer anda.' },
       { q: 'Bagaimana saya mendapatkan peringatan Telegram?', a: 'Dalam Tetapan, tambah ID Chat Telegram anda (cari @userinfobot dalam Telegram, hantar /start, salin Id). Setelah disambungkan anda mendapat peringatan temujanji dan pings serahan tertunggak dengan segera.' },
       { q: 'Apakah maksud "menampilkan" sebuah kereta?', a: 'Dalam Listing → Available Inventory, "Add to my listings" menampilkan kereta dealer pada profil anda supaya anda boleh menjualnya. Ia TIDAK mencipta lead — pipeline anda adalah untuk pembeli sebenar sahaja. Kereta muncul di bawah My Listings dengan segera.' },
-      { q: 'Saya memerlukan bantuan atau menemui pepijat', a: 'WhatsApp talian sokongan kami di +60174155191 atau e-mel support@xdrive.my. Sila sertakan tangkapan skrin dan e-mel akaun anda.' },
+      { q: 'Saya memerlukan bantuan atau menemui pepijat', a: 'WhatsApp talian sokongan kami di +601111521742 atau e-mel support@xdrive.my. Sila sertakan tangkapan skrin dan e-mel akaun anda.' },
     ],
   },
 };
@@ -486,7 +486,7 @@ export default function SalesmanPanelHelp() {
             </p>
           </div>
           <a
-            href="https://wa.me/60174155191?text=Hi%2C%20I%20need%20help%20with%20the%20ShiftOS%20Salesman%20Panel"
+            href="https://wa.me/601111521742?text=Hi%2C%20I%20need%20help%20with%20the%20ShiftOS%20Salesman%20Panel"
             target="_blank"
             rel="noopener noreferrer"
             style={{

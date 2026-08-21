@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Bug, X } from "lucide-react";
 
-const SUPPORT_WHATSAPP = "60174155191";
+const SUPPORT_WHATSAPP = "601111521742";
 
 // variant: "floating" = fixed circle (legacy, used in salesman lite),
 //          "inline"   = small header icon button (sits next to the nav, no overlap)

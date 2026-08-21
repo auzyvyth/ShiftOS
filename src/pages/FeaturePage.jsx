@@ -9,7 +9,7 @@ import {
   BellRing, X,
 } from "lucide-react";
 
-const WA = "https://wa.me/60174155191?text=Hi%2C%20I%27m%20interested%20in%20ShiftOS%20for%20my%20dealership";
+const WA = "https://wa.me/601111521742?text=Hi%2C%20I%27m%20interested%20in%20ShiftOS%20for%20my%20dealership";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Content — one entry per feature page. Every capability and step below maps to
