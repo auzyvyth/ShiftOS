@@ -101,12 +101,18 @@ required to publish with a declared-reason escape, `car_listings.geran_status`,
 geran row on CarDetailPage. Owner still needs to confirm the staging preview
 before this goes to prod.
 
-- **TRUST-1: Ungate the condition map (AGREED NEXT TASK)** — `DamageMap` only renders
-  when `isRecon` is true: `src/pages/CarDetailPage.jsx:2250` (mobile) and `:3042`
-  (desktop). Every local used car ships with zero condition disclosure. The component
-  already exists and is read-only capable — this is a gate removal, not a build.
-  Highest-value item on the list (rung 4). Also decide whether CarForm should prompt
-  for defect photos when the map has marks on it.
+- **TRUST-1: Ungate the condition map — DONE 2026-08-21.** Turned out not to be a
+  gate removal. The real blocker was the form: the Damage Map field sat inside the
+  recon-only block (`src/components/CarForm.jsx:2397`), so a local car could never
+  get one, and live data showed 0 of 69 listings with a single mark — the map
+  rendered on nothing. Shipped: `car_listings.condition_declared_at` (nullable, in
+  `public_car_listings`), the map moved into a Condition Report field every car
+  sees with an explicit "I walked around this car" declaration, and both detail-page
+  breakpoints rendering on marks OR declaration with a summary line and the
+  declaration date. Existing listings unaffected (no declaration, nothing renders).
+  Still open from this item: whether CarForm should prompt for defect photos when
+  the map has marks on it, and whether the declaration should be required to publish
+  (it is optional today).
 - **TRUST-2: Real dealer identity block** — the sidebar shows a name, avatar and a
   "Verified Dealer" shield with nothing behind it (`src/pages/CarDetailPage.jsx:3453`,
   `:3475`). No trading address, SSM/company number, landline, map, "trading since" or
