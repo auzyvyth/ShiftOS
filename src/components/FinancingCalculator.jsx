@@ -680,7 +680,7 @@ const FinancingCalculator = ({
     }
   };
 
-  const preApprovedLink = 'https://wa.me/60174155191?text=' + encodeURIComponent("Hi! I'm interested in getting pre-approved for car financing. Can you help?");
+  const preApprovedLink = 'https://wa.me/601111521742?text=' + encodeURIComponent("Hi! I'm interested in getting pre-approved for car financing. Can you help?");
 
   const card = {
     background: c.cardBg,

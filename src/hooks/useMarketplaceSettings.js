@@ -6,8 +6,8 @@ const SINGLETON_ID = '00000000-0000-0000-0000-000000000001';
 export const MARKETPLACE_FALLBACK = {
   brand_tagline:        "Malaysia's first fully-verified car marketplace. Every car. Every budget. Every dealer — certified.",
   support_email:        'hello@xdrive.my',
-  support_whatsapp:     '60174155191',
-  support_phone:        '+60 17-415 5191',
+  support_whatsapp:     '601111521742',
+  support_phone:        '+60 11-1152 1742',
   social_instagram:     'https://instagram.com/xdrive.my',
   social_facebook:      'https://facebook.com/xdrive.my',
   social_tiktok:        null,

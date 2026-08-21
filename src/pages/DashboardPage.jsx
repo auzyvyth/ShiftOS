@@ -10144,7 +10144,7 @@ export default function DashboardPage() {
         <span style={{ fontSize: 13, color: trialDaysLeft <= 3 ? '#991b1b' : '#92400e', fontWeight: 600 }}>
           Free trial — {trialDaysLeft} day{trialDaysLeft === 1 ? '' : 's'} left. Your data is safe either way.
         </span>
-        <a href="https://wa.me/60174155191?text=Hi%2C%20I%20want%20to%20activate%20my%20ShiftOS%20subscription" target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: '#dc2626', padding: '4px 12px', borderRadius: 6, textDecoration: 'none' }}>
+        <a href="https://wa.me/601111521742?text=Hi%2C%20I%20want%20to%20activate%20my%20ShiftOS%20subscription" target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: '#dc2626', padding: '4px 12px', borderRadius: 6, textDecoration: 'none' }}>
           Activate now
         </a>
       </div>

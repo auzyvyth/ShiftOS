@@ -68,7 +68,7 @@ export default function SuspendedBanner() {
           resolve this.
         </p>
         <a
-          href="https://wa.me/60174155191"
+          href="https://wa.me/601111521742"
           target="_blank"
           rel="noreferrer"
           style={{

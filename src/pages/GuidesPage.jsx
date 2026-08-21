@@ -253,7 +253,7 @@ function FAQPage() {
               <p style={{ color: '#111827', fontSize: 14, fontWeight: 600, margin: '0 0 4px' }}>Still have questions?</p>
               <p style={{ color: '#6b7280', fontSize: 13, margin: 0 }}>
                 WhatsApp us at{' '}
-                <a href="https://wa.me/60174155191" style={{ color: '#dc2626', fontWeight: 600 }}>+60 17-415 5191</a>
+                <a href="https://wa.me/601111521742" style={{ color: '#dc2626', fontWeight: 600 }}>+60 11-1152 1742</a>
                 {' '}or email{' '}
                 <a href="mailto:hello@xdrive.my" style={{ color: '#dc2626', fontWeight: 600 }}>hello@xdrive.my</a>
               </p>

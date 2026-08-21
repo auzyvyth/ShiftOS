@@ -127,7 +127,7 @@ const CONTENT = {
       { q: 'I got an enquiry — what do I do?', a: 'Go to Inbox → Enquiries. Open the enquiry, tap the WhatsApp button to reply to the buyer, then tap "Add to Leads" to track the deal in your pipeline.' },
       { q: 'What does stale lead mean?', a: 'A lead is stale if no activity (note, stage change, follow-up, appointment) has been logged in 5 or more days. It\'s a reminder that the buyer may be going cold. Follow up immediately.' },
       { q: 'Can buyers book test drives through XDrive?', a: 'Yes. Listings on XDrive have a booking button. Requests come into your Inbox → Bookings tab. You accept, reschedule, or cancel from there.' },
-      { q: 'I need help or found a bug', a: 'WhatsApp our support line at +60174155191 or email support@xdrive.my. Please include a screenshot and your account email.' },
+      { q: 'I need help or found a bug', a: 'WhatsApp our support line at +601111521742 or email support@xdrive.my. Please include a screenshot and your account email.' },
     ],
   },
 
@@ -231,7 +231,7 @@ const CONTENT = {
       { q: 'Saya mendapat pertanyaan — apa yang perlu saya lakukan?', a: 'Pergi ke Peti Masuk → Pertanyaan. Buka pertanyaan, ketik butang WhatsApp untuk membalas pembeli, kemudian ketik "Tambah ke Lead" untuk menjejaki deal dalam saluran anda.' },
       { q: 'Apa maksud lead basi?', a: 'Lead adalah basi jika tiada aktiviti (nota, perubahan peringkat, susulan, temujanji) telah dilog dalam 5 hari atau lebih. Ia adalah peringatan bahawa pembeli mungkin semakin sejuk. Susulan dengan segera.' },
       { q: 'Bolehkah pembeli menempah ujian pandu melalui XDrive?', a: 'Ya. Listing di XDrive mempunyai butang tempahan. Permintaan masuk ke tab Peti Masuk → Tempahan anda. Anda terima, jadual semula, atau batal dari sana.' },
-      { q: 'Saya memerlukan bantuan atau jumpa pepijat', a: 'WhatsApp talian sokongan kami di +60174155191 atau e-mel support@xdrive.my. Sila sertakan tangkapan skrin dan e-mel akaun anda.' },
+      { q: 'Saya memerlukan bantuan atau jumpa pepijat', a: 'WhatsApp talian sokongan kami di +601111521742 atau e-mel support@xdrive.my. Sila sertakan tangkapan skrin dan e-mel akaun anda.' },
     ],
   },
 };
@@ -381,7 +381,7 @@ export default function SalesmanLiteHelp() {
             </p>
           </div>
           <a
-            href="https://wa.me/60174155191?text=Hi%2C%20I%20need%20help%20with%20ShiftOS%20Salesman%20Lite"
+            href="https://wa.me/601111521742?text=Hi%2C%20I%20need%20help%20with%20ShiftOS%20Salesman%20Lite"
             target="_blank"
             rel="noopener noreferrer"
             style={{
