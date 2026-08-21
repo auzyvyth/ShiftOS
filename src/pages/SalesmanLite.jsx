@@ -76,6 +76,7 @@ import {
   Camera,
   ThumbsUp,
   ThumbsDown,
+  Store,
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
@@ -3076,6 +3077,21 @@ export default function SalesmanLite() {
                   >
                     <ExternalLink size={11} />
                     <span style={{ flex: 1 }}>{t("salesmanLite.dash.openMinipage")}</span>
+                    <ChevronRight size={11} style={{ flexShrink: 0, opacity: 0.5 }} />
+                  </a>
+                  {/* Marketplace = the public XDrive homepage (all dealers'
+                      listings), distinct from the agent's own mini-page above.
+                      Kept neutral (not blue) so it doesn't compete with the
+                      mini-page link for attention — this is a secondary jump-off. */}
+                  <a
+                    href="/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={t("salesmanLite.dash.openMarketplaceTitle")}
+                    style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 180px", minWidth: 0, fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#94a3b8", textDecoration: "none", fontWeight: 500, fontFamily: "inherit" }}
+                  >
+                    <Store size={11} />
+                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("salesmanLite.dash.openMarketplace")}</span>
                     <ChevronRight size={11} style={{ flexShrink: 0, opacity: 0.5 }} />
                   </a>
                   {/* Per-platform share: each option tags the link with ?src=<channel>
