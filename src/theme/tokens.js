@@ -65,6 +65,10 @@ export const panel = {
   infoTextHi:  '#93c5fd',
   warn:        '#eab308',
   warnText:    '#fbbf24',
+  // "Cooling off" — a lead going quiet or a follow-up going overdue. A third
+  // state distinct from warn (reserved/pending) and danger (lost/rejected);
+  // don't reuse this for a generic warning.
+  stale:       '#fb923c',
   onAccent:    '#ffffff',
 };
 

@@ -5612,8 +5612,8 @@ export default function SalesmanLite() {
     // silently dropped from the total. Mirrors the dynamic bucketing already
     // used for the Prestasi lead-source card below.
     const SRC_LABELS = { whatsapp: t("salesmanLite.leads.srcWhatsapp"), enquiry: t("salesmanLite.leads.srcEnquiry"), drevo_enquiry: t("salesmanLite.leads.srcEnquiry"), walk_in: t("salesmanLite.leads.srcWalkIn"), referral: t("salesmanLite.leads.srcReferral"), manual: t("salesmanLite.leads.srcManual") };
-    const SRC_COLORS = { whatsapp: "#4ade80", enquiry: "#f87171", drevo_enquiry: "#f87171", walk_in: "#a78bfa", referral: "#fbbf24", manual: "#6b7280" };
-    const FALLBACK_COLORS = ["#60a5fa", "#f472b6", "#fb923c", "#34d399"];
+    const SRC_COLORS = { whatsapp: C.successText, enquiry: C.dangerText, drevo_enquiry: C.dangerText, walk_in: "#a78bfa", referral: C.warnText, manual: C.textMuted };
+    const FALLBACK_COLORS = ["#60a5fa", "#f472b6", C.stale, "#34d399"];
     const srcMap = {};
     leads.forEach(l => {
       const s = l.lead_source || "manual";
@@ -5660,10 +5660,10 @@ export default function SalesmanLite() {
       const followUpOverdue = lead.follow_up_at && new Date(lead.follow_up_at).getTime() <= Date.now();
       const initials = (lead.buyer_name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
       const heatStyle = heat.label === "hot"
-        ? { bg: "rgba(248,113,113,0.12)", color: "#f87171" }
+        ? { bg: withAlpha(C.dangerText, 0.12), color: C.dangerText }
         : heat.label === "warm"
-        ? { bg: "rgba(251,191,36,0.12)", color: "#fbbf24" }
-        : { bg: "rgba(255,255,255,0.05)", color: "#6b7280" };
+        ? { bg: withAlpha(C.warn, 0.12), color: C.warnText }
+        : { bg: C.line, color: C.textMuted };
 
       return (
         <div
@@ -5671,9 +5671,9 @@ export default function SalesmanLite() {
           className={glowLeadIds.has(lead.id) ? "slite-lead-glow" : undefined}
           style={{
             position: "relative",
-            background: "#1b2431",
-            border: "1px solid rgba(255,255,255,0.12)",
-            borderRadius: 10,
+            background: C.surfaceRaised,
+            border: `1px solid ${C.borderStrong}`,
+            borderRadius: R.md,
             overflow: "hidden",
           }}
         >
@@ -5681,12 +5681,12 @@ export default function SalesmanLite() {
           <div style={{ padding: "12px 14px 0" }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
               {/* Avatar */}
-              <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(96,165,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 600, color: "#93c5fd" }}>
+              <div style={{ width: 34, height: 34, borderRadius: "50%", background: withAlpha(C.infoText, 0.15), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.infoTextHi }}>
                 {initials}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
-                  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <p style={{ margin: 0, fontSize: T.size.lg, fontWeight: T.weight.bold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {lead.buyer_name || "—"}
                   </p>
                   {/* Top-right corner badges — heat + add-on flag share this
@@ -5694,12 +5694,12 @@ export default function SalesmanLite() {
                       that's both hot AND has an add-on doesn't overlap. */}
                   <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
                     {leadIdsWithAddons.has(lead.id) && (
-                      <span title="This deal has a paid add-on attached" style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, borderRadius: 99, padding: "2px 7px", background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.35)", color: "#93c5fd", whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                      <span title="This deal has a paid add-on attached" style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: T.size.xs, fontWeight: T.weight.bold, borderRadius: R.pill, padding: "2px 7px", background: withAlpha(C.infoText, 0.15), border: `1px solid ${withAlpha(C.infoText, 0.35)}`, color: C.infoTextHi, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                         <Package size={9} /> Add-on
                       </span>
                     )}
                     {!heat.terminal && (
-                      <span title="Lead urgency — based on pipeline stage and how recently this lead moved" style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", flexShrink: 0, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      <span title="Lead urgency — based on pipeline stage and how recently this lead moved" style={{ fontSize: T.size.xs, borderRadius: R.pill, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", flexShrink: 0, fontWeight: T.weight.bold, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                         {t("salesmanLite.heat." + heat.label, { defaultValue: heat.label })}
                       </span>
                     )}
@@ -5707,23 +5707,23 @@ export default function SalesmanLite() {
                 </div>
                 {(carName || carPrice) && (
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 3, gap: 8 }}>
-                    {carName && <p style={{ margin: 0, fontSize: 12, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carName}</p>}
-                    {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#f8fafc", flexShrink: 0 }}>{carPrice}</p>}
+                    {carName && <p style={{ margin: 0, fontSize: T.size.sm, color: C.textSec, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carName}</p>}
+                    {carPrice && <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.bold, color: C.text, flexShrink: 0 }}>{carPrice}</p>}
                   </div>
                 )}
                 {lead.updated_at && (
-                  <p style={{ margin: "3px 0 0", fontSize: 11, color: Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000 ? "#fb923c" : "#94a3b8" }}>
+                  <p style={{ margin: "3px 0 0", fontSize: T.size.sm, color: Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000 ? C.stale : C.textSec }}>
                     Last contact: {timeAgo(lead.updated_at)}
                   </p>
                 )}
                 {lead.last_call_outcome && (() => {
                   // Outcomes are information, not alarms — neutral chips with the icon
                   // carrying the distinction. Green only for the positive one.
-                  const OUTCOME = { answered: { icon: CheckCircle, label: "Answered", color: "#4ade80" }, no_answer: { icon: PhoneOff, label: "No Answer", color: "#9ca3af" }, callback_requested: { icon: RefreshCw, label: "Callback", color: "#9ca3af" }, voicemail: { icon: Voicemail, label: "Voicemail", color: "#9ca3af" } };
+                  const OUTCOME = { answered: { icon: CheckCircle, label: "Answered", color: C.successText }, no_answer: { icon: PhoneOff, label: "No Answer", color: C.textSec }, callback_requested: { icon: RefreshCw, label: "Callback", color: C.textSec }, voicemail: { icon: Voicemail, label: "Voicemail", color: C.textSec } };
                   const o = OUTCOME[lead.last_call_outcome];
                   if (!o) return null;
                   return (
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, marginTop: 3, fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 99, background: `${o.color}15`, border: `1px solid ${o.color}40`, color: o.color }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, marginTop: 3, fontSize: T.size.xs, fontWeight: T.weight.semibold, padding: "2px 7px", borderRadius: R.pill, background: `${o.color}15`, border: `1px solid ${o.color}40`, color: o.color }}>
                       <o.icon size={10} /> {o.label}
                     </span>
                   );
@@ -5736,18 +5736,18 @@ export default function SalesmanLite() {
             <div style={{ marginBottom: followUpOverdue ? 8 : 12 }}>
               <div style={{ display: "flex", gap: 3, marginBottom: 5 }}>
                 {progressStages.map((s, i) => (
-                  <div key={s} style={{ flex: 1, height: 3, borderRadius: 99, background: i < currentProgressIdx ? "rgba(220,38,38,0.55)" : i === currentProgressIdx ? "#dc2626" : "rgba(255,255,255,0.08)" }} />
+                  <div key={s} style={{ flex: 1, height: 3, borderRadius: R.pill, background: i < currentProgressIdx ? withAlpha(C.accent, 0.55) : i === currentProgressIdx ? C.accent : C.border }} />
                 ))}
               </div>
-              <p style={{ margin: 0, fontSize: 11, color: "#94a3b8" }}>
-                {t("salesmanLite.leads.stage")}: <span style={{ color: "#f1f5f9", fontWeight: 700, textTransform: "capitalize" }}>{stageLabel(normalizedStage || "new")}</span>
-                {currentProgressIdx >= 0 && <span style={{ color: "#94a3b8" }}> · {currentProgressIdx + 1}/{progressStages.length}</span>}
+              <p style={{ margin: 0, fontSize: T.size.sm, color: C.textSec }}>
+                {t("salesmanLite.leads.stage")}: <span style={{ color: C.text, fontWeight: T.weight.bold, textTransform: "capitalize" }}>{stageLabel(normalizedStage || "new")}</span>
+                {currentProgressIdx >= 0 && <span style={{ color: C.textSec }}> · {currentProgressIdx + 1}/{progressStages.length}</span>}
               </p>
             </div>
 
             {/* Follow-up warning */}
             {followUpOverdue && (
-              <div style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.22)", borderRadius: 7, color: "#fb923c", fontSize: 11, padding: "6px 10px", marginBottom: 12 }}>
+              <div style={{ background: withAlpha(C.stale, 0.08), border: `1px solid ${withAlpha(C.stale, 0.22)}`, borderRadius: R.md, color: C.stale, fontSize: T.size.sm, padding: "6px 10px", marginBottom: 12 }}>
                 {t("salesmanLite.leads.followUp")}: {timeAgo(lead.follow_up_at)}
               </div>
             )}
@@ -5758,7 +5758,7 @@ export default function SalesmanLite() {
             {lead.stage !== "won" && lead.stage !== "closed_won" && (
               <button
                 onClick={() => advanceLeadStage(lead, nextStage)}
-                style={{ flex: 1, fontSize: 11, fontWeight: 600, padding: "6px 12px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", textAlign: "center", textTransform: "capitalize" }}
+                style={{ flex: 1, fontSize: T.size.sm, fontWeight: T.weight.semibold, padding: "6px 12px", borderRadius: R.md, background: withAlpha(C.accent, 0.12), border: `1px solid ${withAlpha(C.accent, 0.22)}`, color: C.dangerText, cursor: "pointer", textAlign: "center", textTransform: "capitalize" }}
               >
                 → {stageLabel(nextStage || "won")}
               </button>
@@ -5768,7 +5768,7 @@ export default function SalesmanLite() {
                 href={`tel:${(lead.phone || "").replace(/\D/g, "")}`}
                 title="Call"
                 aria-label="Call lead"
-                style={{ flexShrink: 0, fontSize: 11, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
+                style={{ flexShrink: 0, fontSize: T.size.sm, padding: "6px 10px", borderRadius: R.md, background: C.line, border: `1px solid ${C.borderStrong}`, color: C.textSec, textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
               >
                 <Phone size={13} />
               </a>
@@ -5789,14 +5789,14 @@ export default function SalesmanLite() {
                   setWaModalMessage(msg);
                   setWaModalLead(lead);
                 }}
-                style={{ flex: 1, fontSize: 11, fontWeight: 600, padding: "6px 12px", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", textAlign: "center" }}
+                style={{ flex: 1, fontSize: T.size.sm, fontWeight: T.weight.semibold, padding: "6px 12px", borderRadius: R.md, background: withAlpha(C.success, 0.10), border: `1px solid ${withAlpha(C.success, 0.25)}`, color: C.successText, cursor: "pointer", textAlign: "center" }}
               >
                 WhatsApp
               </button>
             ) : !lead.car_listing_id ? (
               <button
                 onClick={() => setLinkCarLeadId(lead.id)}
-                style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+                style={{ flex: 1, fontSize: T.size.sm, padding: "6px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, cursor: "pointer", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
               >
                 <Car size={12} /> {t("salesmanLite.leads.linkCar")}
               </button>
@@ -5805,7 +5805,7 @@ export default function SalesmanLite() {
               onClick={() => setDrawerLeadId(lead.id)}
               title="Open lead details"
               aria-label="Open lead details"
-              style={{ flexShrink: 0, fontSize: 13, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", letterSpacing: "0.05em", lineHeight: 1 }}
+              style={{ flexShrink: 0, fontSize: T.size.base, padding: "6px 10px", borderRadius: R.md, background: C.line, border: `1px solid ${C.border}`, color: C.textSec, cursor: "pointer", letterSpacing: "0.05em", lineHeight: 1 }}
             >
               ···
             </button>
@@ -5818,9 +5818,9 @@ export default function SalesmanLite() {
       <div>
         <style>{`
           @keyframes slite-lead-glow {
-            0%   { box-shadow: 0 0 0 0 rgba(220,38,38,0.55); border-color: rgba(220,38,38,0.7); }
-            70%  { box-shadow: 0 0 0 12px rgba(220,38,38,0); border-color: rgba(220,38,38,0.7); }
-            100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); border-color: rgba(255,255,255,0.07); }
+            0%   { box-shadow: 0 0 0 0 ${withAlpha(C.accent, 0.55)}; border-color: ${withAlpha(C.accent, 0.7)}; }
+            70%  { box-shadow: 0 0 0 12px ${withAlpha(C.accent, 0)}; border-color: ${withAlpha(C.accent, 0.7)}; }
+            100% { box-shadow: 0 0 0 0 ${withAlpha(C.accent, 0)}; border-color: ${C.border}; }
           }
           .slite-lead-glow { animation: slite-lead-glow 1s ease-out; }
         `}</style>
@@ -5835,9 +5835,9 @@ export default function SalesmanLite() {
           <p
             style={{
               margin: 0,
-              fontSize: 16,
-              fontWeight: 600,
-              color: "#f1f5f9",
+              fontSize: T.size.lg,
+              fontWeight: T.weight.semibold,
+              color: C.text,
             }}
           >
             {t("salesmanLite.leads.pipeline")} ({leads.filter((l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won").length})
@@ -5848,12 +5848,12 @@ export default function SalesmanLite() {
               display: "flex",
               alignItems: "center",
               gap: 6,
-              background: "#dc2626",
+              background: C.accent,
               border: "none",
-              borderRadius: 8,
-              color: "#fff",
-              fontSize: 12,
-              fontWeight: 600,
+              borderRadius: R.md,
+              color: C.onAccent,
+              fontSize: T.size.sm,
+              fontWeight: T.weight.semibold,
               padding: "7px 12px",
               cursor: "pointer",
             }}
@@ -5865,7 +5865,7 @@ export default function SalesmanLite() {
         {/* Lead source breakdown */}
         {srcTotal > 0 && srcCfg.length > 1 && (
           <div style={{ marginBottom: 14 }}>
-            <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", height: 6, marginBottom: 8 }}>
+            <div style={{ display: "flex", borderRadius: R.sm, overflow: "hidden", height: 6, marginBottom: 8 }}>
               {srcCfg.map(({ key, color }) => (
                 <div key={key} style={{ flex: srcMap[key], background: color }} />
               ))}
@@ -5874,7 +5874,7 @@ export default function SalesmanLite() {
               {srcCfg.map(({ key, label, color }) => (
                 <div key={key} style={{ display: "flex", alignItems: "center", gap: 5 }}>
                   <span style={{ width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, color: "#6b7280" }}>{label} <strong style={{ color: "#e5e7eb" }}>{srcMap[key]}</strong></span>
+                  <span style={{ fontSize: T.size.sm, color: C.textMuted }}>{label} <strong style={{ color: C.text }}>{srcMap[key]}</strong></span>
                 </div>
               ))}
             </div>
@@ -5883,15 +5883,15 @@ export default function SalesmanLite() {
 
         {/* Search bar */}
         <div style={{ position: "relative", marginBottom: 12 }}>
-          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#4b5563", pointerEvents: "none" }} />
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textDim, pointerEvents: "none" }} />
           <input
             value={leadSearch}
             onChange={(e) => setLeadSearch(e.target.value)}
             placeholder={t("salesmanLite.leads.searchPlaceholder")}
-            style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "8px 10px 8px 30px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+            style={{ width: "100%", background: C.fill, border: `1px solid ${C.border}`, borderRadius: R.md, color: C.text, fontSize: T.size.base, padding: "8px 10px 8px 30px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
           />
           {leadSearch && (
-            <button onClick={() => setLeadSearch("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 2 }}>
+            <button onClick={() => setLeadSearch("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: C.textDim, cursor: "pointer", padding: 2 }}>
               <X size={13} />
             </button>
           )}
@@ -5903,7 +5903,7 @@ export default function SalesmanLite() {
         {pendingBookingsCount > 0 && (
           <button
             onClick={() => { switchTab("enquiries"); setInboxSubTab("bookings"); }}
-            style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", marginBottom: 12, padding: "9px 12px", borderRadius: 8, background: "rgba(251,191,36,0.10)", border: "1px solid rgba(251,191,36,0.3)", color: "#fbbf24", cursor: "pointer", fontSize: 12.5, fontWeight: 600, fontFamily: "inherit", textAlign: "left" }}
+            style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", marginBottom: 12, padding: "9px 12px", borderRadius: R.md, background: withAlpha(C.warn, 0.10), border: `1px solid ${withAlpha(C.warn, 0.3)}`, color: C.warnText, cursor: "pointer", fontSize: T.size.sm, fontWeight: T.weight.semibold, fontFamily: "inherit", textAlign: "left" }}
           >
             <Clock size={14} style={{ flexShrink: 0 }} />
             <span style={{ flex: 1, minWidth: 0 }}>
@@ -5940,25 +5940,25 @@ export default function SalesmanLite() {
                       alignItems: "center",
                       gap: 5,
                       padding: "5px 12px",
-                      borderRadius: 99,
-                      fontSize: 11,
+                      borderRadius: R.pill,
+                      fontSize: T.size.sm,
                       fontWeight: isActive ? 600 : 400,
                       cursor: "pointer",
-                      background: isActive ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.04)",
-                      border: isActive ? "1px solid rgba(220,38,38,0.3)" : "1px solid rgba(255,255,255,0.08)",
-                      color: isActive ? "#f87171" : "#9ca3af",
+                      background: isActive ? withAlpha(C.accent, 0.12) : C.fill,
+                      border: isActive ? `1px solid ${withAlpha(C.accent, 0.3)}` : `1px solid ${C.border}`,
+                      color: isActive ? C.dangerText : C.textSec,
                       textTransform: "capitalize",
                       whiteSpace: "nowrap",
                     }}
                   >
                     {stageLabel(stage)}
                     <span style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: needsFollowUp ? "#f87171" : isActive ? "#f87171" : "#6b7280",
-                      background: needsFollowUp ? "rgba(239,68,68,0.18)" : isActive ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.06)",
-                      border: needsFollowUp ? "1px solid rgba(239,68,68,0.4)" : "none",
-                      borderRadius: 99,
+                      fontSize: T.size.xs,
+                      fontWeight: T.weight.bold,
+                      color: needsFollowUp ? C.dangerText : isActive ? C.dangerText : C.textMuted,
+                      background: needsFollowUp ? withAlpha(C.danger, 0.18) : isActive ? withAlpha(C.accent, 0.12) : C.fillStrong,
+                      border: needsFollowUp ? `1px solid ${withAlpha(C.danger, 0.4)}` : "none",
+                      borderRadius: R.pill,
                       padding: "0px 6px",
                       lineHeight: 1.6,
                     }}>
@@ -5976,8 +5976,8 @@ export default function SalesmanLite() {
                 .sort((a, b) => (heatMap.get(b.id)?.score ?? 0) - (heatMap.get(a.id)?.score ?? 0));
               if (stageLeads.length === 0) {
                 return (
-                  <div style={{ height: 60, borderRadius: 10, border: "1px dashed rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ fontSize: 11, color: "#374151" }}>Empty</span>
+                  <div style={{ height: 60, borderRadius: R.md, border: `1px dashed ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ fontSize: T.size.sm, color: C.textDim }}>Empty</span>
                   </div>
                 );
               }
@@ -6005,16 +6005,16 @@ export default function SalesmanLite() {
             >
               <span
                 style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: "#4b5563",
+                  fontSize: T.size.xs,
+                  fontWeight: T.weight.bold,
+                  color: C.textDim,
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
                 }}
               >
                 Lost ({lostLeads.length})
               </span>
-              <span style={{ fontSize: 12, color: "#374151" }}>
+              <span style={{ fontSize: T.size.sm, color: C.textDim }}>
                 {lostOpen ? "▲" : "▼"}
               </span>
             </button>
@@ -6031,9 +6031,9 @@ export default function SalesmanLite() {
                   <div
                     key={lead.id}
                     style={{
-                      background: "#1b2431",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: 10,
+                      background: C.surfaceRaised,
+                      border: `1px solid ${C.borderStrong}`,
+                      borderRadius: R.md,
                       padding: "10px 12px",
                       opacity: 0.7,
                     }}
@@ -6049,9 +6049,9 @@ export default function SalesmanLite() {
                       <p
                         style={{
                           margin: 0,
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: "#9ca3af",
+                          fontSize: T.size.sm,
+                          fontWeight: T.weight.semibold,
+                          color: C.textSec,
                           flex: 1,
                           minWidth: 0,
                           overflow: "hidden",
@@ -6072,12 +6072,12 @@ export default function SalesmanLite() {
                         {lead.loss_reason && (
                           <span
                             style={{
-                              fontSize: 10,
+                              fontSize: T.size.xs,
                               padding: "1px 7px",
-                              borderRadius: 99,
-                              background: "rgba(148,163,184,0.08)",
-                              border: "1px solid rgba(148,163,184,0.2)",
-                              color: "#cbd5e1",
+                              borderRadius: R.pill,
+                              background: withAlpha(C.textSec, 0.08),
+                              border: `1px solid ${withAlpha(C.textSec, 0.2)}`,
+                              color: C.textSec,
                               whiteSpace: "nowrap",
                             }}
                           >
@@ -6090,7 +6090,7 @@ export default function SalesmanLite() {
                           style={{
                             background: "transparent",
                             border: "none",
-                            color: "#4b5563",
+                            color: C.textDim,
                             cursor: "pointer",
                             padding: 2,
                             display: "flex",
@@ -6104,8 +6104,8 @@ export default function SalesmanLite() {
                     <p
                       style={{
                         margin: "2px 0 0",
-                        fontSize: 10,
-                        color: "#374151",
+                        fontSize: T.size.xs,
+                        color: C.textDim,
                       }}
                     >
                       {timeAgo(lead.created_at)}
@@ -6122,9 +6122,9 @@ export default function SalesmanLite() {
                       >
                         <span
                           style={{
-                            fontSize: 11,
-                            color: "#f87171",
-                            fontWeight: 600,
+                            fontSize: T.size.sm,
+                            color: C.dangerText,
+                            fontWeight: T.weight.semibold,
                           }}
                         >
                           {t("salesmanLite.leads.deleteQ")}
@@ -6132,14 +6132,14 @@ export default function SalesmanLite() {
                         <button
                           onClick={() => handleDeleteLead(lead.id)}
                           style={{
-                            fontSize: 10,
+                            fontSize: T.size.xs,
                             padding: "6px 11px",
-                            borderRadius: 5,
-                            background: "rgba(239,68,68,0.12)",
-                            border: "1px solid rgba(239,68,68,0.3)",
-                            color: "#f87171",
+                            borderRadius: R.sm,
+                            background: withAlpha(C.danger, 0.12),
+                            border: `1px solid ${withAlpha(C.danger, 0.3)}`,
+                            color: C.dangerText,
                             cursor: "pointer",
-                            fontWeight: 600,
+                            fontWeight: T.weight.semibold,
                           }}
                         >
                           {t("salesmanLite.leads.yes")}
@@ -6147,12 +6147,12 @@ export default function SalesmanLite() {
                         <button
                           onClick={() => setDeleteConfirmId(null)}
                           style={{
-                            fontSize: 10,
+                            fontSize: T.size.xs,
                             padding: "6px 11px",
-                            borderRadius: 5,
-                            background: "rgba(255,255,255,0.05)",
-                            border: "1px solid rgba(255,255,255,0.08)",
-                            color: "#6b7280",
+                            borderRadius: R.sm,
+                            background: C.line,
+                            border: `1px solid ${C.border}`,
+                            color: C.textMuted,
                             cursor: "pointer",
                           }}
                         >
@@ -6175,7 +6175,7 @@ export default function SalesmanLite() {
           const plCarName = plCar ? [plCar.year, plCar.brand, plCar.model].filter(Boolean).join(" ") : null;
           const plCarPrice = plCar?.selling_price ? `RM ${Number(plCar.selling_price).toLocaleString("en-MY")}` : null;
           const plHeat = getHeatScore(pl);
-          const plHeatStyle = plHeat.label === "hot" ? { bg: "rgba(248,113,113,0.12)", color: "#f87171" } : plHeat.label === "warm" ? { bg: "rgba(251,191,36,0.12)", color: "#fbbf24" } : { bg: "rgba(255,255,255,0.05)", color: "#6b7280" };
+          const plHeatStyle = plHeat.label === "hot" ? { bg: withAlpha(C.dangerText, 0.12), color: C.dangerText } : plHeat.label === "warm" ? { bg: withAlpha(C.warn, 0.12), color: C.warnText } : { bg: C.line, color: C.textMuted };
           const plInitials = (pl.buyer_name || "?").split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase();
           const plIsPromptingLost = lostPromptId === pl.id;
           const plIsConfirmingDelete = deleteConfirmId === pl.id;
@@ -6185,23 +6185,23 @@ export default function SalesmanLite() {
               {/* backdrop */}
               <div onClick={close} style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
               {/* panel */}
-              <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 50, width: 400, maxWidth: "100vw", background: "#0d1117", borderLeft: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", fontFamily: "system-ui, sans-serif" }}>
+              <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 50, width: 400, maxWidth: "100vw", background: C.surface, borderLeft: `1px solid ${C.border}`, display: "flex", flexDirection: "column", fontFamily: "system-ui, sans-serif" }}>
 
                 {/* header */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(96,165,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 700, color: "#93c5fd" }}>{plInitials}</div>
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: withAlpha(C.infoText, 0.15), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: T.size.base, fontWeight: T.weight.bold, color: C.infoTextHi }}>{plInitials}</div>
                     <div style={{ minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.buyer_name || "—"}</p>
-                      <p style={{ margin: "1px 0 0", fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{plCarName || pl.phone || t("salesmanLite.drawer.noCarLinkedShort")}</p>
+                      <p style={{ margin: 0, fontSize: T.size.lg, fontWeight: T.weight.bold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.buyer_name || "—"}</p>
+                      <p style={{ margin: "1px 0 0", fontSize: T.size.sm, color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{plCarName || pl.phone || t("salesmanLite.drawer.noCarLinkedShort")}</p>
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                     {!plHeat.terminal && (
-                      <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 99, padding: "2px 8px", background: plHeatStyle.bg, color: plHeatStyle.color }}>{plHeat.label}</span>
+                      <span style={{ fontSize: T.size.xs, fontWeight: T.weight.bold, borderRadius: R.pill, padding: "2px 8px", background: plHeatStyle.bg, color: plHeatStyle.color }}>{plHeat.label}</span>
                     )}
-                    <span style={{ fontSize: 10, fontWeight: 600, borderRadius: 6, padding: "2px 8px", background: "rgba(255,255,255,0.05)", color: "#9ca3af", textTransform: "capitalize" }}>{stageLabel(pl.stage)}</span>
-                    <button onClick={close} style={{ background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", color: "#9ca3af", borderRadius: 8, padding: 6, display: "flex" }}>
+                    <span style={{ fontSize: T.size.xs, fontWeight: T.weight.semibold, borderRadius: R.sm, padding: "2px 8px", background: C.line, color: C.textSec, textTransform: "capitalize" }}>{stageLabel(pl.stage)}</span>
+                    <button onClick={close} style={{ background: C.line, border: "none", cursor: "pointer", color: C.textSec, borderRadius: R.md, padding: 6, display: "flex" }}>
                       <X size={16} />
                     </button>
                   </div>
@@ -6210,7 +6210,7 @@ export default function SalesmanLite() {
                 {/* Car enquired-on block — image, name, price, and the specs a
                     salesman needs to answer fast (age, mileage, VIN, plate). */}
                 {plCar ? (
-                  <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)", display: "flex", gap: 12 }}>
+                  <div style={{ padding: "14px 20px", borderBottom: `1px solid ${C.fillStrong}`, background: C.fillSubtle, display: "flex", gap: 12 }}>
                     {(() => {
                       const img = Array.isArray(plCar.images) ? plCar.images.find(Boolean) : null;
                       return img ? (
@@ -6218,33 +6218,33 @@ export default function SalesmanLite() {
                           src={cdnImg(img, 200)}
                           alt={plCarName || "Car"}
                           onClick={() => plCar.slug && window.open(`/cars/${plCar.slug}`, "_blank")}
-                          style={{ width: 88, height: 66, borderRadius: 8, objectFit: "cover", flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)", cursor: plCar.slug ? "pointer" : "default" }}
+                          style={{ width: 88, height: 66, borderRadius: R.md, objectFit: "cover", flexShrink: 0, border: `1px solid ${C.border}`, cursor: plCar.slug ? "pointer" : "default" }}
                         />
                       ) : (
-                        <div style={{ width: 88, height: 66, borderRadius: 8, flexShrink: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <Car size={22} style={{ color: "#4b5563" }} />
+                        <div style={{ width: 88, height: 66, borderRadius: R.md, flexShrink: 0, background: C.fill, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <Car size={22} style={{ color: C.textDim }} />
                         </div>
                       );
                     })()}
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {[plCar.year, plCar.brand, plCar.model, plCar.variant].filter(Boolean).join(" ") || plCarName}
                       </p>
-                      {plCarPrice && <p style={{ margin: "3px 0 0", fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>{plCarPrice}</p>}
-                      <p style={{ margin: "5px 0 0", fontSize: 11, color: "#9ca3af" }}>
+                      {plCarPrice && <p style={{ margin: "3px 0 0", fontSize: T.size.lg, fontWeight: T.weight.bold, color: C.text }}>{plCarPrice}</p>}
+                      <p style={{ margin: "5px 0 0", fontSize: T.size.sm, color: C.textSec }}>
                         {[carAgeLabel(plCar.year), plCar.mileage ? `${Number(plCar.mileage).toLocaleString("en-MY")} km` : null, plCar.transmission].filter(Boolean).join(" · ")}
                       </p>
                       {(plCar.vin_number || plCar.plate_number) && (
-                        <p style={{ margin: "3px 0 0", fontSize: 10, color: "#6b7280", fontFamily: "monospace" }}>
+                        <p style={{ margin: "3px 0 0", fontSize: T.size.xs, color: C.textMuted, fontFamily: "monospace" }}>
                           {[plCar.plate_number && `${t("salesmanLite.drawer.plateLabel")} ${plCar.plate_number}`, plCar.vin_number && `${t("salesmanLite.drawer.vinLabel")} ${plCar.vin_number}`].filter(Boolean).join("  ·  ")}
                         </p>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <div style={{ padding: "10px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)", display: "flex", alignItems: "center", gap: 8 }}>
-                    <Car size={14} style={{ color: "#4b5563" }} />
-                    <span style={{ fontSize: 12, color: "#6b7280" }}>{t("salesmanLite.drawer.noCarLinkedRow")}</span>
+                  <div style={{ padding: "10px 20px", borderBottom: `1px solid ${C.fillStrong}`, background: C.fillSubtle, display: "flex", alignItems: "center", gap: 8 }}>
+                    <Car size={14} style={{ color: C.textDim }} />
+                    <span style={{ fontSize: T.size.sm, color: C.textMuted }}>{t("salesmanLite.drawer.noCarLinkedRow")}</span>
                   </div>
                 )}
 
@@ -6253,21 +6253,21 @@ export default function SalesmanLite() {
 
                   {/* Notes */}
                   <div>
-                    <p style={{ margin: "0 0 6px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>{t("salesmanLite.drawer.notes")}</p>
+                    <p style={{ margin: "0 0 6px", fontSize: T.size.xs, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.1em" }}>{t("salesmanLite.drawer.notes")}</p>
                     {editingNoteId === pl.id ? (
                       <div>
-                        <textarea autoFocus value={editNoteVal} onChange={e => setEditNoteVal(e.target.value)} rows={3} style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "8px 11px", resize: "none", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
+                        <textarea autoFocus value={editNoteVal} onChange={e => setEditNoteVal(e.target.value)} rows={3} style={{ width: "100%", background: C.line, border: `1px solid ${withAlpha(C.accent, 0.3)}`, borderRadius: R.md, color: C.text, fontSize: T.size.base, padding: "8px 11px", resize: "none", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
                         <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                          <button onClick={() => saveLeadNote(pl.id)} disabled={notesSavingId === pl.id} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", fontWeight: 600, opacity: notesSavingId === pl.id ? 0.5 : 1 }}>{notesSavingId === pl.id ? "…" : t("salesmanLite.drawer.save")}</button>
-                          <button onClick={() => setEditingNoteId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>{t("salesmanLite.drawer.cancel")}</button>
+                          <button onClick={() => saveLeadNote(pl.id)} disabled={notesSavingId === pl.id} style={{ fontSize: T.size.sm, padding: "7px 14px", borderRadius: R.md, background: withAlpha(C.accent, 0.12), border: `1px solid ${withAlpha(C.accent, 0.22)}`, color: C.dangerText, cursor: "pointer", fontWeight: T.weight.semibold, opacity: notesSavingId === pl.id ? 0.5 : 1 }}>{notesSavingId === pl.id ? "…" : t("salesmanLite.drawer.save")}</button>
+                          <button onClick={() => setEditingNoteId(null)} style={{ fontSize: T.size.sm, padding: "7px 14px", borderRadius: R.md, background: C.line, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>{t("salesmanLite.drawer.cancel")}</button>
                         </div>
                       </div>
                     ) : pl.notes ? (
-                      <p onClick={() => { setEditingNoteId(pl.id); setEditNoteVal(pl.notes || ""); }} style={{ margin: 0, fontSize: 13, color: "#9ca3af", fontStyle: "italic", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                      <p onClick={() => { setEditingNoteId(pl.id); setEditNoteVal(pl.notes || ""); }} style={{ margin: 0, fontSize: T.size.base, color: C.textSec, fontStyle: "italic", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
                         <Pencil size={12} /> "{pl.notes}"
                       </p>
                     ) : (
-                      <button onClick={() => { setEditingNoteId(pl.id); setEditNoteVal(""); }} style={{ fontSize: 13, padding: "8px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 7, fontFamily: "inherit", width: "100%" }}>
+                      <button onClick={() => { setEditingNoteId(pl.id); setEditNoteVal(""); }} style={{ fontSize: T.size.base, padding: "8px 12px", borderRadius: R.md, background: C.fillSubtle, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 7, fontFamily: "inherit", width: "100%" }}>
                         <Pencil size={12} /> {t("salesmanLite.drawer.addNote")}
                       </button>
                     )}
@@ -6275,50 +6275,50 @@ export default function SalesmanLite() {
 
                   {/* Tool row 1 */}
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    <button onClick={() => { const price = pl.car_listings?.selling_price || ""; setLoanPrice(String(price)); setLoanCalcLead(pl); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                    <button onClick={() => { const price = pl.car_listings?.selling_price || ""; setLoanPrice(String(price)); setLoanCalcLead(pl); }} style={{ fontSize: T.size.sm, padding: "7px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
                       <DollarSign size={12} /> {t("salesmanLite.drawer.loanCalc")}
                     </button>
-                    <button onClick={() => { setLogCallLeadId(pl.id); setCallOutcome("answered"); setCallNote(""); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                    <button onClick={() => { setLogCallLeadId(pl.id); setCallOutcome("answered"); setCallNote(""); }} style={{ fontSize: T.size.sm, padding: "7px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
                       <PhoneCall size={12} /> {t("salesmanLite.drawer.logCall")}
                     </button>
-                    <button onClick={() => { setFollowUpModalLead(pl); setFollowUpDate(pl.follow_up_at ? pl.follow_up_at.slice(0,10) : ""); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: pl.follow_up_at ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.04)", border: pl.follow_up_at ? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(255,255,255,0.08)", color: pl.follow_up_at ? "#fbbf24" : "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                    <button onClick={() => { setFollowUpModalLead(pl); setFollowUpDate(pl.follow_up_at ? pl.follow_up_at.slice(0,10) : ""); }} style={{ fontSize: T.size.sm, padding: "7px 12px", borderRadius: R.md, background: pl.follow_up_at ? withAlpha(C.warn, 0.12) : C.fill, border: pl.follow_up_at ? `1px solid ${withAlpha(C.warn, 0.3)}` : `1px solid ${C.border}`, color: pl.follow_up_at ? C.warnText : C.textSec, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
                       <Clock size={12} /> {t("salesmanLite.drawer.setReminder")}
                     </button>
                   </div>
 
                   {/* Tool row 2 */}
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    <button onClick={() => { if (expandedActivityLeadId === pl.id) setExpandedActivityLeadId(null); else fetchLeadActivities(pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: expandedActivityLeadId === pl.id ? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${expandedActivityLeadId === pl.id ? "rgba(96,165,250,0.3)" : "rgba(255,255,255,0.08)"}`, color: expandedActivityLeadId === pl.id ? "#93c5fd" : "#9ca3af" }}>
+                    <button onClick={() => { if (expandedActivityLeadId === pl.id) setExpandedActivityLeadId(null); else fetchLeadActivities(pl.id); }} style={{ fontSize: T.size.sm, padding: "7px 12px", borderRadius: R.md, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: expandedActivityLeadId === pl.id ? withAlpha(C.infoText, 0.12) : C.fill, border: `1px solid ${expandedActivityLeadId === pl.id ? withAlpha(C.infoText, 0.3) : C.border}`, color: expandedActivityLeadId === pl.id ? C.infoTextHi : C.textSec }}>
                       <History size={12} /> {t("salesmanLite.drawer.history")}
                     </button>
                     {pl.stage === "deposit_taken" && (
-                      <button onClick={() => { setDepositModal(pl); setDepositAmount(""); setDepositCopied(false); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", fontFamily: "inherit" }}>
+                      <button onClick={() => { setDepositModal(pl); setDepositAmount(""); setDepositCopied(false); }} style={{ fontSize: T.size.sm, padding: "7px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, cursor: "pointer", fontFamily: "inherit" }}>
                         {t("salesmanLite.drawer.receipt")}
                       </button>
                     )}
-                    <button onClick={() => setLinkCarLeadId(pl.id)} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                    <button onClick={() => setLinkCarLeadId(pl.id)} style={{ fontSize: T.size.sm, padding: "7px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
                       <Car size={12} /> {pl.car_listing_id ? t("salesmanLite.drawer.changeCar") : t("salesmanLite.drawer.linkCar")}
                     </button>
                   </div>
 
                   {/* Activity timeline */}
                   {expandedActivityLeadId === pl.id && (
-                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "12px 14px" }}>
-                      <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanLite.drawer.activityHistory")}</p>
+                    <div style={{ background: C.fillSubtle, border: `1px solid ${C.fillStrong}`, borderRadius: R.md, padding: "12px 14px" }}>
+                      <p style={{ margin: "0 0 10px", fontSize: T.size.xs, fontWeight: T.weight.bold, color: C.textDim, textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanLite.drawer.activityHistory")}</p>
                       {activitiesLoadingId === pl.id ? (
-                        <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>{t("salesmanLite.drawer.loading")}</p>
+                        <p style={{ fontSize: T.size.sm, color: C.textDim, margin: 0 }}>{t("salesmanLite.drawer.loading")}</p>
                       ) : (leadActivities[pl.id] || []).length === 0 ? (
-                        <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>{t("salesmanLite.drawer.noActivity")}</p>
+                        <p style={{ fontSize: T.size.sm, color: C.textDim, margin: 0 }}>{t("salesmanLite.drawer.noActivity")}</p>
                       ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           {(leadActivities[pl.id] || []).map((act, i) => {
                             const ActIcon = act.activity_type === "whatsapp_sent" ? MessageSquare : act.activity_type === "call_logged" ? Phone : act.activity_type === "stage_changed" ? RefreshCw : Pencil;
                             return (
                               <div key={act.id || i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                                <ActIcon size={13} style={{ flexShrink: 0, marginTop: 2, color: "#6b7280" }} />
+                                <ActIcon size={13} style={{ flexShrink: 0, marginTop: 2, color: C.textMuted }} />
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                  <p style={{ margin: 0, fontSize: 13, color: "#9ca3af" }}>{act.activity_type === "stage_changed" ? `${act.from_stage ? stageLabel(act.from_stage) : "?"} → ${act.to_stage ? stageLabel(act.to_stage) : "?"}` : act.note || act.activity_type}</p>
-                                  <p style={{ margin: 0, fontSize: 11, color: "#374151" }}>{timeAgo(act.created_at)}</p>
+                                  <p style={{ margin: 0, fontSize: T.size.base, color: C.textSec }}>{act.activity_type === "stage_changed" ? `${act.from_stage ? stageLabel(act.from_stage) : "?"} → ${act.to_stage ? stageLabel(act.to_stage) : "?"}` : act.note || act.activity_type}</p>
+                                  <p style={{ margin: 0, fontSize: T.size.sm, color: C.textDim }}>{timeAgo(act.created_at)}</p>
                                 </div>
                               </div>
                             );
@@ -6332,40 +6332,40 @@ export default function SalesmanLite() {
                       attached to this specific deal (deal_products). */}
                   <div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                      <p style={{ margin: 0, fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>{t("salesmanLite.drawer.addons.title")}</p>
+                      <p style={{ margin: 0, fontSize: T.size.xs, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.1em" }}>{t("salesmanLite.drawer.addons.title")}</p>
                       {dealAddons.length > 0 && (
-                        <span style={{ fontSize: 12, fontWeight: 700, color: "#f87171" }}>
+                        <span style={{ fontSize: T.size.sm, fontWeight: T.weight.bold, color: C.dangerText }}>
                           RM {dealAddons.reduce((s, a) => s + Number(a.sold_price), 0).toLocaleString("en-MY")}
                         </span>
                       )}
                     </div>
                     {addonsLoading ? (
-                      <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>{t("salesmanLite.drawer.loading")}</p>
+                      <p style={{ fontSize: T.size.sm, color: C.textDim, margin: 0 }}>{t("salesmanLite.drawer.loading")}</p>
                     ) : (
                       <>
                         {dealAddons.map((a) => (
-                          <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "8px 10px", marginBottom: 4, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8 }}>
-                            <span style={{ fontSize: 13, color: "#e5e7eb", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.dealer_products?.name || "—"}</span>
-                            <span style={{ fontSize: 12, fontWeight: 600, color: "#f87171", flexShrink: 0 }}>RM {Number(a.sold_price).toLocaleString("en-MY")}</span>
-                            <button onClick={() => handleRemoveAddon(a.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", display: "flex", padding: 2, flexShrink: 0 }}>
+                          <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "8px 10px", marginBottom: 4, background: C.fillSubtle, border: `1px solid ${C.border}`, borderRadius: R.md }}>
+                            <span style={{ fontSize: T.size.base, color: C.text, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.dealer_products?.name || "—"}</span>
+                            <span style={{ fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.dangerText, flexShrink: 0 }}>RM {Number(a.sold_price).toLocaleString("en-MY")}</span>
+                            <button onClick={() => handleRemoveAddon(a.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.textDim, display: "flex", padding: 2, flexShrink: 0 }}>
                               <X size={13} />
                             </button>
                           </div>
                         ))}
                         {!showAttachAddon ? (
-                          <button onClick={() => { setShowAttachAddon(true); setAddonForm({ product_id: "", sold_price: "" }); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", fontSize: 12, fontWeight: 600, padding: "8px 12px", borderRadius: 8, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", fontFamily: "inherit" }}>
+                          <button onClick={() => { setShowAttachAddon(true); setAddonForm({ product_id: "", sold_price: "" }); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", fontSize: T.size.sm, fontWeight: T.weight.semibold, padding: "8px 12px", borderRadius: R.md, background: withAlpha(C.accent, 0.08), border: `1px solid ${withAlpha(C.accent, 0.22)}`, color: C.dangerText, cursor: "pointer", fontFamily: "inherit" }}>
                             <Plus size={12} /> {t("salesmanLite.drawer.addons.attachCta")}
                           </button>
                         ) : (
-                          <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: 12 }}>
+                          <div style={{ background: C.fillSubtle, border: `1px solid ${C.border}`, borderRadius: R.md, padding: 12 }}>
                             {addonCatalogue.length === 0 ? (
-                              <p style={{ fontSize: 12, color: "#6b7280", margin: "0 0 8px" }}>{t("salesmanLite.drawer.addons.empty")}</p>
+                              <p style={{ fontSize: T.size.sm, color: C.textMuted, margin: "0 0 8px" }}>{t("salesmanLite.drawer.addons.empty")}</p>
                             ) : (
                               <>
                                 <select
                                   value={addonForm.product_id}
                                   onChange={(e) => { const sel = addonCatalogue.find((p) => p.id === e.target.value); setAddonForm((f) => ({ ...f, product_id: e.target.value, sold_price: sel ? String(sel.selling_price) : f.sold_price })); }}
-                                  style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 7, padding: "8px 10px", color: "#e5e7eb", fontSize: 12, fontFamily: "inherit", marginBottom: 6, boxSizing: "border-box" }}
+                                  style={{ width: "100%", background: C.line, border: `1px solid ${C.borderStrong}`, borderRadius: R.md, padding: "8px 10px", color: C.text, fontSize: T.size.sm, fontFamily: "inherit", marginBottom: 6, boxSizing: "border-box" }}
                                 >
                                   <option value="">{t("salesmanLite.drawer.addons.selectProduct")}</option>
                                   {addonCatalogue.map((p) => (
@@ -6378,14 +6378,14 @@ export default function SalesmanLite() {
                                   value={addonForm.sold_price}
                                   onChange={(e) => setAddonForm((f) => ({ ...f, sold_price: e.target.value }))}
                                   placeholder={t("salesmanLite.drawer.addons.pricePlaceholder")}
-                                  style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 7, padding: "8px 10px", color: "#e5e7eb", fontSize: 12, fontFamily: "inherit", marginBottom: 8, boxSizing: "border-box" }}
+                                  style={{ width: "100%", background: C.line, border: `1px solid ${C.borderStrong}`, borderRadius: R.md, padding: "8px 10px", color: C.text, fontSize: T.size.sm, fontFamily: "inherit", marginBottom: 8, boxSizing: "border-box" }}
                                 />
                               </>
                             )}
                             <div style={{ display: "flex", gap: 6 }}>
-                              <button onClick={() => setShowAttachAddon(false)} style={{ flex: 1, padding: "7px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanLite.drawer.cancel")}</button>
+                              <button onClick={() => setShowAttachAddon(false)} style={{ flex: 1, padding: "7px", borderRadius: R.md, background: C.line, border: `1px solid ${C.border}`, color: C.textMuted, fontSize: T.size.sm, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanLite.drawer.cancel")}</button>
                               {addonCatalogue.length > 0 && (
-                                <button onClick={handleAttachAddon} disabled={attachingAddon || !addonForm.product_id || !addonForm.sold_price} style={{ flex: 1, padding: "7px", borderRadius: 7, background: "#dc2626", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", opacity: (!addonForm.product_id || !addonForm.sold_price || attachingAddon) ? 0.5 : 1, fontFamily: "inherit" }}>
+                                <button onClick={handleAttachAddon} disabled={attachingAddon || !addonForm.product_id || !addonForm.sold_price} style={{ flex: 1, padding: "7px", borderRadius: R.md, background: C.accent, border: "none", color: C.onAccent, fontSize: T.size.sm, fontWeight: T.weight.semibold, cursor: "pointer", opacity: (!addonForm.product_id || !addonForm.sold_price || attachingAddon) ? 0.5 : 1, fontFamily: "inherit" }}>
                                   {attachingAddon ? t("salesmanLite.drawer.addons.adding") : t("salesmanLite.drawer.addons.submit")}
                                 </button>
                               )}
@@ -6397,33 +6397,33 @@ export default function SalesmanLite() {
                   </div>
 
                   {/* Divider */}
-                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} />
+                  <div style={{ borderTop: `1px solid ${C.fillStrong}` }} />
 
                   {/* Lost / Delete zone */}
                   {plIsPromptingLost ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600, marginRight: 2 }}>{t("salesmanLite.drawer.whyLost")}</span>
+                      <span style={{ fontSize: T.size.sm, color: C.textSec, fontWeight: T.weight.semibold, marginRight: 2 }}>{t("salesmanLite.drawer.whyLost")}</span>
                       {LOST_REASONS.map(r => (
-                        <button key={r} onClick={() => handleLostReason(pl.id, r)} disabled={lostSavingId === pl.id} style={{ fontSize: 11, padding: "6px 10px", borderRadius: 99, background: "rgba(148,163,184,0.08)", border: "1px solid rgba(148,163,184,0.2)", color: "#cbd5e1", cursor: "pointer", opacity: lostSavingId === pl.id ? 0.5 : 1, fontFamily: "inherit" }}>
+                        <button key={r} onClick={() => handleLostReason(pl.id, r)} disabled={lostSavingId === pl.id} style={{ fontSize: T.size.sm, padding: "6px 10px", borderRadius: R.pill, background: withAlpha(C.textSec, 0.08), border: `1px solid ${withAlpha(C.textSec, 0.2)}`, color: C.textSec, cursor: "pointer", opacity: lostSavingId === pl.id ? 0.5 : 1, fontFamily: "inherit" }}>
                           {lostSavingId === pl.id ? "…" : t("salesmanLite.drawer.lostReasons." + r.toLowerCase())}
                         </button>
                       ))}
-                      <button onClick={() => setLostPromptId(null)} style={{ fontSize: 11, padding: "6px 10px", background: "transparent", border: "none", color: "#4b5563", cursor: "pointer" }}>✕</button>
+                      <button onClick={() => setLostPromptId(null)} style={{ fontSize: T.size.sm, padding: "6px 10px", background: "transparent", border: "none", color: C.textDim, cursor: "pointer" }}>✕</button>
                     </div>
                   ) : plIsConfirmingDelete ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 13, color: "#f87171", fontWeight: 600 }}>{t("salesmanLite.drawer.deleteLeadQ")}</span>
-                      <button onClick={() => handleDeleteLead(pl.id)} disabled={deletingLeadId === pl.id} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", fontWeight: 600, opacity: deletingLeadId === pl.id ? 0.5 : 1, fontFamily: "inherit" }}>{deletingLeadId === pl.id ? "…" : t("salesmanLite.drawer.yesDelete")}</button>
-                      <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanLite.drawer.no")}</button>
+                      <span style={{ fontSize: T.size.base, color: C.dangerText, fontWeight: T.weight.semibold }}>{t("salesmanLite.drawer.deleteLeadQ")}</span>
+                      <button onClick={() => handleDeleteLead(pl.id)} disabled={deletingLeadId === pl.id} style={{ fontSize: T.size.sm, padding: "7px 14px", borderRadius: R.md, background: withAlpha(C.danger, 0.12), border: `1px solid ${withAlpha(C.danger, 0.3)}`, color: C.dangerText, cursor: "pointer", fontWeight: T.weight.semibold, opacity: deletingLeadId === pl.id ? 0.5 : 1, fontFamily: "inherit" }}>{deletingLeadId === pl.id ? "…" : t("salesmanLite.drawer.yesDelete")}</button>
+                      <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: T.size.sm, padding: "7px 14px", borderRadius: R.md, background: C.line, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanLite.drawer.no")}</button>
                     </div>
                   ) : (
                     <div style={{ display: "flex", gap: 8 }}>
                       {pl.stage !== "won" && pl.stage !== "closed_won" && (
-                        <button onClick={() => { setDeleteConfirmId(null); setLostPromptId(pl.id); }} style={{ fontSize: 13, padding: "8px 14px", borderRadius: 8, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                        <button onClick={() => { setDeleteConfirmId(null); setLostPromptId(pl.id); }} style={{ fontSize: T.size.base, padding: "8px 14px", borderRadius: R.md, background: withAlpha(C.danger, 0.06), border: `1px solid ${withAlpha(C.danger, 0.3)}`, color: C.dangerText, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
                           {t("salesmanLite.drawer.markLost")}
                         </button>
                       )}
-                      <button onClick={() => { setLostPromptId(null); setDeleteConfirmId(pl.id); }} style={{ fontSize: 13, padding: "8px 14px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#4b5563", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                      <button onClick={() => { setLostPromptId(null); setDeleteConfirmId(pl.id); }} style={{ fontSize: T.size.base, padding: "8px 14px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textDim, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
                         <Trash2 size={13} /> {t("salesmanLite.drawer.delete")}
                       </button>
                     </div>
