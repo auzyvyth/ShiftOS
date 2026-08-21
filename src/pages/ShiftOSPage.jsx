@@ -9,6 +9,8 @@ import {
   Building2, ChevronDown,
 } from "lucide-react";
 import { PLAN_CONFIG } from "../utils/planConfig";
+import { supabase } from "../supabaseClient";
+import { trackPageView } from "../utils/analytics";
 
 // ─── SEO / AEO (GEO) ─────────────────────────────────────────────────────────
 // Keyword-dense meta, schema markup and an FAQ block so ShiftOS surfaces for the
@@ -783,6 +785,8 @@ export default function ShiftOSPage() {
     document.title = "ShiftOS — The Dealer Management System for Malaysian Car Dealers";
     return () => { document.head.removeChild(s); };
   }, []);
+
+  useEffect(() => trackPageView(supabase, "/shiftos", "landing_page_view"), []);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
