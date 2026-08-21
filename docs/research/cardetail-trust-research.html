@@ -1,0 +1,522 @@
+<title>Car Page Trust Teardown</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap">
+
+<style>
+:root{
+  --ground:#F7F6F2;
+  --ground-alt:#EFEDE7;
+  --card:#FFFFFF;
+  --ink:#111827;
+  --ink-2:#4B5563;
+  --ink-3:#6B7280;
+  --hair:rgba(17,24,39,0.10);
+  --hair-soft:rgba(17,24,39,0.06);
+  --accent:#DC2626;
+  --accent-soft:rgba(220,38,38,0.08);
+  --strong:#15803D;
+  --strong-soft:rgba(21,128,61,0.10);
+  --mid:#1D4ED8;
+  --mid-soft:rgba(29,78,216,0.10);
+  --weak:#B45309;
+  --weak-soft:rgba(180,83,9,0.10);
+  --shadow:0 1px 3px rgba(15,23,42,0.07), 0 1px 2px rgba(15,23,42,0.04);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0B0E14;
+    --ground-alt:#11151E;
+    --card:#131822;
+    --ink:#F2F4F7;
+    --ink-2:rgba(255,255,255,0.66);
+    --ink-3:rgba(255,255,255,0.44);
+    --hair:rgba(255,255,255,0.11);
+    --hair-soft:rgba(255,255,255,0.06);
+    --accent:#F05252;
+    --accent-soft:rgba(240,82,82,0.12);
+    --strong:#4ADE80;
+    --strong-soft:rgba(74,222,128,0.12);
+    --mid:#7FB0FF;
+    --mid-soft:rgba(127,176,255,0.12);
+    --weak:#F0B429;
+    --weak-soft:rgba(240,180,41,0.12);
+    --shadow:0 1px 3px rgba(0,0,0,0.5);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0B0E14;
+  --ground-alt:#11151E;
+  --card:#131822;
+  --ink:#F2F4F7;
+  --ink-2:rgba(255,255,255,0.66);
+  --ink-3:rgba(255,255,255,0.44);
+  --hair:rgba(255,255,255,0.11);
+  --hair-soft:rgba(255,255,255,0.06);
+  --accent:#F05252;
+  --accent-soft:rgba(240,82,82,0.12);
+  --strong:#4ADE80;
+  --strong-soft:rgba(74,222,128,0.12);
+  --mid:#7FB0FF;
+  --mid-soft:rgba(127,176,255,0.12);
+  --weak:#F0B429;
+  --weak-soft:rgba(240,180,41,0.12);
+  --shadow:0 1px 3px rgba(0,0,0,0.5);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--ground);
+  color:var(--ink);
+  font-family:'Outfit',system-ui,-apple-system,sans-serif;
+  font-size:16px;
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1160px;margin:0 auto;padding:0 clamp(20px,4vw,48px)}
+
+/* ── masthead ── */
+.mast{padding:72px 0 40px;border-bottom:1px solid var(--hair)}
+.eyebrow{
+  font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:0.16em;color:var(--accent);margin:0 0 16px;
+}
+h1{
+  font-family:'Bebas Neue',Impact,sans-serif;
+  font-size:clamp(44px,8vw,88px);
+  line-height:0.92;letter-spacing:0.015em;
+  margin:0 0 20px;text-wrap:balance;font-weight:400;
+}
+.dek{font-size:clamp(17px,2vw,20px);color:var(--ink-2);max-width:62ch;margin:0;font-weight:300}
+.mast-meta{
+  display:flex;flex-wrap:wrap;gap:12px 32px;margin-top:32px;
+  font-size:13px;color:var(--ink-3);
+}
+.mast-meta b{color:var(--ink-2);font-weight:600}
+
+/* ── sections ── */
+section{
+  display:grid;grid-template-columns:168px minmax(0,1fr);
+  gap:0 40px;padding:48px 0;border-bottom:1px solid var(--hair-soft);
+}
+section:last-of-type{border-bottom:none}
+.slabel{
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;
+  color:var(--ink-3);padding-top:8px;
+}
+.sbody{min-width:0}
+h2{
+  font-family:'Bebas Neue',Impact,sans-serif;font-weight:400;
+  font-size:clamp(28px,3.4vw,40px);line-height:1.0;letter-spacing:0.02em;
+  margin:0 0 20px;text-wrap:balance;
+}
+h3{
+  font-size:15px;font-weight:700;letter-spacing:0.01em;margin:32px 0 8px;
+}
+h3:first-child{margin-top:0}
+p{margin:0 0 16px;max-width:68ch}
+p:last-child{margin-bottom:0}
+a{color:var(--accent);text-underline-offset:3px}
+code{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:0.86em;background:var(--ground-alt);
+  border:1px solid var(--hair-soft);border-radius:5px;padding:1px 5px;
+  color:var(--ink-2);white-space:nowrap;
+}
+strong{font-weight:600;color:var(--ink)}
+ul{margin:0 0 16px;padding-left:20px;max-width:68ch}
+li{margin-bottom:8px}
+li::marker{color:var(--ink-3)}
+
+/* ── callout ── */
+.note{
+  background:var(--ground-alt);border:1px solid var(--hair-soft);
+  border-radius:12px;padding:20px 24px;margin:0 0 24px;
+}
+.note p{margin-bottom:10px;font-size:15px;color:var(--ink-2)}
+.note p:last-child{margin-bottom:0}
+.thesis{
+  border-left:3px solid var(--accent);padding:4px 0 4px 20px;margin:0 0 24px;
+}
+.thesis p{font-size:clamp(18px,2.2vw,22px);line-height:1.45;font-weight:300;color:var(--ink)}
+
+/* ── fear list ── */
+.fears{display:flex;flex-direction:column;gap:0;border-top:1px solid var(--hair)}
+.fear{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);
+  gap:12px 28px;padding:16px 0;border-bottom:1px solid var(--hair-soft);
+}
+.fear-q{font-weight:600;font-size:15px;color:var(--ink)}
+.fear-a{font-size:14px;color:var(--ink-2)}
+.fear-a b{color:var(--ink);font-weight:600}
+@media(max-width:640px){.fear{grid-template-columns:1fr;gap:4px}}
+
+/* ── ladder ── */
+.ladder{display:flex;flex-direction:column;gap:10px;margin-bottom:24px}
+.rung{
+  display:grid;grid-template-columns:52px minmax(0,1fr);gap:20px;
+  background:var(--card);border:1px solid var(--hair);border-radius:14px;
+  padding:18px 20px;box-shadow:var(--shadow);
+}
+.rung-n{
+  font-family:'Bebas Neue',Impact,sans-serif;font-size:34px;line-height:1;
+  color:var(--ink-3);letter-spacing:0.02em;padding-top:2px;
+  font-variant-numeric:tabular-nums;
+}
+.rung h4{margin:0 0 6px;font-size:15px;font-weight:700;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.rung p{margin:0;font-size:14px;color:var(--ink-2);max-width:64ch}
+.chip{
+  display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:0.1em;padding:3px 9px;border-radius:20px;white-space:nowrap;
+}
+.c-weak{background:var(--weak-soft);color:var(--weak)}
+.c-mid{background:var(--mid-soft);color:var(--mid)}
+.c-strong{background:var(--strong-soft);color:var(--strong)}
+.c-accent{background:var(--accent-soft);color:var(--accent)}
+.rung.r1{border-color:var(--hair)}
+.rung.r4,.rung.r5{border-color:color-mix(in srgb,var(--strong) 32%,transparent)}
+
+/* ── tables ── */
+.tscroll{overflow-x:auto;margin:0 0 24px;border:1px solid var(--hair);border-radius:14px;background:var(--card)}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:14px}
+thead th{
+  text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:0.12em;color:var(--ink-3);padding:14px 18px;
+  border-bottom:1px solid var(--hair);white-space:nowrap;background:var(--ground-alt);
+}
+tbody td{padding:14px 18px;border-bottom:1px solid var(--hair-soft);vertical-align:top;color:var(--ink-2)}
+tbody tr:last-child td{border-bottom:none}
+tbody td:first-child{color:var(--ink);font-weight:600;white-space:nowrap}
+td b{color:var(--ink);font-weight:600}
+
+/* ── tells ── */
+.tells{display:flex;flex-direction:column;gap:12px}
+.tell{
+  background:var(--card);border:1px solid var(--hair);border-radius:14px;
+  padding:18px 20px;box-shadow:var(--shadow);
+}
+.tell-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:8px}
+.tell-head h4{margin:0;font-size:15px;font-weight:700}
+.tell p{margin:0 0 10px;font-size:14px;color:var(--ink-2)}
+.tell p:last-child{margin-bottom:0}
+.ref{
+  display:block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:12px;color:var(--ink-3);margin-top:10px;white-space:normal;
+  word-break:break-word;
+}
+
+/* ── keep list ── */
+.keep{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.keep div{
+  background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:16px 18px;
+}
+.keep h4{margin:0 0 5px;font-size:14px;font-weight:700}
+.keep p{margin:0;font-size:13px;color:var(--ink-2)}
+.keep .ref{margin-top:8px;font-size:11px}
+
+/* ── sources ── */
+.src{font-size:13px;color:var(--ink-2)}
+.src li{margin-bottom:6px}
+
+footer{padding:40px 0 72px;color:var(--ink-3);font-size:13px}
+
+@media(max-width:900px){
+  section{grid-template-columns:1fr;gap:0;padding:40px 0}
+  .slabel{padding-top:0;margin-bottom:14px}
+  .mast{padding:48px 0 32px}
+}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <p class="eyebrow">XDrive · Marketplace research</p>
+  <h1>Car Page Trust<br>Teardown</h1>
+  <p class="dek">What the best used-car marketplaces in the world actually do to make a stranger hand over a deposit — and the specific places <code>CarDetailPage.jsx</code> is still asking to be believed instead of proving itself.</p>
+  <div class="mast-meta">
+    <span><b>Date</b> 21 Aug 2026</span>
+    <span><b>Scope</b> car detail page only</span>
+    <span><b>Markets</b> Malaysia, UK, US</span>
+    <span><b>Status</b> research — no code changed</span>
+  </div>
+</header>
+
+<section>
+  <div class="slabel">Method</div>
+  <div class="sbody">
+    <h2>How this was put together</h2>
+    <p>Desk research across published product documentation, press material and industry UX studies for eight marketplaces, plus a full read of the current <code>src/pages/CarDetailPage.jsx</code> (3,948 lines) and <code>DESIGN.md</code>.</p>
+    <div class="note">
+      <p><b>One honest limitation.</b> This session's network policy blocked direct page fetches of <code>carsome.my</code>, <code>cinch.co.uk</code> and the other marketplaces, so the visual specifics below come from their own published documentation, press releases and my prior knowledge of these products — not from a live screenshot pass done today. The mechanics are well documented and stable; exact pixel treatments should be confirmed against your own inspo when you send it.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="slabel">The finding</div>
+  <div class="sbody">
+    <h2>Trust is not a badge</h2>
+    <div class="thesis">
+      <p>Every marketplace that converts well does the same one thing: it answers the buyer's fear with something the buyer can check <em>without</em> having to believe the seller. Sites that feel untrustworthy are not short of trust <em>signals</em> — they are full of claims and short of evidence.</p>
+    </div>
+    <p>That distinction is the whole report. A green shield saying "Verified Dealer" is a claim. A scan of the Puspakom certificate the buyer can open is evidence. They cost about the same to build and they are not remotely the same thing.</p>
+    <p>The second finding matters for your specific worry about looking "vibe coded". Stanford's web credibility work — three years, 4,500 people — found <strong>46.1% of people judged a site's credibility partly on visual design</strong>: layout, typography, spacing, consistency. On e-commerce sites specifically, design-based credibility comments came up 46.2% of the time. So the feeling you have is real and it is measurable: inconsistency reads as "assembled quickly", and "assembled quickly" reads as "might not be a real business".</p>
+  </div>
+</section>
+
+<section>
+  <div class="slabel">The buyer</div>
+  <div class="sbody">
+    <h2>What a Malaysian used-car buyer is actually afraid of</h2>
+    <p>Trust design starts from fear, not from features. These seven are the ones that show up over and over in Malaysian buying guides and consumer-protection material. Each one has a specific piece of evidence that kills it — and only that piece of evidence kills it.</p>
+    <div class="fears">
+      <div class="fear"><div class="fear-q">"It's been in a big accident and they patched it."</div><div class="fear-a"><b>Kill it with:</b> photographed condition disclosure — the actual dent, on the actual car, marked on a body diagram. Not the word "excellent".</div></div>
+      <div class="fear"><div class="fear-q">"It's a flood car, or the mileage was rolled back."</div><div class="fear-a"><b>Kill it with:</b> a third-party record — service invoices with dates and readings, a named inspection, an insurance claim check.</div></div>
+      <div class="fear"><div class="fear-q">"It's still under HP and they can't actually transfer it."</div><div class="fear-a"><b>Kill it with:</b> a loan settlement / clearance letter shown as a document, plus an explicit encumbrance state. You already store <code>encumbrance_status</code> on stock units.</div></div>
+      <div class="fear"><div class="fear-q">"Is this a sambung bayar trap?"</div><div class="fear-a"><b>Kill it with:</b> saying it out loud. Sambung bayar is illegal under the Hire Purchase Act 1967; a page that names the risk instead of hiding it gains more trust than one that says nothing.</div></div>
+      <div class="fear"><div class="fear-q">"I'll pay the deposit and never see it again."</div><div class="fear-a"><b>Kill it with:</b> written refund terms, at the exact moment you ask for the deposit — not in a footer, not in a T&amp;C modal.</div></div>
+      <div class="fear"><div class="fear-q">"The price is inflated and I'm being played."</div><div class="fear-a"><b>Kill it with:</b> a market comparison that shows its sample size and its method. A confident verdict from a hidden method is worse than no verdict.</div></div>
+      <div class="fear"><div class="fear-q">"Who even is this seller? Are they real?"</div><div class="fear-a"><b>Kill it with:</b> real-world identity — trading address, landline, company registration, years trading, review count. Stanford's #1 credibility guideline, and the biggest hole in your page today.</div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="slabel">The model</div>
+  <div class="sbody">
+    <h2>The trust ladder</h2>
+    <p>This is the most useful thing to come out of the research. Everything a car page can say sits on one of five rungs, and the rungs are not close to equal. <strong>One item from rung 4 is worth more than ten from rung 1.</strong> Judge every element on your page by which rung it sits on.</p>
+    <div class="ladder">
+      <div class="rung r1">
+        <div class="rung-n">1</div>
+        <div>
+          <h4>Claim <span class="chip c-weak">near worthless</span></h4>
+          <p>"Well maintained." "Peace of mind." "Excellent condition." "Verified." Anyone can type it, so it proves nothing — and in volume it actively signals a template. This is the rung generic dealer sites live on, and it is the rung a buyer subconsciously recognises as filler.</p>
+        </div>
+      </div>
+      <div class="rung r2">
+        <div class="rung-n">2</div>
+        <div>
+          <h4>Structured self-report <span class="chip c-weak">weak</span></h4>
+          <p>Mileage, previous owners, auction grade, warranty months — filled into real fields. Still the seller's word, but the structure itself signals a system behind the listing rather than a free-text ad. Cheap, necessary, not sufficient.</p>
+        </div>
+      </div>
+      <div class="rung r3">
+        <div class="rung-n">3</div>
+        <div>
+          <h4>A document the buyer can open <span class="chip c-mid">real</span></h4>
+          <p>The Puspakom B5 certificate. The service invoice. The loan clearance letter. The company registration. The buyer verifies it themselves, so belief in you is no longer required. This is the first rung that actually moves someone.</p>
+        </div>
+      </div>
+      <div class="rung r4">
+        <div class="rung-n">4</div>
+        <div>
+          <h4>A disclosed flaw <span class="chip c-strong">strongest cheap signal</span></h4>
+          <p>A photographed scratch. "AC compressor is noisy." A body diagram with real marks on it. Counter-intuitive and enormously powerful: a seller who volunteers the bad news is understood to be hiding nothing else. Carvana built a company on this — 64 camera angles, 12x zoom, and a human annotation team whose entire job is labelling imperfections as clickable hotspots on the 360 tour.</p>
+        </div>
+      </div>
+      <div class="rung r5">
+        <div class="rung-n">5</div>
+        <div>
+          <h4>Money on the line <span class="chip c-accent">survives a sceptic</span></h4>
+          <p>A return window. A warranty with stated terms. A refundable deposit. Escrow. cinch: 14-day money back, free 90-day warranty, free collection on return. CarMax: 10-day return. Carvana: 7 days. Carsome: 5-day money-back plus a 1-year warranty. The only rung that a cynical buyer cannot argue with.</p>
+        </div>
+      </div>
+    </div>
+    <p>Read your own page against this and the picture is clear: you are strong on rung 2, decent on rung 3, almost absent on rung 4 for non-recon cars, and completely absent on rung 5.</p>
+  </div>
+</section>
+
+<section>
+  <div class="slabel">Teardown</div>
+  <div class="sbody">
+    <h2>Eight marketplaces, one move each</h2>
+    <p>Not a feature list — the single mechanic from each that is worth taking.</p>
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>Player</th><th>What they do</th><th>The move worth stealing</th></tr></thead>
+        <tbody>
+          <tr><td>Carvana</td><td>360 spinner built from 64 angles and 26,000 LEDs, 12x zoom, human-annotated imperfection hotspots; 7-day money-back guarantee.</td><td><b>Flaws as pinned hotspots on the photo.</b> Turn defect disclosure into the most interactive thing on the page rather than a disclaimer.</td></tr>
+          <tr><td>CarMax</td><td>Fixed no-haggle pricing, 10-day return window, 250+ physical locations shown.</td><td><b>State the price posture explicitly.</b> "Fixed price" or "Open to offers" removes the low-grade dread of being out-negotiated.</td></tr>
+          <tr><td>Cars.com</td><td>Great / Good / Fair deal badges from an ML model, with published explainability (they use FastSHAP to break down which features drive expected price), plus a "Well-Equipped" badge.</td><td><b>Publish the method behind your price verdict.</b> The badge is credible because the method is inspectable.</td></tr>
+          <tr><td>Autotrader</td><td>Five price bands (Low / Great / Good / Fair / High) scored against comparable listings <em>in the buyer's geographic area</em>.</td><td><b>Scope the comparison geographically</b> and say so — "vs 14 similar cars in Selangor" beats a national average.</td></tr>
+          <tr><td>cinch (UK)</td><td>HPI-checked and inspected; 14-day money back; free 90-day warranty; free collection if returned — with the limits stated openly (e.g. under 250 miles driven, same condition).</td><td><b>State the conditions on the guarantee.</b> A guarantee with visible limits reads more true than an unconditional one, not less.</td></tr>
+          <tr><td>Carsome</td><td>175-point inspection at their own certified lab; the <em>full report is published with every listing</em>, including photos of each scratch and ding; explicit "free from major accident, flood, fire and mileage tampering"; 5-day money back; 1-year warranty.</td><td><b>The named, numbered, published inspection.</b> This is the Malaysian benchmark you are measured against, and its power is that "175-point" is countable where "thorough" is not.</td></tr>
+          <tr><td>Carlist.my</td><td>A "Qualified" tier: professionally inspected, extended warranty up to 5 years, sellers surfaced as having good sales records.</td><td><b>Tier your listings by verification level</b>, visible in search results and again on the detail page. It makes verification a thing sellers compete for.</td></tr>
+          <tr><td>mudah.my</td><td>Cheap, fast, high volume, essentially no verification. Buyers price the risk in themselves.</td><td><b>The anti-benchmark.</b> This is exactly who you beat by being visibly more evidenced — but only if the evidence is visible above the fold, not in a tab.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="slabel">Patterns</div>
+  <div class="sbody">
+    <h2>The design language, cherry-picked</h2>
+    <p>Twelve patterns that recur across the good ones. These are the transferable part — the grammar, not the features.</p>
+    <h3>Evidence sits next to the number it defends</h3>
+    <p>None of the strong pages have a "trust section". The market verdict sits under the price. The warranty sits next to the CTA. The inspection date sits next to the mileage. A dedicated trust block is where trust goes to be ignored.</p>
+    <h3>Every computed claim carries its sample size and date</h3>
+    <p>"Based on 12 similar listings, updated 3 Aug." The moment you show the working, the verdict becomes checkable instead of asserted.</p>
+    <h3>Named, numbered, countable</h3>
+    <p>"175-point inspection" works because a buyer can imagine counting it. "Thoroughly inspected" is an adjective and adjectives are free. Wherever you can attach a number to a process, do.</p>
+    <h3>Show the flaw with the same production value as the feature</h3>
+    <p>Same photo quality, same card treatment, no apologetic tone, no small grey text. Disclosure hidden in a footnote reads as a legal cover; disclosure presented confidently reads as honesty.</p>
+    <h3>Documents are objects to open, not badges to admire</h3>
+    <p>A thumbnail of the actual certificate with a real filename beats a green tick every time. The tick is rung 1; the file is rung 3.</p>
+    <h3>Prove there is a real organisation</h3>
+    <p>Stanford's top guideline, unchanged in twenty years: trading address, landline, a photo of the premises, a registration number. This is the cheapest large credibility win available to you.</p>
+    <h3>State the conditions, don't bury them</h3>
+    <p>cinch publishes the mileage cap on its money-back guarantee. Limits make a promise look like it came from a legal department, which is to say from a real company.</p>
+    <h3>One primary action</h3>
+    <p>A stack of four differently-coloured buttons is the single most reliable visual tell of a template. Your own <code>CLAUDE.md</code> already bans it; the page hasn't caught up.</p>
+    <h3>Neutral voice inside evidence zones</h3>
+    <p>Sales language contaminates a trust block. "Drive with peace of mind" inside a warranty card converts the card from rung 3 to rung 1 with one sentence.</p>
+    <h3>Consistency is read as competence</h3>
+    <p>One spacing scale, one radius set, one accent, one type ramp. Visitors cannot articulate why a page feels amateur, but mismatched greys and three button styles is why.</p>
+    <h3>Price completeness</h3>
+    <p>What is in the number and what is not — road tax, insurance, JPJ transfer, processing. Pricing transparency is the most consistently cited consumer demand in every automotive study in the set.</p>
+    <h3>Recency</h3>
+    <p>"Listed 3 days ago", "price updated", "last inspected". Inventory with no timestamps reads as scraped or fake. You already have <code>listedDays</code> — it deserves more than 10px grey.</p>
+  </div>
+</section>
+
+<section>
+  <div class="slabel">Diagnosis</div>
+  <div class="sbody">
+    <h2>Why your page can read as vibe coded</h2>
+    <p>Nine specific things, all in <code>src/pages/CarDetailPage.jsx</code>. None of these are the whole feeling on their own; together they are exactly it.</p>
+    <div class="tells">
+
+      <div class="tell">
+        <div class="tell-head"><h4>Self-attested verification</h4><span class="chip c-weak">rung 1 in a rung 3 costume</span></div>
+        <p>The Puspakom row prints "Inspection verified by the dealer." The dealer verifying their own car is circular — it reads as a template that wanted the word "verified" in it. Either name the actual verifier (Puspakom branch, report number) or drop the line; the B5/B7 dates above it are already doing honest work.</p>
+        <span class="ref">src/pages/CarDetailPage.jsx:288</span>
+      </div>
+
+      <div class="tell">
+        <div class="tell-head"><h4>Filler benefit copy inside a trust card</h4><span class="chip c-weak">rung 1</span></div>
+        <p>The warranty banner's sub-line is "Covered by the dealer · drive with peace of mind". "Peace of mind" is the most common stock phrase in generic dealer templates — it is the phrase a sceptical buyer's eye slides straight past. Replace it with terms: what is covered, mileage cap, how to claim.</p>
+        <span class="ref">src/pages/CarDetailPage.jsx:196</span>
+      </div>
+
+      <div class="tell">
+        <div class="tell-head"><h4>Condition disclosure only exists for recon cars</h4><span class="chip c-accent">biggest single gap</span></div>
+        <p>The <code>DamageMap</code> only renders when <code>isRecon</code> is true, on both the mobile and desktop paths. Every local used car — the bulk of the marketplace — currently ships with zero condition disclosure. That is the highest-value rung on the ladder, the component already exists, and it is switched off for most of your inventory.</p>
+        <span class="ref">src/pages/CarDetailPage.jsx:2250 (mobile) · src/pages/CarDetailPage.jsx:3042 (desktop) · src/components/DamageMap.jsx</span>
+      </div>
+
+      <div class="tell">
+        <div class="tell-head"><h4>No real-world dealer identity</h4><span class="chip c-accent">Stanford #1</span></div>
+        <p>The sidebar shows a name, an avatar and a shield reading "Verified Dealer" — and nothing behind it. No trading address, no company or SSM number, no landline, no map, no "trading since", no total sales. And "Verified Dealer" with no definition of what was verified is itself a rung 1 claim wearing rung 3 clothing.</p>
+        <span class="ref">src/pages/CarDetailPage.jsx:3453 (dealer topbar) · :3475 (verified shield)</span>
+      </div>
+
+      <div class="tell">
+        <div class="tell-head"><h4>Social proof is below the fold, twice</h4><span class="chip c-mid">wrong place</span></div>
+        <p><code>ReviewsSection</code> sits after Performance, Running Costs and Location on both breakpoints. The decision is made at the price block; reviews sitting five sections below it are decorative. A rating chip belongs beside the dealer name.</p>
+        <span class="ref">src/pages/CarDetailPage.jsx:3414 (desktop) · src/pages/CarDetailPage.jsx:2544 (mobile)</span>
+      </div>
+
+      <div class="tell">
+        <div class="tell-head"><h4>The deposit ask has no protection language</h4><span class="chip c-accent">highest-anxiety moment</span></div>
+        <p>"RM X deposit to reserve" renders as an 11px muted centered caption. This is the single most frightening sentence on the page for a Malaysian buyer, and it is styled as the least important text in the sidebar. What happens if the loan is rejected? Is it refundable? Who holds it?</p>
+        <span class="ref">src/pages/CarDetailPage.jsx:3527</span>
+      </div>
+
+      <div class="tell">
+        <div class="tell-head"><h4>Eight competing actions in one sidebar</h4><span class="chip c-weak">template tell</span></div>
+        <p>Book a Viewing (red), WhatsApp (green), Call (grey), Financing calculator, seller storefront link, Chat with [first name] (green again), View all listings, Go to dealer's page. Two green buttons do near-identical jobs. This breaks your own anti-slop rule in <code>CLAUDE.md</code> — one primary action visible, the long tail behind an overflow — and a wall of buttons is precisely the thing that reads as generated.</p>
+        <span class="ref">src/pages/CarDetailPage.jsx:3530–3600</span>
+      </div>
+
+      <div class="tell">
+        <div class="tell-head"><h4>Theme leaks: dark-theme colours on the light surface</h4><span class="chip c-weak">credibility hygiene</span></div>
+        <p><code>DESIGN.md</code> warns about this and says it has bitten twice. Three live cases: the SAVE badge text is <code>#f87171</code> on a white card; the salesman line "Independent Agent · XDrive" is hardcoded <code>#1e293b</code>, near-invisible on the dark subdomain theme; the Call button border is <code>rgba(255,255,255,0.1)</code>, which vanishes entirely on the light theme so the button loses its edge. Washed-out and edgeless elements are the most reliable amateur tell a visitor can spot without knowing why.</p>
+        <span class="ref">src/pages/CarDetailPage.jsx:3513 · :3593 · :3542</span>
+      </div>
+
+      <div class="tell">
+        <div class="tell-head"><h4>The market verdict has no method and no sample floor</h4><span class="chip c-mid">rung 2 pretending to be rung 3</span></div>
+        <p><code>MarketPriceTag</code> will happily print "Below market · based on 3 similar listings" in confident green. A strong verdict off a three-car sample is worse than no verdict — if a buyer checks and disagrees, every other number on the page loses credibility with it. Cars.com's badges work because the method is published; suppress the band below a sample threshold and link a one-paragraph explanation.</p>
+        <span class="ref">src/pages/CarDetailPage.jsx:92–125</span>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="slabel">Credit</div>
+  <div class="sbody">
+    <h2>What is already right — don't rebuild it</h2>
+    <p>The page is considerably further along than "vibe coded". These are genuine rung 2–3 assets that most Malaysian listings do not have.</p>
+    <div class="keep">
+      <div><h4>Documents as openable objects</h4><p>The Car History rows render real uploaded certificates with previews and downloads. That is rung 3, and it is ahead of mudah.</p><span class="ref">:3141–3190</span></div>
+      <div><h4>Honest price label</h4><p>"Asking Price" rather than "Price". Small word, correct posture.</p><span class="ref">:3488</span></div>
+      <div><h4>Recon grade chips</h4><p>Auction grade and interior grade as separate checkable chips — Malaysia-specific and genuinely verifiable.</p><span class="ref">:202</span></div>
+      <div><h4>Puspakom B5/B7 as first-class data</h4><p>Dates as structured fields rather than free text. The right foundation; only the caption underneath lets it down.</p><span class="ref">:268</span></div>
+      <div><h4>Sambung bayar modelled honestly</h4><p>Shows real monthly, upfront, months left and bank instead of a meaningless selling price. Rare, and correct.</p><span class="ref">:141</span></div>
+      <div><h4>Buying-intent qualifier</h4><p>Asking intent on the booking form is good dealer-side triage without adding buyer friction.</p><span class="ref">:258</span></div>
+      <div><h4>Damage map component exists</h4><p>Already built and read-only capable. It needs ungating, not building.</p><span class="ref">src/components/DamageMap.jsx</span></div>
+      <div><h4>Design system is written down</h4><p><code>DESIGN.md</code> already forbids most slop patterns. The gap is enforcement on this page, not authorship.</p><span class="ref">DESIGN.md</span></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="slabel">Recommendation</div>
+  <div class="sbody">
+    <h2>Ranked, cheapest impact first</h2>
+    <p>Nothing here is built yet — this is the shortlist to argue with before you send inspo.</p>
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>Move</th><th>Rung</th><th>Effort</th><th>Why it earns its place</th></tr></thead>
+        <tbody>
+          <tr><td>Ungate the condition map</td><td><span class="chip c-strong">4</span></td><td>Low</td><td>Component exists; flipping the <code>isRecon</code> gate exposes the strongest cheap signal on every listing instead of a minority.</td></tr>
+          <tr><td>Real dealer identity block</td><td><span class="chip c-mid">3</span></td><td>Low</td><td>Address, landline, registration, trading since, listing count. Stanford's top credibility guideline and your largest single hole.</td></tr>
+          <tr><td>Define "Verified Dealer"</td><td><span class="chip c-mid">1→3</span></td><td>Low</td><td>One line on what was checked converts an empty badge into a claim with a referent.</td></tr>
+          <tr><td>Deposit terms at the deposit ask</td><td><span class="chip c-accent">5</span></td><td>Low</td><td>Refundable or not, what happens on loan rejection, who holds it. Highest-anxiety moment on the page, currently the smallest text.</td></tr>
+          <tr><td>Collapse the CTA stack</td><td>—</td><td>Low</td><td>One primary, one secondary, rest into an overflow. Pure visual-credibility win, and it is already your own written rule.</td></tr>
+          <tr><td>Review score beside the dealer name</td><td><span class="chip c-mid">3</span></td><td>Low</td><td>Moves existing social proof from below the fold to the point of decision.</td></tr>
+          <tr><td>Kill the filler copy</td><td><span class="chip c-weak">1 cleanup</span></td><td>Trivial</td><td>"Peace of mind" and "verified by the dealer" out; terms and named verifiers in.</td></tr>
+          <tr><td>Fix the theme leaks</td><td>—</td><td>Trivial</td><td>Three hardcoded colours. Invisible borders and washed-out text are the amateur tell visitors notice without being able to name it.</td></tr>
+          <tr><td>Sample floor + method note on the price verdict</td><td><span class="chip c-mid">2→3</span></td><td>Low</td><td>Suppress the band under a minimum sample; link a plain-English explanation of how the average is built.</td></tr>
+          <tr><td>Price completeness line</td><td><span class="chip c-mid">3</span></td><td>Medium</td><td>What is and is not in the number. Needs data plumbing, but pricing transparency is the most-cited buyer demand across every study here.</td></tr>
+          <tr><td>A named XDrive inspection standard</td><td><span class="chip c-strong">4</span></td><td>High</td><td>The Carsome move. This is the only item that needs an operations answer rather than a UI answer — someone has to actually do the inspection.</td></tr>
+          <tr><td>A guarantee with money behind it</td><td><span class="chip c-accent">5</span></td><td>High</td><td>Return window or deposit protection. The only rung that beats a cynic, and the only one that costs real money — a business decision, not a design one.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The first eight are a single focused pass and would move the page further than any amount of restyling. The last two are the ones that would let you compete with Carsome on trust rather than on price.</p>
+  </div>
+</section>
+
+<section>
+  <div class="slabel">Sources</div>
+  <div class="sbody">
+    <h2>References</h2>
+    <ul class="src">
+      <li><a href="https://credibility.stanford.edu/guidelines/index.html">Stanford Web Credibility Project — Guidelines</a> and the <a href="https://pureprose.wordpress.com/wp-content/uploads/2010/11/webcredibility.pdf">4,500-participant credibility study (PDF)</a></li>
+      <li><a href="https://baymard.com/research/product-page">Baymard Institute — Product Details Page UX research</a> and the <a href="https://baymard.com/blog/automotive-parts-ux-benchmark-2026">2026 automotive UX benchmark</a></li>
+      <li><a href="https://blog.carvana.com/2020/08/living-in-spin-making-carvanas-new-spinner-vol-iv/">Carvana — building the 360 spinner</a>, <a href="https://blog.carvana.com/2017/11/carvana-odyssey-part-iii-difference-details/">the annotation process</a>, <a href="https://www.carvana.com/help/purchasing-a-car/what-are-the-limits-of-the-7-day-money-back-guarantee/">7-day money-back limits</a></li>
+      <li><a href="https://tech.cars.com/cars-deal-badges-4dac3ad15bf5">Cars.com engineering — how the deal badges are computed</a></li>
+      <li><a href="https://www.cinch.co.uk/car-inspection">cinch — inspection standards</a> and <a href="https://www.cinch.co.uk/returns">money-back guarantee terms</a></li>
+      <li><a href="https://www.carsome.my/news/item/carsome-inspection-used-cars">Carsome — 175-point inspection</a>, <a href="https://www.carsome.my/news/item/carsome-second-hand-car-inspection-report-2">how to read the report</a>, <a href="https://www.wapcar.my/news/to-attain-the-carsome-certified-stamp-of-approval-cars-must-pass-a-175point-check-buyers-enjoy-5day-moneyback-guarantee-49209">Certified stamp and 5-day money-back</a></li>
+      <li><a href="https://www.carlist.my/">Carlist.my — Qualified listings and extended warranty</a></li>
+      <li><a href="https://www.motor1.com/features/803282/carmax-vs-carvana-return-policy-comparison/">CarMax vs Carvana return policies compared</a></li>
+      <li><a href="https://paultan.org/2022/06/14/buying-a-used-car-in-malaysia-how-do-you-avoid-flood-damaged-vehicles-and-mileage-tampering/">paultan.org — avoiding flood-damaged cars and mileage tampering in Malaysia</a> and <a href="https://paultan.org/2026/06/01/how-to-buy-a-used-car-from-a-private-seller/">buying from a private seller</a></li>
+      <li><a href="https://www.parksoncredit.com.my/consumer/financial-education/article/the-risks-of-sambung-bayar-how-to-protect-yourself-when-buying-or-selling-a-vehicle">Parkson Credit — the risks of sambung bayar</a> and <a href="https://says.com/my/lifestyle/what-is-sambung-bayar-illegal">why it is illegal under the Hire Purchase Act 1967</a></li>
+      <li><a href="https://www.coxautoinc.com/insights/cox-automotives-car-buyer-journey-study-reveals-record-high-satisfaction-among-new-and-ev-buyers/">Cox Automotive — Car Buyer Journey Study</a></li>
+      <li><a href="https://resources.rework.com/libraries/automotive-sales-growth/online-pricing-transparency">Online pricing transparency and internet shopper conversion</a></li>
+    </ul>
+  </div>
+</section>
+
+<footer class="wrap" style="padding-left:0;padding-right:0">
+  Research only — no code was changed. Next step is your inspo, then a proposed visual direction for the page.
+</footer>
+
+</div>
