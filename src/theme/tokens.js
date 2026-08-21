@@ -59,6 +59,10 @@ export const panel = {
   successText: '#4ade80',
   info:        '#3b82f6',
   infoText:    '#60a5fa',
+  // One step brighter than infoText — an intentional second tier for
+  // escalating emphasis (e.g. a higher listing-price band), not a general
+  // color. Never use this as a plain "info" text color.
+  infoTextHi:  '#93c5fd',
   warn:        '#eab308',
   warnText:    '#fbbf24',
   onAccent:    '#ffffff',
