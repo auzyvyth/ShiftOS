@@ -44,15 +44,21 @@ export async function trackEvent(supabase, eventType, payload = {}) {
 }
 
 /**
- * Track a marketplace page visit with time-on-page.
- * Fires page_view immediately; fires page_exit with time_spent on cleanup.
- * Returns a cleanup function — call it on component unmount.
+ * Track a page visit with time-on-page.
+ * Fires `${eventType}` immediately (default "page_view"); fires the matching
+ * exit event (eventType with "_view" swapped for "_exit") with time_spent on
+ * cleanup. Returns a cleanup function — call it on component unmount.
+ *
+ * eventType lets non-marketplace callers (e.g. landing_page_view for the
+ * /shiftos and /for-salesmen marketing pages) avoid polluting marketplace-
+ * scoped stats that filter on the plain page_view/page_exit types.
  */
-export function trackPageView(supabase, overridePath) {
+export function trackPageView(supabase, overridePath, eventType = "page_view") {
   const start = Date.now();
   const path = overridePath || window.location.pathname;
+  const exitType = eventType.replace(/_view$/, "_exit");
 
-  trackEvent(supabase, "page_view", {
+  trackEvent(supabase, eventType, {
     page_path: path,
     dealer_id: null,
   });
@@ -63,7 +69,7 @@ export function trackPageView(supabase, overridePath) {
     fired = true;
     const secs = Math.round((Date.now() - start) / 1000);
     if (secs < 1) return; // ignore React StrictMode double-invoke in dev
-    trackEvent(supabase, "page_exit", {
+    trackEvent(supabase, exitType, {
       page_path: path,
       dealer_id: null,
       time_spent: secs,

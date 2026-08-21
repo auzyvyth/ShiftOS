@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import { motion, useReducedMotion } from "framer-motion";
+import { supabase } from "../supabaseClient";
+import { trackPageView } from "../utils/analytics";
 import {
   ArrowRight, Check, Globe, Car, MessageCircle, LineChart,
   Link2, Wallet, ChevronDown, Share2, ShieldCheck, X as XIcon,
@@ -141,6 +143,8 @@ export default function SalesmanLiteLanding() {
   const reveal = reduceMotion
     ? {}
     : { initial: "hidden", whileInView: "show", viewport: { once: true, amount: 0.2 } };
+
+  useEffect(() => trackPageView(supabase, "/for-salesmen", "landing_page_view"), []);
 
   return (
     <>

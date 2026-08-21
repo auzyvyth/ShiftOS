@@ -53,6 +53,7 @@ export default function FunnelTab() {
   const [err, setErr] = useState(null);
   const [funnel, setFunnel] = useState(null);
   const [top, setTop] = useState(null);
+  const [landing, setLanding] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,14 +62,16 @@ export default function FunnelTab() {
       setErr(null);
       const to = new Date();
       const from = new Date(Date.now() - Number(range) * 86400000);
-      const [f, t] = await Promise.all([
+      const [f, t, l] = await Promise.all([
         supabase.rpc("get_marketplace_funnel", { p_from: from.toISOString(), p_to: to.toISOString() }),
         supabase.rpc("get_marketplace_top", { p_from: from.toISOString(), p_to: to.toISOString(), p_limit: 8 }),
+        supabase.rpc("get_landing_page_visits", { p_from: from.toISOString(), p_to: to.toISOString() }),
       ]);
       if (cancelled) return;
       if (f.error) { setErr(f.error.message); setLoading(false); return; }
       setFunnel(f.data);
       setTop(t.data || {});
+      setLanding(l.data || null);
       setLoading(false);
     }
     load();
@@ -177,6 +180,20 @@ export default function FunnelTab() {
             <TopTable title="Top traffic sources" cols={["Source", "Events"]}
               rows={(top?.top_sources || []).map(s => [s.source, num(s.events)])}
               empty="No traffic in range" />
+          </div>
+
+          {/* Marketing / signup landing pages — pre-signup traffic, kept
+              separate from marketplace storefront visits above. */}
+          <div style={{ marginTop: 24 }}>
+            <p style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>
+              Marketing pages
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12 }}>
+              <StatTile label="ShiftOS page (/shiftos)" value={num(landing?.shiftos?.visits)}
+                cur={landing?.shiftos?.visits} prev={landing?.shiftos?.prev_visits} accent="#4ade80" />
+              <StatTile label="For Salesmen page (/for-salesmen)" value={num(landing?.for_salesmen?.visits)}
+                cur={landing?.for_salesmen?.visits} prev={landing?.for_salesmen?.prev_visits} accent="#facc15" />
+            </div>
           </div>
         </>
       )}
