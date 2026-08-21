@@ -81,6 +81,9 @@ const initialListing = {
   localRegDate: "",
   chassisStatus: "",
   damageMap: [],
+  // Condition report — the declaration is what makes an empty map mean
+  // "no visible damage" instead of "never inspected".
+  conditionDeclared: false,
   // Services
   included_services: [],
   baseReconCost: 0, // recon_cost excluding services (computed at pre-fill)
@@ -1051,6 +1054,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         localRegDate: listing.local_reg_date || "",
         chassisStatus: listing.chassis_status || "",
         damageMap: listing.damage_map || [],
+        conditionDeclared: !!listing.condition_declared_at,
         included_services: listing.included_services || [],
         // base recon = total recon minus previously-stored services cost
         baseReconCost: Math.max(
@@ -1768,6 +1772,11 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         local_reg_date: form.isRecon ? form.localRegDate || null : null,
         chassis_status: form.isRecon ? form.chassisStatus || null : null,
         damage_map: form.damageMap || [],
+        // Keep the original declaration timestamp on edit so re-saving a listing
+        // does not make an old walkaround look like it happened today.
+        condition_declared_at: form.conditionDeclared
+          ? listing?.condition_declared_at || new Date().toISOString()
+          : null,
         commission_amount: form.commissionAmount ? parseFloat(form.commissionAmount) : null,
         included_services: form.included_services || [],
         included_services_cost: servicesCost,
@@ -2373,6 +2382,48 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           </Field>
           )}
 
+          {/* Condition report — every car, not just recon. Buyers cannot tell a
+              clean car from a skipped walkaround unless the dealer says which it
+              is, so the map is paired with an explicit declaration. */}
+          <Field
+            label="Condition Report"
+            hint="Mark every dent, scratch, rust spot and replaced panel — buyers see this on the listing"
+          >
+            <div className="space-y-3">
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl">
+                <DamageMap
+                  value={form.damageMap}
+                  onChange={(v) => set("damageMap", v)}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  set("conditionDeclared", !form.conditionDeclared)
+                }
+                className={`w-full flex items-start gap-3 p-4 rounded-2xl border text-left transition-colors ${form.conditionDeclared ? "bg-emerald-50 border-emerald-300" : "bg-white border-gray-200 hover:border-gray-300"}`}
+              >
+                <span
+                  className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border ${form.conditionDeclared ? "bg-emerald-600 border-emerald-600" : "border-gray-300 bg-white"}`}
+                >
+                  {form.conditionDeclared && (
+                    <Check size={13} className="text-white" />
+                  )}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-gray-900">
+                    I walked around this car and marked every visible defect
+                  </span>
+                  <span className="block text-xs text-gray-500 mt-0.5">
+                    {form.damageMap.length > 0
+                      ? `${form.damageMap.length} area${form.damageMap.length > 1 ? "s" : ""} marked — the listing will show them.`
+                      : "Nothing marked — the listing will state you found no visible damage."}
+                  </span>
+                </span>
+              </button>
+            </div>
+          </Field>
+
           {/* Recon toggle — mode switch, stays visible */}
           <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-2xl">
             <div>
@@ -2471,14 +2522,6 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                   ]}
                   placeholder="Select"
                 />
-              </Field>
-              <Field label="Damage Map" hint="Click car to mark damage areas">
-                <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl">
-                  <DamageMap
-                    value={form.damageMap}
-                    onChange={(v) => set("damageMap", v)}
-                  />
-                </div>
               </Field>
             </div>
           )}

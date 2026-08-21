@@ -798,7 +798,7 @@ export default function CarDetailPage() {
       // for agent-vs-dealer below — without it in the select, carData.seller_role is
       // always undefined and the get_salesman_by_id lookup never fires, so a Salesman
       // Lite listing silently falls through to a nameless "Seller" with no mini-page link.
-      const PUBLIC_FIELDS = "id,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,plate_number,video_url,salesman_slug,car_documents,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,included_services_cost,vin,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating,cylinders,market_avg_price,market_sample_count,puspakom_b5_date,puspakom_b7_date,seller_role,payment_type,sambung_monthly,sambung_months_left,sambung_balance,sambung_deposit,sambung_bank,docs_verified,geran_status";
+      const PUBLIC_FIELDS = "id,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,plate_number,video_url,salesman_slug,car_documents,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,included_services_cost,vin,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating,cylinders,market_avg_price,market_sample_count,puspakom_b5_date,puspakom_b7_date,seller_role,payment_type,sambung_monthly,sambung_months_left,sambung_balance,sambung_deposit,sambung_bank,docs_verified,geran_status,condition_declared_at";
       let { data: carData, error } = await supabase
         .from("public_car_listings")
         .select(PUBLIC_FIELDS)
@@ -1292,6 +1292,19 @@ export default function CarDetailPage() {
     currentUserId === car.dealer_id || currentUserId === car.assigned_to
   );
   const isRecon = car.is_recon;
+  // Condition report. An empty damage map on its own means nothing — it is only
+  // "no visible damage" once the dealer has declared the walkaround
+  // (car_listings.condition_declared_at), otherwise it is "never inspected" and
+  // we show nothing rather than imply a clean car.
+  const damageMarks = Array.isArray(car.damage_map) ? car.damage_map : [];
+  const conditionDeclaredAt = car.condition_declared_at || null;
+  const showConditionMap = damageMarks.length > 0 || !!conditionDeclaredAt;
+  const conditionSummary = damageMarks.length > 0
+    ? `Dealer marked ${damageMarks.length} area${damageMarks.length > 1 ? 's' : ''} of damage on this car.`
+    : 'Dealer walked around this car and found no visible damage.';
+  const conditionDeclaredOn = conditionDeclaredAt
+    ? new Date(conditionDeclaredAt).toLocaleDateString('en-MY', { day:'numeric', month:'short', year:'numeric' })
+    : null;
   const isReserved = car.status === 'reserved';
   const isHot =
     car.original_price &&
@@ -2250,11 +2263,15 @@ export default function CarDetailPage() {
                         <span style={{ fontSize:'13px', color: th.text, textAlign:'right' }}>{val}</span>
                       </div>
                     ))}
-                    {isRecon && Array.isArray(car.damage_map) && car.damage_map.length > 0 && (
+                    {showConditionMap && (
                       <div style={{ marginTop:24, paddingTop:20, borderTop:`1px solid ${th.border}` }}>
-                        <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.16em', color: th.textMuted, fontWeight:700, marginBottom:14 }}>Condition Map</p>
+                        <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.16em', color: th.textMuted, fontWeight:700, marginBottom:14 }}>Condition Report</p>
                         <div style={{ background: th.card, border:`1px solid ${th.border}`, borderRadius:12, padding:'16px 20px' }}>
-                          <DamageMap value={car.damage_map} readOnly />
+                          <DamageMap value={damageMarks} readOnly />
+                          <p style={{ fontSize:12, color: th.textSec, marginTop:14, lineHeight:1.6 }}>{conditionSummary}</p>
+                          {conditionDeclaredOn && (
+                            <p style={{ fontSize:11, color: th.textMuted, marginTop:4 }}>Declared by the dealer on {conditionDeclaredOn}</p>
+                          )}
                         </div>
                       </div>
                     )}
@@ -3051,15 +3068,12 @@ export default function CarDetailPage() {
                     </div>
                   )}
 
-                  {detailTab === "specs" &&
-                    isRecon &&
-                    Array.isArray(car.damage_map) &&
-                    car.damage_map.length > 0 && (
+                  {detailTab === "specs" && showConditionMap && (
                       <div
                         style={{
                           marginTop: 24,
                           paddingTop: 20,
-                          borderTop: "1px solid rgba(255,255,255,0.05)",
+                          borderTop: `1px solid ${th.border}`,
                         }}
                       >
                         <p
@@ -3072,17 +3086,38 @@ export default function CarDetailPage() {
                             marginBottom: 14,
                           }}
                         >
-                          Condition Map
+                          Condition Report
                         </p>
                         <div
                           style={{
-                            background: "#0a1220",
-                            border: "1px solid rgba(255,255,255,0.06)",
+                            background: th.card,
+                            border: `1px solid ${th.border}`,
                             borderRadius: 12,
                             padding: "16px 20px",
                           }}
                         >
-                          <DamageMap value={car.damage_map} readOnly />
+                          <DamageMap value={damageMarks} readOnly />
+                          <p
+                            style={{
+                              fontSize: 12,
+                              color: th.textSec,
+                              marginTop: 14,
+                              lineHeight: 1.6,
+                            }}
+                          >
+                            {conditionSummary}
+                          </p>
+                          {conditionDeclaredOn && (
+                            <p
+                              style={{
+                                fontSize: 11,
+                                color: th.textMuted,
+                                marginTop: 4,
+                              }}
+                            >
+                              Declared by the dealer on {conditionDeclaredOn}
+                            </p>
+                          )}
                         </div>
                       </div>
                     )}
