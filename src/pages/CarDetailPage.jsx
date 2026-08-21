@@ -14,6 +14,7 @@ import {
   ArrowLeftRight,
   ZoomIn,
   ZoomOut,
+  CreditCard,
   X,
   Check,
   Calculator,
@@ -53,6 +54,7 @@ import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 import { captureRef, getRef } from "../utils/refTracking";
 import { loadBuyerDetails, saveBuyerDetails } from "../utils/consent";
 import { isSubdomain } from "../hooks/useTenant";
+import { geranStatusLabel } from "../utils/trustDocs";
 import { trackEvent, getSlugFromURL } from "../utils/analytics";
 import { useMarketplaceTracking } from "../hooks/useMarketplaceTracking";
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
@@ -241,6 +243,7 @@ function parseTags(raw) {
 }
 
 const CDP_DOC_TYPES = {
+  registration_card: { label: "Geran / Registration Card", color: "#0ea5e9" },
   puspakom: { label: "Puspakom Inspection", color: "#22c55e" },
   service_history: { label: "Service History", color: "#60a5fa" },
   insurance: { label: "Insurance Certificate", color: "#a78bfa" },
@@ -795,7 +798,7 @@ export default function CarDetailPage() {
       // for agent-vs-dealer below — without it in the select, carData.seller_role is
       // always undefined and the get_salesman_by_id lookup never fires, so a Salesman
       // Lite listing silently falls through to a nameless "Seller" with no mini-page link.
-      const PUBLIC_FIELDS = "id,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,plate_number,video_url,salesman_slug,car_documents,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,included_services_cost,vin,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating,cylinders,market_avg_price,market_sample_count,puspakom_b5_date,puspakom_b7_date,seller_role,payment_type,sambung_monthly,sambung_months_left,sambung_balance,sambung_deposit,sambung_bank,docs_verified";
+      const PUBLIC_FIELDS = "id,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,plate_number,video_url,salesman_slug,car_documents,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,included_services_cost,vin,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating,cylinders,market_avg_price,market_sample_count,puspakom_b5_date,puspakom_b7_date,seller_role,payment_type,sambung_monthly,sambung_months_left,sambung_balance,sambung_deposit,sambung_bank,docs_verified,geran_status";
       let { data: carData, error } = await supabase
         .from("public_car_listings")
         .select(PUBLIC_FIELDS)
@@ -2287,7 +2290,7 @@ export default function CarDetailPage() {
           )}
 
           {/* Car History — only when there's at least one real signal to show */}
-          {(car.car_documents?.length > 0 || car.puspakom_b5_date || car.puspakom_b7_date || car.previous_owners != null || car.warranty_months > 0 || (Array.isArray(car.dealer_perks) && car.dealer_perks.length > 0)) && (
+          {(car.car_documents?.length > 0 || car.geran_status || car.puspakom_b5_date || car.puspakom_b7_date || car.previous_owners != null || car.warranty_months > 0 || (Array.isArray(car.dealer_perks) && car.dealer_perks.length > 0)) && (
           <div style={{ marginTop:32, paddingTop:28, borderTop:`1px solid ${th.border}` }}>
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
               <Shield size={13} style={{ color:'#dc2626' }} />
@@ -2295,17 +2298,25 @@ export default function CarDetailPage() {
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
               {[
+                { key:'registration_card', icon:<CreditCard size={13} />, label:'Geran / Registration Card', okColor:'#38bdf8', okBg:'rgba(56,189,248,0.1)', okBorder:'rgba(56,189,248,0.3)' },
                 { key:'puspakom',      icon:<ShieldCheck size={13} />, label:'Puspakom Inspection', okColor:'#4ade80', okBg:'rgba(34,197,94,0.1)',   okBorder:'rgba(34,197,94,0.3)'   },
                 { key:'service_history',icon:<FileText size={13} />,   label:'Service History',      okColor:'#60a5fa', okBg:'rgba(96,165,250,0.1)',  okBorder:'rgba(96,165,250,0.3)'  },
                 { key:'loan_clearance', icon:<BadgeCheck size={13} />, label:'Loan Clearance',       okColor:'#34d399', okBg:'rgba(52,211,153,0.1)',  okBorder:'rgba(52,211,153,0.3)'  },
                 { key:'ownership',      icon:<Eye size={13} />,        label:'Ownership Docs',       okColor:'#fbbf24', okBg:'rgba(251,191,36,0.1)',  okBorder:'rgba(251,191,36,0.3)'  },
-              ].map(({ key, icon, label, okColor, okBg, okBorder }) => {
+              ].map(({ key, icon, label, okColor: baseColor, okBg: baseBg, okBorder: baseBorder }) => {
                 const doc = car.car_documents?.find(d => d.type === key);
                 const isPusp = key === 'puspakom';
                 const b5 = isPusp ? car.puspakom_b5_date : null;
                 const b7 = isPusp ? car.puspakom_b7_date : null;
                 const byDate = isPusp && (b5 || b7);
-                const available = !!doc || byDate;
+                // No geran attached, but the seller declared why (bank holds it /
+                // unregistered recon). The row still renders — the buyer learns it
+                // here rather than at the deposit stage.
+                const geranNote = key === 'registration_card' && !doc ? geranStatusLabel(car.geran_status) : null;
+                const okColor  = geranNote ? '#f59e0b' : baseColor;
+                const okBg     = geranNote ? 'rgba(245,158,11,0.1)' : baseBg;
+                const okBorder = geranNote ? 'rgba(245,158,11,0.3)' : baseBorder;
+                const available = !!doc || byDate || !!geranNote;
                 if (!available) return null;
                 const rk = `m-${key}`;
                 const isOpen = openDocKey === rk;
@@ -2320,7 +2331,7 @@ export default function CarDetailPage() {
                       </div>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                         <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background: available ? okBg : 'rgba(100,116,139,0.08)', border:`1px solid ${available ? okBorder : 'rgba(100,116,139,0.15)'}`, color: available ? okColor : '#475569', whiteSpace:'nowrap' }}>
-                          {doc ? '✓ Available' : byDate ? '✓ Verified' : 'Not Provided'}
+                          {doc ? '✓ Available' : byDate ? '✓ Verified' : geranNote ? 'Not available' : 'Not Provided'}
                         </span>
                         {available && <ChevronDown size={12} style={{ color: okColor, transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform 0.2s', flexShrink:0 }} />}
                       </div>
@@ -2340,7 +2351,9 @@ export default function CarDetailPage() {
                             style={{ display:'inline-flex', alignItems:'center', gap:6, background:okBg, border:`1px solid ${okBorder}`, borderRadius:7, padding:'8px 14px', fontSize:12, color:okColor, textDecoration:'none', fontWeight:600 }}>
                             <Download size={13} /> {doc.name || label}
                           </a>
-                        )) : (
+                        )) : geranNote ? (
+                          <p style={{ fontSize:12, color:okColor, margin:0 }}>{geranNote}</p>
+                        ) : (
                           <PuspakomDates b5={b5} b7={b7} color={okColor} />
                         )}
                       </div>
@@ -2349,7 +2362,7 @@ export default function CarDetailPage() {
                 );
               })}
               {/* Any other document types not in the 4 main rows */}
-              {car.car_documents?.filter(d => !['puspakom','service_history','loan_clearance','ownership'].includes(d.type)).map((doc, i) => {
+              {car.car_documents?.filter(d => !['registration_card','puspakom','service_history','loan_clearance','ownership'].includes(d.type)).map((doc, i) => {
                 const cfg = CDP_DOC_TYPES[doc.type] || CDP_DOC_TYPES.other;
                 const rk = `m-extra-${i}`;
                 const isOpen = openDocKey === rk;
@@ -3130,7 +3143,7 @@ export default function CarDetailPage() {
             )}
 
             {/* ── CAR HISTORY — only when there's at least one real signal to show ── */}
-            {(car.car_documents?.length > 0 || car.puspakom_b5_date || car.puspakom_b7_date || car.previous_owners != null || car.warranty_months > 0 || (Array.isArray(car.dealer_perks) && car.dealer_perks.length > 0)) && (
+            {(car.car_documents?.length > 0 || car.geran_status || car.puspakom_b5_date || car.puspakom_b7_date || car.previous_owners != null || car.warranty_months > 0 || (Array.isArray(car.dealer_perks) && car.dealer_perks.length > 0)) && (
             <div style={{ marginTop: 40, paddingTop: 32, borderTop: `1px solid ${th.borderSec}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
                 <Shield size={13} style={{ color: '#dc2626' }} />
@@ -3138,17 +3151,22 @@ export default function CarDetailPage() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[
+                  { key: 'registration_card', icon: <CreditCard size={15} />, label: 'Geran / Registration Card', sub: 'JPJ ownership record', okColor: '#38bdf8', okBorder: 'rgba(56,189,248,0.3)' },
                   { key: 'puspakom', icon: <ShieldCheck size={15} />, label: 'Puspakom Inspection', sub: 'Structural & mechanical check', okColor: '#4ade80', okBorder: 'rgba(34,197,94,0.3)' },
                   { key: 'service_history', icon: <FileText size={15} />, label: 'Service History', sub: 'Maintenance records', okColor: '#60a5fa', okBorder: 'rgba(96,165,250,0.3)' },
                   { key: 'loan_clearance', icon: <BadgeCheck size={15} />, label: 'Loan Clearance', sub: 'No outstanding finance', okColor: '#34d399', okBorder: 'rgba(52,211,153,0.3)' },
                   { key: 'ownership', icon: <Eye size={15} />, label: 'Ownership Docs', sub: 'VOC / transfer documents', okColor: '#fbbf24', okBorder: 'rgba(251,191,36,0.3)' },
-                ].map(({ key, icon, label, sub, okColor, okBorder }) => {
+                ].map(({ key, icon, label, sub, okColor: baseColor, okBorder: baseBorder }) => {
                   const doc = car.car_documents?.find(d => d.type === key);
                   const isPusp = key === 'puspakom';
                   const b5 = isPusp ? car.puspakom_b5_date : null;
                   const b7 = isPusp ? car.puspakom_b7_date : null;
                   const byDate = isPusp && (b5 || b7);
-                  const available = !!doc || byDate;
+                  // See the mobile row above — a declared reason keeps the row alive.
+                  const geranNote = key === 'registration_card' && !doc ? geranStatusLabel(car.geran_status) : null;
+                  const okColor  = geranNote ? '#f59e0b' : baseColor;
+                  const okBorder = geranNote ? 'rgba(245,158,11,0.3)' : baseBorder;
+                  const available = !!doc || byDate || !!geranNote;
                   if (!available) return null;
                   const rk = `d-${key}`;
                   const isOpen = openDocKey === rk;
@@ -3165,7 +3183,7 @@ export default function CarDetailPage() {
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: available ? `${okColor}15` : 'rgba(100,116,139,0.08)', border: `1px solid ${available ? okBorder : 'rgba(100,116,139,0.15)'}`, color: available ? okColor : '#475569', whiteSpace: 'nowrap' }}>
-                            {doc ? '✓ Available' : byDate ? '✓ Verified' : 'Not Provided'}
+                            {doc ? '✓ Available' : byDate ? '✓ Verified' : geranNote ? 'Not available' : 'Not Provided'}
                           </span>
                           {available && <ChevronDown size={15} style={{ color: okColor, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', flexShrink: 0 }} />}
                         </div>
@@ -3183,7 +3201,9 @@ export default function CarDetailPage() {
                             <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: okColor, textDecoration: 'none', background: `${okColor}15`, border: `1px solid ${okBorder}`, borderRadius: 6, padding: '5px 12px' }}>
                               <Download size={14} /> {doc.name || label}
                             </a>
-                          )) : (
+                          )) : geranNote ? (
+                            <p style={{ fontSize: 12, color: okColor, margin: 0 }}>{geranNote}</p>
+                          ) : (
                             <PuspakomDates b5={b5} b7={b7} color={okColor} />
                           )}
                         </div>
@@ -3191,7 +3211,7 @@ export default function CarDetailPage() {
                     </div>
                   );
                 })}
-                {car.car_documents?.filter(d => !['puspakom','service_history','loan_clearance','ownership'].includes(d.type)).map((doc, i) => {
+                {car.car_documents?.filter(d => !['registration_card','puspakom','service_history','loan_clearance','ownership'].includes(d.type)).map((doc, i) => {
                   const cfg = CDP_DOC_TYPES[doc.type] || CDP_DOC_TYPES.other;
                   const rk = `d-extra-${i}`;
                   const isOpen = openDocKey === rk;
