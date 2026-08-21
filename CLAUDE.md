@@ -273,9 +273,9 @@ were edited in the repo and never redeployed. Both directions exist RIGHT NOW.
   BEFORE you edit or redeploy anything.** Redeploying "the repo version" without
   checking silently deletes whatever only exists in the deployed version.
 - Same rule for discovery: `mcp__Supabase__list_edge_functions` is the real inventory.
-  As of 2026-08-16 there were **16 deployed but only 10 in the repo**. Missing from the
-  repo entirely: `send-push`, `send-push-warm-leads`, `notify-price-alerts`,
-  `appointment-reminder`, `telegram-enquiry-notify`, `bootstrap-superadmin-alias`.
+  As of 2026-08-21 missing from the repo entirely: `send-push`, `send-push-warm-leads`,
+  `notify-price-alerts`, `telegram-enquiry-notify`, `bootstrap-superadmin-alias`.
+  (`appointment-reminder` was closed 2026-08-21 — now tracked in the repo.)
 - When you touch a drifted function, commit the deployed source into the repo as part
   of the same change so the gap closes instead of growing.
 - Caught this way (2026-08-16, `send-telegram`): deployed v10 had a
@@ -299,12 +299,20 @@ were edited in the repo and never redeployed. Both directions exist RIGHT NOW.
 - expiry-reminders — daily cron (00:00 UTC = 8am KL); fires dealer_notifications for road
   tax/insurance expiring in 30 or 7 days, and for overdue post_sale_tasks steps. Also
   notifies salesman_notifications. 24h dedup.
+- appointment-reminder — cron every 5 min (`*/5 * * * *`, jobid 7). Two independent jobs:
+  (1) Telegram "1 hour before" reminder for CONFIRMED bookings, opt-in via `remind_at`
+  (set by "Schedule Telegram Reminder" in the Bookings tab), dedup via `remind_sent`.
+  (2) Push nag for PENDING (unconfirmed) bookings whose appointment_date is within
+  -2h..+5h of now — inserts one `salesman_notifications` row (type=`booking_unconfirmed`,
+  ref_id=appointment id) per booking, which auto-fires a PWA push (see Web push below).
+  Dedup is by ref_id already existing in salesman_notifications, so each pending booking
+  gets exactly one nag, not one per 5-min tick.
 - ai-proxy — proxies Claude API calls for AI features
 - delete-account / purge-deleted-accounts — LITE-3 self-service deletion + 30-day purge
 - import-drive-images — rehosts Google Drive folder images into the car-images bucket
 - send-push — web push sender (see below)
 - send-push-warm-leads — deployed only; pushes dealers when warm leads sit 3+ days
-- notify-price-alerts, appointment-reminder, bootstrap-superadmin-alias — deployed only
+- notify-price-alerts, bootstrap-superadmin-alias — deployed only
 
 ## Web push — most of it already exists, do NOT rebuild it
 Plain version: push notifications were about 60% built months ago, live on Supabase but
@@ -316,6 +324,17 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
 - Storage: `push_subscriptions` (user_id, endpoint, subscription jsonb, created_at).
 - Producers: DB triggers `trg_push_on_enquiry` (on `whatsapp_enquiries`) and
   `trg_push_on_appointment` (on `appointments`) POST to send-push via `net.http_post`.
+- **Also (found 2026-08-21, undocumented until now):** `trg_push_on_dealer_notification`
+  (on `dealer_notifications`) and `trg_push_on_salesman_notification` (on
+  `salesman_notifications`) — both AFTER INSERT triggers that call SECURITY DEFINER
+  helper `push_to_users(user_ids, title, body, url, tag)`, which reads the push secret
+  from Vault and POSTs to send-push. **This means any INSERT into `dealer_notifications`
+  or `salesman_notifications` already sends a real push — you never need to call
+  send-push directly from an edge function/cron.** `push_to_users` resolves the
+  notification URL via `push_home_path(user_id)` (routes to `/salesman-lite`,
+  `/salesman-premium`, `/salesman`, or `/dashboard` per role) unless the caller passes
+  an explicit URL. Both trigger functions swallow errors (`exception when others` +
+  `raise warning`) so a push failure never blocks the notification row write.
 - **VAPID keys are permanent. NEVER regenerate them.** Every push subscription is
   cryptographically bound to the public key it was created with. Swap the key and every
   existing subscription dies silently — no error the user ever sees, they just stop
