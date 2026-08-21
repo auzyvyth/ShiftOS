@@ -87,6 +87,86 @@ not scoped, not prioritized — just parked here until picked up on purpose.
 
 ---
 
+### SESSION 2026-08-21 — car detail page trust (research + geran requirement)
+
+Full research report: `docs/research/cardetail-trust-research.html`
+(published copy: https://claude.ai/code/artifact/46778936-5be8-445f-9799-447d2753cead).
+Read it before picking any TRUST item up — it explains the five-rung trust ladder
+these are ranked against (claim / structured self-report / openable document /
+disclosed flaw / money on the line) and why one rung-4 item beats ten rung-1 ones.
+
+**Shipped this session** (branch `claude/car-marketplace-trust-research-u6z9ns`,
+pushed to `staging`, NOT in prod): named trust-document slots in CarForm, geran
+required to publish with a declared-reason escape, `car_listings.geran_status`,
+geran row on CarDetailPage. Owner still needs to confirm the staging preview
+before this goes to prod.
+
+- **TRUST-1: Ungate the condition map (AGREED NEXT TASK)** — `DamageMap` only renders
+  when `isRecon` is true: `src/pages/CarDetailPage.jsx:2250` (mobile) and `:3042`
+  (desktop). Every local used car ships with zero condition disclosure. The component
+  already exists and is read-only capable — this is a gate removal, not a build.
+  Highest-value item on the list (rung 4). Also decide whether CarForm should prompt
+  for defect photos when the map has marks on it.
+- **TRUST-2: Real dealer identity block** — the sidebar shows a name, avatar and a
+  "Verified Dealer" shield with nothing behind it (`src/pages/CarDetailPage.jsx:3453`,
+  `:3475`). No trading address, SSM/company number, landline, map, "trading since" or
+  sale count. Stanford's #1 web-credibility guideline and the largest single hole on
+  the page. Needs new `profiles` columns.
+- **TRUST-3: Define "Verified Dealer"** — the badge has no referent. One line or a
+  tooltip saying what was actually checked turns a rung-1 claim into a rung-3 one.
+  Related: `docs_verified` is admin-toggled via `set_listing_docs_verified`
+  (`src/pages/AdminPage.jsx:444`) — there is a real review step to describe.
+- **TRUST-4: Deposit terms at the deposit ask** — "RM X deposit to reserve" renders as
+  an 11px muted caption (`src/pages/CarDetailPage.jsx:3527`). Highest-anxiety moment on
+  the page, lowest-emphasis text. Needs: refundable or not, what happens on loan
+  rejection, who holds it. Probably a per-dealer setting + a link to terms.
+- **TRUST-5: Collapse the CTA stack** — up to 8 actions in one sidebar
+  (`src/pages/CarDetailPage.jsx:3530-3600`), including two green buttons doing the same
+  job (WhatsApp and "Chat with {firstName}"). Breaks the CLAUDE.md anti-slop rule (one
+  primary action visible, long tail into an overflow). Pure visual-credibility win.
+- **TRUST-6: Review score beside the dealer name** — `ReviewsSection` sits after
+  Performance, Running Costs and Location on both breakpoints
+  (`src/pages/CarDetailPage.jsx:3414` desktop, `:2544` mobile). The decision is made at
+  the price block; move a rating chip up there.
+- **TRUST-7: Kill the filler copy** — WarrantyBanner's "drive with peace of mind"
+  (`src/pages/CarDetailPage.jsx:196`) and PuspakomDates' "Inspection verified by the
+  dealer" (`:288`, circular — the dealer verifying their own car). Replace with warranty
+  terms and a named verifier. Trivial, do it alongside anything else in that file.
+- **TRUST-8: Fix the theme leaks** — three hardcoded colours DESIGN.md already warns
+  about: SAVE badge text `#f87171` on a white card (`:3513`), "Independent Agent ·
+  XDrive" hardcoded `#1e293b` and near-invisible on the dark subdomain theme (`:3593`),
+  Call button border `rgba(255,255,255,0.1)` which vanishes on light (`:3542`).
+- **TRUST-9: Market verdict needs a sample floor and a method note** — `MarketPriceTag`
+  (`src/pages/CarDetailPage.jsx:92-125`) will print a confident "Below market" off
+  `market_sample_count` of 3. Suppress the band under a minimum sample and link a
+  plain-English note on how the average is built (Cars.com publishes theirs).
+- **TRUST-10: Price completeness line** — what is and is not in the number (road tax,
+  insurance, JPJ transfer, processing). Needs data plumbing; most-cited buyer demand
+  across every study in the research.
+- **TRUST-11 (ops, not UI): a named XDrive inspection standard** — the Carsome
+  "175-point" move. "175-point" is countable, "thorough" is not. Needs someone to
+  actually define and perform the inspection before any UI is worth building.
+- **TRUST-12 (business, not UI): a guarantee with money behind it** — return window or
+  deposit protection. Rung 5, the only rung that beats a cynic, and the only one that
+  costs real money. cinch: 14-day money back + 90-day warranty. Carsome: 5-day.
+
+**Open questions left from this session:**
+
+- **TRUST-Q1: should Puspakom be hard-required for recon units?** Owner originally asked
+  for the Puspakom report to be required too. It was deliberately left optional because
+  B5/B7 is done at transfer time, so most stock has never had one and requiring it would
+  make most inventory unlistable. If B5 is effectively standard on recon, gating it on
+  `isRecon` only is a reasonable middle. Owner decision.
+- **TRUST-Q2: `ownership` vs `registration_card` overlap in DOC_TYPES** — "Ownership /
+  VOC" (`src/components/CarForm.jsx:277`) still exists alongside the new geran slot and
+  a dealer could file a geran under it. Decide whether to retire `ownership`, relabel it
+  to transfer-only documents, or migrate existing rows.
+- **TRUST-Q3: `geran_status` is not surfaced outside the detail page** — it does not
+  appear on `CarCard` or in search filters. If the tier is meant to be something dealers
+  compete for (the Carlist "Qualified" move), it has to be visible in the list too.
+
+---
+
 ### SESSION 2026-08-18 — Salesman Lite design cleanup
 
 - **DESIGN-1: Replace Salesman Lite logo** — current logo needs a redesign/replacement.
