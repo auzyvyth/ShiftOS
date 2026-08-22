@@ -191,12 +191,20 @@ const WarrantyBanner = ({ car, isXdrive }) => {
   if (!(car.warranty_months > 0)) return null;
   const head = isXdrive ? '#16a34a' : '#4ade80';
   const sub = isXdrive ? '#15803d' : 'rgba(74,222,128,0.75)';
+  // "Drive with peace of mind" told the buyer nothing. The only warranty facts on
+  // record are the month count and whether a certificate was uploaded, so say that
+  // and point at the question worth asking instead of inventing reassurance.
+  const hasCert = (car.car_documents || []).some((d) => d.type === 'warranty');
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '11px 14px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.28)', borderRadius: 10 }}>
       <ShieldCheck size={18} style={{ color: head, flexShrink: 0 }} />
       <div style={{ minWidth: 0 }}>
         <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: head }}>{car.warranty_months}-month warranty included</p>
-        <p style={{ margin: '1px 0 0', fontSize: 11, color: sub }}>Covered by the dealer · drive with peace of mind</p>
+        <p style={{ margin: '1px 0 0', fontSize: 11, color: sub }}>
+          {hasCert
+            ? 'Covered by the dealer · certificate attached under Documents'
+            : 'Covered by the dealer · ask which parts and labour are included before paying a deposit'}
+        </p>
       </div>
     </div>
   );
@@ -245,6 +253,24 @@ function parseTags(raw) {
     .filter(Boolean);
 }
 
+/* Every accent on this page was picked against the dark subdomain theme. On the
+   white XDrive card the same values collapse — #4ade80 on white is 1.7:1, #f87171
+   is 2.9:1 — which is why the "theme leak" bugs keep reappearing one hardcode at a
+   time. Same hue, darker on light, resolved at the point of use. */
+const LIGHT_ACCENT = {
+  '#38bdf8': '#0369a1',
+  '#60a5fa': '#1d4ed8',
+  '#4ade80': '#15803d',
+  '#34d399': '#047857',
+  '#f87171': '#dc2626',
+  '#fbbf24': '#b45309',
+  '#a78bfa': '#6d28d9',
+  '#fb923c': '#c2410c',
+  '#f59e0b': '#b45309',
+  '#94a3b8': '#475569',
+};
+const accent = (c, isXdrive) => (isXdrive && LIGHT_ACCENT[c]) || c;
+
 const CDP_DOC_TYPES = {
   registration_card: { label: "Geran / Registration Card", color: "#0ea5e9" },
   puspakom: { label: "Puspakom Inspection", color: "#22c55e" },
@@ -276,7 +302,12 @@ function PuspakomDates({ b5, b7, color }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {b5 && <div style={{ fontSize: 12, color }}>PUSPAKOM B5 (chassis &amp; body) inspected {fmtCdpDate(b5)}</div>}
       {b7 && <div style={{ fontSize: 12, color }}>PUSPAKOM B7 (roadworthiness) certified {fmtCdpDate(b7)}</div>}
-      <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>Inspection verified by the dealer.</p>
+      {/* "Inspection verified by the dealer" was circular — the dealer verifying
+          their own car is not verification. This branch only renders when NO
+          certificate was uploaded, so the dates are a dealer's word, not a document. */}
+      <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>
+        Dates entered by the dealer — no PUSPAKOM certificate uploaded. Ask to see it.
+      </p>
     </div>
   );
 }
@@ -1747,12 +1778,12 @@ export default function CarDetailPage() {
             {carTitle}
           </span>
           <div className="cdp-header-actions">
-            <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '6px 8px', display: 'flex', alignItems: 'center' }}>
+            <div style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${th.inputBorder}`, borderRadius: 8, padding: '6px 8px', display: 'flex', alignItems: 'center' }}>
               <HeartButton listingId={car?.id} size={16} />
             </div>
             <button
               onClick={() => { if (!car?.id) return; isInCompare(car.id) ? removeFromCompare(car.id) : addToCompare(car.id); }}
-              style={{ background: car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.15)' : th.card2, border: `1px solid ${car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.4)' : th.border}`, borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 5, color: car?.id && isInCompare(car.id) ? '#f87171' : th.textSec, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "system-ui,sans-serif", transition: 'all 0.18s', whiteSpace: 'nowrap' }}>
+              style={{ background: car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.15)' : th.card2, border: `1px solid ${car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.4)' : th.border}`, borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 5, color: car?.id && isInCompare(car.id) ? (isXdrive ? '#dc2626' : '#f87171') : th.textSec, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "system-ui,sans-serif", transition: 'all 0.18s', whiteSpace: 'nowrap' }}>
               <ArrowLeftRight size={13} />
               {car?.id && isInCompare(car.id) ? 'In Compare' : 'Compare'}
             </button>
@@ -2175,7 +2206,7 @@ export default function CarDetailPage() {
           {!isSambungCar(car) && isHot && (
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
               <span style={{ fontSize:13, color: th.textMuted, textDecoration:'line-through' }}>{fmtPrice(car.original_price)}</span>
-              <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.2)', color:'#f87171', fontSize:'11px', padding:'2px 10px', borderRadius:'20px', fontWeight:600, letterSpacing:'0.04em' }}>SAVE {fmtPrice(saving)}</span>
+              <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.2)', color: isXdrive ? '#dc2626' : '#f87171', fontSize:'11px', padding:'2px 10px', borderRadius:'20px', fontWeight:600, letterSpacing:'0.04em' }}>SAVE {fmtPrice(saving)}</span>
             </div>
           )}
           {/* Seller storefront link — kept high up, right under the price, so
@@ -2360,7 +2391,7 @@ export default function CarDetailPage() {
                       { key:'Registration Date', val: car.registration_date || car.local_reg_date || '—' },
                       { key:'VIN / Chassis',     val: car.vin_number || '—' },
                       { key:'Condition',         val: car.condition || '—' },
-                      { key:'Chassis Status',    val: <span style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:6, height:6, borderRadius:'50%', flexShrink:0, background: car.chassis_status==='clean'?'#22c55e':car.chassis_status==='repaired'?'#eab308':car.chassis_status==='written_off'?'#dc2626':'#334155' }} />{car.chassis_status||'—'}</span> },
+                      { key:'Chassis Status',    val: <span style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:6, height:6, borderRadius:'50%', flexShrink:0, background: car.chassis_status==='clean'?'#22c55e':car.chassis_status==='repaired'?'#eab308':car.chassis_status==='written_off'?'#dc2626':th.textMuted }} />{car.chassis_status||'—'}</span> },
                       { key:'Location',          val: [car.city, car.state].filter(Boolean).join(', ') || '—' },
                       { key:'Previous Owners',   val: car.previous_owners ?? '—' },
                       { key:'Road Tax Expiry',   val: car.road_tax_expiry ? new Date(car.road_tax_expiry).toLocaleDateString('en-MY') : '—' },
@@ -2444,7 +2475,7 @@ export default function CarDetailPage() {
                 // unregistered recon). The row still renders — the buyer learns it
                 // here rather than at the deposit stage.
                 const geranNote = key === 'registration_card' && !doc ? geranStatusLabel(car.geran_status) : null;
-                const okColor  = geranNote ? '#f59e0b' : baseColor;
+                const okColor  = accent(geranNote ? '#f59e0b' : baseColor, isXdrive);
                 const okBg     = geranNote ? 'rgba(245,158,11,0.1)' : baseBg;
                 const okBorder = geranNote ? 'rgba(245,158,11,0.3)' : baseBorder;
                 const available = !!doc || byDate || !!geranNote;
@@ -2457,12 +2488,12 @@ export default function CarDetailPage() {
                     <div onClick={() => available && toggleDoc(rk)}
                       style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', cursor: available ? 'pointer' : 'default' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <span style={{ color: available ? okColor : '#334155' }}>{icon}</span>
+                        <span style={{ color: available ? okColor : th.textMuted }}>{icon}</span>
                         <p style={{ fontSize:12, color: th.text, fontWeight:500, margin:0 }}>{label}</p>
                       </div>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                        <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background: available ? okBg : 'rgba(100,116,139,0.08)', border:`1px solid ${available ? okBorder : 'rgba(100,116,139,0.15)'}`, color: available ? okColor : '#475569', whiteSpace:'nowrap' }}>
-                          {doc ? '✓ Available' : byDate ? '✓ Verified' : geranNote ? 'Not available' : 'Not Provided'}
+                        <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background: available ? okBg : 'rgba(100,116,139,0.08)', border:`1px solid ${available ? okBorder : 'rgba(100,116,139,0.15)'}`, color: available ? okColor : th.textSec, whiteSpace:'nowrap' }}>
+                          {doc ? '✓ Available' : byDate ? 'Dates given' : geranNote ? 'Not available' : 'Not Provided'}
                         </span>
                         {available && <ChevronDown size={12} style={{ color: okColor, transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform 0.2s', flexShrink:0 }} />}
                       </div>
@@ -2504,7 +2535,7 @@ export default function CarDetailPage() {
                       <p style={{ fontSize:12, color: th.text, fontWeight:500, margin:0 }}>{cfg.label}</p>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                         <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background:`${cfg.color}15`, border:`1px solid ${cfg.color}30`, color:cfg.color }}>✓ Available</span>
-                        <ChevronDown size={12} style={{ color:'#475569', transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform 0.2s', flexShrink:0 }} />
+                        <ChevronDown size={12} style={{ color: th.textSec, transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform 0.2s', flexShrink:0 }} />
                       </div>
                     </div>
                     {isOpen && (
@@ -2542,10 +2573,10 @@ export default function CarDetailPage() {
               {car.warranty_months > 0 && (
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background: th.card, border:`1px solid ${th.border}`, borderRadius:9 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <Shield size={13} style={{ color:'#34d399' }} />
+                  <Shield size={13} style={{ color: accent('#34d399', isXdrive) }} />
                   <p style={{ fontSize:12, color: th.text, fontWeight:500, margin:0 }}>Warranty</p>
                 </div>
-                <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'rgba(52,211,153,0.1)', border:'1px solid rgba(52,211,153,0.3)', color:'#34d399' }}>
+                <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'rgba(52,211,153,0.1)', border:'1px solid rgba(52,211,153,0.3)', color: accent('#34d399', isXdrive) }}>
                   {`${car.warranty_months} months`}
                 </span>
               </div>
@@ -2554,7 +2585,7 @@ export default function CarDetailPage() {
                 const PC = [
                   { key:'part_exchange',    label:'Part Exchange',      color:'#60a5fa' },
                   { key:'whatsapp_chat',    label:'WhatsApp Chat',      color:'#4ade80' },
-                  { key:'video_walkthrough',label:'Video Walkthrough',  color:'#f87171' },
+                  { key:'video_walkthrough',label:'Video Walkthrough',  color: isXdrive ? '#dc2626' : '#f87171' },
                   { key:'warranty_incl',    label:'Warranty Included',  color:'#34d399' },
                   { key:'verified_docs',    label:'Verified Docs',      color:'#4ade80' },
                   { key:'book_viewing',     label:'Book a Viewing',     color:'#60a5fa' },
@@ -2566,7 +2597,7 @@ export default function CarDetailPage() {
                     {PC.map(({ key, label, color }) => (
                       <div key={key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background: th.card, border:`1px solid ${th.border}`, borderRadius:9 }}>
                         <p style={{ fontSize:12, color: th.text, fontWeight:500, margin:0 }}>{label}</p>
-                        <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background:`${color}15`, border:`1px solid ${color}30`, color }}>✓ Available</span>
+                        <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background:`${color}15`, border:`1px solid ${color}30`, color: accent(color, isXdrive) }}>✓ Available</span>
                       </div>
                     ))}
                   </>
@@ -2713,8 +2744,8 @@ export default function CarDetailPage() {
                   }
                   <div>
                     <p style={{ fontSize:15, fontWeight:700, color: th.text, margin:0 }}>{salesmanProfile.full_name || 'Agent'}</p>
-                    {salesmanProfile.job_title && <p style={{ fontSize:12, color:'#475569', margin:'3px 0 0' }}>{salesmanProfile.job_title}</p>}
-                    <p style={{ fontSize:11, color:'#1e293b', margin:'2px 0 0', letterSpacing:'0.05em' }}>Independent Agent · XDrive</p>
+                    {salesmanProfile.job_title && <p style={{ fontSize:12, color: th.textSec, margin:'3px 0 0' }}>{salesmanProfile.job_title}</p>}
+                    <p style={{ fontSize:11, color: th.textMuted, margin:'2px 0 0', letterSpacing:'0.05em' }}>Independent Agent · XDrive</p>
                   </div>
                 </div>
                 {waNumber && (
@@ -3285,7 +3316,7 @@ export default function CarDetailPage() {
             {/* VIDEO WALKTHROUGH */}
             {car.video_url && getEmbedUrl(car.video_url) && (
               <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 7 }}>
+                <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: th.textMuted, fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 7 }}>
                   <PlayCircle size={13} style={{ color: '#dc2626' }} /> Watch Walkthrough
                 </p>
                 <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: 12, overflow: 'hidden', border: `1px solid ${th.border}` }}>
@@ -3316,7 +3347,7 @@ export default function CarDetailPage() {
                   const byDate = isPusp && (b5 || b7);
                   // See the mobile row above — a declared reason keeps the row alive.
                   const geranNote = key === 'registration_card' && !doc ? geranStatusLabel(car.geran_status) : null;
-                  const okColor  = geranNote ? '#f59e0b' : baseColor;
+                  const okColor  = accent(geranNote ? '#f59e0b' : baseColor, isXdrive);
                   const okBorder = geranNote ? 'rgba(245,158,11,0.3)' : baseBorder;
                   const available = !!doc || byDate || !!geranNote;
                   if (!available) return null;
@@ -3327,15 +3358,15 @@ export default function CarDetailPage() {
                     <div key={key} style={{ background: th.card, border: `1px solid ${isOpen && available ? okBorder : 'rgba(255,255,255,0.05)'}`, borderRadius: 10, overflow: 'hidden', transition: 'border-color 0.2s' }}>
                       <div onClick={() => available && toggleDoc(rk)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: available ? 'pointer' : 'default' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ color: available ? okColor : '#334155' }}>{icon}</span>
+                          <span style={{ color: available ? okColor : th.textMuted }}>{icon}</span>
                           <div>
                             <p style={{ fontSize: 13, color: th.textSec, fontWeight: 500, margin: 0 }}>{label}</p>
-                            <p style={{ fontSize: 11, color: '#334155', margin: '2px 0 0' }}>{sub}</p>
+                            <p style={{ fontSize: 11, color: th.textMuted, margin: '2px 0 0' }}>{sub}</p>
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: available ? `${okColor}15` : 'rgba(100,116,139,0.08)', border: `1px solid ${available ? okBorder : 'rgba(100,116,139,0.15)'}`, color: available ? okColor : '#475569', whiteSpace: 'nowrap' }}>
-                            {doc ? '✓ Available' : byDate ? '✓ Verified' : geranNote ? 'Not available' : 'Not Provided'}
+                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: available ? `${okColor}15` : 'rgba(100,116,139,0.08)', border: `1px solid ${available ? okBorder : 'rgba(100,116,139,0.15)'}`, color: available ? okColor : th.textSec, whiteSpace: 'nowrap' }}>
+                            {doc ? '✓ Available' : byDate ? 'Dates given' : geranNote ? 'Not available' : 'Not Provided'}
                           </span>
                           {available && <ChevronDown size={15} style={{ color: okColor, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', flexShrink: 0 }} />}
                         </div>
@@ -3416,13 +3447,13 @@ export default function CarDetailPage() {
                 {car.warranty_months > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: th.card, border: `1px solid ${th.borderSec}`, borderRadius: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Shield size={15} style={{ color: '#34d399' }} />
+                    <Shield size={15} style={{ color: accent('#34d399', isXdrive) }} />
                     <div>
                       <p style={{ fontSize: 13, color: th.textSec, fontWeight: 500, margin: 0 }}>Warranty</p>
                       <p style={{ fontSize: 11, color: th.textMuted, margin: '2px 0 0' }}>Included with purchase</p>
                     </div>
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)', color: '#34d399' }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)', color: accent('#34d399', isXdrive) }}>
                     {`${car.warranty_months} months`}
                   </span>
                 </div>
@@ -3431,7 +3462,7 @@ export default function CarDetailPage() {
                   const PERK_CFG = [
                     { key: 'part_exchange',    label: 'Part Exchange',      color: '#60a5fa' },
                     { key: 'whatsapp_chat',    label: 'WhatsApp Chat',      color: '#4ade80' },
-                    { key: 'video_walkthrough',label: 'Video Walkthrough',  color: '#f87171' },
+                    { key: 'video_walkthrough',label: 'Video Walkthrough',  color: isXdrive ? '#dc2626' : '#f87171' },
                     { key: 'warranty_incl',    label: 'Warranty Included',  color: '#34d399' },
                     { key: 'verified_docs',    label: 'Verified Docs',      color: '#4ade80' },
                     { key: 'book_viewing',     label: 'Book a Viewing',     color: '#60a5fa' },
@@ -3443,7 +3474,7 @@ export default function CarDetailPage() {
                       {PERK_CFG.map(({ key, label, color }) => (
                         <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: th.card, border: `1px solid ${th.borderSec}`, borderRadius: 10 }}>
                           <p style={{ fontSize: 13, color: th.textSec, fontWeight: 500, margin: 0 }}>{label}</p>
-                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: `${color}15`, border: `1px solid ${color}30`, color }}>✓ Available</span>
+                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: `${color}15`, border: `1px solid ${color}30`, color: accent(color, isXdrive) }}>✓ Available</span>
                         </div>
                       ))}
                     </>
@@ -3470,7 +3501,7 @@ export default function CarDetailPage() {
                     { label: 'Safety Rating', value: car.safety_rating ? `${car.safety_rating}★` : null },
                   ].filter(s => s.value).map(({ label, value }) => (
                     <div key={label} style={{ padding: '14px', background: th.card, borderRight: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                      <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#334155', fontWeight: 700, marginBottom: 5 }}>{label}</p>
+                      <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.14em', color: th.textMuted, fontWeight: 700, marginBottom: 5 }}>{label}</p>
                       <p style={{ fontSize: 14, color: th.text, fontWeight: 500, margin: 0 }}>{value}</p>
                     </div>
                   ))}
@@ -3490,14 +3521,14 @@ export default function CarDetailPage() {
               const { pricePerLiter: petrolPrice, fuelLabel, consumption, totalCost: totalFuelCost } = estimateFuelCost(cc, car.fuel_consumption, fuelDist);
               return (
                 <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                  <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, marginBottom: 24 }}>Running Costs</p>
+                  <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: th.textMuted, fontWeight: 700, marginBottom: 24 }}>Running Costs</p>
                   {roadTax && (
                     <div style={{ marginBottom: 24, padding: '16px 18px', background: th.card, border: `1px solid ${th.borderSec}`, borderRadius: 12 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                         <span style={{ fontSize: 13, color: th.textSec }}>Road Tax (estimated)</span>
                         <span style={{ fontSize: 15, color: th.text, fontWeight: 600 }}>RM {fmt(roadTax)} / year</span>
                       </div>
-                      <p style={{ fontSize: 11, color: '#334155', margin: 0 }}>JPJ private saloon rate — {fmt(cc)}cc</p>
+                      <p style={{ fontSize: 11, color: th.textMuted, margin: 0 }}>JPJ private saloon rate — {fmt(cc)}cc</p>
                     </div>
                   )}
                   {co2 && (
@@ -3520,7 +3551,7 @@ export default function CarDetailPage() {
                           return <div key={i} style={{ flex: 1, background: isActive ? band.color : `${band.color}25`, borderRadius: i === 0 ? '6px 0 0 6px' : i === 5 ? '0 6px 6px 0' : 0 }} />;
                         })}
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#334155', marginTop: 5 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: th.textMuted, marginTop: 5 }}>
                         <span>0</span><span>100</span><span>130</span><span>150</span><span>170</span><span>200+</span>
                       </div>
                     </div>
@@ -3534,7 +3565,7 @@ export default function CarDetailPage() {
                       <div style={{ background: th.inputBg, borderRadius: 6, height: 8, overflow: 'hidden' }}>
                         <div style={{ width: `${Math.min(100, (insGrp / 26) * 100)}%`, height: '100%', background: `hsl(${Math.round(120 - (insGrp / 26) * 120)}, 75%, 50%)`, borderRadius: 6 }} />
                       </div>
-                      <p style={{ fontSize: 11, color: '#334155', marginTop: 5 }}>
+                      <p style={{ fontSize: 11, color: th.textMuted, marginTop: 5 }}>
                         {insGrp <= 8 ? 'Low cost to insure' : insGrp <= 16 ? 'Moderate insurance cost' : 'Higher insurance cost'}
                       </p>
                     </div>
@@ -3542,7 +3573,7 @@ export default function CarDetailPage() {
                   <div style={{ background: th.card, border: `1px solid ${th.borderSec}`, borderRadius: 12, padding: '18px 20px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                       <span style={{ fontSize: 13, color: th.textSec }}>Range Calculator</span>
-                      <span style={{ fontSize: 10, color: '#334155' }}>{fuelLabel} @ RM {petrolPrice}/L</span>
+                      <span style={{ fontSize: 10, color: th.textMuted }}>{fuelLabel} @ RM {petrolPrice}/L</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 14 }}>
                       <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: '2rem', color: th.text, lineHeight: 1 }}>RM {totalFuelCost}</span>
@@ -3552,10 +3583,10 @@ export default function CarDetailPage() {
                       onChange={e => setFuelDist(Number(e.target.value))}
                       style={{ width: '100%', accentColor: '#dc2626', cursor: 'pointer' }}
                     />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#334155', marginTop: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: th.textMuted, marginTop: 4 }}>
                       <span>10 km</span><span>500 km</span><span>1,000 km</span>
                     </div>
-                    <p style={{ fontSize: 11, color: '#334155', marginTop: 10 }}>
+                    <p style={{ fontSize: 11, color: th.textMuted, marginTop: 10 }}>
                       {car.fuel_consumption ? `${car.fuel_consumption} km/L (manufacturer figure)` : `~${consumption} km/L estimated from engine size`}
                     </p>
                   </div>
@@ -3574,11 +3605,11 @@ export default function CarDetailPage() {
                   </div>
                   <a href={`https://www.google.com/maps/search/${encodeURIComponent([car.city, car.state, 'Malaysia'].filter(Boolean).join(', '))}`}
                     target="_blank" rel="noopener noreferrer"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: th.inputBg, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '8px 14px', fontSize: 12, color: th.textSec, textDecoration: 'none', flexShrink: 0, letterSpacing: '0.03em' }}>
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: th.inputBg, border: `1px solid ${th.inputBorder}`, borderRadius: 8, padding: '8px 14px', fontSize: 12, color: th.textSec, textDecoration: 'none', flexShrink: 0, letterSpacing: '0.03em' }}>
                     <Eye size={13} /> View on Map
                   </a>
                 </div>
-                <p style={{ fontSize: 11, color: '#334155', marginTop: 8 }}>Approximate area only — confirm address when enquiring.</p>
+                <p style={{ fontSize: 11, color: th.textMuted, marginTop: 8 }}>Approximate area only — confirm address when enquiring.</p>
               </div>
             )}
 
@@ -3684,8 +3715,8 @@ export default function CarDetailPage() {
                   ) : null}
                   {isHot && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                      <span style={{ fontSize: 13, color: '#1e293b', textDecoration: 'line-through' }}>{fmtPrice(car.original_price)}</span>
-                      <span style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)', color: '#f87171', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: 600, letterSpacing: '0.04em' }}>SAVE {fmtPrice(saving)}</span>
+                      <span style={{ fontSize: 13, color: th.textMuted, textDecoration: 'line-through' }}>{fmtPrice(car.original_price)}</span>
+                      <span style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)', color: isXdrive ? '#dc2626' : '#f87171', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: 600, letterSpacing: '0.04em' }}>SAVE {fmtPrice(saving)}</span>
                     </div>
                   )}
                 </>
@@ -3718,7 +3749,7 @@ export default function CarDetailPage() {
               </button>
               {contactPhone && (
                 <button onClick={handleCall} disabled={callLoading} aria-busy={callLoading}
-                  style={{ flex: 1, background: th.inputBg, border: '1px solid rgba(255,255,255,0.1)', color: th.textSec, borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: callLoading ? 'wait' : 'pointer', opacity: callLoading ? 0.6 : 1, fontFamily: "system-ui,sans-serif", fontSize: 13, transition: 'all .2s' }}>
+                  style={{ flex: 1, background: th.inputBg, border: `1px solid ${th.inputBorder}`, color: th.textSec, borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: callLoading ? 'wait' : 'pointer', opacity: callLoading ? 0.6 : 1, fontFamily: "system-ui,sans-serif", fontSize: 13, transition: 'all .2s' }}>
                   <Phone size={13} /> {callLoading ? 'Connecting' : 'Call'}
                 </button>
               )}
@@ -3755,7 +3786,7 @@ export default function CarDetailPage() {
                     <div>
                       <p style={{ fontSize: 15, fontWeight: 700, color: th.text, margin: 0 }}>{salesmanProfile.full_name || 'Agent'}</p>
                       {salesmanProfile.job_title && <p style={{ fontSize: 12, color: th.textMuted, margin: '3px 0 0' }}>{salesmanProfile.job_title}</p>}
-                      <p style={{ fontSize: 11, color: '#1e293b', margin: '2px 0 0', letterSpacing: '0.05em' }}>Independent Agent · XDrive</p>
+                      <p style={{ fontSize: 11, color: th.textMuted, margin: '2px 0 0', letterSpacing: '0.05em' }}>Independent Agent · XDrive</p>
                     </div>
                   </div>
                   {waNumber && (
