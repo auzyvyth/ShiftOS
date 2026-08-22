@@ -113,15 +113,24 @@ before this goes to prod.
   Still open from this item: whether CarForm should prompt for defect photos when
   the map has marks on it, and whether the declaration should be required to publish
   (it is optional today).
-- **TRUST-2: Real dealer identity block** — the sidebar shows a name, avatar and a
-  "Verified Dealer" shield with nothing behind it (`src/pages/CarDetailPage.jsx:3453`,
-  `:3475`). No trading address, SSM/company number, landline, map, "trading since" or
-  sale count. Stanford's #1 web-credibility guideline and the largest single hole on
-  the page. Needs new `profiles` columns.
-- **TRUST-3: Define "Verified Dealer"** — the badge has no referent. One line or a
-  tooltip saying what was actually checked turns a rung-1 claim into a rung-3 one.
-  Related: `docs_verified` is admin-toggled via `set_listing_docs_verified`
-  (`src/pages/AdminPage.jsx:444`) — there is a real review step to describe.
+- **TRUST-2 + TRUST-3: dealer identity block + what "Verified" means — DONE 2026-08-21.**
+  No new `profiles` columns were needed — `ssm_number`, `location`, `city`, `state`,
+  `postcode`, `business_hours`, `phone`, `stat_years`, `is_verified`/`verified_at` all
+  already existed. Shipped: `get_dealer_profile_by_id` extended (it is the only way an
+  anon visitor sees a dealer), one `DealerIdentity` component used at both breakpoints,
+  the badge linking to it instead of dead-ending, and SSM + postcode added to dealer
+  Settings with a nudge naming the gaps. The verified line now states the real check —
+  "SSM certificate and the owner's IC were checked" — which is what the admin button at
+  `src/pages/AdminPage.jsx:1941` has always meant.
+  **Three things for the owner:**
+  1. **0 of 3 dealers are verified**, so the shield renders on no listing. The badge was
+     never a lie, it is dead — same failure mode as the condition map. Verification is
+     admin-only (`AdminPage.jsx:452`); dealers have no way to request it.
+  2. Unverified dealers are shown **nothing** about verification rather than a negative
+     "not verified" label — branding them before offering a way to get verified is the
+     owner's call to make, not mine. Say if you want the negative state shown.
+  3. `business_reg_number` is a **dead duplicate** of `ssm_number` — referenced nowhere
+     in `src/`, empty in every row. Safe to drop; left alone for now.
 - **TRUST-4: Deposit terms at the deposit ask** — "RM X deposit to reserve" renders as
   an 11px muted caption (`src/pages/CarDetailPage.jsx:3527`). Highest-anxiety moment on
   the page, lowest-emphasis text. Needs: refundable or not, what happens on loan
