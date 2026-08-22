@@ -3,11 +3,13 @@ import { Helmet } from "react-helmet";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
+import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { compressImageFile } from "../utils/compressImage";
 import CarFormFast from "../components/CarFormFast";
 import CarForm from "../components/CarForm";
 import DealerPendingApproval from "../components/DealerPendingApproval";
+import AvailabilityEditor from "../components/AvailabilityEditor";
 import {
  LogOut,
  Copy,
@@ -57,6 +59,7 @@ import {
  History,
  Search,
  DollarSign,
+ ShieldCheck,
  Clock,
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
@@ -278,13 +281,52 @@ export default function SalesmanPremium() {
  const [settingsForm, setSettingsForm] = useState({
  full_name: "",
  whatsapp_number: "",
+ telegram_chat_id: "",
+ city: "",
+ state: "",
  location: "",
+ instagram: "",
+ tiktok: "",
+ facebook: "",
+ website: "",
+ // Public-profile extras — a Premium-only addition over Lite (which has no
+ // editor for these at all yet; only the linked-salesman panel does).
+ bio: "",
+ response_time: "",
+ specializations: [],
  // Selling terms buyers see on every listing this agent owns.
  deposit_policy: "",
  deposit_terms: "",
  processing_fee: "",
  });
  const [settingsSaving, setSettingsSaving] = useState(false);
+ const [tgTesting, setTgTesting] = useState(false);
+ const [tagInput, setTagInput] = useState("");
+ // IC verify — voluntary from Settings, matching Lite. Lite also hard-blocks
+ // new listings until verified (icEnforced, 7 days after signup); that
+ // enforcement is a separate business-rule change and deliberately not
+ // ported here, only the verify UI itself.
+ const [icGateOpen, setIcGateOpen] = useState(false);
+ const [icGateVal, setIcGateVal] = useState("");
+ const [icGateSaving, setIcGateSaving] = useState(false);
+ async function saveIcAndCloseGate() {
+ const digits = (icGateVal || "").replace(/\D/g, "");
+ if (digits.length !== 12) { toast.error("Enter a valid 12-digit IC number"); return; }
+ setIcGateSaving(true);
+ try {
+ // Hash + store server-side (set_my_ic): the IC is never persisted in
+ // plaintext, only a per-user-salted SHA-256 hash.
+ const { error } = await supabase.rpc("set_my_ic", { p_ic: digits });
+ if (error) throw error;
+ setProfile((p) => ({ ...p, ic_hash: "set", ic_verified_at: new Date().toISOString() }));
+ setIcGateOpen(false);
+ toast.success("IC verified");
+ } catch (e) {
+ toast.error(e.message === "invalid_ic" ? "Enter a valid 12-digit IC number" : (e.message || "Could not save"));
+ } finally {
+ setIcGateSaving(false);
+ }
+ }
  const [avatarUrl, setAvatarUrl] = useState("");
  const [avatarUploading, setAvatarUploading] = useState(false);
  const avatarInputRef = useRef(null);
@@ -397,7 +439,17 @@ export default function SalesmanPremium() {
  setSettingsForm({
  full_name: profile.full_name || "",
  whatsapp_number: profile.whatsapp_number || "",
+ telegram_chat_id: profile.telegram_chat_id || "",
+ city: profile.city || "",
+ state: profile.state || "",
  location: profile.location || "",
+ instagram: profile.instagram || "",
+ tiktok: profile.tiktok || "",
+ facebook: profile.facebook || "",
+ website: profile.website || "",
+ bio: profile.bio || "",
+ response_time: profile.response_time || "",
+ specializations: profile.specializations || [],
  deposit_policy: profile.deposit_policy || "",
  deposit_terms: profile.deposit_terms || "",
  processing_fee: profile.processing_fee != null ? String(profile.processing_fee) : "",
@@ -702,7 +754,7 @@ export default function SalesmanPremium() {
 
  useEffect(() => {
  if (tourStep === null) { setTourTarget(null); return; }
- const TOUR_TABS = [null, "dashboard", "listings", "leads", "enquiries", "bookings", "merge"];
+ const TOUR_TABS = [null, "dashboard", "listings", "leads", "enquiries", "bookings", "analytics", "loans", "outreach", "merge", "settings"];
  const tab = TOUR_TABS[tourStep];
  if (!tab) { setTourTarget(null); return; }
  switchTab(tab);
@@ -5169,16 +5221,78 @@ export default function SalesmanPremium() {
  const handleSave = async () => {
  setSettingsSaving(true);
  const phone = "+60" + localPhone.replace(/\D/g, "");
- const terms = {
+ const rest = {
+ city: settingsForm.city || null,
+ state: settingsForm.state || null,
+ location: settingsForm.location || null,
+ instagram: settingsForm.instagram || null,
+ tiktok: settingsForm.tiktok || null,
+ facebook: settingsForm.facebook || null,
+ website: settingsForm.website || null,
+ bio: settingsForm.bio || null,
+ response_time: settingsForm.response_time || null,
+ specializations: settingsForm.specializations,
  deposit_policy: settingsForm.deposit_policy || null,
  deposit_terms: settingsForm.deposit_terms.trim() || null,
  processing_fee: String(settingsForm.processing_fee).trim() === "" ? null : (Number(settingsForm.processing_fee) || 0),
  };
- await supabase.from("profiles").update({ full_name: settingsForm.full_name, whatsapp_number: phone, location: settingsForm.location || null, ...terms }).eq("id", userId);
- setProfile((p) => ({ ...p, full_name: settingsForm.full_name, whatsapp_number: phone, location: settingsForm.location || null, ...terms }));
+ await supabase.from("profiles").update({ full_name: settingsForm.full_name, whatsapp_number: phone, ...rest }).eq("id", userId);
+ setProfile((p) => ({ ...p, full_name: settingsForm.full_name, whatsapp_number: phone, ...rest }));
  setSettingsForm((p) => ({ ...p, whatsapp_number: phone }));
  setSettingsSaving(false);
  toast.success("Profile updated");
+ };
+
+ const removeTag = (i) =>
+ setSettingsForm((p) => ({ ...p, specializations: p.specializations.filter((_, j) => j !== i) }));
+
+ const handleTagKeyDown = (e) => {
+ if (e.key === "Enter" && tagInput.trim()) {
+ e.preventDefault();
+ const val = tagInput.trim();
+ if (!settingsForm.specializations.includes(val)) {
+ setSettingsForm((p) => ({ ...p, specializations: [...p.specializations, val] }));
+ }
+ setTagInput("");
+ }
+ };
+
+ // Send a test message to the salesman's own Telegram chat. Solo Premium
+ // accounts have no bot token of their own, so send-telegram falls back to
+ // the platform bot — the chat id typed here is the only thing to get right.
+ // Saves it first so a test that works is a test of what gets persisted.
+ const testTelegramConnection = async () => {
+ const chatId = (settingsForm.telegram_chat_id || "").trim();
+ if (!chatId) { toast.error("Enter a chat ID first"); return; }
+ setTgTesting(true);
+ try {
+ const { error: chatIdErr } = await supabase.from("profiles").update({ telegram_chat_id: chatId }).eq("id", userId);
+ if (chatIdErr) { toast.error("Could not save chat ID"); return; }
+ const { data: { session } } = await supabase.auth.getSession();
+ const { data } = await supabase.functions.invoke("send-telegram", {
+ body: {
+ dealer_id: getDealerIdFromProfile(profile),
+ channel_id: chatId,
+ message: `Telegram connected! You'll get appointment + booking reminders here. — ${profile?.full_name || "ShiftOS"}`,
+ },
+ headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+ });
+ if (data?.ok) {
+ setProfile((p) => ({ ...p, telegram_chat_id: chatId }));
+ toast.success("Test message sent — check Telegram");
+ } else if (data?.error === "not_started") {
+ toast.error(`Message @${data.bot_username || "the bot"} first, then try again`);
+ } else if (data?.error === "no_token") {
+ toast.error("Telegram isn't set up on this account yet");
+ } else {
+ toast.error(data?.description || "Test failed");
+ }
+ } catch (err) {
+ console.error("testTelegramConnection:", err);
+ toast.error("Network error");
+ } finally {
+ setTgTesting(false);
+ }
  };
 
  const initials = (profile?.full_name || profile?.slug || "S")[0].toUpperCase();
@@ -5235,6 +5349,11 @@ export default function SalesmanPremium() {
  </div>
  </div>
 
+ {/* Viewing availability — buyers can only book the days/times set here */}
+ <div style={{ marginBottom: 24, padding: 16, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
+ <AvailabilityEditor ownerId={userId} dealerId={userId} dark />
+ </div>
+
  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
  <div>
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Full Name</label>
@@ -5250,10 +5369,102 @@ export default function SalesmanPremium() {
  <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Malaysia country code pre-applied. Enter digits only.</p>
  </div>
  <div>
+ <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "inline-flex", alignItems: "center", gap: 5 }}><Send size={11} /> Telegram</label>
+ {profile?.telegram_chat_id
+ ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4ade80" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />Connected</span>
+ : <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4b5563" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4b5563", display: "inline-block" }} />Not set</span>
+ }
+ </div>
+ <input value={settingsForm.telegram_chat_id} onChange={(e) => setSettingsForm((p) => ({ ...p, telegram_chat_id: e.target.value }))} placeholder="Your Telegram chat ID" style={inputStyle} />
+ <button type="button" onClick={testTelegramConnection} disabled={tgTesting || !settingsForm.telegram_chat_id.trim()}
+ style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, padding: "8px 14px", borderRadius: 8, background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.3)", color: "#93c5fd", fontFamily: "inherit", cursor: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? "not-allowed" : "pointer", opacity: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? 0.55 : 1 }}>
+ <Send size={13} /> {tgTesting ? "Testing…" : "Send test message"}
+ </button>
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151", lineHeight: 1.6 }}>Message <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: "#93c5fd", textDecoration: "none" }}>@userinfobot</a> on Telegram, send /start, and paste the Id number here.</p>
+ </div>
+ <div style={{ display: "flex", gap: 10 }}>
+ <div style={{ flex: 1 }}>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>City</label>
+ <input value={settingsForm.city} onChange={(e) => setSettingsForm((p) => ({ ...p, city: e.target.value }))} placeholder="e.g. Petaling Jaya" style={inputStyle} />
+ </div>
+ <div style={{ flex: 1 }}>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>State</label>
+ <select value={settingsForm.state} onChange={(e) => setSettingsForm((p) => ({ ...p, state: e.target.value }))} style={{ ...inputStyle, appearance: "none" }}>
+ <option value="">Select state</option>
+ {["Johor","Kedah","Kelantan","Kuala Lumpur","Labuan","Melaka","Negeri Sembilan","Pahang","Penang","Perak","Perlis","Putrajaya","Sabah","Sarawak","Selangor","Terengganu"].map(s => (
+ <option key={s} value={s}>{s}</option>
+ ))}
+ </select>
+ </div>
+ </div>
+ <div>
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Full Address (for map)</label>
  <input value={settingsForm.location} onChange={(e) => setSettingsForm((p) => ({ ...p, location: e.target.value }))} placeholder="e.g. 12, Jalan Ampang, 50450 Kuala Lumpur" style={inputStyle} />
  <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Shown as a map on your public page so buyers can find you.</p>
  </div>
+ <div>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>IC Number <span style={{ color: "#4b5563" }}>(private, verify only)</span></label>
+ {profile?.ic_hash ? (
+ <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 13px", borderRadius: 8, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)" }}>
+ <ShieldCheck size={15} style={{ color: "#22c55e", flexShrink: 0 }} />
+ <span style={{ fontSize: 13, color: "#e5e7eb", fontWeight: 600 }}>Verified</span>
+ </div>
+ ) : (
+ <button onClick={() => { setIcGateVal(""); setIcGateOpen(true); }}
+ style={{ display: "flex", alignItems: "center", gap: 7, padding: "11px 13px", borderRadius: 8, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", width: "100%" }}>
+ <ShieldCheck size={15} style={{ flexShrink: 0 }} /> Verify your MyKad IC
+ </button>
+ )}
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Stored hashed, never shown in plaintext. Buyers see a verified badge only.</p>
+ </div>
+ {/* Public-profile extras — Premium's own bio/specializations block, not
+ offered to Lite yet. Shown on the public agent page with a Read-more
+ toggle and pill tags, same as the linked-salesman panel. */}
+ <div>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Bio</label>
+ <textarea value={settingsForm.bio} onChange={(e) => setSettingsForm((p) => ({ ...p, bio: e.target.value }))}
+ placeholder="e.g. Specializing in Perodua & Honda, 5 years experience in Klang Valley" rows={4}
+ style={{ ...inputStyle, resize: "vertical" }} />
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Shown below your name on your public page, with a "Read more" toggle.</p>
+ </div>
+ <div>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Response Time</label>
+ <input value={settingsForm.response_time} onChange={(e) => setSettingsForm((p) => ({ ...p, response_time: e.target.value }))} placeholder="e.g. Usually replies within 1 hour" style={inputStyle} />
+ </div>
+ <div>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Specializations</label>
+ {settingsForm.specializations.length > 0 && (
+ <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+ {settingsForm.specializations.map((tag, i) => (
+ <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.2)", color: "#fca5a5", borderRadius: 99, padding: "3px 10px", fontSize: 11, fontWeight: 600 }}>
+ {tag}
+ <button onClick={() => removeTag(i)} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", opacity: 0.7 }}>
+ <X size={10} />
+ </button>
+ </span>
+ ))}
+ </div>
+ )}
+ <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown} placeholder="Type a specialization and press Enter" style={inputStyle} />
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Press Enter to add each tag. Shown as pills on your public profile.</p>
+ </div>
+ {/* Social links */}
+ {[
+ { key: "instagram", label: "Instagram", placeholder: "@yourusername", prefix: "instagram.com/" },
+ { key: "tiktok", label: "TikTok", placeholder: "@yourusername", prefix: "tiktok.com/@" },
+ { key: "facebook", label: "Facebook", placeholder: "username or page name", prefix: "facebook.com/" },
+ { key: "website", label: "Website", placeholder: "https://yoursite.com", prefix: null },
+ ].map(({ key, label, placeholder, prefix }) => (
+ <div key={key}>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{label}</label>
+ <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, overflow: "hidden" }}>
+ {prefix && <span style={{ padding: "10px 10px", fontSize: 11, color: "#4b5563", background: "rgba(255,255,255,0.03)", borderRight: "1px solid rgba(255,255,255,0.08)", whiteSpace: "nowrap", flexShrink: 0 }}>{prefix}</span>}
+ <input value={settingsForm[key]} onChange={(e) => setSettingsForm((p) => ({ ...p, [key]: e.target.value }))} placeholder={placeholder}
+ style={{ ...inputStyle, background: "transparent", border: "none", borderRadius: 0, flex: 1, width: "auto" }} />
+ </div>
+ </div>
+ ))}
  {/* Selling terms — you own these listings, so the buyer's questions (is my
  deposit safe, what else do I pay) land on you, not on a dealer. */}
  <div>
@@ -6094,13 +6305,17 @@ export default function SalesmanPremium() {
  // TOUR 
 
  const TOUR_STEPS = [
- { icon: Sparkles, title: "Welcome to ShiftOS Lite", body: "Quick 30-second tour. Each step takes you to the real panel so you can see it live." },
+ { icon: Sparkles, title: "Welcome to ShiftOS Premium", body: "Quick tour of everything your plan unlocks. Each step takes you to the real panel so you can see it live." },
  { icon: BarChart2, title: "Dashboard", body: "Your command centre — KPIs, stale follow-up nudges, listing performance, and recent activity all in one view." },
  { icon: Car, title: "My Listings", body: "Add your cars here. Each card shows views, WA taps, and a CVR bar. Hot = buyers are clicking. Cold = needs a refresh or price drop." },
  { icon: Users, title: "Leads", body: "Track every buyer: New → Contacted → Test Drive → Won. Heat scores show who needs attention. Ping stale leads straight to WhatsApp." },
  { icon: MessageSquare, title: "Enquiries", body: "Buyers who messaged through your listing cards land here. Reply with templates or convert them into pipeline leads in one tap." },
  { icon: Calendar, title: "Bookings", body: "Viewing appointments appear here. Confirm, cancel, or send a WA reminder without leaving the app." },
+ { icon: TrendingUp, title: "Analytics", body: "Views, WhatsApp taps and conversion rate per listing, plus your total commission and cars sold — all in one view." },
+ { icon: Banknote, title: "Loans", body: "Compare bank rates for a buyer, submit their loan application, and track approval status — a Premium-only feature." },
+ { icon: Megaphone, title: "Outreach Hub", body: "See which leads have gone cold, then work through them with a guided WhatsApp campaign — one tap per contact. Premium-only." },
  { icon: LinkIcon, title: "Join a Dealership", body: "Have an invite code from your dealer? Enter it here to unlock the full panel — shared stock, team leads, commission tracking and more." },
+ { icon: Settings, title: "Settings", body: "Your public profile, WhatsApp templates and account settings live here." },
  ];
 
  const dismissTour = () => {
@@ -6880,6 +7095,53 @@ export default function SalesmanPremium() {
  {renderNotifPanel()}
  {renderCarDetailPopup()}
  {renderTour()}
+
+ {/* IC verify — voluntary, opened from Settings. Stored HASHED (set_my_ic),
+ never plaintext. Unlike Lite this is never force-opened; always dismissable. */}
+ {icGateOpen && (
+ <div
+ onClick={() => !icGateSaving && setIcGateOpen(false)}
+ style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px" }}
+ >
+ <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 12, width: "90%", maxWidth: 420, padding: 24 }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+ <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(220,38,38,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+ <ShieldCheck size={18} style={{ color: "#f87171" }} />
+ </div>
+ <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Verify your IC</p>
+ </div>
+ <p style={{ margin: "0 0 16px", fontSize: 13, color: "#9ca3af", lineHeight: 1.6 }}>
+ Buyers need to know they're dealing with a real, accountable seller. Enter your MyKad IC once — it's shown as a verified badge on your public page, never as digits.
+ </p>
+ <label style={{ display: "block", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b7280", marginBottom: 7 }}>IC Number (MyKad)</label>
+ <input
+ autoFocus
+ value={icGateVal}
+ onChange={(e) => setIcGateVal(e.target.value.replace(/[^\d-]/g, ""))}
+ placeholder="901231-10-1234"
+ maxLength={14}
+ onKeyDown={(e) => { if (e.key === "Enter") saveIcAndCloseGate(); }}
+ style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#e5e7eb", fontSize: 15, padding: "11px 13px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+ />
+ <p style={{ margin: "7px 0 0", fontSize: 11, color: "#6b7280" }}>12 digits · stored hashed (never in plaintext), verification only.</p>
+ <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+ <button
+ onClick={saveIcAndCloseGate}
+ disabled={icGateSaving || icGateVal.replace(/\D/g, "").length !== 12}
+ style={{ flex: 1, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", opacity: icGateSaving || icGateVal.replace(/\D/g, "").length !== 12 ? 0.5 : 1 }}
+ >
+ {icGateSaving ? "Verifying…" : "Verify & continue"}
+ </button>
+ <button
+ onClick={() => !icGateSaving && setIcGateOpen(false)}
+ style={{ fontSize: 13, fontWeight: 600, padding: "11px 16px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}
+ >
+ Later
+ </button>
+ </div>
+ </div>
+ </div>
+ )}
 
  {/* Broadcast modal */}
  {broadcastCar &&

@@ -96,6 +96,36 @@ second, deeper pass (diffing against `Salesmanpanel.jsx`, the linked-salesman
 panel) found genuine ones. Shipped the fixable ones; the rest are follow-ups
 below. Build (`npm run build`) and lint both clean after these changes.
 
+**Round 2 (same day):** owner flagged the onboarding tour and Settings tab.
+- **PREM-8: onboarding tour was Lite's tour, unedited.** Welcome copy
+  literally read "Welcome to ShiftOS **Lite**" and `TOUR_TABS`/`TOUR_STEPS`
+  only walked Dashboard → Listings → Leads → Enquiries → Bookings → Join a
+  Dealership — 4 of Premium's 10 real tabs (Analytics, Loans, Outreach,
+  Settings) were never shown, including the two paid differentiators (Loans,
+  Outreach). Fixed: retitled, and both arrays now cover all 10 tabs in nav
+  order with tab-specific copy.
+- **PREM-9: Settings was missing most of what Lite has.** Diffed field-by-
+  field against `SalesmanLite.jsx`'s Settings tab. Premium had only Avatar,
+  Cover Photo, Full Name, WhatsApp, Deposit terms, Processing fee, Slug.
+  Added to match Lite: Telegram chat ID + test-message button, City/State,
+  IC verification (hashed via `set_my_ic`, badge-only display — ported the
+  verify UI, deliberately did NOT port Lite's 7-day hard-enforcement block on
+  new listings, since that's a business-rule change beyond "the settings
+  page" — flag if you want that enforced for Premium too), social links
+  (Instagram/TikTok/Facebook/Website), and the `AvailabilityEditor` (booking
+  windows — Premium has a Bookings tab that depends on this and had no way to
+  configure it before).
+- **PREM-10: added Bio/Response Time/Specializations as Premium-exclusive.**
+  Owner's ask: "for premium users they can do a little more... an extra
+  bio." Verified `SalesmanProfilePage.jsx` (the shared public mini-page for
+  all salesman types) already renders `profile.bio`, `.response_time` and
+  `.specializations` — but the only Settings editor for them was in
+  `Salesmanpanel.jsx` (linked/dealer-team salesmen). Neither Lite nor
+  Premium could set them. Ported the editor (textarea + tag input, same
+  `about_text`-adjacent `bio` column) into Premium only, not Lite — makes it
+  a real Premium differentiator instead of a dormant public-page block.
+  Lite still can't set these; that's consistent with the tiering, not a bug.
+
 **Shipped:**
 - **PREM-1: the three "coming soon" kill switches removed.** Premium was
   fully built but invisible to real customers behind three separate flags:
