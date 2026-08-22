@@ -87,6 +87,24 @@ not scoped, not prioritized — just parked here until picked up on purpose.
 
 ---
 
+### CRON-1: two cron jobs still carry a hardcoded key literal
+
+`cron.job` commands for **jobid 3 (`notify-price-alerts`)** and **jobid 7
+(`appointment-reminders`)** paste a JWT straight into the SQL command text
+instead of reading `public.get_cron_edge_key()` from Vault like jobs 5 and 10
+now do. Both work TODAY, so this is not urgent — but it is a fourth copy of a
+credential sitting in plaintext in a table, and the day that key rotates both
+jobs die silently the same way the purge job did (pg_cron records a successful
+run because it got an HTTP response; the response is just a 401).
+
+Found 2026-08-22 while fixing the 30-day purge. Fix is mechanical: swap the
+literal for `'Bearer ' || coalesce(public.get_cron_edge_key(), '')` via
+`cron.alter_job`, then fire each job once and confirm a 200 in
+`net._http_response`. Deliberately NOT bundled into the purge fix — no reason to
+risk two working crons in a session about a broken one.
+
+---
+
 ### SESSION 2026-08-21 — car detail page trust (research + geran requirement)
 
 Full research report: `docs/research/cardetail-trust-research.html`
