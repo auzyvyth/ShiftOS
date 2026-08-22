@@ -401,23 +401,17 @@ export default function SalesmanLiteLanding() {
                 </ul>
                 <Link to="/salesman-onboarding/lite" className="sll-btn sll-btn-red sll-btn-block">Sign up free</Link>
               </div>
-              {/* Premium is not launched yet — shown as a dimmed "Coming soon"
-                  card with a disabled CTA. Restore the <Link> and drop the
-                  soon classes to re-enable upgrades once Premium goes live. */}
-              <div className="sll-plan sll-plan-alt sll-plan-soon">
-                <span className="sll-soon-ribbon">Coming soon</span>
-                <div className="sll-plan-dim">
-                  <div className="sll-plan-head">
-                    <span className="sll-plan-name">Salesman Premium</span>
-                    <span className="sll-plan-price">RM20<span>/month</span></span>
-                  </div>
-                  <ul className="sll-plan-list">
-                    {["Everything in Lite", "Up to 30 active listings", "Priority marketplace placement", "Advanced CRM automation", "Commission tracking", "Advanced analytics + custom subdomain"].map((x) => (
-                      <li key={x}><Check size={15} className="sll-tick" /> {x}</li>
-                    ))}
-                  </ul>
+              <div className="sll-plan sll-plan-alt">
+                <div className="sll-plan-head">
+                  <span className="sll-plan-name">Salesman Premium</span>
+                  <span className="sll-plan-price">RM20<span>/month</span></span>
                 </div>
-                <span className="sll-btn sll-btn-dark sll-btn-block sll-btn-disabled" aria-disabled="true">Coming soon</span>
+                <ul className="sll-plan-list">
+                  {["Everything in Lite", "Up to 30 active listings", "Priority marketplace placement", "Advanced CRM automation", "Commission tracking", "Advanced analytics + custom subdomain"].map((x) => (
+                    <li key={x}><Check size={15} className="sll-tick" /> {x}</li>
+                  ))}
+                </ul>
+                <Link to="/salesman-onboarding/premium" className="sll-btn sll-btn-dark sll-btn-block">Upgrade to Premium</Link>
               </div>
             </div>
           </div>
@@ -603,15 +597,6 @@ const CSS = `
   .sll-plans { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
   .sll-plan { border: 1px solid #eceaea; border-radius: 18px; padding: 30px 28px; display: flex; flex-direction: column; background: #fff; }
   .sll-plan-alt { border: 1.5px solid #0a0a0a; }
-  /* Coming-soon premium card: dimmed content, disabled CTA, corner ribbon */
-  .sll-plan-soon { position: relative; overflow: hidden; }
-  .sll-plan-soon .sll-plan-dim { opacity: 0.5; filter: grayscale(0.2); }
-  /* Fixed width + text-align:center so the text sits centered on the diagonal
-     strip itself — shrink-to-fit content with only symmetric padding still
-     left it reading off-corner because the strip wasn't long enough to span
-     the actual corner it's meant to sit across. */
-  .sll-soon-ribbon { position: absolute; top: 22px; right: -58px; width: 200px; transform: rotate(45deg); background: #dc2626; color: #fff; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; text-align: center; padding: 6px 0; box-shadow: 0 4px 14px rgba(0,0,0,0.22); z-index: 2; }
-  .sll-btn-disabled { background: #9ca3af; color: #fff; cursor: not-allowed; pointer-events: none; box-shadow: none; }
   .sll-plan-head { margin-bottom: 22px; }
   .sll-plan-name { display: block; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }
   .sll-plan-price { font-size: 40px; font-weight: 900; letter-spacing: -0.03em; }

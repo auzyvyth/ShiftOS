@@ -87,6 +87,107 @@ not scoped, not prioritized — just parked here until picked up on purpose.
 
 ---
 
+### SESSION 2026-08-22b — Salesman Premium launch sweep
+
+Full sweep of `src/pages/SalesmanPremium.jsx` (7,300+ lines) after the owner
+asked to get Premium live this week. First pass found it already feature-rich
+with no `TODO`/stub markers; owner pushed back that there were real gaps —
+second, deeper pass (diffing against `Salesmanpanel.jsx`, the linked-salesman
+panel) found genuine ones. Shipped the fixable ones; the rest are follow-ups
+below. Build (`npm run build`) and lint both clean after these changes.
+
+**Shipped:**
+- **PREM-1: the three "coming soon" kill switches removed.** Premium was
+  fully built but invisible to real customers behind three separate flags:
+  `PREMIUM_ENABLED = false` in `SalesmanOnboarding.jsx:210` (any premium
+  onboarding request silently fell back to Lite), `soon: true` on
+  `PLAN_META.salesman_full` in `ShiftOSPage.jsx` (landing-page pricing card
+  showed a disabled "Coming soon" button), and `soon: true` in
+  `PlanPickerModal.jsx` (same disabled state in the in-app plan switcher).
+  Also rewrote the hardcoded dimmed "Coming soon" card in
+  `SalesmanLiteLanding.jsx` (`/for-salesmen`) into a normal enabled upgrade
+  card with a working `<Link>`, and dropped the now-dead `.sll-plan-soon` /
+  `.sll-soon-ribbon` / `.sll-btn-disabled` CSS. All three onboarding entry
+  points (landing page, `/for-salesmen`, in-app plan picker) now route a real
+  signup through to `/salesman-onboarding/premium`.
+- **PREM-2: Outreach Hub was unreachable for every solo Premium customer.**
+  `showOutreach` gated on `hasFeature('salesman', 'outreach', permissions)`
+  (`src/lib/permissions.js`), which only returns true if a `role_permissions`
+  row has `feat_outreach: true` — a toggle meant to be set by a **dealer**
+  for their team. A solo Premium salesman has no dealer above them and no
+  dashboard to grant it to themselves; the one live Premium account had zero
+  rows in `role_permissions`, confirmed via direct query. Since the redirect
+  guard in `SalesmanPremium.jsx` already sends any salesman with `dealer_id`
+  set to `/salesman` before this page ever renders, `dealer_id` is always
+  null here — so `showOutreach` is now hardcoded `true` and the dead
+  `usePermissions`/`hasFeature` imports were removed. Outreach is a paid
+  Premium feature with no dealer to gate it behind; it should just be on.
+- **PREM-3: back button / swipe-back could log a Premium salesman out
+  mid-session.** Same bug class as `LITE-2` below, ported the identical fix:
+  `SalesmanPremium.jsx` held all 10 tabs in a single `useState("dashboard")`,
+  so every tab switch replaced state with no history entry — Back or swipe
+  landed on the previous *page* (sign-in), not the previous tab. Now
+  `/salesman-premium/:tab?` is the single source of truth (one route with an
+  optional param, same as `/salesman-lite/:tab?` — **not** two separate
+  `Route` entries, which would cross a route-id boundary on every tab switch
+  and remount the component, wiping `tourStep` and looping the onboarding
+  tour exactly like the bug documented at `App.jsx:193-206`).
+
+**NOT shipped — three features TODO.md's own "V3" entry (see Done, below)
+claimed Premium already had, which do not exist in the file:**
+- **PREM-4: no Deal Sheet generator.** `Salesmanpanel.jsx` imports
+  `generateDealSheet` from `../utils/dealSheet` and has a full "Customise
+  Deal Sheet" UI (`Salesmanpanel.jsx:22`, `:4699`). Zero references anywhere
+  in `SalesmanPremium.jsx`. Porting is mostly copy-adapt since the util and
+  UI pattern already exist.
+- **PREM-5: no Handover / post-sale tracking tab.** `Salesmanpanel.jsx`
+  imports `PostSaleBoard` and has a full Handover tab (JPJ transfer,
+  Puspakom B5/B7, road tax, insurance checklist) for won deals.
+  `SalesmanPremium.jsx` has neither the import nor the tab. The DB trigger
+  (`auto_create_customer_on_won`) still auto-seeds `post_sale_tasks` the
+  instant a Premium salesman's lead hits `won` — the data exists, a Premium
+  salesman just has no screen to see or work it. Same copy-adapt situation
+  as PREM-4 (`PostSaleBoard` is a ready-made component, dealer-id scoped).
+  Screen the customer-facing update path (buyer sees live checklist status)
+  before shipping — it should already work via `PostSaleBoard`'s existing
+  props, just needs verifying for a solo (no-dealer) salesman.
+- **PREM-6: no customer records.** `Salesmanpanel.jsx:167` has
+  `const showCustomers = hasFeature('salesman', 'customers', permissions)`
+  gating a customer-records view; `SalesmanPremium.jsx` has zero `customer`-
+  related code at all. This is the biggest of the three — needs its own
+  screen built (or ported), not just an existing component wired in.
+  Same permission-gating problem as PREM-2 applies here too: if ported using
+  `hasFeature`, must use the solo-account bypass, not the dealer-permission
+  gate, or it will be built-but-unreachable exactly like Outreach was.
+
+Recommended order: PREM-5 and PREM-4 first (components already exist,
+mechanical port), PREM-6 last (net-new screen). None of the three are
+required for Premium to be live and honest about what it does — the plan
+copy on the landing page/plan picker only promises "Advanced CRM automation"
+and "Commission tracking," not deal sheets/handover/customer records by
+name, so nothing sold is currently false. But they were the differentiators
+implied by TODO's own (stale) V3 note, so treat as the real next milestone.
+
+- [ ] **PREM-7 (LOW, not fixed — reclassified, not a bug): Analytics tab's
+  "WA Taps" and "CVR" KPI tiles never show a trend sparkline.**
+  `SalesmanPremium.jsx` hardcodes `const waD = Array(7).fill(0)` (no RPC
+  returns a daily WhatsApp-tap breakdown) and derives `cvrD` from it, so
+  both are always all-zero. Initially flagged this as "fakes a chart" to the
+  owner — on closer read that's not quite right: the `Spark` sparkline
+  component already guards `if (!data || data.every(v => v === 0)) return
+  <div/>` (blank, not a drawn flat line), so nothing false is drawn — the
+  totals above the sparkline (`totalWA`, `cvr`) are real, aggregated
+  correctly from `carStatsMap`. The only user-visible effect is those two
+  tiles permanently lack the little trend squiggle that Views/Enquiries
+  have, even in a week with real activity. Real fix needs a genuine per-day
+  WhatsApp-tap data source (an `analytics_events` fetch bucketed by day —
+  there's a dead, never-called `bucket7(evts, type)` helper sitting right
+  above this code that looks like it was built for exactly this and never
+  wired up). Left alone this session per the owner's "ship what's real,
+  don't build new" scope call — it's a missing nice-to-have, not a bug.
+
+---
+
 ### CRON-1: two cron jobs still carry a hardcoded key literal
 
 `cron.job` commands for **jobid 3 (`notify-price-alerts`)** and **jobid 7
@@ -573,10 +674,10 @@ accurate for JSON (it does not).
   post-auth redirects now use `window.location.replace()` (via a `go()` helper) instead
   of `window.location.href =`, so `/login` no longer sits in history and backing out of
   the first tab exits cleanly instead of re-showing sign-in.
-  FOLLOW-UP (not done this session): Premium (`SalesmanPremium.jsx`) and the linked
-  panel (`Salesmanpanel.jsx`) have the same single-route `useState("dashboard")` smell —
-  apply the same per-tab routing to them. Also confirm `AuthCallbackPage.jsx`
-  (Google/OAuth) redirect uses `replace()`.
+  FOLLOW-UP: Premium done (PREM-3, 2026-08-22b) — `SalesmanPremium.jsx` now routes
+  per-tab the same way. Still open: `Salesmanpanel.jsx` (linked-salesman panel) has
+  the same single-route `useState("dashboard")` smell, not yet fixed. Also confirm
+  `AuthCallbackPage.jsx` (Google/OAuth) redirect uses `replace()`.
 
 ### SALESMAN LITE — account deletion (self-service)
 
@@ -1084,7 +1185,10 @@ native build.
 - **AUD-12: Vendor / supplier directory** — Vendors modal in StockTab with name, category, contact; linked to recon jobs.
 - **V1: `invites` edge function deployed** — manager/accountant/fi_officer/admin creation now calls `auth.admin.createUser()` via the new `invites` edge function; profile upserted with retry loop; DELETE path also deletes auth user. These roles can now actually log in.
 - **V2: TeamTab realtime wired to fetchSoldPerSalesman** — car_listings change event now calls both `fetchSold` (total count) and `fetchSoldPerSalesman` (per-salesman tiles) so commission tiles update live without a manual refresh.
-- **V3: Salesman Lite vs Premium gates confirmed** — Lite: dashboard, listings, leads, inbox, performance. Premium (salesman_full): all Lite tabs + loans/HP submissions, financing calculator, deal sheet generator, AI features, customer records. Gated via `isPremium = profile.plan === 'salesman_full'` in SalesmanPremium.
+- **V3: Salesman Lite vs Premium gates confirmed** — Lite: dashboard, listings, leads, inbox, performance. Premium (salesman_full): loans/HP submissions, financing (bank comparison) calculator, AI features, Outreach Hub. Gated via `isPremium = profile.plan === 'salesman_full'` in SalesmanPremium.
+  **CORRECTED 2026-08-22b:** this entry originally also claimed "deal sheet
+  generator" and "customer records" — verified false, neither exists in
+  `SalesmanPremium.jsx`. See PREM-4/PREM-5/PREM-6 in Dev tasks above.
 - **DESIGN-SYSTEM: Tokens replaced with user-specified lean definition** — `src/theme/tokens.js` now contains exactly the 5 color keys, border, radius, font, stageColors, activityDot specified. All UI primitives updated to inline removed constants.
 - **DESIGN-SYSTEM (layer 1): Premium-light tokens + primitives** — `src/components/ui/*` primitives (Card, Button, Stat, Badge, SectionHeader, SubTabBar). Living style guide at `/style-guide`.
 - **HP-3: PUSPAKOM B7 expiry tracking** — `puspakom_b7_date` on stock_units, expiry badge in LeadDrawer, "expired B7" and "missing B7" alerts in OversightTab.

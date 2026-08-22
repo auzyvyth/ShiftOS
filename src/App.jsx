@@ -205,7 +205,11 @@ function App() {
               this exact bare path, and Navigate's `to` does not carry the
               current hash over, which would silently break that handoff. */}
           <Route path="/salesman-lite/:tab?" element={<SalesmanLite />} />
-          <Route path="/salesman-premium" element={<SalesmanPremium />} />
+          {/* Same single-route-with-optional-:tab pattern as /salesman-lite above,
+              and for the same reason: two separate Route entries for bare path vs
+              :tab would cross a route-id boundary on every tab switch and remount
+              SalesmanPremium, wiping local state (tourStep, etc). */}
+          <Route path="/salesman-premium/:tab?" element={<SalesmanPremium />} />
           <Route path="/manager" element={<ManagerPanel />} />
           <Route path="/accountant" element={<AccountantPanel />} />
           <Route path="/fi" element={<FIPanel />} />

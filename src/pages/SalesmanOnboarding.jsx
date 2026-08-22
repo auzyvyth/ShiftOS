@@ -207,11 +207,7 @@ function LeftPanel({ step, tier, onChangePlan }) {
 export default function SalesmanOnboarding() {
   const navigate = useNavigate();
   const { tier: tierParam } = useParams();
-  // Salesman Premium is not launched yet ("coming soon"). While this is false,
-  // any request for the premium tier — direct URL, old redirect, plan picker —
-  // silently falls back to lite so nobody can onboard onto a plan we aren't
-  // selling yet. Flip to true to re-enable premium onboarding.
-  const PREMIUM_ENABLED = false;
+  const PREMIUM_ENABLED = true;
   const requestedTier = ['lite', 'premium'].includes(tierParam) ? tierParam : 'lite';
   const tier = requestedTier === 'premium' && !PREMIUM_ENABLED ? 'lite' : requestedTier;
 
