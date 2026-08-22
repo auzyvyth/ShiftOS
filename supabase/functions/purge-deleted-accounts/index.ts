@@ -8,25 +8,60 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // (owned rows CASCADE, attribution pointers SET NULL). Reversible up to this
 // point — a user who logs back in before the window clears their flags.
 //
-// Invoked by the pg_cron job `purge-deleted-accounts-daily`, which passes the
-// service-role key as a Bearer token. We also verify that token matches the
-// service-role key so the endpoint can't be abused even with verify_jwt off.
+// AUTH — read this before changing it.
+//
+// This used to compare the caller's bearer token against SUPABASE_SERVICE_ROLE_KEY
+// while the pg_cron job sent `current_setting('app.service_role_key', true)`. That
+// database setting was never set, so current_setting() returned NULL, the whole
+// header string collapsed to NULL (concatenating NULL yields NULL), and the job
+// posted with no Authorization header at all. Every nightly run returned 401 and
+// nothing was ever purged — silently, because the job still "succeeded" from
+// pg_cron's point of view: it got an HTTP response, just not a useful one.
+//
+// Pointing the job at the shared key in Vault (`cron_edge_key`, what every other
+// cron already sends) was not enough on its own: that key and the function's
+// SUPABASE_SERVICE_ROLE_KEY env var are two different strings, both valid
+// service_role credentials for this project. So the comparison still failed.
+//
+// The rule that fixes it for good: NEVER authenticate against a secret this
+// function cannot read. It now resolves the accepted key from Vault through its
+// own service-role client, which is the same single value the cron sends. Rotate
+// that secret and both sides move together — there is no second copy to drift.
+// The raw service-role key stays accepted so a manual invoke still works.
+//
+// verify_jwt is deliberately left OFF: the check below is the real gate, and an
+// attacker who held a valid service_role JWT would already own the database, so
+// the platform's JWT check would add nothing here.
 
 const GRACE_DAYS = 30;
 
+function unauthorized() {
+  return new Response(JSON.stringify({ error: "unauthorized" }), {
+    status: 401,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req) => {
   try {
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const authHeader = req.headers.get("Authorization") || "";
-    const token = authHeader.replace("Bearer ", "").trim();
-    if (token !== serviceKey) {
-      return new Response(JSON.stringify({ error: "unauthorized" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      });
+    const serviceKey = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
+    const admin = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey);
+
+    const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
+
+    let cronKey = "";
+    try {
+      const { data, error } = await admin.rpc("get_cron_edge_key");
+      if (error) console.error("[purge-deleted-accounts] cron key lookup:", error.message);
+      cronKey = (data || "").trim();
+    } catch (e) {
+      console.error("[purge-deleted-accounts] cron key lookup threw:", e);
     }
 
-    const admin = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey);
+    // Fails CLOSED. If neither secret resolved we cannot authenticate anyone, and
+    // an endpoint that hard-deletes accounts must never default to open.
+    const accepted = [cronKey, serviceKey].filter((k) => k.length > 0);
+    if (accepted.length === 0 || !token || !accepted.includes(token)) return unauthorized();
 
     const cutoff = new Date(Date.now() - GRACE_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
