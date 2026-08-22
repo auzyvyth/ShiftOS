@@ -362,6 +362,63 @@ function PuspakomDates({ b5, b7, color }) {
      trading is the dealer's own number; the verified line is XDrive's check.
    Rendered once and used at both breakpoints, deliberately: the two hardcoded
    copies of the sidebar are why the theme leaks in TRUST-8 exist. */
+/* TRUST-10 — the asking price is not the amount a buyer parts with, and the page
+   never said so. These are the official Malaysian transfer fees, taken from the
+   same schedule the handover checklist runs on (src/utils/postSaleSteps.js), not
+   estimates: JPJ pindah milik RM100, Puspakom B5 RM30, B7 RM60 when financed.
+   Whether road tax and insurance land on the buyer depends on the dealer
+   (profiles.handles_roadtax_insurance). A dealer may add a handling fee on top,
+   which is why the total is framed as a floor, not a quote. */
+const TRANSFER_FEES = [
+  { label: 'JPJ ownership transfer (pindah milik)', amount: 100, always: true },
+  { label: 'Puspakom B5 inspection', amount: 30, always: true },
+  { label: 'Puspakom B7 inspection', amount: 60, always: false, note: 'only if you finance' },
+];
+
+function PriceIncludes({ car, dealer, th }) {
+  if (!(car.selling_price > 0) || isSambungCar(car)) return null;
+  const fixed = TRANSFER_FEES.filter((f) => f.always).reduce((t, f) => t + f.amount, 0);
+  const dealerHandlesRti = dealer?.handles_roadtax_insurance !== false;
+  const includedCount = Array.isArray(car.included_services) ? car.included_services.length : 0;
+
+  return (
+    <details style={{ marginBottom: 10 }}>
+      <summary style={{ fontSize: 11.5, color: th.textSec, cursor: 'pointer', listStyle: 'none', borderBottom: `1px dotted ${th.textMuted}`, display: 'inline-block', paddingBottom: 2 }}>
+        {`From RM ${fmt(fixed)} more in transfer fees · what the price covers`}
+      </summary>
+      <div style={{ marginTop: 10, background: th.card2, border: `1px solid ${th.border}`, borderRadius: 10, padding: '12px 13px' }}>
+        <p style={{ margin: 0, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.14em', color: th.textMuted, fontWeight: 700 }}>
+          On top of the asking price
+        </p>
+        {TRANSFER_FEES.map((f) => (
+          <div key={f.label} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginTop: 7, fontSize: 12, color: th.textSec }}>
+            <span style={{ minWidth: 0 }}>
+              {f.label}
+              {f.note && <span style={{ color: th.textMuted }}> · {f.note}</span>}
+            </span>
+            <span style={{ flexShrink: 0, color: th.text }}>RM {fmt(f.amount)}</span>
+          </div>
+        ))}
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginTop: 7, fontSize: 12, color: th.textSec }}>
+          <span>Road tax and insurance</span>
+          <span style={{ flexShrink: 0, color: th.textMuted }}>
+            {dealerHandlesRti ? 'Handled by the dealer' : 'Buyer arranges'}
+          </span>
+        </div>
+        <p style={{ margin: '10px 0 0', fontSize: 11, color: th.textMuted, lineHeight: 1.6 }}>
+          Official government rates. A dealer may charge a runner or handling fee on top —
+          ask for the out-the-door figure in writing before you pay a deposit.
+        </p>
+        {includedCount > 0 && (
+          <p style={{ margin: '7px 0 0', fontSize: 11, color: th.textSec, lineHeight: 1.6 }}>
+            {`Already included in the asking price: ${includedCount} service${includedCount === 1 ? '' : 's'} listed under What’s Included.`}
+          </p>
+        )}
+      </div>
+    </details>
+  );
+}
+
 /* The deposit ask was an 11px muted caption — the highest-anxiety moment on the
    page rendered at its lowest emphasis, with no answer to the only question that
    matters: do I get this back? Policy is per-dealer (profiles.deposit_policy).
@@ -2413,6 +2470,7 @@ export default function CarDetailPage() {
               )}
             </div>
             <div style={{ marginTop:10 }}>
+              <PriceIncludes car={car} dealer={dealer} th={th} />
               <DepositTerms amount={car.deposit_amount} dealer={dealer} th={th} isXdrive={isXdrive} />
             </div>
             {/* Tertiary actions — quiet text links, not more buttons */}
@@ -3851,6 +3909,7 @@ export default function CarDetailPage() {
             )}
             <div style={{ height: 1, background: 'linear-gradient(to right, rgba(220,38,38,0.35), transparent)', margin: '14px 0 16px' }} />
             <WarrantyBanner car={car} isXdrive={isXdrive} />
+            <PriceIncludes car={car} dealer={dealer} th={th} />
             <DepositTerms amount={car.deposit_amount} dealer={dealer} th={th} isXdrive={isXdrive} />
 
             {/* CTA BUTTONS */}
