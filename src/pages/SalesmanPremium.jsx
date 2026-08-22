@@ -269,6 +269,10 @@ export default function SalesmanPremium() {
  full_name: "",
  whatsapp_number: "",
  location: "",
+ // Selling terms buyers see on every listing this agent owns.
+ deposit_policy: "",
+ deposit_terms: "",
+ processing_fee: "",
  });
  const [settingsSaving, setSettingsSaving] = useState(false);
  const [avatarUrl, setAvatarUrl] = useState("");
@@ -384,6 +388,9 @@ export default function SalesmanPremium() {
  full_name: profile.full_name || "",
  whatsapp_number: profile.whatsapp_number || "",
  location: profile.location || "",
+ deposit_policy: profile.deposit_policy || "",
+ deposit_terms: profile.deposit_terms || "",
+ processing_fee: profile.processing_fee != null ? String(profile.processing_fee) : "",
  });
  setAvatarUrl(profile.avatar_url || "");
  setCoverUrl(profile.cover_url || "");
@@ -5152,8 +5159,13 @@ export default function SalesmanPremium() {
  const handleSave = async () => {
  setSettingsSaving(true);
  const phone = "+60" + localPhone.replace(/\D/g, "");
- await supabase.from("profiles").update({ full_name: settingsForm.full_name, whatsapp_number: phone, location: settingsForm.location || null }).eq("id", userId);
- setProfile((p) => ({ ...p, full_name: settingsForm.full_name, whatsapp_number: phone, location: settingsForm.location || null }));
+ const terms = {
+ deposit_policy: settingsForm.deposit_policy || null,
+ deposit_terms: settingsForm.deposit_terms.trim() || null,
+ processing_fee: String(settingsForm.processing_fee).trim() === "" ? null : (Number(settingsForm.processing_fee) || 0),
+ };
+ await supabase.from("profiles").update({ full_name: settingsForm.full_name, whatsapp_number: phone, location: settingsForm.location || null, ...terms }).eq("id", userId);
+ setProfile((p) => ({ ...p, full_name: settingsForm.full_name, whatsapp_number: phone, location: settingsForm.location || null, ...terms }));
  setSettingsForm((p) => ({ ...p, whatsapp_number: phone }));
  setSettingsSaving(false);
  toast.success("Profile updated");
@@ -5231,6 +5243,31 @@ export default function SalesmanPremium() {
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Full Address (for map)</label>
  <input value={settingsForm.location} onChange={(e) => setSettingsForm((p) => ({ ...p, location: e.target.value }))} placeholder="e.g. 12, Jalan Ampang, 50450 Kuala Lumpur" style={inputStyle} />
  <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Shown as a map on your public page so buyers can find you.</p>
+ </div>
+ {/* Selling terms — you own these listings, so the buyer's questions (is my
+ deposit safe, what else do I pay) land on you, not on a dealer. */}
+ <div>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Deposit Policy</label>
+ <select value={settingsForm.deposit_policy} onChange={(e) => setSettingsForm((p) => ({ ...p, deposit_policy: e.target.value }))} style={{ ...inputStyle, appearance: "none" }}>
+ <option value="">Not stated — buyers are told to ask</option>
+ <option value="refundable">Refundable if the buyer pulls out</option>
+ <option value="refundable_on_loan_rejection">Refundable only if the loan is rejected</option>
+ <option value="non_refundable">Non-refundable once paid</option>
+ </select>
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Shown at the deposit ask on every car you list.</p>
+ </div>
+ <div>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Deposit Details (optional)</label>
+ <input value={settingsForm.deposit_terms} onChange={(e) => setSettingsForm((p) => ({ ...p, deposit_terms: e.target.value }))} placeholder="e.g. Car reserved for 7 days." style={inputStyle} />
+ </div>
+ <div>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Handling / Runner Fee</label>
+ <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, overflow: "hidden" }}>
+ <span style={{ padding: "10px 12px", fontSize: 13, color: "#6b7280", background: "rgba(255,255,255,0.03)", borderRight: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>RM</span>
+ <input value={settingsForm.processing_fee} onChange={(e) => setSettingsForm((p) => ({ ...p, processing_fee: e.target.value.replace(/[^0-9.]/g, "") }))} placeholder="e.g. 300" inputMode="decimal"
+ style={{ ...inputStyle, background: "transparent", border: "none", borderRadius: 0, flex: 1, width: "auto" }} />
+ </div>
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Your own fee on top of the official JPJ and Puspakom charges. Enter 0 if you charge none.</p>
  </div>
  <div>
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Username / Slug</label>

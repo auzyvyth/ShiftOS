@@ -377,16 +377,25 @@ const TRANSFER_FEES = [
   { label: 'Puspakom B7 inspection', amount: 60, always: false, note: 'only if you finance' },
 ];
 
-function PriceIncludes({ car, dealer, th }) {
+function PriceIncludes({ car, seller, th }) {
   if (!(car.selling_price > 0) || isSambungCar(car)) return null;
   const fixed = TRANSFER_FEES.filter((f) => f.always).reduce((t, f) => t + f.amount, 0);
-  const dealerHandlesRti = dealer?.handles_roadtax_insurance !== false;
   const includedCount = Array.isArray(car.included_services) ? car.included_services.length : 0;
+  // profiles.handles_roadtax_insurance is NOT NULL DEFAULT true and every row in
+  // the database still carries that untouched default, so `true` cannot be told
+  // apart from "never answered". Only `false` can be a deliberate choice (the
+  // default is true, so someone had to flip it). Printing "Handled by the dealer"
+  // off the default would have been the page inventing a promise for the seller.
+  const rtiStated = seller?.handles_roadtax_insurance === false;
+  // The one genuinely variable charge: it differs by seller and by location, and
+  // it is the seller's own money, not a government rate.
+  const fee = seller?.processing_fee;
+  const feeStated = fee !== null && fee !== undefined && fee !== '';
 
   return (
     <details style={{ marginBottom: 10 }}>
       <summary style={{ fontSize: 11.5, color: th.textSec, cursor: 'pointer', listStyle: 'none', borderBottom: `1px dotted ${th.textMuted}`, display: 'inline-block', paddingBottom: 2 }}>
-        {`From RM ${fmt(fixed)} more in transfer fees · what the price covers`}
+        {`At least RM ${fmt(fixed)} more in official fees · what the price covers`}
       </summary>
       <div style={{ marginTop: 10, background: th.card2, border: `1px solid ${th.border}`, borderRadius: 10, padding: '12px 13px' }}>
         <p style={{ margin: 0, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.14em', color: th.textMuted, fontWeight: 700 }}>
@@ -402,14 +411,21 @@ function PriceIncludes({ car, dealer, th }) {
           </div>
         ))}
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginTop: 7, fontSize: 12, color: th.textSec }}>
+          <span>Seller handling / runner fee</span>
+          <span style={{ flexShrink: 0, color: feeStated ? th.text : th.textMuted }}>
+            {feeStated ? (Number(fee) > 0 ? `RM ${fmt(fee)}` : 'None charged') : 'Not stated'}
+          </span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginTop: 7, fontSize: 12, color: th.textSec }}>
           <span>Road tax and insurance</span>
           <span style={{ flexShrink: 0, color: th.textMuted }}>
-            {dealerHandlesRti ? 'Handled by the dealer' : 'Buyer arranges'}
+            {rtiStated ? 'Buyer arranges' : 'Confirm with the seller'}
           </span>
         </div>
         <p style={{ margin: '10px 0 0', fontSize: 11, color: th.textMuted, lineHeight: 1.6 }}>
-          Official government rates. A dealer may charge a runner or handling fee on top —
-          ask for the out-the-door figure in writing before you pay a deposit.
+          The three fees above are official government rates and are the same everywhere.
+          Handling fees, road tax and insurance vary by seller and by state — ask for the
+          out-the-door figure in writing before you pay a deposit.
         </p>
         {includedCount > 0 && (
           <p style={{ margin: '7px 0 0', fontSize: 11, color: th.textSec, lineHeight: 1.6 }}>
@@ -433,9 +449,9 @@ const DEPOSIT_POLICY_COPY = {
   non_refundable: 'Non-refundable once paid.',
 };
 
-function DepositTerms({ amount, dealer, th, isXdrive }) {
+function DepositTerms({ amount, seller, th, isXdrive }) {
   if (!(amount > 0)) return null;
-  const policy = dealer?.deposit_policy || null;
+  const policy = seller?.deposit_policy || null;
   const copy = policy ? DEPOSIT_POLICY_COPY[policy] : null;
   const unstated = !copy;
   const tone = unstated
@@ -450,11 +466,11 @@ function DepositTerms({ amount, dealer, th, isXdrive }) {
         RM {fmt(amount)} deposit to reserve
       </p>
       <p style={{ margin: '3px 0 0', fontSize: 11.5, color: tone.fg, lineHeight: 1.55 }}>
-        {copy || 'This dealer has not stated whether the deposit is refundable — ask, and get the answer in writing, before you pay.'}
+        {copy || 'This seller has not stated whether the deposit is refundable — ask, and get the answer in writing, before you pay.'}
       </p>
-      {dealer?.deposit_terms && (
+      {seller?.deposit_terms && (
         <p style={{ margin: '5px 0 0', fontSize: 11, color: th.textSec, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
-          {dealer.deposit_terms}
+          {seller.deposit_terms}
         </p>
       )}
     </div>
@@ -1667,6 +1683,13 @@ export default function CarDetailPage() {
   // "WhatsApp" and a "Chat with <rep>" — differing only in which rep the resulting
   // lead was attributed to. One button now does both jobs: it carries the rep's
   // routing target and is named after them, so the buyer knows who answers.
+  // Whoever is actually selling this car. A standalone agent (Salesman Lite /
+  // Premium, dealer_id NULL) owns their listings outright, but
+  // get_dealer_profile_by_id is restricted to dealer/owner/superadmin roles, so
+  // `dealer` is null on 9 of the live listings. Anything reading seller terms off
+  // `dealer` alone was reading nothing and falling back to defaults.
+  const seller = dealer || salesmanProfile || null;
+
   // Review tally, lifted out of ReviewsSection so it can sit beside the seller's
   // name. Below REVIEW_FLOOR the average is withheld: an average of one review is
   // a single stranger's opinion wearing the clothes of a statistic.
@@ -2476,8 +2499,8 @@ export default function CarDetailPage() {
               )}
             </div>
             <div style={{ marginTop:10 }}>
-              <PriceIncludes car={car} dealer={dealer} th={th} />
-              <DepositTerms amount={car.deposit_amount} dealer={dealer} th={th} isXdrive={isXdrive} />
+              <PriceIncludes car={car} seller={seller} th={th} />
+              <DepositTerms amount={car.deposit_amount} seller={seller} th={th} isXdrive={isXdrive} />
             </div>
             {/* Tertiary actions — quiet text links, not more buttons */}
             <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:18, marginTop:14, flexWrap:'wrap' }}>
@@ -3915,8 +3938,8 @@ export default function CarDetailPage() {
             )}
             <div style={{ height: 1, background: 'linear-gradient(to right, rgba(220,38,38,0.35), transparent)', margin: '14px 0 16px' }} />
             <WarrantyBanner car={car} isXdrive={isXdrive} />
-            <PriceIncludes car={car} dealer={dealer} th={th} />
-            <DepositTerms amount={car.deposit_amount} dealer={dealer} th={th} isXdrive={isXdrive} />
+            <PriceIncludes car={car} seller={seller} th={th} />
+            <DepositTerms amount={car.deposit_amount} seller={seller} th={th} isXdrive={isXdrive} />
 
             {/* CTA BUTTONS */}
             {!isOwnListing && (

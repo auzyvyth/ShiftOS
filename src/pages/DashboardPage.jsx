@@ -1044,6 +1044,10 @@ function SettingsTab({ profile, onProfileUpdate }) {
   // when it is unset the listing says so rather than assuming a policy for you.
   const [depositPolicy, setDepositPolicy] = useState(profile?.deposit_policy || '');
   const [depositTerms, setDepositTerms] = useState(profile?.deposit_terms || '');
+  // The one charge on a listing that genuinely varies by seller and location.
+  const [processingFee, setProcessingFee] = useState(
+    profile?.processing_fee != null ? String(profile.processing_fee) : '',
+  );
   const [dealerPostcode, setDealerPostcode] = useState(profile?.postcode || '');
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -1156,6 +1160,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setSsmNumber(profile.ssm_number || '');
     setDepositPolicy(profile.deposit_policy || '');
     setDepositTerms(profile.deposit_terms || '');
+    setProcessingFee(profile.processing_fee != null ? String(profile.processing_fee) : '');
     setDealerPostcode(profile.postcode || '');
     setTgToken(""); // SEC-5: write-only — never load the stored token back into the form
     setTgChannel(profile.telegram_channel_id || "");
@@ -1345,6 +1350,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
       postcode: dealerPostcode.trim(),
       deposit_policy: depositPolicy || null,
       deposit_terms: depositTerms.trim() || null,
+      processing_fee: processingFee.trim() === '' ? null : (Number(processingFee) || 0),
     });
 
   const saveTelegram = () =>
@@ -1958,6 +1964,22 @@ function SettingsTab({ profile, onProfileUpdate }) {
                 Not set — listings currently tell buyers to ask you, in writing, before paying.
               </p>
             )}
+          </div>
+        </SettingsField>
+
+        <SettingsField
+          label="Handling / Runner Fee"
+          hint="Your own fee on top of the official JPJ and Puspakom charges. Enter 0 if you charge none. Shown on every listing; left blank it reads 'Not stated'."
+        >
+          <div className="relative">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">RM</span>
+            <input
+              value={processingFee}
+              onChange={e => setProcessingFee(e.target.value.replace(/[^0-9.]/g, ''))}
+              placeholder="e.g. 300"
+              inputMode="decimal"
+              className={`${iCls} pl-11`}
+            />
           </div>
         </SettingsField>
 

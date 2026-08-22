@@ -155,8 +155,31 @@ before this goes to prod.
     Method note added; the RPC's `mileage_match` is no longer discarded.
   - **TRUST-10 price completeness** — official transfer fees (JPJ RM100,
     Puspakom B5 RM30, B7 RM60) sourced from `src/utils/postSaleSteps.js`, not
-    invented; road tax/insurance from the dealer's `handles_roadtax_insurance`.
-    Framed as a floor, not a quote.
+    invented. Revised after owner review (see below).
+
+- **TRUST-10 follow-up — DONE 2026-08-21.** Owner caught two things.
+  1. Processing fees vary by seller and location — only the JPJ/Puspakom rates are
+     fixed nationally. Added `profiles.processing_fee` (NULL = not stated, 0 =
+     none) with a field in all three seller surfaces.
+  2. Salesman Lite/Premium had none of these fields. Worse: standalone agents own
+     their listings, but `get_dealer_profile_by_id` is restricted to
+     dealer/owner/superadmin, so `dealer` was NULL on their 9 public listings and
+     `dealer?.handles_roadtax_insurance !== false` evaluated true — the page was
+     printing "Road tax and insurance: Handled by the dealer" as a fact about a
+     seller who had no such setting. Fixed by unifying on a `seller` object
+     (`dealer || salesmanProfile`) and returning the terms from
+     `get_salesman_by_id` too.
+  3. Related find: `handles_roadtax_insurance` is NOT NULL DEFAULT true and all 26
+     profile rows still carry the untouched default, so `true` cannot be told apart
+     from "never answered". The listing now only states "Buyer arranges" when the
+     flag is explicitly `false` (which requires someone to have flipped it);
+     otherwise it says "Confirm with the seller".
+  Still open: `DealerIdentity` ("About this dealer") is deliberately still gated on
+  `dealer` only. A standalone agent has no SSM, and `is_verified` means something
+  different for them (`get_salesman_by_id` derives it from whether an IC is on
+  file, NOT the admin's "SSM + IC checked"), so reusing that block for agents
+  would print a verification claim that is not true. Needs its own agent-framed
+  variant if wanted.
 
 - **TRUST-11 (ops, not UI): a named XDrive inspection standard** — the Carsome
   "175-point" move. "175-point" is countable, "thorough" is not. Needs someone to

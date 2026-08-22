@@ -709,7 +709,19 @@
       "saveBtn": "Save Changes",
       "savingBtn": "Saving...",
       "language": "Language",
-      "languageSubtext": "Switch between English and Malay"
+      "languageSubtext": "Switch between English and Malay",
+      "sellingTermsSection": "Selling terms (shown on your listings)",
+      "sellingTermsHint": "Buyers see these on every car you list. Left blank, the listing tells them to ask you.",
+      "depositPolicy": "Deposit policy",
+      "depositPolicySelect": "Not stated — buyers are told to ask",
+      "depositRefundable": "Refundable if the buyer pulls out",
+      "depositLoanRejected": "Refundable only if the loan is rejected",
+      "depositNonRefundable": "Non-refundable once paid",
+      "depositTerms": "Deposit details (optional)",
+      "depositTermsPlaceholder": "e.g. Car reserved for 7 days.",
+      "processingFee": "Handling / runner fee",
+      "processingFeeHint": "Your own fee on top of the official JPJ and Puspakom charges. Enter 0 if you charge none.",
+      "processingFeePlaceholder": "e.g. 300"
     },
     "logout": {
       "title": "Log out?",
