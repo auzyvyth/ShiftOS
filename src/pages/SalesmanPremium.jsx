@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
+import { normalizePhone } from "../lib/phone";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { compressImageFile } from "../utils/compressImage";
 import CarFormFast from "../components/CarFormFast";
@@ -60,6 +61,8 @@ import {
  Search,
  DollarSign,
  ShieldCheck,
+ ThumbsUp,
+ ThumbsDown,
  Clock,
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
@@ -335,6 +338,40 @@ export default function SalesmanPremium() {
  const coverInputRef = useRef(null);
  const [editingReminder, setEditingReminder] = useState(null);
  const [reminderMsg, setReminderMsg] = useState("");
+
+ // ── booking lifecycle (ported from Lite) ───────────────────────────────────
+ // Premium previously had only a raw status flip (confirm/cancel/"reschedule"
+ // with no date picker). These back the full flow: confirm + WhatsApp, move to
+ // pipeline, reschedule to a real slot, Telegram reminder scheduling, cancel
+ // confirmation, and a per-booking detail sheet.
+ const [confirmBookingApt, setConfirmBookingApt] = useState(null);
+ const [confirmBookingMsg, setConfirmBookingMsg] = useState("");
+ const [reschedulingAptId, setReschedulingAptId] = useState(null);
+ const [rescheduleDate, setRescheduleDate] = useState("");
+ const [reminderPickerAptId, setReminderPickerAptId] = useState(null);
+ const [selectedRemindAt, setSelectedRemindAt] = useState(null);
+ const [reminderSaving, setReminderSaving] = useState(false);
+ const [cancelConfirmId, setCancelConfirmId] = useState(null);
+ const [bookingDetailId, setBookingDetailId] = useState(null);
+ const [pastOpen, setPastOpen] = useState(false);
+ // Seller-initiated booking: moving a lead into the booking stage asks for a
+ // slot up front and creates a CONFIRMED appointment (the seller set it up, so
+ // it skips "Awaiting Confirmation").
+ const [sellerBookingLead, setSellerBookingLead] = useState(null);
+ const [sellerBookingDate, setSellerBookingDate] = useState("");
+ const [sellerBookingSaving, setSellerBookingSaving] = useState(false);
+ // Won flow — a confirm step instead of the silent undo-timer, so the sale
+ // price/car flip is deliberate. See handleMarkWon.
+ const [wonPrompt, setWonPrompt] = useState(null);
+ const [wonSaving, setWonSaving] = useState(false);
+ const [commissionData, setCommissionData] = useState({ total: 0, revenue: 0, count: 0 });
+ // Re-render tick so "is this booking still in the future" stays honest on a
+ // long-open tab (drives the confirm button's availability).
+ const [nowTick, setNowTick] = useState(() => Date.now());
+ useEffect(() => {
+ const id = setInterval(() => setNowTick(Date.now()), 60000);
+ return () => clearInterval(id);
+ }, []);
 
  // notifications
  const [notifications, setNotifications] = useState([]);
@@ -718,15 +755,23 @@ export default function SalesmanPremium() {
  });
 
  // fetch appointments
+ // NOTE: filtered on salesman_id ONLY (matching Lite). The old
+ // `.eq("dealer_id", uid)` here silently hid every booking whose dealer_id
+ // wasn't the salesman's own id — only 17 of 71 live rows satisfy that — so
+ // organic bookings simply never appeared. RLS already scopes this table.
+ // Columns must stay complete: remind_at/remind_sent drive the Telegram
+ // reminder state and lead_id ties a booking to its pipeline lead.
  supabase
  .from("appointments")
  .select(
- "id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, created_at, car_listings(brand, model, year)",
+ "id, lead_id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, created_at, remind_at, remind_sent, car_listings(id, brand, model, year, variant, selling_price, images, vin_number, plate_number, mileage, transmission, slug)",
  )
  .eq("salesman_id", uid)
- .eq("dealer_id", uid)
  .order("appointment_date", { ascending: false })
- .then(({ data: apts }) => setAppointments(apts || []));
+ .then(({ data: apts, error: aptsErr }) => {
+ if (aptsErr) { console.error("fetchAppointments:", aptsErr); toast.error("Could not load bookings"); return; }
+ setAppointments(apts || []);
+ });
 
  // fetch notifications
  supabase
@@ -774,6 +819,10 @@ export default function SalesmanPremium() {
  const updateLeadStage = async (leadId, stage) => {
  setStageSavingId(leadId);
  const oldStage = leads.find((l) => l.id === leadId)?.stage?? null;
+ // Carry the lead's OWN dealer_id onto the activity row. This used to be
+ // hardcoded null, which detached every Premium stage change from its
+ // dealership scope (activity feeds and any dealer-side read missed them).
+ const dealerId = leads.find((l) => l.id === leadId)?.dealer_id?? null;
  const { error: stageErr } = await supabase
  .from("leads")
  .update({ stage, updated_at: new Date().toISOString() })
@@ -790,7 +839,7 @@ export default function SalesmanPremium() {
  from_stage: oldStage,
  to_stage: stage,
  created_by: userId,
- dealer_id: null,
+ dealer_id: dealerId,
  });
  if (actErr) console.error("updateLeadStage activity:", actErr);
  setLeads((p) => p.map((l) => (l.id === leadId? { ...l, stage } : l)));
@@ -799,6 +848,30 @@ export default function SalesmanPremium() {
  const advanceLeadStage = (lead, newStage, force = false) => {
  if (!newStage) return;
  if (!force && lead.stage === "test_drive") { setTestDriveConfirm({ lead, nextStage: newStage }); return; }
+ // Intercept won → confirm modal instead of the undo-timer flow. A win flips
+ // the linked car to sold and moves money, so it should never happen behind a
+ // 4.5s toast the salesman might not read.
+ if (newStage === "won") {
+ if (pendingStageRef.current[lead.id]) {
+ clearTimeout(pendingStageRef.current[lead.id].timer);
+ delete pendingStageRef.current[lead.id];
+ }
+ setWonPrompt({ lead });
+ return;
+ }
+ // Intercept a seller-initiated move into the booking stage → ask for the
+ // date/time up front, then create a CONFIRMED appointment (the seller set it
+ // up, so it skips "Awaiting Confirmation"). Organic bookings from the car
+ // page take the /api/booking path (status 'pending') and never reach here.
+ if (newStage === "viewing_booked" && !force) {
+ if (pendingStageRef.current[lead.id]) {
+ clearTimeout(pendingStageRef.current[lead.id].timer);
+ delete pendingStageRef.current[lead.id];
+ }
+ setSellerBookingDate(defaultBookingSlot());
+ setSellerBookingLead(lead);
+ return;
+ }
  const oldStage = lead.stage;
  const leadId = lead.id;
  const buyerName = lead.buyer_name || "Lead";
@@ -868,7 +941,7 @@ export default function SalesmanPremium() {
  activity_type: "called",
  note: `${callOutcome}${callNote? ` — ${callNote}` : ""}`,
  created_by: userId,
- dealer_id: null,
+ dealer_id: lead?.dealer_id?? null,
  });
  if (error) { console.error("logCall:", error); toast.error("Failed to log call"); setCallSaving(false); return; }
  await supabase.from("leads").update({ updated_at: new Date().toISOString(), last_call_outcome: callOutcome }).eq("id", logCallLeadId);
@@ -948,7 +1021,7 @@ export default function SalesmanPremium() {
  to_stage: "lost",
  note: `Lost reason: ${reason}`,
  created_by: userId,
- dealer_id: null,
+ dealer_id: leads.find((l) => l.id === leadId)?.dealer_id?? null,
  });
  if (lostActErr) console.error("handleLostReason activity:", lostActErr);
  setLeads((p) =>
@@ -1017,25 +1090,292 @@ export default function SalesmanPremium() {
  setOpenTemplateId(null);
  };
 
- // appointment status 
+ // appointment status
 
  const updateApptStatus = async (apptId, status) => {
- await supabase.from("appointments").update({ status }).eq("id", apptId);
+ const { error } = await supabase.from("appointments").update({ status }).eq("id", apptId);
+ if (error) { console.error("updateApptStatus:", error); toast.error("Could not update booking"); return; }
  setAppointments((p) =>
  p.map((a) => (a.id === apptId? { ...a, status } : a)),
  );
  };
 
+ // ── booking lifecycle (ported from SalesmanLite) ───────────────────────────
+
+ const scheduleAptReminder = async (apt) => {
+ if (!apt.appointment_date) return;
+ const remindAt = new Date(new Date(apt.appointment_date).getTime() - 60 * 60 * 1000).toISOString();
+ const { error } = await supabase.from("appointments").update({ remind_at: remindAt, remind_sent: false }).eq("id", apt.id);
+ if (error) { console.error("scheduleAptReminder:", error); return; }
+ setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, remind_at: remindAt, remind_sent: false } : a));
+ };
+
+ // Turn a booking into a pipeline lead. Prefers the lead the booking is already
+ // tied to; a bare phone match can return the wrong buyer (a reused number) or a
+ // stale "won" sibling, so an ambiguous match falls through to a fresh lead.
+ const autoUpsertLeadFromAppt = async (apt) => {
+ const phone = normalizePhone(apt.buyer_phone);
+ let existing = null;
+ if (apt.lead_id) {
+ const { data: linked } = await supabase
+ .from("leads").select("id, stage").eq("id", apt.lead_id).maybeSingle();
+ if (linked) existing = linked;
+ }
+ if (!existing) {
+ if (!phone) return;
+ const { data: existingRows, error: lookErr } = await supabase
+ .from("leads").select("id, stage, buyer_name").eq("salesman_id", userId).eq("phone", phone)
+ .order("created_at", { ascending: false });
+ if (lookErr) console.error("autoUpsertLeadFromAppt lookup:", lookErr);
+ const nameKey = (apt.buyer_name || "").trim().toLowerCase();
+ existing =
+ (nameKey && existingRows?.find((r) => (r.buyer_name || "").trim().toLowerCase() === nameKey)) ||
+ (existingRows?.length === 1? existingRows[0] : null) ||
+ null;
+ if (existing && !apt.lead_id) {
+ await supabase.from("appointments").update({ lead_id: existing.id }).eq("id", apt.id);
+ setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, lead_id: existing.id } : a));
+ }
+ }
+ const viewIdx = LEAD_STAGES.indexOf("viewing_booked");
+ if (existing) {
+ const curIdx = LEAD_STAGES.indexOf(existing.stage);
+ // Advance a lead sitting behind the booking stage. ALSO revive a lost lead
+ // — the buyer just booked a fresh viewing. A won lead is left alone.
+ const revive = existing.stage === "lost" || existing.stage === "closed_lost";
+ if (curIdx < viewIdx || revive) {
+ const { error: updErr } = await supabase.from("leads")
+ .update({ stage: "viewing_booked", updated_at: new Date().toISOString() })
+ .eq("id", existing.id);
+ if (updErr) { console.error("autoUpsertLeadFromAppt advance:", updErr); toast.error("Could not move the lead"); return; }
+ setLeads((p) => p.some((l) => l.id === existing.id)
+ ? p.map((l) => l.id === existing.id? { ...l, stage: "viewing_booked" } : l)
+ : p);
+ // A revived/terminal lead may be filtered out of local state — refetch.
+ if (!leads.some((l) => l.id === existing.id)) {
+ const { data: full } = await supabase.from("leads")
+ .select("*, car_listings(brand, model, year, selling_price)")
+ .eq("id", existing.id).single();
+ if (full) setLeads((p) => p.some((l) => l.id === full.id)? p.map((l) => l.id === full.id? full : l) : [full, ...p]);
+ }
+ toast.success("Moved to Viewing Booked");
+ }
+ } else {
+ const { data: newLead, error: insErr } = await supabase.from("leads").insert({
+ salesman_id: userId, dealer_id: profile?.dealer_id?? null,
+ buyer_name: apt.buyer_name || "Unknown", phone,
+ car_listing_id: apt.car_listing_id || null,
+ stage: "viewing_booked", lead_source: "manual", is_deleted: false,
+ }).select("*, car_listings(brand, model, year, selling_price)").single();
+ if (insErr) { console.error("autoUpsertLeadFromAppt insert:", insErr); toast.error("Could not create the lead"); return; }
+ if (newLead) {
+ setLeads((p) => p.some((l) => l.id === newLead.id)? p.map((l) => l.id === newLead.id? newLead : l) : [newLead, ...p]);
+ toast.success("Added to pipeline at Viewing Booked");
+ if (!apt.lead_id) {
+ await supabase.from("appointments").update({ lead_id: newLead.id }).eq("id", apt.id);
+ setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, lead_id: newLead.id } : a));
+ }
+ }
+ }
+ };
+
+ const buildConfirmBookingMsg = (apt) => {
+ const car = apt.car_listings;
+ const carName = car? [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ") : "the car";
+ const aptDate = apt.appointment_date? new Date(apt.appointment_date) : null;
+ const dateStr = aptDate? aptDate.toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" }) : "";
+ const timeStr = aptDate? aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "";
+ const when = dateStr? ` on ${dateStr}${timeStr? ` at ${timeStr}` : ""}` : "";
+ return `Hi ${apt.buyer_name || ""}! Your viewing for the ${carName} is confirmed${when}. See you then! Let me know if anything changes.`;
+ };
+
+ const openConfirmBookingModal = (apt) => {
+ setConfirmBookingMsg(buildConfirmBookingMsg(apt));
+ setConfirmBookingApt(apt);
+ setReschedulingAptId(null);
+ setCancelConfirmId(null);
+ setReminderPickerAptId(null);
+ };
+
+ // Persist the confirm + lead advance FIRST, then hand off to WhatsApp.
+ // WhatsApp-first backgrounds the page on mobile before the writes fire, which
+ // left confirmed bookings out of the Booked pipeline stage.
+ const sendConfirmBooking = async () => {
+ const apt = confirmBookingApt;
+ if (!apt ||!apt.buyer_phone) return;
+ const phone = apt.buyer_phone.replace(/\D/g, "");
+ const waPhone = phone.startsWith("6")? phone : "6" + phone;
+ const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(confirmBookingMsg)}`;
+ setConfirmBookingApt(null);
+ setConfirmBookingMsg("");
+ await updateApptStatus(apt.id, "confirmed");
+ await autoUpsertLeadFromAppt(apt);
+ scheduleAptReminder(apt);
+ toast.success("Booking confirmed");
+ window.location.href = waUrl;
+ };
+
+ // Confirm + advance without messaging, for when the buyer was already reached
+ // another way.
+ const moveConfirmBookingToPipeline = async () => {
+ const apt = confirmBookingApt;
+ if (!apt) return;
+ setConfirmBookingApt(null);
+ setConfirmBookingMsg("");
+ await updateApptStatus(apt.id, "confirmed");
+ await autoUpsertLeadFromAppt(apt);
+ scheduleAptReminder(apt);
+ toast.success("Booking confirmed");
+ };
+
+ // Default seller-booking slot: tomorrow 11:00, formatted for datetime-local.
+ const defaultBookingSlot = () => {
+ const d = new Date();
+ d.setDate(d.getDate() + 1);
+ d.setHours(11, 0, 0, 0);
+ const pad = (n) => String(n).padStart(2, "0");
+ return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+ };
+
+ const confirmSellerBooking = async () => {
+ const lead = sellerBookingLead;
+ if (!lead ||!sellerBookingDate) return;
+ const dt = new Date(sellerBookingDate);
+ if (isNaN(dt.getTime())) { toast.error("Pick a valid date and time"); return; }
+ setSellerBookingSaving(true);
+ await updateLeadStage(lead.id, "viewing_booked");
+ const remindAt = new Date(dt.getTime() - 60 * 60 * 1000).toISOString();
+ const { data: apptRow, error: apptErr } = await supabase
+ .from("appointments")
+ .insert({
+ salesman_id: userId,
+ dealer_id: lead.dealer_id?? null,
+ lead_id: lead.id,
+ car_listing_id: lead.car_listing_id?? null,
+ buyer_name: lead.buyer_name?? null,
+ buyer_phone: lead.phone?? null,
+ appointment_date: dt.toISOString(),
+ booking_type: "viewing",
+ status: "confirmed",
+ remind_at: remindAt,
+ remind_sent: false,
+ })
+ .select("id, lead_id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, created_at, remind_at, remind_sent, car_listings(id, brand, model, year, variant, selling_price, images, vin_number, plate_number, mileage, transmission, slug)")
+ .single();
+ setSellerBookingSaving(false);
+ if (apptErr) { console.error("confirmSellerBooking:", apptErr); toast.error("Could not create the booking"); return; }
+ if (apptRow) setAppointments((p) => p.find((a) => a.id === apptRow.id)? p : [apptRow, ...p]);
+ setSellerBookingLead(null);
+ setSellerBookingDate("");
+ toast.success(`Booking confirmed for ${dt.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })} ${dt.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}`);
+ };
+
+ const autoCreateLeadFromEnq = async (enq) => {
+ const phone = normalizePhone(enq.buyer_phone);
+ if (!phone) return;
+ const { data: existingRows } = await supabase
+ .from("leads").select("id").eq("salesman_id", userId).eq("phone", phone).limit(1);
+ if (!existingRows ||!existingRows.length) {
+ const { data: newLead } = await supabase.from("leads").insert({
+ salesman_id: userId, dealer_id: profile?.dealer_id?? null,
+ buyer_name: enq.buyer_name || "Unknown", phone,
+ notes: enq.buyer_message || null, car_listing_id: enq.listing_id || null,
+ stage: "new", lead_source: "enquiry", is_deleted: false,
+ }).select("*, car_listings(brand, model, year, selling_price)").single();
+ if (newLead) { setLeads((p) => [newLead, ...p]); toast.success("Added to pipeline"); }
+ }
+ };
+
+ // ── won flow ───────────────────────────────────────────────────────────────
+
+ const refreshCommissionData = async () => {
+ if (!userId) return;
+ const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+ const { data } = await supabase
+ .from("car_listings")
+ .select("commission_amount, selling_price, sold_at")
+ .eq("dealer_id", userId)
+ .eq("status", "sold")
+ .gte("sold_at", monthStart);
+ const rows = data || [];
+ setCommissionData({
+ total: rows.reduce((s, l) => s + (Number(l.commission_amount) || 0), 0),
+ revenue: rows.reduce((s, l) => s + (Number(l.selling_price) || 0), 0),
+ count: rows.length,
+ });
+ };
+
+ // Marking a lead won is the single source of truth for a closed deal — the DB
+ // trigger auto_create_customer_on_won fans it out (car → sold, customer row,
+ // handover checklist). The car flip is ALSO written here so the UI reflects it
+ // without waiting for a refetch; the trigger remains the real persistence.
+ const handleMarkWon = async () => {
+ if (!wonPrompt) return;
+ const { lead } = wonPrompt;
+ const leadId = lead.id;
+ const dealerId = lead.dealer_id?? null;
+ const now = new Date().toISOString();
+ setWonSaving(true);
+
+ const { error: leadErr } = await supabase
+ .from("leads")
+ .update({ stage: "won", updated_at: now })
+ .eq("id", leadId);
+ if (leadErr) {
+ console.error("handleMarkWon lead:", leadErr);
+ toast.error("Could not mark this deal as won");
+ setWonSaving(false);
+ return;
+ }
+
+ const { error: actErr } = await supabase.from("lead_activities").insert({
+ lead_id: leadId,
+ activity_type: "stage_changed",
+ from_stage: lead.stage,
+ to_stage: "won",
+ created_by: userId,
+ dealer_id: dealerId,
+ });
+ if (actErr) console.error("handleMarkWon activity:", actErr);
+
+ if (lead.car_listing_id) {
+ const { error: carErr } = await supabase
+ .from("car_listings")
+ .update({ status: "sold", sold_at: now })
+ .eq("id", lead.car_listing_id);
+ if (carErr) {
+ console.error("handleMarkWon car listing:", carErr);
+ toast.error("Deal won, but the car could not be marked sold");
+ } else {
+ // Mark sold in place rather than filtering the row out — sold counts read
+ // myListings for status 'sold' + sold_at this month.
+ setMyListings((p) => p.map((c) => c.id === lead.car_listing_id? { ...c, status: "sold", sold_at: now } : c));
+ await refreshCommissionData();
+ }
+ }
+
+ setLeads((p) => p.map((l) => l.id === leadId? { ...l, stage: "won", updated_at: now } : l));
+ setWonSaving(false);
+ setWonPrompt(null);
+
+ const car = lead.car_listings;
+ const carLabel = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
+ toast.success(carLabel? `Deal won — ${carLabel} marked sold` : "Deal won");
+ };
+
  const handleAddLead = async () => {
  setAddLeadSaving(true);
- const { data } = await supabase
+ // Phone is normalized to the canonical 60… form the DB stores. A raw
+ // number here never matches when the same buyer later books a viewing,
+ // which silently created a second lead for the same person.
+ const { data, error: addErr } = await supabase
  .from("leads")
  .insert({
- dealer_id: null,
+ dealer_id: profile?.dealer_id?? null,
  salesman_id: userId,
  assigned_to: userId,
  buyer_name: addLeadForm.buyer_name,
- phone: addLeadForm.phone,
+ phone: normalizePhone(addLeadForm.phone) || addLeadForm.phone,
  notes: addLeadForm.notes,
  car_listing_id: addLeadForm.car_listing_id || null,
  stage: "new",
@@ -1044,8 +1384,9 @@ export default function SalesmanPremium() {
  loss_reason: null,
  buyer_state: addLeadForm.buyer_state || null,
  })
- .select()
+ .select("*, car_listings(brand, model, year, selling_price)")
  .single();
+ if (addErr) { console.error("handleAddLead:", addErr); toast.error("Could not add the lead"); }
  if (data) setLeads((p) => [data, ...p]);
  setAddLeadSaving(false);
  setShowAddLead(false);
@@ -4625,27 +4966,24 @@ export default function SalesmanPremium() {
  ) : (
  <button
  onClick={async () => {
- await supabase.from("leads").insert({
- salesman_id: userId,
- dealer_id: null,
- buyer_name: enq.buyer_name,
- phone: enq.buyer_phone,
- notes: enq.buyer_message,
- car_listing_id: enq.listing_id || null,
- stage: "new",
- lead_source: "enquiry",
- is_deleted: false,
- });
- await supabase
+ // Routed through autoCreateLeadFromEnq so the phone is
+ // normalized to the canonical 60… form (a raw number never
+ // matches on a later booking, which silently duplicated the
+ // buyer), the dealer scope is real rather than hardcoded null,
+ // an existing lead on that number is reused instead of
+ // duplicated, and the new lead lands in local state so the
+ // pipeline updates without a reload.
+ await autoCreateLeadFromEnq(enq);
+ const { error: convErr } = await supabase
  .from("whatsapp_enquiries")
  .update({ status: "converted" })
  .eq("id", enq.id);
+ if (convErr) { console.error("convert enquiry:", convErr); toast.error("Could not update the enquiry"); return; }
  setEnquiries((p) =>
  p.map((e) =>
  e.id === enq.id? { ...e, status: "converted" } : e,
  ),
  );
- toast.success("Added to lead pipeline!");
  }}
  style={{
  fontSize: 10,
@@ -4748,10 +5086,28 @@ export default function SalesmanPremium() {
  const isNew = (iso) =>
  iso && Date.now() - new Date(iso).getTime() < 2 * 60 * 60 * 1000;
 
- const todayApts = appointments.filter((a) => isToday(a.appointment_date));
- const upcomingApts = appointments.filter(
- (a) =>!isToday(a.appointment_date),
- );
+ // Pending bookings are REQUESTS, not commitments — a window-shopper tap
+ // shouldn't sit on the calendar next to real confirmed viewings. They get
+ // their own always-visible section (any date); only once confirmed do they
+ // join Today/Upcoming/Past. Previously everything landed in one list and
+ // "Upcoming" was literally `!isToday`, so past bookings were listed as
+ // upcoming forever.
+ const asc = (a, b) => new Date(a.appointment_date) - new Date(b.appointment_date);
+ const newestBooked = (a, b) => new Date(b.created_at) - new Date(a.created_at);
+ const newestApt = (a, b) => new Date(b.appointment_date) - new Date(a.appointment_date);
+ const pendingApts = appointments.filter((a) => a.status === "pending").sort(newestBooked);
+ const confirmedApts = appointments.filter((a) => a.status!== "pending" && a.status!== "cancelled");
+ const todayApts = confirmedApts.filter((a) => isToday(a.appointment_date)).sort(asc);
+ const upcomingApts = confirmedApts.filter((a) => {
+ if (!a.appointment_date) return false;
+ const d = new Date(a.appointment_date);
+ return!isNaN(d) &&!isToday(a.appointment_date) && d > new Date(nowTick);
+ }).sort(asc);
+ const pastApts = confirmedApts.filter((a) => {
+ if (!a.appointment_date) return false;
+ const d = new Date(a.appointment_date);
+ return!isNaN(d) &&!isToday(a.appointment_date) && d < new Date(nowTick);
+ }).sort(newestApt);
 
  const statusColors = {
  confirmed: {
@@ -4914,7 +5270,9 @@ export default function SalesmanPremium() {
  "{apt.notes}"
  </p>
  )}
- {/* status actions */}
+ {/* status actions — the confirm path also creates/advances the
+ pipeline lead and arms the 1h Telegram reminder, so a confirmed
+ booking can never sit outside the pipeline. */}
  <div
  style={{
  display: "flex",
@@ -4923,9 +5281,11 @@ export default function SalesmanPremium() {
  marginBottom: apt.buyer_phone? 6 : 0,
  }}
  >
- {apt.status!== "confirmed" && (
+ {apt.status!== "confirmed" && apt.status!== "cancelled" && apt.status!== "completed" && (
+ <>
  <button
- onClick={() => updateApptStatus(apt.id, "confirmed")}
+ onClick={() => openConfirmBookingModal(apt)}
+ title="Confirm this booking and message the buyer on WhatsApp"
  style={{
  fontSize: 10,
  padding: "2px 8px",
@@ -4935,39 +5295,38 @@ export default function SalesmanPremium() {
  color: "#4ade80",
  cursor: "pointer",
  }}
- >Confirm
+ >Confirm + WA
  </button>
- )}
- {apt.status!== "cancelled" && (
  <button
- onClick={() => updateApptStatus(apt.id, "cancelled")}
+ onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }}
+ title="Mark confirmed without messaging"
  style={{
  fontSize: 10,
  padding: "2px 8px",
  borderRadius: 5,
- background: "rgba(239,68,68,0.08)",
- border: "1px solid rgba(239,68,68,0.2)",
- color: "#f87171",
+ background: "rgba(255,255,255,0.05)",
+ border: "1px solid rgba(255,255,255,0.12)",
+ color: "#cbd5e1",
  cursor: "pointer",
  }}
- >Cancel
+ >Confirm only
  </button>
+ </>
  )}
- {apt.status!== "rescheduled" && (
  <button
- onClick={() => updateApptStatus(apt.id, "rescheduled")}
+ onClick={() => setBookingDetailId(apt.id)}
+ title="Booking details — reschedule, reminders, cancel"
  style={{
  fontSize: 10,
  padding: "2px 8px",
  borderRadius: 5,
- background: "rgba(167,139,250,0.08)",
- border: "1px solid rgba(167,139,250,0.2)",
- color: "#c084fc",
+ background: "rgba(255,255,255,0.04)",
+ border: "1px solid rgba(255,255,255,0.1)",
+ color: "#9ca3af",
  cursor: "pointer",
  }}
- >Reschedule
+ >Details
  </button>
- )}
  </div>
  {/* WA reminder */}
  {apt.buyer_phone &&
@@ -5103,7 +5462,9 @@ export default function SalesmanPremium() {
  <p style={{ margin: 0, fontSize: 13 }}>No bookings yet.</p>
  </div>
  )}
- {todayApts.length > 0 && (
+ {/* Awaiting confirmation — buyer requests that need a decision. Shown
+ first and at any date, because these are the ones losing you deals. */}
+ {pendingApts.length > 0 && (
  <div style={{ marginBottom: 20 }}>
  <p
  style={{
@@ -5111,6 +5472,28 @@ export default function SalesmanPremium() {
  fontSize: 11,
  fontWeight: 600,
  color: "#fbbf24",
+ textTransform: "uppercase",
+ letterSpacing: "0.08em",
+ display: "flex",
+ alignItems: "center",
+ gap: 5,
+ }}
+ >
+ <AlertCircle size={11} />Awaiting confirmation ({pendingApts.length})
+ </p>
+ <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+ {pendingApts.map(renderApptCard)}
+ </div>
+ </div>
+ )}
+ {todayApts.length > 0 && (
+ <div style={{ marginBottom: 20 }}>
+ <p
+ style={{
+ margin: "0 0 8px",
+ fontSize: 11,
+ fontWeight: 600,
+ color: "#4ade80",
  textTransform: "uppercase",
  letterSpacing: "0.08em",
  display: "flex",
@@ -5126,8 +5509,7 @@ export default function SalesmanPremium() {
  </div>
  )}
  {upcomingApts.length > 0 && (
- <div>
- {todayApts.length > 0 && (
+ <div style={{ marginBottom: 20 }}>
  <p
  style={{
  margin: "0 0 8px",
@@ -5137,12 +5519,30 @@ export default function SalesmanPremium() {
  textTransform: "uppercase",
  letterSpacing: "0.08em",
  }}
- >Upcoming
+ >Confirmed upcoming ({upcomingApts.length})
  </p>
- )}
  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
  {upcomingApts.map(renderApptCard)}
  </div>
+ </div>
+ )}
+ {/* Past — collapsed by default so it never crowds out live bookings. */}
+ {pastApts.length > 0 && (
+ <div>
+ <button
+ onClick={() => setPastOpen((o) =>!o)}
+ style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "none", border: "none", padding: "6px 0", cursor: "pointer", fontFamily: "inherit" }}
+ >
+ <span style={{ fontSize: 11, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+ Past ({pastApts.length})
+ </span>
+ {pastOpen? <ChevronUp size={13} color="#374151" /> : <ChevronDown size={13} color="#374151" />}
+ </button>
+ {pastOpen && (
+ <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+ {pastApts.map(renderApptCard)}
+ </div>
+ )}
  </div>
  )}
  </div>
@@ -7095,6 +7495,370 @@ export default function SalesmanPremium() {
  {renderNotifPanel()}
  {renderCarDetailPopup()}
  {renderTour()}
+
+ {/* ── Test drive outcome ── advanceLeadStage sets testDriveConfirm and
+ returns, so WITHOUT this modal a lead sitting at test_drive could never
+ be advanced at all: the setter fired and nothing ever rendered it. */}
+ {testDriveConfirm && (() => {
+ const { lead: tdLead, nextStage: tdNext } = testDriveConfirm;
+ const car = tdLead.car_listings;
+ const carName = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
+ const dismiss = () => setTestDriveConfirm(null);
+ return (
+ <div onClick={dismiss} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.72)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+ <div onClick={(e) => e.stopPropagation()} style={{ background: "#0d1117", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, padding: "24px 24px 36px", border: "1px solid rgba(255,255,255,0.08)", borderBottom: "none" }}>
+ <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.25)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+ <Car size={22} style={{ color: "#93c5fd" }} />
+ </div>
+ <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>How did the test drive go?</p>
+ <p style={{ margin: "0 0 24px", fontSize: 13, color: "#6b7280" }}>
+ {tdLead.buyer_name || "Buyer"} · {carName || "no car linked"}
+ </p>
+ <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+ <button
+ onClick={() => { dismiss(); advanceLeadStage(tdLead, tdNext, true); }}
+ style={{ width: "100%", padding: "14px 16px", borderRadius: 12, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.3)", fontSize: 14, fontWeight: 600, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 12, fontFamily: "inherit" }}
+ >
+ <ThumbsUp size={20} style={{ flexShrink: 0, color: "#f87171" }} />
+ <div>
+ <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9" }}>They're interested — move forward</p>
+ <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}>Advance to {(tdNext || "").replace(/_/g, " ")}</p>
+ </div>
+ </button>
+ <button
+ onClick={() => { dismiss(); setLostPromptId(tdLead.id); }}
+ style={{ width: "100%", padding: "14px 16px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 14, fontWeight: 600, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 12, fontFamily: "inherit" }}
+ >
+ <ThumbsDown size={20} style={{ flexShrink: 0, color: "#9ca3af" }} />
+ <div>
+ <p style={{ margin: 0, fontWeight: 700, color: "#9ca3af" }}>Not interested</p>
+ <p style={{ margin: "2px 0 0", fontSize: 12, color: "#4b5563" }}>Mark as lost</p>
+ </div>
+ </button>
+ <button onClick={dismiss} style={{ width: "100%", padding: "10px", borderRadius: 10, background: "transparent", border: "none", color: "#4b5563", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+ Cancel
+ </button>
+ </div>
+ </div>
+ </div>
+ );
+ })()}
+
+ {/* ── Booking detail sheet ── reschedule to a real slot, arm/clear the
+ Telegram reminder, cancel with a confirm. Premium's old "Reschedule"
+ button just stamped status='rescheduled' and never asked for a new
+ date, so the booking stayed at its original time. */}
+ {bookingDetailId && (() => {
+ const apt = appointments.find((a) => a.id === bookingDetailId);
+ if (!apt) return null;
+ const close = () => { setBookingDetailId(null); setReschedulingAptId(null); setReminderPickerAptId(null); setCancelConfirmId(null); setSelectedRemindAt(null); };
+ const aptDate = apt.appointment_date? new Date(apt.appointment_date) : null;
+ const calcRemindAt = (offsetKey) => {
+ const d0 = new Date(apt.appointment_date);
+ if (offsetKey === "day_before") { const d = new Date(d0); d.setDate(d.getDate() - 1); d.setHours(9, 0, 0, 0); return d; }
+ if (offsetKey === "two_days") { const d = new Date(d0); d.setDate(d.getDate() - 2); d.setHours(9, 0, 0, 0); return d; }
+ const mins = { "1h": -60, "2h": -120 };
+ return new Date(d0.getTime() + (mins[offsetKey]?? -60) * 60000);
+ };
+ const saveReminder = async (remindAt) => {
+ setReminderSaving(true);
+ const { error } = await supabase.from("appointments").update({ remind_at: remindAt.toISOString(), remind_sent: false }).eq("id", apt.id);
+ setReminderSaving(false);
+ if (error) { toast.error("Could not save the reminder"); return; }
+ setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, remind_at: remindAt.toISOString(), remind_sent: false } : a));
+ setReminderPickerAptId(null); setSelectedRemindAt(null);
+ toast.success(`Telegram reminder set for ${remindAt.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}`);
+ };
+ const clearReminder = async () => {
+ await supabase.from("appointments").update({ remind_at: null, remind_sent: false }).eq("id", apt.id);
+ setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, remind_at: null } : a));
+ };
+ const secBtn = { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 0", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
+ const isRescheduling = reschedulingAptId === apt.id;
+ const isReminderPicking = reminderPickerAptId === apt.id;
+ const isCancelConfirm = cancelConfirmId === apt.id;
+ const anyExpander = isRescheduling || isReminderPicking || isCancelConfirm;
+ const notCancelled = apt.status!== "cancelled";
+ return (
+ <div onClick={close} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+ <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: "92vh", overflowY: "auto", background: "#111827", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "16px 16px 0 0", padding: 20 }}>
+ <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 14 }}>
+ <div style={{ minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{apt.buyer_name || "Booking"}</p>
+ <p style={{ margin: "3px 0 0", fontSize: 12, color: "#9ca3af" }}>
+ {aptDate &&!isNaN(aptDate)
+ ? `${aptDate.toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" })} · ${aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}`
+ : "No date set"}
+ </p>
+ {apt.car_listings && (
+ <p style={{ margin: "3px 0 0", fontSize: 12, color: "#6b7280" }}>
+ {[apt.car_listings.year, apt.car_listings.brand, apt.car_listings.model].filter(Boolean).join(" ")}
+ </p>
+ )}
+ </div>
+ <button onClick={close} aria-label="Close" style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+ <X size={15} />
+ </button>
+ </div>
+
+ {/* Reminder state */}
+ {apt.remind_at &&!apt.remind_sent? (
+ <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 7, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)", marginBottom: 12 }}>
+ <Bell size={12} color="#4ade80" />
+ <span style={{ fontSize: 11, color: "#4ade80", flex: 1 }}>
+ Reminder: {new Date(apt.remind_at).toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })} {new Date(apt.remind_at).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}
+ </span>
+ <button onClick={clearReminder} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 11, cursor: "pointer", padding: 0 }}>✕</button>
+ </div>
+ ) : apt.remind_sent? (
+ <p style={{ fontSize: 11, color: "#6b7280", margin: "0 0 12px", display: "inline-flex", alignItems: "center", gap: 4 }}><Check size={11} /> Reminder sent</p>
+ ) : null}
+
+ {/* Secondary actions */}
+ {notCancelled &&!anyExpander && (
+ <div style={{ display: "flex", gap: 6 }}>
+ <button style={secBtn} onClick={() => {
+ const existing = apt.appointment_date? new Date(apt.appointment_date) : new Date();
+ const pad = (n) => String(n).padStart(2, "0");
+ setRescheduleDate(`${existing.getFullYear()}-${pad(existing.getMonth() + 1)}-${pad(existing.getDate())}T${pad(existing.getHours())}:${pad(existing.getMinutes())}`);
+ setReschedulingAptId(apt.id); setCancelConfirmId(null); setReminderPickerAptId(null);
+ }}><RefreshCw size={13} /> Move</button>
+ <button style={secBtn} onClick={() => {
+ if (!profile?.telegram_chat_id) { toast.error("Connect Telegram in Settings first"); return; }
+ setReminderPickerAptId(apt.id); setSelectedRemindAt(null); setCancelConfirmId(null); setReschedulingAptId(null);
+ }}><Bell size={13} color={apt.remind_at? "#fbbf24" : undefined} /> Remind</button>
+ <button style={{ ...secBtn, color: "#f87171" }} onClick={() => { setCancelConfirmId(apt.id); setReschedulingAptId(null); setReminderPickerAptId(null); }}><X size={13} /> Cancel</button>
+ </div>
+ )}
+
+ {/* Reschedule */}
+ {isRescheduling && (
+ <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 8 }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+ <p style={{ margin: 0, fontSize: 11, color: "#c084fc", fontWeight: 600 }}>Choose a new time</p>
+ <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }} style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0 }}><X size={14} /></button>
+ </div>
+ <input type="datetime-local" value={rescheduleDate} onChange={(e) => setRescheduleDate(e.target.value)}
+ style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "inherit", marginBottom: 8 }} />
+ <div style={{ display: "flex", gap: 6 }}>
+ <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }}
+ style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+ <button onClick={async () => {
+ if (!rescheduleDate) return;
+ const newDate = new Date(rescheduleDate);
+ const remindAt = new Date(newDate.getTime() - 60 * 60 * 1000).toISOString();
+ const { error } = await supabase.from("appointments").update({ appointment_date: newDate.toISOString(), status: "rescheduled", remind_at: remindAt, remind_sent: false }).eq("id", apt.id);
+ if (error) { toast.error("Could not reschedule"); return; }
+ setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, appointment_date: newDate.toISOString(), status: "rescheduled", remind_at: remindAt, remind_sent: false } : a));
+ setReschedulingAptId(null); setRescheduleDate("");
+ toast.success("Booking rescheduled");
+ }}
+ style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.35)", color: "#c084fc", cursor: "pointer", fontFamily: "inherit" }}>Save new time</button>
+ </div>
+ </div>
+ )}
+
+ {/* Telegram reminder picker */}
+ {isReminderPicking && (
+ <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8 }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+ <p style={{ margin: 0, fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>Schedule Telegram reminder</p>
+ <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }} style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0 }}><X size={14} /></button>
+ </div>
+ <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
+ {[
+ { key: "1h", label: "1 hour before" },
+ { key: "2h", label: "2 hours before" },
+ { key: "day_before", label: "Day before" },
+ { key: "two_days", label: "2 days before" },
+ ].map(({ key, label }) => {
+ const rt = calcRemindAt(key);
+ const active = selectedRemindAt && rt.getTime() === selectedRemindAt.getTime();
+ return (
+ <button key={key} onClick={() => setSelectedRemindAt(rt)}
+ style={{ fontSize: 11, padding: "4px 10px", borderRadius: 99, cursor: "pointer", fontFamily: "inherit",
+ background: active? "rgba(96,165,250,0.15)" : "rgba(255,255,255,0.05)",
+ border: active? "1px solid rgba(96,165,250,0.4)" : "1px solid rgba(255,255,255,0.08)",
+ color: active? "#93c5fd" : "#6b7280" }}>
+ {label}
+ </button>
+ );
+ })}
+ </div>
+ <div style={{ display: "flex", gap: 6 }}>
+ <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }}
+ style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+ <button onClick={() => selectedRemindAt && saveReminder(selectedRemindAt)}
+ disabled={!selectedRemindAt || reminderSaving}
+ style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, fontFamily: "inherit",
+ background: selectedRemindAt? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.04)",
+ border: selectedRemindAt? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(255,255,255,0.08)",
+ color: selectedRemindAt? "#4ade80" : "#374151",
+ cursor: selectedRemindAt? "pointer" : "not-allowed", opacity: reminderSaving? 0.6 : 1 }}>
+ {reminderSaving? "Saving…" : "Set reminder"}
+ </button>
+ </div>
+ </div>
+ )}
+
+ {/* Cancel confirmation */}
+ {isCancelConfirm && (
+ <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8 }}>
+ <p style={{ margin: "0 0 8px", fontSize: 12, color: "#f87171" }}>Cancel this booking?</p>
+ <div style={{ display: "flex", gap: 6 }}>
+ <button onClick={() => setCancelConfirmId(null)}
+ style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Keep it</button>
+ <button onClick={async () => { await updateApptStatus(apt.id, "cancelled"); setCancelConfirmId(null); setBookingDetailId(null); }}
+ style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", cursor: "pointer", fontFamily: "inherit" }}>Cancel booking</button>
+ </div>
+ </div>
+ )}
+
+ {/* Past-booking outcome */}
+ {notCancelled && aptDate &&!isNaN(aptDate) && aptDate < new Date(nowTick) && apt.status!== "completed" && (
+ <div style={{ display: "flex", gap: 6, marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+ <button style={{ ...secBtn, color: "#4ade80" }} onClick={async () => { await updateApptStatus(apt.id, "completed"); close(); }}>
+ <Check size={13} /> Showed up
+ </button>
+ <button style={{ ...secBtn, color: "#fbbf24" }} onClick={async () => { await updateApptStatus(apt.id, "no_show"); close(); }}>
+ <PhoneOff size={13} /> No show
+ </button>
+ </div>
+ )}
+ </div>
+ </div>
+ );
+ })()}
+
+ {/* ── Confirm booking ── prefilled, editable WhatsApp message. Both
+ buttons persist the confirm + lead advance before any WA handoff. */}
+ {confirmBookingApt && (
+ <div
+ onClick={() => { setConfirmBookingApt(null); setConfirmBookingMsg(""); }}
+ style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+ >
+ <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 14, width: "100%", maxWidth: 440, padding: 22, maxHeight: "90vh", overflowY: "auto" }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+ <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Confirm booking</p>
+ <button onClick={() => { setConfirmBookingApt(null); setConfirmBookingMsg(""); }} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 2 }}><X size={18} /></button>
+ </div>
+ <p style={{ margin: "0 0 14px", fontSize: 12, color: "#9ca3af", lineHeight: 1.6 }}>
+ Confirms the viewing, adds {confirmBookingApt.buyer_name || "this buyer"} to your pipeline at Viewing Booked, and sets a Telegram reminder 1 hour before.
+ </p>
+ <label style={{ display: "block", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b7280", marginBottom: 7 }}>Message to buyer</label>
+ <textarea
+ value={confirmBookingMsg}
+ onChange={(e) => setConfirmBookingMsg(e.target.value)}
+ rows={5}
+ style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, lineHeight: 1.6, padding: "10px 12px", outline: "none", boxSizing: "border-box", fontFamily: "inherit", resize: "vertical" }}
+ />
+ <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+ <button
+ onClick={moveConfirmBookingToPipeline}
+ style={{ flex: 1, fontSize: 12, fontWeight: 600, padding: "11px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "#cbd5e1", cursor: "pointer", fontFamily: "inherit" }}
+ >
+ Confirm only
+ </button>
+ <button
+ onClick={sendConfirmBooking}
+ disabled={!confirmBookingApt.buyer_phone}
+ style={{ flex: 2, fontSize: 12, fontWeight: 700, padding: "11px", borderRadius: 8, background: "#22c55e", border: "none", color: "#04210f", cursor: confirmBookingApt.buyer_phone? "pointer" : "not-allowed", opacity: confirmBookingApt.buyer_phone? 1 : 0.45, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+ >
+ <Send size={13} /> Confirm + send WhatsApp
+ </button>
+ </div>
+ </div>
+ </div>
+ )}
+
+ {/* ── Seller-initiated booking ── fired when a lead is moved into the
+ booking stage from the pipeline. Creates a CONFIRMED appointment. */}
+ {sellerBookingLead && (
+ <div
+ onClick={() => { if (!sellerBookingSaving) { setSellerBookingLead(null); setSellerBookingDate(""); } }}
+ style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+ >
+ <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 14, width: "100%", maxWidth: 400, padding: 22 }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+ <div style={{ width: 34, height: 34, borderRadius: 9, background: "rgba(96,165,250,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+ <Calendar size={17} style={{ color: "#93c5fd" }} />
+ </div>
+ <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Book a viewing</p>
+ </div>
+ <p style={{ margin: "0 0 16px", fontSize: 12, color: "#9ca3af", lineHeight: 1.6 }}>
+ Pick the slot you agreed with {sellerBookingLead.buyer_name || "this buyer"}. It goes straight into Confirmed Upcoming with a reminder 1 hour before.
+ </p>
+ <label style={{ display: "block", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b7280", marginBottom: 7 }}>Date &amp; time</label>
+ <input
+ type="datetime-local"
+ value={sellerBookingDate}
+ onChange={(e) => setSellerBookingDate(e.target.value)}
+ style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#e5e7eb", fontSize: 14, padding: "11px 13px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+ />
+ <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+ <button
+ onClick={() => { setSellerBookingLead(null); setSellerBookingDate(""); }}
+ disabled={sellerBookingSaving}
+ style={{ flex: 1, fontSize: 13, fontWeight: 600, padding: "11px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", fontFamily: "inherit" }}
+ >
+ Cancel
+ </button>
+ <button
+ onClick={confirmSellerBooking}
+ disabled={sellerBookingSaving ||!sellerBookingDate}
+ style={{ flex: 2, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 8, background: "#2563eb", border: "none", color: "#fff", cursor: (sellerBookingSaving ||!sellerBookingDate)? "not-allowed" : "pointer", opacity: (sellerBookingSaving ||!sellerBookingDate)? 0.5 : 1, fontFamily: "inherit" }}
+ >
+ {sellerBookingSaving? "Booking…" : "Confirm booking"}
+ </button>
+ </div>
+ </div>
+ </div>
+ )}
+
+ {/* ── Mark won ── a win flips the car to sold and moves money, so it is a
+ deliberate confirm rather than the undo-timer used for other stages. */}
+ {wonPrompt && (
+ <div
+ onClick={() => { if (!wonSaving) setWonPrompt(null); }}
+ style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+ >
+ <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 14, width: "100%", maxWidth: 420, padding: 24 }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+ <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(34,197,94,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+ <CheckCircle2 size={18} style={{ color: "#4ade80" }} />
+ </div>
+ <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>Mark this deal won?</p>
+ </div>
+ <p style={{ margin: "0 0 6px", fontSize: 13, color: "#cbd5e1", lineHeight: 1.6 }}>
+ <strong style={{ color: "#f1f5f9" }}>{wonPrompt.lead.buyer_name || "This buyer"}</strong>
+ {wonPrompt.lead.car_listings
+ ? <> — {[wonPrompt.lead.car_listings.year, wonPrompt.lead.car_listings.brand, wonPrompt.lead.car_listings.model].filter(Boolean).join(" ")}</>
+ : null}
+ </p>
+ <p style={{ margin: "0 0 18px", fontSize: 12, color: "#9ca3af", lineHeight: 1.6 }}>
+ {wonPrompt.lead.car_listing_id
+ ? "The car is marked sold and removed from the marketplace, your sold count and commission update, and the handover checklist is created."
+ : "No car is linked to this lead, so nothing will be marked sold — only the lead closes."}
+ </p>
+ <div style={{ display: "flex", gap: 8 }}>
+ <button
+ onClick={() => setWonPrompt(null)}
+ disabled={wonSaving}
+ style={{ flex: 1, fontSize: 13, fontWeight: 600, padding: "11px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", fontFamily: "inherit" }}
+ >
+ Not yet
+ </button>
+ <button
+ onClick={handleMarkWon}
+ disabled={wonSaving}
+ style={{ flex: 2, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 8, background: "#22c55e", border: "none", color: "#04210f", cursor: wonSaving? "not-allowed" : "pointer", opacity: wonSaving? 0.6 : 1, fontFamily: "inherit" }}
+ >
+ {wonSaving? "Saving…" : "Yes, mark won"}
+ </button>
+ </div>
+ </div>
+ </div>
+ )}
 
  {/* IC verify — voluntary, opened from Settings. Stored HASHED (set_my_ic),
  never plaintext. Unlike Lite this is never force-opened; always dismissable. */}
