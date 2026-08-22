@@ -131,33 +131,33 @@ before this goes to prod.
      owner's call to make, not mine. Say if you want the negative state shown.
   3. `business_reg_number` is a **dead duplicate** of `ssm_number` — referenced nowhere
      in `src/`, empty in every row. Safe to drop; left alone for now.
-- **TRUST-4: Deposit terms at the deposit ask** — "RM X deposit to reserve" renders as
-  an 11px muted caption (`src/pages/CarDetailPage.jsx:3527`). Highest-anxiety moment on
-  the page, lowest-emphasis text. Needs: refundable or not, what happens on loan
-  rejection, who holds it. Probably a per-dealer setting + a link to terms.
-- **TRUST-5: Collapse the CTA stack** — up to 8 actions in one sidebar
-  (`src/pages/CarDetailPage.jsx:3530-3600`), including two green buttons doing the same
-  job (WhatsApp and "Chat with {firstName}"). Breaks the CLAUDE.md anti-slop rule (one
-  primary action visible, long tail into an overflow). Pure visual-credibility win.
-- **TRUST-6: Review score beside the dealer name** — `ReviewsSection` sits after
-  Performance, Running Costs and Location on both breakpoints
-  (`src/pages/CarDetailPage.jsx:3414` desktop, `:2544` mobile). The decision is made at
-  the price block; move a rating chip up there.
-- **TRUST-7: Kill the filler copy** — WarrantyBanner's "drive with peace of mind"
-  (`src/pages/CarDetailPage.jsx:196`) and PuspakomDates' "Inspection verified by the
-  dealer" (`:288`, circular — the dealer verifying their own car). Replace with warranty
-  terms and a named verifier. Trivial, do it alongside anything else in that file.
-- **TRUST-8: Fix the theme leaks** — three hardcoded colours DESIGN.md already warns
-  about: SAVE badge text `#f87171` on a white card (`:3513`), "Independent Agent ·
-  XDrive" hardcoded `#1e293b` and near-invisible on the dark subdomain theme (`:3593`),
-  Call button border `rgba(255,255,255,0.1)` which vanishes on light (`:3542`).
-- **TRUST-9: Market verdict needs a sample floor and a method note** — `MarketPriceTag`
-  (`src/pages/CarDetailPage.jsx:92-125`) will print a confident "Below market" off
-  `market_sample_count` of 3. Suppress the band under a minimum sample and link a
-  plain-English note on how the average is built (Cars.com publishes theirs).
-- **TRUST-10: Price completeness line** — what is and is not in the number (road tax,
-  insurance, JPJ transfer, processing). Needs data plumbing; most-cited buyer demand
-  across every study in the research.
+- **TRUST-4 through TRUST-10 — DONE 2026-08-21.** All shipped on
+  `claude/cardetail-trust-work-uwdwzk` / staging.
+  - **TRUST-4 deposit terms** — `profiles.deposit_policy` (refundable /
+    refundable_on_loan_rejection / non_refundable, CHECK-constrained) +
+    `deposit_terms`, set once in dealer Settings, shown at the deposit ask. When
+    unset the listing says so and tells the buyer to get it in writing.
+  - **TRUST-5 CTA stack** — the two green buttons opened the SAME enquiry modal,
+    differing only in lead attribution. Now one button carrying the rep's routing
+    and named after them. "Go to dealer's page" duplicated "Visit Dealer's Page"
+    (identical URL) and was removed.
+  - **TRUST-6 review score** — tally lifted out of ReviewsSection (no second
+    query) to sit beside the seller's name. Under 3 reviews the average is
+    withheld and only the count shows.
+  - **TRUST-7 filler copy** — "peace of mind" and "Inspection verified by the
+    dealer" replaced; the Puspakom row no longer says "Verified" off a typed date.
+  - **TRUST-8 theme leaks** — was listed as 3 spots, was closer to 30. Added a
+    `LIGHT_ACCENT` map resolving accents at point of use instead of patching
+    hardcodes one at a time.
+  - **TRUST-9 market verdict** — floor of 5 comparables (16 of 41 listings were
+    under it). Also relabelled: `compute_market_avg` averages other XDrive
+    ASKING prices from a 69-car catalogue, so "market average" was overclaiming.
+    Method note added; the RPC's `mileage_match` is no longer discarded.
+  - **TRUST-10 price completeness** — official transfer fees (JPJ RM100,
+    Puspakom B5 RM30, B7 RM60) sourced from `src/utils/postSaleSteps.js`, not
+    invented; road tax/insurance from the dealer's `handles_roadtax_insurance`.
+    Framed as a floor, not a quote.
+
 - **TRUST-11 (ops, not UI): a named XDrive inspection standard** — the Carsome
   "175-point" move. "175-point" is countable, "thorough" is not. Needs someone to
   actually define and perform the inspection before any UI is worth building.

@@ -123,13 +123,15 @@ const MarketPriceTag = ({ car, isXdrive, th }) => {
   const pos = Math.max(4, Math.min(96, ((ratio - 0.85) / 0.3) * 100));
   const ringBg = isXdrive ? "#ffffff" : "#0d1117";
 
-  const method = [
-    `Average asking price of ${n} other listing${n === 1 ? '' : 's'} on XDrive for the same model,`,
-    car.market_mileage_match === false
-      ? 'within two years of this one, any mileage.'
-      : 'within a year of this one and within 35,000 km.',
-    'Asking prices, not sale prices, and only cars listed on XDrive — not the whole Malaysian market.',
-  ].join(' ');
+  const method = car.market_precise
+    ? [
+        `Average asking price of ${n} other listing${n === 1 ? '' : 's'} on XDrive for the same model,`,
+        car.market_mileage_match === false
+          ? 'within two years of this one, any mileage.'
+          : 'within a year of this one and within 35,000 km.',
+        'Asking prices, not sale prices, and only cars listed on XDrive — not the whole Malaysian market.',
+      ].join(' ')
+    : 'Average asking price of similar XDrive listings — asking prices, not sale prices, and only cars listed on XDrive, not the whole Malaysian market.';
 
   if (thin) {
     return (
@@ -1258,6 +1260,10 @@ export default function CarDetailPage() {
                 // back to year +-2 with no mileage filter. The verdict looked
                 // identical either way until now.
                 market_mileage_match: r.mileage_match,
+                // The page loads with a rough year-bucket average from the view and
+                // only then overwrites it with the precise comparison. The method
+                // note describes the precise one, so it must not appear until it lands.
+                market_precise: true,
               } : prev);
             }
           });
