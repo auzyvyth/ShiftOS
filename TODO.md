@@ -125,6 +125,24 @@ below. Build (`npm run build`) and lint both clean after these changes.
   `about_text`-adjacent `bio` column) into Premium only, not Lite — makes it
   a real Premium differentiator instead of a dormant public-page block.
   Lite still can't set these; that's consistent with the tiering, not a bug.
+- **PREM-11: IC verification made mandatory at Premium signup, not a
+  runtime gate.** Owner's call after reading the "deliberately not ported"
+  note on PREM-9: since Premium is paid, require IC as part of the same
+  onboarding flow as payment — no separate later gate, no delay on
+  publishing. `SalesmanOnboarding.jsx` step 2 (DETAILS) already had both a
+  validating "Save & Continue" and a skip button ("Add IC Later — Get To My
+  Panel"); the skip button is now hidden when `tier === 'premium'` (Lite
+  unchanged, still optional), copy updated to say IC is required to activate
+  Premium and that listings then publish immediately with no separate
+  review. Resume flow re-verified safe: "Continue Sign-up" always re-enters
+  at step 2 (`SalesmanOnboarding.jsx:547`), so a resumed premium session
+  can't skip past the now-mandatory field. No changes needed in
+  `SalesmanPremium.jsx` itself — the Settings-tab verify button from PREM-9
+  stays as a path for any pre-existing premium account that predates this.
+  Side note, not acted on: `profiles.ic_number` (plaintext column) is
+  selected for resume-prefill (`SalesmanOnboarding.jsx:263`) but nothing in
+  this file's salesman-identity path ever writes it — dead column read, not
+  a live plaintext-IC leak. Worth a cleanup pass, not urgent.
 
 **Shipped:**
 - **PREM-1: the three "coming soon" kill switches removed.** Premium was

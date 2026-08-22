@@ -727,11 +727,15 @@ export default function SalesmanOnboarding() {
               <>
                 <p className="eo-eyebrow">STEP 3 OF {STEPS.length}</p>
                 <div className="eo-heading">Your Details</div>
-                <p className="eo-sub">Your name is what buyers see. IC verification keeps the marketplace trusted — add it now, or later before your listings go live. Your choice.</p>
+                <p className="eo-sub">
+                  {tier === 'premium'
+                    ? 'Your name is what buyers see. Premium requires IC verification upfront, alongside payment — it keeps every paid listing accountable.'
+                    : 'Your name is what buyers see. IC verification keeps the marketplace trusted — add it now, or later before your listings go live. Your choice.'}
+                </p>
                 <label className="eo-label">FULL LEGAL NAME (AS PER IC)</label>
                 <input className="eo-inp" type="text" placeholder="Ahmad bin Abdullah" value={form.fullName}
                   onChange={e => upd('fullName')(e.target.value)} autoComplete="name" />
-                <label className="eo-label">IC NUMBER (MYKAD) <span style={{ color: 'rgba(255,255,255,0.28)', fontWeight: 400 }}>— OPTIONAL FOR NOW</span></label>
+                <label className="eo-label">IC NUMBER (MYKAD) <span style={{ color: 'rgba(255,255,255,0.28)', fontWeight: 400 }}>{tier === 'premium' ? '— REQUIRED' : '— OPTIONAL FOR NOW'}</span></label>
                 <div style={{ position: 'relative' }}>
                   <input className="eo-inp" type={showIc ? 'text' : 'password'} inputMode="numeric"
                     placeholder="901231-10-1234" maxLength={14} value={form.icNumber}
@@ -747,16 +751,22 @@ export default function SalesmanOnboarding() {
                     )}
                   </button>
                 </div>
-                <p className="eo-hint">Format: YYMMDD-NN-XXXX (12 digits). Stored hashed (never as plaintext), used for verification only. Required before your listings appear on xdrive.my — not to use your panel.</p>
+                <p className="eo-hint">
+                  {tier === 'premium'
+                    ? 'Format: YYMMDD-NN-XXXX (12 digits). Stored hashed (never as plaintext), used for verification only. Required to activate your Premium account — your listings then go live immediately, no separate review.'
+                    : 'Format: YYMMDD-NN-XXXX (12 digits). Stored hashed (never as plaintext), used for verification only. Required before your listings appear on xdrive.my — not to use your panel.'}
+                </p>
                 {err && <div className="eo-error">{err}</div>}
                 <button className="eo-btn" onClick={saveIdentity}
                   disabled={loading || !form.fullName.trim() || !validateIC(form.icNumber)}>
                   {loading ? 'SAVING…' : 'SAVE & CONTINUE'}
                 </button>
-                <button className="eo-ghost" onClick={skipIdentity}
-                  disabled={loading || !form.fullName.trim()}>
-                  ADD IC LATER — GET TO MY PANEL
-                </button>
+                {tier !== 'premium' && (
+                  <button className="eo-ghost" onClick={skipIdentity}
+                    disabled={loading || !form.fullName.trim()}>
+                    ADD IC LATER — GET TO MY PANEL
+                  </button>
+                )}
               </>
             )}
 
