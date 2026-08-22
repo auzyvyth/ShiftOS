@@ -94,39 +94,76 @@ const estimateFuelCost = (cc, dealerConsumption, distanceKm) => {
 /* Market-price position indicator — a meter (not a pill): the marker dot
    encodes where this car's asking price sits on the cheap→expensive spectrum
    relative to the market average for similar cars. */
+/* A confident "Below market" printed off three comparables is a guess wearing a
+   badge, so under MARKET_SAMPLE_FLOOR the verdict and the slider are withheld and
+   only the raw average is shown, labelled as thin.
+
+   The wording changed too. compute_market_avg averages OTHER XDRIVE LISTINGS —
+   asking prices, not sale prices, from a catalogue of 69 cars — so "market
+   average" claimed knowledge of the Malaysian market that the query does not
+   have. It now says what it actually compares against, and the method note
+   spells out the rest. */
+const MARKET_SAMPLE_FLOOR = 5;
+
 const MarketPriceTag = ({ car, isXdrive, th }) => {
   if (!car?.market_avg_price || !(car.selling_price > 0)) return null;
   const avg = Number(car.market_avg_price);
   const price = Number(car.selling_price);
+  const n = Number(car.market_sample_count) || 0;
+  const thin = n < MARKET_SAMPLE_FLOOR;
   const ratio = price / avg;
   const band = ratio <= 0.93 ? "below" : ratio >= 1.07 ? "above" : "fair";
   const cfg = {
-    below: { color: isXdrive ? "#15803d" : "#4ade80", Icon: TrendingDown, label: "Below market" },
-    fair:  { color: isXdrive ? "#1d4ed8" : "#93c5fd", Icon: Minus,        label: "Fair price"   },
-    above: { color: isXdrive ? "#b45309" : "#fbbf24", Icon: TrendingUp,   label: "Above market" },
+    below: { color: isXdrive ? "#15803d" : "#4ade80", Icon: TrendingDown, label: "Priced below similar XDrive listings" },
+    fair:  { color: isXdrive ? "#1d4ed8" : "#93c5fd", Icon: Minus,        label: "In line with similar XDrive listings" },
+    above: { color: isXdrive ? "#b45309" : "#fbbf24", Icon: TrendingUp,   label: "Priced above similar XDrive listings" },
   }[band];
   const diff = Math.round(Math.abs(price - avg));
   // map ratio across a 0.85–1.15 window onto the track
   const pos = Math.max(4, Math.min(96, ((ratio - 0.85) / 0.3) * 100));
   const ringBg = isXdrive ? "#ffffff" : "#0d1117";
+
+  const method = [
+    `Average asking price of ${n} other listing${n === 1 ? '' : 's'} on XDrive for the same model,`,
+    car.market_mileage_match === false
+      ? 'within two years of this one, any mileage.'
+      : 'within a year of this one and within 35,000 km.',
+    'Asking prices, not sale prices, and only cars listed on XDrive — not the whole Malaysian market.',
+  ].join(' ');
+
+  if (thin) {
+    return (
+      <div style={{ marginBottom: 16 }}>
+        <p style={{ fontSize: 12, color: th.textSec, margin: 0, lineHeight: 1.6 }}>
+          Similar XDrive listings average <strong style={{ color: th.text }}>RM {avg.toLocaleString("en-MY")}</strong>
+          {` — but only ${n} comparable ${n === 1 ? 'car was' : 'cars were'} found, too few to call this price high or low.`}
+        </p>
+        <p style={{ fontSize: 11, color: th.textMuted, margin: '6px 0 0', lineHeight: 1.6 }}>{method}</p>
+      </div>
+    );
+  }
+
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: cfg.color, letterSpacing: "0.01em" }}>
-          <cfg.Icon size={15} strokeWidth={2.5} />
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: cfg.color, letterSpacing: "0.01em", minWidth: 0, lineHeight: 1.35 }}>
+          <cfg.Icon size={15} strokeWidth={2.5} style={{ flexShrink: 0 }} />
           {cfg.label}
         </span>
-        <span style={{ fontSize: 12, color: th.textMuted }}>
-          {band === "fair" ? "At market avg" : `RM ${diff.toLocaleString("en-MY")} ${band === "below" ? "under" : "over"} avg`}
+        <span style={{ fontSize: 12, color: th.textMuted, flexShrink: 0, whiteSpace: "nowrap" }}>
+          {band === "fair" ? "About the same" : `RM ${diff.toLocaleString("en-MY")} ${band === "below" ? "under" : "over"}`}
         </span>
       </div>
       <div style={{ position: "relative", height: 4, borderRadius: 4, background: "linear-gradient(to right, rgba(34,197,94,0.55) 0%, rgba(59,130,246,0.55) 50%, rgba(245,158,11,0.55) 100%)" }}>
         <div style={{ position: "absolute", top: "50%", left: `${pos}%`, transform: "translate(-50%,-50%)", width: 13, height: 13, borderRadius: "50%", background: cfg.color, border: `2px solid ${ringBg}`, boxShadow: "0 1px 3px rgba(0,0,0,0.25)" }} />
       </div>
-      <p style={{ fontSize: 11, color: th.textMuted, marginTop: 8, margin: "8px 0 0" }}>
-        Market avg <strong style={{ color: th.textMuted }}>RM {avg.toLocaleString("en-MY")}</strong>
-        {car.market_sample_count > 0 ? ` · based on ${car.market_sample_count} similar listings` : ""}
-      </p>
+      <details style={{ marginTop: 8 }}>
+        <summary style={{ fontSize: 11, color: th.textMuted, cursor: "pointer", listStyle: "none" }}>
+          Average <strong style={{ color: th.textMuted }}>RM {avg.toLocaleString("en-MY")}</strong>
+          {` across ${n} similar XDrive listings · how is this worked out?`}
+        </summary>
+        <p style={{ fontSize: 11, color: th.textMuted, margin: "6px 0 0", lineHeight: 1.6 }}>{method}</p>
+      </details>
     </div>
   );
 };
@@ -1160,6 +1197,10 @@ export default function CarDetailPage() {
                 ...prev,
                 market_avg_price: r.avg_price,
                 market_sample_count: r.sample_count,
+                // Whether the comparison set was mileage-matched, or had to fall
+                // back to year +-2 with no mileage filter. The verdict looked
+                // identical either way until now.
+                market_mileage_match: r.mileage_match,
               } : prev);
             }
           });
