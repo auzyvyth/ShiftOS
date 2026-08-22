@@ -1040,6 +1040,10 @@ function SettingsTab({ profile, onProfileUpdate }) {
   // Identity fields buyers see on every listing (TRUST-2). ssm_number was only
   // ever captured at onboarding and had no way to be edited or added later.
   const [ssmNumber, setSsmNumber] = useState(profile?.ssm_number || '');
+  // Deposit policy (TRUST-4). Buyers see this at the deposit ask on every listing;
+  // when it is unset the listing says so rather than assuming a policy for you.
+  const [depositPolicy, setDepositPolicy] = useState(profile?.deposit_policy || '');
+  const [depositTerms, setDepositTerms] = useState(profile?.deposit_terms || '');
   const [dealerPostcode, setDealerPostcode] = useState(profile?.postcode || '');
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -1150,6 +1154,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setDealerAddress(profile.location || '');
     setBusinessHours(profile.business_hours || '');
     setSsmNumber(profile.ssm_number || '');
+    setDepositPolicy(profile.deposit_policy || '');
+    setDepositTerms(profile.deposit_terms || '');
     setDealerPostcode(profile.postcode || '');
     setTgToken(""); // SEC-5: write-only — never load the stored token back into the form
     setTgChannel(profile.telegram_channel_id || "");
@@ -1337,6 +1343,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
       business_hours: businessHours.trim(),
       ssm_number: ssmNumber.trim(),
       postcode: dealerPostcode.trim(),
+      deposit_policy: depositPolicy || null,
+      deposit_terms: depositTerms.trim() || null,
     });
 
   const saveTelegram = () =>
@@ -1919,6 +1927,48 @@ function SettingsTab({ profile, onProfileUpdate }) {
             rows={2}
             className={iCls}
             style={{ resize: "vertical" }}
+          />
+        </SettingsField>
+
+        <SettingsField
+          label="Deposit Policy"
+          hint="Shown at the deposit ask on every listing — the moment a buyer decides whether to trust you"
+        >
+          <div className="space-y-2">
+            {[
+              { v: 'refundable', l: 'Refundable', d: 'Returned if the buyer decides not to go ahead' },
+              { v: 'refundable_on_loan_rejection', l: 'Refundable if the loan is rejected', d: 'Otherwise held against the purchase price' },
+              { v: 'non_refundable', l: 'Non-refundable', d: 'Kept once paid, whatever happens' },
+            ].map(({ v, l, d }) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setDepositPolicy(depositPolicy === v ? '' : v)}
+                className={`w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-colors ${depositPolicy === v ? 'bg-red-50 border-red-300' : 'bg-white border-gray-200 hover:border-gray-300'}`}
+              >
+                <span className={`mt-0.5 h-4 w-4 rounded-full border flex-shrink-0 ${depositPolicy === v ? 'border-red-600 bg-red-600' : 'border-gray-300 bg-white'}`} />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-gray-900">{l}</span>
+                  <span className="block text-xs text-gray-500 mt-0.5">{d}</span>
+                </span>
+              </button>
+            ))}
+            {!depositPolicy && (
+              <p className="text-xs text-amber-700 m-0">
+                Not set — listings currently tell buyers to ask you, in writing, before paying.
+              </p>
+            )}
+          </div>
+        </SettingsField>
+
+        <SettingsField label="Deposit Details (optional)" hint="Who holds it, how long the car stays reserved">
+          <textarea
+            value={depositTerms}
+            onChange={e => setDepositTerms(e.target.value)}
+            placeholder={"e.g. Held by the showroom, car reserved for 7 days."}
+            rows={2}
+            className={iCls}
+            style={{ resize: 'vertical' }}
           />
         </SettingsField>
 

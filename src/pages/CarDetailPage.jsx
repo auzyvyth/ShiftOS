@@ -325,6 +325,46 @@ function PuspakomDates({ b5, b7, color }) {
      trading is the dealer's own number; the verified line is XDrive's check.
    Rendered once and used at both breakpoints, deliberately: the two hardcoded
    copies of the sidebar are why the theme leaks in TRUST-8 exist. */
+/* The deposit ask was an 11px muted caption — the highest-anxiety moment on the
+   page rendered at its lowest emphasis, with no answer to the only question that
+   matters: do I get this back? Policy is per-dealer (profiles.deposit_policy).
+   When the dealer has not set one we say exactly that instead of guessing a
+   policy on their behalf. */
+const DEPOSIT_POLICY_COPY = {
+  refundable: 'Refundable if you decide not to go ahead.',
+  refundable_on_loan_rejection:
+    'Refunded in full if your loan is rejected. Otherwise it is held against the purchase price.',
+  non_refundable: 'Non-refundable once paid.',
+};
+
+function DepositTerms({ amount, dealer, th, isXdrive }) {
+  if (!(amount > 0)) return null;
+  const policy = dealer?.deposit_policy || null;
+  const copy = policy ? DEPOSIT_POLICY_COPY[policy] : null;
+  const unstated = !copy;
+  const tone = unstated
+    ? { fg: isXdrive ? '#b45309' : '#fbbf24', bg: 'rgba(245,158,11,0.08)', bd: 'rgba(245,158,11,0.25)' }
+    : policy === 'non_refundable'
+      ? { fg: isXdrive ? '#b45309' : '#fbbf24', bg: 'rgba(245,158,11,0.08)', bd: 'rgba(245,158,11,0.25)' }
+      : { fg: isXdrive ? '#15803d' : '#4ade80', bg: 'rgba(34,197,94,0.07)', bd: 'rgba(34,197,94,0.22)' };
+
+  return (
+    <div style={{ background: tone.bg, border: `1px solid ${tone.bd}`, borderRadius: 10, padding: '11px 13px', marginBottom: 10 }}>
+      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: th.text }}>
+        RM {fmt(amount)} deposit to reserve
+      </p>
+      <p style={{ margin: '3px 0 0', fontSize: 11.5, color: tone.fg, lineHeight: 1.55 }}>
+        {copy || 'This dealer has not stated whether the deposit is refundable — ask, and get the answer in writing, before you pay.'}
+      </p>
+      {dealer?.deposit_terms && (
+        <p style={{ margin: '5px 0 0', fontSize: 11, color: th.textSec, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
+          {dealer.deposit_terms}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /* Seller rating, shown next to the name rather than three sections down the page
    — the buyer decides who they are dealing with at the price block, not after
    scrolling past Running Costs. Below the floor the count is shown WITHOUT an
@@ -2331,9 +2371,9 @@ export default function CarDetailPage() {
                 </button>
               )}
             </div>
-            {car.deposit_amount > 0 && (
-              <p style={{ fontSize:11, color: th.textSec, marginTop:8, textAlign:'center' }}>RM {fmt(car.deposit_amount)} deposit to reserve</p>
-            )}
+            <div style={{ marginTop:10 }}>
+              <DepositTerms amount={car.deposit_amount} dealer={dealer} th={th} isXdrive={isXdrive} />
+            </div>
             {/* Tertiary actions — quiet text links, not more buttons */}
             <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:18, marginTop:14, flexWrap:'wrap' }}>
               <button onClick={() => setCalcOpen(true)}
@@ -3770,9 +3810,7 @@ export default function CarDetailPage() {
             )}
             <div style={{ height: 1, background: 'linear-gradient(to right, rgba(220,38,38,0.35), transparent)', margin: '14px 0 16px' }} />
             <WarrantyBanner car={car} isXdrive={isXdrive} />
-            {car.deposit_amount > 0 && (
-              <p style={{ fontSize: 11, color: th.textMuted, marginBottom: 8, textAlign: 'center' }}>RM {fmt(car.deposit_amount)} deposit to reserve</p>
-            )}
+            <DepositTerms amount={car.deposit_amount} dealer={dealer} th={th} isXdrive={isXdrive} />
 
             {/* CTA BUTTONS */}
             {!isOwnListing && (
