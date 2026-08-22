@@ -144,6 +144,65 @@ below. Build (`npm run build`) and lint both clean after these changes.
   this file's salesman-identity path ever writes it — dead column read, not
   a live plaintext-IC leak. Worth a cleanup pass, not urgent.
 
+**Round 3 (same day): pipeline + booking port from Lite.** Owner: "premium
+hasn't been worked on for months so it's missing crucial features." Correct —
+the bookings tab could only flip a raw status string. Ported Lite's whole
+lifecycle while keeping Premium's own AI / broadcast / loans.
+
+- **PREM-12: booking lifecycle ported.** Added `scheduleAptReminder`,
+  `autoUpsertLeadFromAppt`, `buildConfirmBookingMsg`,
+  `openConfirmBookingModal`, `sendConfirmBooking`,
+  `moveConfirmBookingToPipeline`, `defaultBookingSlot`,
+  `confirmSellerBooking`, `autoCreateLeadFromEnq` + 13 pieces of state.
+  New UI: confirm-booking modal (editable WA message, or confirm-only),
+  booking detail sheet (reschedule to a real slot, Telegram reminder picker
+  with clear, cancel confirmation, showed-up/no-show on past bookings), and
+  a seller-initiated booking modal. Confirm now also creates/advances the
+  pipeline lead and arms the 1h reminder, so a confirmed booking can never
+  sit outside the pipeline.
+- **PREM-13: won flow ported.** `handleMarkWon` + `refreshCommissionData` +
+  a confirm modal, intercepted in `advanceLeadStage`. Premium previously let
+  a win happen behind the same 4.5s undo toast as any other stage change,
+  and never flipped the linked car in local state. The DB trigger
+  `auto_create_customer_on_won` was still doing the real fan-out (per the
+  "Won = sold" doctrine in CLAUDE.md), so this was a UI-truthfulness gap
+  rather than lost data — the salesman just never saw the sale register.
+
+**Bugs found during the port (all fixed):**
+- **PREM-B1 (HIGH): most bookings were invisible.** The appointments fetch
+  filtered `.eq("salesman_id", uid).eq("dealer_id", uid)`. Only 17 of 71 live
+  rows have `dealer_id = salesman_id`, so the rest silently never rendered.
+  RLS already scopes this table; Lite filters on `salesman_id` alone. Removed
+  the extra predicate.
+- **PREM-B2 (HIGH): a lead at `test_drive` could never be advanced.**
+  `advanceLeadStage` calls `setTestDriveConfirm({...}); return;` — but nothing
+  in Premium ever rendered that modal (state was declared at `:273`, set at
+  `:848`, referenced nowhere else). Every advance from that stage was a
+  no-op. Ported Lite's outcome sheet.
+- **PREM-B3 (MED): "Upcoming" was `!isToday`,** so past bookings were listed
+  as upcoming forever and pending requests sat between confirmed viewings.
+  Now split pending / today / confirmed-upcoming / past (collapsed).
+- **PREM-B4 (MED): the appointments select omitted `remind_at`,
+  `remind_sent` and `lead_id`,** so reminder state and lead linkage could not
+  be read — the same incomplete-select trap CLAUDE.md's overlay rule 4 warns
+  about. Widened to match Lite.
+- **PREM-B5 (MED): `lead_activities` inserts hardcoded `dealer_id: null`** in
+  three places (`updateLeadStage`, `logCall`, `handleLostReason`), detaching
+  every Premium activity row from its dealership scope.
+- **PREM-B6 (MED): converting an enquiry** inserted a raw unnormalized phone
+  (so the same buyer never matched on a later booking → duplicate leads),
+  hardcoded `dealer_id: null`, had no duplicate check, and never added the
+  lead to local state. Routed through `autoCreateLeadFromEnq`. `handleAddLead`
+  had the same raw-phone bug; also normalized.
+
+**Still not ported from Lite (deliberate, next session):** deal add-ons
+(`handleAttachAddon`/`handleRemoveAddon`), the batch-WhatsApp modal, the
+follow-up modal, `triggerGlow` row highlighting, and the share-win prompt.
+None of these block the pipeline working end to end; they are polish on top
+of it. Also still open: Premium has 10 nav tabs vs Lite's 8 — Bookings should
+fold into Enquiries as a sub-tab (Lite's `inboxSubTab` pattern) and Merge
+should move into Settings. Owner asked about compaction; not yet done.
+
 **Shipped:**
 - **PREM-1: the three "coming soon" kill switches removed.** Premium was
   fully built but invisible to real customers behind three separate flags:
