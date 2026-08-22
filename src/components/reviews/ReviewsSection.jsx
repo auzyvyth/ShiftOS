@@ -21,7 +21,7 @@ const Stars = ({ value, size = 14, color = '#f59e0b', emptyColor = 'rgba(148,163
   </span>
 );
 
-export default function ReviewsSection({ dealerId, listingId, sellerName = 'this seller', th, isXdrive }) {
+export default function ReviewsSection({ dealerId, listingId, sellerName = 'this seller', th, isXdrive, anchorId, onSummary }) {
   const [session, setSession] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loaded, setLoaded] = useState(false);
@@ -56,6 +56,12 @@ export default function ReviewsSection({ dealerId, listingId, sellerName = 'this
   const myReview = uid ? reviews.find(r => r.buyer_id === uid) : null;
   const count = reviews.length;
   const avg = count ? reviews.reduce((s, r) => s + r.rating, 0) / count : 0;
+
+  // Hand the tally up so the page can show it beside the seller's name, where the
+  // decision is actually made, without a second query for the same rows.
+  useEffect(() => {
+    if (loaded && onSummary) onSummary({ count, avg });
+  }, [loaded, count, avg, onSummary]);
 
   // Prefill the form when opening it (edit existing or start fresh)
   useEffect(() => {
@@ -107,7 +113,7 @@ export default function ReviewsSection({ dealerId, listingId, sellerName = 'this
   };
 
   return (
-    <div style={{ marginTop: 32, paddingTop: 28, borderTop: `1px solid ${th.border}` }}>
+    <div id={anchorId} style={{ marginTop: 32, paddingTop: 28, borderTop: `1px solid ${th.border}` }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 4, flexWrap: 'wrap' }}>
         <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: th.textMuted, fontWeight: 700, margin: 0 }}>Seller Reviews</p>
         {count > 0 && (

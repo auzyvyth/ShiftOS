@@ -325,6 +325,27 @@ function PuspakomDates({ b5, b7, color }) {
      trading is the dealer's own number; the verified line is XDrive's check.
    Rendered once and used at both breakpoints, deliberately: the two hardcoded
    copies of the sidebar are why the theme leaks in TRUST-8 exist. */
+/* Seller rating, shown next to the name rather than three sections down the page
+   — the buyer decides who they are dealing with at the price block, not after
+   scrolling past Running Costs. Below the floor the count is shown WITHOUT an
+   average: "5.0 from 1 review" is a single opinion formatted as a statistic. */
+function SellerRating({ summary, floor, anchorId, th }) {
+  if (!summary || summary.count === 0) return null;
+  const { count, avg } = summary;
+  const label = `${count} review${count === 1 ? '' : 's'}`;
+  return (
+    <a href={`#${anchorId}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 3, textDecoration: 'none' }}>
+      {count >= floor && (
+        <>
+          <Star size={11} fill="#f59e0b" style={{ color: '#f59e0b', flexShrink: 0 }} strokeWidth={2} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: th.text }}>{avg.toFixed(1)}</span>
+        </>
+      )}
+      <span style={{ fontSize: 11, color: th.textSec, borderBottom: `1px dotted ${th.textMuted}` }}>{label}</span>
+    </a>
+  );
+}
+
 // One predicate for "is there anything real to show about this dealer", shared by
 // the block below and the sidebar badge that links down to it — so the link can
 // never point at a section that decided not to render.
@@ -334,7 +355,7 @@ function hasDealerIdentity(dealer) {
     dealer.business_hours || dealer.phone || dealer.stat_years > 0);
 }
 
-function DealerIdentity({ dealer, dealerName, th, isXdrive }) {
+function DealerIdentity({ dealer, dealerName, th, isXdrive, anchorId }) {
   if (!hasDealerIdentity(dealer)) return null;
 
   const addressLine = [dealer.location, [dealer.postcode, dealer.city].filter(Boolean).join(' '), dealer.state]
@@ -378,7 +399,7 @@ function DealerIdentity({ dealer, dealerName, th, isXdrive }) {
   const accent = isXdrive ? '#2563eb' : '#60a5fa';
 
   return (
-    <div id="dealer-identity" style={{ marginTop: 40 }}>
+    <div id={anchorId} style={{ marginTop: 40 }}>
       <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.2em', color: th.textMuted, fontWeight: 700, marginBottom: 14 }}>
         About this dealer
       </p>
@@ -690,6 +711,12 @@ export default function CarDetailPage() {
 
   const { slug } = useParams();
   const navigate = useNavigate();
+  const [reviewSummary, setReviewSummary] = useState(null);
+  const handleReviewSummary = React.useCallback((next) => {
+    setReviewSummary((prev) =>
+      prev && prev.count === next.count && prev.avg === next.avg ? prev : next,
+    );
+  }, []);
 
   // Smart back: React Router stamps history.state.idx = 0 on a fresh landing
   // (shared link / new tab, no in-app history) and increments it as the user
@@ -1492,6 +1519,26 @@ export default function CarDetailPage() {
         ? `https://xdrive.my/s/${salesmanProfile.slug}`
         : null;
   const sellerPageLabel = salesmanProfile && !dealer ? "Visit Agent's Page" : "Visit Dealer's Page";
+  // The sidebar had two green buttons opening the SAME enquiry modal — a generic
+  // "WhatsApp" and a "Chat with <rep>" — differing only in which rep the resulting
+  // lead was attributed to. One button now does both jobs: it carries the rep's
+  // routing target and is named after them, so the buyer knows who answers.
+  // Review tally, lifted out of ReviewsSection so it can sit beside the seller's
+  // name. Below REVIEW_FLOOR the average is withheld: an average of one review is
+  // a single stranger's opinion wearing the clothes of a statistic.
+  const REVIEW_FLOOR = 3;
+  const repFirstName = (salesmanProfile?.full_name || '').trim().split(' ')[0] || null;
+  const repEnquiryTarget = (() => {
+    const digits = (salesmanProfile?.whatsapp_number || '').replace(/\D/g, '');
+    if (!digits) return null;
+    return {
+      phone: digits.startsWith('6') ? digits : '6' + digits,
+      slug: salesmanProfile.slug,
+      name: repFirstName || 'Agent',
+    };
+  })();
+  const enquiryClick = repEnquiryTarget ? () => handleWhatsApp(repEnquiryTarget) : handleWhatsApp;
+  const enquiryLabel = repFirstName ? `WhatsApp ${repFirstName}` : 'WhatsApp';
   const listedDays = daysAgo(car.created_at);
   // A booking is submittable only once a real slot is chosen and both consent
   // boxes are ticked — the commitment gate.
@@ -2273,9 +2320,9 @@ export default function CarDetailPage() {
             </button>
             )}
             <div style={{ display:'flex', gap:8 }}>
-              <button onClick={handleWhatsApp}
-                style={{ flex:1, background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.25)', color:'#4ade80', borderRadius:10, padding:'12px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif" }}>
-                WhatsApp
+              <button onClick={enquiryClick}
+                style={{ flex:1, background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.25)', color: accent('#4ade80', isXdrive), borderRadius:10, padding:'12px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif", minWidth:0 }}>
+                <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{enquiryLabel}</span>
               </button>
               {contactPhone && (
                 <button onClick={handleCall} disabled={callLoading} aria-busy={callLoading}
@@ -2316,12 +2363,13 @@ export default function CarDetailPage() {
                   }
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ fontSize:13, color: th.text, fontWeight:600, marginBottom:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{displayName}</p>
+                    <SellerRating summary={reviewSummary} floor={REVIEW_FLOOR} anchorId="reviews-m" th={th} />
                     <p style={{ fontSize:11, color: th.textSec }}>
                       {isAgent ? 'Independent Agent' : dealer ? (
                         /* The badge used to be a dead end — a shield with no referent.
                            When there are real details below it, it links to them. */
                         hasDealerIdentity(dealer) ? (
-                          <a href="#dealer-identity" style={{ display:'inline-flex', alignItems:'center', gap:4, color: 'inherit', textDecoration:'none', borderBottom:`1px dotted ${th.textMuted}` }}>
+                          <a href="#dealer-identity-m" style={{ display:'inline-flex', alignItems:'center', gap:4, color: 'inherit', textDecoration:'none', borderBottom:`1px dotted ${th.textMuted}` }}>
                             {dealer.is_verified && <ShieldCheck size={12} strokeWidth={2.5} style={{ color: isXdrive ? '#2563eb' : '#60a5fa' }} />}
                             {dealer.is_verified ? 'Verified Dealer' : 'Dealer'} · details
                           </a>
@@ -2716,10 +2764,10 @@ export default function CarDetailPage() {
           )}
 
           {/* About this dealer (mobile) */}
-          <DealerIdentity dealer={dealer} dealerName={dealerName} th={th} isXdrive={isXdrive} />
+          <DealerIdentity dealer={dealer} dealerName={dealerName} th={th} isXdrive={isXdrive} anchorId="dealer-identity-m" />
 
           {/* Reviews (mobile) */}
-          <ReviewsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} isXdrive={isXdrive} />
+          <ReviewsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} isXdrive={isXdrive} anchorId="reviews-m" onSummary={handleReviewSummary} />
 
           {/* Q&A (mobile) */}
           <CommentsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} />
@@ -2729,8 +2777,6 @@ export default function CarDetailPage() {
 
         {/* M7 — Salesman card */}
         {salesmanProfile && (() => {
-          const waPhone = (salesmanProfile.whatsapp_number || '').replace(/\D/g, '');
-          const waNumber = waPhone ? (waPhone.startsWith('6') ? waPhone : '6' + waPhone) : null;
           const firstName = (salesmanProfile.full_name || 'Agent').split(' ')[0];
           return (
             <div className="cdp-mobile-only" style={{ padding:'0 20px', marginBottom:32 }}>
@@ -2748,22 +2794,16 @@ export default function CarDetailPage() {
                     <p style={{ fontSize:11, color: th.textMuted, margin:'2px 0 0', letterSpacing:'0.05em' }}>Independent Agent · XDrive</p>
                   </div>
                 </div>
-                {waNumber && (
-                  <button
-                    onClick={() => handleWhatsApp({ phone: waNumber, slug: salesmanProfile.slug, name: firstName })}
-                    style={{ display:'block', width:'100%', background:'#22c55e', color:'white', border:'none', cursor:'pointer', borderRadius:9, padding:'12px 0', fontWeight:700, fontSize:13, fontFamily:"system-ui,sans-serif", textAlign:'center', boxSizing:'border-box', letterSpacing:'0.02em' }}>
-                    Chat with {firstName}
-                  </button>
-                )}
+                {/* The green "Chat with <rep>" button that used to sit here opened the
+                    same enquiry modal as the WhatsApp button in the CTA card above it.
+                    Its routing moved onto that button; a second saturated green CTA for
+                    one job is exactly what the anti-slop rule forbids. The dealer-page
+                    link that followed it pointed at the same URL as "Visit Dealer's
+                    Page" in the CTA card, so it went too. */}
                 {salesmanProfile.slug && (
-                  <Link to={`/s/${salesmanProfile.slug}`} style={{ display:'block', textAlign:'center', marginTop:10, fontSize:12, color: th.textSec, fontWeight:600, textDecoration:'none' }}>
-                    View all listings →
+                  <Link to={`/s/${salesmanProfile.slug}`} style={{ display:'block', textAlign:'center', fontSize:12, color: th.textSec, fontWeight:600, textDecoration:'none' }}>
+                    {firstName}&apos;s other listings &rarr;
                   </Link>
-                )}
-                {dealer?.subdomain && !isSubdomain() && (
-                  <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer" style={{ display:'block', textAlign:'center', marginTop:6, fontSize:12, color: th.textSec, textDecoration:'none' }}>
-                    Go to dealer's page →
-                  </a>
                 )}
               </div>
             </div>
@@ -3614,10 +3654,10 @@ export default function CarDetailPage() {
             )}
 
             {/* ── ABOUT THIS DEALER (desktop) ── */}
-            <DealerIdentity dealer={dealer} dealerName={dealerName} th={th} isXdrive={isXdrive} />
+            <DealerIdentity dealer={dealer} dealerName={dealerName} th={th} isXdrive={isXdrive} anchorId="dealer-identity-d" />
 
             {/* ── REVIEWS (desktop) ── */}
-            <ReviewsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} isXdrive={isXdrive} />
+            <ReviewsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} isXdrive={isXdrive} anchorId="reviews-d" onSummary={handleReviewSummary} />
 
             {/* ── Q&A (desktop) ── */}
             <CommentsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} />
@@ -3671,10 +3711,11 @@ export default function CarDetailPage() {
                   }
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 13, color: th.text, fontWeight: 600, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</p>
+                    <SellerRating summary={reviewSummary} floor={REVIEW_FLOOR} anchorId="reviews-d" th={th} />
                     <p style={{ fontSize: 11, color: th.textSec }}>
                       {isAgent ? 'Independent Agent' : dealer ? (
                         hasDealerIdentity(dealer) ? (
-                          <a href="#dealer-identity" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'inherit', textDecoration: 'none', borderBottom: `1px dotted ${th.textMuted}` }}>
+                          <a href="#dealer-identity-d" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'inherit', textDecoration: 'none', borderBottom: `1px dotted ${th.textMuted}` }}>
                             {dealer.is_verified && <ShieldCheck size={12} strokeWidth={2.5} style={{ color: isXdrive ? '#2563eb' : '#60a5fa' }} />}
                             {dealer.is_verified ? 'Verified Dealer' : 'Dealer'} · details
                           </a>
@@ -3743,9 +3784,9 @@ export default function CarDetailPage() {
             )}
 
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <button onClick={handleWhatsApp}
-                style={{ flex: 1, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', color: '#4ade80', borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', fontFamily: "system-ui,sans-serif", fontSize: 13, fontWeight: 600, transition: 'all .2s' }}>
-                WhatsApp
+              <button onClick={enquiryClick}
+                style={{ flex: 1, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', color: accent('#4ade80', isXdrive), borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', fontFamily: "system-ui,sans-serif", fontSize: 13, fontWeight: 600, transition: 'all .2s', minWidth: 0 }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{enquiryLabel}</span>
               </button>
               {contactPhone && (
                 <button onClick={handleCall} disabled={callLoading} aria-busy={callLoading}
@@ -3771,8 +3812,6 @@ export default function CarDetailPage() {
 
             {/* SALESMAN CARD */}
             {salesmanProfile && (() => {
-              const waPhone = (salesmanProfile.whatsapp_number || '').replace(/\D/g, '');
-              const waNumber = waPhone ? (waPhone.startsWith('6') ? waPhone : '6' + waPhone) : null;
               const firstName = (salesmanProfile.full_name || 'Agent').split(' ')[0];
               return (
                 <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
@@ -3789,22 +3828,10 @@ export default function CarDetailPage() {
                       <p style={{ fontSize: 11, color: th.textMuted, margin: '2px 0 0', letterSpacing: '0.05em' }}>Independent Agent · XDrive</p>
                     </div>
                   </div>
-                  {waNumber && (
-                    <button
-                      onClick={() => handleWhatsApp({ phone: waNumber, slug: salesmanProfile.slug, name: firstName })}
-                      style={{ display: 'block', width: '100%', background: '#22c55e', color: 'white', border: 'none', cursor: 'pointer', borderRadius: 9, padding: '12px 0', fontWeight: 700, fontSize: 13, fontFamily: "system-ui,sans-serif", textAlign: 'center', boxSizing: 'border-box', letterSpacing: '0.02em' }}>
-                      Chat with {firstName}
-                    </button>
-                  )}
                   {salesmanProfile.slug && (
-                    <Link to={`/s/${salesmanProfile.slug}`} style={{ display: 'block', textAlign: 'center', marginTop: 10, fontSize: 12, color: th.textSec, fontWeight: 600, textDecoration: 'none' }}>
-                      View all listings →
+                    <Link to={`/s/${salesmanProfile.slug}`} style={{ display: 'block', textAlign: 'center', fontSize: 12, color: th.textSec, fontWeight: 600, textDecoration: 'none' }}>
+                      {firstName}&apos;s other listings &rarr;
                     </Link>
-                  )}
-                  {dealer?.subdomain && !isSubdomain() && (
-                    <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer" style={{ display: 'block', textAlign: 'center', marginTop: 6, fontSize: 12, color: th.textSec, textDecoration: 'none' }}>
-                      Go to dealer's page →
-                    </a>
                   )}
                 </div>
               );
