@@ -39,6 +39,7 @@ import { lookupFullSpec } from "../utils/carSpecs";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { CAR_DATA } from "../data/carData";
 import { getListingGaps } from "../utils/listingCompleteness";
+import { TRUST_DOCS, TRUST_DOC_KEYS, GERAN_REASONS, getTrustTier } from "../utils/trustDocs";
 import { decodeVin, isLikelyVin } from "../utils/vinDecode";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -80,6 +81,9 @@ const initialListing = {
   localRegDate: "",
   chassisStatus: "",
   damageMap: [],
+  // Condition report — the declaration is what makes an empty map mean
+  // "no visible damage" instead of "never inspected".
+  conditionDeclared: false,
   // Services
   included_services: [],
   baseReconCost: 0, // recon_cost excluding services (computed at pre-fill)
@@ -87,6 +91,9 @@ const initialListing = {
   video_url: "",
   // Documents
   car_documents: [],
+  // Only set when there's no registration_card document — the declared reason
+  // the geran can't be supplied. Published to buyers, not a silent skip.
+  geranReason: "",
   // Extra fields
   previous_owners: "",
   road_tax_expiry: "",
@@ -271,6 +278,7 @@ function SortableSection({ id, section, complete, collapsed, onToggle, children 
 }
 
 const DOC_TYPES = [
+  { key: "registration_card", label: "Geran / Registration Card", color: "#0ea5e9" },
   { key: "puspakom", label: "Puspakom Inspection", color: "#22c55e" },
   { key: "service_history", label: "Service History", color: "#60a5fa" },
   { key: "insurance", label: "Insurance Certificate", color: "#a78bfa" },
@@ -280,6 +288,11 @@ const DOC_TYPES = [
   { key: "loan_clearance", label: "Loan Clearance Letter", color: "#94a3b8" },
   { key: "other", label: "Other Document", color: "#6b7280" },
 ];
+
+// The four named trust documents get their own upload slots, so the free-form
+// picker only offers what's left. Keeps one document per named slot and stops
+// a dealer filing the geran under "Other".
+const OTHER_DOC_TYPES = DOC_TYPES.filter((d) => !TRUST_DOC_KEYS.includes(d.key));
 
 // ─── Copy formatter (also exported for DashboardPage use) ────────────────────
 export function buildCopyText(l) {
@@ -880,13 +893,18 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   }, [profile?.id]);
 
   // ── Documents state ──────────────────────────────────────────────────────
-  const [docTypeInput, setDocTypeInput] = useState("puspakom");
+  const [docTypeInput, setDocTypeInput] = useState("insurance");
   const [docUploading, setDocUploading] = useState(false);
+  const [uploadingSlot, setUploadingSlot] = useState(null);
 
-  const handleDocumentFile = async (e) => {
+  // slotType — the upload came from one of the named trust-document slots, so
+  // the file REPLACES whatever sits in that slot rather than appending a second
+  // copy. Without it the file appends using the free-form type picker.
+  const handleDocumentFile = async (e, slotType) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setDocUploading(true);
+    if (slotType) setUploadingSlot(slotType);
+    else setDocUploading(true);
     try {
       const path = `docs/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
       const { error } = await supabase.storage
@@ -895,16 +913,25 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       if (error) throw error;
       const url = supabase.storage.from("car-images").getPublicUrl(path)
         .data.publicUrl;
-      setForm((f) => ({
-        ...f,
-        car_documents: [
-          ...(f.car_documents || []),
-          { type: docTypeInput, name: file.name, url },
-        ],
-      }));
+      const type = slotType || docTypeInput;
+      setForm((f) => {
+        const docs = [...(f.car_documents || [])];
+        const entry = { type, name: file.name, url };
+        const at = slotType ? docs.findIndex((d) => d.type === slotType) : -1;
+        if (at >= 0) docs[at] = entry;
+        else docs.push(entry);
+        // Attaching the geran clears any "can't provide it" reason — the
+        // document is the stronger answer and the two must never both be set.
+        return {
+          ...f,
+          car_documents: docs,
+          ...(type === "registration_card" ? { geranReason: "" } : null),
+        };
+      });
     } catch (err) {
-      alert("Upload failed: " + err.message);
+      toast.error("Upload failed: " + err.message);
     }
+    setUploadingSlot(null);
     setDocUploading(false);
     e.target.value = "";
   };
@@ -915,6 +942,26 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       car_documents: (f.car_documents || []).filter((_, j) => j !== i),
     }));
   };
+
+  // ── Trust documents ──────────────────────────────────────────────────────
+  const docInSlot = (key) =>
+    (form.car_documents || []).find((d) => d.type === key) || null;
+  const trustTier = getTrustTier(form.car_documents);
+
+  // Anything not occupying a named slot: the other document types, plus any
+  // SECOND copy of a named type (legacy listings can hold three service
+  // invoices — they stay visible here so they can still be viewed or removed).
+  const otherDocuments = (form.car_documents || [])
+    .map((doc, idx) => ({ doc, idx }))
+    .filter(({ doc, idx }) =>
+      !TRUST_DOC_KEYS.includes(doc.type) ||
+      (form.car_documents || []).findIndex((d) => d.type === doc.type) !== idx,
+    );
+
+  // The geran is the one document required to publish — either attached, or
+  // declared unavailable with a reason the buyer gets to see. Edit mode is
+  // exempt so quick fixes to pre-requirement listings aren't blocked.
+  const geranSatisfied = !!docInSlot("registration_card") || !!form.geranReason;
 
   // ── Included services state ──────────────────────────────────────────────
   const [servicesOpen, setServicesOpen] = useState(false);
@@ -1007,6 +1054,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         localRegDate: listing.local_reg_date || "",
         chassisStatus: listing.chassis_status || "",
         damageMap: listing.damage_map || [],
+        conditionDeclared: !!listing.condition_declared_at,
         included_services: listing.included_services || [],
         // base recon = total recon minus previously-stored services cost
         baseReconCost: Math.max(
@@ -1015,6 +1063,10 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         ),
         video_url: listing.video_url || "",
         car_documents: listing.car_documents || [],
+        geranReason:
+          listing.geran_status && listing.geran_status !== "held"
+            ? listing.geran_status
+            : "",
         previous_owners:
           listing.previous_owners != null
             ? String(listing.previous_owners)
@@ -1527,6 +1579,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     if (step === 5) return form.payment_type === "sambung_bayar"
       ? (Number(form.sambungMonthly) > 0 && Number(form.sambungDeposit) > 0)
       : (form.basePrice && form.sellingPrice);
+    if (step === 6) return listing ? true : geranSatisfied;
     return true;
   };
 
@@ -1549,6 +1602,10 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         return [[!(Number(form.sambungMonthly) > 0), "Monthly (ansuran)"], [!(Number(form.sambungDeposit) > 0), "Deposit / duit nampak"]].filter(([m]) => m).map(([, l]) => l);
       return [[!form.basePrice, "Base price"], [!form.sellingPrice, "Selling price"]].filter(([m]) => m).map(([, l]) => l);
     }
+    if (s === 6)
+      return listing || geranSatisfied
+        ? []
+        : ["Geran / registration card (or the reason it's unavailable)"];
     return [];
   };
   const missingFields = () => missingForStep(step);
@@ -1558,7 +1615,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   // so a half-filled row never reaches the DB (which would throw a cryptic
   // not-null error the user can't act on).
   const firstIncompleteStep = () => {
-    for (const s of [1, 2, 3, 4, 5]) {
+    for (const s of [1, 2, 3, 4, 5, 6]) {
       const fields = missingForStep(s);
       if (fields.length) return { step: s, fields };
     }
@@ -1715,12 +1772,22 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         local_reg_date: form.isRecon ? form.localRegDate || null : null,
         chassis_status: form.isRecon ? form.chassisStatus || null : null,
         damage_map: form.damageMap || [],
+        // Keep the original declaration timestamp on edit so re-saving a listing
+        // does not make an old walkaround look like it happened today.
+        condition_declared_at: form.conditionDeclared
+          ? listing?.condition_declared_at || new Date().toISOString()
+          : null,
         commission_amount: form.commissionAmount ? parseFloat(form.commissionAmount) : null,
         included_services: form.included_services || [],
         included_services_cost: servicesCost,
         recon_cost: (form.baseReconCost || 0) + servicesCost,
         video_url: form.video_url || null,
         car_documents: form.car_documents || [],
+        geran_status: (form.car_documents || []).some(
+          (d) => d.type === "registration_card",
+        )
+          ? "held"
+          : form.geranReason || null,
         previous_owners: form.previous_owners
           ? parseInt(form.previous_owners)
           : null,
@@ -1878,7 +1945,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       case 5: return intakeDone ? true : (form.payment_type === "sambung_bayar"
         ? (Number(form.sambungMonthly) > 0 && Number(form.sambungDeposit) > 0)
         : !!(form.basePrice && form.sellingPrice));
-      case 6: return true;
+      case 6: return listing ? true : geranSatisfied;
       case 7: return true;
       default: return false;
     }
@@ -2130,105 +2197,6 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
             />
             {form.video_url && <VideoPreview url={form.video_url} />}
           </div>
-
-          {/* Car Documents */}
-          <div className="rounded-2xl border border-gray-200 overflow-hidden">
-            <div className="flex items-center gap-2.5 px-4 py-3 bg-gray-50">
-              <BadgeCheck className="w-4 h-4 text-emerald-500" />
-              <span className="text-sm font-semibold text-gray-900">
-                Car Documents
-              </span>
-              {form.car_documents.length > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-semibold">
-                  {form.car_documents.length}
-                </span>
-              )}
-              <span className="ml-auto text-xs text-gray-600">
-                Puspakom, service history, insurance…
-              </span>
-            </div>
-            <div className="px-4 pb-4 pt-3 space-y-3 bg-white">
-              {form.car_documents.length > 0 && (
-                <div className="space-y-2">
-                  {form.car_documents.map((doc, i) => {
-                    const dt =
-                      DOC_TYPES.find((d) => d.key === doc.type) ||
-                      DOC_TYPES[DOC_TYPES.length - 1];
-                    return (
-                      <div
-                        key={i}
-                        className="flex items-center gap-3 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl"
-                      >
-                        <BadgeCheck
-                          className="w-4 h-4 flex-shrink-0"
-                          style={{ color: dt.color }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {doc.name}
-                          </p>
-                          <p className="text-xs" style={{ color: dt.color }}>
-                            {dt.label}
-                          </p>
-                        </div>
-                        <a
-                          href={doc.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-600 hover:text-blue-700 mr-1 flex-shrink-0"
-                        >
-                          View
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => removeDocument(i)}
-                          className="w-6 h-6 rounded-full flex items-center justify-center text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
-                        >
-                          <XIcon className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                <div className="flex-1">
-                  <PickerField
-                    label="Document Type"
-                    value={docTypeInput}
-                    onChange={(v) => setDocTypeInput(v)}
-                    options={DOC_TYPES.map((d) => ({ value: d.key, label: d.label, color: d.color }))}
-                    placeholder="Select type"
-                  />
-                </div>
-                <label
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-colors flex-shrink-0 ${docUploading ? "bg-gray-200 text-gray-400 cursor-wait" : "bg-emerald-600 hover:bg-emerald-500 text-white"}`}
-                >
-                  {docUploading ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />{" "}
-                      Uploading…
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-3.5 h-3.5" /> Upload
-                    </>
-                  )}
-                  <input
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png,.webp"
-                    onChange={handleDocumentFile}
-                    disabled={docUploading}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-              <p className="text-xs text-gray-500">
-                PDF, JPG or PNG — shown to buyers on the listing page and earns
-                a Verified badge on listing cards.
-              </p>
-            </div>
-          </div>
         </div>
       );
       case 2: return (
@@ -2414,6 +2382,48 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           </Field>
           )}
 
+          {/* Condition report — every car, not just recon. Buyers cannot tell a
+              clean car from a skipped walkaround unless the dealer says which it
+              is, so the map is paired with an explicit declaration. */}
+          <Field
+            label="Condition Report"
+            hint="Mark every dent, scratch, rust spot and replaced panel — buyers see this on the listing"
+          >
+            <div className="space-y-3">
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl">
+                <DamageMap
+                  value={form.damageMap}
+                  onChange={(v) => set("damageMap", v)}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  set("conditionDeclared", !form.conditionDeclared)
+                }
+                className={`w-full flex items-start gap-3 p-4 rounded-2xl border text-left transition-colors ${form.conditionDeclared ? "bg-emerald-50 border-emerald-300" : "bg-white border-gray-200 hover:border-gray-300"}`}
+              >
+                <span
+                  className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border ${form.conditionDeclared ? "bg-emerald-600 border-emerald-600" : "border-gray-300 bg-white"}`}
+                >
+                  {form.conditionDeclared && (
+                    <Check size={13} className="text-white" />
+                  )}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-gray-900">
+                    I walked around this car and marked every visible defect
+                  </span>
+                  <span className="block text-xs text-gray-500 mt-0.5">
+                    {form.damageMap.length > 0
+                      ? `${form.damageMap.length} area${form.damageMap.length > 1 ? "s" : ""} marked — the listing will show them.`
+                      : "Nothing marked — the listing will state you found no visible damage."}
+                  </span>
+                </span>
+              </button>
+            </div>
+          </Field>
+
           {/* Recon toggle — mode switch, stays visible */}
           <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-2xl">
             <div>
@@ -2512,14 +2522,6 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                   ]}
                   placeholder="Select"
                 />
-              </Field>
-              <Field label="Damage Map" hint="Click car to mark damage areas">
-                <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl">
-                  <DamageMap
-                    value={form.damageMap}
-                    onChange={(v) => set("damageMap", v)}
-                  />
-                </div>
               </Field>
             </div>
           )}
@@ -3112,6 +3114,243 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 rows={2}
               />
             </Field>
+
+            {/* ── Car Documents ─────────────────────────────────────────────
+                Named slots for the four documents a buyer can open and check
+                for themselves, plus a free-form list for everything else. The
+                geran is required to publish: attach it, or pick the reason you
+                can't — and that reason is shown to buyers on the listing. */}
+            <div className="rounded-2xl border border-gray-200 overflow-hidden">
+              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                <div className="flex items-center gap-2.5">
+                  <BadgeCheck className="w-4 h-4 text-gray-400" />
+                  <span className="text-sm font-semibold text-gray-900">Car Documents</span>
+                  <span
+                    className={`ml-auto px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                      trustTier.level === 3
+                        ? "bg-emerald-100 text-emerald-700"
+                        : trustTier.level === 0
+                          ? "bg-gray-200 text-gray-600"
+                          : "bg-blue-100 text-blue-700"
+                    }`}
+                  >
+                    {trustTier.label}
+                  </span>
+                </div>
+                <div className="mt-2.5 flex items-center gap-1.5" aria-hidden="true">
+                  {TRUST_DOCS.map((t) => (
+                    <div
+                      key={t.key}
+                      className={`h-1 flex-1 rounded-full ${docInSlot(t.key) ? "bg-emerald-500" : "bg-gray-200"}`}
+                    />
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  {trustTier.nextMissing
+                    ? `${trustTier.count} of ${trustTier.total} attached — add ${trustTier.nextMissing.short.toLowerCase()} next.`
+                    : "All four attached. Buyers can open every one of them on the listing."}
+                </p>
+              </div>
+
+              <div className="bg-white divide-y divide-gray-100">
+                {TRUST_DOCS.map((t) => {
+                  const idx = (form.car_documents || []).findIndex((d) => d.type === t.key);
+                  const doc = idx >= 0 ? form.car_documents[idx] : null;
+                  const isGeran = t.key === "registration_card";
+                  const declared = isGeran && !doc && !!form.geranReason;
+                  return (
+                    <div key={t.key} className="px-4 py-3">
+                      <div className="flex items-start gap-3">
+                        <span
+                          className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            doc
+                              ? "bg-emerald-100 text-emerald-600"
+                              : declared
+                                ? "bg-amber-100 text-amber-600"
+                                : "bg-gray-100 text-gray-400"
+                          }`}
+                        >
+                          {doc ? (
+                            <Check className="w-3 h-3" strokeWidth={3} />
+                          ) : declared ? (
+                            <AlertTriangle className="w-3 h-3" />
+                          ) : (
+                            <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                          )}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900">
+                            {t.label}
+                            {t.required && <span className="text-red-500 ml-1">*</span>}
+                          </p>
+                          {doc ? (
+                            <div className="flex items-center gap-3 mt-1 min-w-0">
+                              <span className="text-xs text-gray-600 truncate min-w-0">{doc.name}</span>
+                              <a
+                                href={doc.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-600 hover:text-blue-700 flex-shrink-0"
+                              >
+                                View
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => removeDocument(idx)}
+                                className="text-xs text-gray-400 hover:text-red-500 flex-shrink-0"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-gray-500 mt-0.5">{t.hint}</p>
+                          )}
+                        </div>
+                        <label
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors flex-shrink-0 ${
+                            uploadingSlot === t.key
+                              ? "bg-gray-200 text-gray-400 cursor-wait"
+                              : doc
+                                ? "border border-gray-200 text-gray-700 hover:border-gray-300 cursor-pointer"
+                                : "bg-gray-900 hover:bg-gray-800 text-white cursor-pointer"
+                          }`}
+                        >
+                          {uploadingSlot === t.key ? (
+                            <>
+                              <div className="w-3 h-3 border-2 border-gray-400/40 border-t-gray-500 rounded-full animate-spin" />
+                              Uploading
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-3 h-3" /> {doc ? "Replace" : "Upload"}
+                            </>
+                          )}
+                          <input
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png,.webp"
+                            onChange={(e) => handleDocumentFile(e, t.key)}
+                            disabled={!!uploadingSlot}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+
+                      {isGeran && !doc && (
+                        <div className="mt-3 sm:ml-8 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5">
+                          <p className="text-xs font-medium text-gray-700">
+                            Can&apos;t attach it? Pick the reason — buyers see this on the listing.
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {GERAN_REASONS.map((r) => (
+                              <button
+                                key={r.value}
+                                type="button"
+                                onClick={() =>
+                                  set("geranReason", form.geranReason === r.value ? "" : r.value)
+                                }
+                                className={`px-3 py-1.5 rounded-lg border text-xs font-medium text-left transition-colors ${
+                                  form.geranReason === r.value
+                                    ? "border-amber-400 bg-amber-50 text-amber-800"
+                                    : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                                }`}
+                              >
+                                {r.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Everything else — insurance, warranty, AP permits, plus any
+                  extra copies of the four named documents above. */}
+              <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 space-y-3">
+                <p className="text-xs font-semibold text-gray-700">Other documents</p>
+                {otherDocuments.length > 0 && (
+                  <div className="space-y-2">
+                    {otherDocuments.map(({ doc, idx }) => {
+                      const dt =
+                        DOC_TYPES.find((d) => d.key === doc.type) ||
+                        DOC_TYPES[DOC_TYPES.length - 1];
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-3 px-3 py-2 bg-white border border-gray-200 rounded-xl"
+                        >
+                          <FileText className="w-3.5 h-3.5 flex-shrink-0 text-gray-400" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
+                            <p className="text-xs text-gray-500">{dt.label}</p>
+                          </div>
+                          <a
+                            href={doc.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:text-blue-700 flex-shrink-0"
+                          >
+                            View
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => removeDocument(idx)}
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+                          >
+                            <XIcon className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <PickerField
+                      label="Document Type"
+                      value={docTypeInput}
+                      onChange={(v) => setDocTypeInput(v)}
+                      options={OTHER_DOC_TYPES.map((d) => ({
+                        value: d.key,
+                        label: d.label,
+                        color: d.color,
+                      }))}
+                      placeholder="Select type"
+                    />
+                  </div>
+                  <label
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors flex-shrink-0 ${
+                      docUploading
+                        ? "bg-gray-200 text-gray-400 cursor-wait"
+                        : "border border-gray-300 bg-white text-gray-800 hover:border-gray-400 cursor-pointer"
+                    }`}
+                  >
+                    {docUploading ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-gray-400/40 border-t-gray-500 rounded-full animate-spin" />
+                        Uploading…
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-3.5 h-3.5" /> Upload
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.webp"
+                      onChange={handleDocumentFile}
+                      disabled={docUploading}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                <p className="text-xs text-gray-500">
+                  PDF, JPG or PNG. Buyers can open every document you attach. Our team
+                  reviews them before the Verified badge appears on the listing.
+                </p>
+              </div>
+            </div>
           </div>
         );
       }

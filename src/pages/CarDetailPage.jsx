@@ -14,6 +14,7 @@ import {
   ArrowLeftRight,
   ZoomIn,
   ZoomOut,
+  CreditCard,
   X,
   Check,
   Calculator,
@@ -36,6 +37,9 @@ import {
   
   TrendingUp,
   Minus,
+  MapPin,
+  Clock,
+  Building2,
 } from "lucide-react";
 import HeartButton from "../components/HeartButton";
 import { useCompare } from "../hooks/useCompare";
@@ -53,6 +57,7 @@ import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 import { captureRef, getRef } from "../utils/refTracking";
 import { loadBuyerDetails, saveBuyerDetails } from "../utils/consent";
 import { isSubdomain } from "../hooks/useTenant";
+import { geranStatusLabel } from "../utils/trustDocs";
 import { trackEvent, getSlugFromURL } from "../utils/analytics";
 import { useMarketplaceTracking } from "../hooks/useMarketplaceTracking";
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
@@ -89,39 +94,78 @@ const estimateFuelCost = (cc, dealerConsumption, distanceKm) => {
 /* Market-price position indicator — a meter (not a pill): the marker dot
    encodes where this car's asking price sits on the cheap→expensive spectrum
    relative to the market average for similar cars. */
+/* A confident "Below market" printed off three comparables is a guess wearing a
+   badge, so under MARKET_SAMPLE_FLOOR the verdict and the slider are withheld and
+   only the raw average is shown, labelled as thin.
+
+   The wording changed too. compute_market_avg averages OTHER XDRIVE LISTINGS —
+   asking prices, not sale prices, from a catalogue of 69 cars — so "market
+   average" claimed knowledge of the Malaysian market that the query does not
+   have. It now says what it actually compares against, and the method note
+   spells out the rest. */
+const MARKET_SAMPLE_FLOOR = 5;
+
 const MarketPriceTag = ({ car, isXdrive, th }) => {
   if (!car?.market_avg_price || !(car.selling_price > 0)) return null;
   const avg = Number(car.market_avg_price);
   const price = Number(car.selling_price);
+  const n = Number(car.market_sample_count) || 0;
+  const thin = n < MARKET_SAMPLE_FLOOR;
   const ratio = price / avg;
   const band = ratio <= 0.93 ? "below" : ratio >= 1.07 ? "above" : "fair";
   const cfg = {
-    below: { color: isXdrive ? "#15803d" : "#4ade80", Icon: TrendingDown, label: "Below market" },
-    fair:  { color: isXdrive ? "#1d4ed8" : "#93c5fd", Icon: Minus,        label: "Fair price"   },
-    above: { color: isXdrive ? "#b45309" : "#fbbf24", Icon: TrendingUp,   label: "Above market" },
+    below: { color: isXdrive ? "#15803d" : "#4ade80", Icon: TrendingDown, label: "Priced below similar XDrive listings" },
+    fair:  { color: isXdrive ? "#1d4ed8" : "#93c5fd", Icon: Minus,        label: "In line with similar XDrive listings" },
+    above: { color: isXdrive ? "#b45309" : "#fbbf24", Icon: TrendingUp,   label: "Priced above similar XDrive listings" },
   }[band];
   const diff = Math.round(Math.abs(price - avg));
   // map ratio across a 0.85–1.15 window onto the track
   const pos = Math.max(4, Math.min(96, ((ratio - 0.85) / 0.3) * 100));
   const ringBg = isXdrive ? "#ffffff" : "#0d1117";
+
+  const method = car.market_precise
+    ? [
+        `Average asking price of ${n} other listing${n === 1 ? '' : 's'} on XDrive for the same model,`,
+        car.market_mileage_match === false
+          ? 'within two years of this one, any mileage.'
+          : 'within a year of this one and within 35,000 km.',
+        'Asking prices, not sale prices, and only cars listed on XDrive — not the whole Malaysian market.',
+      ].join(' ')
+    : 'Average asking price of similar XDrive listings — asking prices, not sale prices, and only cars listed on XDrive, not the whole Malaysian market.';
+
+  if (thin) {
+    return (
+      <div style={{ marginBottom: 16 }}>
+        <p style={{ fontSize: 12, color: th.textSec, margin: 0, lineHeight: 1.6 }}>
+          Similar XDrive listings average <strong style={{ color: th.text }}>RM {avg.toLocaleString("en-MY")}</strong>
+          {` — but only ${n} comparable ${n === 1 ? 'car was' : 'cars were'} found, too few to call this price high or low.`}
+        </p>
+        <p style={{ fontSize: 11, color: th.textMuted, margin: '6px 0 0', lineHeight: 1.6 }}>{method}</p>
+      </div>
+    );
+  }
+
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: cfg.color, letterSpacing: "0.01em" }}>
-          <cfg.Icon size={15} strokeWidth={2.5} />
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: cfg.color, letterSpacing: "0.01em", minWidth: 0, lineHeight: 1.35 }}>
+          <cfg.Icon size={15} strokeWidth={2.5} style={{ flexShrink: 0 }} />
           {cfg.label}
         </span>
-        <span style={{ fontSize: 12, color: th.textMuted }}>
-          {band === "fair" ? "At market avg" : `RM ${diff.toLocaleString("en-MY")} ${band === "below" ? "under" : "over"} avg`}
+        <span style={{ fontSize: 12, color: th.textMuted, flexShrink: 0, whiteSpace: "nowrap" }}>
+          {band === "fair" ? "About the same" : `RM ${diff.toLocaleString("en-MY")} ${band === "below" ? "under" : "over"}`}
         </span>
       </div>
       <div style={{ position: "relative", height: 4, borderRadius: 4, background: "linear-gradient(to right, rgba(34,197,94,0.55) 0%, rgba(59,130,246,0.55) 50%, rgba(245,158,11,0.55) 100%)" }}>
         <div style={{ position: "absolute", top: "50%", left: `${pos}%`, transform: "translate(-50%,-50%)", width: 13, height: 13, borderRadius: "50%", background: cfg.color, border: `2px solid ${ringBg}`, boxShadow: "0 1px 3px rgba(0,0,0,0.25)" }} />
       </div>
-      <p style={{ fontSize: 11, color: th.textMuted, marginTop: 8, margin: "8px 0 0" }}>
-        Market avg <strong style={{ color: th.textMuted }}>RM {avg.toLocaleString("en-MY")}</strong>
-        {car.market_sample_count > 0 ? ` · based on ${car.market_sample_count} similar listings` : ""}
-      </p>
+      <details style={{ marginTop: 8 }}>
+        <summary style={{ fontSize: 11, color: th.textMuted, cursor: "pointer", listStyle: "none" }}>
+          Average <strong style={{ color: th.textMuted }}>RM {avg.toLocaleString("en-MY")}</strong>
+          {` across ${n} similar XDrive listings · how is this worked out?`}
+        </summary>
+        <p style={{ fontSize: 11, color: th.textMuted, margin: "6px 0 0", lineHeight: 1.6 }}>{method}</p>
+      </details>
     </div>
   );
 };
@@ -186,12 +230,20 @@ const WarrantyBanner = ({ car, isXdrive }) => {
   if (!(car.warranty_months > 0)) return null;
   const head = isXdrive ? '#16a34a' : '#4ade80';
   const sub = isXdrive ? '#15803d' : 'rgba(74,222,128,0.75)';
+  // "Drive with peace of mind" told the buyer nothing. The only warranty facts on
+  // record are the month count and whether a certificate was uploaded, so say that
+  // and point at the question worth asking instead of inventing reassurance.
+  const hasCert = (car.car_documents || []).some((d) => d.type === 'warranty');
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '11px 14px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.28)', borderRadius: 10 }}>
       <ShieldCheck size={18} style={{ color: head, flexShrink: 0 }} />
       <div style={{ minWidth: 0 }}>
         <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: head }}>{car.warranty_months}-month warranty included</p>
-        <p style={{ margin: '1px 0 0', fontSize: 11, color: sub }}>Covered by the dealer · drive with peace of mind</p>
+        <p style={{ margin: '1px 0 0', fontSize: 11, color: sub }}>
+          {hasCert
+            ? 'Covered by the dealer · certificate attached under Documents'
+            : 'Covered by the dealer · ask which parts and labour are included before paying a deposit'}
+        </p>
       </div>
     </div>
   );
@@ -240,7 +292,26 @@ function parseTags(raw) {
     .filter(Boolean);
 }
 
+/* Every accent on this page was picked against the dark subdomain theme. On the
+   white XDrive card the same values collapse — #4ade80 on white is 1.7:1, #f87171
+   is 2.9:1 — which is why the "theme leak" bugs keep reappearing one hardcode at a
+   time. Same hue, darker on light, resolved at the point of use. */
+const LIGHT_ACCENT = {
+  '#38bdf8': '#0369a1',
+  '#60a5fa': '#1d4ed8',
+  '#4ade80': '#15803d',
+  '#34d399': '#047857',
+  '#f87171': '#dc2626',
+  '#fbbf24': '#b45309',
+  '#a78bfa': '#6d28d9',
+  '#fb923c': '#c2410c',
+  '#f59e0b': '#b45309',
+  '#94a3b8': '#475569',
+};
+const accent = (c, isXdrive) => (isXdrive && LIGHT_ACCENT[c]) || c;
+
 const CDP_DOC_TYPES = {
+  registration_card: { label: "Geran / Registration Card", color: "#0ea5e9" },
   puspakom: { label: "Puspakom Inspection", color: "#22c55e" },
   service_history: { label: "Service History", color: "#60a5fa" },
   insurance: { label: "Insurance Certificate", color: "#a78bfa" },
@@ -270,7 +341,255 @@ function PuspakomDates({ b5, b7, color }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {b5 && <div style={{ fontSize: 12, color }}>PUSPAKOM B5 (chassis &amp; body) inspected {fmtCdpDate(b5)}</div>}
       {b7 && <div style={{ fontSize: 12, color }}>PUSPAKOM B7 (roadworthiness) certified {fmtCdpDate(b7)}</div>}
-      <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>Inspection verified by the dealer.</p>
+      {/* "Inspection verified by the dealer" was circular — the dealer verifying
+          their own car is not verification. This branch only renders when NO
+          certificate was uploaded, so the dates are a dealer's word, not a document. */}
+      <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>
+        Dates entered by the dealer — no PUSPAKOM certificate uploaded. Ask to see it.
+      </p>
+    </div>
+  );
+}
+
+/* Dealer identity (TRUST-2/3) — the business facts a buyer can check for
+   themselves: who they are legally, where they trade from, when they are open.
+   Stanford's web-credibility work puts "show the real organisation behind the
+   site" first, and the page had none of it — just a name and a shield.
+
+   Two rules here:
+   - Only render what the dealer actually filled in. A row of "—" placeholders
+     is worse than no block, and inventing a "trading since" would be a claim,
+     not a fact.
+   - Self-reported and platform-checked facts are labelled differently. Years
+     trading is the dealer's own number; the verified line is XDrive's check.
+   Rendered once and used at both breakpoints, deliberately: the two hardcoded
+   copies of the sidebar are why the theme leaks in TRUST-8 exist. */
+/* TRUST-10 — the asking price is not the amount a buyer parts with, and the page
+   never said so. These are the official Malaysian transfer fees, taken from the
+   same schedule the handover checklist runs on (src/utils/postSaleSteps.js), not
+   estimates: JPJ pindah milik RM100, Puspakom B5 RM30, B7 RM60 when financed.
+   Whether road tax and insurance land on the buyer depends on the dealer
+   (profiles.handles_roadtax_insurance). A dealer may add a handling fee on top,
+   which is why the total is framed as a floor, not a quote. */
+const TRANSFER_FEES = [
+  { label: 'JPJ ownership transfer (pindah milik)', amount: 100, always: true },
+  { label: 'Puspakom B5 inspection', amount: 30, always: true },
+  { label: 'Puspakom B7 inspection', amount: 60, always: false, note: 'only if you finance' },
+];
+
+function PriceIncludes({ car, seller, th }) {
+  if (!(car.selling_price > 0) || isSambungCar(car)) return null;
+  const fixed = TRANSFER_FEES.filter((f) => f.always).reduce((t, f) => t + f.amount, 0);
+  const includedCount = Array.isArray(car.included_services) ? car.included_services.length : 0;
+  // profiles.handles_roadtax_insurance is NOT NULL DEFAULT true and every row in
+  // the database still carries that untouched default, so `true` cannot be told
+  // apart from "never answered". Only `false` can be a deliberate choice (the
+  // default is true, so someone had to flip it). Printing "Handled by the dealer"
+  // off the default would have been the page inventing a promise for the seller.
+  const rtiStated = seller?.handles_roadtax_insurance === false;
+  // The one genuinely variable charge: it differs by seller and by location, and
+  // it is the seller's own money, not a government rate.
+  const fee = seller?.processing_fee;
+  const feeStated = fee !== null && fee !== undefined && fee !== '';
+
+  return (
+    <details style={{ marginBottom: 10 }}>
+      <summary style={{ fontSize: 11.5, color: th.textSec, cursor: 'pointer', listStyle: 'none', borderBottom: `1px dotted ${th.textMuted}`, display: 'inline-block', paddingBottom: 2 }}>
+        {`At least RM ${fmt(fixed)} more in official fees · what the price covers`}
+      </summary>
+      <div style={{ marginTop: 10, background: th.card2, border: `1px solid ${th.border}`, borderRadius: 10, padding: '12px 13px' }}>
+        <p style={{ margin: 0, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.14em', color: th.textMuted, fontWeight: 700 }}>
+          On top of the asking price
+        </p>
+        {TRANSFER_FEES.map((f) => (
+          <div key={f.label} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginTop: 7, fontSize: 12, color: th.textSec }}>
+            <span style={{ minWidth: 0 }}>
+              {f.label}
+              {f.note && <span style={{ color: th.textMuted }}> · {f.note}</span>}
+            </span>
+            <span style={{ flexShrink: 0, color: th.text }}>RM {fmt(f.amount)}</span>
+          </div>
+        ))}
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginTop: 7, fontSize: 12, color: th.textSec }}>
+          <span>Seller handling / runner fee</span>
+          <span style={{ flexShrink: 0, color: feeStated ? th.text : th.textMuted }}>
+            {feeStated ? (Number(fee) > 0 ? `RM ${fmt(fee)}` : 'None charged') : 'Not stated'}
+          </span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginTop: 7, fontSize: 12, color: th.textSec }}>
+          <span>Road tax and insurance</span>
+          <span style={{ flexShrink: 0, color: th.textMuted }}>
+            {rtiStated ? 'Buyer arranges' : 'Confirm with the seller'}
+          </span>
+        </div>
+        <p style={{ margin: '10px 0 0', fontSize: 11, color: th.textMuted, lineHeight: 1.6 }}>
+          The three fees above are official government rates and are the same everywhere.
+          Handling fees, road tax and insurance vary by seller and by state — ask for the
+          out-the-door figure in writing before you pay a deposit.
+        </p>
+        {includedCount > 0 && (
+          <p style={{ margin: '7px 0 0', fontSize: 11, color: th.textSec, lineHeight: 1.6 }}>
+            {`Already included in the asking price: ${includedCount} service${includedCount === 1 ? '' : 's'} listed under What’s Included.`}
+          </p>
+        )}
+      </div>
+    </details>
+  );
+}
+
+/* The deposit ask was an 11px muted caption — the highest-anxiety moment on the
+   page rendered at its lowest emphasis, with no answer to the only question that
+   matters: do I get this back? Policy is per-dealer (profiles.deposit_policy).
+   When the dealer has not set one we say exactly that instead of guessing a
+   policy on their behalf. */
+const DEPOSIT_POLICY_COPY = {
+  refundable: 'Refundable if you decide not to go ahead.',
+  refundable_on_loan_rejection:
+    'Refunded in full if your loan is rejected. Otherwise it is held against the purchase price.',
+  non_refundable: 'Non-refundable once paid.',
+};
+
+function DepositTerms({ amount, seller, th, isXdrive }) {
+  if (!(amount > 0)) return null;
+  const policy = seller?.deposit_policy || null;
+  const copy = policy ? DEPOSIT_POLICY_COPY[policy] : null;
+  const unstated = !copy;
+  const tone = unstated
+    ? { fg: isXdrive ? '#b45309' : '#fbbf24', bg: 'rgba(245,158,11,0.08)', bd: 'rgba(245,158,11,0.25)' }
+    : policy === 'non_refundable'
+      ? { fg: isXdrive ? '#b45309' : '#fbbf24', bg: 'rgba(245,158,11,0.08)', bd: 'rgba(245,158,11,0.25)' }
+      : { fg: isXdrive ? '#15803d' : '#4ade80', bg: 'rgba(34,197,94,0.07)', bd: 'rgba(34,197,94,0.22)' };
+
+  return (
+    <div style={{ background: tone.bg, border: `1px solid ${tone.bd}`, borderRadius: 10, padding: '11px 13px', marginBottom: 10 }}>
+      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: th.text }}>
+        RM {fmt(amount)} deposit to reserve
+      </p>
+      <p style={{ margin: '3px 0 0', fontSize: 11.5, color: tone.fg, lineHeight: 1.55 }}>
+        {copy || 'This seller has not stated whether the deposit is refundable — ask, and get the answer in writing, before you pay.'}
+      </p>
+      {seller?.deposit_terms && (
+        <p style={{ margin: '5px 0 0', fontSize: 11, color: th.textSec, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
+          {seller.deposit_terms}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* Seller rating, shown next to the name rather than three sections down the page
+   — the buyer decides who they are dealing with at the price block, not after
+   scrolling past Running Costs. Below the floor the count is shown WITHOUT an
+   average: "5.0 from 1 review" is a single opinion formatted as a statistic. */
+function SellerRating({ summary, floor, anchorId, th }) {
+  if (!summary || summary.count === 0) return null;
+  const { count, avg } = summary;
+  const label = `${count} review${count === 1 ? '' : 's'}`;
+  return (
+    <a href={`#${anchorId}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 3, textDecoration: 'none' }}>
+      {count >= floor && (
+        <>
+          <Star size={11} fill="#f59e0b" style={{ color: '#f59e0b', flexShrink: 0 }} strokeWidth={2} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: th.text }}>{avg.toFixed(1)}</span>
+        </>
+      )}
+      <span style={{ fontSize: 11, color: th.textSec, borderBottom: `1px dotted ${th.textMuted}` }}>{label}</span>
+    </a>
+  );
+}
+
+// One predicate for "is there anything real to show about this dealer", shared by
+// the block below and the sidebar badge that links down to it — so the link can
+// never point at a section that decided not to render.
+function hasDealerIdentity(dealer) {
+  if (!dealer) return false;
+  return !!(dealer.is_verified || dealer.ssm_number || dealer.location || dealer.city ||
+    dealer.business_hours || dealer.phone || dealer.stat_years > 0);
+}
+
+function DealerIdentity({ dealer, dealerName, th, isXdrive, anchorId }) {
+  if (!hasDealerIdentity(dealer)) return null;
+
+  const addressLine = [dealer.location, [dealer.postcode, dealer.city].filter(Boolean).join(' '), dealer.state]
+    .map((part) => (part || '').trim())
+    .filter(Boolean)
+    .join(', ');
+
+  const rows = [
+    dealer.ssm_number && {
+      icon: Building2,
+      label: 'Company registration (SSM)',
+      value: dealer.ssm_number,
+    },
+    addressLine && {
+      icon: MapPin,
+      label: 'Trading address',
+      value: addressLine,
+      href: `https://www.google.com/maps/search/${encodeURIComponent(addressLine + ', Malaysia')}`,
+      hrefLabel: 'Directions',
+    },
+    dealer.business_hours && {
+      icon: Clock,
+      label: 'Business hours',
+      value: dealer.business_hours,
+    },
+    dealer.phone && {
+      icon: Phone,
+      label: 'Landline',
+      value: dealer.phone,
+      href: `tel:${dealer.phone}`,
+      hrefLabel: 'Call',
+    },
+    dealer.stat_years > 0 && {
+      icon: Star,
+      label: 'Years trading',
+      value: `${dealer.stat_years} years`,
+      note: 'self-reported',
+    },
+  ].filter(Boolean);
+
+  const accent = isXdrive ? '#2563eb' : '#60a5fa';
+
+  return (
+    <div id={anchorId} style={{ marginTop: 40 }}>
+      <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.2em', color: th.textMuted, fontWeight: 700, marginBottom: 14 }}>
+        About this dealer
+      </p>
+      <div style={{ background: th.card, border: `1px solid ${th.border}`, borderRadius: 14, padding: '20px 22px' }}>
+        <p style={{ fontSize: 15, color: th.text, fontWeight: 600, margin: 0 }}>{dealerName}</p>
+
+        {dealer.is_verified && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginTop: 10 }}>
+            <ShieldCheck size={14} strokeWidth={2.5} style={{ color: accent, flexShrink: 0, marginTop: 1 }} />
+            <p style={{ fontSize: 12, color: th.textSec, margin: 0, lineHeight: 1.6 }}>
+              Verified by XDrive — SSM certificate and the owner&apos;s IC were checked
+              {dealer.verified_at ? ` on ${fmtCdpDate(dealer.verified_at)}` : ''}.
+            </p>
+          </div>
+        )}
+
+        {rows.length > 0 && (
+          <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {rows.map(({ icon: Icon, label, value, note, href, hrefLabel }) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <Icon size={14} style={{ color: th.textMuted, flexShrink: 0, marginTop: 2 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.12em', color: th.textMuted, fontWeight: 700, margin: '0 0 3px' }}>
+                    {label}{note ? <span style={{ fontWeight: 400, letterSpacing: '0.04em', textTransform: 'none' }}> · {note}</span> : null}
+                  </p>
+                  <p style={{ fontSize: 13, color: th.text, margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{value}</p>
+                </div>
+                {href && (
+                  <a href={href} target={href.startsWith('tel:') ? undefined : '_blank'} rel="noopener noreferrer"
+                    style={{ flexShrink: 0, fontSize: 11, color: accent, textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    {hrefLabel}
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -544,6 +863,12 @@ export default function CarDetailPage() {
 
   const { slug } = useParams();
   const navigate = useNavigate();
+  const [reviewSummary, setReviewSummary] = useState(null);
+  const handleReviewSummary = React.useCallback((next) => {
+    setReviewSummary((prev) =>
+      prev && prev.count === next.count && prev.avg === next.avg ? prev : next,
+    );
+  }, []);
 
   // Smart back: React Router stamps history.state.idx = 0 on a fresh landing
   // (shared link / new tab, no in-app history) and increments it as the user
@@ -795,7 +1120,7 @@ export default function CarDetailPage() {
       // for agent-vs-dealer below — without it in the select, carData.seller_role is
       // always undefined and the get_salesman_by_id lookup never fires, so a Salesman
       // Lite listing silently falls through to a nameless "Seller" with no mini-page link.
-      const PUBLIC_FIELDS = "id,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,plate_number,video_url,salesman_slug,car_documents,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,included_services_cost,vin,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating,cylinders,market_avg_price,market_sample_count,puspakom_b5_date,puspakom_b7_date,seller_role,payment_type,sambung_monthly,sambung_months_left,sambung_balance,sambung_deposit,sambung_bank,docs_verified";
+      const PUBLIC_FIELDS = "id,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,plate_number,video_url,salesman_slug,car_documents,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,included_services_cost,vin,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating,cylinders,market_avg_price,market_sample_count,puspakom_b5_date,puspakom_b7_date,seller_role,payment_type,sambung_monthly,sambung_months_left,sambung_balance,sambung_deposit,sambung_bank,docs_verified,geran_status,condition_declared_at";
       let { data: carData, error } = await supabase
         .from("public_car_listings")
         .select(PUBLIC_FIELDS)
@@ -947,6 +1272,14 @@ export default function CarDetailPage() {
                 ...prev,
                 market_avg_price: r.avg_price,
                 market_sample_count: r.sample_count,
+                // Whether the comparison set was mileage-matched, or had to fall
+                // back to year +-2 with no mileage filter. The verdict looked
+                // identical either way until now.
+                market_mileage_match: r.mileage_match,
+                // The page loads with a rough year-bucket average from the view and
+                // only then overwrites it with the precise comparison. The method
+                // note describes the precise one, so it must not appear until it lands.
+                market_precise: true,
               } : prev);
             }
           });
@@ -1289,6 +1622,19 @@ export default function CarDetailPage() {
     currentUserId === car.dealer_id || currentUserId === car.assigned_to
   );
   const isRecon = car.is_recon;
+  // Condition report. An empty damage map on its own means nothing — it is only
+  // "no visible damage" once the dealer has declared the walkaround
+  // (car_listings.condition_declared_at), otherwise it is "never inspected" and
+  // we show nothing rather than imply a clean car.
+  const damageMarks = Array.isArray(car.damage_map) ? car.damage_map : [];
+  const conditionDeclaredAt = car.condition_declared_at || null;
+  const showConditionMap = damageMarks.length > 0 || !!conditionDeclaredAt;
+  const conditionSummary = damageMarks.length > 0
+    ? `Dealer marked ${damageMarks.length} area${damageMarks.length > 1 ? 's' : ''} of damage on this car.`
+    : 'Dealer walked around this car and found no visible damage.';
+  const conditionDeclaredOn = conditionDeclaredAt
+    ? new Date(conditionDeclaredAt).toLocaleDateString('en-MY', { day:'numeric', month:'short', year:'numeric' })
+    : null;
   const isReserved = car.status === 'reserved';
   const isHot =
     car.original_price &&
@@ -1333,6 +1679,33 @@ export default function CarDetailPage() {
         ? `https://xdrive.my/s/${salesmanProfile.slug}`
         : null;
   const sellerPageLabel = salesmanProfile && !dealer ? "Visit Agent's Page" : "Visit Dealer's Page";
+  // The sidebar had two green buttons opening the SAME enquiry modal — a generic
+  // "WhatsApp" and a "Chat with <rep>" — differing only in which rep the resulting
+  // lead was attributed to. One button now does both jobs: it carries the rep's
+  // routing target and is named after them, so the buyer knows who answers.
+  // Whoever is actually selling this car. A standalone agent (Salesman Lite /
+  // Premium, dealer_id NULL) owns their listings outright, but
+  // get_dealer_profile_by_id is restricted to dealer/owner/superadmin roles, so
+  // `dealer` is null on 9 of the live listings. Anything reading seller terms off
+  // `dealer` alone was reading nothing and falling back to defaults.
+  const seller = dealer || salesmanProfile || null;
+
+  // Review tally, lifted out of ReviewsSection so it can sit beside the seller's
+  // name. Below REVIEW_FLOOR the average is withheld: an average of one review is
+  // a single stranger's opinion wearing the clothes of a statistic.
+  const REVIEW_FLOOR = 3;
+  const repFirstName = (salesmanProfile?.full_name || '').trim().split(' ')[0] || null;
+  const repEnquiryTarget = (() => {
+    const digits = (salesmanProfile?.whatsapp_number || '').replace(/\D/g, '');
+    if (!digits) return null;
+    return {
+      phone: digits.startsWith('6') ? digits : '6' + digits,
+      slug: salesmanProfile.slug,
+      name: repFirstName || 'Agent',
+    };
+  })();
+  const enquiryClick = repEnquiryTarget ? () => handleWhatsApp(repEnquiryTarget) : handleWhatsApp;
+  const enquiryLabel = repFirstName ? `WhatsApp ${repFirstName}` : 'WhatsApp';
   const listedDays = daysAgo(car.created_at);
   // A booking is submittable only once a real slot is chosen and both consent
   // boxes are ticked — the commitment gate.
@@ -1619,12 +1992,12 @@ export default function CarDetailPage() {
             {carTitle}
           </span>
           <div className="cdp-header-actions">
-            <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '6px 8px', display: 'flex', alignItems: 'center' }}>
+            <div style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${th.inputBorder}`, borderRadius: 8, padding: '6px 8px', display: 'flex', alignItems: 'center' }}>
               <HeartButton listingId={car?.id} size={16} />
             </div>
             <button
               onClick={() => { if (!car?.id) return; isInCompare(car.id) ? removeFromCompare(car.id) : addToCompare(car.id); }}
-              style={{ background: car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.15)' : th.card2, border: `1px solid ${car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.4)' : th.border}`, borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 5, color: car?.id && isInCompare(car.id) ? '#f87171' : th.textSec, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "system-ui,sans-serif", transition: 'all 0.18s', whiteSpace: 'nowrap' }}>
+              style={{ background: car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.15)' : th.card2, border: `1px solid ${car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.4)' : th.border}`, borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 5, color: car?.id && isInCompare(car.id) ? (isXdrive ? '#dc2626' : '#f87171') : th.textSec, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "system-ui,sans-serif", transition: 'all 0.18s', whiteSpace: 'nowrap' }}>
               <ArrowLeftRight size={13} />
               {car?.id && isInCompare(car.id) ? 'In Compare' : 'Compare'}
             </button>
@@ -2047,7 +2420,7 @@ export default function CarDetailPage() {
           {!isSambungCar(car) && isHot && (
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
               <span style={{ fontSize:13, color: th.textMuted, textDecoration:'line-through' }}>{fmtPrice(car.original_price)}</span>
-              <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.2)', color:'#f87171', fontSize:'11px', padding:'2px 10px', borderRadius:'20px', fontWeight:600, letterSpacing:'0.04em' }}>SAVE {fmtPrice(saving)}</span>
+              <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.2)', color: isXdrive ? '#dc2626' : '#f87171', fontSize:'11px', padding:'2px 10px', borderRadius:'20px', fontWeight:600, letterSpacing:'0.04em' }}>SAVE {fmtPrice(saving)}</span>
             </div>
           )}
           {/* Seller storefront link — kept high up, right under the price, so
@@ -2114,9 +2487,9 @@ export default function CarDetailPage() {
             </button>
             )}
             <div style={{ display:'flex', gap:8 }}>
-              <button onClick={handleWhatsApp}
-                style={{ flex:1, background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.25)', color:'#4ade80', borderRadius:10, padding:'12px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif" }}>
-                WhatsApp
+              <button onClick={enquiryClick}
+                style={{ flex:1, background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.25)', color: accent('#4ade80', isXdrive), borderRadius:10, padding:'12px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif", minWidth:0 }}>
+                <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{enquiryLabel}</span>
               </button>
               {contactPhone && (
                 <button onClick={handleCall} disabled={callLoading} aria-busy={callLoading}
@@ -2125,9 +2498,10 @@ export default function CarDetailPage() {
                 </button>
               )}
             </div>
-            {car.deposit_amount > 0 && (
-              <p style={{ fontSize:11, color: th.textSec, marginTop:8, textAlign:'center' }}>RM {fmt(car.deposit_amount)} deposit to reserve</p>
-            )}
+            <div style={{ marginTop:10 }}>
+              <PriceIncludes car={car} seller={seller} th={th} />
+              <DepositTerms amount={car.deposit_amount} seller={seller} th={th} isXdrive={isXdrive} />
+            </div>
             {/* Tertiary actions — quiet text links, not more buttons */}
             <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:18, marginTop:14, flexWrap:'wrap' }}>
               <button onClick={() => setCalcOpen(true)}
@@ -2157,13 +2531,16 @@ export default function CarDetailPage() {
                   }
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ fontSize:13, color: th.text, fontWeight:600, marginBottom:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{displayName}</p>
+                    <SellerRating summary={reviewSummary} floor={REVIEW_FLOOR} anchorId="reviews-m" th={th} />
                     <p style={{ fontSize:11, color: th.textSec }}>
                       {isAgent ? 'Independent Agent' : dealer ? (
-                        dealer.is_verified ? (
-                          <span style={{ display:'inline-flex', alignItems:'center', gap:4 }}>
-                            <ShieldCheck size={12} strokeWidth={2.5} style={{ color: isXdrive ? '#2563eb' : '#60a5fa' }} />
-                            Verified Dealer
-                          </span>
+                        /* The badge used to be a dead end — a shield with no referent.
+                           When there are real details below it, it links to them. */
+                        hasDealerIdentity(dealer) ? (
+                          <a href="#dealer-identity-m" style={{ display:'inline-flex', alignItems:'center', gap:4, color: 'inherit', textDecoration:'none', borderBottom:`1px dotted ${th.textMuted}` }}>
+                            {dealer.is_verified && <ShieldCheck size={12} strokeWidth={2.5} style={{ color: isXdrive ? '#2563eb' : '#60a5fa' }} />}
+                            {dealer.is_verified ? 'Verified Dealer' : 'Dealer'} · details
+                          </a>
                         ) : 'Dealer'
                       ) : 'Seller'}
                     </p>
@@ -2230,7 +2607,7 @@ export default function CarDetailPage() {
                       { key:'Registration Date', val: car.registration_date || car.local_reg_date || '—' },
                       { key:'VIN / Chassis',     val: car.vin_number || '—' },
                       { key:'Condition',         val: car.condition || '—' },
-                      { key:'Chassis Status',    val: <span style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:6, height:6, borderRadius:'50%', flexShrink:0, background: car.chassis_status==='clean'?'#22c55e':car.chassis_status==='repaired'?'#eab308':car.chassis_status==='written_off'?'#dc2626':'#334155' }} />{car.chassis_status||'—'}</span> },
+                      { key:'Chassis Status',    val: <span style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:6, height:6, borderRadius:'50%', flexShrink:0, background: car.chassis_status==='clean'?'#22c55e':car.chassis_status==='repaired'?'#eab308':car.chassis_status==='written_off'?'#dc2626':th.textMuted }} />{car.chassis_status||'—'}</span> },
                       { key:'Location',          val: [car.city, car.state].filter(Boolean).join(', ') || '—' },
                       { key:'Previous Owners',   val: car.previous_owners ?? '—' },
                       { key:'Road Tax Expiry',   val: car.road_tax_expiry ? new Date(car.road_tax_expiry).toLocaleDateString('en-MY') : '—' },
@@ -2247,11 +2624,15 @@ export default function CarDetailPage() {
                         <span style={{ fontSize:'13px', color: th.text, textAlign:'right' }}>{val}</span>
                       </div>
                     ))}
-                    {isRecon && Array.isArray(car.damage_map) && car.damage_map.length > 0 && (
+                    {showConditionMap && (
                       <div style={{ marginTop:24, paddingTop:20, borderTop:`1px solid ${th.border}` }}>
-                        <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.16em', color: th.textMuted, fontWeight:700, marginBottom:14 }}>Condition Map</p>
+                        <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.16em', color: th.textMuted, fontWeight:700, marginBottom:14 }}>Condition Report</p>
                         <div style={{ background: th.card, border:`1px solid ${th.border}`, borderRadius:12, padding:'16px 20px' }}>
-                          <DamageMap value={car.damage_map} readOnly />
+                          <DamageMap value={damageMarks} readOnly />
+                          <p style={{ fontSize:12, color: th.textSec, marginTop:14, lineHeight:1.6 }}>{conditionSummary}</p>
+                          {conditionDeclaredOn && (
+                            <p style={{ fontSize:11, color: th.textMuted, marginTop:4 }}>Declared by the dealer on {conditionDeclaredOn}</p>
+                          )}
                         </div>
                       </div>
                     )}
@@ -2287,7 +2668,7 @@ export default function CarDetailPage() {
           )}
 
           {/* Car History — only when there's at least one real signal to show */}
-          {(car.car_documents?.length > 0 || car.puspakom_b5_date || car.puspakom_b7_date || car.previous_owners != null || car.warranty_months > 0 || (Array.isArray(car.dealer_perks) && car.dealer_perks.length > 0)) && (
+          {(car.car_documents?.length > 0 || car.geran_status || car.puspakom_b5_date || car.puspakom_b7_date || car.previous_owners != null || car.warranty_months > 0 || (Array.isArray(car.dealer_perks) && car.dealer_perks.length > 0)) && (
           <div style={{ marginTop:32, paddingTop:28, borderTop:`1px solid ${th.border}` }}>
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
               <Shield size={13} style={{ color:'#dc2626' }} />
@@ -2295,17 +2676,25 @@ export default function CarDetailPage() {
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
               {[
+                { key:'registration_card', icon:<CreditCard size={13} />, label:'Geran / Registration Card', okColor:'#38bdf8', okBg:'rgba(56,189,248,0.1)', okBorder:'rgba(56,189,248,0.3)' },
                 { key:'puspakom',      icon:<ShieldCheck size={13} />, label:'Puspakom Inspection', okColor:'#4ade80', okBg:'rgba(34,197,94,0.1)',   okBorder:'rgba(34,197,94,0.3)'   },
                 { key:'service_history',icon:<FileText size={13} />,   label:'Service History',      okColor:'#60a5fa', okBg:'rgba(96,165,250,0.1)',  okBorder:'rgba(96,165,250,0.3)'  },
                 { key:'loan_clearance', icon:<BadgeCheck size={13} />, label:'Loan Clearance',       okColor:'#34d399', okBg:'rgba(52,211,153,0.1)',  okBorder:'rgba(52,211,153,0.3)'  },
                 { key:'ownership',      icon:<Eye size={13} />,        label:'Ownership Docs',       okColor:'#fbbf24', okBg:'rgba(251,191,36,0.1)',  okBorder:'rgba(251,191,36,0.3)'  },
-              ].map(({ key, icon, label, okColor, okBg, okBorder }) => {
+              ].map(({ key, icon, label, okColor: baseColor, okBg: baseBg, okBorder: baseBorder }) => {
                 const doc = car.car_documents?.find(d => d.type === key);
                 const isPusp = key === 'puspakom';
                 const b5 = isPusp ? car.puspakom_b5_date : null;
                 const b7 = isPusp ? car.puspakom_b7_date : null;
                 const byDate = isPusp && (b5 || b7);
-                const available = !!doc || byDate;
+                // No geran attached, but the seller declared why (bank holds it /
+                // unregistered recon). The row still renders — the buyer learns it
+                // here rather than at the deposit stage.
+                const geranNote = key === 'registration_card' && !doc ? geranStatusLabel(car.geran_status) : null;
+                const okColor  = accent(geranNote ? '#f59e0b' : baseColor, isXdrive);
+                const okBg     = geranNote ? 'rgba(245,158,11,0.1)' : baseBg;
+                const okBorder = geranNote ? 'rgba(245,158,11,0.3)' : baseBorder;
+                const available = !!doc || byDate || !!geranNote;
                 if (!available) return null;
                 const rk = `m-${key}`;
                 const isOpen = openDocKey === rk;
@@ -2315,12 +2704,12 @@ export default function CarDetailPage() {
                     <div onClick={() => available && toggleDoc(rk)}
                       style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', cursor: available ? 'pointer' : 'default' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <span style={{ color: available ? okColor : '#334155' }}>{icon}</span>
+                        <span style={{ color: available ? okColor : th.textMuted }}>{icon}</span>
                         <p style={{ fontSize:12, color: th.text, fontWeight:500, margin:0 }}>{label}</p>
                       </div>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                        <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background: available ? okBg : 'rgba(100,116,139,0.08)', border:`1px solid ${available ? okBorder : 'rgba(100,116,139,0.15)'}`, color: available ? okColor : '#475569', whiteSpace:'nowrap' }}>
-                          {doc ? '✓ Available' : byDate ? '✓ Verified' : 'Not Provided'}
+                        <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background: available ? okBg : 'rgba(100,116,139,0.08)', border:`1px solid ${available ? okBorder : 'rgba(100,116,139,0.15)'}`, color: available ? okColor : th.textSec, whiteSpace:'nowrap' }}>
+                          {doc ? '✓ Available' : byDate ? 'Dates given' : geranNote ? 'Not available' : 'Not Provided'}
                         </span>
                         {available && <ChevronDown size={12} style={{ color: okColor, transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform 0.2s', flexShrink:0 }} />}
                       </div>
@@ -2340,7 +2729,9 @@ export default function CarDetailPage() {
                             style={{ display:'inline-flex', alignItems:'center', gap:6, background:okBg, border:`1px solid ${okBorder}`, borderRadius:7, padding:'8px 14px', fontSize:12, color:okColor, textDecoration:'none', fontWeight:600 }}>
                             <Download size={13} /> {doc.name || label}
                           </a>
-                        )) : (
+                        )) : geranNote ? (
+                          <p style={{ fontSize:12, color:okColor, margin:0 }}>{geranNote}</p>
+                        ) : (
                           <PuspakomDates b5={b5} b7={b7} color={okColor} />
                         )}
                       </div>
@@ -2349,7 +2740,7 @@ export default function CarDetailPage() {
                 );
               })}
               {/* Any other document types not in the 4 main rows */}
-              {car.car_documents?.filter(d => !['puspakom','service_history','loan_clearance','ownership'].includes(d.type)).map((doc, i) => {
+              {car.car_documents?.filter(d => !['registration_card','puspakom','service_history','loan_clearance','ownership'].includes(d.type)).map((doc, i) => {
                 const cfg = CDP_DOC_TYPES[doc.type] || CDP_DOC_TYPES.other;
                 const rk = `m-extra-${i}`;
                 const isOpen = openDocKey === rk;
@@ -2360,7 +2751,7 @@ export default function CarDetailPage() {
                       <p style={{ fontSize:12, color: th.text, fontWeight:500, margin:0 }}>{cfg.label}</p>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                         <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background:`${cfg.color}15`, border:`1px solid ${cfg.color}30`, color:cfg.color }}>✓ Available</span>
-                        <ChevronDown size={12} style={{ color:'#475569', transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform 0.2s', flexShrink:0 }} />
+                        <ChevronDown size={12} style={{ color: th.textSec, transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform 0.2s', flexShrink:0 }} />
                       </div>
                     </div>
                     {isOpen && (
@@ -2398,10 +2789,10 @@ export default function CarDetailPage() {
               {car.warranty_months > 0 && (
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background: th.card, border:`1px solid ${th.border}`, borderRadius:9 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <Shield size={13} style={{ color:'#34d399' }} />
+                  <Shield size={13} style={{ color: accent('#34d399', isXdrive) }} />
                   <p style={{ fontSize:12, color: th.text, fontWeight:500, margin:0 }}>Warranty</p>
                 </div>
-                <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'rgba(52,211,153,0.1)', border:'1px solid rgba(52,211,153,0.3)', color:'#34d399' }}>
+                <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'rgba(52,211,153,0.1)', border:'1px solid rgba(52,211,153,0.3)', color: accent('#34d399', isXdrive) }}>
                   {`${car.warranty_months} months`}
                 </span>
               </div>
@@ -2410,7 +2801,7 @@ export default function CarDetailPage() {
                 const PC = [
                   { key:'part_exchange',    label:'Part Exchange',      color:'#60a5fa' },
                   { key:'whatsapp_chat',    label:'WhatsApp Chat',      color:'#4ade80' },
-                  { key:'video_walkthrough',label:'Video Walkthrough',  color:'#f87171' },
+                  { key:'video_walkthrough',label:'Video Walkthrough',  color: isXdrive ? '#dc2626' : '#f87171' },
                   { key:'warranty_incl',    label:'Warranty Included',  color:'#34d399' },
                   { key:'verified_docs',    label:'Verified Docs',      color:'#4ade80' },
                   { key:'book_viewing',     label:'Book a Viewing',     color:'#60a5fa' },
@@ -2422,7 +2813,7 @@ export default function CarDetailPage() {
                     {PC.map(({ key, label, color }) => (
                       <div key={key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background: th.card, border:`1px solid ${th.border}`, borderRadius:9 }}>
                         <p style={{ fontSize:12, color: th.text, fontWeight:500, margin:0 }}>{label}</p>
-                        <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background:`${color}15`, border:`1px solid ${color}30`, color }}>✓ Available</span>
+                        <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background:`${color}15`, border:`1px solid ${color}30`, color: accent(color, isXdrive) }}>✓ Available</span>
                       </div>
                     ))}
                   </>
@@ -2540,8 +2931,11 @@ export default function CarDetailPage() {
             </div>
           )}
 
+          {/* About this dealer (mobile) */}
+          <DealerIdentity dealer={dealer} dealerName={dealerName} th={th} isXdrive={isXdrive} anchorId="dealer-identity-m" />
+
           {/* Reviews (mobile) */}
-          <ReviewsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} isXdrive={isXdrive} />
+          <ReviewsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} isXdrive={isXdrive} anchorId="reviews-m" onSummary={handleReviewSummary} />
 
           {/* Q&A (mobile) */}
           <CommentsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} />
@@ -2551,8 +2945,6 @@ export default function CarDetailPage() {
 
         {/* M7 — Salesman card */}
         {salesmanProfile && (() => {
-          const waPhone = (salesmanProfile.whatsapp_number || '').replace(/\D/g, '');
-          const waNumber = waPhone ? (waPhone.startsWith('6') ? waPhone : '6' + waPhone) : null;
           const firstName = (salesmanProfile.full_name || 'Agent').split(' ')[0];
           return (
             <div className="cdp-mobile-only" style={{ padding:'0 20px', marginBottom:32 }}>
@@ -2566,26 +2958,20 @@ export default function CarDetailPage() {
                   }
                   <div>
                     <p style={{ fontSize:15, fontWeight:700, color: th.text, margin:0 }}>{salesmanProfile.full_name || 'Agent'}</p>
-                    {salesmanProfile.job_title && <p style={{ fontSize:12, color:'#475569', margin:'3px 0 0' }}>{salesmanProfile.job_title}</p>}
-                    <p style={{ fontSize:11, color:'#1e293b', margin:'2px 0 0', letterSpacing:'0.05em' }}>Independent Agent · XDrive</p>
+                    {salesmanProfile.job_title && <p style={{ fontSize:12, color: th.textSec, margin:'3px 0 0' }}>{salesmanProfile.job_title}</p>}
+                    <p style={{ fontSize:11, color: th.textMuted, margin:'2px 0 0', letterSpacing:'0.05em' }}>Independent Agent · XDrive</p>
                   </div>
                 </div>
-                {waNumber && (
-                  <button
-                    onClick={() => handleWhatsApp({ phone: waNumber, slug: salesmanProfile.slug, name: firstName })}
-                    style={{ display:'block', width:'100%', background:'#22c55e', color:'white', border:'none', cursor:'pointer', borderRadius:9, padding:'12px 0', fontWeight:700, fontSize:13, fontFamily:"system-ui,sans-serif", textAlign:'center', boxSizing:'border-box', letterSpacing:'0.02em' }}>
-                    Chat with {firstName}
-                  </button>
-                )}
+                {/* The green "Chat with <rep>" button that used to sit here opened the
+                    same enquiry modal as the WhatsApp button in the CTA card above it.
+                    Its routing moved onto that button; a second saturated green CTA for
+                    one job is exactly what the anti-slop rule forbids. The dealer-page
+                    link that followed it pointed at the same URL as "Visit Dealer's
+                    Page" in the CTA card, so it went too. */}
                 {salesmanProfile.slug && (
-                  <Link to={`/s/${salesmanProfile.slug}`} style={{ display:'block', textAlign:'center', marginTop:10, fontSize:12, color: th.textSec, fontWeight:600, textDecoration:'none' }}>
-                    View all listings →
+                  <Link to={`/s/${salesmanProfile.slug}`} style={{ display:'block', textAlign:'center', fontSize:12, color: th.textSec, fontWeight:600, textDecoration:'none' }}>
+                    {firstName}&apos;s other listings &rarr;
                   </Link>
-                )}
-                {dealer?.subdomain && !isSubdomain() && (
-                  <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer" style={{ display:'block', textAlign:'center', marginTop:6, fontSize:12, color: th.textSec, textDecoration:'none' }}>
-                    Go to dealer's page →
-                  </a>
                 )}
               </div>
             </div>
@@ -3038,15 +3424,12 @@ export default function CarDetailPage() {
                     </div>
                   )}
 
-                  {detailTab === "specs" &&
-                    isRecon &&
-                    Array.isArray(car.damage_map) &&
-                    car.damage_map.length > 0 && (
+                  {detailTab === "specs" && showConditionMap && (
                       <div
                         style={{
                           marginTop: 24,
                           paddingTop: 20,
-                          borderTop: "1px solid rgba(255,255,255,0.05)",
+                          borderTop: `1px solid ${th.border}`,
                         }}
                       >
                         <p
@@ -3059,17 +3442,38 @@ export default function CarDetailPage() {
                             marginBottom: 14,
                           }}
                         >
-                          Condition Map
+                          Condition Report
                         </p>
                         <div
                           style={{
-                            background: "#0a1220",
-                            border: "1px solid rgba(255,255,255,0.06)",
+                            background: th.card,
+                            border: `1px solid ${th.border}`,
                             borderRadius: 12,
                             padding: "16px 20px",
                           }}
                         >
-                          <DamageMap value={car.damage_map} readOnly />
+                          <DamageMap value={damageMarks} readOnly />
+                          <p
+                            style={{
+                              fontSize: 12,
+                              color: th.textSec,
+                              marginTop: 14,
+                              lineHeight: 1.6,
+                            }}
+                          >
+                            {conditionSummary}
+                          </p>
+                          {conditionDeclaredOn && (
+                            <p
+                              style={{
+                                fontSize: 11,
+                                color: th.textMuted,
+                                marginTop: 4,
+                              }}
+                            >
+                              Declared by the dealer on {conditionDeclaredOn}
+                            </p>
+                          )}
                         </div>
                       </div>
                     )}
@@ -3120,7 +3524,7 @@ export default function CarDetailPage() {
             {/* VIDEO WALKTHROUGH */}
             {car.video_url && getEmbedUrl(car.video_url) && (
               <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 7 }}>
+                <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: th.textMuted, fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 7 }}>
                   <PlayCircle size={13} style={{ color: '#dc2626' }} /> Watch Walkthrough
                 </p>
                 <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: 12, overflow: 'hidden', border: `1px solid ${th.border}` }}>
@@ -3130,7 +3534,7 @@ export default function CarDetailPage() {
             )}
 
             {/* ── CAR HISTORY — only when there's at least one real signal to show ── */}
-            {(car.car_documents?.length > 0 || car.puspakom_b5_date || car.puspakom_b7_date || car.previous_owners != null || car.warranty_months > 0 || (Array.isArray(car.dealer_perks) && car.dealer_perks.length > 0)) && (
+            {(car.car_documents?.length > 0 || car.geran_status || car.puspakom_b5_date || car.puspakom_b7_date || car.previous_owners != null || car.warranty_months > 0 || (Array.isArray(car.dealer_perks) && car.dealer_perks.length > 0)) && (
             <div style={{ marginTop: 40, paddingTop: 32, borderTop: `1px solid ${th.borderSec}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
                 <Shield size={13} style={{ color: '#dc2626' }} />
@@ -3138,17 +3542,22 @@ export default function CarDetailPage() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[
+                  { key: 'registration_card', icon: <CreditCard size={15} />, label: 'Geran / Registration Card', sub: 'JPJ ownership record', okColor: '#38bdf8', okBorder: 'rgba(56,189,248,0.3)' },
                   { key: 'puspakom', icon: <ShieldCheck size={15} />, label: 'Puspakom Inspection', sub: 'Structural & mechanical check', okColor: '#4ade80', okBorder: 'rgba(34,197,94,0.3)' },
                   { key: 'service_history', icon: <FileText size={15} />, label: 'Service History', sub: 'Maintenance records', okColor: '#60a5fa', okBorder: 'rgba(96,165,250,0.3)' },
                   { key: 'loan_clearance', icon: <BadgeCheck size={15} />, label: 'Loan Clearance', sub: 'No outstanding finance', okColor: '#34d399', okBorder: 'rgba(52,211,153,0.3)' },
                   { key: 'ownership', icon: <Eye size={15} />, label: 'Ownership Docs', sub: 'VOC / transfer documents', okColor: '#fbbf24', okBorder: 'rgba(251,191,36,0.3)' },
-                ].map(({ key, icon, label, sub, okColor, okBorder }) => {
+                ].map(({ key, icon, label, sub, okColor: baseColor, okBorder: baseBorder }) => {
                   const doc = car.car_documents?.find(d => d.type === key);
                   const isPusp = key === 'puspakom';
                   const b5 = isPusp ? car.puspakom_b5_date : null;
                   const b7 = isPusp ? car.puspakom_b7_date : null;
                   const byDate = isPusp && (b5 || b7);
-                  const available = !!doc || byDate;
+                  // See the mobile row above — a declared reason keeps the row alive.
+                  const geranNote = key === 'registration_card' && !doc ? geranStatusLabel(car.geran_status) : null;
+                  const okColor  = accent(geranNote ? '#f59e0b' : baseColor, isXdrive);
+                  const okBorder = geranNote ? 'rgba(245,158,11,0.3)' : baseBorder;
+                  const available = !!doc || byDate || !!geranNote;
                   if (!available) return null;
                   const rk = `d-${key}`;
                   const isOpen = openDocKey === rk;
@@ -3157,15 +3566,15 @@ export default function CarDetailPage() {
                     <div key={key} style={{ background: th.card, border: `1px solid ${isOpen && available ? okBorder : 'rgba(255,255,255,0.05)'}`, borderRadius: 10, overflow: 'hidden', transition: 'border-color 0.2s' }}>
                       <div onClick={() => available && toggleDoc(rk)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: available ? 'pointer' : 'default' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ color: available ? okColor : '#334155' }}>{icon}</span>
+                          <span style={{ color: available ? okColor : th.textMuted }}>{icon}</span>
                           <div>
                             <p style={{ fontSize: 13, color: th.textSec, fontWeight: 500, margin: 0 }}>{label}</p>
-                            <p style={{ fontSize: 11, color: '#334155', margin: '2px 0 0' }}>{sub}</p>
+                            <p style={{ fontSize: 11, color: th.textMuted, margin: '2px 0 0' }}>{sub}</p>
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: available ? `${okColor}15` : 'rgba(100,116,139,0.08)', border: `1px solid ${available ? okBorder : 'rgba(100,116,139,0.15)'}`, color: available ? okColor : '#475569', whiteSpace: 'nowrap' }}>
-                            {doc ? '✓ Available' : byDate ? '✓ Verified' : 'Not Provided'}
+                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: available ? `${okColor}15` : 'rgba(100,116,139,0.08)', border: `1px solid ${available ? okBorder : 'rgba(100,116,139,0.15)'}`, color: available ? okColor : th.textSec, whiteSpace: 'nowrap' }}>
+                            {doc ? '✓ Available' : byDate ? 'Dates given' : geranNote ? 'Not available' : 'Not Provided'}
                           </span>
                           {available && <ChevronDown size={15} style={{ color: okColor, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', flexShrink: 0 }} />}
                         </div>
@@ -3183,7 +3592,9 @@ export default function CarDetailPage() {
                             <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: okColor, textDecoration: 'none', background: `${okColor}15`, border: `1px solid ${okBorder}`, borderRadius: 6, padding: '5px 12px' }}>
                               <Download size={14} /> {doc.name || label}
                             </a>
-                          )) : (
+                          )) : geranNote ? (
+                            <p style={{ fontSize: 12, color: okColor, margin: 0 }}>{geranNote}</p>
+                          ) : (
                             <PuspakomDates b5={b5} b7={b7} color={okColor} />
                           )}
                         </div>
@@ -3191,7 +3602,7 @@ export default function CarDetailPage() {
                     </div>
                   );
                 })}
-                {car.car_documents?.filter(d => !['puspakom','service_history','loan_clearance','ownership'].includes(d.type)).map((doc, i) => {
+                {car.car_documents?.filter(d => !['registration_card','puspakom','service_history','loan_clearance','ownership'].includes(d.type)).map((doc, i) => {
                   const cfg = CDP_DOC_TYPES[doc.type] || CDP_DOC_TYPES.other;
                   const rk = `d-extra-${i}`;
                   const isOpen = openDocKey === rk;
@@ -3244,13 +3655,13 @@ export default function CarDetailPage() {
                 {car.warranty_months > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: th.card, border: `1px solid ${th.borderSec}`, borderRadius: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Shield size={15} style={{ color: '#34d399' }} />
+                    <Shield size={15} style={{ color: accent('#34d399', isXdrive) }} />
                     <div>
                       <p style={{ fontSize: 13, color: th.textSec, fontWeight: 500, margin: 0 }}>Warranty</p>
                       <p style={{ fontSize: 11, color: th.textMuted, margin: '2px 0 0' }}>Included with purchase</p>
                     </div>
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)', color: '#34d399' }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)', color: accent('#34d399', isXdrive) }}>
                     {`${car.warranty_months} months`}
                   </span>
                 </div>
@@ -3259,7 +3670,7 @@ export default function CarDetailPage() {
                   const PERK_CFG = [
                     { key: 'part_exchange',    label: 'Part Exchange',      color: '#60a5fa' },
                     { key: 'whatsapp_chat',    label: 'WhatsApp Chat',      color: '#4ade80' },
-                    { key: 'video_walkthrough',label: 'Video Walkthrough',  color: '#f87171' },
+                    { key: 'video_walkthrough',label: 'Video Walkthrough',  color: isXdrive ? '#dc2626' : '#f87171' },
                     { key: 'warranty_incl',    label: 'Warranty Included',  color: '#34d399' },
                     { key: 'verified_docs',    label: 'Verified Docs',      color: '#4ade80' },
                     { key: 'book_viewing',     label: 'Book a Viewing',     color: '#60a5fa' },
@@ -3271,7 +3682,7 @@ export default function CarDetailPage() {
                       {PERK_CFG.map(({ key, label, color }) => (
                         <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: th.card, border: `1px solid ${th.borderSec}`, borderRadius: 10 }}>
                           <p style={{ fontSize: 13, color: th.textSec, fontWeight: 500, margin: 0 }}>{label}</p>
-                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: `${color}15`, border: `1px solid ${color}30`, color }}>✓ Available</span>
+                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: `${color}15`, border: `1px solid ${color}30`, color: accent(color, isXdrive) }}>✓ Available</span>
                         </div>
                       ))}
                     </>
@@ -3298,7 +3709,7 @@ export default function CarDetailPage() {
                     { label: 'Safety Rating', value: car.safety_rating ? `${car.safety_rating}★` : null },
                   ].filter(s => s.value).map(({ label, value }) => (
                     <div key={label} style={{ padding: '14px', background: th.card, borderRight: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                      <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#334155', fontWeight: 700, marginBottom: 5 }}>{label}</p>
+                      <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.14em', color: th.textMuted, fontWeight: 700, marginBottom: 5 }}>{label}</p>
                       <p style={{ fontSize: 14, color: th.text, fontWeight: 500, margin: 0 }}>{value}</p>
                     </div>
                   ))}
@@ -3318,14 +3729,14 @@ export default function CarDetailPage() {
               const { pricePerLiter: petrolPrice, fuelLabel, consumption, totalCost: totalFuelCost } = estimateFuelCost(cc, car.fuel_consumption, fuelDist);
               return (
                 <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                  <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, marginBottom: 24 }}>Running Costs</p>
+                  <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: th.textMuted, fontWeight: 700, marginBottom: 24 }}>Running Costs</p>
                   {roadTax && (
                     <div style={{ marginBottom: 24, padding: '16px 18px', background: th.card, border: `1px solid ${th.borderSec}`, borderRadius: 12 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                         <span style={{ fontSize: 13, color: th.textSec }}>Road Tax (estimated)</span>
                         <span style={{ fontSize: 15, color: th.text, fontWeight: 600 }}>RM {fmt(roadTax)} / year</span>
                       </div>
-                      <p style={{ fontSize: 11, color: '#334155', margin: 0 }}>JPJ private saloon rate — {fmt(cc)}cc</p>
+                      <p style={{ fontSize: 11, color: th.textMuted, margin: 0 }}>JPJ private saloon rate — {fmt(cc)}cc</p>
                     </div>
                   )}
                   {co2 && (
@@ -3348,7 +3759,7 @@ export default function CarDetailPage() {
                           return <div key={i} style={{ flex: 1, background: isActive ? band.color : `${band.color}25`, borderRadius: i === 0 ? '6px 0 0 6px' : i === 5 ? '0 6px 6px 0' : 0 }} />;
                         })}
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#334155', marginTop: 5 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: th.textMuted, marginTop: 5 }}>
                         <span>0</span><span>100</span><span>130</span><span>150</span><span>170</span><span>200+</span>
                       </div>
                     </div>
@@ -3362,7 +3773,7 @@ export default function CarDetailPage() {
                       <div style={{ background: th.inputBg, borderRadius: 6, height: 8, overflow: 'hidden' }}>
                         <div style={{ width: `${Math.min(100, (insGrp / 26) * 100)}%`, height: '100%', background: `hsl(${Math.round(120 - (insGrp / 26) * 120)}, 75%, 50%)`, borderRadius: 6 }} />
                       </div>
-                      <p style={{ fontSize: 11, color: '#334155', marginTop: 5 }}>
+                      <p style={{ fontSize: 11, color: th.textMuted, marginTop: 5 }}>
                         {insGrp <= 8 ? 'Low cost to insure' : insGrp <= 16 ? 'Moderate insurance cost' : 'Higher insurance cost'}
                       </p>
                     </div>
@@ -3370,7 +3781,7 @@ export default function CarDetailPage() {
                   <div style={{ background: th.card, border: `1px solid ${th.borderSec}`, borderRadius: 12, padding: '18px 20px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                       <span style={{ fontSize: 13, color: th.textSec }}>Range Calculator</span>
-                      <span style={{ fontSize: 10, color: '#334155' }}>{fuelLabel} @ RM {petrolPrice}/L</span>
+                      <span style={{ fontSize: 10, color: th.textMuted }}>{fuelLabel} @ RM {petrolPrice}/L</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 14 }}>
                       <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: '2rem', color: th.text, lineHeight: 1 }}>RM {totalFuelCost}</span>
@@ -3380,10 +3791,10 @@ export default function CarDetailPage() {
                       onChange={e => setFuelDist(Number(e.target.value))}
                       style={{ width: '100%', accentColor: '#dc2626', cursor: 'pointer' }}
                     />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#334155', marginTop: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: th.textMuted, marginTop: 4 }}>
                       <span>10 km</span><span>500 km</span><span>1,000 km</span>
                     </div>
-                    <p style={{ fontSize: 11, color: '#334155', marginTop: 10 }}>
+                    <p style={{ fontSize: 11, color: th.textMuted, marginTop: 10 }}>
                       {car.fuel_consumption ? `${car.fuel_consumption} km/L (manufacturer figure)` : `~${consumption} km/L estimated from engine size`}
                     </p>
                   </div>
@@ -3402,16 +3813,19 @@ export default function CarDetailPage() {
                   </div>
                   <a href={`https://www.google.com/maps/search/${encodeURIComponent([car.city, car.state, 'Malaysia'].filter(Boolean).join(', '))}`}
                     target="_blank" rel="noopener noreferrer"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: th.inputBg, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '8px 14px', fontSize: 12, color: th.textSec, textDecoration: 'none', flexShrink: 0, letterSpacing: '0.03em' }}>
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: th.inputBg, border: `1px solid ${th.inputBorder}`, borderRadius: 8, padding: '8px 14px', fontSize: 12, color: th.textSec, textDecoration: 'none', flexShrink: 0, letterSpacing: '0.03em' }}>
                     <Eye size={13} /> View on Map
                   </a>
                 </div>
-                <p style={{ fontSize: 11, color: '#334155', marginTop: 8 }}>Approximate area only — confirm address when enquiring.</p>
+                <p style={{ fontSize: 11, color: th.textMuted, marginTop: 8 }}>Approximate area only — confirm address when enquiring.</p>
               </div>
             )}
 
+            {/* ── ABOUT THIS DEALER (desktop) ── */}
+            <DealerIdentity dealer={dealer} dealerName={dealerName} th={th} isXdrive={isXdrive} anchorId="dealer-identity-d" />
+
             {/* ── REVIEWS (desktop) ── */}
-            <ReviewsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} isXdrive={isXdrive} />
+            <ReviewsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} isXdrive={isXdrive} anchorId="reviews-d" onSummary={handleReviewSummary} />
 
             {/* ── Q&A (desktop) ── */}
             <CommentsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} />
@@ -3465,13 +3879,14 @@ export default function CarDetailPage() {
                   }
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 13, color: th.text, fontWeight: 600, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</p>
+                    <SellerRating summary={reviewSummary} floor={REVIEW_FLOOR} anchorId="reviews-d" th={th} />
                     <p style={{ fontSize: 11, color: th.textSec }}>
                       {isAgent ? 'Independent Agent' : dealer ? (
-                        dealer.is_verified ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                            <ShieldCheck size={12} strokeWidth={2.5} style={{ color: isXdrive ? '#2563eb' : '#60a5fa' }} />
-                            Verified Dealer
-                          </span>
+                        hasDealerIdentity(dealer) ? (
+                          <a href="#dealer-identity-d" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'inherit', textDecoration: 'none', borderBottom: `1px dotted ${th.textMuted}` }}>
+                            {dealer.is_verified && <ShieldCheck size={12} strokeWidth={2.5} style={{ color: isXdrive ? '#2563eb' : '#60a5fa' }} />}
+                            {dealer.is_verified ? 'Verified Dealer' : 'Dealer'} · details
+                          </a>
                         ) : 'Dealer'
                       ) : 'Seller'}
                     </p>
@@ -3509,8 +3924,8 @@ export default function CarDetailPage() {
                   ) : null}
                   {isHot && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                      <span style={{ fontSize: 13, color: '#1e293b', textDecoration: 'line-through' }}>{fmtPrice(car.original_price)}</span>
-                      <span style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)', color: '#f87171', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: 600, letterSpacing: '0.04em' }}>SAVE {fmtPrice(saving)}</span>
+                      <span style={{ fontSize: 13, color: th.textMuted, textDecoration: 'line-through' }}>{fmtPrice(car.original_price)}</span>
+                      <span style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)', color: isXdrive ? '#dc2626' : '#f87171', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: 600, letterSpacing: '0.04em' }}>SAVE {fmtPrice(saving)}</span>
                     </div>
                   )}
                 </>
@@ -3523,9 +3938,8 @@ export default function CarDetailPage() {
             )}
             <div style={{ height: 1, background: 'linear-gradient(to right, rgba(220,38,38,0.35), transparent)', margin: '14px 0 16px' }} />
             <WarrantyBanner car={car} isXdrive={isXdrive} />
-            {car.deposit_amount > 0 && (
-              <p style={{ fontSize: 11, color: th.textMuted, marginBottom: 8, textAlign: 'center' }}>RM {fmt(car.deposit_amount)} deposit to reserve</p>
-            )}
+            <PriceIncludes car={car} seller={seller} th={th} />
+            <DepositTerms amount={car.deposit_amount} seller={seller} th={th} isXdrive={isXdrive} />
 
             {/* CTA BUTTONS */}
             {!isOwnListing && (
@@ -3537,13 +3951,13 @@ export default function CarDetailPage() {
             )}
 
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <button onClick={handleWhatsApp}
-                style={{ flex: 1, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', color: '#4ade80', borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', fontFamily: "system-ui,sans-serif", fontSize: 13, fontWeight: 600, transition: 'all .2s' }}>
-                WhatsApp
+              <button onClick={enquiryClick}
+                style={{ flex: 1, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', color: accent('#4ade80', isXdrive), borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', fontFamily: "system-ui,sans-serif", fontSize: 13, fontWeight: 600, transition: 'all .2s', minWidth: 0 }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{enquiryLabel}</span>
               </button>
               {contactPhone && (
                 <button onClick={handleCall} disabled={callLoading} aria-busy={callLoading}
-                  style={{ flex: 1, background: th.inputBg, border: '1px solid rgba(255,255,255,0.1)', color: th.textSec, borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: callLoading ? 'wait' : 'pointer', opacity: callLoading ? 0.6 : 1, fontFamily: "system-ui,sans-serif", fontSize: 13, transition: 'all .2s' }}>
+                  style={{ flex: 1, background: th.inputBg, border: `1px solid ${th.inputBorder}`, color: th.textSec, borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: callLoading ? 'wait' : 'pointer', opacity: callLoading ? 0.6 : 1, fontFamily: "system-ui,sans-serif", fontSize: 13, transition: 'all .2s' }}>
                   <Phone size={13} /> {callLoading ? 'Connecting' : 'Call'}
                 </button>
               )}
@@ -3565,8 +3979,6 @@ export default function CarDetailPage() {
 
             {/* SALESMAN CARD */}
             {salesmanProfile && (() => {
-              const waPhone = (salesmanProfile.whatsapp_number || '').replace(/\D/g, '');
-              const waNumber = waPhone ? (waPhone.startsWith('6') ? waPhone : '6' + waPhone) : null;
               const firstName = (salesmanProfile.full_name || 'Agent').split(' ')[0];
               return (
                 <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
@@ -3580,25 +3992,13 @@ export default function CarDetailPage() {
                     <div>
                       <p style={{ fontSize: 15, fontWeight: 700, color: th.text, margin: 0 }}>{salesmanProfile.full_name || 'Agent'}</p>
                       {salesmanProfile.job_title && <p style={{ fontSize: 12, color: th.textMuted, margin: '3px 0 0' }}>{salesmanProfile.job_title}</p>}
-                      <p style={{ fontSize: 11, color: '#1e293b', margin: '2px 0 0', letterSpacing: '0.05em' }}>Independent Agent · XDrive</p>
+                      <p style={{ fontSize: 11, color: th.textMuted, margin: '2px 0 0', letterSpacing: '0.05em' }}>Independent Agent · XDrive</p>
                     </div>
                   </div>
-                  {waNumber && (
-                    <button
-                      onClick={() => handleWhatsApp({ phone: waNumber, slug: salesmanProfile.slug, name: firstName })}
-                      style={{ display: 'block', width: '100%', background: '#22c55e', color: 'white', border: 'none', cursor: 'pointer', borderRadius: 9, padding: '12px 0', fontWeight: 700, fontSize: 13, fontFamily: "system-ui,sans-serif", textAlign: 'center', boxSizing: 'border-box', letterSpacing: '0.02em' }}>
-                      Chat with {firstName}
-                    </button>
-                  )}
                   {salesmanProfile.slug && (
-                    <Link to={`/s/${salesmanProfile.slug}`} style={{ display: 'block', textAlign: 'center', marginTop: 10, fontSize: 12, color: th.textSec, fontWeight: 600, textDecoration: 'none' }}>
-                      View all listings →
+                    <Link to={`/s/${salesmanProfile.slug}`} style={{ display: 'block', textAlign: 'center', fontSize: 12, color: th.textSec, fontWeight: 600, textDecoration: 'none' }}>
+                      {firstName}&apos;s other listings &rarr;
                     </Link>
-                  )}
-                  {dealer?.subdomain && !isSubdomain() && (
-                    <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer" style={{ display: 'block', textAlign: 'center', marginTop: 6, fontSize: 12, color: th.textSec, textDecoration: 'none' }}>
-                      Go to dealer's page →
-                    </a>
                   )}
                 </div>
               );

@@ -1037,6 +1037,18 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const [dealerCity, setDealerCity]   = useState(profile?.city  || '');
   const [dealerAddress, setDealerAddress] = useState(profile?.location || '');
   const [businessHours, setBusinessHours] = useState(profile?.business_hours || '');
+  // Identity fields buyers see on every listing (TRUST-2). ssm_number was only
+  // ever captured at onboarding and had no way to be edited or added later.
+  const [ssmNumber, setSsmNumber] = useState(profile?.ssm_number || '');
+  // Deposit policy (TRUST-4). Buyers see this at the deposit ask on every listing;
+  // when it is unset the listing says so rather than assuming a policy for you.
+  const [depositPolicy, setDepositPolicy] = useState(profile?.deposit_policy || '');
+  const [depositTerms, setDepositTerms] = useState(profile?.deposit_terms || '');
+  // The one charge on a listing that genuinely varies by seller and location.
+  const [processingFee, setProcessingFee] = useState(
+    profile?.processing_fee != null ? String(profile.processing_fee) : '',
+  );
+  const [dealerPostcode, setDealerPostcode] = useState(profile?.postcode || '');
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -1145,6 +1157,11 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setDealerCity(profile.city || '');
     setDealerAddress(profile.location || '');
     setBusinessHours(profile.business_hours || '');
+    setSsmNumber(profile.ssm_number || '');
+    setDepositPolicy(profile.deposit_policy || '');
+    setDepositTerms(profile.deposit_terms || '');
+    setProcessingFee(profile.processing_fee != null ? String(profile.processing_fee) : '');
+    setDealerPostcode(profile.postcode || '');
     setTgToken(""); // SEC-5: write-only — never load the stored token back into the form
     setTgChannel(profile.telegram_channel_id || "");
     setTgAutoPost(profile.telegram_auto_post || false);
@@ -1329,6 +1346,11 @@ function SettingsTab({ profile, onProfileUpdate }) {
       city:  dealerCity.trim(),
       location: dealerAddress.trim(),
       business_hours: businessHours.trim(),
+      ssm_number: ssmNumber.trim(),
+      postcode: dealerPostcode.trim(),
+      deposit_policy: depositPolicy || null,
+      deposit_terms: depositTerms.trim() || null,
+      processing_fee: processingFee.trim() === '' ? null : (Number(processingFee) || 0),
     });
 
   const saveTelegram = () =>
@@ -1790,6 +1812,30 @@ function SettingsTab({ profile, onProfileUpdate }) {
         iconBg="rgba(56,189,248,0.08)"
         iconBorder="rgba(56,189,248,0.18)"
       >
+        {/* Buyers judge a listing on whether a real business is behind it, and
+            these fields are the only place that comes from. Naming the gaps beats
+            a form that quietly stays empty. */}
+        {(() => {
+          const missing = [
+            !ssmNumber.trim() && 'company registration (SSM)',
+            !dealerAddress.trim() && 'street address',
+            !dealerPostcode.trim() && 'postcode',
+            !businessHours.trim() && 'business hours',
+            !contactPhone.trim() && 'landline',
+          ].filter(Boolean);
+          if (missing.length === 0) return null;
+          return (
+            <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-amber-50 border border-amber-200">
+              <AlertCircle size={15} className="text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-900 leading-relaxed m-0">
+                Buyers see an <strong>About this dealer</strong> block on every one of your
+                listings. It only shows what you have filled in — right now it is missing your{' '}
+                {missing.join(', ')}.
+              </p>
+            </div>
+          );
+        })()}
+
         <SettingsField label="WhatsApp Number" hint="Include country code">
           <div className="relative">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600 text-sm pointer-events-none">
@@ -1850,7 +1896,27 @@ function SettingsTab({ profile, onProfileUpdate }) {
           </SettingsField>
         </div>
 
-        <SettingsField label="Street Address" hint="Shown on your storefront Visit Us card with a Get Directions link">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <SettingsField label="Postcode" hint="Completes the trading address buyers see">
+            <input
+              value={dealerPostcode}
+              onChange={e => setDealerPostcode(e.target.value.replace(/\D/g, '').slice(0, 5))}
+              placeholder="e.g. 47301"
+              inputMode="numeric"
+              className={iCls}
+            />
+          </SettingsField>
+          <SettingsField label="Company Registration (SSM)" hint="Shown on every listing — the single strongest proof you are a real business">
+            <input
+              value={ssmNumber}
+              onChange={e => setSsmNumber(e.target.value)}
+              placeholder="e.g. 202301234567 (1234567-A)"
+              className={iCls}
+            />
+          </SettingsField>
+        </div>
+
+        <SettingsField label="Street Address" hint="Shown on your storefront Visit Us card and on every listing, with a Directions link">
           <input
             value={dealerAddress}
             onChange={e => setDealerAddress(e.target.value)}
@@ -1867,6 +1933,64 @@ function SettingsTab({ profile, onProfileUpdate }) {
             rows={2}
             className={iCls}
             style={{ resize: "vertical" }}
+          />
+        </SettingsField>
+
+        <SettingsField
+          label="Deposit Policy"
+          hint="Shown at the deposit ask on every listing — the moment a buyer decides whether to trust you"
+        >
+          <div className="space-y-2">
+            {[
+              { v: 'refundable', l: 'Refundable', d: 'Returned if the buyer decides not to go ahead' },
+              { v: 'refundable_on_loan_rejection', l: 'Refundable if the loan is rejected', d: 'Otherwise held against the purchase price' },
+              { v: 'non_refundable', l: 'Non-refundable', d: 'Kept once paid, whatever happens' },
+            ].map(({ v, l, d }) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setDepositPolicy(depositPolicy === v ? '' : v)}
+                className={`w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-colors ${depositPolicy === v ? 'bg-red-50 border-red-300' : 'bg-white border-gray-200 hover:border-gray-300'}`}
+              >
+                <span className={`mt-0.5 h-4 w-4 rounded-full border flex-shrink-0 ${depositPolicy === v ? 'border-red-600 bg-red-600' : 'border-gray-300 bg-white'}`} />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-gray-900">{l}</span>
+                  <span className="block text-xs text-gray-500 mt-0.5">{d}</span>
+                </span>
+              </button>
+            ))}
+            {!depositPolicy && (
+              <p className="text-xs text-amber-700 m-0">
+                Not set — listings currently tell buyers to ask you, in writing, before paying.
+              </p>
+            )}
+          </div>
+        </SettingsField>
+
+        <SettingsField
+          label="Handling / Runner Fee"
+          hint="Your own fee on top of the official JPJ and Puspakom charges. Enter 0 if you charge none. Shown on every listing; left blank it reads 'Not stated'."
+        >
+          <div className="relative">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">RM</span>
+            <input
+              value={processingFee}
+              onChange={e => setProcessingFee(e.target.value.replace(/[^0-9.]/g, ''))}
+              placeholder="e.g. 300"
+              inputMode="decimal"
+              className={`${iCls} pl-11`}
+            />
+          </div>
+        </SettingsField>
+
+        <SettingsField label="Deposit Details (optional)" hint="Who holds it, how long the car stays reserved">
+          <textarea
+            value={depositTerms}
+            onChange={e => setDepositTerms(e.target.value)}
+            placeholder={"e.g. Held by the showroom, car reserved for 7 days."}
+            rows={2}
+            className={iCls}
+            style={{ resize: 'vertical' }}
           />
         </SettingsField>
 

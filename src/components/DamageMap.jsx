@@ -254,12 +254,15 @@ export default function DamageMap({ value = [], onChange, readOnly = false }) {
         )}
       </div>
 
-      {/* ── Legend ── */}
+      {/* ── Legend ──
+          Suppressed on a read-only map with no markers: a key listing scratch,
+          dent, rust and replaced panel under a clean car reads as a defect list. */}
+      {(!readOnly || value.length > 0) && (
       <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
         {DAMAGE_TYPES.map(t => (
           <span key={t.code} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
             <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: t.color, flexShrink: 0 }}/>
-            <span style={{ color: '#9ca3af', fontSize: '11px' }}>({t.code}) {t.label}</span>
+            <span style={{ color: '#6b7280', fontSize: '11px' }}>({t.code}) {t.label}</span>
           </span>
         ))}
         {!readOnly && (
@@ -268,6 +271,7 @@ export default function DamageMap({ value = [], onChange, readOnly = false }) {
           </span>
         )}
       </div>
+      )}
 
       {/* ── Marker list (summary) ── */}
       {value.length > 0 && (

@@ -699,7 +699,19 @@
       "saveBtn": "Simpan Perubahan",
       "savingBtn": "Menyimpan...",
       "language": "Bahasa",
-      "languageSubtext": "Tukar antara Inggeris dan Melayu"
+      "languageSubtext": "Tukar antara Inggeris dan Melayu",
+      "sellingTermsSection": "Terma jualan (dipapar pada iklan anda)",
+      "sellingTermsHint": "Pembeli melihat maklumat ini pada setiap kereta yang anda iklankan. Jika dibiarkan kosong, iklan akan meminta mereka bertanya kepada anda.",
+      "depositPolicy": "Polisi deposit",
+      "depositPolicySelect": "Tidak dinyatakan — pembeli diminta bertanya",
+      "depositRefundable": "Boleh dikembalikan jika pembeli tarik diri",
+      "depositLoanRejected": "Dikembalikan hanya jika pinjaman ditolak",
+      "depositNonRefundable": "Tidak boleh dikembalikan selepas dibayar",
+      "depositTerms": "Butiran deposit (pilihan)",
+      "depositTermsPlaceholder": "cth. Kereta ditempah selama 7 hari.",
+      "processingFee": "Caj pengendalian / runner",
+      "processingFeeHint": "Caj anda sendiri di atas caj rasmi JPJ dan Puspakom. Masukkan 0 jika anda tidak mengenakan caj.",
+      "processingFeePlaceholder": "cth. 300"
     },
     "logout": {
       "title": "Log keluar?",

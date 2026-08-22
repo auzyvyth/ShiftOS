@@ -87,6 +87,124 @@ not scoped, not prioritized — just parked here until picked up on purpose.
 
 ---
 
+### SESSION 2026-08-21 — car detail page trust (research + geran requirement)
+
+Full research report: `docs/research/cardetail-trust-research.html`
+(published copy: https://claude.ai/code/artifact/46778936-5be8-445f-9799-447d2753cead).
+Read it before picking any TRUST item up — it explains the five-rung trust ladder
+these are ranked against (claim / structured self-report / openable document /
+disclosed flaw / money on the line) and why one rung-4 item beats ten rung-1 ones.
+
+**Shipped this session** (branch `claude/car-marketplace-trust-research-u6z9ns`,
+pushed to `staging`, NOT in prod): named trust-document slots in CarForm, geran
+required to publish with a declared-reason escape, `car_listings.geran_status`,
+geran row on CarDetailPage. Owner still needs to confirm the staging preview
+before this goes to prod.
+
+- **TRUST-1: Ungate the condition map — DONE 2026-08-21.** Turned out not to be a
+  gate removal. The real blocker was the form: the Damage Map field sat inside the
+  recon-only block (`src/components/CarForm.jsx:2397`), so a local car could never
+  get one, and live data showed 0 of 69 listings with a single mark — the map
+  rendered on nothing. Shipped: `car_listings.condition_declared_at` (nullable, in
+  `public_car_listings`), the map moved into a Condition Report field every car
+  sees with an explicit "I walked around this car" declaration, and both detail-page
+  breakpoints rendering on marks OR declaration with a summary line and the
+  declaration date. Existing listings unaffected (no declaration, nothing renders).
+  Still open from this item: whether CarForm should prompt for defect photos when
+  the map has marks on it, and whether the declaration should be required to publish
+  (it is optional today).
+- **TRUST-2 + TRUST-3: dealer identity block + what "Verified" means — DONE 2026-08-21.**
+  No new `profiles` columns were needed — `ssm_number`, `location`, `city`, `state`,
+  `postcode`, `business_hours`, `phone`, `stat_years`, `is_verified`/`verified_at` all
+  already existed. Shipped: `get_dealer_profile_by_id` extended (it is the only way an
+  anon visitor sees a dealer), one `DealerIdentity` component used at both breakpoints,
+  the badge linking to it instead of dead-ending, and SSM + postcode added to dealer
+  Settings with a nudge naming the gaps. The verified line now states the real check —
+  "SSM certificate and the owner's IC were checked" — which is what the admin button at
+  `src/pages/AdminPage.jsx:1941` has always meant.
+  **Three things for the owner:**
+  1. **0 of 3 dealers are verified**, so the shield renders on no listing. The badge was
+     never a lie, it is dead — same failure mode as the condition map. Verification is
+     admin-only (`AdminPage.jsx:452`); dealers have no way to request it.
+  2. Unverified dealers are shown **nothing** about verification rather than a negative
+     "not verified" label — branding them before offering a way to get verified is the
+     owner's call to make, not mine. Say if you want the negative state shown.
+  3. `business_reg_number` is a **dead duplicate** of `ssm_number` — referenced nowhere
+     in `src/`, empty in every row. Safe to drop; left alone for now.
+- **TRUST-4 through TRUST-10 — DONE 2026-08-21.** All shipped on
+  `claude/cardetail-trust-work-uwdwzk` / staging.
+  - **TRUST-4 deposit terms** — `profiles.deposit_policy` (refundable /
+    refundable_on_loan_rejection / non_refundable, CHECK-constrained) +
+    `deposit_terms`, set once in dealer Settings, shown at the deposit ask. When
+    unset the listing says so and tells the buyer to get it in writing.
+  - **TRUST-5 CTA stack** — the two green buttons opened the SAME enquiry modal,
+    differing only in lead attribution. Now one button carrying the rep's routing
+    and named after them. "Go to dealer's page" duplicated "Visit Dealer's Page"
+    (identical URL) and was removed.
+  - **TRUST-6 review score** — tally lifted out of ReviewsSection (no second
+    query) to sit beside the seller's name. Under 3 reviews the average is
+    withheld and only the count shows.
+  - **TRUST-7 filler copy** — "peace of mind" and "Inspection verified by the
+    dealer" replaced; the Puspakom row no longer says "Verified" off a typed date.
+  - **TRUST-8 theme leaks** — was listed as 3 spots, was closer to 30. Added a
+    `LIGHT_ACCENT` map resolving accents at point of use instead of patching
+    hardcodes one at a time.
+  - **TRUST-9 market verdict** — floor of 5 comparables (16 of 41 listings were
+    under it). Also relabelled: `compute_market_avg` averages other XDrive
+    ASKING prices from a 69-car catalogue, so "market average" was overclaiming.
+    Method note added; the RPC's `mileage_match` is no longer discarded.
+  - **TRUST-10 price completeness** — official transfer fees (JPJ RM100,
+    Puspakom B5 RM30, B7 RM60) sourced from `src/utils/postSaleSteps.js`, not
+    invented. Revised after owner review (see below).
+
+- **TRUST-10 follow-up — DONE 2026-08-21.** Owner caught two things.
+  1. Processing fees vary by seller and location — only the JPJ/Puspakom rates are
+     fixed nationally. Added `profiles.processing_fee` (NULL = not stated, 0 =
+     none) with a field in all three seller surfaces.
+  2. Salesman Lite/Premium had none of these fields. Worse: standalone agents own
+     their listings, but `get_dealer_profile_by_id` is restricted to
+     dealer/owner/superadmin, so `dealer` was NULL on their 9 public listings and
+     `dealer?.handles_roadtax_insurance !== false` evaluated true — the page was
+     printing "Road tax and insurance: Handled by the dealer" as a fact about a
+     seller who had no such setting. Fixed by unifying on a `seller` object
+     (`dealer || salesmanProfile`) and returning the terms from
+     `get_salesman_by_id` too.
+  3. Related find: `handles_roadtax_insurance` is NOT NULL DEFAULT true and all 26
+     profile rows still carry the untouched default, so `true` cannot be told apart
+     from "never answered". The listing now only states "Buyer arranges" when the
+     flag is explicitly `false` (which requires someone to have flipped it);
+     otherwise it says "Confirm with the seller".
+  Still open: `DealerIdentity` ("About this dealer") is deliberately still gated on
+  `dealer` only. A standalone agent has no SSM, and `is_verified` means something
+  different for them (`get_salesman_by_id` derives it from whether an IC is on
+  file, NOT the admin's "SSM + IC checked"), so reusing that block for agents
+  would print a verification claim that is not true. Needs its own agent-framed
+  variant if wanted.
+
+- **TRUST-11 (ops, not UI): a named XDrive inspection standard** — the Carsome
+  "175-point" move. "175-point" is countable, "thorough" is not. Needs someone to
+  actually define and perform the inspection before any UI is worth building.
+- **TRUST-12 (business, not UI): a guarantee with money behind it** — return window or
+  deposit protection. Rung 5, the only rung that beats a cynic, and the only one that
+  costs real money. cinch: 14-day money back + 90-day warranty. Carsome: 5-day.
+
+**Open questions left from this session:**
+
+- **TRUST-Q1: should Puspakom be hard-required for recon units?** Owner originally asked
+  for the Puspakom report to be required too. It was deliberately left optional because
+  B5/B7 is done at transfer time, so most stock has never had one and requiring it would
+  make most inventory unlistable. If B5 is effectively standard on recon, gating it on
+  `isRecon` only is a reasonable middle. Owner decision.
+- **TRUST-Q2: `ownership` vs `registration_card` overlap in DOC_TYPES** — "Ownership /
+  VOC" (`src/components/CarForm.jsx:277`) still exists alongside the new geran slot and
+  a dealer could file a geran under it. Decide whether to retire `ownership`, relabel it
+  to transfer-only documents, or migrate existing rows.
+- **TRUST-Q3: `geran_status` is not surfaced outside the detail page** — it does not
+  appear on `CarCard` or in search filters. If the tier is meant to be something dealers
+  compete for (the Carlist "Qualified" move), it has to be visible in the list too.
+
+---
+
 ### SESSION 2026-08-18 — Salesman Lite design cleanup
 
 - **DESIGN-1: Replace Salesman Lite logo** — current logo needs a redesign/replacement.

@@ -1006,6 +1006,12 @@ export default function SalesmanLite() {
     tiktok: "",
     facebook: "",
     website: "",
+    // Selling terms buyers see on every listing. A standalone agent owns their
+    // own listings, so these have to live here — the dealer dashboard settings
+    // they were first built in are a surface this account never sees.
+    deposit_policy: "",
+    deposit_terms: "",
+    processing_fee: "",
   });
   const [settingsSaving, setSettingsSaving] = useState(false);
   // Avatar cache is keyed by user id (set once profile loads) so it never
@@ -1241,6 +1247,9 @@ export default function SalesmanLite() {
         tiktok: profile.tiktok || "",
         facebook: profile.facebook || "",
         website: profile.website || "",
+        deposit_policy: profile.deposit_policy || "",
+        deposit_terms: profile.deposit_terms || "",
+        processing_fee: profile.processing_fee != null ? String(profile.processing_fee) : "",
       });
       const av = profile.avatar_url || "";
       setAvatarUrl(av);
@@ -7300,6 +7309,12 @@ export default function SalesmanLite() {
           tiktok: settingsForm.tiktok || null,
           facebook: settingsForm.facebook || null,
           website: settingsForm.website || null,
+          deposit_policy: settingsForm.deposit_policy || null,
+          deposit_terms: settingsForm.deposit_terms.trim() || null,
+          processing_fee:
+            String(settingsForm.processing_fee).trim() === ""
+              ? null
+              : Number(settingsForm.processing_fee) || 0,
         })
         .eq("id", userId);
       setSettingsSaving(false);
@@ -7471,6 +7486,53 @@ export default function SalesmanLite() {
           {/* Push notifications — works with the app closed, unlike the in-tab
               Notification API banner used elsewhere in this file. */}
           <PushToggle userId={userId} theme="dark" style={cardStyle} />
+
+          {/* Selling terms — a standalone agent sells their own cars, so the buyer
+              questions the dealer dashboard answers (is my deposit safe, what else
+              do I pay) have to be answerable here too. Without these the listing
+              tells the buyer to ask, which is honest but loses the sale's momentum. */}
+          <div style={{ ...cardStyle, marginBottom: 24 }}>
+            <p style={sectionLabelStyle}>{t("salesmanLite.settings.sellingTermsSection")}</p>
+            <p style={{ margin: "-6px 0 12px", fontSize: 11, color: "#4b5563", lineHeight: 1.5 }}>
+              {t("salesmanLite.settings.sellingTermsHint")}
+            </p>
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.depositPolicy")}</label>
+              <select
+                value={settingsForm.deposit_policy}
+                onChange={(e) => setSettingsForm((p) => ({ ...p, deposit_policy: e.target.value }))}
+                style={{ ...inputStyle, appearance: "none" }}
+              >
+                <option value="">{t("salesmanLite.settings.depositPolicySelect")}</option>
+                <option value="refundable">{t("salesmanLite.settings.depositRefundable")}</option>
+                <option value="refundable_on_loan_rejection">{t("salesmanLite.settings.depositLoanRejected")}</option>
+                <option value="non_refundable">{t("salesmanLite.settings.depositNonRefundable")}</option>
+              </select>
+            </div>
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.depositTerms")}</label>
+              <input
+                value={settingsForm.deposit_terms}
+                onChange={(e) => setSettingsForm((p) => ({ ...p, deposit_terms: e.target.value }))}
+                placeholder={t("salesmanLite.settings.depositTermsPlaceholder")}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.processingFee")}</label>
+              <div style={{ position: "relative" }}>
+                <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "#6b7280", pointerEvents: "none" }}>RM</span>
+                <input
+                  value={settingsForm.processing_fee}
+                  onChange={(e) => setSettingsForm((p) => ({ ...p, processing_fee: e.target.value.replace(/[^0-9.]/g, "") }))}
+                  placeholder={t("salesmanLite.settings.processingFeePlaceholder")}
+                  inputMode="decimal"
+                  style={{ ...inputStyle, paddingLeft: 40 }}
+                />
+              </div>
+              <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151", lineHeight: 1.5 }}>{t("salesmanLite.settings.processingFeeHint")}</p>
+            </div>
+          </div>
 
           {/* Location + IC */}
           <div style={cardStyle}>
