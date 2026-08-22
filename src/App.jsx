@@ -13,6 +13,7 @@ import InstallPrompt from "./components/InstallPrompt";
 import OfflineBanner from "./components/OfflineBanner";
 import { isSubdomain } from "./hooks/useTenant";
 import { useIdleLogout } from "./hooks/useIdleLogout";
+import { usePushHeal } from "./hooks/usePushHeal";
 import "./i18n/config";
 
 // Eager — only true above-the-fold entry points. The public marketplace
@@ -117,6 +118,7 @@ function RootRoute() {
 
 function App() {
   useIdleLogout(); // sign out after 24h of inactivity
+  usePushHeal();   // silently re-register a push subscription the browser dropped
   return (
     <Router>
       <ScrollToTop />
