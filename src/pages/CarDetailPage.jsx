@@ -37,6 +37,9 @@ import {
   
   TrendingUp,
   Minus,
+  MapPin,
+  Clock,
+  Building2,
 } from "lucide-react";
 import HeartButton from "../components/HeartButton";
 import { useCompare } from "../hooks/useCompare";
@@ -274,6 +277,115 @@ function PuspakomDates({ b5, b7, color }) {
       {b5 && <div style={{ fontSize: 12, color }}>PUSPAKOM B5 (chassis &amp; body) inspected {fmtCdpDate(b5)}</div>}
       {b7 && <div style={{ fontSize: 12, color }}>PUSPAKOM B7 (roadworthiness) certified {fmtCdpDate(b7)}</div>}
       <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>Inspection verified by the dealer.</p>
+    </div>
+  );
+}
+
+/* Dealer identity (TRUST-2/3) — the business facts a buyer can check for
+   themselves: who they are legally, where they trade from, when they are open.
+   Stanford's web-credibility work puts "show the real organisation behind the
+   site" first, and the page had none of it — just a name and a shield.
+
+   Two rules here:
+   - Only render what the dealer actually filled in. A row of "—" placeholders
+     is worse than no block, and inventing a "trading since" would be a claim,
+     not a fact.
+   - Self-reported and platform-checked facts are labelled differently. Years
+     trading is the dealer's own number; the verified line is XDrive's check.
+   Rendered once and used at both breakpoints, deliberately: the two hardcoded
+   copies of the sidebar are why the theme leaks in TRUST-8 exist. */
+// One predicate for "is there anything real to show about this dealer", shared by
+// the block below and the sidebar badge that links down to it — so the link can
+// never point at a section that decided not to render.
+function hasDealerIdentity(dealer) {
+  if (!dealer) return false;
+  return !!(dealer.is_verified || dealer.ssm_number || dealer.location || dealer.city ||
+    dealer.business_hours || dealer.phone || dealer.stat_years > 0);
+}
+
+function DealerIdentity({ dealer, dealerName, th, isXdrive }) {
+  if (!hasDealerIdentity(dealer)) return null;
+
+  const addressLine = [dealer.location, [dealer.postcode, dealer.city].filter(Boolean).join(' '), dealer.state]
+    .map((part) => (part || '').trim())
+    .filter(Boolean)
+    .join(', ');
+
+  const rows = [
+    dealer.ssm_number && {
+      icon: Building2,
+      label: 'Company registration (SSM)',
+      value: dealer.ssm_number,
+    },
+    addressLine && {
+      icon: MapPin,
+      label: 'Trading address',
+      value: addressLine,
+      href: `https://www.google.com/maps/search/${encodeURIComponent(addressLine + ', Malaysia')}`,
+      hrefLabel: 'Directions',
+    },
+    dealer.business_hours && {
+      icon: Clock,
+      label: 'Business hours',
+      value: dealer.business_hours,
+    },
+    dealer.phone && {
+      icon: Phone,
+      label: 'Landline',
+      value: dealer.phone,
+      href: `tel:${dealer.phone}`,
+      hrefLabel: 'Call',
+    },
+    dealer.stat_years > 0 && {
+      icon: Star,
+      label: 'Years trading',
+      value: `${dealer.stat_years} years`,
+      note: 'self-reported',
+    },
+  ].filter(Boolean);
+
+  const accent = isXdrive ? '#2563eb' : '#60a5fa';
+
+  return (
+    <div id="dealer-identity" style={{ marginTop: 40 }}>
+      <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.2em', color: th.textMuted, fontWeight: 700, marginBottom: 14 }}>
+        About this dealer
+      </p>
+      <div style={{ background: th.card, border: `1px solid ${th.border}`, borderRadius: 14, padding: '20px 22px' }}>
+        <p style={{ fontSize: 15, color: th.text, fontWeight: 600, margin: 0 }}>{dealerName}</p>
+
+        {dealer.is_verified && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginTop: 10 }}>
+            <ShieldCheck size={14} strokeWidth={2.5} style={{ color: accent, flexShrink: 0, marginTop: 1 }} />
+            <p style={{ fontSize: 12, color: th.textSec, margin: 0, lineHeight: 1.6 }}>
+              Verified by XDrive — SSM certificate and the owner&apos;s IC were checked
+              {dealer.verified_at ? ` on ${fmtCdpDate(dealer.verified_at)}` : ''}.
+            </p>
+          </div>
+        )}
+
+        {rows.length > 0 && (
+          <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {rows.map(({ icon: Icon, label, value, note, href, hrefLabel }) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <Icon size={14} style={{ color: th.textMuted, flexShrink: 0, marginTop: 2 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.12em', color: th.textMuted, fontWeight: 700, margin: '0 0 3px' }}>
+                    {label}{note ? <span style={{ fontWeight: 400, letterSpacing: '0.04em', textTransform: 'none' }}> · {note}</span> : null}
+                  </p>
+                  <p style={{ fontSize: 13, color: th.text, margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{value}</p>
+                </div>
+                {href && (
+                  <a href={href} target={href.startsWith('tel:') ? undefined : '_blank'} rel="noopener noreferrer"
+                    style={{ flexShrink: 0, fontSize: 11, color: accent, textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    {hrefLabel}
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -2175,11 +2287,13 @@ export default function CarDetailPage() {
                     <p style={{ fontSize:13, color: th.text, fontWeight:600, marginBottom:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{displayName}</p>
                     <p style={{ fontSize:11, color: th.textSec }}>
                       {isAgent ? 'Independent Agent' : dealer ? (
-                        dealer.is_verified ? (
-                          <span style={{ display:'inline-flex', alignItems:'center', gap:4 }}>
-                            <ShieldCheck size={12} strokeWidth={2.5} style={{ color: isXdrive ? '#2563eb' : '#60a5fa' }} />
-                            Verified Dealer
-                          </span>
+                        /* The badge used to be a dead end — a shield with no referent.
+                           When there are real details below it, it links to them. */
+                        hasDealerIdentity(dealer) ? (
+                          <a href="#dealer-identity" style={{ display:'inline-flex', alignItems:'center', gap:4, color: 'inherit', textDecoration:'none', borderBottom:`1px dotted ${th.textMuted}` }}>
+                            {dealer.is_verified && <ShieldCheck size={12} strokeWidth={2.5} style={{ color: isXdrive ? '#2563eb' : '#60a5fa' }} />}
+                            {dealer.is_verified ? 'Verified Dealer' : 'Dealer'} · details
+                          </a>
                         ) : 'Dealer'
                       ) : 'Seller'}
                     </p>
@@ -2569,6 +2683,9 @@ export default function CarDetailPage() {
               </div>
             </div>
           )}
+
+          {/* About this dealer (mobile) */}
+          <DealerIdentity dealer={dealer} dealerName={dealerName} th={th} isXdrive={isXdrive} />
 
           {/* Reviews (mobile) */}
           <ReviewsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} isXdrive={isXdrive} />
@@ -3465,6 +3582,9 @@ export default function CarDetailPage() {
               </div>
             )}
 
+            {/* ── ABOUT THIS DEALER (desktop) ── */}
+            <DealerIdentity dealer={dealer} dealerName={dealerName} th={th} isXdrive={isXdrive} />
+
             {/* ── REVIEWS (desktop) ── */}
             <ReviewsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} isXdrive={isXdrive} />
 
@@ -3522,11 +3642,11 @@ export default function CarDetailPage() {
                     <p style={{ fontSize: 13, color: th.text, fontWeight: 600, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</p>
                     <p style={{ fontSize: 11, color: th.textSec }}>
                       {isAgent ? 'Independent Agent' : dealer ? (
-                        dealer.is_verified ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                            <ShieldCheck size={12} strokeWidth={2.5} style={{ color: isXdrive ? '#2563eb' : '#60a5fa' }} />
-                            Verified Dealer
-                          </span>
+                        hasDealerIdentity(dealer) ? (
+                          <a href="#dealer-identity" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'inherit', textDecoration: 'none', borderBottom: `1px dotted ${th.textMuted}` }}>
+                            {dealer.is_verified && <ShieldCheck size={12} strokeWidth={2.5} style={{ color: isXdrive ? '#2563eb' : '#60a5fa' }} />}
+                            {dealer.is_verified ? 'Verified Dealer' : 'Dealer'} · details
+                          </a>
                         ) : 'Dealer'
                       ) : 'Seller'}
                     </p>

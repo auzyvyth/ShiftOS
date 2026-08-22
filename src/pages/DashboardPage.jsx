@@ -1037,6 +1037,10 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const [dealerCity, setDealerCity]   = useState(profile?.city  || '');
   const [dealerAddress, setDealerAddress] = useState(profile?.location || '');
   const [businessHours, setBusinessHours] = useState(profile?.business_hours || '');
+  // Identity fields buyers see on every listing (TRUST-2). ssm_number was only
+  // ever captured at onboarding and had no way to be edited or added later.
+  const [ssmNumber, setSsmNumber] = useState(profile?.ssm_number || '');
+  const [dealerPostcode, setDealerPostcode] = useState(profile?.postcode || '');
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -1145,6 +1149,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setDealerCity(profile.city || '');
     setDealerAddress(profile.location || '');
     setBusinessHours(profile.business_hours || '');
+    setSsmNumber(profile.ssm_number || '');
+    setDealerPostcode(profile.postcode || '');
     setTgToken(""); // SEC-5: write-only — never load the stored token back into the form
     setTgChannel(profile.telegram_channel_id || "");
     setTgAutoPost(profile.telegram_auto_post || false);
@@ -1329,6 +1335,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
       city:  dealerCity.trim(),
       location: dealerAddress.trim(),
       business_hours: businessHours.trim(),
+      ssm_number: ssmNumber.trim(),
+      postcode: dealerPostcode.trim(),
     });
 
   const saveTelegram = () =>
@@ -1790,6 +1798,30 @@ function SettingsTab({ profile, onProfileUpdate }) {
         iconBg="rgba(56,189,248,0.08)"
         iconBorder="rgba(56,189,248,0.18)"
       >
+        {/* Buyers judge a listing on whether a real business is behind it, and
+            these fields are the only place that comes from. Naming the gaps beats
+            a form that quietly stays empty. */}
+        {(() => {
+          const missing = [
+            !ssmNumber.trim() && 'company registration (SSM)',
+            !dealerAddress.trim() && 'street address',
+            !dealerPostcode.trim() && 'postcode',
+            !businessHours.trim() && 'business hours',
+            !contactPhone.trim() && 'landline',
+          ].filter(Boolean);
+          if (missing.length === 0) return null;
+          return (
+            <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-amber-50 border border-amber-200">
+              <AlertCircle size={15} className="text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-900 leading-relaxed m-0">
+                Buyers see an <strong>About this dealer</strong> block on every one of your
+                listings. It only shows what you have filled in — right now it is missing your{' '}
+                {missing.join(', ')}.
+              </p>
+            </div>
+          );
+        })()}
+
         <SettingsField label="WhatsApp Number" hint="Include country code">
           <div className="relative">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600 text-sm pointer-events-none">
@@ -1850,7 +1882,27 @@ function SettingsTab({ profile, onProfileUpdate }) {
           </SettingsField>
         </div>
 
-        <SettingsField label="Street Address" hint="Shown on your storefront Visit Us card with a Get Directions link">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <SettingsField label="Postcode" hint="Completes the trading address buyers see">
+            <input
+              value={dealerPostcode}
+              onChange={e => setDealerPostcode(e.target.value.replace(/\D/g, '').slice(0, 5))}
+              placeholder="e.g. 47301"
+              inputMode="numeric"
+              className={iCls}
+            />
+          </SettingsField>
+          <SettingsField label="Company Registration (SSM)" hint="Shown on every listing — the single strongest proof you are a real business">
+            <input
+              value={ssmNumber}
+              onChange={e => setSsmNumber(e.target.value)}
+              placeholder="e.g. 202301234567 (1234567-A)"
+              className={iCls}
+            />
+          </SettingsField>
+        </div>
+
+        <SettingsField label="Street Address" hint="Shown on your storefront Visit Us card and on every listing, with a Directions link">
           <input
             value={dealerAddress}
             onChange={e => setDealerAddress(e.target.value)}
