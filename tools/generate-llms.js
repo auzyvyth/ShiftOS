@@ -63,7 +63,7 @@ ${ARTICLES.map(([url, desc]) => `- [${url.split("/").pop()}](${SITE}${url}): ${d
 
 ## Pricing (RM/month, prices in Malaysian Ringgit)
 - Salesman Lite — RM0 (free): up to 10 listings, 1 seat.
-- Salesman Premium — RM20/month: up to 30 listings, 1 seat, plus AI captions, financing tools and deal sheets.
+- Salesman Premium — RM35/month: up to 30 listings, 1 seat, plus AI captions, financing tools and deal sheets.
 - Dealer Starter — RM299/month: up to 30 listings, 4 seats. 14-day free trial.
 - Dealer Growth — RM599/month: up to 80 listings, 8 seats.
 - Dealer Pro — RM1,199/month: up to 150 listings, 15 seats.
