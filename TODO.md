@@ -37,11 +37,17 @@ not scoped, not prioritized — just parked here until picked up on purpose.
      messages land via a Business API webhook; reply-rate/response-time
      would then feed the existing AI scoring (`ai-proxy`, see
      `SalesmanPremium.jsx:1024`).
-  3. **AI that stays on-message for days.** Needs per-lead conversation
-     memory (have: `lead_activities` history), a staged script (day-1
-     tone ≠ day-5 tone), hard guardrails (never quote a price or
-     financing approval the salesman didn't set), and a kill-switch that
-     silences the AI the moment a human replies.
+  3. ~~AI that stays on-message for days, sending unsupervised.~~
+     **SCRATCHED by owner 2026-08-23: "who would want to talk to an AI when
+     buying a car, they need trust."** Correct call — a car is a high-trust,
+     high-ticket purchase; a buyer who suspects they're texting a bot instead
+     of a person stops trusting the thread, which kills the exact channel
+     that closes deals. Not pursuing an AI that messages buyers unsupervised.
+     What survives: AI drafts + times the nudge ("day 3, no reply, here's a
+     suggested message"), a human still reviews and hits send — same pattern
+     as the WA-reply drafting Premium already has
+     (`SalesmanPremium.jsx:2008`). Keeps a real person on every message a
+     buyer receives while still killing the "forgot to follow up" problem.
   Bigger vision behind this: move sellers past views/likes as their only
   signal — surface real intent (saved_cars, price_alerts, WA-tap-without-
   reply, repeat visits, photo/scroll engagement) the way AutoRaptor's
@@ -130,13 +136,17 @@ it's a feature-mining exercise: what would still save a solo agent real time
 if ported over.
 
 Prioritized gaps worth building, ranked by time saved, none started:
-- [ ] **RAPTOR-1: Real unattended multi-day follow-up.** `OutreachHub.jsx:141`
-  is fully manual — segments leads by urgency and hands you templates, but a
-  human has to click through every WhatsApp tab, one lead at a time, in one
-  sitting. AutoRaptor's automation nurtures leads across days with no human
-  re-triggering it. Biggest gap on the list. Blocked on real WhatsApp Business
-  API access (see TODO's IDEA-2, Ideas section) — you can't truly automate a
-  channel you can only deep-link into and never read replies from.
+- [ ] **RAPTOR-1: Timed follow-up nudges, human-sent (revised 2026-08-23).**
+  Originally scoped as AutoRaptor-style unattended AI send; owner correctly
+  pushed back — buyers need to know they're talking to a person for a
+  purchase this size (see IDEA-2 point 3). Revised scope: `OutreachHub.jsx:141`
+  is fully manual today (segments leads by urgency, hands you templates, but
+  a human has to click through every WhatsApp tab one at a time). Keep it
+  human-sent, but have the AI draft + time the suggested message per lead
+  ("day 3, no reply — send this") so the salesman just reviews and taps send
+  instead of composing from scratch. Still blocked on real WhatsApp Business
+  API access for the reply-visibility half (see IDEA-2, Ideas section) — the
+  timing/drafting half does not need it and could ship first.
 - [ ] **RAPTOR-2: Side-by-side deal/payment scenario desking.** Loans tab
   (`SalesmanPremium.jsx:6925`) produces one scenario per submission. Add 2-3
   side-by-side tenure/down-payment comparisons before the application form,
