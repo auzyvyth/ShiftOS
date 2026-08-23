@@ -335,7 +335,7 @@ function SubTabs({ value, onChange, items }) {
 
 // Top-level Premium tabs, each backed by its own /salesman-premium/:tab route.
 // Anything not in this list falls back to the dashboard.
-const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "analytics", "loans", "outreach", "merge", "settings"];
+const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "analytics", "loans", "outreach", "customers", "handover", "merge", "settings"];
 
 // Tabs that no longer own a slot in the nav. Their routes still resolve, so old
 // links, in-app deep links (switchTab) and the tour all keep working — they just
@@ -2173,16 +2173,6 @@ export default function SalesmanPremium() {
  icon: <Megaphone style={{ width: 14, height: 14 }} />,
  }] : []),
  {
- tab: "customers",
- label: "Customers",
- icon: <UserCheck style={{ width: 14, height: 14 }} />,
- },
- {
- tab: "handover",
- label: "Handover",
- icon: <ClipboardList style={{ width: 14, height: 14 }} />,
- },
- {
  tab: "settings",
  label: "Settings",
  icon: <Settings style={{ width: 14, height: 14 }} />,
@@ -2212,8 +2202,6 @@ export default function SalesmanPremium() {
  { tab: "analytics", label: "Analytics", icon: <TrendingUp size={18} /> },
  { tab: "loans", label: "Loans", icon: <Banknote size={18} /> },
  ...(showOutreach ? [{ tab: "outreach", label: "Outreach", icon: <Megaphone size={18} /> }] : []),
- { tab: "customers", label: "Customers", icon: <UserCheck size={18} /> },
- { tab: "handover", label: "Handover", icon: <ClipboardList size={18} /> },
  { tab: "settings", label: "Settings", icon: <Settings size={18} /> },
  ];
 
@@ -2667,6 +2655,31 @@ export default function SalesmanPremium() {
  )}
  </div>
  )}
+
+ {/* Premium-only tabs — entry cards instead of nav slots (kept off the
+ already-crowded bottom nav). Bronze accent hints at the Boutique
+ Concierge surface they lead to. */}
+ <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8, marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+ {[
+ { tab: "customers", label: "Customers", sub: "Buyer records & service plans", Icon: UserCheck },
+ { tab: "handover", label: "Handover", sub: "Post-sale paperwork & SLA", Icon: ClipboardList },
+ ].map(({ tab, label, sub, Icon }) => (
+ <button
+ key={tab}
+ onClick={() => switchTab(tab)}
+ style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, padding: "12px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${panelPremium.bronzeLine}`, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+ >
+ <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: R.sm, background: panelPremium.bronzeSoft, color: panelPremium.bronze, flexShrink: 0 }}>
+ <Icon size={14} />
+ </span>
+ <span style={{ flex: 1, minWidth: 0 }}>
+ <span style={{ display: "block", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>{label}</span>
+ <span style={{ display: "block", fontSize: T.size.xs, color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</span>
+ </span>
+ <ChevronRight size={13} color={C.textMuted} style={{ flexShrink: 0 }} />
+ </button>
+ ))}
+ </div>
  </div>
 
  {/* Dashboard body — 2-up grid on desktop, single column on mobile */}
