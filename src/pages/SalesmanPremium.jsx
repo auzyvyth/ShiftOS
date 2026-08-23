@@ -84,7 +84,7 @@ import PushToggle from "../components/PushToggle";
 import ServicesAddonsTab from "../components/salesman/ServicesAddonsTab";
 import ChannelBreakdown from "../components/ChannelBreakdown";
 import ShareMenu from "../components/ShareMenu";
-import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha } from "../theme/tokens";
+import { panel as C, panelType as T, panelRadius as R, panelStageHue, panelInsightGradient, withAlpha } from "../theme/tokens";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 
 // Price visual weight — a RM45k car and a RM2.4M car shouldn't read at the
@@ -2473,6 +2473,12 @@ export default function SalesmanPremium() {
  const pct = goal.target > 0 ? Math.min((soldThisMonth / goal.target) * 100, 100) : 0;
  const goalHue = pct >= 100 ? C.success : pct >= 60 ? C.info : C.danger;
  const goalHueText = pct >= 100 ? C.successText : pct >= 60 ? C.infoText : C.dangerText;
+ // Semicircle gauge geometry for the goal card — arc runs from 180°
+ // (0%, left) to 0° (100%, right); the pointer dot sits at pct along it.
+ const gaugeCx = 120, gaugeCy = 116, gaugeR = 92;
+ const gaugeAngleRad = ((180 - 1.8 * pct) * Math.PI) / 180;
+ const gaugePtX = gaugeCx + gaugeR * Math.cos(gaugeAngleRad);
+ const gaugePtY = gaugeCy - gaugeR * Math.sin(gaugeAngleRad);
  const focusCar = goal.focusCarId ? myListings.find(c => c.id === goal.focusCarId && c.status === "available") : null;
  const scoreCar = (c) => {
  const s = carStatsMap[c?.id] || {};
@@ -2501,8 +2507,28 @@ export default function SalesmanPremium() {
  ? `${activeLeads.length} deal${activeLeads.length !== 1 ? "s" : ""} in motion right now.`
  : "Pipeline is clear — good time to feature a car or reach out to old buyers.";
 
+ const [gradA, gradB, gradC] = panelInsightGradient;
+
  return (
  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+ {/* Dashboard-only card chrome — layered gradient surface + a soft top
+ highlight, richer than the flat CARD token used on every other tab.
+ Scoped to this tab; nothing else changes. */}
+ <style>{`
+ .sp-insight-card {
+ background: linear-gradient(155deg, ${C.surfaceRaised} 0%, ${C.surface} 65%);
+ border: 1px solid ${C.border};
+ border-radius: ${R.lg}px;
+ box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 20px 36px -24px rgba(0,0,0,0.6);
+ position: relative;
+ overflow: hidden;
+ }
+ .sp-insight-card::before {
+ content: "";
+ position: absolute; inset: 0; pointer-events: none;
+ background: radial-gradient(120% 60px at 15% 0%, rgba(255,255,255,0.05), transparent 60%);
+ }
+ `}</style>
 
  {/* AI: What to do today — Premium-only, kept from the old dashboard (not
  part of Lite's page, but a working paid feature with its own backend
@@ -2552,7 +2578,7 @@ export default function SalesmanPremium() {
  </div>
 
  {/* Hero: greeting + live portfolio snapshot */}
- <div style={{ ...CARD, position: "relative", overflow: "hidden", padding: isMobile ? "20px 18px" : "26px 28px", background: `linear-gradient(135deg, ${C.surface} 0%, ${C.surfaceRaised} 100%)` }}>
+ <div className="sp-insight-card" style={{ padding: isMobile ? "20px 18px" : "26px 28px" }}>
  <div style={{ position: "absolute", top: -50, right: -50, width: 180, height: 180, borderRadius: "50%", background: `radial-gradient(circle, ${withAlpha(C.accent, 0.14)} 0%, transparent 70%)`, pointerEvents: "none" }} />
  <div style={{ position: "relative", display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
  <div>
@@ -2680,7 +2706,7 @@ export default function SalesmanPremium() {
 
  {/* Follow-up Needed */}
  {staleLeads.length > 0 && (
- <div style={CARD}>
+ <div className="sp-insight-card">
  <div style={CARD_HEADER}>
  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: R.sm, background: withAlpha(C.danger, 0.12), color: C.danger, flexShrink: 0 }}>
@@ -2739,7 +2765,7 @@ export default function SalesmanPremium() {
 
  {/* Today's Agenda */}
  {hasAgenda && (
- <div style={CARD}>
+ <div className="sp-insight-card">
  <div style={CARD_HEADER}>
  <span>Today's Agenda</span>
  <span>{new Date().toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })}</span>
@@ -2786,7 +2812,7 @@ export default function SalesmanPremium() {
  )}
 
  {/* My Performance */}
- <div style={{ ...CARD, order: -1 }}>
+ <div className="sp-insight-card" style={{ order: -1 }}>
  <div style={CARD_HEADER}>
  <span>My Performance</span>
  <span>30 days</span>
@@ -2848,18 +2874,18 @@ export default function SalesmanPremium() {
  { label: "Today's Appts", value: todayAppts, accent: C.info, Icon: Calendar },
  { label: "Closed", value: closedThisMonth.length, accent: C.success, Icon: CheckCircle },
  ].map(({ label, value, accent, Icon }) => (
- <div key={label} style={{ ...CARD, padding: "14px 14px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
- <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: R.sm, background: withAlpha(accent, 0.1), color: accent }}>
- <Icon size={13} strokeWidth={2.5} />
+ <div key={label} className="sp-insight-card" style={{ padding: "16px 14px 14px", display: "flex", flexDirection: "column", gap: 9 }}>
+ <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: R.md, background: withAlpha(accent, 0.12), color: accent }}>
+ <Icon size={14} strokeWidth={2.5} />
  </span>
- <p style={{ ...STAT, margin: 0, fontSize: T.size.stat }}>{value}</p>
+ <p style={{ ...STAT, margin: 0, fontSize: T.size.statLg }}>{value}</p>
  <p style={{ ...EYEBROW, margin: 0 }}>{label}</p>
  </div>
  ))}
  </div>
 
  {/* Goal */}
- <div style={CARD}>
+ <div className="sp-insight-card">
  <div style={CARD_HEADER}>
  <span>Monthly Goal</span>
  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -2888,22 +2914,30 @@ export default function SalesmanPremium() {
  </div>
  ) : goal.target > 0 ? (
  <div>
- <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
- <div style={{ minWidth: 0 }}>
  <p style={{ ...EYEBROW, margin: "0 0 2px" }}>Commission earned</p>
- <p style={{ ...STAT, margin: "0 0 2px", fontSize: T.size.hero }}>
+ <div style={{ position: "relative", margin: "2px 0 4px" }}>
+ <div style={{ position: "absolute", top: 4, left: "50%", transform: "translateX(-50%)", width: 180, height: 100, background: `radial-gradient(ellipse at center, ${withAlpha(gradB, 0.32)}, transparent 72%)`, filter: "blur(14px)", pointerEvents: "none" }} />
+ <svg width="100%" height="176" viewBox="0 0 240 176" style={{ position: "relative" }}>
+ <defs>
+ <linearGradient id="spGoalGauge" x1="0" y1="0" x2="1" y2="0">
+ <stop offset="0%" stopColor={gradA} />
+ <stop offset="50%" stopColor={gradB} />
+ <stop offset="100%" stopColor={gradC} />
+ </linearGradient>
+ </defs>
+ <path d={`M ${gaugeCx - gaugeR},${gaugeCy} A ${gaugeR},${gaugeR} 0 0 1 ${gaugeCx + gaugeR},${gaugeCy}`} fill="none" stroke={C.fillStrong} strokeWidth="16" strokeLinecap="round" />
+ <path d={`M ${gaugeCx - gaugeR},${gaugeCy} A ${gaugeR},${gaugeR} 0 0 1 ${gaugeCx + gaugeR},${gaugeCy}`} fill="none" stroke="url(#spGoalGauge)" strokeWidth="16" strokeLinecap="round" pathLength="100" strokeDasharray={`${pct} 100`} />
+ <circle cx={gaugePtX} cy={gaugePtY} r="9" fill={C.surface} />
+ <circle cx={gaugePtX} cy={gaugePtY} r="6" fill="#fff" />
+ <text x={gaugeCx} y={gaugeCy - 14} textAnchor="middle" fontFamily="'Bebas Neue', sans-serif" fontSize="46" fill={C.text}>
  RM {soldThisMonth.toLocaleString("en-MY")}
- </p>
- <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted }}>of RM {goal.target.toLocaleString("en-MY")} goal · {soldCountThisMonth} car{soldCountThisMonth !== 1 ? "s" : ""} sold</p>
+ </text>
+ <text x={gaugeCx} y={gaugeCy + 10} textAnchor="middle" fontFamily="system-ui" fontSize="12" fontWeight="600" fill={C.textMuted}>
+ of RM {goal.target.toLocaleString("en-MY")} goal &middot; {Math.round(pct)}% done
+ </text>
+ </svg>
  </div>
- <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: R.pill, fontSize: T.size.sm, fontWeight: T.weight.bold, flexShrink: 0,
- background: withAlpha(goalHue, 0.12), color: goalHueText }}>
- {Math.round(pct)}% done
- </span>
- </div>
- <div style={{ height: 5, borderRadius: R.pill, background: C.fillStrong, overflow: "hidden", margin: "10px 0 8px" }}>
- <div style={{ height: "100%", width: `${pct}%`, borderRadius: R.pill, background: goalHue, transition: "width 0.6s ease" }} />
- </div>
+ <p style={{ margin: "0 0 4px", fontSize: T.size.sm, color: C.textMuted, textAlign: "center" }}>{soldCountThisMonth} car{soldCountThisMonth !== 1 ? "s" : ""} sold this month</p>
  {pct >= 100
  ? <p style={{ margin: "0 0 10px", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.successText }}>Goal smashed!</p>
  : <p style={{ margin: "0 0 10px", fontSize: T.size.sm, color: C.textMuted }}>RM {(goal.target - soldThisMonth).toLocaleString("en-MY")} to go · {daysLeft > 0 ? `${daysLeft}d left` : "last day!"}</p>
@@ -2925,8 +2959,13 @@ export default function SalesmanPremium() {
  <AreaChart data={commissionTrend} margin={{ top: 6, right: 8, bottom: 0, left: 8 }}>
  <defs>
  <linearGradient id="spCommissionFill" x1="0" y1="0" x2="0" y2="1">
- <stop offset="0%" stopColor={C.accent} stopOpacity={0.35} />
- <stop offset="100%" stopColor={C.accent} stopOpacity={0} />
+ <stop offset="0%" stopColor={gradB} stopOpacity={0.32} />
+ <stop offset="100%" stopColor={gradB} stopOpacity={0} />
+ </linearGradient>
+ <linearGradient id="spCommissionLine" x1="0" y1="0" x2="1" y2="0">
+ <stop offset="0%" stopColor={gradA} />
+ <stop offset="50%" stopColor={gradB} />
+ <stop offset="100%" stopColor={gradC} />
  </linearGradient>
  </defs>
  <XAxis dataKey="d" hide />
@@ -2941,7 +2980,7 @@ export default function SalesmanPremium() {
  }}
  formatter={(v) => [`RM ${Number(v).toLocaleString("en-MY")}`, "Commission"]}
  />
- <Area type="monotone" dataKey="val" stroke={C.dangerText} strokeWidth={2} fill="url(#spCommissionFill)" dot={false} activeDot={{ r: 4, fill: C.dangerText }} />
+ <Area type="monotone" dataKey="val" stroke="url(#spCommissionLine)" strokeWidth={3} fill="url(#spCommissionFill)" dot={false} activeDot={{ r: 5, fill: gradC }} />
  </AreaChart>
  </ResponsiveContainer>
  </div>
@@ -3002,7 +3041,7 @@ export default function SalesmanPremium() {
 
  {/* Onboarding */}
  {isNewUser && !localStorage.getItem("sp_tour_done") && (
- <div style={{ ...CARD, border: `1px solid ${withAlpha(C.accent, 0.15)}` }}>
+ <div className="sp-insight-card" style={{ border: `1px solid ${withAlpha(C.accent, 0.15)}` }}>
  <div style={CARD_HEADER}><span>Get Started</span></div>
  <div style={{ padding: 18 }}>
  <p style={{ margin: "0 0 16px", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>Here's how to make your first sale:</p>
