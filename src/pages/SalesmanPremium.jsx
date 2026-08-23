@@ -14,7 +14,6 @@ import CarForm from "../components/CarForm";
 import DealerPendingApproval from "../components/DealerPendingApproval";
 import AvailabilityEditor from "../components/AvailabilityEditor";
 import PostSaleBoard from "../components/postsale/PostSaleBoard";
-import { panelPremium } from "../theme/tokens";
 import {
  LogOut,
  Copy,
@@ -2656,30 +2655,24 @@ export default function SalesmanPremium() {
  </div>
  )}
 
- {/* Premium-only tabs — entry cards instead of nav slots (kept off the
- already-crowded bottom nav). Bronze accent hints at the Boutique
- Concierge surface they lead to. */}
- <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8, marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+ </div>
+
+ {/* Premium-only tabs — big, plain entry buttons (kept off the
+ already-crowded bottom nav). */}
+ <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
  {[
- { tab: "customers", label: "Customers", sub: "Buyer records & service plans", Icon: UserCheck },
- { tab: "handover", label: "Handover", sub: "Post-sale paperwork & SLA", Icon: ClipboardList },
- ].map(({ tab, label, sub, Icon }) => (
+ { tab: "customers", label: "Customers", Icon: UserCheck },
+ { tab: "handover", label: "Handover", Icon: ClipboardList },
+ ].map(({ tab, label, Icon }) => (
  <button
  key={tab}
  onClick={() => switchTab(tab)}
- style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, padding: "12px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${panelPremium.bronzeLine}`, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+ style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "18px 14px", borderRadius: R.lg, background: C.surface, border: `1px solid ${C.border}`, color: C.text, cursor: "pointer", fontFamily: "inherit" }}
  >
- <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: R.sm, background: panelPremium.bronzeSoft, color: panelPremium.bronze, flexShrink: 0 }}>
- <Icon size={14} />
- </span>
- <span style={{ flex: 1, minWidth: 0 }}>
- <span style={{ display: "block", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>{label}</span>
- <span style={{ display: "block", fontSize: T.size.xs, color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</span>
- </span>
- <ChevronRight size={13} color={C.textMuted} style={{ flexShrink: 0 }} />
+ <Icon size={18} color={C.accent} />
+ <span style={{ fontSize: T.size.lg, fontWeight: T.weight.semibold }}>{label}</span>
  </button>
  ))}
- </div>
  </div>
 
  {/* Dashboard body — 2-up grid on desktop, single column on mobile */}
@@ -6911,7 +6904,6 @@ export default function SalesmanPremium() {
  const dpPct = loanCalc.carPrice? ((parseFloat(loanCalc.downPayment) || 0) / parseFloat(loanCalc.carPrice) * 100).toFixed(1) : null;
 
  // CUSTOMERS (post-sale buyer records + prepaid service packages)
- const PP = panelPremium;
 
  const handleAddPackage = async (customer) => {
  if (!pkgForm.package_name) return;
@@ -6942,7 +6934,7 @@ export default function SalesmanPremium() {
  const daysUntil = (date) => date? (new Date(date) - today) / 86400000 : null;
  const isDue = (date) => { const d = daysUntil(date); return d !== null && d <= 30; };
  const isExpired = (date) => { const d = daysUntil(date); return d !== null && d < 0; };
- const dotColor = (date) => { const d = daysUntil(date); return d === null? PP.textDim : d < 0? PP.dangerText : d <= 30? PP.warnText : PP.successText; };
+ const dotColor = (date) => { const d = daysUntil(date); return d === null? C.textDim : d < 0? C.dangerText : d <= 30? C.warnText : C.successText; };
  const expiryLabel = (date) => {
  if (!date) return "—";
  const d = daysUntil(date);
@@ -6961,106 +6953,92 @@ export default function SalesmanPremium() {
  return true;
  });
 
- const cardSx = { background: `linear-gradient(165deg, ${PP.surfaceRaised} 0%, ${PP.surface} 55%)`, border: `1px solid ${PP.border}`, borderRadius: 16, boxShadow: "0 1px 0 rgba(255,255,255,0.04) inset, 0 18px 32px -24px rgba(0,0,0,0.65)" };
-
- if (customersLoading) return <p style={{ color: PP.textMuted, fontSize: 13 }}>Loading customers…</p>;
+ if (customersLoading) return <p style={{ color: C.textMuted, fontSize: 13 }}>Loading customers…</p>;
 
  return (
  <div style={{ maxWidth: 640 }}>
- <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
- <div>
- <p style={{ margin: 0, fontSize: 19, fontWeight: 700, color: PP.text }}>Customers</p>
- <p style={{ margin: "2px 0 0", fontSize: 12, color: PP.textMuted }}>{customers.length} buyer{customers.length !== 1? "s" : ""} on record</p>
- </div>
- </div>
+ <p style={{ margin: "0 0 14px", fontSize: 19, fontWeight: 700, color: C.text }}>Customers <span style={{ fontSize: 12, fontWeight: 400, color: C.textMuted }}>· {customers.length} on record</span></p>
 
  <div style={{ display: "flex", gap: 7, marginBottom: 14, flexWrap: "wrap" }}>
  {[{ id: null, label: `All · ${customers.length}` }, { id: "ins", label: `Insurance due · ${insDue}` }, { id: "rt", label: `Road tax due · ${rtDue}` }].map(f => (
  <button key={f.id || "all"} onClick={() => setExpiryFilter(f.id)}
- style={{ borderRadius: 999, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
- background: expiryFilter === f.id? PP.bronzeSoft : "transparent", border: `1px solid ${expiryFilter === f.id? PP.bronzeLine : PP.border}`, color: expiryFilter === f.id? PP.bronze : PP.textSec }}>
+ style={{ borderRadius: R.pill, padding: "5px 12px", fontSize: T.size.sm, fontWeight: T.weight.bold, cursor: "pointer", fontFamily: "inherit",
+ background: expiryFilter === f.id? withAlpha(C.accent, 0.12) : "transparent", border: `1px solid ${expiryFilter === f.id? withAlpha(C.accent, 0.25) : C.border}`, color: expiryFilter === f.id? C.dangerText : C.textSec }}>
  {f.label}
  </button>
  ))}
  </div>
 
  {anyExpired && (
- <div style={{ ...cardSx, background: `linear-gradient(165deg, rgba(251,191,36,0.09), ${PP.surface} 60%)`, padding: "12px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
- <AlertCircle size={16} color={PP.warnText} style={{ flexShrink: 0 }} />
- <p style={{ margin: 0, fontSize: 12.5, color: PP.textSec, lineHeight: 1.4 }}>Some policies have <span style={{ color: PP.warnText, fontWeight: 700 }}>expired</span> — worth a call before renewal season.</p>
- </div>
+ <p style={{ display: "flex", alignItems: "center", gap: 8, fontSize: T.size.sm, color: C.textSec, margin: "0 0 14px" }}>
+ <AlertCircle size={14} color={C.warnText} style={{ flexShrink: 0 }} />
+ Some policies have <span style={{ color: C.warnText, fontWeight: 700 }}>expired</span> — worth a call before renewal.
+ </p>
  )}
 
  <input value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} placeholder="Search by name or phone…"
- style={{ width: "100%", background: PP.fillStrong, border: `1px solid ${PP.border}`, borderRadius: 10, padding: "9px 12px", color: PP.text, fontSize: 13, outline: "none", fontFamily: "inherit", marginBottom: 14, boxSizing: "border-box" }} />
+ style={{ width: "100%", background: C.fillStrong, border: `1px solid ${C.border}`, borderRadius: R.md, padding: "9px 12px", color: C.text, fontSize: T.size.base, outline: "none", fontFamily: "inherit", marginBottom: 14, boxSizing: "border-box" }} />
 
  {filtered.length === 0? (
- <p style={{ textAlign: "center", color: PP.textDim, fontSize: 13, padding: "30px 0" }}>No customers yet — they appear here automatically once a deal is won.</p>
+ <p style={{ textAlign: "center", color: C.textDim, fontSize: 13, padding: "30px 0" }}>No customers yet — they appear here automatically once a deal is won.</p>
  ) : (
  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
  {filtered.map(c => {
  const pkgs = packagesMap[c.id] || [];
  const initials = (c.name || "?").split(" ").filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
  return (
- <div key={c.id} style={{ ...cardSx, padding: 15 }}>
+ <div key={c.id} style={{ ...CARD, padding: 15 }}>
  <div style={{ display: "flex", alignItems: "flex-start", gap: 11 }}>
- <div style={{ width: 40, height: 40, borderRadius: 11, flexShrink: 0, background: `linear-gradient(155deg, ${PP.bronze}, #8a6f3f)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
- <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 15, color: "#241611" }}>{initials}</span>
+ <div style={{ width: 38, height: 38, borderRadius: R.pill, flexShrink: 0, background: C.fillStrong, display: "flex", alignItems: "center", justifyContent: "center" }}>
+ <span style={{ fontSize: T.size.base, fontWeight: T.weight.bold, color: C.textSec }}>{initials}</span>
  </div>
  <div style={{ flex: 1, minWidth: 0 }}>
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
- <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: PP.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name || "Unknown buyer"}</p>
- {c.payment_type && <span style={{ borderRadius: 999, padding: "3px 8px", fontSize: 9.5, fontWeight: 700, flexShrink: 0, background: "rgba(96,165,250,0.12)", color: "#60a5fa" }}>{c.payment_type}</span>}
- </div>
- <p style={{ margin: "2px 0 0", fontSize: 12, color: PP.textMuted }}>{[c.car_year, c.car_brand, c.car_model].filter(Boolean).join(" ")}{c.car_plate? ` · ${c.car_plate}` : ""}</p>
-
- <div style={{ display: "flex", gap: 16, marginTop: 10, flexWrap: "wrap" }}>
- <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
- <span style={{ width: 7, height: 7, borderRadius: 99, background: dotColor(c.road_tax_expiry), flexShrink: 0 }} />
- <div>
- <p style={{ margin: 0, fontSize: 9.5, color: PP.textDim, textTransform: "uppercase", letterSpacing: "0.06em" }}>Road tax</p>
- <p style={{ margin: "1px 0 0", fontSize: 11.5, fontWeight: 600, color: PP.textSec }}>{expiryLabel(c.road_tax_expiry)}</p>
- </div>
- </div>
- <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
- <span style={{ width: 7, height: 7, borderRadius: 99, background: dotColor(c.insurance_expiry), flexShrink: 0 }} />
- <div>
- <p style={{ margin: 0, fontSize: 9.5, color: PP.textDim, textTransform: "uppercase", letterSpacing: "0.06em" }}>Insurance</p>
- <p style={{ margin: "1px 0 0", fontSize: 11.5, fontWeight: 600, color: PP.textSec }}>{expiryLabel(c.insurance_expiry)}</p>
- </div>
- </div>
+ <p style={{ margin: 0, fontSize: T.size.lg, fontWeight: T.weight.bold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name || "Unknown buyer"}</p>
  {c.phone && (
- <a href={`tel:${c.phone.replace(/\D/g, "")}`} style={{ marginLeft: "auto", display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 9, background: PP.fillStrong, border: `1px solid ${PP.border}`, color: PP.textSec, flexShrink: 0 }}>
- <Phone size={12} />
+ <a href={`tel:${c.phone.replace(/\D/g, "")}`} style={{ color: C.textMuted, flexShrink: 0, display: "flex" }}>
+ <Phone size={13} />
  </a>
  )}
  </div>
+ <p style={{ margin: "2px 0 0", fontSize: T.size.sm, color: C.textMuted }}>{[c.car_year, c.car_brand, c.car_model].filter(Boolean).join(" ")}{c.car_plate? ` · ${c.car_plate}` : ""}{c.payment_type? ` · ${c.payment_type}` : ""}</p>
+
+ <div style={{ display: "flex", gap: 16, marginTop: 10, flexWrap: "wrap" }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+ <span style={{ width: 7, height: 7, borderRadius: R.pill, background: dotColor(c.road_tax_expiry), flexShrink: 0 }} />
+ <p style={{ margin: 0, fontSize: T.size.sm, color: C.textSec }}>Road tax {expiryLabel(c.road_tax_expiry)}</p>
+ </div>
+ <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+ <span style={{ width: 7, height: 7, borderRadius: R.pill, background: dotColor(c.insurance_expiry), flexShrink: 0 }} />
+ <p style={{ margin: 0, fontSize: T.size.sm, color: C.textSec }}>Insurance {expiryLabel(c.insurance_expiry)}</p>
+ </div>
+ </div>
 
  {pkgs.map(pkg => (
- <div key={pkg.id} style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${PP.line}`, display: "flex", alignItems: "center", gap: 10 }}>
+ <div key={pkg.id} style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10 }}>
  <div style={{ flex: 1, minWidth: 0 }}>
- <p style={{ margin: 0, fontSize: 11.5, fontWeight: 600, color: PP.text }}>{pkg.package_name}</p>
- <div style={{ height: 4, borderRadius: 99, background: PP.fillStrong, marginTop: 6, overflow: "hidden" }}>
- <div style={{ height: "100%", width: `${Math.min(100, (pkg.used_visits / pkg.total_visits) * 100)}%`, borderRadius: 99, background: PP.bronze }} />
+ <p style={{ margin: 0, fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.text }}>{pkg.package_name}</p>
+ <div style={{ height: 4, borderRadius: R.pill, background: C.fillStrong, marginTop: 5, overflow: "hidden" }}>
+ <div style={{ height: "100%", width: `${Math.min(100, (pkg.used_visits / pkg.total_visits) * 100)}%`, borderRadius: R.pill, background: C.accent }} />
  </div>
  </div>
- <p style={{ margin: 0, fontSize: 11, color: PP.textMuted, flexShrink: 0 }}>{pkg.used_visits}/{pkg.total_visits} visits</p>
+ <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted, flexShrink: 0 }}>{pkg.used_visits}/{pkg.total_visits} visits</p>
  {pkg.used_visits < pkg.total_visits && (
- <button onClick={() => handleLogVisit(pkg)} style={{ fontSize: 10, fontWeight: 700, padding: "4px 9px", borderRadius: 7, background: PP.bronzeSoft, border: `1px solid ${PP.bronzeLine}`, color: PP.bronze, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>Log visit</button>
+ <button onClick={() => handleLogVisit(pkg)} style={{ ...SOFT(C.accent), fontSize: T.size.xs, fontWeight: T.weight.bold, padding: "4px 9px", borderRadius: R.sm, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>Log visit</button>
  )}
  </div>
  ))}
 
  {addPkgFor === c.id? (
- <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${PP.line}`, display: "flex", gap: 6, flexWrap: "wrap" }}>
- <input value={pkgForm.package_name} onChange={(e) => setPkgForm(f => ({ ...f, package_name: e.target.value }))} placeholder="Package name" style={{ flex: "1 1 140px", background: PP.fillStrong, border: `1px solid ${PP.border}`, borderRadius: 7, padding: "6px 9px", color: PP.text, fontSize: 12, outline: "none", fontFamily: "inherit" }} />
- <input type="number" value={pkgForm.total_visits} onChange={(e) => setPkgForm(f => ({ ...f, total_visits: e.target.value }))} placeholder="Visits" style={{ width: 64, background: PP.fillStrong, border: `1px solid ${PP.border}`, borderRadius: 7, padding: "6px 9px", color: PP.text, fontSize: 12, outline: "none", fontFamily: "inherit" }} />
- <input type="number" value={pkgForm.sold_price} onChange={(e) => setPkgForm(f => ({ ...f, sold_price: e.target.value }))} placeholder="RM price" style={{ width: 84, background: PP.fillStrong, border: `1px solid ${PP.border}`, borderRadius: 7, padding: "6px 9px", color: PP.text, fontSize: 12, outline: "none", fontFamily: "inherit" }} />
- <button onClick={() => handleAddPackage(c)} disabled={pkgSaving ||!pkgForm.package_name} style={{ fontSize: 11, fontWeight: 700, padding: "6px 12px", borderRadius: 7, background: PP.accent, border: "none", color: "#fff", cursor: "pointer", fontFamily: "inherit" }}>Save</button>
- <button onClick={() => setAddPkgFor(null)} style={{ fontSize: 11, padding: "6px 10px", borderRadius: 7, background: "transparent", border: `1px solid ${PP.border}`, color: PP.textMuted, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+ <div style={{ marginTop: 10, display: "flex", gap: 6, flexWrap: "wrap" }}>
+ <input value={pkgForm.package_name} onChange={(e) => setPkgForm(f => ({ ...f, package_name: e.target.value }))} placeholder="Package name" style={{ flex: "1 1 140px", background: C.fillStrong, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "6px 9px", color: C.text, fontSize: 12, outline: "none", fontFamily: "inherit" }} />
+ <input type="number" value={pkgForm.total_visits} onChange={(e) => setPkgForm(f => ({ ...f, total_visits: e.target.value }))} placeholder="Visits" style={{ width: 64, background: C.fillStrong, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "6px 9px", color: C.text, fontSize: 12, outline: "none", fontFamily: "inherit" }} />
+ <input type="number" value={pkgForm.sold_price} onChange={(e) => setPkgForm(f => ({ ...f, sold_price: e.target.value }))} placeholder="RM price" style={{ width: 84, background: C.fillStrong, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "6px 9px", color: C.text, fontSize: 12, outline: "none", fontFamily: "inherit" }} />
+ <button onClick={() => handleAddPackage(c)} disabled={pkgSaving ||!pkgForm.package_name} style={{ fontSize: 11, fontWeight: 700, padding: "6px 12px", borderRadius: R.sm, background: C.accent, border: "none", color: C.onAccent, cursor: "pointer", fontFamily: "inherit" }}>Save</button>
+ <button onClick={() => setAddPkgFor(null)} style={{ fontSize: 11, padding: "6px 10px", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
  </div>
  ) : (
- <button onClick={() => setAddPkgFor(c.id)} style={{ marginTop: 10, fontSize: 11, fontWeight: 600, color: PP.bronze, background: "transparent", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>+ Add service package</button>
+ <button onClick={() => setAddPkgFor(c.id)} style={{ marginTop: 10, fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.dangerText, background: "transparent", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>+ Add service package</button>
  )}
  </div>
  </div>
@@ -7076,11 +7054,9 @@ export default function SalesmanPremium() {
  // HANDOVER (post-sale paperwork checklist, shared postsale/PostSaleBoard)
  const renderHandover = () => (
  <div style={{ maxWidth: 640 }}>
- <div style={{ marginBottom: 14 }}>
- <p style={{ margin: 0, fontSize: 19, fontWeight: 700, color: panelPremium.text }}>Handover</p>
- <p style={{ margin: "2px 0 0", fontSize: 12, color: panelPremium.textMuted }}>Paperwork &amp; delivery for your won deals</p>
- </div>
- <PostSaleBoard dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} premium />
+ <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: C.text }}>Handover</p>
+ <p style={{ margin: "0 0 20px", fontSize: 12, color: C.textMuted }}>Paperwork &amp; delivery for your won deals.</p>
+ <PostSaleBoard dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} dark />
  </div>
  );
 
