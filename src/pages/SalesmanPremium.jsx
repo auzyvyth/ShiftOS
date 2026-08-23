@@ -64,6 +64,8 @@ import {
  ThumbsDown,
  Clock,
  Package,
+ ExternalLink,
+ Store,
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
 import OutreachHub from "../components/crm/OutreachHub";
@@ -72,6 +74,8 @@ import AiLoadingState from "../components/ai/AiLoadingState";
 import AiQuotaBadge from "../components/ai/AiQuotaBadge";
 import PushToggle from "../components/PushToggle";
 import ServicesAddonsTab from "../components/salesman/ServicesAddonsTab";
+import ChannelBreakdown from "../components/ChannelBreakdown";
+import ShareMenu from "../components/ShareMenu";
 
 function useWindowSize() {
  const [w, setW] = useState(window.innerWidth);
@@ -526,6 +530,10 @@ export default function SalesmanPremium() {
 
  // per-listing analytics (carStatsMap)
  const [carStatsMap, setCarStatsMap] = useState({});
+ // per-car share-channel breakdown (which platform each view/enquiry came from)
+ const [channelMap, setChannelMap] = useState({});
+ // mini-page (xdrive.my/s/slug) visits + card clicks, broken down by platform
+ const [minipageStats, setMinipageStats] = useState({ visits: 0, cardClicks: 0, byChannel: [] });
  const [cvrHover, setCvrHover] = useState(null);
 
  // car detail popup
@@ -771,6 +779,42 @@ export default function SalesmanPremium() {
  };
  });
  setCarStatsMap(map);
+
+ // Share-channel breakdown (which platform each view/enquiry came from),
+ // scoped to this salesman's own slug. Untagged/organic → 'direct'.
+ // p_car_ids: null => all-time across every car ever tagged to this slug,
+ // deduped by session, so the count never drops when a car ages out of the
+ // rolling analytics window above.
+ if (profileData.slug) {
+ supabase
+ .rpc("get_salesman_channel_breakdown", { p_car_ids: null, p_slug: profileData.slug })
+ .then(({ data: chRows, error: chErr }) => {
+ if (chErr) { console.error("fetchChannelBreakdown:", chErr); return; }
+ const chMap = {};
+ (chRows || []).forEach(r => {
+ (chMap[r.car_id] = chMap[r.car_id] || []).push({
+ channel: r.channel || "direct",
+ views: Number(r.views) || 0,
+ enquiries: Number(r.enquiries) || 0,
+ });
+ });
+ setChannelMap(chMap);
+ });
+
+ // Mini-page (xdrive.my/s/slug) visits + card clicks, broken down by the
+ // platform each visitor arrived through.
+ supabase
+ .rpc("get_salesman_minipage_stats", { p_slug: profileData.slug })
+ .then(({ data: mpRows, error: mpErr }) => {
+ if (mpErr) { console.error("fetchMinipageStats:", mpErr); return; }
+ const rows = mpRows || [];
+ setMinipageStats({
+ visits: rows.reduce((s, r) => s + (Number(r.visits) || 0), 0),
+ cardClicks: rows.reduce((s, r) => s + (Number(r.card_clicks) || 0), 0),
+ byChannel: rows,
+ });
+ });
+ }
  });
 
  // fetch leads
@@ -2451,6 +2495,87 @@ export default function SalesmanPremium() {
  </div>
  )}
  </div>
+
+ {/* Mini-page — the shareable xdrive.my/s/slug link, plus which platform
+ (Instagram / Facebook / Direct / …) its traffic actually came from. */}
+ {profile?.slug && (
+ <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "16px 18px", marginBottom: 24 }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+ <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>Your Mini-Page</p>
+ <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10, color: "#4b5563" }}>
+ <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80" }} />30 days
+ </span>
+ </div>
+
+ <div style={{ display: "flex", gap: isMobile? 20 : 32, flexWrap: "wrap", marginBottom: 14 }}>
+ {[
+ { label: "Page Visits", value: minipageStats.visits || 0, color: "#93c5fd" },
+ { label: "Card Clicks", value: minipageStats.cardClicks || 0, color: "#4ade80" },
+ ].map(({ label, value, color }) => (
+ <div key={label}>
+ <p style={{ margin: 0, fontSize: 26, fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "1px", color }}>{value}</p>
+ <p style={{ margin: "2px 0 0", fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</p>
+ </div>
+ ))}
+ </div>
+
+ <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+ <button
+ onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success("Link copied"); }}
+ style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 160px", minWidth: 0, fontSize: 12, padding: "9px 12px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", fontWeight: 500, fontFamily: "inherit" }}
+ >
+ <LinkIcon size={11} />
+ <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>xdrive.my/s/{profile.slug}</span>
+ <span style={{ fontSize: 10, color: "#4b5563", flexShrink: 0 }}>Copy</span>
+ </button>
+ <a
+ href={`/s/${profile.slug}`}
+ target="_blank"
+ rel="noopener noreferrer"
+ title="Open your mini-page in a new tab"
+ style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 160px", minWidth: 0, fontSize: 12, padding: "9px 12px", borderRadius: 8, background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.25)", color: "#93c5fd", textDecoration: "none", fontWeight: 600, fontFamily: "inherit" }}
+ >
+ <ExternalLink size={11} />
+ <span style={{ flex: 1 }}>View your mini-page</span>
+ <ChevronRight size={11} style={{ flexShrink: 0, opacity: 0.5 }} />
+ </a>
+ <a
+ href="/"
+ target="_blank"
+ rel="noopener noreferrer"
+ title="Open the XDrive marketplace in a new tab"
+ style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 160px", minWidth: 0, fontSize: 12, padding: "9px 12px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", textDecoration: "none", fontWeight: 500, fontFamily: "inherit" }}
+ >
+ <Store size={11} />
+ <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>View XDrive marketplace</span>
+ <ChevronRight size={11} style={{ flexShrink: 0, opacity: 0.5 }} />
+ </a>
+ <ShareMenu
+ baseUrl={`https://xdrive.my/s/${profile.slug}`}
+ refSlug={profile.slug}
+ waCaption={(url) => `Check out my car listings on XDrive:\n${url}`}
+ dark
+ label="Share"
+ style={{ flex: "1 1 100px", justifyContent: "center", padding: "9px 12px", fontSize: 12 }}
+ />
+ </div>
+
+ {/* Where the mini-page footprints came from (Instagram / Facebook /
+ TikTok / WhatsApp / …), so the agent knows which channel works. */}
+ {minipageStats.byChannel.length > 0 && (
+ <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+ <ChannelBreakdown
+ rows={minipageStats.byChannel.map((r) => ({ channel: r.channel, views: Number(r.visits) || 0, enquiries: Number(r.card_clicks) || 0 }))}
+ metric="views"
+ title="Mini-page traffic by platform"
+ viewsLabel="visits"
+ enquiriesLabel="clicks"
+ compact
+ />
+ </div>
+ )}
+ </div>
+ )}
 
  {/* Stale nudges */}
  {staleLeads.length > 0 && (
@@ -6937,6 +7062,14 @@ export default function SalesmanPremium() {
         </div>
        );
       })}
+     </div>
+    )}
+
+    {/* Traffic by platform — which channel (Instagram/Facebook/Direct/…) every
+        listing's views and enquiries actually came from, summed across all cars. */}
+    {Object.keys(channelMap).length > 0 && (
+     <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "16px", marginBottom: 16 }}>
+      <ChannelBreakdown rows={Object.values(channelMap).flat()} metric="views" title="Traffic by Platform" />
      </div>
     )}
 
