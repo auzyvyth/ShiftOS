@@ -77,6 +77,8 @@ import {
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
 import OutreachHub from "../components/crm/OutreachHub";
+import SellerInbox from "../components/chat/SellerInbox";
+import { useChatThreads } from "../hooks/useChat";
 import UpgradeBanner from "../components/ai/UpgradeBanner";
 import AiLoadingState from "../components/ai/AiLoadingState";
 import AiQuotaBadge from "../components/ai/AiQuotaBadge";
@@ -334,7 +336,7 @@ function SubTabs({ value, onChange, items }) {
 
 // Top-level Premium tabs, each backed by its own /salesman-premium/:tab route.
 // Anything not in this list falls back to the dashboard.
-const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "analytics", "loans", "outreach", "customers", "handover", "merge", "settings"];
+const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "analytics", "loans", "outreach", "chat", "customers", "handover", "merge", "settings"];
 
 // Tabs that no longer own a slot in the nav. Their routes still resolve, so old
 // links, in-app deep links (switchTab) and the tour all keep working — they just
@@ -354,6 +356,9 @@ export default function SalesmanPremium() {
  const [loading, setLoading] = useState(true);
  const [pendingPay, setPendingPay] = useState(false);
  const isPremium = profile?.plan === 'salesman_full';
+ // Unread buyer-chat count for the nav badge. Its own hook instance, separate
+ // from the one inside SellerInbox (each gets a distinct realtime channel).
+ const { totalUnread: chatUnread } = useChatThreads({ salesmanId: userId });
  // Premium is solo-only — the redirect guard above sends any salesman with
  // dealer_id set to /salesman before this ever renders, so there is no dealer
  // to grant the ROLE_EXTRAS permission Outreach normally requires. Include it
@@ -2172,6 +2177,12 @@ export default function SalesmanPremium() {
  icon: <Megaphone style={{ width: 14, height: 14 }} />,
  }] : []),
  {
+ tab: "chat",
+ label: "Chat",
+ icon: <MessageSquare style={{ width: 14, height: 14 }} />,
+ badge: chatUnread || null,
+ },
+ {
  tab: "settings",
  label: "Settings",
  icon: <Settings style={{ width: 14, height: 14 }} />,
@@ -2201,6 +2212,7 @@ export default function SalesmanPremium() {
  { tab: "analytics", label: "Analytics", icon: <TrendingUp size={18} /> },
  { tab: "loans", label: "Loans", icon: <Banknote size={18} /> },
  ...(showOutreach ? [{ tab: "outreach", label: "Outreach", icon: <Megaphone size={18} /> }] : []),
+ { tab: "chat", label: "Chat", icon: <MessageSquare size={18} />, badge: chatUnread || null },
  { tab: "settings", label: "Settings", icon: <Settings size={18} /> },
  ];
 
@@ -8181,6 +8193,7 @@ export default function SalesmanPremium() {
  {activeTab === "outreach" && showOutreach && (
  <OutreachHub dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} />
  )}
+ {activeTab === "chat" && <SellerInbox salesmanId={userId} />}
  {activeTab === "customers" && renderCustomers()}
  {activeTab === "handover" && renderHandover()}
  {activeTab === "settings" && renderSettings()}

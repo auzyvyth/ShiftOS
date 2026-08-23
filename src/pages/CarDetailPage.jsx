@@ -64,6 +64,7 @@ import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { estimateRoadTax } from "../utils/roadTax";
 import ReviewsSection from "../components/reviews/ReviewsSection";
 import CommentsSection from "../components/comments/CommentsSection";
+import BuyerChat from "../components/chat/BuyerChat";
 import { cdnImg } from "../utils/img";
 import { toast } from "sonner";
 
@@ -2498,6 +2499,11 @@ export default function CarDetailPage() {
                 </button>
               )}
             </div>
+            <div style={{ marginTop: 8 }}>
+              <BuyerChat listingId={car.id}
+                carName={[car.year, car.brand, car.model].filter(Boolean).join(' ')}
+                sellerName={repFirstName ? `Chat with ${repFirstName}` : null} />
+            </div>
             <div style={{ marginTop:10 }}>
               <PriceIncludes car={car} seller={seller} th={th} />
               <DepositTerms amount={car.deposit_amount} seller={seller} th={th} isXdrive={isXdrive} />
@@ -3961,6 +3967,12 @@ export default function CarDetailPage() {
                   <Phone size={13} /> {callLoading ? 'Connecting' : 'Call'}
                 </button>
               )}
+            </div>
+
+            <div style={{ marginTop: 8 }}>
+              <BuyerChat listingId={car.id}
+                carName={[car.year, car.brand, car.model].filter(Boolean).join(' ')}
+                sellerName={repFirstName ? `Chat with ${repFirstName}` : null} />
             </div>
 
             {/* Tertiary actions — quiet text links, not more buttons */}
