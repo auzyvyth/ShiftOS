@@ -13,6 +13,7 @@ import CarFormFast from "../components/CarFormFast";
 import CarForm from "../components/CarForm";
 import DealerPendingApproval from "../components/DealerPendingApproval";
 import AvailabilityEditor from "../components/AvailabilityEditor";
+import PostSaleBoard from "../components/postsale/PostSaleBoard";
 import {
  LogOut,
  Copy,
@@ -71,6 +72,8 @@ import {
  Camera,
  Zap,
  MessageCircle,
+ UserCheck,
+ ClipboardList,
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
 import OutreachHub from "../components/crm/OutreachHub";
@@ -331,7 +334,7 @@ function SubTabs({ value, onChange, items }) {
 
 // Top-level Premium tabs, each backed by its own /salesman-premium/:tab route.
 // Anything not in this list falls back to the dashboard.
-const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "analytics", "loans", "outreach", "merge", "settings"];
+const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "analytics", "loans", "outreach", "customers", "handover", "merge", "settings"];
 
 // Tabs that no longer own a slot in the nav. Their routes still resolve, so old
 // links, in-app deep links (switchTab) and the tour all keep working — they just
@@ -712,6 +715,14 @@ export default function SalesmanPremium() {
 
  // premium — loans
  const [loanApplications, setLoanApplications] = useState([]);
+ const [customers, setCustomers] = useState([]);
+ const [customersLoading, setCustomersLoading] = useState(true);
+ const [customerSearch, setCustomerSearch] = useState("");
+ const [expiryFilter, setExpiryFilter] = useState(null); // 'ins' | 'rt'
+ const [packagesMap, setPackagesMap] = useState({}); // customer_id -> [service_packages]
+ const [addPkgFor, setAddPkgFor] = useState(null); // customer_id
+ const [pkgForm, setPkgForm] = useState({ package_name: "", total_visits: 3, sold_price: "" });
+ const [pkgSaving, setPkgSaving] = useState(false);
  const [loanCalc, setLoanCalc] = useState({ carPrice: "", downPayment: "", tenure: 7, income: "" });
  const [loanForm, setLoanForm] = useState({
  buyer_name: "", buyer_phone: "", buyer_ic: "", buyer_employment_type: "Salaried",
@@ -888,18 +899,36 @@ export default function SalesmanPremium() {
  .order("created_at", { ascending: false })
  .then(({ data }) => setLoanApplications(data || []));
 
+ // premium — customers (post-sale buyer records) + their service packages.
+ // A solo salesman's dealer_id resolves to their own id (getDealerIdFromProfile).
+ const custDealerId = getDealerIdFromProfile(profileData);
+ supabase.from("customers").select("*").eq("dealer_id", custDealerId)
+ .order("created_at", { ascending: false })
+ .then(async ({ data }) => {
+ const list = data || [];
+ setCustomers(list);
+ setCustomersLoading(false);
+ const custIds = list.map(c => c.id);
+ if (custIds.length === 0) return;
+ const { data: pkgs } = await supabase.from("service_packages").select("*")
+ .in("customer_id", custIds).order("created_at", { ascending: false });
+ const pm = {};
+ for (const p of pkgs || []) (pm[p.customer_id] ||= []).push(p);
+ setPackagesMap(pm);
+ });
+
  // fetch listings with full columns for car detail popup
  Promise.all([
  supabase
  .from("car_listings")
  .select(
- "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at",
+ "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, sold_at, commission_amount",
  )
  .eq("assigned_to", uid),
  supabase
  .from("car_listings")
  .select(
- "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at",
+ "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, sold_at, commission_amount",
  )
  .eq("dealer_id", uid),
  ]).then(([r1, r2]) => {
@@ -2338,6 +2367,28 @@ export default function SalesmanPremium() {
  });
  const totalViews = Object.values(carStatsMap).reduce((s, v) => s + (v.views || 0), 0);
  const totalWATaps = Object.values(carStatsMap).reduce((s, v) => s + (v.enquiries || 0), 0);
+ // Real 7-day views trend (same carStatsMap.daily source as the Analytics
+ // tab's sparklines) — the only one of the 4 mini-page stats with a genuine
+ // daily breakdown, so it's the only tile that gets a trend line.
+ const viewsTrend = Array(7).fill(0).map((_, i) =>
+ Object.values(carStatsMap).reduce((s, v) => s + (v.daily?.[i] || 0), 0)
+ );
+ // De-emphasised trend line, accent dot on the latest point only — never a
+ // number-on-every-point; the line just shows shape, the dot marks "now".
+ const MiniTrend = ({ data }) => {
+ if (!data.some(v => v > 0)) return null;
+ const max = Math.max(...data, 1);
+ const w = 60, h = 20;
+ const pts = data.map((v, i) => [(i / (data.length - 1)) * w, h - 3 - (v / max) * (h - 6)]);
+ const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
+ const last = pts[pts.length - 1];
+ return (
+ <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: "block", marginTop: 6, overflow: "visible" }}>
+ <path d={line} stroke={C.textDim} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+ <circle cx={last[0]} cy={last[1]} r="2.5" fill={C.accent} />
+ </svg>
+ );
+ };
  const overallCVR = totalViews > 0 ? ((totalWATaps / totalViews) * 100).toFixed(1) : null;
  const bestCVRStat = listingStats.reduce((best, s) => (s.cvr !== null && (best === null || s.cvr > best.cvr)) ? s : best, null);
  const cvrColor = (cvr) => cvr >= 10 ? C.success : cvr >= 5 ? C.warn : C.danger;
@@ -2444,6 +2495,12 @@ export default function SalesmanPremium() {
  const pct = goal.target > 0 ? Math.min((soldThisMonth / goal.target) * 100, 100) : 0;
  const goalHue = pct >= 100 ? C.success : pct >= 60 ? C.info : C.danger;
  const goalHueText = pct >= 100 ? C.successText : pct >= 60 ? C.infoText : C.dangerText;
+ // Semicircle gauge geometry for the goal card — arc runs from 180°
+ // (0%, left) to 0° (100%, right); the pointer dot sits at pct along it.
+ const gaugeCx = 120, gaugeCy = 116, gaugeR = 92;
+ const gaugeAngleRad = ((180 - 1.8 * pct) * Math.PI) / 180;
+ const gaugePtX = gaugeCx + gaugeR * Math.cos(gaugeAngleRad);
+ const gaugePtY = gaugeCy - gaugeR * Math.sin(gaugeAngleRad);
  const focusCar = goal.focusCarId ? myListings.find(c => c.id === goal.focusCarId && c.status === "available") : null;
  const scoreCar = (c) => {
  const s = carStatsMap[c?.id] || {};
@@ -2474,6 +2531,24 @@ export default function SalesmanPremium() {
 
  return (
  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+ {/* Dashboard-only card chrome — layered gradient surface + a soft top
+ highlight, richer than the flat CARD token used on every other tab.
+ Scoped to this tab; nothing else changes. */}
+ <style>{`
+ .sp-insight-card {
+ background: linear-gradient(155deg, ${C.surfaceRaised} 0%, ${C.surface} 65%);
+ border: 1px solid ${C.border};
+ border-radius: ${R.lg}px;
+ box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 20px 36px -24px rgba(0,0,0,0.6);
+ position: relative;
+ overflow: hidden;
+ }
+ .sp-insight-card::before {
+ content: "";
+ position: absolute; inset: 0; pointer-events: none;
+ background: radial-gradient(120% 60px at 15% 0%, rgba(255,255,255,0.05), transparent 60%);
+ }
+ `}</style>
 
  {/* AI: What to do today — Premium-only, kept from the old dashboard (not
  part of Lite's page, but a working paid feature with its own backend
@@ -2523,7 +2598,7 @@ export default function SalesmanPremium() {
  </div>
 
  {/* Hero: greeting + live portfolio snapshot */}
- <div style={{ ...CARD, position: "relative", overflow: "hidden", padding: isMobile ? "20px 18px" : "26px 28px", background: `linear-gradient(135deg, ${C.surface} 0%, ${C.surfaceRaised} 100%)` }}>
+ <div className="sp-insight-card" style={{ padding: isMobile ? "20px 18px" : "26px 28px" }}>
  <div style={{ position: "absolute", top: -50, right: -50, width: 180, height: 180, borderRadius: "50%", background: `radial-gradient(circle, ${withAlpha(C.accent, 0.14)} 0%, transparent 70%)`, pointerEvents: "none" }} />
  <div style={{ position: "relative", display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
  <div>
@@ -2552,23 +2627,30 @@ export default function SalesmanPremium() {
  </div>
  {available.length > 0 && (
  <div style={{ position: "relative", marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
- <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 18 : 28, flexWrap: "wrap" }}>
+ <div style={{ display: "flex", alignItems: "flex-start", gap: 0, flexWrap: "wrap" }}>
  {[
- { label: "Views", value: totalViews || 0, color: C.text },
- { label: "Page Visits", value: minipageStats.visits || 0, color: C.infoText },
- { label: "WA Taps", value: totalWATaps || 0, color: C.successText },
- { label: "Live Listings", value: available.length, color: C.text },
- ].map(({ label, value, color }) => (
- <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
- <span style={{ ...STAT, fontSize: isMobile ? T.size.stat : T.size.statLg, color }}>{value}</span>
+ { label: "Views", value: totalViews || 0, Icon: Eye, trend: viewsTrend },
+ { label: "Page Visits", value: minipageStats.visits || 0, Icon: LinkIcon },
+ { label: "WA Taps", value: totalWATaps || 0, Icon: MessageCircle },
+ { label: "Live Listings", value: available.length, Icon: Car },
+ ].map(({ label, value, Icon, trend }, i) => (
+ <div key={label} style={{ display: "flex", alignItems: "flex-start" }}>
+ {i > 0 && <div style={{ width: 1, alignSelf: "stretch", background: C.line, margin: isMobile ? "0 14px" : "0 22px" }} />}
+ <div style={{ display: "flex", flexDirection: "column", gap: 6, minHeight: 66 }}>
+ <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: R.sm, background: C.fillStrong, color: C.textMuted }}>
+ <Icon size={11} strokeWidth={2.2} />
+ </span>
+ <span style={{ ...STAT, fontSize: isMobile ? T.size.stat : T.size.statLg, color: C.text }}>{value.toLocaleString("en-MY")}</span>
  <span style={EYEBROW}>{label}</span>
+ {trend && <MiniTrend data={trend} />}
+ </div>
  </div>
  ))}
- <span style={{ ...EYEBROW, display: "inline-flex", alignItems: "center", gap: 5, marginLeft: "auto", fontWeight: T.weight.normal }}>
+ </div>
+ <span style={{ ...EYEBROW, display: "inline-flex", alignItems: "center", gap: 5, marginTop: 12, fontWeight: T.weight.normal }}>
  <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.success }} />
  30 days
  </span>
- </div>
  {profile?.slug && (
  <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
  <button
@@ -2625,6 +2707,25 @@ export default function SalesmanPremium() {
  )}
  </div>
  )}
+
+ </div>
+
+ {/* Premium-only tabs — big, plain entry buttons (kept off the
+ already-crowded bottom nav). */}
+ <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+ {[
+ { tab: "customers", label: "Customers", Icon: UserCheck },
+ { tab: "handover", label: "Handover", Icon: ClipboardList },
+ ].map(({ tab, label, Icon }) => (
+ <button
+ key={tab}
+ onClick={() => switchTab(tab)}
+ style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "18px 14px", borderRadius: R.lg, background: C.surface, border: `1px solid ${C.border}`, color: C.text, cursor: "pointer", fontFamily: "inherit" }}
+ >
+ <Icon size={18} color={C.accent} />
+ <span style={{ fontSize: T.size.lg, fontWeight: T.weight.semibold }}>{label}</span>
+ </button>
+ ))}
  </div>
 
  {/* Dashboard body — 2-up grid on desktop, single column on mobile */}
@@ -2632,7 +2733,7 @@ export default function SalesmanPremium() {
 
  {/* Follow-up Needed */}
  {staleLeads.length > 0 && (
- <div style={CARD}>
+ <div className="sp-insight-card">
  <div style={CARD_HEADER}>
  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: R.sm, background: withAlpha(C.danger, 0.12), color: C.danger, flexShrink: 0 }}>
@@ -2691,7 +2792,7 @@ export default function SalesmanPremium() {
 
  {/* Today's Agenda */}
  {hasAgenda && (
- <div style={CARD}>
+ <div className="sp-insight-card">
  <div style={CARD_HEADER}>
  <span>Today's Agenda</span>
  <span>{new Date().toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })}</span>
@@ -2738,7 +2839,7 @@ export default function SalesmanPremium() {
  )}
 
  {/* My Performance */}
- <div style={{ ...CARD, order: -1 }}>
+ <div className="sp-insight-card" style={{ order: -1 }}>
  <div style={CARD_HEADER}>
  <span>My Performance</span>
  <span>30 days</span>
@@ -2800,18 +2901,18 @@ export default function SalesmanPremium() {
  { label: "Today's Appts", value: todayAppts, accent: C.info, Icon: Calendar },
  { label: "Closed", value: closedThisMonth.length, accent: C.success, Icon: CheckCircle },
  ].map(({ label, value, accent, Icon }) => (
- <div key={label} style={{ ...CARD, padding: "14px 14px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
- <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: R.sm, background: withAlpha(accent, 0.1), color: accent }}>
- <Icon size={13} strokeWidth={2.5} />
+ <div key={label} className="sp-insight-card" style={{ padding: "16px 14px 14px", display: "flex", flexDirection: "column", gap: 9 }}>
+ <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: R.md, background: withAlpha(accent, 0.12), color: accent }}>
+ <Icon size={14} strokeWidth={2.5} />
  </span>
- <p style={{ ...STAT, margin: 0, fontSize: T.size.stat }}>{value}</p>
+ <p style={{ ...STAT, margin: 0, fontSize: T.size.statLg }}>{value}</p>
  <p style={{ ...EYEBROW, margin: 0 }}>{label}</p>
  </div>
  ))}
  </div>
 
  {/* Goal */}
- <div style={CARD}>
+ <div className="sp-insight-card">
  <div style={CARD_HEADER}>
  <span>Monthly Goal</span>
  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -2840,22 +2941,23 @@ export default function SalesmanPremium() {
  </div>
  ) : goal.target > 0 ? (
  <div>
- <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
- <div style={{ minWidth: 0 }}>
  <p style={{ ...EYEBROW, margin: "0 0 2px" }}>Commission earned</p>
- <p style={{ ...STAT, margin: "0 0 2px", fontSize: T.size.hero }}>
+ <div style={{ position: "relative", margin: "2px 0 4px" }}>
+ <div style={{ position: "absolute", top: 4, left: "50%", transform: "translateX(-50%)", width: 180, height: 100, background: `radial-gradient(ellipse at center, ${withAlpha(C.accent, 0.22)}, transparent 72%)`, filter: "blur(14px)", pointerEvents: "none" }} />
+ <svg width="100%" height="176" viewBox="0 0 240 176" style={{ position: "relative" }}>
+ <path d={`M ${gaugeCx - gaugeR},${gaugeCy} A ${gaugeR},${gaugeR} 0 0 1 ${gaugeCx + gaugeR},${gaugeCy}`} fill="none" stroke={C.fillStrong} strokeWidth="16" strokeLinecap="round" />
+ <path d={`M ${gaugeCx - gaugeR},${gaugeCy} A ${gaugeR},${gaugeR} 0 0 1 ${gaugeCx + gaugeR},${gaugeCy}`} fill="none" stroke={C.accent} strokeWidth="16" strokeLinecap="round" pathLength="100" strokeDasharray={`${pct} 100`} />
+ <circle cx={gaugePtX} cy={gaugePtY} r="9" fill={C.surface} />
+ <circle cx={gaugePtX} cy={gaugePtY} r="6" fill="#fff" />
+ <text x={gaugeCx} y={gaugeCy - 14} textAnchor="middle" fontFamily="'Bebas Neue', sans-serif" fontSize="46" fill={C.text}>
  RM {soldThisMonth.toLocaleString("en-MY")}
- </p>
- <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted }}>of RM {goal.target.toLocaleString("en-MY")} goal · {soldCountThisMonth} car{soldCountThisMonth !== 1 ? "s" : ""} sold</p>
+ </text>
+ <text x={gaugeCx} y={gaugeCy + 10} textAnchor="middle" fontFamily="system-ui" fontSize="12" fontWeight="600" fill={C.textMuted}>
+ of RM {goal.target.toLocaleString("en-MY")} goal &middot; {Math.round(pct)}% done
+ </text>
+ </svg>
  </div>
- <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: R.pill, fontSize: T.size.sm, fontWeight: T.weight.bold, flexShrink: 0,
- background: withAlpha(goalHue, 0.12), color: goalHueText }}>
- {Math.round(pct)}% done
- </span>
- </div>
- <div style={{ height: 5, borderRadius: R.pill, background: C.fillStrong, overflow: "hidden", margin: "10px 0 8px" }}>
- <div style={{ height: "100%", width: `${pct}%`, borderRadius: R.pill, background: goalHue, transition: "width 0.6s ease" }} />
- </div>
+ <p style={{ margin: "0 0 4px", fontSize: T.size.sm, color: C.textMuted, textAlign: "center" }}>{soldCountThisMonth} car{soldCountThisMonth !== 1 ? "s" : ""} sold this month</p>
  {pct >= 100
  ? <p style={{ margin: "0 0 10px", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.successText }}>Goal smashed!</p>
  : <p style={{ margin: "0 0 10px", fontSize: T.size.sm, color: C.textMuted }}>RM {(goal.target - soldThisMonth).toLocaleString("en-MY")} to go · {daysLeft > 0 ? `${daysLeft}d left` : "last day!"}</p>
@@ -2877,7 +2979,7 @@ export default function SalesmanPremium() {
  <AreaChart data={commissionTrend} margin={{ top: 6, right: 8, bottom: 0, left: 8 }}>
  <defs>
  <linearGradient id="spCommissionFill" x1="0" y1="0" x2="0" y2="1">
- <stop offset="0%" stopColor={C.accent} stopOpacity={0.35} />
+ <stop offset="0%" stopColor={C.accent} stopOpacity={0.32} />
  <stop offset="100%" stopColor={C.accent} stopOpacity={0} />
  </linearGradient>
  </defs>
@@ -2893,7 +2995,7 @@ export default function SalesmanPremium() {
  }}
  formatter={(v) => [`RM ${Number(v).toLocaleString("en-MY")}`, "Commission"]}
  />
- <Area type="monotone" dataKey="val" stroke={C.dangerText} strokeWidth={2} fill="url(#spCommissionFill)" dot={false} activeDot={{ r: 4, fill: C.dangerText }} />
+ <Area type="monotone" dataKey="val" stroke={C.accent} strokeWidth={2.5} fill="url(#spCommissionFill)" dot={false} activeDot={{ r: 5, fill: C.accent }} />
  </AreaChart>
  </ResponsiveContainer>
  </div>
@@ -2954,7 +3056,7 @@ export default function SalesmanPremium() {
 
  {/* Onboarding */}
  {isNewUser && !localStorage.getItem("sp_tour_done") && (
- <div style={{ ...CARD, border: `1px solid ${withAlpha(C.accent, 0.15)}` }}>
+ <div className="sp-insight-card" style={{ border: `1px solid ${withAlpha(C.accent, 0.15)}` }}>
  <div style={CARD_HEADER}><span>Get Started</span></div>
  <div style={{ padding: 18 }}>
  <p style={{ margin: "0 0 16px", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>Here's how to make your first sale:</p>
@@ -4637,9 +4739,11 @@ export default function SalesmanPremium() {
  {lead.phone && (
  <a
  href={`tel:${(lead.phone || "").replace(/\D/g, "")}`}
- style={{ flexShrink: 0, fontSize: 11, padding: "6px 10px", borderRadius: 7, background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
+ title="Call"
+ aria-label="Call lead"
+ style={{ flexShrink: 0, fontSize: 11, padding: "6px 14px", borderRadius: 7, background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
  >
- 
+ <Phone size={13} />
  </a>
  )}
  {lead.phone? (
@@ -6853,6 +6957,163 @@ export default function SalesmanPremium() {
  const lowestMonthly = Math.min(...calcRows.map((r) => r.monthly).filter(Boolean));
  const dpPct = loanCalc.carPrice? ((parseFloat(loanCalc.downPayment) || 0) / parseFloat(loanCalc.carPrice) * 100).toFixed(1) : null;
 
+ // CUSTOMERS (post-sale buyer records + prepaid service packages)
+
+ const handleAddPackage = async (customer) => {
+ if (!pkgForm.package_name) return;
+ setPkgSaving(true);
+ const row = {
+ dealer_id: getDealerIdFromProfile(profile), customer_id: customer.id, lead_id: customer.lead_id || null,
+ listing_id: customer.listing_id || null, package_name: pkgForm.package_name,
+ total_visits: Number(pkgForm.total_visits) || 3,
+ sold_price: pkgForm.sold_price? Number(pkgForm.sold_price) : null,
+ sold_at: new Date().toISOString().slice(0, 10),
+ };
+ const { data } = await supabase.from("service_packages").insert(row).select().single();
+ if (data) setPackagesMap(p => ({ ...p, [customer.id]: [data, ...(p[customer.id] || [])] }));
+ setAddPkgFor(null);
+ setPkgForm({ package_name: "", total_visits: 3, sold_price: "" });
+ setPkgSaving(false);
+ };
+
+ const handleLogVisit = async (pkg) => {
+ if (pkg.used_visits >= pkg.total_visits) return;
+ const updated = { used_visits: pkg.used_visits + 1 };
+ await supabase.from("service_packages").update(updated).eq("id", pkg.id);
+ setPackagesMap(p => ({ ...p, [pkg.customer_id]: (p[pkg.customer_id] || []).map(pk => pk.id === pkg.id? { ...pk, ...updated } : pk) }));
+ };
+
+ const renderCustomers = () => {
+ const today = new Date();
+ const daysUntil = (date) => date? (new Date(date) - today) / 86400000 : null;
+ const isDue = (date) => { const d = daysUntil(date); return d !== null && d <= 30; };
+ const isExpired = (date) => { const d = daysUntil(date); return d !== null && d < 0; };
+ const dotColor = (date) => { const d = daysUntil(date); return d === null? C.textDim : d < 0? C.dangerText : d <= 30? C.warnText : C.successText; };
+ const expiryLabel = (date) => {
+ if (!date) return "—";
+ const d = daysUntil(date);
+ const s = new Date(date).toLocaleDateString("en-MY", { day: "2-digit", month: "short" });
+ return d < 0? `${s} · overdue` : d <= 30? `${s} · ${Math.round(d)}d` : s;
+ };
+
+ const rtDue = customers.filter(c => isDue(c.road_tax_expiry)).length;
+ const insDue = customers.filter(c => isDue(c.insurance_expiry)).length;
+ const anyExpired = customers.some(c => isExpired(c.road_tax_expiry) || isExpired(c.insurance_expiry));
+
+ const filtered = customers.filter(c => {
+ if (customerSearch && !`${c.name || ""} ${c.phone || ""}`.toLowerCase().includes(customerSearch.toLowerCase())) return false;
+ if (expiryFilter === "ins" && !isDue(c.insurance_expiry)) return false;
+ if (expiryFilter === "rt" && !isDue(c.road_tax_expiry)) return false;
+ return true;
+ });
+
+ if (customersLoading) return <p style={{ color: C.textMuted, fontSize: 13 }}>Loading customers…</p>;
+
+ return (
+ <div style={{ maxWidth: 640 }}>
+ <p style={{ margin: "0 0 14px", fontSize: 19, fontWeight: 700, color: C.text }}>Customers <span style={{ fontSize: 12, fontWeight: 400, color: C.textMuted }}>· {customers.length} on record</span></p>
+
+ <div style={{ display: "flex", gap: 7, marginBottom: 14, flexWrap: "wrap" }}>
+ {[{ id: null, label: `All · ${customers.length}` }, { id: "ins", label: `Insurance due · ${insDue}` }, { id: "rt", label: `Road tax due · ${rtDue}` }].map(f => (
+ <button key={f.id || "all"} onClick={() => setExpiryFilter(f.id)}
+ style={{ borderRadius: R.pill, padding: "5px 12px", fontSize: T.size.sm, fontWeight: T.weight.bold, cursor: "pointer", fontFamily: "inherit",
+ background: expiryFilter === f.id? withAlpha(C.accent, 0.12) : "transparent", border: `1px solid ${expiryFilter === f.id? withAlpha(C.accent, 0.25) : C.border}`, color: expiryFilter === f.id? C.dangerText : C.textSec }}>
+ {f.label}
+ </button>
+ ))}
+ </div>
+
+ {anyExpired && (
+ <p style={{ display: "flex", alignItems: "center", gap: 8, fontSize: T.size.sm, color: C.textSec, margin: "0 0 14px" }}>
+ <AlertCircle size={14} color={C.warnText} style={{ flexShrink: 0 }} />
+ Some policies have <span style={{ color: C.warnText, fontWeight: 700 }}>expired</span> — worth a call before renewal.
+ </p>
+ )}
+
+ <input value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} placeholder="Search by name or phone…"
+ style={{ width: "100%", background: C.fillStrong, border: `1px solid ${C.border}`, borderRadius: R.md, padding: "9px 12px", color: C.text, fontSize: T.size.base, outline: "none", fontFamily: "inherit", marginBottom: 14, boxSizing: "border-box" }} />
+
+ {filtered.length === 0? (
+ <p style={{ textAlign: "center", color: C.textDim, fontSize: 13, padding: "30px 0" }}>No customers yet — they appear here automatically once a deal is won.</p>
+ ) : (
+ <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+ {filtered.map(c => {
+ const pkgs = packagesMap[c.id] || [];
+ const initials = (c.name || "?").split(" ").filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+ return (
+ <div key={c.id} style={{ ...CARD, padding: 15 }}>
+ <div style={{ display: "flex", alignItems: "flex-start", gap: 11 }}>
+ <div style={{ width: 38, height: 38, borderRadius: R.pill, flexShrink: 0, background: C.fillStrong, display: "flex", alignItems: "center", justifyContent: "center" }}>
+ <span style={{ fontSize: T.size.base, fontWeight: T.weight.bold, color: C.textSec }}>{initials}</span>
+ </div>
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+ <p style={{ margin: 0, fontSize: T.size.lg, fontWeight: T.weight.bold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name || "Unknown buyer"}</p>
+ {c.phone && (
+ <a href={`tel:${c.phone.replace(/\D/g, "")}`} style={{ color: C.textMuted, flexShrink: 0, display: "flex" }}>
+ <Phone size={13} />
+ </a>
+ )}
+ </div>
+ <p style={{ margin: "2px 0 0", fontSize: T.size.sm, color: C.textMuted }}>{[c.car_year, c.car_brand, c.car_model].filter(Boolean).join(" ")}{c.car_plate? ` · ${c.car_plate}` : ""}{c.payment_type? ` · ${c.payment_type}` : ""}</p>
+
+ <div style={{ display: "flex", gap: 16, marginTop: 10, flexWrap: "wrap" }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+ <span style={{ width: 7, height: 7, borderRadius: R.pill, background: dotColor(c.road_tax_expiry), flexShrink: 0 }} />
+ <p style={{ margin: 0, fontSize: T.size.sm, color: C.textSec }}>Road tax {expiryLabel(c.road_tax_expiry)}</p>
+ </div>
+ <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+ <span style={{ width: 7, height: 7, borderRadius: R.pill, background: dotColor(c.insurance_expiry), flexShrink: 0 }} />
+ <p style={{ margin: 0, fontSize: T.size.sm, color: C.textSec }}>Insurance {expiryLabel(c.insurance_expiry)}</p>
+ </div>
+ </div>
+
+ {pkgs.map(pkg => (
+ <div key={pkg.id} style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10 }}>
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.text }}>{pkg.package_name}</p>
+ <div style={{ height: 4, borderRadius: R.pill, background: C.fillStrong, marginTop: 5, overflow: "hidden" }}>
+ <div style={{ height: "100%", width: `${Math.min(100, (pkg.used_visits / pkg.total_visits) * 100)}%`, borderRadius: R.pill, background: C.accent }} />
+ </div>
+ </div>
+ <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted, flexShrink: 0 }}>{pkg.used_visits}/{pkg.total_visits} visits</p>
+ {pkg.used_visits < pkg.total_visits && (
+ <button onClick={() => handleLogVisit(pkg)} style={{ ...SOFT(C.accent), fontSize: T.size.xs, fontWeight: T.weight.bold, padding: "4px 9px", borderRadius: R.sm, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>Log visit</button>
+ )}
+ </div>
+ ))}
+
+ {addPkgFor === c.id? (
+ <div style={{ marginTop: 10, display: "flex", gap: 6, flexWrap: "wrap" }}>
+ <input value={pkgForm.package_name} onChange={(e) => setPkgForm(f => ({ ...f, package_name: e.target.value }))} placeholder="Package name" style={{ flex: "1 1 140px", background: C.fillStrong, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "6px 9px", color: C.text, fontSize: 12, outline: "none", fontFamily: "inherit" }} />
+ <input type="number" value={pkgForm.total_visits} onChange={(e) => setPkgForm(f => ({ ...f, total_visits: e.target.value }))} placeholder="Visits" style={{ width: 64, background: C.fillStrong, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "6px 9px", color: C.text, fontSize: 12, outline: "none", fontFamily: "inherit" }} />
+ <input type="number" value={pkgForm.sold_price} onChange={(e) => setPkgForm(f => ({ ...f, sold_price: e.target.value }))} placeholder="RM price" style={{ width: 84, background: C.fillStrong, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "6px 9px", color: C.text, fontSize: 12, outline: "none", fontFamily: "inherit" }} />
+ <button onClick={() => handleAddPackage(c)} disabled={pkgSaving ||!pkgForm.package_name} style={{ fontSize: 11, fontWeight: 700, padding: "6px 12px", borderRadius: R.sm, background: C.accent, border: "none", color: C.onAccent, cursor: "pointer", fontFamily: "inherit" }}>Save</button>
+ <button onClick={() => setAddPkgFor(null)} style={{ fontSize: 11, padding: "6px 10px", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+ </div>
+ ) : (
+ <button onClick={() => setAddPkgFor(c.id)} style={{ marginTop: 10, fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.dangerText, background: "transparent", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>+ Add service package</button>
+ )}
+ </div>
+ </div>
+ </div>
+ );
+ })}
+ </div>
+ )}
+ </div>
+ );
+ };
+
+ // HANDOVER (post-sale paperwork checklist, shared postsale/PostSaleBoard)
+ const renderHandover = () => (
+ <div style={{ maxWidth: 640 }}>
+ <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: C.text }}>Handover</p>
+ <p style={{ margin: "0 0 20px", fontSize: 12, color: C.textMuted }}>Paperwork &amp; delivery for your won deals.</p>
+ <PostSaleBoard dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} dark />
+ </div>
+ );
+
  const renderLoans = () => (
  <div style={{ maxWidth: 900 }}>
  <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>Loan Management</p>
@@ -7918,8 +8179,10 @@ export default function SalesmanPremium() {
  {activeTab === "analytics" && renderAnalytics()}
  {activeTab === "loans" && renderLoans()}
  {activeTab === "outreach" && showOutreach && (
- <OutreachHub dealerId={profile?.dealer_id} salesmanId={userId} />
+ <OutreachHub dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} />
  )}
+ {activeTab === "customers" && renderCustomers()}
+ {activeTab === "handover" && renderHandover()}
  {activeTab === "settings" && renderSettings()}
  </div>
  </div>
