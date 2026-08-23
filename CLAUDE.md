@@ -356,6 +356,30 @@ Any AI message prompt must also forbid inventing a price, discount, deposit,
 instalment, trade-in value, loan rate or financing approval; if a number is
 needed, the draft asks the buyer to confirm with the salesman.
 
+## In-app buyer chat — the AI must never read a raw number
+Buyers message sellers inside ShiftOS (not WhatsApp). Built 2026-08-23.
+- Tables: `chat_threads` (one per listing+buyer, unique index), `chat_messages`
+  (append-only — there is deliberately NO update/delete policy).
+- **Every message is stored twice**: `body` (raw, what the two humans see,
+  revealed on tap) and `body_ai` (`redact_for_ai(body)` — phones, IC, emails
+  masked at 9+ digits). Masking in the UI does NOT hide anything from the AI,
+  because the AI reads the database. So: **every AI path reads the
+  `chat_messages_ai` view, which has no `body` column at all.** Never point an
+  AI feature at `chat_messages`.
+- AI runs server-side (`supabase/functions/chat-assist`) precisely so the prompt
+  can't leak: the browser sends only a thread id, the function fetches the
+  transcript itself. Sellers only; a buyer calling it gets 403.
+- Threads are created ONLY by `start_chat_thread(listing_id)`, which derives
+  dealer_id/salesman_id from the listing — a buyer cannot attach themselves to a
+  seller of their choosing. Posting is capped at 20 messages/minute and you can
+  only post as yourself, as the side you actually are.
+- Guest buyers use Supabase anonymous sign-in (needs the project toggle, ACT-13).
+  `handle_new_user()` forces `role='buyer'` for anonymous users — without that
+  branch every guest gets a `role='dealer'` profile. Do not remove it.
+- Frontend: `src/hooks/useChat.js`, `src/components/chat/{ChatThread,SellerInbox,BuyerChat}.jsx`.
+  Notifications reuse the existing path (a `salesman_notifications` row IS the
+  push) and fire only on the first unread of a burst.
+
 ## Follow-up nudges (RAPTOR-1/4) — built, don't rebuild
 A nudge = a reminder with the message already drafted, queued against one lead.
 - `scheduled_nudges` (dealer_id, salesman_id, lead_id, draft_message, reason,
