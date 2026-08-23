@@ -1437,7 +1437,7 @@ export default function AdminPage() {
               {/* ── Group 1: Standalone Lite ── */}
               {(() => {
                 // Standalone (no dealer) salesmen: lite + solo premium. Solo
-                // premium pay RM20/mo themselves and need a payment-approval action.
+                // premium pay RM35/mo themselves and need a payment-approval action.
                 const lites = filteredSalesmen.filter(s => !s.dealer_id && (s.plan === 'salesman_lite' || s.plan === 'salesman_full'));
                 return (
                   <div style={{ marginBottom: 24 }}>
