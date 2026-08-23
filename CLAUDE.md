@@ -346,6 +346,35 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
   (`src/pages/SalesmanLite.jsx:849`) is NOT push. It only fires while the tab is open.
   Do not confuse the two.
 
+## AI trust boundary — AI drafts, a HUMAN sends (hard rule)
+An AI must never message a car buyer unsupervised. Owner's call, 2026-08-23:
+"who would want to talk to an AI when buying a car, they need trust." AI may
+write a draft; a person reads it and presses send. Do not add an auto-send path
+to any buyer-facing channel (WhatsApp, Telegram, SMS, email), and do not treat a
+scheduled send as an exception — schedule the REMINDER, not the send.
+Any AI message prompt must also forbid inventing a price, discount, deposit,
+instalment, trade-in value, loan rate or financing approval; if a number is
+needed, the draft asks the buyer to confirm with the salesman.
+
+## Follow-up nudges (RAPTOR-1/4) — built, don't rebuild
+A nudge = a reminder with the message already drafted, queued against one lead.
+- `scheduled_nudges` (dealer_id, salesman_id, lead_id, draft_message, reason,
+  ai_drafted, scheduled_for, status, notified_at, actioned_at). status flow:
+  pending -> ready -> sent | dismissed | expired. Partial unique index
+  `scheduled_nudges_one_open_per_lead` allows only ONE open nudge per lead.
+- `fire_due_nudges()` — SECURITY DEFINER sweep, pg_cron jobid 12 every 5 min.
+  Dismisses nudges on closed/deleted leads, expires ignored ones after 7 days,
+  flips due ones to `ready` and inserts a `salesman_notifications` row. That row
+  is the push (trg_push_on_salesman_notification does the rest) — pure SQL, no
+  edge function and no service-role JWT in the cron command.
+- Frontend: `src/hooks/useNudges.js`, `src/components/crm/NudgeQueue.jsx`, and
+  the AI-draft + "Remind me to send this later" controls in
+  `src/components/crm/OutreachHub.jsx` (salesman-scoped only — the dealer-wide
+  hub passes no salesmanId and hides both).
+- AI drafting reuses the `wa_reply` quota key (50/day). `salesman_ai_quota_ok()`
+  returns false for any feature key it doesn't recognise, so inventing a new key
+  would silently disable the button for everyone — reuse an existing one.
+
 ## P&L model (StockTab)
 fetchPnl in DashboardPage.jsx computes per-unit gross in two parts:
 - Front gross = sale price − purchase price − recon cost − included services − commission − handover processing costs

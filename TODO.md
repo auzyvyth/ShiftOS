@@ -135,18 +135,22 @@ sold to businesses not individuals. So this isn't a lost-deal comparison,
 it's a feature-mining exercise: what would still save a solo agent real time
 if ported over.
 
-Prioritized gaps worth building, ranked by time saved, none started:
-- [ ] **RAPTOR-1: Timed follow-up nudges, human-sent (revised 2026-08-23).**
-  Originally scoped as AutoRaptor-style unattended AI send; owner correctly
-  pushed back — buyers need to know they're talking to a person for a
-  purchase this size (see IDEA-2 point 3). Revised scope: `OutreachHub.jsx:141`
-  is fully manual today (segments leads by urgency, hands you templates, but
-  a human has to click through every WhatsApp tab one at a time). Keep it
-  human-sent, but have the AI draft + time the suggested message per lead
-  ("day 3, no reply — send this") so the salesman just reviews and taps send
-  instead of composing from scratch. Still blocked on real WhatsApp Business
-  API access for the reply-visibility half (see IDEA-2, Ideas section) — the
-  timing/drafting half does not need it and could ship first.
+Prioritized gaps worth building, ranked by time saved:
+
+**RAPTOR-1 + RAPTOR-4 SHIPPED 2026-08-23 — do not rebuild.** Timed follow-up
+nudges, AI-drafted, always human-sent. A nudge is a REMINDER with the message
+already written, never an auto-send — the salesman reads the draft and presses
+send in WhatsApp himself, because a buyer must know they are talking to a
+person. Pieces: `scheduled_nudges` table + `fire_due_nudges()` sweep
+(`supabase/migrations/20260823_raptor_scheduled_nudges.sql`, live cron jobid 12,
+every 5 min), `src/hooks/useNudges.js`, `src/components/crm/NudgeQueue.jsx`, and
+the AI-draft + "Remind me to send this later" controls in
+`src/components/crm/OutreachHub.jsx`. The sweep inserts a `salesman_notifications`
+row and lets the existing `trg_push_on_salesman_notification` trigger send the
+push — no edge function, no JWT in cron. AI drafting reuses the `wa_reply` quota
+key (50/day) and the prompt forbids inventing any price, discount or financing
+figure. Still blocked, and NOT part of what shipped: seeing the buyer's REPLY
+inside ShiftOS needs real WhatsApp Business API access (see IDEA-2).
 - [ ] **RAPTOR-2: Side-by-side deal/payment scenario desking.** Loans tab
   (`SalesmanPremium.jsx:6925`) produces one scenario per submission. Add 2-3
   side-by-side tenure/down-payment comparisons before the application form,
@@ -156,8 +160,6 @@ Prioritized gaps worth building, ranked by time saved, none started:
   `customers` table (`SalesmanPremium.jsx:6960`) — no new integration needed,
   just a query surfacing "bought 3+ years ago, may be trade-up ready."
   Closest thing to a free win on this list.
-- [ ] **RAPTOR-4: Scheduled/delayed message sends.** Every WA/Telegram message
-  in Premium fires the instant you click send; no "send at 10am tomorrow."
 - [ ] **RAPTOR-5 (low priority): Click-to-call with auto-logging.** Not
   urgent — Malaysia's WhatsApp-first market makes voice less central than in
   AutoRaptor's US/SMS-centric design. If ever built, auto-log the outcome

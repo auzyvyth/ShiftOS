@@ -3,9 +3,12 @@ import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import {
   Users, Flame, Snowflake, CheckCircle2, TrendingUp, Clipboard, RefreshCw,
-  MessageCircle, Megaphone, Send, ArrowRight,
+  MessageCircle, Megaphone, Send, ArrowRight, Sparkles, CalendarClock,
 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
+import { callClaude } from '../../lib/callClaude';
+import { useNudges, NUDGE_PRESETS } from '../../hooks/useNudges';
+import NudgeQueue from './NudgeQueue';
 
 // Unified Outreach — reads the SAME `leads` record the Pipeline and Bookings
 // tabs use (single source of truth), so contacting / editing here reflects
@@ -30,6 +33,14 @@ export default function OutreachHub({ dealerId, salesmanId = null }) {
   const [campaignIdx, setCampaignIdx] = useState(0);
   const [pushing, setPushing]     = useState(false);
   const [draft, setDraft]         = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiIsDraft, setAiIsDraft] = useState(false); // current draft came from the AI
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [customWhen, setCustomWhen]     = useState('');
+
+  // RAPTOR-1/4 — follow-up nudges are per-salesman, so they only exist in the
+  // salesman-scoped view. The dealer-wide hub (no salesmanId) skips them.
+  const { due, scheduled, createNudge, closeNudge, snoozeNudge } = useNudges(salesmanId, dealerId);
 
   useEffect(() => {
     if (!dealerId) return;
@@ -94,8 +105,16 @@ export default function OutreachHub({ dealerId, salesmanId = null }) {
   useEffect(() => {
     if (selected) setDraft(TEMPLATES[template]?.gen(selected) || '');
     else setDraft('');
+    setAiIsDraft(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, template]);
+
+  // Overlay rule 2 — lock body scroll while the schedule sheet is open.
+  useEffect(() => {
+    if (!scheduleOpen) return;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, [scheduleOpen]);
 
   const urgencyColor = { critical:'#ef4444', high:'#f97316', medium:'#fbbf24', low:'#a3e635', warm:'#60a5fa', cold:'#94a3b8' };
 
@@ -132,6 +151,76 @@ export default function OutreachHub({ dealerId, salesmanId = null }) {
     markContacted(lead);
     toast.success(`WhatsApp opened for ${lead.buyer_name || 'lead'}`, { duration: 1800 });
     return win;
+  };
+
+  // --- RAPTOR-1: AI drafting + timed nudges -------------------------------
+  // The AI writes the message; a human always reads it and sends it. There is
+  // deliberately no path here that messages a buyer on its own.
+
+  // Reuses the existing 'wa_reply' AI feature key (50/day) rather than adding a
+  // new one — salesman_ai_quota_ok() returns false for any key it doesn't know,
+  // so an invented key would silently disable the button for everyone.
+  const aiDraft = async () => {
+    if (!selected || aiLoading) return;
+    setAiLoading(true);
+    try {
+      const { data: quotaOk } = await supabase.rpc('salesman_ai_quota_ok', { p_feature: 'wa_reply' });
+      if (quotaOk === false) {
+        toast.error('AI drafting is a Premium feature, or you have used today\'s allowance');
+        return;
+      }
+      const car = selected.car_listing;
+      const carName = car ? [car.year, car.brand, car.model].filter(Boolean).join(' ') : 'the car they enquired about';
+      const days = Math.round(selected.ageDays);
+      const prompt = `Write a short WhatsApp follow-up from a Malaysian used-car salesman to a buyer.
+Buyer: ${selected.buyer_name || 'the buyer'}
+Car they enquired about: ${carName}
+Pipeline stage: ${selected.stage}
+Days since last contact: ${days}
+Casual Bahasa Malaysia mixed with English. Max 3 sentences. Warm, not pushy. End with one easy next step (a question they can answer in a few words).
+Hard rules: do NOT state, invent, change or imply any price, discount, deposit, instalment figure, trade-in value, loan rate or financing approval. Do not promise availability or a delivery date. If a number is needed, ask the buyer to confirm with the salesman instead.`;
+      const text = await callClaude(
+        prompt,
+        'You are a friendly Malaysian car salesman. Reply with the WhatsApp message text only, no labels or quotes.',
+        'wa_reply',
+      );
+      setDraft(text);
+      setAiIsDraft(true);
+      await supabase.rpc('increment_ai_usage', { p_feature: 'wa_reply' }).then(null, () => {});
+    } catch (err) {
+      console.error('aiDraft:', err);
+      toast.error('Could not draft a message');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  // Queue the message currently in the composer as a reminder for later.
+  const scheduleNudge = async (when) => {
+    if (!selected || !when || Number.isNaN(when.getTime())) return;
+    if (when.getTime() <= Date.now()) { toast.error('Pick a time in the future'); return; }
+    const body = draft || TEMPLATES[template].gen(selected);
+    const res = await createNudge({
+      leadId: selected.id,
+      message: body,
+      when,
+      reason: `${Math.round(selected.ageDays)}d since last touch`,
+      aiDrafted: aiIsDraft,
+    });
+    if (res.duplicate) { toast.error('This lead already has a follow-up queued'); return; }
+    if (!res.ok) { toast.error('Could not schedule the follow-up'); return; }
+    setScheduleOpen(false);
+    setCustomWhen('');
+    toast.success(`Follow-up queued for ${when.toLocaleString('en-MY', { weekday:'short', hour:'numeric', minute:'2-digit', hour12:true })}`);
+  };
+
+  // A due nudge: open the chat with the (possibly edited) draft, then retire it.
+  const sendNudge = (nudge, message) => {
+    const lead = scored.find(l => l.id === nudge.lead_id)
+      || { id: nudge.lead_id, phone: nudge.lead?.phone, buyer_name: nudge.lead?.buyer_name, stage: nudge.lead?.stage };
+    if (!lead.phone) { toast.error('No phone number on this lead'); return; }
+    openWA(lead, message);
+    closeNudge(nudge.id, 'sent');
   };
 
   // Manual guided campaign. Opening many tabs at once gets popup-blocked and the
@@ -199,6 +288,13 @@ export default function OutreachHub({ dealerId, salesmanId = null }) {
           </div>
         ))}
       </div>
+
+      {salesmanId && (
+        <NudgeQueue due={due} scheduled={scheduled}
+          onSend={sendNudge}
+          onSnooze={snoozeNudge}
+          onDismiss={(id) => closeNudge(id, 'dismissed')} />
+      )}
 
       <style>{`.oh-body{display:grid;grid-template-columns:340px 1fr;gap:14px;margin-bottom:14px}@media(max-width:768px){.oh-body{grid-template-columns:1fr}}`}</style>
       <div className="oh-body">
@@ -334,7 +430,17 @@ export default function OutreachHub({ dealerId, salesmanId = null }) {
               </div>
 
               <div style={{ flex:1 }}>
-                <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.14em', color:'#374151', fontWeight:700, marginBottom:8 }}>Preview · editable</p>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:8 }}>
+                  <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.14em', color:'#374151', fontWeight:700, margin:0 }}>
+                    Preview · editable{aiIsDraft ? ' · AI draft' : ''}
+                  </p>
+                  {salesmanId && (
+                    <button onClick={aiDraft} disabled={aiLoading}
+                      style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:8, background:'#fff', border:'1px solid #ddd6fe', color:'#6d28d9', fontSize:11, fontWeight:600, cursor: aiLoading ? 'wait' : 'pointer', fontFamily:"system-ui,sans-serif", opacity: aiLoading ? 0.6 : 1 }}>
+                      <Sparkles size={11} /> {aiLoading ? 'Writing…' : 'AI draft'}
+                    </button>
+                  )}
+                </div>
                 <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={6}
                   style={{ width:'100%', boxSizing:'border-box', background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:10, padding:'14px 16px', minHeight:120, maxHeight:240, fontSize:13, color:'#1f2937', lineHeight:1.75, fontFamily:"system-ui,sans-serif", resize:'vertical', outline:'none' }} />
               </div>
@@ -343,6 +449,15 @@ export default function OutreachHub({ dealerId, salesmanId = null }) {
                 style={{ width:'100%', padding:'14px', borderRadius:12, background:'linear-gradient(135deg,#22c55e,#16a34a)', border:'none', boxShadow:'0 4px 20px rgba(34,197,94,0.3)', color:'white', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:"system-ui,sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
                 <MessageCircle size={16} /> Open WhatsApp — {(selected.buyer_name || 'Lead').split(' ')[0]}
               </button>
+
+              {/* Not a scheduled SEND — it queues a reminder with this message
+                  ready, and you send it yourself when it comes due. */}
+              {salesmanId && (
+                <button onClick={() => setScheduleOpen(true)}
+                  style={{ width:'100%', padding:'11px', borderRadius:12, background:'#fff', border:'1px solid #e5e7eb', color:'#374151', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
+                  <CalendarClock size={14} /> Remind me to send this later
+                </button>
+              )}
 
               {selected.stage === 'enquiry' ? (
                 <button onClick={() => promoteToPipeline(selected)} disabled={pushing}
@@ -439,6 +554,49 @@ export default function OutreachHub({ dealerId, salesmanId = null }) {
                 </div>
               </>
             )}
+          </div>
+        </div>, document.body)}
+
+      {/* Schedule sheet. Portalled + body-scroll-locked per the overlay rules.
+          Deliberately NOT registered with useModalHistory — it is a light popup
+          with its own cancel/backdrop close (overlay rule 5). */}
+      {scheduleOpen && selected && createPortal(
+        <div onClick={() => setScheduleOpen(false)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', backdropFilter:'blur(2px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:10000, padding:16 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background:'#fff', borderRadius:16, maxWidth:400, width:'100%', padding:22, fontFamily:"system-ui,sans-serif", boxShadow:'0 20px 60px rgba(0,0,0,0.3)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:6 }}>
+              <CalendarClock size={17} style={{ color:'#374151' }} />
+              <h3 style={{ fontSize:15, fontWeight:700, color:'#111827', margin:0 }}>Remind me later</h3>
+            </div>
+            <p style={{ fontSize:12, color:'#6b7280', lineHeight:1.6, margin:'0 0 16px' }}>
+              We'll notify you at this time with the message ready to review.
+              Nothing is sent to {(selected.buyer_name || 'the buyer').split(' ')[0]} automatically — you always press send.
+            </p>
+
+            <div style={{ display:'grid', gap:7, marginBottom:14 }}>
+              {NUDGE_PRESETS.map(preset => (
+                <button key={preset.key} onClick={() => scheduleNudge(preset.at())}
+                  style={{ width:'100%', padding:'11px 14px', borderRadius:10, background:'#f9fafb', border:'1px solid #e5e7eb', color:'#111827', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif", textAlign:'left' }}>
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
+            <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.12em', color:'#9ca3af', fontWeight:700, margin:'0 0 6px' }}>Or pick a time</p>
+            <div style={{ display:'flex', gap:8, marginBottom:16 }}>
+              <input type="datetime-local" value={customWhen} onChange={e => setCustomWhen(e.target.value)}
+                style={{ flex:1, minWidth:0, boxSizing:'border-box', padding:'10px 12px', borderRadius:10, border:'1px solid #e5e7eb', background:'#fff', color:'#111827', fontSize:13, fontFamily:"system-ui,sans-serif", outline:'none' }} />
+              <button onClick={() => scheduleNudge(new Date(customWhen))} disabled={!customWhen}
+                style={{ padding:'10px 16px', borderRadius:10, border:'none', background: customWhen ? '#111827' : '#e5e7eb', color: customWhen ? '#fff' : '#9ca3af', fontSize:13, fontWeight:700, cursor: customWhen ? 'pointer' : 'not-allowed', fontFamily:"system-ui,sans-serif" }}>
+                Set
+              </button>
+            </div>
+
+            <button onClick={() => setScheduleOpen(false)}
+              style={{ width:'100%', padding:'10px', borderRadius:10, border:'1px solid #e5e7eb', background:'#fff', color:'#6b7280', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif" }}>
+              Cancel
+            </button>
           </div>
         </div>, document.body)}
     </div>
