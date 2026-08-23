@@ -84,7 +84,7 @@ import PushToggle from "../components/PushToggle";
 import ServicesAddonsTab from "../components/salesman/ServicesAddonsTab";
 import ChannelBreakdown from "../components/ChannelBreakdown";
 import ShareMenu from "../components/ShareMenu";
-import { panel as C, panelType as T, panelRadius as R, panelStageHue, panelInsightGradient, withAlpha } from "../theme/tokens";
+import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha } from "../theme/tokens";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 
 // Price visual weight — a RM45k car and a RM2.4M car shouldn't read at the
@@ -2367,6 +2367,28 @@ export default function SalesmanPremium() {
  });
  const totalViews = Object.values(carStatsMap).reduce((s, v) => s + (v.views || 0), 0);
  const totalWATaps = Object.values(carStatsMap).reduce((s, v) => s + (v.enquiries || 0), 0);
+ // Real 7-day views trend (same carStatsMap.daily source as the Analytics
+ // tab's sparklines) — the only one of the 4 mini-page stats with a genuine
+ // daily breakdown, so it's the only tile that gets a trend line.
+ const viewsTrend = Array(7).fill(0).map((_, i) =>
+ Object.values(carStatsMap).reduce((s, v) => s + (v.daily?.[i] || 0), 0)
+ );
+ // De-emphasised trend line, accent dot on the latest point only — never a
+ // number-on-every-point; the line just shows shape, the dot marks "now".
+ const MiniTrend = ({ data }) => {
+ if (!data.some(v => v > 0)) return null;
+ const max = Math.max(...data, 1);
+ const w = 60, h = 20;
+ const pts = data.map((v, i) => [(i / (data.length - 1)) * w, h - 3 - (v / max) * (h - 6)]);
+ const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
+ const last = pts[pts.length - 1];
+ return (
+ <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: "block", marginTop: 6, overflow: "visible" }}>
+ <path d={line} stroke={C.textDim} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+ <circle cx={last[0]} cy={last[1]} r="2.5" fill={C.accent} />
+ </svg>
+ );
+ };
  const overallCVR = totalViews > 0 ? ((totalWATaps / totalViews) * 100).toFixed(1) : null;
  const bestCVRStat = listingStats.reduce((best, s) => (s.cvr !== null && (best === null || s.cvr > best.cvr)) ? s : best, null);
  const cvrColor = (cvr) => cvr >= 10 ? C.success : cvr >= 5 ? C.warn : C.danger;
@@ -2507,8 +2529,6 @@ export default function SalesmanPremium() {
  ? `${activeLeads.length} deal${activeLeads.length !== 1 ? "s" : ""} in motion right now.`
  : "Pipeline is clear — good time to feature a car or reach out to old buyers.";
 
- const [gradA, gradB, gradC] = panelInsightGradient;
-
  return (
  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
  {/* Dashboard-only card chrome — layered gradient surface + a soft top
@@ -2607,23 +2627,30 @@ export default function SalesmanPremium() {
  </div>
  {available.length > 0 && (
  <div style={{ position: "relative", marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
- <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 18 : 28, flexWrap: "wrap" }}>
+ <div style={{ display: "flex", alignItems: "flex-start", gap: 0, flexWrap: "wrap" }}>
  {[
- { label: "Views", value: totalViews || 0, color: C.text },
- { label: "Page Visits", value: minipageStats.visits || 0, color: C.infoText },
- { label: "WA Taps", value: totalWATaps || 0, color: C.successText },
- { label: "Live Listings", value: available.length, color: C.text },
- ].map(({ label, value, color }) => (
- <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
- <span style={{ ...STAT, fontSize: isMobile ? T.size.stat : T.size.statLg, color }}>{value}</span>
+ { label: "Views", value: totalViews || 0, Icon: Eye, trend: viewsTrend },
+ { label: "Page Visits", value: minipageStats.visits || 0, Icon: LinkIcon },
+ { label: "WA Taps", value: totalWATaps || 0, Icon: MessageCircle },
+ { label: "Live Listings", value: available.length, Icon: Car },
+ ].map(({ label, value, Icon, trend }, i) => (
+ <div key={label} style={{ display: "flex", alignItems: "flex-start" }}>
+ {i > 0 && <div style={{ width: 1, alignSelf: "stretch", background: C.line, margin: isMobile ? "0 14px" : "0 22px" }} />}
+ <div style={{ display: "flex", flexDirection: "column", gap: 6, minHeight: 66 }}>
+ <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: R.sm, background: C.fillStrong, color: C.textMuted }}>
+ <Icon size={11} strokeWidth={2.2} />
+ </span>
+ <span style={{ ...STAT, fontSize: isMobile ? T.size.stat : T.size.statLg, color: C.text }}>{value.toLocaleString("en-MY")}</span>
  <span style={EYEBROW}>{label}</span>
+ {trend && <MiniTrend data={trend} />}
+ </div>
  </div>
  ))}
- <span style={{ ...EYEBROW, display: "inline-flex", alignItems: "center", gap: 5, marginLeft: "auto", fontWeight: T.weight.normal }}>
+ </div>
+ <span style={{ ...EYEBROW, display: "inline-flex", alignItems: "center", gap: 5, marginTop: 12, fontWeight: T.weight.normal }}>
  <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.success }} />
  30 days
  </span>
- </div>
  {profile?.slug && (
  <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
  <button
@@ -2916,17 +2943,10 @@ export default function SalesmanPremium() {
  <div>
  <p style={{ ...EYEBROW, margin: "0 0 2px" }}>Commission earned</p>
  <div style={{ position: "relative", margin: "2px 0 4px" }}>
- <div style={{ position: "absolute", top: 4, left: "50%", transform: "translateX(-50%)", width: 180, height: 100, background: `radial-gradient(ellipse at center, ${withAlpha(gradB, 0.32)}, transparent 72%)`, filter: "blur(14px)", pointerEvents: "none" }} />
+ <div style={{ position: "absolute", top: 4, left: "50%", transform: "translateX(-50%)", width: 180, height: 100, background: `radial-gradient(ellipse at center, ${withAlpha(C.accent, 0.22)}, transparent 72%)`, filter: "blur(14px)", pointerEvents: "none" }} />
  <svg width="100%" height="176" viewBox="0 0 240 176" style={{ position: "relative" }}>
- <defs>
- <linearGradient id="spGoalGauge" x1="0" y1="0" x2="1" y2="0">
- <stop offset="0%" stopColor={gradA} />
- <stop offset="50%" stopColor={gradB} />
- <stop offset="100%" stopColor={gradC} />
- </linearGradient>
- </defs>
  <path d={`M ${gaugeCx - gaugeR},${gaugeCy} A ${gaugeR},${gaugeR} 0 0 1 ${gaugeCx + gaugeR},${gaugeCy}`} fill="none" stroke={C.fillStrong} strokeWidth="16" strokeLinecap="round" />
- <path d={`M ${gaugeCx - gaugeR},${gaugeCy} A ${gaugeR},${gaugeR} 0 0 1 ${gaugeCx + gaugeR},${gaugeCy}`} fill="none" stroke="url(#spGoalGauge)" strokeWidth="16" strokeLinecap="round" pathLength="100" strokeDasharray={`${pct} 100`} />
+ <path d={`M ${gaugeCx - gaugeR},${gaugeCy} A ${gaugeR},${gaugeR} 0 0 1 ${gaugeCx + gaugeR},${gaugeCy}`} fill="none" stroke={C.accent} strokeWidth="16" strokeLinecap="round" pathLength="100" strokeDasharray={`${pct} 100`} />
  <circle cx={gaugePtX} cy={gaugePtY} r="9" fill={C.surface} />
  <circle cx={gaugePtX} cy={gaugePtY} r="6" fill="#fff" />
  <text x={gaugeCx} y={gaugeCy - 14} textAnchor="middle" fontFamily="'Bebas Neue', sans-serif" fontSize="46" fill={C.text}>
@@ -2959,13 +2979,8 @@ export default function SalesmanPremium() {
  <AreaChart data={commissionTrend} margin={{ top: 6, right: 8, bottom: 0, left: 8 }}>
  <defs>
  <linearGradient id="spCommissionFill" x1="0" y1="0" x2="0" y2="1">
- <stop offset="0%" stopColor={gradB} stopOpacity={0.32} />
- <stop offset="100%" stopColor={gradB} stopOpacity={0} />
- </linearGradient>
- <linearGradient id="spCommissionLine" x1="0" y1="0" x2="1" y2="0">
- <stop offset="0%" stopColor={gradA} />
- <stop offset="50%" stopColor={gradB} />
- <stop offset="100%" stopColor={gradC} />
+ <stop offset="0%" stopColor={C.accent} stopOpacity={0.32} />
+ <stop offset="100%" stopColor={C.accent} stopOpacity={0} />
  </linearGradient>
  </defs>
  <XAxis dataKey="d" hide />
@@ -2980,7 +2995,7 @@ export default function SalesmanPremium() {
  }}
  formatter={(v) => [`RM ${Number(v).toLocaleString("en-MY")}`, "Commission"]}
  />
- <Area type="monotone" dataKey="val" stroke="url(#spCommissionLine)" strokeWidth={3} fill="url(#spCommissionFill)" dot={false} activeDot={{ r: 5, fill: gradC }} />
+ <Area type="monotone" dataKey="val" stroke={C.accent} strokeWidth={2.5} fill="url(#spCommissionFill)" dot={false} activeDot={{ r: 5, fill: C.accent }} />
  </AreaChart>
  </ResponsiveContainer>
  </div>

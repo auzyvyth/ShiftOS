@@ -72,13 +72,6 @@ export const panel = {
   onAccent:    '#ffffff',
 };
 
-// Dashboard-tab-only accent gradient (Salesman Premium's first tab) — the
-// blue -> purple -> pink stroke used on the gauge/sparkline charts there.
-// Not part of `panel` itself: everything else on that tab (surfaces, text,
-// semantic colours) still comes from `panel` above. Scope any use to
-// Dashboard data-viz only — never spread this hue family to other tabs.
-export const panelInsightGradient = ['#5b6bff', '#a855f7', '#ec4899'];
-
 // Pipeline-stage hues for the dark panel. Colour-codes a lead row by where it
 // sits in the funnel. TODO: SalesmanLite's own STAGE_COLOR map (pill bg/border/
 // text for the leads board) still lives inline — fold it in here on the leads
