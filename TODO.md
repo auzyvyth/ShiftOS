@@ -18,6 +18,37 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   the old copy wrongly implied Mudah/Carlist charge "per listing"; the
   real model is per-bump, which is what sparked this.)
 
+- **IDEA-2: True WhatsApp Business API integration — in-app inbox +
+  reply-based lead scoring + AI that carries a conversation over days** —
+  owner's framing (2026-08-23): stop competing on "content" (views/likes
+  are vanity metrics — "fishing with a net that's broken," most viewers
+  were never going to buy) and instead give sellers real buyer-intent
+  data. Three asks, all blocked on the same root cause:
+  1. **In-app chat, not deep-links.** Technically possible via the
+     WhatsApp Business Platform (Cloud API) — a real product, not what
+     `wa.me` deep-links do today throughout `SalesmanPremium.jsx` /
+     `SalesmanLite.jsx`. Needs Meta Business verification, a WhatsApp
+     Business Account, and approved message templates for anything sent
+     outside a 24h customer-service window; billed per conversation. The
+     approval/verification process is the real cost here, not the code.
+  2. **Auto lead-scoring by reply rate.** Impossible today — WhatsApp
+     opens outside ShiftOS and nothing comes back in, so the app never
+     sees whether a lead replied. Only becomes buildable once inbound
+     messages land via a Business API webhook; reply-rate/response-time
+     would then feed the existing AI scoring (`ai-proxy`, see
+     `SalesmanPremium.jsx:1024`).
+  3. **AI that stays on-message for days.** Needs per-lead conversation
+     memory (have: `lead_activities` history), a staged script (day-1
+     tone ≠ day-5 tone), hard guardrails (never quote a price or
+     financing approval the salesman didn't set), and a kill-switch that
+     silences the AI the moment a human replies.
+  Bigger vision behind this: move sellers past views/likes as their only
+  signal — surface real intent (saved_cars, price_alerts, WA-tap-without-
+  reply, repeat visits, photo/scroll engagement) the way AutoRaptor's
+  equity-mining/lead-scoring does, but from XDrive's own buyer-behavior
+  data. Not scoped — Meta Business verification is a real gate, not just
+  a code change — needs its own design pass before it's a dev task.
+
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
 
 - **ACT-1: Enable TOTP in Supabase dashboard — DEFERRED until revenue (user: paid)** — 2FA (SEC-1) will not work end-to-end until the TOTP factor type is enabled: Supabase → Authentication → Settings → Multi-Factor → enable **TOTP**. Until then, the "Enable 2FA" button in Settings will error on enroll. Owner is deferring this until revenue/Supabase Pro (treats it as a paid feature — note: standard app-based TOTP MFA is typically free on Supabase; the paid MFA add-on is Phone/SMS, which we are avoiding anyway — worth re-checking billing before permanently shelving). Interim idea from owner: keep Gmail/Google link verification and add an email verification code as a lightweight second factor. NOTE (2026-08-05): TOTP is NOT deprecated — Bank Negara's RMiT (28 Nov 2025) bans **SMS OTP** as a standalone factor, not TOTP. TOTP (authenticator-app codes, RFC 6238) is offline/device-local and is one of the regulator's recommended interception-resistant replacements, so it stays the correct choice here. Do NOT enable Supabase's Phone/SMS OTP factor. Passkeys (FIDO2/WebAuthn) are the gold standard but are not a native Supabase MFA factor yet.
@@ -84,6 +115,51 @@ not scoped, not prioritized — just parked here until picked up on purpose.
 > Reminder protocol: while ACT-2, ACT-4, ACT-9, ACT-10 or ACT-12 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. **ACT-8 was found ALREADY COMPLETE and removed 2026-08-15** — `package.json` AND `package-lock.json` both resolve `xlsx` to `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, and `vercel.json` CSP already whitelists `cdn.sheetjs.com` in connect-src; it had been sitting in this list as a blocked user-action for weeks after the fact. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then.) LESSON: verify an ACT item against the code before re-surfacing it — a stale nag costs a session's attention every time.
 
 ## Dev tasks
+
+---
+
+### SESSION 2026-08-23 — AutoRaptor competitive audit (Salesman Premium)
+
+Full report: published artifact
+https://claude.ai/code/artifact/676e1a78-c251-47c7-aac9-fd459d077973 — complete
+feature census of `SalesmanPremium.jsx` (8,888 lines) cross-referenced against
+AutoRaptor's public product pages. Headline finding: AutoRaptor has NO
+solo-agent product — it's dealership-only, quote-priced (~$399/mo base),
+sold to businesses not individuals. So this isn't a lost-deal comparison,
+it's a feature-mining exercise: what would still save a solo agent real time
+if ported over.
+
+Prioritized gaps worth building, ranked by time saved, none started:
+- [ ] **RAPTOR-1: Real unattended multi-day follow-up.** `OutreachHub.jsx:141`
+  is fully manual — segments leads by urgency and hands you templates, but a
+  human has to click through every WhatsApp tab, one lead at a time, in one
+  sitting. AutoRaptor's automation nurtures leads across days with no human
+  re-triggering it. Biggest gap on the list. Blocked on real WhatsApp Business
+  API access (see TODO's IDEA-2, Ideas section) — you can't truly automate a
+  channel you can only deep-link into and never read replies from.
+- [ ] **RAPTOR-2: Side-by-side deal/payment scenario desking.** Loans tab
+  (`SalesmanPremium.jsx:6925`) produces one scenario per submission. Add 2-3
+  side-by-side tenure/down-payment comparisons before the application form,
+  the way AutoRaptor's Payment Penciling does.
+- [ ] **RAPTOR-3: Equity mining on the Customers tab.** Data already exists —
+  `purchase_date`, `selling_price`, `car_brand`/`model`/`year` on the
+  `customers` table (`SalesmanPremium.jsx:6960`) — no new integration needed,
+  just a query surfacing "bought 3+ years ago, may be trade-up ready."
+  Closest thing to a free win on this list.
+- [ ] **RAPTOR-4: Scheduled/delayed message sends.** Every WA/Telegram message
+  in Premium fires the instant you click send; no "send at 10am tomorrow."
+- [ ] **RAPTOR-5 (low priority): Click-to-call with auto-logging.** Not
+  urgent — Malaysia's WhatsApp-first market makes voice less central than in
+  AutoRaptor's US/SMS-centric design. If ever built, auto-log the outcome
+  instead of today's manual log-after-the-fact (`SalesmanPremium.jsx:1351`).
+
+Deliberately NOT recommended (see artifact §04 for the full case): DMS/80+
+inventory integrations (ShiftOS listings already ARE the CRM data, nothing to
+sync), soft credit pull via 700Credit (US-bureau-specific, no Malaysian
+equivalent, needs its own scoping), Digital Retail website widgets (solo
+agents don't have their own dealer website to embed one in), email campaigns
+(Malaysian buyers are WhatsApp-first — this is a Premium strength vs
+AutoRaptor already, not a gap to close).
 
 ---
 
