@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { ChevronDown, ChevronRight, CheckCircle2, Car, Clock, AlertTriangle } from 'lucide-react';
 import { computeProgress, nextBlocker } from '../../utils/postSaleSteps';
+import { panelPremium } from '../../theme/tokens';
 import PostSaleChecklist from './PostSaleChecklist';
 
 const WON_STAGES = ['won', 'closed_won'];
@@ -17,7 +18,9 @@ function daysSince(ts) {
 
 // Lists won deals that still need post-sale processing. dealerId scopes to a
 // dealership; pass salesmanId to scope to one salesman's own sold deals.
-export default function PostSaleBoard({ dealerId, salesmanId = null, dark = false }) {
+// premium: Salesman Premium's warm "Boutique Concierge" surface (panelPremium
+// in theme/tokens.js) instead of the plain dark theme — takes over `dark`.
+export default function PostSaleBoard({ dealerId, salesmanId = null, dark = false, premium = false }) {
   const [deals, setDeals] = useState([]);
   const [progressMap, setProgressMap] = useState({});
   const [tasksMap, setTasksMap] = useState({});
@@ -61,8 +64,11 @@ export default function PostSaleBoard({ dealerId, salesmanId = null, dark = fals
     return () => { cancelled = true; };
   }, [dealerId, salesmanId]);
 
-  // Theme tokens — light (dealer dashboard shell) or dark (salesman panel).
-  const t = dark
+  // Theme tokens — light (dealer dashboard shell), dark (salesman panel), or
+  // premium (Salesman Premium's warm Boutique Concierge surface).
+  const t = premium
+    ? { panelBg: panelPremium.surface, cardBg: panelPremium.surface, border: panelPremium.border, divider: panelPremium.line, text: panelPremium.text, sub: panelPremium.textMuted, chip: panelPremium.fillStrong, chipBorder: panelPremium.border, chipText: panelPremium.textSec, track: panelPremium.fillStrong, btnBg: panelPremium.fillStrong }
+    : dark
     ? { panelBg: 'rgba(255,255,255,0.03)', cardBg: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.08)', divider: 'rgba(255,255,255,0.06)', text: '#f1f5f9', sub: '#9ca3af', chip: 'rgba(255,255,255,0.06)', chipBorder: 'rgba(255,255,255,0.1)', chipText: '#d1d5db', track: 'rgba(255,255,255,0.1)', btnBg: 'rgba(255,255,255,0.06)' }
     : { panelBg: '#fff', cardBg: '#fff', border: '#e5e7eb', divider: '#f3f4f6', text: '#111827', sub: '#6b7280', chip: '#f3f4f6', chipBorder: '#e5e7eb', chipText: '#374151', track: '#e5e7eb', btnBg: '#f3f4f6' };
   const PANEL = { background: t.panelBg, border: `1px solid ${t.border}`, borderRadius: 16, padding: 'clamp(12px, 3vw, 18px)' };
@@ -171,7 +177,7 @@ export default function PostSaleBoard({ dealerId, salesmanId = null, dark = fals
             {isOpen && (
               <div style={{ padding: '0 14px 14px', borderTop: `1px solid ${t.divider}` }}>
                 <div style={{ paddingTop: 12 }}>
-                  <PostSaleChecklist lead={d} dark={dark} />
+                  <PostSaleChecklist lead={d} dark={dark} premium={premium} />
                 </div>
               </div>
             )}

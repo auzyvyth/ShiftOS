@@ -72,6 +72,47 @@ export const panel = {
   onAccent:    '#ffffff',
 };
 
+// Salesman Premium (RM30/mo) "Boutique Concierge" surface — a warm
+// burgundy-charcoal variant of `panel` used ONLY where a Premium tab is
+// deliberately reskinned (Customers, Handover today). Same shape as `panel`
+// plus `bronze`, the second desaturated accent, so retuning the look later
+// is one object, not a hunt through hex literals. Never used by Lite or the
+// dealer-linked panel — those stay on `panel`.
+export const panelPremium = {
+  bg:            '#170F11',
+  surface:       '#211619',
+  surfaceRaised: '#2E1E22',
+  fill:          'rgba(255,214,194,0.05)',
+  fillStrong:    'rgba(255,214,194,0.09)',
+
+  line:         'rgba(255,214,194,0.07)',
+  border:       'rgba(255,214,194,0.09)',
+  borderStrong: 'rgba(255,214,194,0.16)',
+
+  text:      '#F6EEEA',
+  textSec:   '#C9B8B2',
+  textMuted: '#96827C',
+  textDim:   '#63524E',
+
+  accent:      '#dc2626',
+  danger:      '#ef4444',
+  dangerText:  '#f87171',
+  success:     '#22c55e',
+  successText: '#4ade80',
+  info:        '#3b82f6',
+  infoText:    '#60a5fa',
+  warn:        '#eab308',
+  warnText:    '#fbbf24',
+
+  // The Premium-only second accent — desaturated warm gold, never stacked
+  // with a saturated hue in the same element (anti-slop rule).
+  bronze:     '#C9A66B',
+  bronzeSoft: 'rgba(201,166,107,0.16)',
+  bronzeLine: 'rgba(201,166,107,0.28)',
+
+  onAccent: '#ffffff',
+};
+
 // Pipeline-stage hues for the dark panel. Colour-codes a lead row by where it
 // sits in the funnel. TODO: SalesmanLite's own STAGE_COLOR map (pill bg/border/
 // text for the leads board) still lives inline — fold it in here on the leads

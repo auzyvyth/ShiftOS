@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Check, Clock, Circle, MinusCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { usePostSaleTasks } from '../../hooks/usePostSaleTasks';
 import { POST_SALE_STEPS, OWNER_LABELS, STATUS_CONFIG } from '../../utils/postSaleSteps';
+import { panelPremium } from '../../theme/tokens';
 
 const STEP_META = Object.fromEntries(POST_SALE_STEPS.map((s) => [s.key, s]));
 
@@ -15,11 +16,13 @@ function StatusIcon({ status }) {
 // Renders the post-sale handover checklist for a won deal. Light-themed to match
 // the dashboard shell. Marking a step done is a single tap on the round button;
 // the row expands (tap anywhere on the title) for notes / due date / cost.
-export default function PostSaleChecklist({ lead, compact = false, dark = false }) {
+export default function PostSaleChecklist({ lead, compact = false, dark = false, premium = false }) {
   const { tasks, loading, progress, updateTask } = usePostSaleTasks(lead);
   const [expanded, setExpanded] = useState(null);
 
-  const th = dark
+  const th = premium
+    ? { rowBg: panelPremium.fill, rowDoneBg: panelPremium.fillStrong, border: panelPremium.border, text: panelPremium.text, sub: panelPremium.textMuted, muted: panelPremium.textDim, track: panelPremium.fillStrong, chip: panelPremium.fillStrong, inputBg: panelPremium.fillStrong, inputBorder: panelPremium.borderStrong, totalBg: panelPremium.fill }
+    : dark
     ? { rowBg: 'rgba(255,255,255,0.03)', rowDoneBg: 'rgba(255,255,255,0.015)', border: 'rgba(255,255,255,0.1)', text: '#f1f5f9', sub: '#9ca3af', muted: 'rgba(255,255,255,0.4)', track: 'rgba(255,255,255,0.1)', chip: 'rgba(255,255,255,0.06)', inputBg: 'rgba(255,255,255,0.05)', inputBorder: 'rgba(255,255,255,0.15)', totalBg: 'rgba(255,255,255,0.03)' }
     : { rowBg: '#fff', rowDoneBg: '#f9fafb', border: '#e5e7eb', text: '#111827', sub: '#6b7280', muted: '#9ca3af', track: '#e5e7eb', chip: '#f3f4f6', inputBg: '#fff', inputBorder: '#d1d5db', totalBg: '#f9fafb' };
 
