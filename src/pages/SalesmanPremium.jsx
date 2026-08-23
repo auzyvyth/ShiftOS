@@ -893,13 +893,13 @@ export default function SalesmanPremium() {
  supabase
  .from("car_listings")
  .select(
- "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at",
+ "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, sold_at, commission_amount",
  )
  .eq("assigned_to", uid),
  supabase
  .from("car_listings")
  .select(
- "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at",
+ "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, sold_at, commission_amount",
  )
  .eq("dealer_id", uid),
  ]).then(([r1, r2]) => {
@@ -4637,9 +4637,11 @@ export default function SalesmanPremium() {
  {lead.phone && (
  <a
  href={`tel:${(lead.phone || "").replace(/\D/g, "")}`}
- style={{ flexShrink: 0, fontSize: 11, padding: "6px 10px", borderRadius: 7, background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
+ title="Call"
+ aria-label="Call lead"
+ style={{ flexShrink: 0, fontSize: 11, padding: "6px 14px", borderRadius: 7, background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
  >
- 
+ <Phone size={13} />
  </a>
  )}
  {lead.phone? (
@@ -7918,7 +7920,7 @@ export default function SalesmanPremium() {
  {activeTab === "analytics" && renderAnalytics()}
  {activeTab === "loans" && renderLoans()}
  {activeTab === "outreach" && showOutreach && (
- <OutreachHub dealerId={profile?.dealer_id} salesmanId={userId} />
+ <OutreachHub dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} />
  )}
  {activeTab === "settings" && renderSettings()}
  </div>
