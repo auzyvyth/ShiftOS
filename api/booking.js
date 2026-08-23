@@ -78,14 +78,15 @@ export default async function handler(req, res) {
   // must not block the booking itself. Stage 'viewing_booked' labels it as a
   // buyer who wants to view (not a generic "new" enquiry).
   //
-  // Salesman Lite gate lives INSIDE create_lead_from_booking, not here: a Lite
-  // booking must land in the Bookings tab as a pending appointment only (lead_id
-  // null) and become a pipeline lead only when the salesman confirms it
-  // (Salesmanpanel.autoUpsertLeadFromAppt). We cannot gate on plan in this handler
-  // because it runs as the anon role and RLS on profiles blocks the plan read, so
-  // the check silently never fires. The SECURITY DEFINER function reads the owner's
-  // plan reliably and RETURNs NULL (no lead) for Lite; every other flow (dealer,
-  // linked salesman, open pool) still gets the pre-created lead.
+  // Solo-panel gate lives INSIDE create_lead_from_booking, not here: a Lite or
+  // Premium booking must land in its Bookings tab as a pending appointment only
+  // (lead_id null) and become a pipeline lead only when the salesman confirms it
+  // (SalesmanLite/SalesmanPremium.autoUpsertLeadFromAppt). We cannot gate on plan
+  // in this handler because it runs as the anon role and RLS on profiles blocks
+  // the plan read, so the check silently never fires. The SECURITY DEFINER
+  // function reads the owner's plan reliably and RETURNs NULL (no lead) for
+  // salesman_lite/salesman_full; every other flow (dealer, linked salesman,
+  // open pool) still gets the pre-created lead.
   let leadId = null;
   {
     const { data: leadResult, error: leadErr } = await supabase.rpc('create_lead_from_booking', {

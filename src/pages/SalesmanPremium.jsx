@@ -1,13 +1,18 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { Helmet } from "react-helmet";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
+import { getDealerIdFromProfile } from "../hooks/useProfile";
+import { normalizePhone } from "../lib/phone";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { compressImageFile } from "../utils/compressImage";
 import CarFormFast from "../components/CarFormFast";
 import CarForm from "../components/CarForm";
 import DealerPendingApproval from "../components/DealerPendingApproval";
+import AvailabilityEditor from "../components/AvailabilityEditor";
 import {
  LogOut,
  Copy,
@@ -21,7 +26,6 @@ import {
  Users,
  MessageSquare,
  Link as LinkIcon,
- GitMerge,
  Megaphone,
  AlertCircle,
  CheckCircle2,
@@ -57,16 +61,98 @@ import {
  History,
  Search,
  DollarSign,
+ ShieldCheck,
+ ThumbsUp,
+ ThumbsDown,
  Clock,
+ Package,
+ ExternalLink,
+ Store,
+ Camera,
+ Zap,
+ MessageCircle,
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
-import { usePermissions } from "../hooks/usePermissions";
-import { hasFeature } from "../lib/permissions";
 import OutreachHub from "../components/crm/OutreachHub";
 import UpgradeBanner from "../components/ai/UpgradeBanner";
 import AiLoadingState from "../components/ai/AiLoadingState";
 import AiQuotaBadge from "../components/ai/AiQuotaBadge";
 import PushToggle from "../components/PushToggle";
+import ServicesAddonsTab from "../components/salesman/ServicesAddonsTab";
+import ChannelBreakdown from "../components/ChannelBreakdown";
+import ShareMenu from "../components/ShareMenu";
+import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha } from "../theme/tokens";
+import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
+
+// Price visual weight — a RM45k car and a RM2.4M car shouldn't read at the
+// same size/color; scale the price figure up for higher tiers so the card
+// itself signals value at a glance. Ported from Salesman Lite's listing card.
+function priceStyle(sellingPrice) {
+ const sp = Number(sellingPrice) || 0;
+ if (sp >= 1000000) return { fontSize: 18, fontWeight: 800, color: C.warnText };
+ if (sp >= HIGH_VALUE_THRESHOLD) return { fontSize: 16, fontWeight: 800, color: C.infoTextHi };
+ return { fontSize: 14, fontWeight: 700, color: C.infoText };
+}
+// Soft tinted control (badge, pill) in a given state hue.
+const SOFT = (hue) => ({ background: withAlpha(hue, 0.1), border: `1px solid ${withAlpha(hue, 0.2)}`, color: hue });
+
+// Shared card/pill/text shapes for the dashboard, ported from Lite so both
+// panels use the same shapes off the same token module.
+const CARD = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: R.lg, overflow: "hidden" };
+const CARD_HEADER = {
+ padding: "13px 18px", borderBottom: `1px solid ${C.line}`,
+ fontSize: T.size.sm, letterSpacing: T.track.label, textTransform: "uppercase", color: C.textMuted, fontWeight: T.weight.semibold,
+ display: "flex", alignItems: "center", justifyContent: "space-between",
+};
+const ROW_LINE = (show) => (show ? `1px solid ${C.line}` : "none");
+const EYEBROW = { fontSize: T.size.xs, fontWeight: T.weight.semibold, color: C.textMuted, textTransform: "uppercase", letterSpacing: T.track.label };
+const STAT = { fontWeight: T.weight.bold, color: C.text, letterSpacing: T.track.tight, lineHeight: 1 };
+
+// The Monthly Goal card only ever shows THIS calendar month; this modal is
+// one tap away for history instead of the figure just disappearing at a
+// month boundary. Ported verbatim from Salesman Lite.
+function PrevMonthModal({ open, onClose, monthLabel, commission, count, trendPct, trendLabel }) {
+ useEffect(() => {
+ if (!open) return;
+ document.body.style.overflow = "hidden";
+ return () => { document.body.style.overflow = ""; };
+ }, [open]);
+
+ if (!open) return null;
+
+ return createPortal(
+ <div
+ onClick={onClose}
+ style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+ >
+ <div
+ onClick={(e) => e.stopPropagation()}
+ style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: 24, maxWidth: 340, width: "100%", fontFamily: "system-ui,sans-serif" }}
+ >
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+ <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{monthLabel}</p>
+ <button onClick={onClose} style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 4, display: "flex" }}>
+ <X size={16} />
+ </button>
+ </div>
+ <p style={{ margin: "0 0 4px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>Commission earned</p>
+ <p style={{ margin: "0 0 6px", fontSize: 32, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.03em", lineHeight: 1 }}>
+ RM {commission.toLocaleString("en-MY")}
+ </p>
+ <p style={{ margin: "0 0 16px", fontSize: 12, color: "#6b7280" }}>{count} car{count !== 1 ? "s" : ""} sold</p>
+ {trendPct !== null ? (
+ <div style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 99, background: trendPct >= 0 ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)" }}>
+ <span style={{ fontSize: 12, fontWeight: 700, color: trendPct >= 0 ? "#4ade80" : "#f87171" }}>{trendPct >= 0 ? "↑" : "↓"} {Math.abs(trendPct)}%</span>
+ <span style={{ fontSize: 11, color: "#6b7280" }}>vs {trendLabel}</span>
+ </div>
+ ) : (
+ <p style={{ margin: 0, fontSize: 11, color: "#374151" }}>No data from {trendLabel} to compare against.</p>
+ )}
+ </div>
+ </div>,
+ document.body,
+ );
+}
 
 function useWindowSize() {
  const [w, setW] = useState(window.innerWidth);
@@ -88,6 +174,41 @@ const timeAgo = (iso) => {
  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
  return `${Math.floor(s / 86400)}d ago`;
 };
+
+// Minute-level relative time, never days — "just now", "12m ago", "1h 05m ago".
+// Ported from Lite for the Inbox tab.
+const preciseAgo = (iso, now = Date.now(), L = {}) => {
+ if (!iso) return "—";
+ const ago = L.ago || "ago";
+ const justNow = L.justNow || "just now";
+ const d = new Date(iso);
+ if (isNaN(d.getTime())) return "—";
+ const totalMin = Math.floor((now - d.getTime()) / 60000);
+ if (totalMin < 1) return justNow;
+ if (totalMin < 60) return `${totalMin}m ${ago}`;
+ const h = Math.floor(totalMin / 60);
+ const m = totalMin % 60;
+ return `${h}h ${String(m).padStart(2, "0")}m ${ago}`;
+};
+// Countdown toward a FUTURE moment (an upcoming appointment) — "in 2h 05m", "now".
+const preciseUntil = (iso, now = Date.now(), L = {}) => {
+ if (!iso) return "";
+ const inW = L.in || "in";
+ const nowW = L.now || "now";
+ const d = new Date(iso);
+ if (isNaN(d.getTime())) return "";
+ const totalMin = Math.floor((d.getTime() - now) / 60000);
+ if (totalMin <= 0) return nowW;
+ if (totalMin < 60) return `${inW} ${totalMin}m`;
+ const h = Math.floor(totalMin / 60);
+ const m = totalMin % 60;
+ return `${inW} ${h}h ${String(m).padStart(2, "0")}m`;
+};
+const timeLabels = { ago: "ago", justNow: "just now", in: "in", now: "now" };
+// One neutral chip for a lead whose stage doesn't map to a known hue.
+const STAGE_NEUTRAL = { bg: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.12)", tx: "#cbd5e1" };
+// Booking status labels for the Bookings tab.
+const STATUS_LABEL = { pending: "Pending", confirmed: "Confirmed", rescheduled: "Rescheduled", cancelled: "Cancelled", completed: "Completed", no_show: "No-show" };
 
 const LEAD_STAGES = [
  "new",
@@ -178,20 +299,48 @@ const getHeatScore = (lead) => {
 
 const LOST_REASONS = ["Price", "Timing", "Competitor", "Ghost"];
 
-function StatusBadge({ status }) {
- const styles = {
- available: "bg-green-500/15 text-green-400 border-green-500/30",
- reserved: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
- pending: "bg-blue-500/15 text-blue-400 border-blue-500/30",
- };
+// Two tabs now host a pair of sibling views (Inbox: bookings / lead history,
+// Listings: cars / add-ons). One switcher, so they cannot drift apart.
+function SubTabs({ value, onChange, items }) {
  return (
- <span
- className={`px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize flex-shrink-0 ${styles[status]?? "bg-gray-700 text-gray-400 border-gray-600"}`}
+ <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+ {items.map(({ key, label, badge, tourId }) => (
+ <button
+ key={key}
+ data-tour-id={tourId}
+ onClick={() => onChange(key)}
+ style={{
+ fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 8, cursor: "pointer",
+ background: value === key ? "rgba(37,99,235,0.15)" : "rgba(255,255,255,0.04)",
+ border: `1px solid ${value === key ? "rgba(37,99,235,0.35)" : "rgba(255,255,255,0.08)"}`,
+ color: value === key ? "#93c5fd" : "#6b7280",
+ display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit",
+ }}
  >
- {status}
+ {label}
+ {badge > 0 && (
+ <span style={{ fontSize: 10, fontWeight: 700, background: "#2563eb", color: "#fff", borderRadius: 99, padding: "0px 5px", minWidth: 16, textAlign: "center" }}>
+ {badge}
  </span>
+ )}
+ </button>
+ ))}
+ </div>
  );
 }
+
+// Top-level Premium tabs, each backed by its own /salesman-premium/:tab route.
+// Anything not in this list falls back to the dashboard.
+const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "analytics", "loans", "outreach", "merge", "settings"];
+
+// Tabs that no longer own a slot in the nav. Their routes still resolve, so old
+// links, in-app deep links (switchTab) and the tour all keep working — they just
+// land on the tab that now hosts them, pre-selecting the right sub-view or
+// scrolling to the right section.
+const TAB_ALIASES = {
+ bookings: { tab: "enquiries", sub: "bookings" },
+ merge: { tab: "settings", anchor: "sp-merge" },
+};
 
 export default function SalesmanPremium() {
  const navigate = useNavigate();
@@ -202,16 +351,42 @@ export default function SalesmanPremium() {
  const [loading, setLoading] = useState(true);
  const [pendingPay, setPendingPay] = useState(false);
  const isPremium = profile?.plan === 'salesman_full';
- const { permissions } = usePermissions(profile);
- // Owner-granted extra: Outreach Hub (scoped to this salesman's own leads).
- const showOutreach = hasFeature('salesman', 'outreach', permissions);
- const [activeTab, setActiveTab] = useState("dashboard");
- const [newBookingsCount, setNewBookingsCount] = useState(0);
+ // Premium is solo-only — the redirect guard above sends any salesman with
+ // dealer_id set to /salesman before this ever renders, so there is no dealer
+ // to grant the ROLE_EXTRAS permission Outreach normally requires. Include it
+ // outright rather than gating it on a permission designed for dealer-managed
+ // team members.
+ const showOutreach = true;
+ // Each Premium tab is its own route (/salesman-premium/:tab) so tab switches
+ // push browser history — the phone Back button / swipe-back returns to the
+ // previous tab instead of exiting the whole app and landing on sign-in.
+ const { tab: routeTab } = useParams();
+ const resolvedTab = VALID_PREMIUM_TABS.includes(routeTab) ? routeTab : "dashboard";
+ const activeTab = TAB_ALIASES[resolvedTab]?.tab || resolvedTab;
+ const setActiveTab = (tab) => navigate(`/salesman-premium/${tab}`);
+ // Bookings is a sub-view of Enquiries now; Lead History is the other half.
+ const [inboxSubTab, setInboxSubTab] = useState("bookings");
+ // Listings hosts both halves of "things I sell": the cars, and the paid
+ // add-on catalogue those cars get sold with. Same table the deal-add-on
+ // picker in the lead drawer reads (dealer_products).
+ const [listingsSubTab, setListingsSubTab] = useState("cars");
 
  function switchTab(tab) {
- if (tab === "bookings") setNewBookingsCount(0);
  setActiveTab(tab);
  }
+
+ // Land an aliased route on the right sub-view / section of its host tab.
+ useEffect(() => {
+ const alias = TAB_ALIASES[resolvedTab];
+ if (!alias) return;
+ if (alias.sub) setInboxSubTab(alias.sub);
+ if (alias.anchor) {
+ const t = setTimeout(() => {
+ document.getElementById(alias.anchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
+ }, 80);
+ return () => clearTimeout(t);
+ }
+ }, [resolvedTab]);
 
  // listings
  const [myListings, setMyListings] = useState([]);
@@ -222,6 +397,35 @@ export default function SalesmanPremium() {
  // leads
  const [leads, setLeads] = useState([]);
  const [staleLeads, setStaleLeads] = useState([]);
+ // "reward the comeback" greeting + Monthly Goal card (ported from Lite)
+ const [isReturning, setIsReturning] = useState(false);
+ const [goal, setGoal] = useState({ target: 0, focusCarId: null });
+ const [goalEditing, setGoalEditing] = useState(false);
+ const [goalDraft, setGoalDraft] = useState(0);
+ const [showPrevMonth, setShowPrevMonth] = useState(false);
+ const saveGoal = (patch) => {
+ const next = { ...goal, ...patch };
+ setGoal(next);
+ if (!userId) return;
+ localStorage.setItem(`sp_goal_${userId}`, JSON.stringify(next));
+ supabase.from("profiles").update({ lite_goal: next }).eq("id", userId).then(({ error }) => {
+ if (error) console.error("saveGoal:", error);
+ });
+ };
+ // Row glow — when a jump lands the user on the Leads tab from somewhere else
+ // (a follow-up nudge, the stale-leads KPI), pulse the exact cards that
+ // prompted the jump so the eye lands on them instead of "somewhere in this
+ // list". Purely visual; clears itself after 1s.
+ const [glowLeadIds, setGlowLeadIds] = useState(() => new Set());
+ const glowTimeoutRef = useRef(null);
+ const triggerGlow = (ids) => {
+ if (!ids || ids.length === 0) return;
+ if (glowTimeoutRef.current) clearTimeout(glowTimeoutRef.current);
+ setGlowLeadIds(new Set(ids));
+ glowTimeoutRef.current = setTimeout(() => setGlowLeadIds(new Set()), 1000);
+ };
+ useEffect(() => () => { if (glowTimeoutRef.current) clearTimeout(glowTimeoutRef.current); }, []);
+ const jumpToLead = (lead) => { switchTab("leads"); triggerGlow([lead.id]); };
  const [leadsLoading, setLeadsLoading] = useState(true);
  const [lostOpen, setLostOpen] = useState(false);
  const [showAddLead, setShowAddLead] = useState(false);
@@ -239,6 +443,73 @@ export default function SalesmanPremium() {
  const [waModalLead, setWaModalLead] = useState(null);
  const [waModalMsg, setWaModalMessage] = useState("");
  const [drawerLeadId, setDrawerLeadId] = useState(null);
+ // Deal add-ons — attach a product from the salesman's own catalogue
+ // (Listings > Add-ons, dealer_products) to this lead as a paid upsell,
+ // tracked in deal_products. Distinct from included_services on a car
+ // listing, which is a free perk bundled into the sale — this is the paid
+ // counterpart, and what RevOps reads as back-end gross.
+ const [dealAddons, setDealAddons] = useState([]);
+ // Lead ids with at least one deal_products row — powers the small "Add-on"
+ // badge on the pipeline card. Fetched once alongside leads rather than
+ // per-card, which would be N+1.
+ const [leadIdsWithAddons, setLeadIdsWithAddons] = useState(() => new Set());
+ const [addonCatalogue, setAddonCatalogue] = useState([]);
+ const [addonsLoading, setAddonsLoading] = useState(false);
+ const [showAttachAddon, setShowAttachAddon] = useState(false);
+ const [addonForm, setAddonForm] = useState({ product_id: "", sold_price: "" });
+ const [attachingAddon, setAttachingAddon] = useState(false);
+ useEffect(() => {
+ if (!drawerLeadId) { setDealAddons([]); setAddonCatalogue([]); setShowAttachAddon(false); return; }
+ const dealerId = getDealerIdFromProfile(profile);
+ if (!dealerId) return;
+ setAddonsLoading(true);
+ Promise.all([
+ supabase.from("dealer_products").select("id, name, category, selling_price").eq("dealer_id", dealerId).eq("is_active", true).order("name"),
+ supabase.from("deal_products").select("id, sold_price, product_id, dealer_products(name, category)").eq("lead_id", drawerLeadId),
+ ]).then(([catRes, dealRes]) => {
+ if (catRes.error) console.error("addonCatalogue:", catRes.error);
+ if (dealRes.error) console.error("dealAddons:", dealRes.error);
+ setAddonCatalogue(catRes.data || []);
+ setDealAddons(dealRes.data || []);
+ setAddonsLoading(false);
+ });
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [drawerLeadId]);
+ const handleAttachAddon = async () => {
+ if (!drawerLeadId || !addonForm.product_id || !addonForm.sold_price) return;
+ const pl = leads.find((l) => l.id === drawerLeadId);
+ setAttachingAddon(true);
+ const { data, error } = await supabase
+ .from("deal_products")
+ .insert({
+ dealer_id: getDealerIdFromProfile(profile),
+ lead_id: drawerLeadId,
+ listing_id: pl?.car_listing_id || null,
+ product_id: addonForm.product_id,
+ sold_price: Number(addonForm.sold_price),
+ })
+ .select("id, sold_price, product_id, dealer_products(name, category)")
+ .single();
+ setAttachingAddon(false);
+ if (error) { console.error("handleAttachAddon:", error); toast.error("Couldn't attach that add-on"); return; }
+ if (data) setDealAddons((p) => [...p, data]);
+ setAddonForm({ product_id: "", sold_price: "" });
+ setShowAttachAddon(false);
+ toast.success("Add-on attached");
+ setLeadIdsWithAddons((p) => new Set(p).add(drawerLeadId));
+ };
+ const handleRemoveAddon = async (id) => {
+ const { error } = await supabase.from("deal_products").delete().eq("id", id);
+ if (error) { console.error("handleRemoveAddon:", error); toast.error("Couldn't remove that add-on"); return; }
+ setDealAddons((p) => {
+ const next = p.filter((a) => a.id!== id);
+ // Last add-on on this lead just went — drop the pipeline badge too.
+ if (next.length === 0 && drawerLeadId) {
+ setLeadIdsWithAddons((sIds) => { const n = new Set(sIds); n.delete(drawerLeadId); return n; });
+ }
+ return next;
+ });
+ };
  const [deletingLeadId, setDeletingLeadId] = useState(null);
  const [lostSavingId, setLostSavingId] = useState(null);
  const [stageSavingId, setStageSavingId] = useState(null);
@@ -263,18 +534,64 @@ export default function SalesmanPremium() {
  const [mobileLeadStage, setMobileLeadStage] = useState("new");
  const [playbookLeadId, setPlaybookLeadId] = useState(null);
  const [copiedScriptLine, setCopiedScriptLine] = useState(null);
+ // browser notification banner (Follow-up Needed card) — ported from Lite
+ const [browserNotifPerm, setBrowserNotifPerm] = useState(() =>
+ typeof Notification !== 'undefined'? Notification.permission : 'unsupported'
+ );
+ const [notifBannerDismissed, setNotifBannerDismissed] = useState(() =>
+ localStorage.getItem('sp_notif_banner_dismissed') === '1'
+ );
 
  // settings
  const [settingsForm, setSettingsForm] = useState({
  full_name: "",
  whatsapp_number: "",
+ telegram_chat_id: "",
+ city: "",
+ state: "",
  location: "",
+ instagram: "",
+ tiktok: "",
+ facebook: "",
+ website: "",
+ // Public-profile extras — a Premium-only addition over Lite (which has no
+ // editor for these at all yet; only the linked-salesman panel does).
+ bio: "",
+ response_time: "",
+ specializations: [],
  // Selling terms buyers see on every listing this agent owns.
  deposit_policy: "",
  deposit_terms: "",
  processing_fee: "",
  });
  const [settingsSaving, setSettingsSaving] = useState(false);
+ const [tgTesting, setTgTesting] = useState(false);
+ const [tagInput, setTagInput] = useState("");
+ // IC verify — voluntary from Settings, matching Lite. Lite also hard-blocks
+ // new listings until verified (icEnforced, 7 days after signup); that
+ // enforcement is a separate business-rule change and deliberately not
+ // ported here, only the verify UI itself.
+ const [icGateOpen, setIcGateOpen] = useState(false);
+ const [icGateVal, setIcGateVal] = useState("");
+ const [icGateSaving, setIcGateSaving] = useState(false);
+ async function saveIcAndCloseGate() {
+ const digits = (icGateVal || "").replace(/\D/g, "");
+ if (digits.length !== 12) { toast.error("Enter a valid 12-digit IC number"); return; }
+ setIcGateSaving(true);
+ try {
+ // Hash + store server-side (set_my_ic): the IC is never persisted in
+ // plaintext, only a per-user-salted SHA-256 hash.
+ const { error } = await supabase.rpc("set_my_ic", { p_ic: digits });
+ if (error) throw error;
+ setProfile((p) => ({ ...p, ic_hash: "set", ic_verified_at: new Date().toISOString() }));
+ setIcGateOpen(false);
+ toast.success("IC verified");
+ } catch (e) {
+ toast.error(e.message === "invalid_ic" ? "Enter a valid 12-digit IC number" : (e.message || "Could not save"));
+ } finally {
+ setIcGateSaving(false);
+ }
+ }
  const [avatarUrl, setAvatarUrl] = useState("");
  const [avatarUploading, setAvatarUploading] = useState(false);
  const avatarInputRef = useRef(null);
@@ -284,6 +601,40 @@ export default function SalesmanPremium() {
  const [editingReminder, setEditingReminder] = useState(null);
  const [reminderMsg, setReminderMsg] = useState("");
 
+ // ── booking lifecycle (ported from Lite) ───────────────────────────────────
+ // Premium previously had only a raw status flip (confirm/cancel/"reschedule"
+ // with no date picker). These back the full flow: confirm + WhatsApp, move to
+ // pipeline, reschedule to a real slot, Telegram reminder scheduling, cancel
+ // confirmation, and a per-booking detail sheet.
+ const [confirmBookingApt, setConfirmBookingApt] = useState(null);
+ const [confirmBookingMsg, setConfirmBookingMsg] = useState("");
+ const [reschedulingAptId, setReschedulingAptId] = useState(null);
+ const [rescheduleDate, setRescheduleDate] = useState("");
+ const [reminderPickerAptId, setReminderPickerAptId] = useState(null);
+ const [selectedRemindAt, setSelectedRemindAt] = useState(null);
+ const [reminderSaving, setReminderSaving] = useState(false);
+ const [cancelConfirmId, setCancelConfirmId] = useState(null);
+ const [bookingDetailId, setBookingDetailId] = useState(null);
+ const [pastOpen, setPastOpen] = useState(false);
+ // Seller-initiated booking: moving a lead into the booking stage asks for a
+ // slot up front and creates a CONFIRMED appointment (the seller set it up, so
+ // it skips "Awaiting Confirmation").
+ const [sellerBookingLead, setSellerBookingLead] = useState(null);
+ const [sellerBookingDate, setSellerBookingDate] = useState("");
+ const [sellerBookingSaving, setSellerBookingSaving] = useState(false);
+ // Won flow — a confirm step instead of the silent undo-timer, so the sale
+ // price/car flip is deliberate. See handleMarkWon.
+ const [wonPrompt, setWonPrompt] = useState(null);
+ const [wonSaving, setWonSaving] = useState(false);
+ const [commissionData, setCommissionData] = useState({ total: 0, revenue: 0, count: 0 });
+ // Re-render tick so "is this booking still in the future" stays honest on a
+ // long-open tab (drives the confirm button's availability).
+ const [nowTick, setNowTick] = useState(() => Date.now());
+ useEffect(() => {
+ const id = setInterval(() => setNowTick(Date.now()), 60000);
+ return () => clearInterval(id);
+ }, []);
+
  // notifications
  const [notifications, setNotifications] = useState([]);
  const [notifOpen, setNotifOpen] = useState(false);
@@ -291,13 +642,22 @@ export default function SalesmanPremium() {
  // enquiry templates
  const [openTemplateId, setOpenTemplateId] = useState(null);
  const [templateToast, setTemplateToast] = useState(null);
+ const [expandedEnqId, setExpandedEnqId] = useState(null);
 
  // listings sort/filter
  const [sortBy, setSortBy] = useState("newest");
- const [filterStatus, setFilterStatus] = useState("all");
+ const [filterStatus, setFilterStatus] = useState("available");
+ // listing card: status-change dropdown, overflow (···) menu, delete confirm
+ const [statusMenuCarId, setStatusMenuCarId] = useState(null);
+ const [actionMenuCarId, setActionMenuCarId] = useState(null);
+ const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
  // per-listing analytics (carStatsMap)
  const [carStatsMap, setCarStatsMap] = useState({});
+ // per-car share-channel breakdown (which platform each view/enquiry came from)
+ const [channelMap, setChannelMap] = useState({});
+ // mini-page (xdrive.my/s/slug) visits + card clicks, broken down by platform
+ const [minipageStats, setMinipageStats] = useState({ visits: 0, cardClicks: 0, byChannel: [] });
  const [cvrHover, setCvrHover] = useState(null);
 
  // car detail popup
@@ -387,7 +747,17 @@ export default function SalesmanPremium() {
  setSettingsForm({
  full_name: profile.full_name || "",
  whatsapp_number: profile.whatsapp_number || "",
+ telegram_chat_id: profile.telegram_chat_id || "",
+ city: profile.city || "",
+ state: profile.state || "",
  location: profile.location || "",
+ instagram: profile.instagram || "",
+ tiktok: profile.tiktok || "",
+ facebook: profile.facebook || "",
+ website: profile.website || "",
+ bio: profile.bio || "",
+ response_time: profile.response_time || "",
+ specializations: profile.specializations || [],
  deposit_policy: profile.deposit_policy || "",
  deposit_terms: profile.deposit_terms || "",
  processing_fee: profile.processing_fee != null ? String(profile.processing_fee) : "",
@@ -475,6 +845,30 @@ export default function SalesmanPremium() {
 
  if (!localStorage.getItem("sp_tour_done")) setTourStep(0);
 
+ // "Reward the comeback" — a 3+ day gap since the last visit greets the
+ // salesman back instead of leading with a stale-leads scold. Client-side
+ // only (localStorage), ported from Salesman Lite.
+ try {
+ const lastVisitKey = `sp_last_visit_${uid}`;
+ const lastVisit = Number(localStorage.getItem(lastVisitKey) || 0);
+ if (lastVisit && Date.now() - lastVisit >= 3 * 24 * 60 * 60 * 1000) setIsReturning(true);
+ localStorage.setItem(lastVisitKey, String(Date.now()));
+ } catch {}
+
+ // Monthly commission goal — reuses profiles.lite_goal (a solo salesman is
+ // only ever on one plan at a time, so the column is safe to share).
+ if (profileData.lite_goal) {
+ setGoal((prev) => ({ ...prev, ...profileData.lite_goal }));
+ } else {
+ try {
+ const cached = JSON.parse(localStorage.getItem(`sp_goal_${uid}`));
+ if (cached) {
+ setGoal((prev) => ({ ...prev, ...cached }));
+ supabase.from("profiles").update({ lite_goal: cached }).eq("id", uid).then(() => {});
+ }
+ } catch {}
+ }
+
  // premium — commission + sold count
  supabase.from("car_listings").select("commission_amount, brand, model, year, sold_at")
  .eq("assigned_to", uid).eq("status", "sold")
@@ -533,6 +927,42 @@ export default function SalesmanPremium() {
  };
  });
  setCarStatsMap(map);
+
+ // Share-channel breakdown (which platform each view/enquiry came from),
+ // scoped to this salesman's own slug. Untagged/organic → 'direct'.
+ // p_car_ids: null => all-time across every car ever tagged to this slug,
+ // deduped by session, so the count never drops when a car ages out of the
+ // rolling analytics window above.
+ if (profileData.slug) {
+ supabase
+ .rpc("get_salesman_channel_breakdown", { p_car_ids: null, p_slug: profileData.slug })
+ .then(({ data: chRows, error: chErr }) => {
+ if (chErr) { console.error("fetchChannelBreakdown:", chErr); return; }
+ const chMap = {};
+ (chRows || []).forEach(r => {
+ (chMap[r.car_id] = chMap[r.car_id] || []).push({
+ channel: r.channel || "direct",
+ views: Number(r.views) || 0,
+ enquiries: Number(r.enquiries) || 0,
+ });
+ });
+ setChannelMap(chMap);
+ });
+
+ // Mini-page (xdrive.my/s/slug) visits + card clicks, broken down by the
+ // platform each visitor arrived through.
+ supabase
+ .rpc("get_salesman_minipage_stats", { p_slug: profileData.slug })
+ .then(({ data: mpRows, error: mpErr }) => {
+ if (mpErr) { console.error("fetchMinipageStats:", mpErr); return; }
+ const rows = mpRows || [];
+ setMinipageStats({
+ visits: rows.reduce((s, r) => s + (Number(r.visits) || 0), 0),
+ cardClicks: rows.reduce((s, r) => s + (Number(r.card_clicks) || 0), 0),
+ byChannel: rows,
+ });
+ });
+ }
  });
 
  // fetch leads
@@ -546,6 +976,21 @@ export default function SalesmanPremium() {
  const rows = lds || [];
  setLeads(rows);
  setLeadsLoading(false);
+
+ // Which of these leads already carry a paid add-on — feeds the
+ // pipeline card badge. Scoped to the leads we just fetched rather
+ // than re-deriving a dealer id here, so it can never disagree with
+ // what is on screen.
+ if (rows.length > 0) {
+ supabase
+ .from("deal_products")
+ .select("lead_id")
+ .in("lead_id", rows.map((r) => r.id))
+ .then(({ data: addonRows, error: addonErr }) => {
+ if (addonErr) { console.error("fetchLeadAddonFlags:", addonErr); return; }
+ setLeadIdsWithAddons(new Set((addonRows || []).map((r) => r.lead_id).filter(Boolean)));
+ });
+ }
 
  // AI lead scoring — fire-and-forget
  if (rows.length > 0) {
@@ -639,7 +1084,6 @@ export default function SalesmanPremium() {
  (payload) => {
  if (payload.eventType === "INSERT") {
  setAppointments((p) => [payload.new, ...p]);
- setNewBookingsCount((c) => c + 1);
  toast("New booking!", {
  description: payload.new.buyer_name || "New appointment",
  });
@@ -656,15 +1100,23 @@ export default function SalesmanPremium() {
  });
 
  // fetch appointments
+ // NOTE: filtered on salesman_id ONLY (matching Lite). The old
+ // `.eq("dealer_id", uid)` here silently hid every booking whose dealer_id
+ // wasn't the salesman's own id — only 17 of 71 live rows satisfy that — so
+ // organic bookings simply never appeared. RLS already scopes this table.
+ // Columns must stay complete: remind_at/remind_sent drive the Telegram
+ // reminder state and lead_id ties a booking to its pipeline lead.
  supabase
  .from("appointments")
  .select(
- "id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, created_at, car_listings(brand, model, year)",
+ "id, lead_id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, created_at, remind_at, remind_sent, car_listings(id, brand, model, year, variant, selling_price, images, vin_number, plate_number, mileage, transmission, slug)",
  )
  .eq("salesman_id", uid)
- .eq("dealer_id", uid)
  .order("appointment_date", { ascending: false })
- .then(({ data: apts }) => setAppointments(apts || []));
+ .then(({ data: apts, error: aptsErr }) => {
+ if (aptsErr) { console.error("fetchAppointments:", aptsErr); toast.error("Could not load bookings"); return; }
+ setAppointments(apts || []);
+ });
 
  // fetch notifications
  supabase
@@ -692,12 +1144,16 @@ export default function SalesmanPremium() {
 
  useEffect(() => {
  if (tourStep === null) { setTourTarget(null); return; }
- const TOUR_TABS = [null, "dashboard", "listings", "leads", "enquiries", "bookings", "merge"];
+ const TOUR_TABS = [null, "dashboard", "listings", "leads", "enquiries", "bookings", "analytics", "loans", "outreach", "merge", "settings"];
+ // Bookings and Join a Dealership still get their own tour step — they are
+ // real features — but no longer own a nav button, so the spotlight has to
+ // fall on whichever element now hosts them.
+ const TOUR_HIGHLIGHT = { merge: "settings" };
  const tab = TOUR_TABS[tourStep];
  if (!tab) { setTourTarget(null); return; }
  switchTab(tab);
  const measure = () => {
- const el = document.querySelector(`[data-tour-id="${tab}"]`);
+ const el = document.querySelector(`[data-tour-id="${TOUR_HIGHLIGHT[tab] || tab}"]`);
  if (el) setTourTarget(el.getBoundingClientRect());
  };
  const t = setTimeout(measure, 60);
@@ -712,6 +1168,10 @@ export default function SalesmanPremium() {
  const updateLeadStage = async (leadId, stage) => {
  setStageSavingId(leadId);
  const oldStage = leads.find((l) => l.id === leadId)?.stage?? null;
+ // Carry the lead's OWN dealer_id onto the activity row. This used to be
+ // hardcoded null, which detached every Premium stage change from its
+ // dealership scope (activity feeds and any dealer-side read missed them).
+ const dealerId = leads.find((l) => l.id === leadId)?.dealer_id?? null;
  const { error: stageErr } = await supabase
  .from("leads")
  .update({ stage, updated_at: new Date().toISOString() })
@@ -728,7 +1188,7 @@ export default function SalesmanPremium() {
  from_stage: oldStage,
  to_stage: stage,
  created_by: userId,
- dealer_id: null,
+ dealer_id: dealerId,
  });
  if (actErr) console.error("updateLeadStage activity:", actErr);
  setLeads((p) => p.map((l) => (l.id === leadId? { ...l, stage } : l)));
@@ -737,6 +1197,30 @@ export default function SalesmanPremium() {
  const advanceLeadStage = (lead, newStage, force = false) => {
  if (!newStage) return;
  if (!force && lead.stage === "test_drive") { setTestDriveConfirm({ lead, nextStage: newStage }); return; }
+ // Intercept won → confirm modal instead of the undo-timer flow. A win flips
+ // the linked car to sold and moves money, so it should never happen behind a
+ // 4.5s toast the salesman might not read.
+ if (newStage === "won") {
+ if (pendingStageRef.current[lead.id]) {
+ clearTimeout(pendingStageRef.current[lead.id].timer);
+ delete pendingStageRef.current[lead.id];
+ }
+ setWonPrompt({ lead });
+ return;
+ }
+ // Intercept a seller-initiated move into the booking stage → ask for the
+ // date/time up front, then create a CONFIRMED appointment (the seller set it
+ // up, so it skips "Awaiting Confirmation"). Organic bookings from the car
+ // page take the /api/booking path (status 'pending') and never reach here.
+ if (newStage === "viewing_booked" && !force) {
+ if (pendingStageRef.current[lead.id]) {
+ clearTimeout(pendingStageRef.current[lead.id].timer);
+ delete pendingStageRef.current[lead.id];
+ }
+ setSellerBookingDate(defaultBookingSlot());
+ setSellerBookingLead(lead);
+ return;
+ }
  const oldStage = lead.stage;
  const leadId = lead.id;
  const buyerName = lead.buyer_name || "Lead";
@@ -773,6 +1257,44 @@ export default function SalesmanPremium() {
  setWaModalMessage(msg);
  };
 
+ // Browser notification: fire when the user returns to the tab with stale
+ // leads waiting. Throttled to one per 24h per browser. Ported from Lite.
+ useEffect(() => {
+ if (browserNotifPerm!== 'granted') return;
+ const handler = async () => {
+ if (document.hidden || staleLeads.length === 0) return;
+ const THROTTLE_MS = 24 * 60 * 60 * 1000;
+ const last = Number(localStorage.getItem('sp_last_followup_notif') || 0);
+ if (Date.now() - last < THROTTLE_MS) return;
+ localStorage.setItem('sp_last_followup_notif', String(Date.now()));
+ const names = staleLeads.slice(0, 3).map(l => l.buyer_name || 'Unknown').join(', ');
+ const title = `${staleLeads.length} lead${staleLeads.length!== 1? 's' : ''} need follow-up`;
+ const options = { body: names, tag: 'sp-followup' };
+ try {
+ // Pages controlled by a service worker (PWA) can't use `new Notification` —
+ // it throws "Illegal constructor"; must go through the SW registration.
+ const reg = navigator.serviceWorker && (await navigator.serviceWorker.getRegistration());
+ if (reg && reg.showNotification) reg.showNotification(title, options);
+ else new Notification(title, options);
+ } catch { /* not critical */ }
+ };
+ document.addEventListener('visibilitychange', handler);
+ return () => document.removeEventListener('visibilitychange', handler);
+ }, [browserNotifPerm, staleLeads]);
+
+ const requestBrowserNotif = async () => {
+ if (typeof Notification === 'undefined') return;
+ const perm = await Notification.requestPermission();
+ setBrowserNotifPerm(perm);
+ setNotifBannerDismissed(true);
+ localStorage.setItem('sp_notif_banner_dismissed', '1');
+ };
+
+ const dismissNotifBanner = () => {
+ setNotifBannerDismissed(true);
+ localStorage.setItem('sp_notif_banner_dismissed', '1');
+ };
+
  const saveLeadNote = async (leadId) => {
  setNotesSavingId(leadId);
  const { error } = await supabase.from("leads").update({ notes: editNoteVal, updated_at: new Date().toISOString() }).eq("id", leadId);
@@ -806,7 +1328,7 @@ export default function SalesmanPremium() {
  activity_type: "called",
  note: `${callOutcome}${callNote? ` — ${callNote}` : ""}`,
  created_by: userId,
- dealer_id: null,
+ dealer_id: lead?.dealer_id?? null,
  });
  if (error) { console.error("logCall:", error); toast.error("Failed to log call"); setCallSaving(false); return; }
  await supabase.from("leads").update({ updated_at: new Date().toISOString(), last_call_outcome: callOutcome }).eq("id", logCallLeadId);
@@ -886,7 +1408,7 @@ export default function SalesmanPremium() {
  to_stage: "lost",
  note: `Lost reason: ${reason}`,
  created_by: userId,
- dealer_id: null,
+ dealer_id: leads.find((l) => l.id === leadId)?.dealer_id?? null,
  });
  if (lostActErr) console.error("handleLostReason activity:", lostActErr);
  setLeads((p) =>
@@ -955,25 +1477,292 @@ export default function SalesmanPremium() {
  setOpenTemplateId(null);
  };
 
- // appointment status 
+ // appointment status
 
  const updateApptStatus = async (apptId, status) => {
- await supabase.from("appointments").update({ status }).eq("id", apptId);
+ const { error } = await supabase.from("appointments").update({ status }).eq("id", apptId);
+ if (error) { console.error("updateApptStatus:", error); toast.error("Could not update booking"); return; }
  setAppointments((p) =>
  p.map((a) => (a.id === apptId? { ...a, status } : a)),
  );
  };
 
+ // ── booking lifecycle (ported from SalesmanLite) ───────────────────────────
+
+ const scheduleAptReminder = async (apt) => {
+ if (!apt.appointment_date) return;
+ const remindAt = new Date(new Date(apt.appointment_date).getTime() - 60 * 60 * 1000).toISOString();
+ const { error } = await supabase.from("appointments").update({ remind_at: remindAt, remind_sent: false }).eq("id", apt.id);
+ if (error) { console.error("scheduleAptReminder:", error); return; }
+ setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, remind_at: remindAt, remind_sent: false } : a));
+ };
+
+ // Turn a booking into a pipeline lead. Prefers the lead the booking is already
+ // tied to; a bare phone match can return the wrong buyer (a reused number) or a
+ // stale "won" sibling, so an ambiguous match falls through to a fresh lead.
+ const autoUpsertLeadFromAppt = async (apt) => {
+ const phone = normalizePhone(apt.buyer_phone);
+ let existing = null;
+ if (apt.lead_id) {
+ const { data: linked } = await supabase
+ .from("leads").select("id, stage").eq("id", apt.lead_id).maybeSingle();
+ if (linked) existing = linked;
+ }
+ if (!existing) {
+ if (!phone) return;
+ const { data: existingRows, error: lookErr } = await supabase
+ .from("leads").select("id, stage, buyer_name").eq("salesman_id", userId).eq("phone", phone)
+ .order("created_at", { ascending: false });
+ if (lookErr) console.error("autoUpsertLeadFromAppt lookup:", lookErr);
+ const nameKey = (apt.buyer_name || "").trim().toLowerCase();
+ existing =
+ (nameKey && existingRows?.find((r) => (r.buyer_name || "").trim().toLowerCase() === nameKey)) ||
+ (existingRows?.length === 1? existingRows[0] : null) ||
+ null;
+ if (existing && !apt.lead_id) {
+ await supabase.from("appointments").update({ lead_id: existing.id }).eq("id", apt.id);
+ setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, lead_id: existing.id } : a));
+ }
+ }
+ const viewIdx = LEAD_STAGES.indexOf("viewing_booked");
+ if (existing) {
+ const curIdx = LEAD_STAGES.indexOf(existing.stage);
+ // Advance a lead sitting behind the booking stage. ALSO revive a lost lead
+ // — the buyer just booked a fresh viewing. A won lead is left alone.
+ const revive = existing.stage === "lost" || existing.stage === "closed_lost";
+ if (curIdx < viewIdx || revive) {
+ const { error: updErr } = await supabase.from("leads")
+ .update({ stage: "viewing_booked", updated_at: new Date().toISOString() })
+ .eq("id", existing.id);
+ if (updErr) { console.error("autoUpsertLeadFromAppt advance:", updErr); toast.error("Could not move the lead"); return; }
+ setLeads((p) => p.some((l) => l.id === existing.id)
+ ? p.map((l) => l.id === existing.id? { ...l, stage: "viewing_booked" } : l)
+ : p);
+ // A revived/terminal lead may be filtered out of local state — refetch.
+ if (!leads.some((l) => l.id === existing.id)) {
+ const { data: full } = await supabase.from("leads")
+ .select("*, car_listings(brand, model, year, selling_price)")
+ .eq("id", existing.id).single();
+ if (full) setLeads((p) => p.some((l) => l.id === full.id)? p.map((l) => l.id === full.id? full : l) : [full, ...p]);
+ }
+ toast.success("Moved to Viewing Booked");
+ }
+ } else {
+ const { data: newLead, error: insErr } = await supabase.from("leads").insert({
+ salesman_id: userId, dealer_id: profile?.dealer_id?? null,
+ buyer_name: apt.buyer_name || "Unknown", phone,
+ car_listing_id: apt.car_listing_id || null,
+ stage: "viewing_booked", lead_source: "manual", is_deleted: false,
+ }).select("*, car_listings(brand, model, year, selling_price)").single();
+ if (insErr) { console.error("autoUpsertLeadFromAppt insert:", insErr); toast.error("Could not create the lead"); return; }
+ if (newLead) {
+ setLeads((p) => p.some((l) => l.id === newLead.id)? p.map((l) => l.id === newLead.id? newLead : l) : [newLead, ...p]);
+ toast.success("Added to pipeline at Viewing Booked");
+ if (!apt.lead_id) {
+ await supabase.from("appointments").update({ lead_id: newLead.id }).eq("id", apt.id);
+ setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, lead_id: newLead.id } : a));
+ }
+ }
+ }
+ };
+
+ const buildConfirmBookingMsg = (apt) => {
+ const car = apt.car_listings;
+ const carName = car? [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ") : "the car";
+ const aptDate = apt.appointment_date? new Date(apt.appointment_date) : null;
+ const dateStr = aptDate? aptDate.toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" }) : "";
+ const timeStr = aptDate? aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "";
+ const when = dateStr? ` on ${dateStr}${timeStr? ` at ${timeStr}` : ""}` : "";
+ return `Hi ${apt.buyer_name || ""}! Your viewing for the ${carName} is confirmed${when}. See you then! Let me know if anything changes.`;
+ };
+
+ const openConfirmBookingModal = (apt) => {
+ setConfirmBookingMsg(buildConfirmBookingMsg(apt));
+ setConfirmBookingApt(apt);
+ setReschedulingAptId(null);
+ setCancelConfirmId(null);
+ setReminderPickerAptId(null);
+ };
+
+ // Persist the confirm + lead advance FIRST, then hand off to WhatsApp.
+ // WhatsApp-first backgrounds the page on mobile before the writes fire, which
+ // left confirmed bookings out of the Booked pipeline stage.
+ const sendConfirmBooking = async () => {
+ const apt = confirmBookingApt;
+ if (!apt ||!apt.buyer_phone) return;
+ const phone = apt.buyer_phone.replace(/\D/g, "");
+ const waPhone = phone.startsWith("6")? phone : "6" + phone;
+ const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(confirmBookingMsg)}`;
+ setConfirmBookingApt(null);
+ setConfirmBookingMsg("");
+ await updateApptStatus(apt.id, "confirmed");
+ await autoUpsertLeadFromAppt(apt);
+ scheduleAptReminder(apt);
+ toast.success("Booking confirmed");
+ window.location.href = waUrl;
+ };
+
+ // Confirm + advance without messaging, for when the buyer was already reached
+ // another way.
+ const moveConfirmBookingToPipeline = async () => {
+ const apt = confirmBookingApt;
+ if (!apt) return;
+ setConfirmBookingApt(null);
+ setConfirmBookingMsg("");
+ await updateApptStatus(apt.id, "confirmed");
+ await autoUpsertLeadFromAppt(apt);
+ scheduleAptReminder(apt);
+ toast.success("Booking confirmed");
+ };
+
+ // Default seller-booking slot: tomorrow 11:00, formatted for datetime-local.
+ const defaultBookingSlot = () => {
+ const d = new Date();
+ d.setDate(d.getDate() + 1);
+ d.setHours(11, 0, 0, 0);
+ const pad = (n) => String(n).padStart(2, "0");
+ return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+ };
+
+ const confirmSellerBooking = async () => {
+ const lead = sellerBookingLead;
+ if (!lead ||!sellerBookingDate) return;
+ const dt = new Date(sellerBookingDate);
+ if (isNaN(dt.getTime())) { toast.error("Pick a valid date and time"); return; }
+ setSellerBookingSaving(true);
+ await updateLeadStage(lead.id, "viewing_booked");
+ const remindAt = new Date(dt.getTime() - 60 * 60 * 1000).toISOString();
+ const { data: apptRow, error: apptErr } = await supabase
+ .from("appointments")
+ .insert({
+ salesman_id: userId,
+ dealer_id: lead.dealer_id?? null,
+ lead_id: lead.id,
+ car_listing_id: lead.car_listing_id?? null,
+ buyer_name: lead.buyer_name?? null,
+ buyer_phone: lead.phone?? null,
+ appointment_date: dt.toISOString(),
+ booking_type: "viewing",
+ status: "confirmed",
+ remind_at: remindAt,
+ remind_sent: false,
+ })
+ .select("id, lead_id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, created_at, remind_at, remind_sent, car_listings(id, brand, model, year, variant, selling_price, images, vin_number, plate_number, mileage, transmission, slug)")
+ .single();
+ setSellerBookingSaving(false);
+ if (apptErr) { console.error("confirmSellerBooking:", apptErr); toast.error("Could not create the booking"); return; }
+ if (apptRow) setAppointments((p) => p.find((a) => a.id === apptRow.id)? p : [apptRow, ...p]);
+ setSellerBookingLead(null);
+ setSellerBookingDate("");
+ toast.success(`Booking confirmed for ${dt.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })} ${dt.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}`);
+ };
+
+ const autoCreateLeadFromEnq = async (enq) => {
+ const phone = normalizePhone(enq.buyer_phone);
+ if (!phone) return;
+ const { data: existingRows } = await supabase
+ .from("leads").select("id").eq("salesman_id", userId).eq("phone", phone).limit(1);
+ if (!existingRows ||!existingRows.length) {
+ const { data: newLead } = await supabase.from("leads").insert({
+ salesman_id: userId, dealer_id: profile?.dealer_id?? null,
+ buyer_name: enq.buyer_name || "Unknown", phone,
+ notes: enq.buyer_message || null, car_listing_id: enq.listing_id || null,
+ stage: "new", lead_source: "enquiry", is_deleted: false,
+ }).select("*, car_listings(brand, model, year, selling_price)").single();
+ if (newLead) { setLeads((p) => [newLead, ...p]); toast.success("Added to pipeline"); }
+ }
+ };
+
+ // ── won flow ───────────────────────────────────────────────────────────────
+
+ const refreshCommissionData = async () => {
+ if (!userId) return;
+ const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+ const { data } = await supabase
+ .from("car_listings")
+ .select("commission_amount, selling_price, sold_at")
+ .eq("dealer_id", userId)
+ .eq("status", "sold")
+ .gte("sold_at", monthStart);
+ const rows = data || [];
+ setCommissionData({
+ total: rows.reduce((s, l) => s + (Number(l.commission_amount) || 0), 0),
+ revenue: rows.reduce((s, l) => s + (Number(l.selling_price) || 0), 0),
+ count: rows.length,
+ });
+ };
+
+ // Marking a lead won is the single source of truth for a closed deal — the DB
+ // trigger auto_create_customer_on_won fans it out (car → sold, customer row,
+ // handover checklist). The car flip is ALSO written here so the UI reflects it
+ // without waiting for a refetch; the trigger remains the real persistence.
+ const handleMarkWon = async () => {
+ if (!wonPrompt) return;
+ const { lead } = wonPrompt;
+ const leadId = lead.id;
+ const dealerId = lead.dealer_id?? null;
+ const now = new Date().toISOString();
+ setWonSaving(true);
+
+ const { error: leadErr } = await supabase
+ .from("leads")
+ .update({ stage: "won", updated_at: now })
+ .eq("id", leadId);
+ if (leadErr) {
+ console.error("handleMarkWon lead:", leadErr);
+ toast.error("Could not mark this deal as won");
+ setWonSaving(false);
+ return;
+ }
+
+ const { error: actErr } = await supabase.from("lead_activities").insert({
+ lead_id: leadId,
+ activity_type: "stage_changed",
+ from_stage: lead.stage,
+ to_stage: "won",
+ created_by: userId,
+ dealer_id: dealerId,
+ });
+ if (actErr) console.error("handleMarkWon activity:", actErr);
+
+ if (lead.car_listing_id) {
+ const { error: carErr } = await supabase
+ .from("car_listings")
+ .update({ status: "sold", sold_at: now })
+ .eq("id", lead.car_listing_id);
+ if (carErr) {
+ console.error("handleMarkWon car listing:", carErr);
+ toast.error("Deal won, but the car could not be marked sold");
+ } else {
+ // Mark sold in place rather than filtering the row out — sold counts read
+ // myListings for status 'sold' + sold_at this month.
+ setMyListings((p) => p.map((c) => c.id === lead.car_listing_id? { ...c, status: "sold", sold_at: now } : c));
+ await refreshCommissionData();
+ }
+ }
+
+ setLeads((p) => p.map((l) => l.id === leadId? { ...l, stage: "won", updated_at: now } : l));
+ setWonSaving(false);
+ setWonPrompt(null);
+
+ const car = lead.car_listings;
+ const carLabel = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
+ toast.success(carLabel? `Deal won — ${carLabel} marked sold` : "Deal won");
+ };
+
  const handleAddLead = async () => {
  setAddLeadSaving(true);
- const { data } = await supabase
+ // Phone is normalized to the canonical 60… form the DB stores. A raw
+ // number here never matches when the same buyer later books a viewing,
+ // which silently created a second lead for the same person.
+ const { data, error: addErr } = await supabase
  .from("leads")
  .insert({
- dealer_id: null,
+ dealer_id: profile?.dealer_id?? null,
  salesman_id: userId,
  assigned_to: userId,
  buyer_name: addLeadForm.buyer_name,
- phone: addLeadForm.phone,
+ phone: normalizePhone(addLeadForm.phone) || addLeadForm.phone,
  notes: addLeadForm.notes,
  car_listing_id: addLeadForm.car_listing_id || null,
  stage: "new",
@@ -982,8 +1771,9 @@ export default function SalesmanPremium() {
  loss_reason: null,
  buyer_state: addLeadForm.buyer_state || null,
  })
- .select()
+ .select("*, car_listings(brand, model, year, selling_price)")
  .single();
+ if (addErr) { console.error("handleAddLead:", addErr); toast.error("Could not add the lead"); }
  if (data) setLeads((p) => [data, ...p]);
  setAddLeadSaving(false);
  setShowAddLead(false);
@@ -1036,21 +1826,44 @@ export default function SalesmanPremium() {
  setTimeout(() => navigate("/salesman"), 2500);
  };
 
+ // Hashtag line for the WA caption — condition first (#used/#recon/#brandnew,
+ // whichever this car actually is), then spec tags worth searching by.
+ // Strict off the real field values, never a guessed default.
+ const carHashtags = (car) => {
+ const tags = [];
+ const cond = (car.condition || "").toLowerCase();
+ if (cond === "used") tags.push("used");
+ else if (cond === "recon") tags.push("recon");
+ else if (cond === "new") tags.push("brandnew");
+ if (car.brand) tags.push(car.brand.replace(/\s+/g, ""));
+ if (car.model) tags.push(car.model.replace(/\s+/g, ""));
+ if (car.transmission) tags.push(car.transmission.toLowerCase().replace(/\s+/g, ""));
+ if (car.fuel_type) tags.push(car.fuel_type.toLowerCase().replace(/\s+/g, ""));
+ if (car.body_type) tags.push(car.body_type.toLowerCase().replace(/\s+/g, ""));
+ if (car.loan_eligible) tags.push("loanavailable");
+ if (car.warranty_months) tags.push("warranty");
+ if (car.city) tags.push(car.city.replace(/\s+/g, ""));
+ return [...new Set(tags)].filter(Boolean).map(t => `#${t}`).join(" ");
+ };
+ const CONDITION_LABEL = { used: "Used", recon: "Recon", new: "New" };
+
  const handleListingCopy = (car, type) => {
  const link = `https://xdrive.my/showroom/${car.slug}?ref=${profile?.slug || ""}`;
  let text = link;
  if (type === "wa") {
  const price = Number(car.selling_price || 0);
+ const hashtags = carHashtags(car);
  text = [
  ` ${car.year} ${car.brand} ${car.model}${car.variant? " " + car.variant : ""}`,
  `RM ${price.toLocaleString()}`,
  ` ${car.city || car.location || "Malaysia"}`,
  ` ${car.mileage? Number(car.mileage).toLocaleString() + " km" : "—"} · ${car.colour || "—"} · ${car.transmission || "—"}`,
  ``,
- `Condition: ${car.condition || "Good"}`,
+ `Condition: ${CONDITION_LABEL[(car.condition || "").toLowerCase()] || car.condition || "Good"}`,
  ``,
  `Berminat? Whatsapp saya sekarang `,
  link,
+ ...(hashtags? ["", hashtags] : []),
  ].join("\n");
  }
  navigator.clipboard.writeText(text);
@@ -1059,6 +1872,64 @@ export default function SalesmanPremium() {
  () => setListingCopied((prev) => ({ ...prev, [car.id]: null })),
  1500,
  );
+ };
+
+ // Listing completeness score — ported from Salesman Lite so both panels
+ // agree on what "finish this listing" means.
+ const listingScore = (car) => {
+ const checks = [
+ { pts: 25, ok: Array.isArray(car.images) && car.images.length >= 3, hint: `${Math.max(0, 3 - (car.images?.length || 0))} more photo${Math.max(0, 3 - (car.images?.length || 0)) !== 1 ? "s" : ""}` },
+ { pts: 15, ok: Array.isArray(car.images) && car.images.length >= 1, hint: "add a photo" },
+ { pts: 15, ok: !!car.selling_price, hint: "set a price" },
+ { pts: 10, ok: !!car.mileage, hint: "add mileage" },
+ { pts: 10, ok: !!car.colour, hint: "add colour" },
+ { pts: 10, ok: !!car.variant, hint: "add variant" },
+ { pts: 10, ok: !!car.state, hint: "add location" },
+ { pts: 5, ok: !!car.condition, hint: "add condition" },
+ ];
+ const earned = checks.reduce((s, c) => s + (c.ok ? c.pts : 0), 0);
+ const total = checks.reduce((s, c) => s + c.pts, 0);
+ const missing = checks.filter(c => !c.ok).map(c => c.hint);
+ return { pct: Math.round((earned / total) * 100), missing };
+ };
+
+ const updateListingStatus = async (car, newStatus) => {
+ setStatusMenuCarId(null);
+ const prevStatus = car.status;
+ const prevSoldAt = car.sold_at ?? null;
+ // Optimistically stamp sold_at so commission/goal figures pick the deal up
+ // immediately — the DB trigger backfills the authoritative value.
+ const optimisticSoldAt = newStatus === "sold" ? (prevSoldAt || new Date().toISOString()) : prevSoldAt;
+ setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: newStatus, sold_at: optimisticSoldAt } : c));
+ // RPC avoids a PostgREST bug with GENERATED ALWAYS columns (gross_profit).
+ const { error: statusErr } = await supabase.rpc("update_listing_status", {
+ p_listing_id: car.id,
+ p_status: newStatus,
+ p_dealer_id: userId,
+ });
+ if (statusErr) {
+ console.error("updateListingStatus:", statusErr);
+ setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: prevStatus, sold_at: prevSoldAt } : c));
+ toast.error("Failed to update status");
+ return;
+ }
+ refreshCommissionData();
+ };
+
+ const handleDeleteListing = async (carId) => {
+ const { error } = await supabase
+ .from("car_listings")
+ .delete()
+ .eq("id", carId)
+ .eq("dealer_id", userId);
+ if (error) {
+ console.error("handleDeleteListing:", error);
+ toast.error("Failed to delete listing");
+ return;
+ }
+ setMyListings((p) => p.filter((c) => c.id !== carId));
+ setConfirmDeleteId(null);
+ toast.success("Listing deleted");
  };
 
  const AI_CAPTION_PLATFORMS = ["whatsapp", "tiktok", "instagram", "facebook", "general"];
@@ -1226,6 +2097,12 @@ export default function SalesmanPremium() {
 
  // TABS 
 
+ // Bookings folded into Enquiries, so the Enquiries badge has to speak for
+ // both — otherwise a pending viewing request is invisible from the nav.
+ const pendingBookingsCount = appointments.filter((a) => a.status === "pending").length;
+ const newEnquiriesCount = enquiries.filter((e) => e.status === "new").length;
+ const inboxBadge = pendingBookingsCount + newEnquiriesCount;
+
  const TABS_DESKTOP = [
  {
  tab: "dashboard",
@@ -1246,15 +2123,9 @@ export default function SalesmanPremium() {
  },
  {
  tab: "enquiries",
- label: "Enquiries",
+ label: "Inbox",
  icon: <MessageSquare style={{ width: 14, height: 14 }} />,
- badge: enquiries.filter((e) => e.status === "new").length || null,
- },
- {
- tab: "bookings",
- label: "Bookings",
- icon: <Phone style={{ width: 14, height: 14 }} />,
- badge: newBookingsCount || null,
+ badge: inboxBadge || null,
  },
  {
  tab: "analytics",
@@ -1271,11 +2142,6 @@ export default function SalesmanPremium() {
  label: "Outreach",
  icon: <Megaphone style={{ width: 14, height: 14 }} />,
  }] : []),
- {
- tab: "merge",
- label: profile?.dealer_id? "My Dealership" : "Join Dealership",
- icon: <GitMerge style={{ width: 14, height: 14 }} />,
- },
  {
  tab: "settings",
  label: "Settings",
@@ -1299,14 +2165,13 @@ export default function SalesmanPremium() {
  },
  {
  tab: "enquiries",
- label: "Enquiries",
+ label: "Inbox",
  icon: <MessageSquare size={18} />,
- badge: enquiries.filter((e) => e.status === "new").length || null,
+ badge: inboxBadge || null,
  },
  { tab: "analytics", label: "Analytics", icon: <TrendingUp size={18} /> },
  { tab: "loans", label: "Loans", icon: <Banknote size={18} /> },
  ...(showOutreach ? [{ tab: "outreach", label: "Outreach", icon: <Megaphone size={18} /> }] : []),
- { tab: "merge", label: profile?.dealer_id? "Dealer" : "Merge", icon: <GitMerge size={18} /> },
  { tab: "settings", label: "Settings", icon: <Settings size={18} /> },
  ];
 
@@ -1448,80 +2313,176 @@ export default function SalesmanPremium() {
 
  const renderDashboard = () => {
  const activeLeads = leads.filter(
- (l) => l.stage!== "lost" && l.stage!== "closed_lost",
+ (l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won" && l.stage !== "won",
+ );
+ const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+ const closedThisMonth = leads.filter((l) =>
+ ["won", "closed_won", "lost", "closed_lost"].includes(l.stage) &&
+ l.updated_at && new Date(l.updated_at) >= monthStart,
  );
  const todayAppts = appointments.filter((a) => {
  if (!a.appointment_date) return false;
  const d = new Date(a.appointment_date);
  if (isNaN(d)) return false;
  const today = new Date();
- return (
- d.getDate() === today.getDate() &&
- d.getMonth() === today.getMonth() &&
- d.getFullYear() === today.getFullYear()
- );
+ return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
  }).length;
- const kpis = [
- { label: "Active Leads", value: activeLeads.length, color: "#93c5fd" },
- { label: "My Listings", value: myListings.length, color: "#4ade80" },
- {
- label: "Stale Leads",
- value: staleLeads.length,
- color: "#fb923c",
- warn: staleLeads.length > 0,
- },
- { label: "Appts Today", value: todayAppts, color: "#c084fc" },
- {
- label: "New Enquiries",
- value: enquiries.filter((e) => e.status === "new").length,
- color: "#c084fc",
- },
- ];
 
  const listingStats = myListings.map((car) => {
  const s = carStatsMap[car.id] ?? {};
- const views    = s.views     || 0;
- const waTaps   = s.enquiries || 0;
+ const views = s.views || 0;
+ const waTaps = s.enquiries || 0;
  const enqCount = enquiries.filter((e) => e.listing_id === car.id).length;
  const cvr = views > 0 ? (waTaps / views) * 100 : null;
  return { car, views, waTaps, enqCount, cvr };
  });
- const totalViews  = Object.values(carStatsMap).reduce((s, v) => s + (v.views     || 0), 0);
+ const totalViews = Object.values(carStatsMap).reduce((s, v) => s + (v.views || 0), 0);
  const totalWATaps = Object.values(carStatsMap).reduce((s, v) => s + (v.enquiries || 0), 0);
- const bestCVRStat = listingStats.reduce((best, s) => {
- if (s.cvr!== null && (best === null || s.cvr > best.cvr)) return s;
- return best;
- }, null);
- const cvrColor = (cvr) =>
- cvr >= 10? "#4ade80" : cvr >= 5? "#fbbf24" : "#f87171";
- const perfCarName = (car) =>
- [car.year, car.brand, car.model].filter(Boolean).join(" ");
+ const overallCVR = totalViews > 0 ? ((totalWATaps / totalViews) * 100).toFixed(1) : null;
+ const bestCVRStat = listingStats.reduce((best, s) => (s.cvr !== null && (best === null || s.cvr > best.cvr)) ? s : best, null);
+ const cvrColor = (cvr) => cvr >= 10 ? C.success : cvr >= 5 ? C.warn : C.danger;
+ const perfCarName = (car) => [car.year, car.brand, car.model].filter(Boolean).join(" ");
+ const isNewUser = myListings.length === 0 && leads.length === 0;
+
+ const STEP_CIRCLE = (done) => {
+ const hue = done ? C.success : C.accent;
+ return {
+ width: 28, height: 28, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+ fontSize: T.size.base, fontWeight: T.weight.bold,
+ background: withAlpha(hue, 0.14),
+ border: `1px solid ${withAlpha(hue, 0.24)}`,
+ color: done ? C.success : C.danger,
+ };
+ };
+
+ // Pipeline-stage accent hues + labels — colour-code the Follow-up rows so
+ // you can see at a glance where each cold lead sits in the funnel.
+ const stageHue = (s) => panelStageHue[s] || panelStageHue.fallback;
+ const stageLabel = (s) => (s || "new").replace(/_/g, " ");
+
+ // Today's agenda — grouped by urgency, dates keyed on the LOCAL calendar (not
+ // UTC) so an early-morning appointment isn't bucketed into the wrong day.
+ const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+ const todayKey = dayKey(new Date());
+ const apptDay = (a) => a.appointment_date ? dayKey(new Date(a.appointment_date)) : null;
+ const apptOpen = (s) => !["cancelled", "completed", "done", "no_show"].includes((s || "").toLowerCase());
+ const fuKey = (v) => v ? (v.length <= 10 ? v.slice(0, 10) : dayKey(new Date(v))) : null;
+ const agendaAppts = appointments.filter((a) => apptDay(a) === todayKey && apptOpen(a.status));
+ // Missed = an appointment whose day is already past but was never closed out.
+ const missedAppts = appointments
+ .filter((a) => { const k = apptDay(a); return k && k < todayKey && apptOpen(a.status); })
+ .sort((a, b) => new Date(b.appointment_date) - new Date(a.appointment_date))
+ .slice(0, 10);
+ const agendaFollowUps = leads.filter((l) => fuKey(l.follow_up_at) === todayKey && !["won", "lost", "closed_won", "closed_lost"].includes(l.stage));
+ const hasAgenda = agendaAppts.length > 0 || missedAppts.length > 0 || agendaFollowUps.length > 0;
+ // Jump from an agenda row to its pipeline lead with the same red glow.
+ // Appointments aren't joined to leads, so match by phone; fall back to the
+ // Inbox tab when there's no lead yet (e.g. an unconfirmed booking).
+ const goToLeadForAppt = (a) => {
+ const ph = normalizePhone(a.buyer_phone);
+ const lead = ph ? leads.find((l) => normalizePhone(l.phone) === ph) : null;
+ if (lead) { setActiveTab("leads"); setMobileLeadStage(lead.stage); triggerGlow([lead.id]); }
+ else { switchTab("enquiries"); setInboxSubTab("bookings"); }
+ };
+
+ // Goal panel data — commission earned this month (sum of commission_amount on sold listings)
+ const soldThisMonth = myListings
+ .filter(c => {
+ if (c.status !== "sold" || !c.sold_at) return false;
+ const d = new Date(c.sold_at);
+ const now = new Date();
+ return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+ })
+ .reduce((sum, c) => sum + (Number(c.commission_amount) || 0), 0);
+ const soldCountThisMonth = myListings.filter(c => {
+ if (c.status !== "sold" || !c.sold_at) return false;
+ const d = new Date(c.sold_at);
+ const now = new Date();
+ return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+ }).length;
+
+ // Previous-month commission — feeds the "Previous month" popup so history
+ // is one tap away instead of just disappearing at a month boundary.
+ const soldInMonth = (year, month) => myListings.filter(c => {
+ if (c.status !== "sold" || !c.sold_at) return false;
+ const d = new Date(c.sold_at);
+ return d.getFullYear() === year && d.getMonth() === month;
+ });
+ const prevMonthDate = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
+ const twoMonthsAgoDate = new Date(new Date().getFullYear(), new Date().getMonth() - 2, 1);
+ const prevMonthSold = soldInMonth(prevMonthDate.getFullYear(), prevMonthDate.getMonth());
+ const twoMonthsAgoSold = soldInMonth(twoMonthsAgoDate.getFullYear(), twoMonthsAgoDate.getMonth());
+ const prevMonthCommission = prevMonthSold.reduce((s, c) => s + (Number(c.commission_amount) || 0), 0);
+ const twoMonthsAgoCommission = twoMonthsAgoSold.reduce((s, c) => s + (Number(c.commission_amount) || 0), 0);
+ const prevMonthTrendPct = twoMonthsAgoCommission > 0
+ ? Math.round(((prevMonthCommission - twoMonthsAgoCommission) / twoMonthsAgoCommission) * 100)
+ : (prevMonthCommission > 0 ? 100 : null);
+
+ // Commission sparkline — per-day (not cumulative) over the trailing 14 days,
+ // compared against the 14 days before that.
+ const DAY_MS = 86400000;
+ const todayMidnight = new Date();
+ todayMidnight.setHours(0, 0, 0, 0);
+ const toLocalDateKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+ const soldWithCommission = myListings.filter(c => c.status === "sold" && c.sold_at);
+ const commissionOnDay = (dateKey) => soldWithCommission
+ .filter(c => toLocalDateKey(new Date(c.sold_at)) === dateKey)
+ .reduce((s, c) => s + (Number(c.commission_amount) || 0), 0);
+ const commissionTrend = Array.from({ length: 14 }, (_, i) => {
+ const key = toLocalDateKey(new Date(todayMidnight.getTime() - (13 - i) * DAY_MS));
+ return { d: key, val: commissionOnDay(key) };
+ });
+ const trendTotal = commissionTrend.reduce((s, p) => s + p.val, 0);
+ const prevTrendTotal = Array.from({ length: 14 }, (_, i) =>
+ commissionOnDay(toLocalDateKey(new Date(todayMidnight.getTime() - (27 - i) * DAY_MS))),
+ ).reduce((s, v) => s + v, 0);
+ const trendDelta = prevTrendTotal > 0
+ ? Math.round(((trendTotal - prevTrendTotal) / prevTrendTotal) * 100)
+ : (trendTotal > 0 ? 100 : null);
+ const available = myListings.filter(c => c.status === "available");
+ const daysLeft = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate();
+ const pct = goal.target > 0 ? Math.min((soldThisMonth / goal.target) * 100, 100) : 0;
+ const goalHue = pct >= 100 ? C.success : pct >= 60 ? C.info : C.danger;
+ const goalHueText = pct >= 100 ? C.successText : pct >= 60 ? C.infoText : C.dangerText;
+ const focusCar = goal.focusCarId ? myListings.find(c => c.id === goal.focusCarId && c.status === "available") : null;
+ const scoreCar = (c) => {
+ const s = carStatsMap[c?.id] || {};
+ return (s.views || 0) * 2 + (s.enquiries || 0) * 5;
+ };
+ const autoFocus = !focusCar && available.length > 0
+ ? available.reduce((best, c) => (scoreCar(c) > scoreCar(best) ? c : best), available[0])
+ : null;
+ const highlighted = focusCar || autoFocus;
+
+ const greetingWord = (() => {
+ const h = new Date().getHours();
+ return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+ })();
+ const personalizedLine = isNewUser
+ ? "Add your first car to start building your portfolio."
+ : isReturning
+ ? (staleLeads.length > 0
+ ? `Welcome back! ${staleLeads.length} lead${staleLeads.length !== 1 ? "s" : ""} ready to reconnect.`
+ : "Welcome back! Your pipeline is clear — good time to reach out to old buyers.")
+ : staleLeads.length > 0
+ ? `${staleLeads.length} lead${staleLeads.length !== 1 ? "s" : ""} waiting for follow-up — don't let a hot one go cold.`
+ : todayAppts > 0
+ ? `You have ${todayAppts} appointment${todayAppts !== 1 ? "s" : ""} today. Make it count.`
+ : activeLeads.length > 0
+ ? `${activeLeads.length} deal${activeLeads.length !== 1 ? "s" : ""} in motion right now.`
+ : "Pipeline is clear — good time to feature a car or reach out to old buyers.";
 
  return (
- <div>
- <p
- style={{
- margin: "0 0 16px",
- fontSize: 16,
- fontWeight: 600,
- color: "#f1f5f9",
- }}
- >Overview
- </p>
+ <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
- {/* AI: What to do today */}
- <div
- style={{
- background: "rgba(220,38,38,0.04)",
- border: "1px solid rgba(220,38,38,0.15)",
- borderRadius: 12,
- padding: "14px 16px",
- marginBottom: 20,
- }}
- >
+ {/* AI: What to do today — Premium-only, kept from the old dashboard (not
+ part of Lite's page, but a working paid feature with its own backend
+ quota/generation wiring; deleting the call site would've left
+ fetchFollowupSuggestions/aiFollowups dead). Flagging this in case you
+ want it gone too. */}
+ <div style={{ background: "rgba(220,38,38,0.04)", border: "1px solid rgba(220,38,38,0.15)", borderRadius: 12, padding: "14px 16px" }}>
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
- <span style={{ fontSize: 14 }}></span>
  <span style={{ fontSize: 13, fontWeight: 700, color: "#fca5a5" }}>What to do today</span>
  </div>
  {isPremium && (
@@ -1561,590 +2522,478 @@ export default function SalesmanPremium() {
  )}
  </div>
 
- {/* KPI cards */}
- <div
- style={{
- display: "grid",
- gridTemplateColumns: isMobile? "repeat(2, 1fr)" : "repeat(5, 1fr)",
- gap: 10,
- marginBottom: 24,
- }}
- >
- {kpis.map(({ label, value, color, warn }) => (
- <div
- key={label}
- style={{
- background: "#0d1117",
- border: `1px solid ${warn? "rgba(251,146,60,0.3)" : "rgba(255,255,255,0.07)"}`,
- borderRadius: 10,
- padding: "14px 16px",
- }}
- >
- <p
- style={{
- margin: "0 0 4px",
- fontSize: 11,
- color: "#4b5563",
- textTransform: "uppercase",
- letterSpacing: "0.06em",
- }}
- >
- {label}
- </p>
- <p
- style={{
- margin: 0,
- fontSize: 28,
- fontFamily: "'Bebas Neue', sans-serif",
- letterSpacing: "1px",
- color,
- }}
- >
- {value}
- </p>
- </div>
- ))}
- </div>
-
- {/* My Performance */}
- <div style={{ marginBottom: 24 }}>
- <p
- style={{
- margin: "0 0 12px",
- fontSize: 11,
- fontWeight: 600,
- color: "#374151",
- textTransform: "uppercase",
- letterSpacing: "0.08em",
- }}
- >My Performance (30d)
- </p>
- <div
- style={{
- display: "grid",
- gridTemplateColumns: "repeat(3, 1fr)",
- gap: 10,
- marginBottom: 12,
- }}
- >
- <div
- style={{
- background: "#0d1117",
- border: "1px solid rgba(255,255,255,0.07)",
- borderRadius: 10,
- padding: "12px 14px",
- }}
- >
- <p
- style={{
- margin: "0 0 4px",
- fontSize: 11,
- color: "#4b5563",
- textTransform: "uppercase",
- letterSpacing: "0.06em",
- }}
- >Total Views
- </p>
- <p
- style={{
- margin: 0,
- fontSize: 26,
- fontFamily: "'Bebas Neue', sans-serif",
- letterSpacing: "1px",
- color: "#93c5fd",
- }}
- >
- {totalViews}
- </p>
- </div>
- <div
- style={{
- background: "#0d1117",
- border: "1px solid rgba(255,255,255,0.07)",
- borderRadius: 10,
- padding: "12px 14px",
- }}
- >
- <p
- style={{
- margin: "0 0 4px",
- fontSize: 11,
- color: "#4b5563",
- textTransform: "uppercase",
- letterSpacing: "0.06em",
- }}
- >WA Taps
- </p>
- <p
- style={{
- margin: 0,
- fontSize: 26,
- fontFamily: "'Bebas Neue', sans-serif",
- letterSpacing: "1px",
- color: "#4ade80",
- }}
- >
- {totalWATaps}
- </p>
- </div>
- <div
- style={{
- background: "#0d1117",
- border: "1px solid rgba(255,255,255,0.07)",
- borderRadius: 10,
- padding: "12px 14px",
- }}
- >
- <p
- style={{
- margin: "0 0 4px",
- fontSize: 11,
- color: "#4b5563",
- textTransform: "uppercase",
- letterSpacing: "0.06em",
- }}
- >Best CVR
- </p>
- {bestCVRStat? (
- <>
- <p
- style={{
- margin: "0 0 2px",
- fontSize: 22,
- fontFamily: "'Bebas Neue', sans-serif",
- letterSpacing: "1px",
- color: cvrColor(bestCVRStat.cvr),
- }}
- >
- {bestCVRStat.cvr.toFixed(1)}%
- </p>
- <p
- style={{
- margin: 0,
- fontSize: 9,
- color: "#4b5563",
- overflow: "hidden",
- textOverflow: "ellipsis",
- whiteSpace: "nowrap",
- }}
- >
- {perfCarName(bestCVRStat.car)}
- </p>
- </>
- ) : (
- <p
- style={{
- margin: 0,
- fontSize: 26,
- fontFamily: "'Bebas Neue', sans-serif",
- letterSpacing: "1px",
- color: "#374151",
- }}
- >
- —
- </p>
- )}
- </div>
- </div>
-
- {listingStats.length > 0 && (
- <div
- style={{
- background: "#0d1117",
- border: "1px solid rgba(255,255,255,0.07)",
- borderRadius: 10,
- overflow: "hidden",
- }}
- >
- <div
- style={{
- display: "grid",
- gridTemplateColumns: "1fr 42px 42px 42px 52px",
- padding: "7px 12px",
- borderBottom: "1px solid rgba(255,255,255,0.05)",
- }}
- >
- <p
- style={{
- margin: 0,
- fontSize: 10,
- color: "#374151",
- textTransform: "uppercase",
- letterSpacing: "0.06em",
- }}
- >Listing
- </p>
- <p
- style={{
- margin: 0,
- fontSize: 10,
- color: "#374151",
- textAlign: "center",
- }}
- >Views
- </p>
- <p
- style={{
- margin: 0,
- fontSize: 10,
- color: "#374151",
- textAlign: "center",
- }}
- >WA
- </p>
- <p
- style={{
- margin: 0,
- fontSize: 10,
- color: "#374151",
- textAlign: "center",
- }}
- >Enq
- </p>
- <p
- style={{
- margin: 0,
- fontSize: 10,
- color: "#374151",
- textAlign: "right",
- }}
- >CVR
- </p>
- </div>
- {listingStats.map(
- ({ car, views, waTaps, enqCount, cvr }, idx) => (
- <div
- key={car.id}
- style={{
- display: "grid",
- gridTemplateColumns: "1fr 42px 42px 42px 52px",
- padding: "8px 12px",
- alignItems: "center",
- borderBottom:
- idx < listingStats.length - 1
-? "1px solid rgba(255,255,255,0.04)"
- : "none",
- }}
- >
- <p
- style={{
- margin: 0,
- fontSize: 11,
- color: "#e5e7eb",
- overflow: "hidden",
- textOverflow: "ellipsis",
- whiteSpace: "nowrap",
- paddingRight: 6,
- }}
- >
- {perfCarName(car)}
- </p>
- <p
- style={{
- margin: 0,
- fontSize: 12,
- fontWeight: 600,
- color: "#93c5fd",
- textAlign: "center",
- }}
- >
- {views}
- </p>
- <p
- style={{
- margin: 0,
- fontSize: 12,
- fontWeight: 600,
- color: "#4ade80",
- textAlign: "center",
- }}
- >
- {waTaps}
- </p>
- <p
- style={{
- margin: 0,
- fontSize: 12,
- fontWeight: 600,
- color: "#c084fc",
- textAlign: "center",
- }}
- >
- {enqCount}
- </p>
- <p
- style={{
- margin: 0,
- fontSize: 12,
- fontWeight: 700,
- textAlign: "right",
- color: cvr!== null? cvrColor(cvr) : "#374151",
- }}
- >
- {cvr!== null? `${cvr.toFixed(1)}%` : "—"}
- </p>
- </div>
- ),
- )}
- </div>
- )}
- </div>
-
- {/* Stale nudges */}
- {staleLeads.length > 0 && (
- <div
- style={{
- background: "#0d1117",
- border: "1px solid rgba(251,146,60,0.2)",
- borderRadius: 10,
- padding: "14px 16px",
- }}
- >
- <div
- style={{
- display: "flex",
- alignItems: "center",
- gap: 8,
- marginBottom: 12,
- }}
- >
- <AlertCircle
- size={14}
- style={{ color: "#fb923c", flexShrink: 0 }}
- />
- <p
- style={{
- margin: 0,
- fontSize: 13,
- fontWeight: 600,
- color: "#fb923c",
- }}
- >Follow-up Nudges ({staleLeads.length})
- </p>
- </div>
- <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
- {staleLeads.map((lead) => (
- <div
- key={lead.id}
- style={{
- display: "flex",
- alignItems: "center",
- justifyContent: "space-between",
- gap: 8,
- }}
- >
+ {/* Hero: greeting + live portfolio snapshot */}
+ <div style={{ ...CARD, position: "relative", overflow: "hidden", padding: isMobile ? "20px 18px" : "26px 28px", background: `linear-gradient(135deg, ${C.surface} 0%, ${C.surfaceRaised} 100%)` }}>
+ <div style={{ position: "absolute", top: -50, right: -50, width: 180, height: 180, borderRadius: "50%", background: `radial-gradient(circle, ${withAlpha(C.accent, 0.14)} 0%, transparent 70%)`, pointerEvents: "none" }} />
+ <div style={{ position: "relative", display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
  <div>
- <p
- style={{
- margin: 0,
- fontSize: 12,
- fontWeight: 600,
- color: "#e5e7eb",
- }}
- >
- {lead.buyer_name || "—"}
+ <p style={{ margin: 0, fontSize: T.size.xl, fontWeight: T.weight.bold, color: C.text, letterSpacing: "-0.3px" }}>
+ {greetingWord}, {profile?.full_name?.split(" ")[0] || "there"}.
  </p>
- <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>No contact · {timeAgo(lead.updated_at)}
+ <p style={{ margin: "5px 0 0", fontSize: T.size.base, color: C.textSec, maxWidth: 440 }}>
+ {personalizedLine}
  </p>
  </div>
- {lead.phone && (
+ {staleLeads.length > 0 && (
  <button
- onClick={() => pingWA(lead)}
- style={{
- fontSize: 10,
- padding: "4px 10px",
- borderRadius: 6,
- background: "rgba(37,211,102,0.1)",
- border: "1px solid rgba(37,211,102,0.2)",
- color: "#4ade80",
- cursor: "pointer",
- flexShrink: 0,
+ onClick={() => {
+ const activeStageOrder = LEAD_STAGES.filter((s) => !["lost", "closed_lost", "closed_won"].includes(s));
+ const firstStaleStage = activeStageOrder.find((s) => staleLeads.some((l) => l.stage === s));
+ if (firstStaleStage) setMobileLeadStage(firstStaleStage);
+ switchTab("leads");
+ triggerGlow(staleLeads.map((l) => l.id));
  }}
- >WA
+ style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: R.pill, background: withAlpha(C.danger, 0.08), border: `1px solid ${withAlpha(C.danger, 0.18)}`, flexShrink: 0, cursor: "pointer", fontFamily: "inherit" }}
+ >
+ <Bell size={11} color={C.danger} strokeWidth={2.5} />
+ <span style={{ fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.dangerText }}>{staleLeads.length} overdue</span>
  </button>
  )}
  </div>
+ {available.length > 0 && (
+ <div style={{ position: "relative", marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+ <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 18 : 28, flexWrap: "wrap" }}>
+ {[
+ { label: "Views", value: totalViews || 0, color: C.text },
+ { label: "Page Visits", value: minipageStats.visits || 0, color: C.infoText },
+ { label: "WA Taps", value: totalWATaps || 0, color: C.successText },
+ { label: "Live Listings", value: available.length, color: C.text },
+ ].map(({ label, value, color }) => (
+ <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+ <span style={{ ...STAT, fontSize: isMobile ? T.size.stat : T.size.statLg, color }}>{value}</span>
+ <span style={EYEBROW}>{label}</span>
+ </div>
  ))}
+ <span style={{ ...EYEBROW, display: "inline-flex", alignItems: "center", gap: 5, marginLeft: "auto", fontWeight: T.weight.normal }}>
+ <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.success }} />
+ 30 days
+ </span>
  </div>
- </div>
- )}
-
- {/* Activity feed */}
- {(() => {
- const feed = [
- ...appointments.slice(0, 5).map((a) => ({
- type: "booking",
- label: `${a.buyer_name || "Someone"} booked a viewing`,
- sub: a.car_listings
-? `${a.car_listings.brand} ${a.car_listings.model}`
- : "",
- ts: a.created_at,
- dot: "#60a5fa",
- })),
- ...enquiries.slice(0, 5).map((e) => ({
- type: "enquiry",
- label: `${e.buyer_name || "Someone"} enquired`,
- sub: e.car_listings
-? `${e.car_listings.brand} ${e.car_listings.model}`
- : "",
- ts: e.created_at,
- dot: "#4ade80",
- })),
- ...leads
- .filter((l) => l.stage === "won")
- .slice(0, 3)
- .map((l) => ({
- type: "won",
- label: `${l.buyer_name || "Lead"} marked won`,
- sub: l.car_listings
-? `${l.car_listings.brand} ${l.car_listings.model}`
- : "",
- ts: l.updated_at,
- dot: "#fbbf24",
- })),
- ]
- .filter((f) => f.ts)
- .sort((a, b) => new Date(b.ts) - new Date(a.ts))
- .slice(0, 8);
-
- if (!feed.length) return null;
- return (
- <div style={{ marginTop: 20 }}>
- <p
- style={{
- margin: "0 0 10px",
- fontSize: 11,
- fontWeight: 600,
- color: "#374151",
- textTransform: "uppercase",
- letterSpacing: "0.08em",
- }}
- >Recent Activity
- </p>
- <div
- style={{
- background: "#0d1117",
- border: "1px solid rgba(255,255,255,0.07)",
- borderRadius: 10,
- overflow: "hidden",
- }}
+ {profile?.slug && (
+ <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
+ <button
+ onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success("Link copied!"); }}
+ style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 180px", minWidth: 0, fontSize: T.size.sm, padding: "9px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, cursor: "pointer", fontWeight: T.weight.medium, fontFamily: "inherit" }}
  >
- {feed.map((f, i) => (
- <div
- key={i}
- style={{
- display: "flex",
- alignItems: "center",
- gap: 10,
- padding: "10px 14px",
- borderBottom:
- i < feed.length - 1
-? "1px solid rgba(255,255,255,0.04)"
- : "none",
- }}
+ <LinkIcon size={11} />
+ <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>xdrive.my/s/{profile.slug}</span>
+ <span style={{ fontSize: T.size.xs, color: C.textMuted, flexShrink: 0 }}>Copy</span>
+ </button>
+ <a
+ href={`/s/${profile.slug}`}
+ target="_blank"
+ rel="noopener noreferrer"
+ title="Open your mini-page in a new tab"
+ style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 180px", minWidth: 0, fontSize: T.size.sm, padding: "9px 12px", borderRadius: R.md, background: withAlpha(C.info, 0.07), border: `1px solid ${withAlpha(C.info, 0.2)}`, color: C.infoText, textDecoration: "none", fontWeight: T.weight.semibold, fontFamily: "inherit" }}
  >
- <span
- style={{
- width: 7,
- height: 7,
- borderRadius: "50%",
- background: f.dot,
- flexShrink: 0,
- }}
+ <ExternalLink size={11} />
+ <span style={{ flex: 1 }}>View your mini-page</span>
+ <ChevronRight size={11} style={{ flexShrink: 0, opacity: 0.5 }} />
+ </a>
+ <a
+ href="/"
+ target="_blank"
+ rel="noopener noreferrer"
+ title="Open the XDrive marketplace in a new tab"
+ style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 180px", minWidth: 0, fontSize: T.size.sm, padding: "9px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, textDecoration: "none", fontWeight: T.weight.medium, fontFamily: "inherit" }}
+ >
+ <Store size={11} />
+ <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>View XDrive marketplace</span>
+ <ChevronRight size={11} style={{ flexShrink: 0, opacity: 0.5 }} />
+ </a>
+ <ShareMenu
+ baseUrl={`https://xdrive.my/s/${profile.slug}`}
+ refSlug={profile.slug}
+ waCaption={(url) => `Check out my car listings on XDrive:\n${url}`}
+ dark
+ label="Share"
+ style={{ flex: "1 1 120px", justifyContent: "center", padding: "9px 12px", fontSize: T.size.sm }}
  />
- <div style={{ flex: 1, minWidth: 0 }}>
- <p
- style={{
- margin: 0,
- fontSize: 12,
- color: "#e5e7eb",
- overflow: "hidden",
- textOverflow: "ellipsis",
- whiteSpace: "nowrap",
- }}
- >
- {f.label}
- </p>
- {f.sub && (
- <p
- style={{ margin: 0, fontSize: 10, color: "#4b5563" }}
- >
- {f.sub}
- </p>
+ </div>
+ )}
+ {minipageStats.byChannel.length > 0 && (
+ <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
+ <ChannelBreakdown
+ rows={minipageStats.byChannel.map((r) => ({ channel: r.channel, views: Number(r.visits) || 0, enquiries: Number(r.card_clicks) || 0 }))}
+ metric="views"
+ title="Mini-page traffic by platform"
+ viewsLabel="visits"
+ enquiriesLabel="clicks"
+ compact
+ />
+ </div>
  )}
  </div>
- <p
- style={{
- margin: 0,
- fontSize: 10,
- color: "#374151",
- flexShrink: 0,
- }}
+ )}
+ </div>
+
+ {/* Dashboard body — 2-up grid on desktop, single column on mobile */}
+ <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: 16, alignItems: "start" }}>
+
+ {/* Follow-up Needed */}
+ {staleLeads.length > 0 && (
+ <div style={CARD}>
+ <div style={CARD_HEADER}>
+ <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+ <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: R.sm, background: withAlpha(C.danger, 0.12), color: C.danger, flexShrink: 0 }}>
+ <Bell size={12} strokeWidth={2.5} />
+ </span>
+ <span>Follow-up Needed</span>
+ <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 18, height: 18, borderRadius: R.pill, background: withAlpha(C.danger, 0.15), color: C.dangerText, fontSize: T.size.xs, fontWeight: T.weight.bold, padding: "0 5px" }}>{staleLeads.length}</span>
+ </div>
+ </div>
+ <div>
+ {staleLeads.slice(0, 8).map((lead, i, arr) => {
+ const car = lead.car_listings;
+ const daysSince = Math.floor((Date.now() - new Date(lead.updated_at)) / 86400000);
+ const hue = stageHue(lead.stage);
+ return (
+ <div
+ key={lead.id}
+ onClick={() => { setActiveTab("leads"); setMobileLeadStage(lead.stage); triggerGlow([lead.id]); }}
+ style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 18px", borderBottom: ROW_LINE(i < arr.length - 1), background: withAlpha(hue, 0.07), cursor: "pointer" }}
  >
- {timeAgo(f.ts)}
- </p>
+ <div style={{ width: 34, height: 34, borderRadius: "50%", background: C.fillStrong, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.textSec, flexShrink: 0 }}>
+ {(lead.buyer_name || "?")[0].toUpperCase()}
+ </div>
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.buyer_name || "—"}</p>
+ <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3, flexWrap: "wrap" }}>
+ <span style={{ fontSize: T.size.xs, fontWeight: T.weight.semibold, padding: "1px 7px", borderRadius: R.sm, background: withAlpha(hue, 0.13), border: `1px solid ${withAlpha(hue, 0.33)}`, color: hue, textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{stageLabel(lead.stage || "new")}</span>
+ <span style={{ fontSize: T.size.sm, color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{car ? `${car.brand} ${car.model}` : "No car"}</span>
+ </div>
+ </div>
+ <span style={{ ...SOFT(C.dangerText), fontSize: T.size.xs, fontWeight: T.weight.semibold, padding: "3px 8px", borderRadius: R.pill, flexShrink: 0 }}>{daysSince}d ago</span>
+ {lead.phone && (
+ <button onClick={(e) => { e.stopPropagation(); pingWA(lead); }} style={{ ...SOFT(C.success), fontSize: T.size.sm, padding: "5px 12px", borderRadius: R.sm, cursor: "pointer", fontWeight: T.weight.semibold, flexShrink: 0, fontFamily: "inherit" }}>WA</button>
+ )}
+ </div>
+ );
+ })}
+ {staleLeads.length > 8 && (
+ <button
+ onClick={() => { setActiveTab("leads"); triggerGlow(staleLeads.map((l) => l.id)); }}
+ style={{ display: "block", width: "100%", textAlign: "center", padding: "10px 18px", fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.textSec, background: C.fillSubtle, border: "none", borderTop: `1px solid ${C.line}`, cursor: "pointer", fontFamily: "inherit" }}
+ >
+ +{staleLeads.length - 8} more in pipeline
+ </button>
+ )}
+ </div>
+ {!notifBannerDismissed && browserNotifPerm === 'default' && (
+ <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px", borderTop: `1px solid ${C.line}`, background: C.fillSubtle }}>
+ <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted, flex: 1 }}>Get notified when leads go cold</p>
+ <button onClick={requestBrowserNotif} style={{ ...SOFT(C.infoText), fontSize: T.size.xs, padding: "4px 10px", borderRadius: R.sm, cursor: "pointer", fontWeight: T.weight.semibold, fontFamily: "inherit" }}>Enable</button>
+ <button onClick={dismissNotifBanner} style={{ fontSize: T.size.lg, padding: "0 4px", background: "none", border: "none", color: C.textDim, cursor: "pointer", lineHeight: 1, flexShrink: 0 }}>×</button>
+ </div>
+ )}
+ </div>
+ )}
+
+ {/* Today's Agenda */}
+ {hasAgenda && (
+ <div style={CARD}>
+ <div style={CARD_HEADER}>
+ <span>Today's Agenda</span>
+ <span>{new Date().toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })}</span>
+ </div>
+ <div style={{ padding: "6px 0" }}>
+ {missedAppts.map((a) => (
+ <div key={a.id} onClick={() => goToLeadForAppt(a)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
+ <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: R.sm, background: withAlpha(C.danger, 0.12), color: C.danger, flexShrink: 0 }}>
+ <History size={13} strokeWidth={2.5} />
+ </span>
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.buyer_name || "—"}</p>
+ <p style={{ margin: 0, fontSize: T.size.sm, color: C.dangerText }}>Missed appointment{a.car_listings ? ` · ${a.car_listings.brand} ${a.car_listings.model}` : ""}</p>
+ </div>
+ <span style={{ fontSize: T.size.sm, color: C.dangerText, fontWeight: T.weight.semibold, flexShrink: 0 }}>{a.appointment_date ? new Date(a.appointment_date).toLocaleDateString("en-MY", { day: "numeric", month: "short" }) : "—"}</span>
  </div>
  ))}
+ {agendaAppts.map((a) => (
+ <div key={a.id} onClick={() => goToLeadForAppt(a)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
+ <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: R.sm, background: withAlpha(C.info, 0.12), color: C.info, flexShrink: 0 }}>
+ <Calendar size={13} strokeWidth={2.5} />
+ </span>
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.buyer_name || "—"}</p>
+ <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted }}>Test drive{a.car_listings ? ` · ${a.car_listings.brand} ${a.car_listings.model}` : ""}</p>
+ </div>
+ <span style={{ fontSize: T.size.sm, color: C.infoText, fontWeight: T.weight.semibold, flexShrink: 0 }}>{a.appointment_date ? new Date(a.appointment_date).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "—"}</span>
+ </div>
+ ))}
+ {agendaFollowUps.map((l) => (
+ <div key={l.id} onClick={() => { setActiveTab("leads"); setMobileLeadStage(l.stage); triggerGlow([l.id]); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
+ <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: R.sm, background: withAlpha(C.warn, 0.12), color: C.warn, flexShrink: 0 }}>
+ <Clock size={13} strokeWidth={2.5} />
+ </span>
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.buyer_name || "—"}</p>
+ <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted }}>Scheduled follow-up · {l.car_listings ? `${l.car_listings.brand} ${l.car_listings.model}` : "No car"}</p>
+ </div>
+ <span style={{ fontSize: T.size.sm, color: C.warnText, fontWeight: T.weight.semibold, flexShrink: 0 }}>Today</span>
+ </div>
+ ))}
+ </div>
+ </div>
+ )}
+
+ {/* My Performance */}
+ <div style={{ ...CARD, order: -1 }}>
+ <div style={CARD_HEADER}>
+ <span>My Performance</span>
+ <span>30 days</span>
+ </div>
+ <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", borderBottom: `1px solid ${C.line}` }}>
+ {[
+ { label: "Views", value: totalViews || 0 },
+ { label: "WA Taps", value: totalWATaps || 0 },
+ { label: "CVR", value: overallCVR !== null ? `${overallCVR}%` : "—" },
+ ].map(({ label, value }, i, arr) => (
+ <div key={label} style={{ padding: "16px 18px", borderRight: i < arr.length - 1 ? `1px solid ${C.line}` : "none" }}>
+ <p style={{ ...EYEBROW, margin: "0 0 4px" }}>{label}</p>
+ <p style={{ ...STAT, margin: 0, fontSize: T.size.stat }}>{value}</p>
+ </div>
+ ))}
+ </div>
+ {listingStats.length > 0 && (
+ <div>
+ {[...listingStats].sort((a, b) => (b.cvr ?? -1) - (a.cvr ?? -1)).map(({ car, views, waTaps, cvr }, idx, arr) => {
+ const isHot = views > 20 && cvr >= 10;
+ const isWarm = !isHot && views > 5 && cvr >= 5;
+ const img = car.images?.[0];
+ return (
+ <div key={car.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 18px", borderBottom: ROW_LINE(idx < arr.length - 1) }}>
+ {img ? (
+ <img src={img} alt="" style={{ width: 40, height: 40, borderRadius: R.md, objectFit: "cover", flexShrink: 0 }} />
+ ) : (
+ <div style={{ width: 40, height: 40, borderRadius: R.md, background: C.fill, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+ <Car size={16} color={C.textDim} />
+ </div>
+ )}
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <p style={{ margin: "0 0 2px", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{perfCarName(car)}</p>
+ <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted }}>{views} view{views !== 1 ? "s" : ""} · {waTaps} WA tap{waTaps !== 1 ? "s" : ""}</p>
+ </div>
+ <div style={{ textAlign: "right", flexShrink: 0 }}>
+ <p style={{ margin: "0 0 3px", fontSize: T.size.base, fontWeight: T.weight.bold, color: cvr !== null ? cvrColor(cvr) : C.textDim }}>
+ {cvr !== null ? `${cvr.toFixed(1)}%` : "—"}
+ </p>
+ {isHot && <span title="High views and click-through — one of your best-performing ads" style={{ ...SOFT(C.successText), fontSize: T.size.xs, fontWeight: T.weight.semibold, padding: "1px 5px", borderRadius: R.sm, whiteSpace: "nowrap" }}>TOP VIEWS</span>}
+ {isWarm && <span title="Views and click-through picking up" style={{ ...SOFT(C.warnText), fontSize: T.size.xs, fontWeight: T.weight.semibold, padding: "1px 5px", borderRadius: R.sm, whiteSpace: "nowrap" }}>RISING</span>}
  </div>
  </div>
  );
- })()}
-
- {/* Commission strip */}
- {commission!== null && (
- <div style={{ marginTop: 20, background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.15)", borderRadius: 10, padding: "14px 16px", display: "flex", gap: 24, flexWrap: "wrap", alignItems: "center" }}>
- <div>
- <p style={{ margin: 0, fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em" }}>Commission earned</p>
- <p style={{ margin: 0, fontSize: 22, fontFamily: "'Bebas Neue',sans-serif", color: "#4ade80" }}>RM {Number(commission).toLocaleString()}</p>
- </div>
- <div>
- <p style={{ margin: 0, fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em" }}>Cars sold</p>
- <p style={{ margin: 0, fontSize: 22, fontFamily: "'Bebas Neue',sans-serif", color: "#4ade80" }}>{soldCount}</p>
- </div>
- <div>
- <p style={{ margin: 0, fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em" }}>This month</p>
- <p style={{ margin: 0, fontSize: 22, fontFamily: "'Bebas Neue',sans-serif", color: "#fbbf24" }}>{thisMonthSales}</p>
- </div>
- <button onClick={() => switchTab("analytics")} style={{ marginLeft: "auto", fontSize: 11, padding: "6px 14px", borderRadius: 7, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}>Full Analytics →</button>
+ })}
  </div>
  )}
+ {listingStats.length === 0 && (
+ <p style={{ margin: 0, padding: "16px 18px", fontSize: T.size.base, color: C.textMuted }}>No listing data yet — publish a car to start tracking.</p>
+ )}
+ </div>
 
- {/* No-dealer banner */}
- <div
- style={{
- marginTop: 20,
- background: "rgba(37,99,235,0.07)",
- border: "1px solid rgba(37,99,235,0.2)",
- borderRadius: 10,
- padding: "14px 16px",
- }}
- >
- <p
- style={{
- margin: "0 0 4px",
- fontSize: 13,
- fontWeight: 600,
- color: "#93c5fd",
- }}
- >Upgrade to full panel
- </p>
- <p style={{ margin: "0 0 10px", fontSize: 12, color: "#4b5563" }}>Ask your dealer for an invite code to unlock all features.
- </p>
+ {/* KPI strip — spans full grid width, top */}
+ <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: 10, order: -2, gridColumn: "1 / -1" }}>
+ {[
+ { label: "Pipeline", value: activeLeads.length, accent: C.info, Icon: Users },
+ { label: "Live Listings", value: myListings.filter(c => c.status === "available").length, accent: C.success, Icon: Car },
+ { label: "Follow-ups", value: staleLeads.length, accent: staleLeads.length > 0 ? C.danger : C.textDim, Icon: Bell },
+ { label: "Today's Appts", value: todayAppts, accent: C.info, Icon: Calendar },
+ { label: "Closed", value: closedThisMonth.length, accent: C.success, Icon: CheckCircle },
+ ].map(({ label, value, accent, Icon }) => (
+ <div key={label} style={{ ...CARD, padding: "14px 14px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+ <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: R.sm, background: withAlpha(accent, 0.1), color: accent }}>
+ <Icon size={13} strokeWidth={2.5} />
+ </span>
+ <p style={{ ...STAT, margin: 0, fontSize: T.size.stat }}>{value}</p>
+ <p style={{ ...EYEBROW, margin: 0 }}>{label}</p>
+ </div>
+ ))}
+ </div>
+
+ {/* Goal */}
+ <div style={CARD}>
+ <div style={CARD_HEADER}>
+ <span>Monthly Goal</span>
+ <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+ <span>{daysLeft}d left in {new Date().toLocaleDateString("en-MY",{month:"short"})}</span>
  <button
- onClick={() => setActiveTab("merge")}
- style={{
- fontSize: 12,
- padding: "6px 14px",
- borderRadius: 7,
- background: "#2563eb",
- border: "none",
- color: "#fff",
- cursor: "pointer",
- fontWeight: 600,
- }}
- >Enter Invite Code →
+ onClick={() => setShowPrevMonth(true)}
+ title="This card only tracks the current month — see history"
+ style={{ fontSize: T.size.xs, fontWeight: T.weight.semibold, padding: "3px 8px", borderRadius: R.pill, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit", textTransform: "none", letterSpacing: 0 }}
+ >
+ Previous month
  </button>
  </div>
+ </div>
+ <div style={{ padding: 18 }}>
+ {goalEditing ? (
+ <div>
+ <p style={{ margin: "0 0 10px", fontSize: T.size.sm, color: C.textMuted }}>Set your commission target for {new Date().toLocaleDateString("en-MY", { month: "long" })}:</p>
+ <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+ <span style={{ fontSize: T.size.base, color: C.textSec, fontWeight: T.weight.semibold }}>RM</span>
+ <input type="number" min="0" step="500" value={goalDraft} onChange={e => setGoalDraft(Number(e.target.value))}
+ style={{ width: 100, background: C.fillStrong, border: `1px solid ${C.borderStrong}`, borderRadius: R.sm, padding: "6px 10px", color: C.text, fontSize: T.size.lg, fontWeight: T.weight.bold, fontFamily: "inherit" }} autoFocus />
+ <button onClick={() => { saveGoal({ target: goalDraft }); setGoalEditing(false); }} style={{ fontSize: T.size.base, padding: "6px 14px", borderRadius: R.sm, background: C.accent, border: "none", color: C.onAccent, cursor: "pointer", fontWeight: T.weight.semibold, fontFamily: "inherit" }}>Save</button>
+ <button onClick={() => setGoalEditing(false)} style={{ fontSize: T.size.sm, padding: "6px 10px", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+ </div>
+ <p style={{ margin: "8px 0 0", fontSize: T.size.xs, color: C.textDim }}>Set commission per car in your Listings tab. Sold cars count toward this goal.</p>
+ </div>
+ ) : goal.target > 0 ? (
+ <div>
+ <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+ <div style={{ minWidth: 0 }}>
+ <p style={{ ...EYEBROW, margin: "0 0 2px" }}>Commission earned</p>
+ <p style={{ ...STAT, margin: "0 0 2px", fontSize: T.size.hero }}>
+ RM {soldThisMonth.toLocaleString("en-MY")}
+ </p>
+ <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted }}>of RM {goal.target.toLocaleString("en-MY")} goal · {soldCountThisMonth} car{soldCountThisMonth !== 1 ? "s" : ""} sold</p>
+ </div>
+ <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: R.pill, fontSize: T.size.sm, fontWeight: T.weight.bold, flexShrink: 0,
+ background: withAlpha(goalHue, 0.12), color: goalHueText }}>
+ {Math.round(pct)}% done
+ </span>
+ </div>
+ <div style={{ height: 5, borderRadius: R.pill, background: C.fillStrong, overflow: "hidden", margin: "10px 0 8px" }}>
+ <div style={{ height: "100%", width: `${pct}%`, borderRadius: R.pill, background: goalHue, transition: "width 0.6s ease" }} />
+ </div>
+ {pct >= 100
+ ? <p style={{ margin: "0 0 10px", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.successText }}>Goal smashed!</p>
+ : <p style={{ margin: "0 0 10px", fontSize: T.size.sm, color: C.textMuted }}>RM {(goal.target - soldThisMonth).toLocaleString("en-MY")} to go · {daysLeft > 0 ? `${daysLeft}d left` : "last day!"}</p>
+ }
+ {trendTotal > 0 && (
+ <div style={{ marginBottom: 10 }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
+ <p style={{ ...EYEBROW, margin: 0 }}>Commission — last 14 days</p>
+ {trendDelta !== null && (
+ <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: R.pill, fontSize: T.size.xs, fontWeight: T.weight.bold,
+ background: withAlpha(trendDelta >= 0 ? C.success : C.danger, 0.12),
+ color: trendDelta >= 0 ? C.successText : C.dangerText }}>
+ {trendDelta >= 0 ? "↑" : "↓"} {Math.abs(trendDelta)}%
+ </span>
+ )}
+ </div>
+ <div style={{ height: 70, margin: "4px -8px -6px" }}>
+ <ResponsiveContainer width="100%" height="100%">
+ <AreaChart data={commissionTrend} margin={{ top: 6, right: 8, bottom: 0, left: 8 }}>
+ <defs>
+ <linearGradient id="spCommissionFill" x1="0" y1="0" x2="0" y2="1">
+ <stop offset="0%" stopColor={C.accent} stopOpacity={0.35} />
+ <stop offset="100%" stopColor={C.accent} stopOpacity={0} />
+ </linearGradient>
+ </defs>
+ <XAxis dataKey="d" hide />
+ <RTooltip
+ cursor={{ stroke: C.borderStrong }}
+ contentStyle={{ background: C.surfaceRaised, border: `1px solid ${C.borderStrong}`, borderRadius: R.md, fontSize: T.size.sm }}
+ labelStyle={{ color: C.textSec }}
+ itemStyle={{ color: C.dangerText }}
+ labelFormatter={(v) => {
+ const [y, m, day] = v.split("-").map(Number);
+ return new Date(y, m - 1, day).toLocaleDateString("en-MY", { day: "numeric", month: "short" });
+ }}
+ formatter={(v) => [`RM ${Number(v).toLocaleString("en-MY")}`, "Commission"]}
+ />
+ <Area type="monotone" dataKey="val" stroke={C.dangerText} strokeWidth={2} fill="url(#spCommissionFill)" dot={false} activeDot={{ r: 4, fill: C.dangerText }} />
+ </AreaChart>
+ </ResponsiveContainer>
+ </div>
+ </div>
+ )}
+ <button onClick={() => { setGoalDraft(goal.target); setGoalEditing(true); }} style={{ fontSize: T.size.xs, padding: "3px 10px", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>Edit target</button>
+ </div>
+ ) : (
+ <button onClick={() => { setGoalDraft(5000); setGoalEditing(true); }} style={{ width: "100%", padding: "14px", borderRadius: R.md, background: withAlpha(C.accent, 0.06), border: `1px dashed ${withAlpha(C.accent, 0.2)}`, color: C.danger, fontSize: T.size.base, fontWeight: T.weight.semibold, cursor: "pointer", fontFamily: "inherit" }}>
+ + Set a monthly commission goal
+ </button>
+ )}
+
+ {highlighted && (
+ <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.line}` }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+ <p style={{ ...EYEBROW, margin: 0 }}>
+ {focusCar ? <><Pin size={9} style={{ display:'inline', verticalAlign:'middle', marginRight:3 }} />Pinned</> : <><Zap size={9} style={{ display:'inline', verticalAlign:'middle', marginRight:3 }} />Best to push</>}
+ </p>
+ {focusCar && (
+ <button onClick={() => saveGoal({ focusCarId: null })} style={{ fontSize: T.size.xs, padding: "2px 7px", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>Unpin</button>
+ )}
+ </div>
+ <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+ {highlighted.images?.[0] ? (
+ <img src={highlighted.images[0]} alt="" style={{ width: 52, height: 40, objectFit: "cover", borderRadius: R.md, flexShrink: 0, border: `1px solid ${C.line}` }} />
+ ) : (
+ <div style={{ width: 52, height: 40, borderRadius: R.md, background: C.fill, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Car size={18} color={C.textDim} /></div>
+ )}
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {[highlighted.year, highlighted.brand, highlighted.model].filter(Boolean).join(" ")}
+ </p>
+ <p style={{ margin: "1px 0 0", fontSize: T.size.sm, color: C.textSec, fontWeight: T.weight.semibold }}>
+ {highlighted.selling_price ? `RM ${Number(highlighted.selling_price).toLocaleString("en-MY")}` : "—"}
+ </p>
+ </div>
+ <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+ <button onClick={() => handleListingCopy(highlighted, "wa")} style={{ ...SOFT(C.success), fontSize: T.size.xs, padding: "4px 10px", borderRadius: R.sm, cursor: "pointer", fontFamily: "inherit", fontWeight: T.weight.semibold }}>WA</button>
+ {!focusCar && (
+ <button onClick={() => saveGoal({ focusCarId: highlighted.id })} style={{ fontSize: T.size.xs, padding: "4px 10px", borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>Pin</button>
+ )}
+ </div>
+ </div>
+ {available.length > 1 && (
+ <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 8 }}>
+ {available.filter(c => c.id !== highlighted.id).slice(0, 4).map(c => (
+ <button key={c.id} onClick={() => saveGoal({ focusCarId: c.id })} style={{ fontSize: T.size.xs, padding: "3px 9px", borderRadius: R.sm, background: C.fillSubtle, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {c.brand} {c.model}
+ </button>
+ ))}
+ </div>
+ )}
+ </div>
+ )}
+ </div>
+ </div>
+
+ {/* Onboarding */}
+ {isNewUser && !localStorage.getItem("sp_tour_done") && (
+ <div style={{ ...CARD, border: `1px solid ${withAlpha(C.accent, 0.15)}` }}>
+ <div style={CARD_HEADER}><span>Get Started</span></div>
+ <div style={{ padding: 18 }}>
+ <p style={{ margin: "0 0 16px", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>Here's how to make your first sale:</p>
+ {[
+ { num: 1, done: myListings.length > 0, title: "Add your first listing", sub: "Upload photos, set price, publish to XDrive marketplace.", ctaLabel: "Add Listing →", ctaAction: () => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }, locked: false },
+ { num: 2, done: myListings.length > 0, title: "Share your listing link", sub: "Blast it on WhatsApp groups, Facebook, TikTok.", ctaLabel: "Go to Listings →", ctaAction: () => switchTab("listings"), locked: myListings.length === 0 },
+ { num: 3, done: leads.length > 0, title: "Track your leads", sub: "Every enquiry auto-converts to a lead.", ctaLabel: "View Pipeline →", ctaAction: () => switchTab("leads"), locked: myListings.length === 0 },
+ ].map((step, idx) => (
+ <div key={step.num}>
+ <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: idx > 0 ? "14px 0 0" : "0" }}>
+ <div style={STEP_CIRCLE(step.done)}>{step.done ? "✓" : step.num}</div>
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>{step.title}</p>
+ <p style={{ margin: "2px 0 0", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.5 }}>{step.sub}</p>
+ </div>
+ {step.locked
+ ? <span style={{ fontSize: T.size.xs, color: C.textDim, flexShrink: 0, paddingTop: 3 }}>Step 1 first</span>
+ : <button onClick={step.ctaAction} style={{ ...SOFT(C.accent), color: C.danger, fontSize: T.size.sm, padding: "5px 12px", borderRadius: R.sm, cursor: "pointer", flexShrink: 0, fontFamily: "inherit" }}>{step.ctaLabel}</button>
+ }
+ </div>
+ {idx < 2 && <div style={{ height: 1, background: C.line, margin: "14px 0 0" }} />}
+ </div>
+ ))}
+ <button onClick={dismissTour} style={{ marginTop: 16, background: "none", border: "none", color: C.textDim, fontSize: T.size.xs, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>Dismiss</button>
+ </div>
+ </div>
+ )}
+ </div>
+
+ <PrevMonthModal
+ open={showPrevMonth}
+ onClose={() => setShowPrevMonth(false)}
+ monthLabel={prevMonthDate.toLocaleDateString("en-MY", { month: "long", year: "numeric" })}
+ commission={prevMonthCommission}
+ count={prevMonthSold.length}
+ trendPct={prevMonthTrendPct}
+ trendLabel={twoMonthsAgoDate.toLocaleDateString("en-MY", { month: "short" })}
+ />
+
  </div>
  );
  };
@@ -2164,34 +3013,38 @@ export default function SalesmanPremium() {
 
  const hotCount = enriched.filter((e) => e.isHot).length;
  const staleCount = enriched.filter((e) => e.isStale).length;
- const activeCount = myListings.filter(
- (c) => c.status === "available",
- ).length;
 
- const filtered =
- filterStatus === "all"
-? enriched
- : enriched.filter((e) => e.car.status === filterStatus);
+ const normStatus = (s) => {
+ if (!s || s === "active") return "available";
+ return s;
+ };
+ const filtered = enriched.filter((e) => normStatus(e.car.status) === filterStatus);
 
  const sorted = [...filtered].sort((a, b) => {
- if (sortBy === "price_desc")
- return (b.car.selling_price || 0) - (a.car.selling_price || 0);
- if (sortBy === "price_asc")
- return (a.car.selling_price || 0) - (b.car.selling_price || 0);
- return 0;
+ if (sortBy === "price_desc") return (b.car.selling_price || 0) - (a.car.selling_price || 0);
+ if (sortBy === "price_asc") return (a.car.selling_price || 0) - (b.car.selling_price || 0);
+ if (sortBy === "oldest") return new Date(a.car.created_at) - new Date(b.car.created_at);
+ return new Date(b.car.created_at) - new Date(a.car.created_at); // newest (default)
+ });
+
+ // Two cars can share the exact same year/brand/model/variant — only
+ // surface a disambiguator (colour / plate) on cards whose title actually
+ // collides with a sibling.
+ const nameCounts = {};
+ sorted.forEach(({ car }) => {
+ const n = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
+ nameCounts[n] = (nameCounts[n] || 0) + 1;
  });
 
  const SEL_STYLE = (active) => ({
- fontSize: 11,
+ fontSize: T.size.sm,
  padding: "5px 11px",
- borderRadius: 7,
+ borderRadius: R.sm,
  cursor: "pointer",
- background: active? "rgba(59,130,246,0.15)" : "rgba(255,255,255,0.05)",
- border: active
-? "1px solid rgba(59,130,246,0.4)"
- : "1px solid rgba(255,255,255,0.08)",
- color: active? "#93c5fd" : "#6b7280",
- fontWeight: active? 600 : 400,
+ background: active ? withAlpha(C.accent, 0.12) : C.line,
+ border: active ? `1px solid ${withAlpha(C.accent, 0.3)}` : `1px solid ${C.border}`,
+ color: active ? C.dangerText : C.textMuted,
+ fontWeight: active ? T.weight.semibold : T.weight.normal,
  });
 
  return (
@@ -2263,87 +3116,86 @@ export default function SalesmanPremium() {
  </div>
  )}
 
+ {/* Store exposure bar */}
+ {!showAddForm &&!showFastForm && profile?.slug && myListings.filter(c => c.status === "available").length > 0 && (
+ <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 12px", padding: "7px 12px", borderRadius: R.md, background: withAlpha(C.success, 0.04), border: `1px solid ${withAlpha(C.success, 0.13)}` }}>
+ <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.success, flexShrink: 0 }} />
+ <span style={{ fontSize: T.size.xs, color: C.textMuted, flex: 1 }}>
+ Your listings are <strong style={{ color: C.success }}>live on XDrive</strong> — buyers can find you at xdrive.my/s/{profile.slug}
+ </span>
+ <button
+ onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success("Link copied!"); }}
+ style={{ ...SOFT(C.success), fontSize: T.size.xs, padding: "4px 10px", borderRadius: R.sm, cursor: "pointer", fontWeight: T.weight.semibold, whiteSpace: "nowrap", fontFamily: "inherit" }}
+ >
+ Copy Link
+ </button>
+ </div>
+ )}
+
+ {/* Listing quality banner */}
+ {!showAddForm &&!showFastForm && myListings.filter(c => c.status === "available").length > 0 && (() => {
+ const scores = myListings.filter(c => c.status === "available").map(c => listingScore(c).pct);
+ const avg = Math.round(scores.reduce((s, p) => s + p, 0) / scores.length);
+ if (avg >= 80) return null;
+ return (
+ <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 12px", padding: "9px 14px", borderRadius: R.md, background: withAlpha(C.warn, 0.04), border: `1px solid ${withAlpha(C.warn, 0.15)}` }}>
+ <BarChart2 size={13} style={{ flexShrink: 0, color: C.warnText }} />
+ <p style={{ margin: 0, fontSize: T.size.sm, color: C.textSec, flex: 1 }}>Your listings average <strong style={{ color: C.warnText }}>{avg}% quality</strong>. Complete listings get 3× more views.</p>
+ </div>
+ );
+ })()}
+
  {myListings.length > 0 &&!showAddForm &&!(showFastForm) && (
  <>
- {/* Summary strip */}
- <div
+ {/* Status tabs */}
+ <div style={{ borderBottom: `1px solid ${C.border}`, marginBottom: 0 }}>
+ <div style={{ display: "flex", gap: 0, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
+ {[
+ { key: "pending_approval", label: "Pending", count: myListings.filter((c) => c.status === "pending_approval").length },
+ { key: "rejected", label: "Rejected", count: myListings.filter((c) => c.status === "rejected").length },
+ { key: "available", label: "Available", count: myListings.filter((c) => (c.status || "available") === "available").length },
+ { key: "reserved", label: "Reserved", count: myListings.filter((c) => c.status === "reserved").length },
+ { key: "sold", label: "Sold", count: myListings.filter((c) => c.status === "sold").length },
+ ].map(({ key, label, count }) => (
+ <button
+ key={key}
+ onClick={() => setFilterStatus(key)}
  style={{
- display: "flex",
- alignItems: "center",
- gap: 8,
- flexWrap: "wrap",
- marginBottom: 14,
- padding: "10px 14px",
- background: "#0d1117",
- border: "1px solid rgba(255,255,255,0.07)",
- borderRadius: 10,
+ background: "none", border: "none", cursor: "pointer",
+ padding: "10px 13px", fontSize: T.size.base,
+ fontWeight: filterStatus === key ? T.weight.semibold : T.weight.normal,
+ fontFamily: "inherit",
+ color: filterStatus === key ? C.text : C.textDim,
+ borderBottom: filterStatus === key ? `2px solid ${C.accent}` : "2px solid transparent",
+ marginBottom: -1, display: "flex", alignItems: "center", gap: 6,
+ transition: "color 0.15s", whiteSpace: "nowrap", flexShrink: 0,
  }}
  >
- <span style={{ fontSize: 12, color: "#94a3b8" }}>
- <span style={{ color: "#f1f5f9", fontWeight: 600 }}>
- {activeCount}
- </span>{" "}
- active
+ {label}
+ <span style={{
+ fontSize: T.size.sm, fontWeight: T.weight.bold, padding: "1px 6px", borderRadius: 4, lineHeight: 1.6,
+ background: filterStatus === key ? withAlpha(C.accent, 0.12) : C.fill,
+ color: filterStatus === key ? C.dangerText : C.textDim,
+ }}>
+ {count}
  </span>
- <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 14 }}>
- ·
- </span>
- <span style={{ fontSize: 12, color: "#94a3b8" }}>
- <span style={{ color: "#ef4444", fontWeight: 600 }}>
- {hotCount}
- </span>{" "}
- hot
- </span>
- <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 14 }}>
- ·
- </span>
- <span style={{ fontSize: 12, color: "#94a3b8" }}>
- <span style={{ color: "#6b7280", fontWeight: 600 }}>
- {staleCount}
- </span>{" "}
- stale
- </span>
- </div>
-
- {/* Sort / filter strip */}
- <div
- style={{
- display: "flex",
- alignItems: "center",
- gap: 8,
- flexWrap: "wrap",
- marginBottom: 14,
- }}
- >
- <span style={{ fontSize: 11, color: "#4b5563", marginRight: 2 }}>Sort:
- </span>
- <button
- style={SEL_STYLE(sortBy === "newest")}
- onClick={() => setSortBy("newest")}
- >Newest
- </button>
- <button
- style={SEL_STYLE(sortBy === "price_desc")}
- onClick={() => setSortBy("price_desc")}
- >Price ↓
- </button>
- <button
- style={SEL_STYLE(sortBy === "price_asc")}
- onClick={() => setSortBy("price_asc")}
- >Price ↑
- </button>
- <span style={{ flex: 1 }} />
- <span style={{ fontSize: 11, color: "#4b5563", marginRight: 2 }}>Status:
- </span>
- {["all", "available", "reserved", "pending"].map((s) => (
- <button
- key={s}
- style={SEL_STYLE(filterStatus === s)}
- onClick={() => setFilterStatus(s)}
- >
- {s === "all"? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
  </button>
  ))}
+ </div>
+ </div>
+
+ {/* Sort row */}
+ <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "10px 0 14px" }}>
+ <span style={{ fontSize: T.size.sm, color: C.textDim, marginRight: 2 }}>Sort:</span>
+ <button style={SEL_STYLE(sortBy === "newest")} onClick={() => setSortBy("newest")}>Newest</button>
+ <button style={SEL_STYLE(sortBy === "price_desc")} onClick={() => setSortBy("price_desc")}>Price ↓</button>
+ <button style={SEL_STYLE(sortBy === "price_asc")} onClick={() => setSortBy("price_asc")}>Price ↑</button>
+ {hotCount > 0 && (
+ <span style={{ fontSize: T.size.sm, color: C.danger, fontWeight: T.weight.semibold, marginLeft: "auto" }}>{hotCount} hot</span>
+ )}
+ {staleCount > 0 && (
+ <span style={{ fontSize: T.size.sm, color: C.textMuted, fontWeight: T.weight.medium }}>{staleCount} stale</span>
+ )}
  </div>
  </>
  )}
@@ -2405,10 +3257,11 @@ export default function SalesmanPremium() {
  color: "#374151",
  fontSize: 13,
  }}
- >No listings match this filter.
+ >No {filterStatus} listings.
  </div>
  ) : (
  <div
+ onClick={() => { setStatusMenuCarId(null); setActionMenuCarId(null); }}
  style={{
  display: "grid",
  gridTemplateColumns: isMobile
@@ -2417,294 +3270,315 @@ export default function SalesmanPremium() {
  gap: 14,
  }}
  >
- {sorted.map(({ car, views, enqs, cvr, isHot, isStale }) => {
- const cvrFill = cvr!== null? Math.min(cvr * 10, 100) : 0;
+ {sorted.map(({ car, views, enqs: enquiries, cvr, isHot, isStale }) => {
+ const isSold = car.status === "sold";
+ const isReserved = car.status === "reserved";
+ const isPending = car.status === "pending_approval";
+ const isRejected = car.status === "rejected";
+ const cvrFill = cvr !== null ? Math.min(cvr * 10, 100) : 0;
  const img = car.images?.[0];
- const name = [car.year, car.brand, car.model, car.variant]
- .filter(Boolean)
- .join(" ");
- const price = car.selling_price
-? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
- : "—";
- const cvrLabel = cvr!== null? cvr.toFixed(1) : "0";
+ const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
+ const price = car.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : "—";
+ const disambiguator = nameCounts[name] > 1
+ ? [car.colour, car.plate_number ? `Plate …${car.plate_number.slice(-4)}` : null].filter(Boolean).join(" · ")
+ : null;
+ const cvrLabel = cvr !== null ? cvr.toFixed(1) : "0";
  const isHovering = cvrHover === car.id;
+ const openDetail = () => { setSelectedCar(car); setCarDetailImgIdx(0); setCarDetailTab("specs"); };
  return (
  <div
  key={car.id}
  style={{
- background: "#0d1117",
- border: "1px solid rgba(255,255,255,0.07)",
- borderRadius: 12,
- overflow: "hidden",
+ background: C.surface,
+ border: isSold ? `1px solid ${C.fillStrong}`
+ : isReserved ? `1px solid ${withAlpha(C.warn, 0.22)}`
+ : isPending ? `1px solid ${withAlpha(C.warn, 0.18)}`
+ : isRejected ? `1px solid ${withAlpha(C.danger, 0.22)}`
+ : `1px solid ${C.border}`,
+ borderRadius: R.lg, overflow: "hidden", opacity: isSold ? 0.62 : 1,
+ transition: "opacity 0.2s", display: "flex", flexDirection: "column", height: "100%",
  }}
  >
- {img? (
+ {/* Image */}
+ {img ? (
  <img
- src={img}
- alt={name}
- onClick={() => {
- setSelectedCar(car);
- setCarDetailImgIdx(0);
- setCarDetailTab("specs");
- }}
- style={{
- width: "100%",
- height: 150,
- objectFit: "cover",
- cursor: "pointer",
- }}
+ src={img} alt={name} onClick={openDetail}
+ style={{ width: "100%", height: 150, objectFit: "cover", cursor: "pointer", filter: isSold ? "grayscale(0.75) brightness(0.6)" : "none" }}
  />
  ) : (
  <div
- onClick={() => {
- setSelectedCar(car);
- setCarDetailImgIdx(0);
- setCarDetailTab("specs");
- }}
- style={{
- width: "100%",
- height: 150,
- background: "rgba(255,255,255,0.04)",
- display: "flex",
- alignItems: "center",
- justifyContent: "center",
- cursor: "pointer",
- }}
+ onClick={openDetail}
+ style={{ width: "100%", height: 150, background: C.fill, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", filter: isSold ? "grayscale(0.75) brightness(0.6)" : "none" }}
  >
- <Car size={32} color="#374151" />
+ <Car size={32} color={C.textDim} />
  </div>
  )}
- <div style={{ padding: "12px 14px" }}>
- <div
- style={{
- display: "flex",
- alignItems: "flex-start",
- justifyContent: "space-between",
- marginBottom: 4,
- }}
- >
+
+ {/* Status indicator — compact single-line strip */}
+ {(isSold || isReserved || isPending || isRejected) && (
+ <div style={{
+ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px",
+ borderBottom: `1px solid ${isRejected ? withAlpha(C.danger, 0.18) : isSold ? withAlpha(C.textMuted, 0.15) : withAlpha(C.warn, 0.15)}`,
+ background: `${isRejected ? withAlpha(C.danger, 0.05) : isSold ? withAlpha(C.textMuted, 0.07) : withAlpha(C.warn, 0.05)}`,
+ }}>
+ <span style={{ width: 5, height: 5, borderRadius: "50%", flexShrink: 0, background: isRejected ? C.dangerText : isSold ? C.textMuted : C.warnText }} />
+ <span style={{ fontSize: T.size.xs, fontWeight: T.weight.semibold, color: isRejected ? C.dangerText : isSold ? C.textSec : C.warnText }}>
+ {isSold ? "Sold" : isReserved ? "Reserved" : isPending ? "Pending approval" : "Rejected"}
+ </span>
+ {isSold && car.sold_at && (
+ <span style={{ fontSize: T.size.xs, color: C.textDim }}>
+ · {new Date(car.sold_at).toLocaleDateString("en-MY", { day: "numeric", month: "short" })}
+ </span>
+ )}
+ {isPending && <span style={{ fontSize: T.size.xs, color: C.textMuted }}>· not visible to buyers yet</span>}
+ {isRejected && car.rejection_reason && (
+ <span style={{ fontSize: T.size.xs, color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>· {car.rejection_reason}</span>
+ )}
+ </div>
+ )}
+
+ {/* Live on XDrive bar — only for available listings */}
+ {!isSold &&!isReserved &&!isPending &&!isRejected && (
+ <div style={{ background: withAlpha(C.success, 0.05), borderBottom: `1px solid ${withAlpha(C.success, 0.13)}`, padding: "4px 14px", display: "flex", alignItems: "center", gap: 6 }}>
+ <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.success, flexShrink: 0 }} />
+ <span style={{ fontSize: T.size.xs, fontWeight: T.weight.bold, color: C.success, letterSpacing: "0.1em", textTransform: "uppercase" }}>Live on XDrive</span>
+ <span style={{ marginLeft: "auto", fontSize: T.size.xs, color: C.textDim }}>{views > 0 ? `${views} view${views !== 1 ? "s" : ""}` : "accepting buyers"}</span>
+ </div>
+ )}
+
+ <div style={{ padding: "12px 14px", flex: 1, display: "flex", flexDirection: "column" }}>
+ {/* Title + status dropdown */}
+ <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4 }}>
  <p
- onClick={() => {
- setSelectedCar(car);
- setCarDetailImgIdx(0);
- setCarDetailTab("specs");
- }}
- style={{
- margin: 0,
- fontSize: 13,
- fontWeight: 600,
- color: "#e5e7eb",
- lineHeight: 1.3,
- flex: 1,
- marginRight: 8,
- cursor: "pointer",
- }}
+ onClick={openDetail}
+ style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: isSold ? C.textMuted : C.text, lineHeight: 1.3, flex: 1, marginRight: 8, cursor: "pointer" }}
  >
  {name}
+ {disambiguator && (
+ <span style={{ display: "block", fontSize: T.size.xs, fontWeight: T.weight.normal, color: C.textMuted, marginTop: 2 }}>{disambiguator}</span>
+ )}
  </p>
- <StatusBadge status={car.status} />
- </div>
- <p
+ <div style={{ position: "relative", flexShrink: 0 }}>
+ {(() => {
+ const curStatus = normStatus(car.status || "available");
+ const dotColor = curStatus === "reserved" ? C.warnText : curStatus === "sold" ? C.textSec : C.successText;
+ const locked = isPending || isRejected;
+ const open = statusMenuCarId === car.id;
+ return (
+ <button
+ onClick={(e) => { e.stopPropagation(); if (locked) return; setStatusMenuCarId(open ? null : car.id); }}
+ title={locked ? undefined : "Change listing status"}
  style={{
- margin: "0 0 8px",
- fontSize: 14,
- fontWeight: 700,
- color: "#60a5fa",
+ display: "flex", alignItems: "center", gap: 6, padding: "4px 6px 4px 9px", borderRadius: R.sm,
+ background: open ? C.fillStrong : C.line, border: `1px solid ${open ? C.borderStrong : C.border}`,
+ cursor: locked ? "not-allowed" : "pointer", opacity: locked ? 0.5 : 1,
  }}
  >
+ <span style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
+ <span style={{ fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.text, textTransform: "capitalize" }}>{car.status || "available"}</span>
+ {!locked && <ChevronDown size={13} color={C.textSec} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />}
+ </button>
+ );
+ })()}
+ {!isPending &&!isRejected && statusMenuCarId === car.id && (
+ <div
+ onClick={(e) => e.stopPropagation()}
+ style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 50, background: C.surfaceRaised, border: `1px solid ${C.borderStrong}`, borderRadius: R.md, overflow: "hidden", minWidth: 146, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}
+ >
+ <p style={{ margin: 0, padding: "8px 12px 6px", fontSize: T.size.xs, fontWeight: T.weight.bold, letterSpacing: T.track.label, textTransform: "uppercase", color: C.textMuted, borderBottom: `1px solid ${C.border}` }}>Set this listing to</p>
+ {[
+ { key: "available", label: "Available", color: C.successText, hint: "Live for buyers" },
+ { key: "reserved", label: "Reserved", color: C.warnText, hint: "Deposit / on hold" },
+ { key: "sold", label: "Sold", color: C.textSec, hint: "Deal closed" },
+ ].map(({ key, label, color, hint }) => {
+ const active = normStatus(car.status || "available") === key;
+ return (
+ <button
+ key={key}
+ onClick={() => updateListingStatus(car, key)}
+ style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 12px", background: active ? C.fillStrong : "none", border: "none", cursor: "pointer", textAlign: "left" }}
+ >
+ <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
+ <span style={{ display: "flex", flexDirection: "column", gap: 1, flex: 1, minWidth: 0 }}>
+ <span style={{ fontSize: T.size.base, color: active ? C.text : C.textSec, fontWeight: active ? T.weight.bold : T.weight.medium }}>{label}</span>
+ <span style={{ fontSize: T.size.xs, color: C.textMuted }}>{hint}</span>
+ </span>
+ {active && <Check size={13} color={C.successText} style={{ flexShrink: 0 }} />}
+ </button>
+ );
+ })}
+ </div>
+ )}
+ </div>
+ </div>
+
+ {/* Price */}
+ <p style={{ margin: "0 0 6px", lineHeight: 1, ...(isSold ? { fontSize: T.size.base, fontWeight: T.weight.bold, color: C.textDim } : priceStyle(car.selling_price)) }}>
  {price}
  </p>
- <p
- style={{
- margin: "0 0 8px",
- fontSize: 11,
- color: "#4b5563",
- }}
- >
- {[
- car.mileage
-? `${Number(car.mileage).toLocaleString()} km`
- : null,
- car.transmission,
- car.colour,
- ]
- .filter(Boolean)
- .join(" · ")}
- </p>
 
- {/* CVR heatmap bar */}
- <div
- style={{ marginBottom: 10, position: "relative" }}
- onMouseEnter={() => setCvrHover(car.id)}
- onMouseLeave={() => setCvrHover(null)}
- >
- <div
- style={{
- display: "flex",
- justifyContent: "space-between",
- marginBottom: 4,
+ {/* My commission input */}
+ <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+ <span style={{ fontSize: T.size.xs, color: C.textDim, whiteSpace: "nowrap" }}>My commission:</span>
+ <div style={{ display: "flex", alignItems: "stretch", gap: 0, flex: 1 }}>
+ <span style={{ display: "flex", alignItems: "center", fontSize: T.size.sm, color: C.textMuted, padding: "0 8px", background: C.fill, border: `1px solid ${C.border}`, borderRight: "none", borderRadius: `${R.sm}px 0 0 ${R.sm}px` }}>RM</span>
+ <input
+ key={`comm-${car.id}-${car.commission_amount?? "x"}`}
+ type="number" min="0" step="100" placeholder="0"
+ defaultValue={car.commission_amount!= null? car.commission_amount : ""}
+ onBlur={async e => {
+ const val = e.target.value === ""? null : Number(e.target.value);
+ if (val === (car.commission_amount?? null)) return;
+ await supabase.from("car_listings").update({ commission_amount: val }).eq("id", car.id);
+ setMyListings(prev => prev.map(c => c.id === car.id? { ...c, commission_amount: val } : c));
+ refreshCommissionData();
  }}
- >
- <span style={{ fontSize: 10, color: "#4b5563" }}>
- {views} views · {enqs} enquiries
- </span>
- {isHot && (
- <span
- style={{
- fontSize: 10,
- color: "#ef4444",
- fontWeight: 600,
- }}
- >Hot
- </span>
- )}
- {isStale &&!isHot && (
- <span style={{ fontSize: 10, color: "#6b7280" }}>Stale
- </span>
- )}
- </div>
- <div
- style={{
- height: 4,
- borderRadius: 99,
- background: "rgba(255,255,255,0.06)",
- overflow: "visible",
- }}
- >
- <div
- style={{
- height: "100%",
- width: `${cvrFill}%`,
- background: isHot? "#ef4444" : "#3b82f6",
- borderRadius: 99,
- transition: "width 0.3s",
- }}
+ style={{ flex: 1, minWidth: 0, width: 0, background: C.fill, border: `1px solid ${C.border}`, borderLeft: "none", borderRadius: `0 ${R.sm}px ${R.sm}px 0`, padding: "5px 8px", color: car.commission_amount? C.infoText : C.textMuted, fontSize: T.size.base, fontWeight: car.commission_amount? T.weight.bold : T.weight.normal, fontFamily: "inherit", outline: "none", lineHeight: 1.2, boxSizing: "border-box" }}
  />
  </div>
- {isHovering && (
- <div
- style={{
- position: "absolute",
- bottom: "calc(100% + 6px)",
- left: 0,
- background: "#1e293b",
- border: "1px solid rgba(255,255,255,0.12)",
- borderRadius: 7,
- padding: "5px 10px",
- fontSize: 11,
- color: "#e2e8f0",
- whiteSpace: "nowrap",
- zIndex: 10,
- pointerEvents: "none",
- boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
- }}
- >
- {views} views · {enqs} enquiries ·{" "}
- <span
- style={{
- color: isHot? "#ef4444" : "#60a5fa",
- fontWeight: 600,
- }}
- >
- {cvrLabel}% CVR
+ </div>
+
+ {/* Meta */}
+ <p style={{ margin: "0 0 8px", fontSize: T.size.sm, color: C.textDim }}>
+ {[
+ car.mileage? `${Number(car.mileage).toLocaleString()} km` : null,
+ car.engine_cc? `${Number(car.engine_cc).toLocaleString()}cc` : null,
+ car.transmission,
+ car.colour,
+ ].filter(Boolean).join(" · ")}
+ </p>
+
+ {/* Listing completeness bar */}
+ {!isSold && (() => {
+ const { pct, missing } = listingScore(car);
+ if (pct >= 90) return null;
+ const barColor = pct >= 70? C.warnText : C.dangerText;
+ return (
+ <div style={{ marginBottom: 8 }} title={missing.length? `Improve: ${missing.join(", ")}` : ""}>
+ <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+ <span style={{ fontSize: T.size.xs, color: C.textDim }}>Listing quality</span>
+ <span style={{ fontSize: T.size.xs, color: barColor, fontWeight: T.weight.semibold }}>{pct}%</span>
+ </div>
+ <div style={{ height: 3, borderRadius: R.pill, background: C.fillStrong, overflow: "hidden" }}>
+ <div style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: R.pill }} />
+ </div>
+ {missing.length > 0 && <p style={{ margin: "3px 0 0", fontSize: T.size.xs, color: C.textDim }}>+ {missing[0]}</p>}
+ </div>
+ );
+ })()}
+
+ {/* CVR bar — hidden for sold */}
+ {!isSold && (
+ <div style={{ marginBottom: 10, position: "relative" }} onMouseEnter={() => setCvrHover(car.id)} onMouseLeave={() => setCvrHover(null)}>
+ <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+ <span style={{ fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>
+ <span style={{ color: C.text, fontWeight: T.weight.bold }}>{views}</span> views · <span style={{ color: C.text, fontWeight: T.weight.bold }}>{enquiries}</span> enquiries
  </span>
+ {isHot && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: T.size.sm, color: C.danger, fontWeight: T.weight.semibold }}><Flame size={12} /> Hot</span>}
+ {isStale &&!isHot && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: T.size.sm, color: C.textSec }}><Clock size={12} /> Stale</span>}
+ </div>
+ <div style={{ height: 4, borderRadius: R.pill, background: C.fillStrong, overflow: "visible" }}>
+ <div style={{ height: "100%", width: `${cvrFill}%`, background: isHot? C.danger : C.textDim, borderRadius: R.pill, transition: "width 0.3s" }} />
+ </div>
+ {isHovering && (
+ <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: 0, background: C.surfaceRaised, border: `1px solid ${C.borderStrong}`, borderRadius: R.sm, padding: "5px 10px", fontSize: T.size.sm, color: C.text, whiteSpace: "nowrap", zIndex: 10, pointerEvents: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.4)" }}>
+ {views} views · {enquiries} enquiries ·{" "}
+ <span style={{ color: isHot? C.danger : C.infoText, fontWeight: T.weight.semibold }}>{cvrLabel}% CVR</span>
  </div>
  )}
  </div>
+ )}
 
- {/* Action buttons */}
- <div
- style={{
- display: isMobile? "grid" : "flex",
- gridTemplateColumns: isMobile? "1fr 1fr" : undefined,
- gap: 6,
- flexWrap: isMobile? undefined : "wrap",
- }}
- >
+ {/* Photo nudge — fewer than 3 photos hurts views */}
+ {!isSold && (!car.images || car.images.length < 3) && (
+ <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8, padding: "5px 8px", borderRadius: R.sm, background: withAlpha(C.warn, 0.05), border: `1px solid ${withAlpha(C.warn, 0.14)}` }}>
+ <Camera size={11} style={{ flexShrink: 0, color: C.warn }} />
+ <span style={{ fontSize: T.size.xs, color: C.warn, flex: 1 }}>
+ Add {Math.max(0, 3 - (car.images?.length || 0))} more photo{Math.max(0, 3 - (car.images?.length || 0))!== 1? "s" : ""} — listings with 3+ photos get 3× more views
+ </span>
+ <button onClick={() => setEditListing(car)} style={{ ...SOFT(C.warnText), fontSize: T.size.xs, padding: "2px 7px", borderRadius: R.sm, cursor: "pointer", fontWeight: T.weight.bold, whiteSpace: "nowrap", fontFamily: "inherit" }}>Fix</button>
+ </div>
+ )}
+
+ {/* Action bar */}
+ <div style={{ display: "flex", alignItems: "center", gap: 6, borderTop: `1px solid ${C.line}`, paddingTop: 10, marginTop: "auto" }}>
+ {isSold ? (
+ <button onClick={openDetail} style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>View</button>
+ ) : isPending ? (
+ <>
+ <button onClick={openDetail} style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>View</button>
+ <button onClick={() => setEditListing(car)} style={{ ...SOFT(C.info), color: C.infoText, flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+ <Pencil size={10} /> Edit
+ </button>
+ </>
+ ) : isRejected ? (
+ <button onClick={() => setEditListing(car)} style={{ ...SOFT(C.accent), color: C.dangerText, flex: 1, fontSize: T.size.sm, fontWeight: T.weight.semibold, padding: "6px 0", borderRadius: R.sm, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+ <Pencil size={10} /> Edit & Resubmit
+ </button>
+ ) : (
+ <>
  <button
  onClick={() => handleListingCopy(car, "link")}
- style={{
- fontSize: 10,
- padding: "4px 8px",
- borderRadius: 6,
- background:
- listingCopied[car.id] === "link"
-? "rgba(34,197,94,0.15)"
- : "rgba(255,255,255,0.06)",
- border: "1px solid rgba(255,255,255,0.1)",
- color:
- listingCopied[car.id] === "link"
-? "#4ade80"
- : "#9ca3af",
- cursor: "pointer",
- textAlign: "center",
- }}
+ title="Copy link"
+ style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: listingCopied[car.id] === "link"? withAlpha(C.success, 0.12) : C.fill, border: `1px solid ${C.border}`, color: listingCopied[car.id] === "link"? C.successText : C.textSec }}
  >
- {listingCopied[car.id] === "link"
-? "Copied"
- : "Copy Link"}
+ <LinkIcon size={11} />
+ {listingCopied[car.id] === "link"? "Copied" : "Link"}
  </button>
  <button
  onClick={() => handleListingCopy(car, "wa")}
- style={{
- fontSize: 10,
- padding: "4px 8px",
- borderRadius: 6,
- background: "rgba(255,255,255,0.06)",
- border: "1px solid rgba(255,255,255,0.1)",
- color: "#9ca3af",
- cursor: "pointer",
- textAlign: "center",
- }}
- >WA Caption
- </button>
- <button
- onClick={() => openBroadcast(car)}
- style={{
- fontSize: 10,
- padding: "4px 8px",
- borderRadius: 6,
- background: "rgba(249,115,22,0.1)",
- border: "1px solid rgba(249,115,22,0.25)",
- color: "#fb923c",
- cursor: "pointer",
- textAlign: "center",
- }}
- >Broadcast
- </button>
- <button
- onClick={() => generateAiCaptions(car)}
- style={{
- fontSize: 10,
- padding: "4px 8px",
- borderRadius: 6,
- background: "rgba(168,85,247,0.1)",
- border: "1px solid rgba(168,85,247,0.25)",
- color: "#c084fc",
- cursor: "pointer",
- textAlign: "center",
- }}
- >AI Caption
+ title="Copy caption"
+ style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: listingCopied[car.id] === "wa"? withAlpha(C.success, 0.12) : withAlpha(C.success, 0.06), border: `1px solid ${withAlpha(C.success, 0.15)}`, color: listingCopied[car.id] === "wa"? C.successText : C.success }}
+ >
+ {listingCopied[car.id] === "wa"? "Copied" : "Caption"}
  </button>
  <button
  onClick={() => setEditListing(car)}
- style={{
- fontSize: 10,
- padding: "4px 8px",
- borderRadius: 6,
- background: "rgba(56,189,248,0.08)",
- border: "1px solid rgba(56,189,248,0.25)",
- color: "#64b4ff",
- cursor: "pointer",
- textAlign: "center",
- display: "flex",
- alignItems: "center",
- gap: 4,
- justifyContent: "center",
- }}
+ style={{ ...SOFT(C.info), color: C.infoText, flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
  >
- <Pencil size={10} />Edit
+ <Pencil size={10} /> Edit
  </button>
+ </>
+ )}
+
+ {/* ··· overflow — Broadcast / AI Caption (Premium-only) + Delete */}
+ <div style={{ position: "relative", flexShrink: 0 }}>
+ <button
+ onClick={(e) => { e.stopPropagation(); setActionMenuCarId(actionMenuCarId === car.id? null : car.id); setConfirmDeleteId(null); }}
+ title="More actions" aria-label="More actions"
+ style={{ width: 30, height: 30, borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: T.size.base, letterSpacing: 1 }}
+ >
+ ···
+ </button>
+ {actionMenuCarId === car.id && (
+ <div
+ onClick={(e) => e.stopPropagation()}
+ style={{ position: "absolute", bottom: "calc(100% + 6px)", right: 0, zIndex: 60, background: C.surfaceRaised, border: `1px solid ${C.borderStrong}`, borderRadius: R.md, overflow: "hidden", minWidth: 150, boxShadow: "0 8px 28px rgba(0,0,0,0.6)" }}
+ >
+ {!isSold && (
+ <>
+ <button onClick={() => { openBroadcast(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
+ <Megaphone size={12} /> Broadcast
+ </button>
+ <button onClick={() => { generateAiCaptions(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
+ <Sparkles size={12} /> AI Caption
+ </button>
+ <div style={{ height: 1, background: C.line, margin: "2px 0" }} />
+ </>
+ )}
+ {confirmDeleteId === car.id ? (
+ <div style={{ padding: "8px 14px", display: "flex", gap: 6 }}>
+ <button onClick={() => handleDeleteListing(car.id)} style={{ flex: 1, fontSize: T.size.sm, padding: "5px 0", borderRadius: R.sm, background: withAlpha(C.danger, 0.2), border: `1px solid ${withAlpha(C.danger, 0.4)}`, color: C.dangerText, cursor: "pointer", fontWeight: T.weight.bold }}>Delete</button>
+ <button onClick={() => setConfirmDeleteId(null)} style={{ flex: 1, fontSize: T.size.sm, padding: "5px 0", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>Cancel</button>
+ </div>
+ ) : (
+ <button onClick={() => setConfirmDeleteId(car.id)} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.danger, fontSize: T.size.base, textAlign: "left" }}>
+ <Trash2 size={12} /> Delete
+ </button>
+ )}
+ </div>
+ )}
+ </div>
  </div>
  </div>
  </div>
@@ -3672,6 +4546,7 @@ export default function SalesmanPremium() {
  return (
  <div
  key={lead.id}
+ className={glowLeadIds.has(lead.id) ? "sp-lead-glow" : undefined}
  style={{
  background: "#0d1117",
  border: "1px solid rgba(255,255,255,0.07)",
@@ -3692,6 +4567,11 @@ export default function SalesmanPremium() {
  {lead.buyer_name || "—"}
  </p>
  <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+ {leadIdsWithAddons.has(lead.id) && (
+ <span title="This deal has a paid add-on attached" style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, borderRadius: 99, padding: "2px 7px", background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.35)", color: "#93c5fd", whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+ <Package size={9} /> Add-on
+ </span>
+ )}
  <span style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", fontWeight: 600 }}>
  {heat.label}
  </span>
@@ -4332,6 +5212,79 @@ export default function SalesmanPremium() {
  {/* Divider */}
  <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} />
 
+ {/* Deal add-ons — paid upsells from this salesman's own catalogue
+     (Listings > Add-ons), attached to this specific deal. This is the
+     back-end gross on the sale, as opposed to a car's free
+     included_services. */}
+ <div>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+ <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>Add-ons</p>
+ {dealAddons.length > 0 && (
+ <span style={{ fontSize: 12, fontWeight: 700, color: "#93c5fd" }}>
+ RM {dealAddons.reduce((sum, a) => sum + (Number(a.sold_price) || 0), 0).toLocaleString("en-MY")}
+ </span>
+ )}
+ </div>
+ {addonsLoading? (
+ <p style={{ fontSize: 12, color: "#4b5563", margin: 0 }}>Loading…</p>
+ ) : (
+ <>
+ {dealAddons.map((a) => (
+ <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "8px 10px", marginBottom: 4, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8 }}>
+ <span style={{ fontSize: 12, color: "#e5e7eb", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.dealer_products?.name || "—"}</span>
+ <span style={{ fontSize: 12, fontWeight: 600, color: "#93c5fd", flexShrink: 0 }}>RM {Number(a.sold_price || 0).toLocaleString("en-MY")}</span>
+ <button onClick={() => handleRemoveAddon(a.id)} title="Remove this add-on" style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", display: "flex", padding: 2, flexShrink: 0 }}>
+ <X size={13} />
+ </button>
+ </div>
+ ))}
+ {!showAttachAddon? (
+ <button onClick={() => { setShowAttachAddon(true); setAddonForm({ product_id: "", sold_price: "" }); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", fontSize: 12, fontWeight: 600, padding: "8px 12px", borderRadius: 8, background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.25)", color: "#93c5fd", cursor: "pointer", fontFamily: "inherit" }}>
+ <Plus size={12} /> Attach an add-on
+ </button>
+ ) : (
+ <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: 12 }}>
+ {addonCatalogue.length === 0? (
+ <p style={{ fontSize: 12, color: "#6b7280", margin: "0 0 8px", lineHeight: 1.5 }}>No products in your catalogue yet. Add them under Listings → Add-ons, then attach them to a deal here.</p>
+ ) : (
+ <>
+ <select
+ value={addonForm.product_id}
+ onChange={(e) => { const sel = addonCatalogue.find((pr) => pr.id === e.target.value); setAddonForm((f) => ({ ...f, product_id: e.target.value, sold_price: sel? String(sel.selling_price) : f.sold_price })); }}
+ style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "8px 10px", color: "#e5e7eb", fontSize: 12, fontFamily: "inherit", marginBottom: 6, boxSizing: "border-box" }}
+ >
+ <option value="">Select a product…</option>
+ {addonCatalogue.map((pr) => (
+ <option key={pr.id} value={pr.id}>{pr.name} — RM {Number(pr.selling_price || 0).toLocaleString("en-MY")}</option>
+ ))}
+ </select>
+ <input
+ type="number"
+ min="0"
+ value={addonForm.sold_price}
+ onChange={(e) => setAddonForm((f) => ({ ...f, sold_price: e.target.value }))}
+ placeholder="Price actually sold at (RM)"
+ style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "8px 10px", color: "#e5e7eb", fontSize: 12, fontFamily: "inherit", marginBottom: 8, boxSizing: "border-box" }}
+ />
+ </>
+ )}
+ <div style={{ display: "flex", gap: 6 }}>
+ <button onClick={() => setShowAttachAddon(false)} style={{ flex: 1, padding: "7px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+ {addonCatalogue.length > 0 && (
+ <button onClick={handleAttachAddon} disabled={attachingAddon ||!addonForm.product_id ||!addonForm.sold_price} style={{ flex: 1, padding: "7px", borderRadius: 8, background: "#2563eb", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", opacity: (!addonForm.product_id ||!addonForm.sold_price || attachingAddon)? 0.5 : 1, fontFamily: "inherit" }}>
+ {attachingAddon? "Attaching…" : "Attach"}
+ </button>
+ )}
+ </div>
+ </div>
+ )}
+ </>
+ )}
+ </div>
+
+ {/* Divider */}
+ <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} />
+
  {/* Lost / Delete zone */}
  {plIsPromptingLost? (
  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
@@ -4373,714 +5326,681 @@ export default function SalesmanPremium() {
 
  // RENDER ENQUIRIES 
 
- const renderEnquiries = () => (
+ const renderEnquiries = () => {
+ // Lead History log — LEAD-CENTRIC: every lead is its own entry so a new lead
+ // never disappears behind an enquiry sharing its phone. Only PURE enquiries
+ // (no lead yet on that phone) are appended, so a brand-new, not-yet-converted
+ // enquiry still surfaces with its quick actions. Ported from Lite.
+ const leadByPhone = new Map();
+ leads.forEach((l) => {
+ const p = normalizePhone(l.phone);
+ if (p &&!leadByPhone.has(p)) leadByPhone.set(p, l);
+ });
+ const leadPhones = new Set(leads.map((l) => normalizePhone(l.phone)).filter(Boolean));
+ const leadItems = leads.map((l) => ({
+ id: `lead_${l.id}`,
+ buyer_name: l.buyer_name,
+ buyer_phone: l.phone,
+ buyer_message: l.notes,
+ status: "has_lead",
+ created_at: l.created_at,
+ car_listings: l.car_listings,
+ _lead: l,
+ }));
+ const pureEnquiries = enquiries.filter((e) => {
+ const p = normalizePhone(e.buyer_phone);
+ return!p ||!leadPhones.has(p);
+ });
+ const historyItems = [...pureEnquiries, ...leadItems];
+
+ return (
  <div>
- <p
- style={{
- margin: "0 0 16px",
- fontSize: 16,
- fontWeight: 600,
- color: "#f1f5f9",
- }}
- >Enquiries ({enquiries.length})
+ <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
+ Lead History ({historyItems.length})
  </p>
- {enquiries.length === 0 && (
- <div
- style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}
- >
+ {historyItems.length === 0 && (
+ <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
  <MessageSquare size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
- <p style={{ margin: 0, fontSize: 13 }}>No enquiries yet.</p>
+ <p style={{ margin: 0, fontSize: 13 }}>No lead history yet.</p>
+ <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>Enquiries and leads appear here as your listings get shared.</p>
+ <button onClick={() => switchTab("listings")} style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer" }}>
+ Go to Listings →
+ </button>
  </div>
  )}
  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
- {enquiries.map((enq) => {
+ {[...historyItems].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).map((enq) => {
  const car = enq.car_listings;
+ const isNew = enq.status === "new";
+ const matchedLead = enq._lead || leadByPhone.get(normalizePhone(enq.buyer_phone));
+ const liveStage = matchedLead?.stage;
+ const stageC = liveStage? (STAGE_COLOR[liveStage] || STAGE_NEUTRAL) : null;
+ const isExpanded = expandedEnqId === enq.id;
  return (
  <div
  key={enq.id}
+ onClick={() => setExpandedEnqId(isExpanded? null : enq.id)}
  style={{
  background: "#0d1117",
  border: "1px solid rgba(255,255,255,0.07)",
  borderRadius: 10,
- padding: "12px 14px",
+ padding: isNew? "12px 14px" : "8px 14px",
+ opacity: isNew? 1 : 0.85,
+ cursor: "pointer",
  }}
  >
- <div
- style={{
- display: "flex",
- alignItems: "flex-start",
- justifyContent: "space-between",
- gap: 8,
- marginBottom: 4,
- }}
- >
- <p
- style={{
- margin: 0,
- fontSize: 13,
- fontWeight: 600,
- color: "#e5e7eb",
- }}
- >
+ {/* Header */}
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 3 }}>
+ <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#f1f5f9" }}>
  {enq.buyer_name || "—"}
  </p>
- <span
- style={{
- fontSize: 10,
- padding: "2px 7px",
- borderRadius: 99,
- flexShrink: 0,
- background:
- enq.status === "new"
-? "rgba(96,165,250,0.12)"
- : "rgba(34,197,94,0.12)",
- border: `1px solid ${enq.status === "new"? "rgba(96,165,250,0.3)" : "rgba(34,197,94,0.3)"}`,
- color: enq.status === "new"? "#93c5fd" : "#4ade80",
- textTransform: "capitalize",
- }}
- >
- {enq.status}
+ {isNew? (
+ <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd" }}>
+ New
  </span>
+ ) : liveStage? (
+ <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: stageC.bg, border: `1px solid ${stageC.border}`, color: stageC.tx, textTransform: "capitalize" }}>
+ {liveStage.replace(/_/g, " ")}
+ </span>
+ ) : (
+ <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", textTransform: "capitalize" }}>
+ Converted → Lead
+ </span>
+ )}
  </div>
+ {/* Car name */}
  {car && (
- <p
- style={{ margin: "0 0 2px", fontSize: 11, color: "#6b7280" }}
- >
+ <p style={{ margin: "0 0 4px", fontSize: 12, color: "#9ca3af" }}>
  {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
  </p>
  )}
- {enq.buyer_phone && (
- <p
- style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563" }}
- >
- {enq.buyer_phone}
+ {/* Message — always show when expanded or new */}
+ {(isNew || isExpanded) && enq.buyer_message && (
+ <div style={{ margin: "4px 0 8px", padding: "8px 11px", background: "rgba(255,255,255,0.05)", borderRadius: 6 }}>
+ <p style={{ margin: 0, fontSize: 13, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {enq.buyer_message}
  </p>
+ </div>
  )}
- {enq.buyer_message && (
- <p
- style={{
- margin: "0 0 8px",
- fontSize: 11,
- color: "#4b5563",
- fontStyle: "italic",
- overflow: "hidden",
- textOverflow: "ellipsis",
- whiteSpace: "nowrap",
- }}
- >
- "{enq.buyer_message}"
+ {/* Phone — show when new or expanded */}
+ {(isNew || isExpanded) && enq.buyer_phone && (
+ <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 8px" }}>
+ <p style={{ margin: 0, fontSize: 12, color: "#6b7280", display: "inline-flex", alignItems: "center", gap: 5 }}><Phone size={12} /> {enq.buyer_phone}</p>
+ {isExpanded && (
+ <a
+ href={`https://wa.me/${enq.buyer_phone.replace(/\D/g, "").replace(/^0/, "6")}?text=${encodeURIComponent(`Hi ${enq.buyer_name || ""}! 😊`)}`}
+ onClick={(e) => e.stopPropagation()}
+ style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", textDecoration: "none" }}
+ >WA</a>
+ )}
+ </div>
+ )}
+ {/* Timestamp */}
+ <p style={{ margin: isNew? "0 0 8px" : 0, fontSize: 11, color: "#4b5563" }}>
+ {preciseAgo(enq.created_at, nowTick, timeLabels)}
  </p>
- )}
+ {/* Action buttons — unreplied only, max 2 */}
+ {isNew && (
  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
  {enq.buyer_phone && (
  <button
- onClick={() => {
+ onClick={async () => {
  const phone = enq.buyer_phone.replace(/\D/g, "");
  const enqCar = enq.car_listings;
- const carName = enqCar
-? `${enqCar.brand} ${enqCar.model}`
- : "kereta";
- const msg = encodeURIComponent(
- `Hi ${enq.buyer_name || ""}! Thank you for your enquiry on the ${carName}. I'm here to help — when would be a good time to chat? `,
- );
- window.open(
- `https://wa.me/${phone.startsWith("6")? phone : "6" + phone}?text=${msg}`,
- "_blank",
- "noopener,noreferrer",
- );
+ const carName = enqCar? `${enqCar.brand} ${enqCar.model}` : "kereta";
+ const msg = encodeURIComponent(`Hi ${enq.buyer_name || ""}! Thank you for your enquiry on the ${carName}. I'm here to help — when would be a good time to chat? 😊`);
+ // Persist first, WhatsApp hand-off last — navigating the current
+ // tab to WhatsApp can suspend the page before pending writes finish.
+ await supabase.from("whatsapp_enquiries").update({ status: "responded" }).eq("id", enq.id);
+ setEnquiries((p) => p.map((e) => e.id === enq.id? { ...e, status: "responded" } : e));
+ await autoCreateLeadFromEnq(enq);
+ window.location.href = `https://wa.me/${phone.startsWith("6")? phone : "6" + phone}?text=${msg}`;
  }}
- style={{
- fontSize: 10,
- padding: "3px 9px",
- borderRadius: 6,
- background: "rgba(37,211,102,0.1)",
- border: "1px solid rgba(37,211,102,0.2)",
- color: "#4ade80",
- cursor: "pointer",
- }}
- >WA Reply
+ style={{ fontSize: 10, padding: "6px 11px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}
+ >
+ WA Reply
  </button>
  )}
  {enq.buyer_phone && (
  <button
- onClick={() =>
- setOpenTemplateId(
- openTemplateId === enq.id? null : enq.id,
- )
- }
- style={{
- fontSize: 10,
- padding: "3px 9px",
- borderRadius: 6,
- background:
- openTemplateId === enq.id
-? "rgba(167,139,250,0.15)"
- : "rgba(255,255,255,0.05)",
- border: `1px solid ${openTemplateId === enq.id? "rgba(167,139,250,0.4)" : "rgba(255,255,255,0.08)"}`,
- color: openTemplateId === enq.id? "#c084fc" : "#6b7280",
- cursor: "pointer",
- }}
- >Templates
- </button>
- )}
- {enq.status === "new" && (
- <button
- onClick={async () => {
- await supabase
- .from("whatsapp_enquiries")
- .update({ status: "responded" })
- .eq("id", enq.id);
- setEnquiries((p) =>
- p.map((e) =>
- e.id === enq.id? { ...e, status: "responded" } : e,
- ),
- );
- }}
- style={{
- fontSize: 10,
- padding: "3px 9px",
- borderRadius: 6,
- background: "rgba(255,255,255,0.05)",
- border: "1px solid rgba(255,255,255,0.08)",
- color: "#6b7280",
- cursor: "pointer",
- }}
- >Mark Responded
- </button>
- )}
- {enq.status === "converted"? (
- <span
- style={{
- fontSize: 10,
- padding: "3px 9px",
- borderRadius: 6,
- background: "rgba(34,197,94,0.1)",
- border: "1px solid rgba(34,197,94,0.2)",
- color: "#4ade80",
- }}
- >In Pipeline 
- </span>
- ) : (
- <button
- onClick={async () => {
- await supabase.from("leads").insert({
- salesman_id: userId,
- dealer_id: null,
- buyer_name: enq.buyer_name,
- phone: enq.buyer_phone,
- notes: enq.buyer_message,
- car_listing_id: enq.listing_id || null,
- stage: "new",
- lead_source: "enquiry",
- is_deleted: false,
- });
- await supabase
- .from("whatsapp_enquiries")
- .update({ status: "converted" })
- .eq("id", enq.id);
- setEnquiries((p) =>
- p.map((e) =>
- e.id === enq.id? { ...e, status: "converted" } : e,
- ),
- );
- toast.success("Added to lead pipeline!");
- }}
- style={{
- fontSize: 10,
- padding: "3px 9px",
- borderRadius: 6,
- background: "rgba(96,165,250,0.1)",
- border: "1px solid rgba(96,165,250,0.2)",
- color: "#93c5fd",
- cursor: "pointer",
- }}
+ onClick={() => setOpenTemplateId(openTemplateId === enq.id? null : enq.id)}
+ style={{ fontSize: 10, padding: "6px 11px", borderRadius: 6, background: openTemplateId === enq.id? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.05)", border: `1px solid ${openTemplateId === enq.id? "rgba(220,38,38,0.3)" : "rgba(255,255,255,0.08)"}`, color: openTemplateId === enq.id? "#f87171" : "#6b7280", cursor: "pointer" }}
  >
- → Add to Pipeline
+ Templates ▾
  </button>
  )}
  </div>
- {openTemplateId === enq.id && (
- <div
- style={{
- marginTop: 8,
- display: "flex",
- flexDirection: "column",
- gap: 4,
- }}
- >
+ )}
+ {/* Template picker */}
+ {isNew && openTemplateId === enq.id && (
+ <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
  {[
  { key: "chat", label: "Let's Chat", color: "#4ade80" },
- {
- key: "test_drive",
- label: "Book Test Drive",
- color: "#60a5fa",
- },
- {
- key: "budget",
- label: "What's Budget?",
- color: "#fbbf24",
- },
- {
- key: "deposit",
- label: "Deposit to Hold",
- color: "#f87171",
- },
+ { key: "test_drive", label: "Book Test Drive", color: "#60a5fa" },
+ { key: "budget", label: "What's Budget?", color: "#fbbf24" },
+ { key: "deposit", label: "Deposit to Hold", color: "#f87171" },
  ].map(({ key, label, color }) => {
  const toastKey = enq.id + "_" + key;
  return (
  <button
  key={key}
  onClick={() => fireTemplate(enq, key)}
- style={{
- textAlign: "left",
- fontSize: 11,
- padding: "7px 10px",
- borderRadius: 7,
- background: "rgba(255,255,255,0.03)",
- border: "1px solid rgba(255,255,255,0.07)",
- color: templateToast === toastKey? color : "#9ca3af",
- cursor: "pointer",
- display: "flex",
- alignItems: "center",
- gap: 6,
- }}
+ style={{ textAlign: "left", fontSize: 11, padding: "7px 10px", borderRadius: 7, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: templateToast === toastKey? color : "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
  >
- <span
- style={{
- width: 6,
- height: 6,
- borderRadius: "50%",
- background: color,
- flexShrink: 0,
- }}
- />
- {templateToast === toastKey? "Sent!" : label}
+ <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }} />
+ {templateToast === toastKey? "✓ Sent!" : label}
  </button>
  );
  })}
  </div>
  )}
- <p style={{ margin: "6px 0 0", fontSize: 10, color: "#374151" }}>
- {timeAgo(enq.created_at)}
- </p>
  </div>
  );
  })}
  </div>
  </div>
  );
+ };
 
  // RENDER BOOKINGS 
 
  const renderBookings = () => {
- const isToday = (iso) => {
+ const aptIsToday = (iso) => {
  if (!iso) return false;
- const d = new Date(iso);
- const t = new Date();
- return (
- d.getDate() === t.getDate() &&
- d.getMonth() === t.getMonth() &&
- d.getFullYear() === t.getFullYear()
- );
+ const d = new Date(iso), t = new Date();
+ return d.getDate() === t.getDate() && d.getMonth() === t.getMonth() && d.getFullYear() === t.getFullYear();
  };
- const isNew = (iso) =>
- iso && Date.now() - new Date(iso).getTime() < 2 * 60 * 60 * 1000;
-
- const todayApts = appointments.filter((a) => isToday(a.appointment_date));
- const upcomingApts = appointments.filter(
- (a) =>!isToday(a.appointment_date),
- );
+ const aptIsNew = (iso) => iso && Date.now() - new Date(iso).getTime() < 2 * 60 * 60 * 1000;
 
  const statusColors = {
- confirmed: {
- bg: "rgba(34,197,94,0.12)",
- border: "rgba(34,197,94,0.3)",
- tx: "#4ade80",
- },
- pending: {
- bg: "rgba(251,191,36,0.12)",
- border: "rgba(251,191,36,0.3)",
- tx: "#fbbf24",
- },
- cancelled: {
- bg: "rgba(239,68,68,0.12)",
- border: "rgba(239,68,68,0.3)",
- tx: "#f87171",
- },
- rescheduled: {
- bg: "rgba(167,139,250,0.12)",
- border: "rgba(167,139,250,0.3)",
- tx: "#c084fc",
- },
+ pending: { bg: "rgba(251,191,36,0.12)", border: "rgba(251,191,36,0.3)", tx: "#fbbf24" },
+ confirmed: { bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.3)", tx: "#4ade80" },
+ rescheduled: { bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.3)", tx: "#c084fc" },
+ cancelled: { bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.3)", tx: "#f87171" },
+ completed: { bg: "rgba(107,114,128,0.12)", border: "rgba(107,114,128,0.3)", tx: "#9ca3af" },
+ no_show: { bg: "rgba(251,146,60,0.12)", border: "rgba(251,146,60,0.3)", tx: "#fb923c" },
+ };
+
+ const setAptStatus = async (apt, status) => {
+ const { error } = await supabase.from("appointments").update({ status }).eq("id", apt.id);
+ if (error) { toast.error("Failed to update booking"); return; }
+ setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, status } : a));
+ };
+
+ const buildReminderMessage = (apt) => {
+ const aptDate = new Date(apt.appointment_date);
+ const dateStr = aptDate.toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" });
+ const timeStr = aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" });
+ return `Hi ${apt.buyer_name || ""}! Just a reminder for your appointment on ${dateStr}${timeStr? ` at ${timeStr}` : ""}. See you then! 😊`;
+ };
+
+ const fmtAptDate = (iso) => {
+ if (!iso) return { dateStr: "—", timeStr: "" };
+ const d = new Date(iso);
+ if (isNaN(d)) return { dateStr: "—", timeStr: "" };
+ return {
+ dateStr: d.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" }),
+ timeStr: d.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }),
+ };
+ };
+
+ const asc = (a, b) => new Date(a.appointment_date) - new Date(b.appointment_date);
+ const newestBooked = (a, b) => new Date(b.created_at) - new Date(a.created_at);
+ const newestApt = (a, b) => new Date(b.appointment_date) - new Date(a.appointment_date);
+
+ // Pending bookings are requests, not commitments yet — a window-shopper tap
+ // shouldn't sit on the calendar next to real confirmed viewings. They get
+ // their own always-visible section (any date); only once confirmed do they
+ // join Today/Upcoming/Past.
+ const pendingApts = appointments.filter((a) => a.status === "pending").sort(newestBooked);
+ const confirmedApts = appointments.filter((a) => a.status!== "pending" && a.status!== "cancelled");
+ const todayApts = confirmedApts.filter((a) => aptIsToday(a.appointment_date)).sort(asc);
+ const upcomingApts = confirmedApts.filter((a) => {
+ if (!a.appointment_date) return false;
+ const d = new Date(a.appointment_date);
+ return!isNaN(d) &&!aptIsToday(a.appointment_date) && d > new Date(nowTick);
+ }).sort(newestBooked);
+ const pastApts = confirmedApts.filter((a) => {
+ if (!a.appointment_date) return false;
+ const d = new Date(a.appointment_date);
+ return!isNaN(d) &&!aptIsToday(a.appointment_date) && d < new Date(nowTick);
+ }).sort(newestApt);
+
+ const calcRemindAt = (apt, offsetKey) => {
+ const aptDate = new Date(apt.appointment_date);
+ if (offsetKey === "day_before") {
+ const d = new Date(aptDate); d.setDate(d.getDate() - 1); d.setHours(9, 0, 0, 0); return d;
+ }
+ if (offsetKey === "two_days") {
+ const d = new Date(aptDate); d.setDate(d.getDate() - 2); d.setHours(9, 0, 0, 0); return d;
+ }
+ const mins = { "1h": -60, "2h": -120 };
+ return new Date(aptDate.getTime() + (mins[offsetKey]?? -60) * 60000);
+ };
+
+ const saveReminder = async (apt, remindAt) => {
+ setReminderSaving(true);
+ const { error } = await supabase.from("appointments").update({ remind_at: remindAt.toISOString(), remind_sent: false }).eq("id", apt.id);
+ setReminderSaving(false);
+ if (error) { toast.error("Couldn't set the reminder. Try again."); return; }
+ setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, remind_at: remindAt.toISOString(), remind_sent: false } : a));
+ setReminderPickerAptId(null);
+ setSelectedRemindAt(null);
+ toast.success(`Reminder set — fires ${remindAt.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}`);
+ };
+
+ const clearReminder = async (apt) => {
+ await supabase.from("appointments").update({ remind_at: null, remind_sent: false }).eq("id", apt.id);
+ setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, remind_at: null } : a));
  };
 
  const renderApptCard = (apt) => {
  const car = apt.car_listings;
- const aptDate = apt.appointment_date
-? new Date(apt.appointment_date)
- : null;
- const dateStr =
- aptDate &&!isNaN(aptDate)
-? aptDate.toLocaleDateString("en-MY", {
- weekday: "short",
- day: "numeric",
- month: "short",
- year: "numeric",
- })
- : "—";
- const timeStr =
- aptDate &&!isNaN(aptDate)
-? aptDate.toLocaleTimeString("en-MY", {
- hour: "2-digit",
- minute: "2-digit",
- })
- : "";
- const defaultReminder = `Hi ${apt.buyer_name || ""}! Just a reminder for your appointment on ${dateStr}${timeStr? ` at ${timeStr}` : ""}. See you then! `;
+ const { dateStr, timeStr } = fmtAptDate(apt.appointment_date);
  const sc = statusColors[apt.status] || statusColors.pending;
+ const isRescheduled = apt.status === "rescheduled";
+ const isFuture = apt.appointment_date && new Date(apt.appointment_date) > new Date(nowTick);
+ const carTitle = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : "No car linked";
+ const carPrice = car?.selling_price? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
+ const initials = (apt.buyer_name || "?").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+ const phone = (apt.buyer_phone || "").replace(/\D/g, "");
+ const canConfirm = apt.status!== "confirmed" && apt.status!== "cancelled" && apt.status!== "completed";
 
  return (
- <div
- key={apt.id}
- style={{
- background: "#0d1117",
- border: "1px solid rgba(255,255,255,0.07)",
- borderRadius: 10,
- padding: "12px 14px",
- }}
- >
- <div
- style={{
- display: "flex",
- alignItems: "flex-start",
- justifyContent: "space-between",
- gap: 8,
- marginBottom: 2,
- }}
- >
- <div
- style={{
- display: "flex",
- alignItems: "center",
- gap: 6,
- flex: 1,
- minWidth: 0,
- }}
- >
- <p
- style={{
- margin: 0,
- fontSize: 13,
- fontWeight: 600,
- color: "#e5e7eb",
- overflow: "hidden",
- textOverflow: "ellipsis",
- whiteSpace: "nowrap",
- }}
- >
- {apt.buyer_name || "—"}
- </p>
- {isNew(apt.created_at) && (
- <span
- style={{
- fontSize: 9,
- padding: "1px 5px",
- borderRadius: 99,
- background: "rgba(96,165,250,0.15)",
- border: "1px solid rgba(96,165,250,0.3)",
- color: "#93c5fd",
- flexShrink: 0,
- letterSpacing: "0.05em",
- }}
- >NEW
- </span>
+ <div key={apt.id} style={{ background: "#1b2431", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, overflow: "hidden" }}>
+ <div style={{ padding: "12px 14px 0" }}>
+ <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+ <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(96,165,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 600, color: "#93c5fd" }}>
+ {initials}
+ </div>
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{apt.buyer_name || "Unknown Buyer"}</p>
+ {aptIsNew(apt.created_at) && (
+ <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.35)", color: "#f87171", flexShrink: 0 }}>NEW</span>
  )}
  </div>
- <span
- style={{
- fontSize: 10,
- padding: "2px 7px",
- borderRadius: 99,
- flexShrink: 0,
- background: sc.bg,
- border: `1px solid ${sc.border}`,
- color: sc.tx,
- textTransform: "capitalize",
- }}
- >
- {apt.status}
+ <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize", flexShrink: 0 }}>
+ {STATUS_LABEL[apt.status] || apt.status}
  </span>
  </div>
- {apt.created_at && (
- <p style={{ margin: "0 0 4px", fontSize: 10, color: "#374151" }}>Booked {timeAgo(apt.created_at)} ·{" "}
- {new Date(apt.created_at).toLocaleDateString("en-MY", {
- day: "numeric",
- month: "short",
- year: "numeric",
- })}
- </p>
- )}
- <p
- style={{
- margin: "0 0 2px",
- fontSize: 12,
- fontWeight: 600,
- color: "#93c5fd",
- }}
- >
- {dateStr}
- {timeStr && ` · ${timeStr}`}
- </p>
- {car && (
- <p style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}>
- {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
- </p>
- )}
- {apt.buyer_phone && (
- <p style={{ margin: "0 0 6px", fontSize: 11, color: "#4b5563" }}>
- {apt.buyer_phone}
- </p>
- )}
- {apt.notes && (
- <p
- style={{
- margin: "0 0 6px",
- fontSize: 10,
- color: "#4b5563",
- fontStyle: "italic",
- }}
- >
- "{apt.notes}"
- </p>
- )}
- {/* status actions */}
- <div
- style={{
- display: "flex",
- gap: 5,
- flexWrap: "wrap",
- marginBottom: apt.buyer_phone? 6 : 0,
- }}
- >
- {apt.status!== "confirmed" && (
- <button
- onClick={() => updateApptStatus(apt.id, "confirmed")}
- style={{
- fontSize: 10,
- padding: "2px 8px",
- borderRadius: 5,
- background: "rgba(34,197,94,0.08)",
- border: "1px solid rgba(34,197,94,0.2)",
- color: "#4ade80",
- cursor: "pointer",
- }}
- >Confirm
- </button>
- )}
- {apt.status!== "cancelled" && (
- <button
- onClick={() => updateApptStatus(apt.id, "cancelled")}
- style={{
- fontSize: 10,
- padding: "2px 8px",
- borderRadius: 5,
- background: "rgba(239,68,68,0.08)",
- border: "1px solid rgba(239,68,68,0.2)",
- color: "#f87171",
- cursor: "pointer",
- }}
- >Cancel
- </button>
- )}
- {apt.status!== "rescheduled" && (
- <button
- onClick={() => updateApptStatus(apt.id, "rescheduled")}
- style={{
- fontSize: 10,
- padding: "2px 8px",
- borderRadius: 5,
- background: "rgba(167,139,250,0.08)",
- border: "1px solid rgba(167,139,250,0.2)",
- color: "#c084fc",
- cursor: "pointer",
- }}
- >Reschedule
- </button>
+ {(carTitle || carPrice) && (
+ <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 3, gap: 8 }}>
+ <p style={{ margin: 0, fontSize: 12, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carTitle}</p>
+ {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#f8fafc", flexShrink: 0 }}>{carPrice}</p>}
+ </div>
  )}
  </div>
- {/* WA reminder */}
- {apt.buyer_phone &&
- (editingReminder === apt.id? (
- <div style={{ marginTop: 4 }}>
- <textarea
- value={reminderMsg}
- onChange={(e) => setReminderMsg(e.target.value)}
- rows={3}
- style={{
- width: "100%",
- background: "rgba(255,255,255,0.04)",
- border: "1px solid rgba(255,255,255,0.1)",
- borderRadius: 7,
- color: "#e5e7eb",
- fontSize: 11,
- padding: "8px 10px",
- outline: "none",
- boxSizing: "border-box",
- fontFamily: "system-ui, sans-serif",
- resize: "vertical",
- lineHeight: 1.5,
- marginBottom: 6,
- }}
+ </div>
+
+ {/* Date line — the one highlighted data element on the card */}
+ <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+ <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: isRescheduled? "#c084fc" : "#bfdbfe", padding: "4px 10px", borderRadius: 7, background: isRescheduled? "rgba(167,139,250,0.12)" : "rgba(96,165,250,0.12)", border: `1px solid ${isRescheduled? "rgba(167,139,250,0.35)" : "rgba(96,165,250,0.28)"}` }}>
+ <Calendar size={13} /> {dateStr}{timeStr? ` · ${timeStr}` : ""}
+ </span>
+ {isFuture && <span style={{ fontSize: 11, fontWeight: 600, color: "#4ade80" }}>{preciseUntil(apt.appointment_date, nowTick, timeLabels)}</span>}
+ {apt.remind_at &&!apt.remind_sent && <Bell size={12} color="#fbbf24" />}
+ </div>
+ </div>
+
+ {/* Action row — primary CTA + call + ··· details */}
+ <div style={{ display: "flex", gap: 6, padding: "0 14px 12px" }}>
+ {canConfirm && apt.buyer_phone && (
+ <button onClick={() => openConfirmBookingModal(apt)} title="Confirm this booking and message the buyer on WhatsApp"
+ style={{ flex: 1, fontSize: 11, fontWeight: 700, padding: "6px 12px", borderRadius: 7, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.38)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+ <Check size={13} /> Confirm Booking
+ </button>
+ )}
+ {canConfirm &&!apt.buyer_phone && (
+ <button onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }} title="Mark appointment as confirmed"
+ style={{ flex: 1, fontSize: 11, fontWeight: 700, padding: "6px 12px", borderRadius: 7, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.38)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+ <Check size={13} /> Confirm Booking
+ </button>
+ )}
+ {apt.status === "confirmed" && apt.buyer_phone && (
+ <button onClick={() => {
+ const p = apt.buyer_phone.replace(/\D/g, "");
+ const msg = buildReminderMessage(apt);
+ window.location.href = `https://wa.me/${p.startsWith("6")? p : "6" + p}?text=${encodeURIComponent(msg)}`;
+ }} title="Send WhatsApp reminder message to buyer"
+ style={{ flex: 1, fontSize: 11, fontWeight: 600, padding: "6px 12px", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.28)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+ <MessageCircle size={13} /> Message
+ </button>
+ )}
+ {phone && (
+ <a href={`tel:${phone}`} title="Call" aria-label="Call buyer"
+ style={{ flexShrink: 0, fontSize: 11, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
+ <Phone size={13} />
+ </a>
+ )}
+ <button onClick={() => setBookingDetailId(apt.id)} title="Booking details" aria-label="Booking details"
+ style={{ flexShrink: 0, fontSize: 13, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", letterSpacing: "0.05em", lineHeight: 1 }}>
+ ···
+ </button>
+ </div>
+ </div>
+ );
+ };
+
+ // Full booking detail popup — opened from a card's ··· button. Holds the car
+ // image + VIN + notes and the secondary actions (reschedule / set reminder /
+ // cancel) so the card itself stays compact. Portal + body-scroll-lock per the
+ // overlay rules; tapping the backdrop or × closes it.
+ const secBtn = { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 0", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
+ const renderBookingDetailModal = () => {
+ const apt = appointments.find((a) => a.id === bookingDetailId);
+ if (!apt) return null;
+ const car = apt.car_listings;
+ const { dateStr, timeStr } = fmtAptDate(apt.appointment_date);
+ const sc = statusColors[apt.status] || statusColors.pending;
+ const isRescheduling = reschedulingAptId === apt.id;
+ const isReminderPicking = reminderPickerAptId === apt.id;
+ const isCancelConfirm = cancelConfirmId === apt.id;
+ const notCancelled = apt.status!== "cancelled" && apt.status!== "completed";
+ const anyExpander = isRescheduling || isReminderPicking || isCancelConfirm;
+ const carImg = Array.isArray(car?.images)? car.images[0] : null;
+ const carTitle = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : "No car linked";
+ const carVariant = car?.variant || "";
+ const carVin = car?.vin_number || car?.plate_number || "";
+ const carPrice = car?.selling_price? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
+ const isFuture = apt.appointment_date && new Date(apt.appointment_date) > new Date(nowTick);
+ const close = () => { setBookingDetailId(null); setReschedulingAptId(null); setReminderPickerAptId(null); setCancelConfirmId(null); setRescheduleDate(""); setSelectedRemindAt(null); };
+
+ return createPortal(
+ <div onClick={close} style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(3px)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+ <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: "92vh", overflowY: "auto", background: "#1b2431", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "16px 16px 0 0", padding: 20, fontFamily: "system-ui, sans-serif" }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14 }}>
+ <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
+ {STATUS_LABEL[apt.status] || apt.status}
+ </span>
+ <button onClick={close} aria-label="Close" style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+ <X size={16} />
+ </button>
+ </div>
+
+ {/* Car */}
+ <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 14 }}>
+ {carImg? (
+ <img src={carImg} alt="" style={{ width: 84, height: 64, objectFit: "cover", borderRadius: 8, flexShrink: 0, border: "1px solid rgba(255,255,255,0.1)" }} />
+ ) : (
+ <div style={{ width: 84, height: 64, borderRadius: 8, flexShrink: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+ <Car size={20} color="#4b5563" />
+ </div>
+ )}
+ <div style={{ minWidth: 0, flex: 1 }}>
+ <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{carTitle}</p>
+ {carVariant && <p style={{ margin: "0 0 3px", fontSize: 12, color: "#93c5fd" }}>{carVariant}</p>}
+ {carPrice && <p style={{ margin: "0 0 3px", fontSize: 14, fontWeight: 700, color: "#4ade80" }}>{carPrice}</p>}
+ {carVin && <p style={{ margin: 0, fontSize: 11, color: "#94a3b8", fontFamily: "ui-monospace, monospace" }}>{car?.vin_number? "VIN " : "Plate "}{carVin}</p>}
+ </div>
+ </div>
+
+ {/* Buyer */}
+ <div style={{ marginBottom: 14 }}>
+ <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>{apt.buyer_name || "Unknown Buyer"}</p>
+ {apt.buyer_phone && <p style={{ margin: "0 0 4px", fontSize: 13, color: "#cbd5e1", display: "inline-flex", alignItems: "center", gap: 6 }}><Phone size={13} /> {apt.buyer_phone}</p>}
+ {apt.notes && <p style={{ margin: "4px 0 0", fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>&quot;{apt.notes}&quot;</p>}
+ </div>
+
+ {/* Date */}
+ <div style={{ display: "flex", flexDirection: "column", gap: 3, padding: "10px 14px", borderRadius: 10, background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.28)", marginBottom: 14 }}>
+ <span style={{ fontSize: 14, fontWeight: 700, color: "#bfdbfe", display: "inline-flex", alignItems: "center", gap: 6 }}><Calendar size={14} /> {dateStr}</span>
+ {timeStr && <span style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1 }}>{timeStr}</span>}
+ {isFuture && <span style={{ fontSize: 12, fontWeight: 600, color: "#4ade80" }}>{preciseUntil(apt.appointment_date, nowTick, timeLabels)}</span>}
+ </div>
+
+ {/* Reminder indicator */}
+ {apt.remind_at &&!apt.remind_sent? (
+ <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 7, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)", marginBottom: 12 }}>
+ <Bell size={12} color="#4ade80" />
+ <span style={{ fontSize: 11, color: "#4ade80", flex: 1 }}>
+ Reminder: {new Date(apt.remind_at).toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })} {new Date(apt.remind_at).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}
+ </span>
+ <button onClick={() => clearReminder(apt)} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 11, cursor: "pointer", padding: 0 }}>✕</button>
+ </div>
+ ) : apt.remind_sent? (
+ <p style={{ fontSize: 11, color: "#6b7280", margin: "0 0 12px", display: "inline-flex", alignItems: "center", gap: 4 }}><Check size={11} /> Reminder sent</p>
+ ) : null}
+
+ {/* Secondary actions */}
+ {notCancelled &&!anyExpander && (
+ <div style={{ display: "flex", gap: 6 }}>
+ <button style={secBtn} onClick={() => {
+ const existing = apt.appointment_date? new Date(apt.appointment_date) : new Date();
+ const pad = (n) => String(n).padStart(2, "0");
+ setRescheduleDate(`${existing.getFullYear()}-${pad(existing.getMonth() + 1)}-${pad(existing.getDate())}T${pad(existing.getHours())}:${pad(existing.getMinutes())}`);
+ setReschedulingAptId(apt.id); setCancelConfirmId(null); setReminderPickerAptId(null);
+ }}><RefreshCw size={13} /> Move</button>
+ <button style={secBtn} onClick={() => {
+ if (!profile?.telegram_chat_id) { toast.error("Connect Telegram in Settings first"); return; }
+ setReminderPickerAptId(apt.id); setSelectedRemindAt(null); setCancelConfirmId(null); setReschedulingAptId(null);
+ }}><Bell size={13} color={apt.remind_at? "#fbbf24" : undefined} /> Set reminder</button>
+ <button style={{ ...secBtn, color: "#f87171" }} onClick={() => { setCancelConfirmId(apt.id); setReschedulingAptId(null); setReminderPickerAptId(null); }}><X size={13} /> Cancel</button>
+ </div>
+ )}
+
+ {/* Expand: reschedule date picker */}
+ {isRescheduling && (
+ <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 8 }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+ <p style={{ margin: 0, fontSize: 11, color: "#c084fc", fontWeight: 600 }}>Choose new date & time</p>
+ <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }} title="Cancel" style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0, flexShrink: 0 }}>
+ <X size={14} />
+ </button>
+ </div>
+ <input type="datetime-local" value={rescheduleDate} onChange={(e) => setRescheduleDate(e.target.value)}
+ style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "system-ui, sans-serif", marginBottom: 8 }}
  />
  <div style={{ display: "flex", gap: 6 }}>
- <button
- onClick={() => {
- const phone = apt.buyer_phone.replace(/\D/g, "");
- window.open(
- `https://wa.me/${phone.startsWith("6")? phone : "6" + phone}?text=${encodeURIComponent(reminderMsg)}`,
- "_blank",
- "noopener,noreferrer",
+ <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }}
+ style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+ Cancel
+ </button>
+ <button onClick={async () => {
+ if (!rescheduleDate) return;
+ const newDate = new Date(rescheduleDate);
+ const remindAt = new Date(newDate.getTime() - 60 * 60 * 1000).toISOString();
+ await supabase.from("appointments").update({ appointment_date: newDate.toISOString(), status: "rescheduled", remind_at: remindAt, remind_sent: false }).eq("id", apt.id);
+ setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, appointment_date: newDate.toISOString(), status: "rescheduled", remind_at: remindAt, remind_sent: false } : a));
+ setReschedulingAptId(null);
+ setRescheduleDate("");
+ toast.success("Appointment rescheduled!");
+ }}
+ style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.35)", color: "#c084fc", cursor: "pointer" }}>
+ Save New Time
+ </button>
+ </div>
+ </div>
+ )}
+
+ {/* Expand: reminder time picker */}
+ {isReminderPicking && (
+ <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8 }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+ <p style={{ margin: 0, fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>Schedule reminder</p>
+ <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }} title="Cancel" style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0, flexShrink: 0 }}>
+ <X size={14} />
+ </button>
+ </div>
+ <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
+ {[
+ { key: "1h", label: "1h before" },
+ { key: "2h", label: "2h before" },
+ { key: "day_before", label: "Day before 9am" },
+ { key: "two_days", label: "2 days before" },
+ ].map(({ key, label }) => {
+ const rt = calcRemindAt(apt, key);
+ const active = selectedRemindAt && rt.getTime() === selectedRemindAt.getTime();
+ return (
+ <button key={key} onClick={() => setSelectedRemindAt(rt)}
+ style={{ fontSize: 11, padding: "4px 10px", borderRadius: 99, cursor: "pointer",
+ background: active? "rgba(96,165,250,0.15)" : "rgba(255,255,255,0.05)",
+ border: active? "1px solid rgba(96,165,250,0.4)" : "1px solid rgba(255,255,255,0.08)",
+ color: active? "#93c5fd" : "#6b7280" }}>
+ {label}
+ </button>
  );
- setEditingReminder(null);
- }}
- style={{
- fontSize: 10,
- padding: "3px 9px",
- borderRadius: 6,
- background: "rgba(37,211,102,0.1)",
- border: "1px solid rgba(37,211,102,0.2)",
- color: "#4ade80",
- cursor: "pointer",
- }}
- >Send
+ })}
+ </div>
+ <input type="datetime-local"
+ value={selectedRemindAt? selectedRemindAt.toISOString().slice(0, 16) : ""}
+ onChange={(e) => e.target.value && setSelectedRemindAt(new Date(e.target.value))}
+ style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 12, padding: "7px 10px", outline: "none", marginBottom: 8, fontFamily: "inherit", boxSizing: "border-box" }}
+ />
+ <div style={{ display: "flex", gap: 6 }}>
+ <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }}
+ style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+ Cancel
  </button>
- <button
- onClick={() => setEditingReminder(null)}
- style={{
- fontSize: 10,
- padding: "3px 9px",
- borderRadius: 6,
- background: "rgba(255,255,255,0.05)",
- border: "1px solid rgba(255,255,255,0.08)",
- color: "#6b7280",
- cursor: "pointer",
- }}
- >Cancel
+ <button onClick={() => selectedRemindAt && saveReminder(apt, selectedRemindAt)}
+ disabled={!selectedRemindAt || reminderSaving}
+ style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600,
+ background: selectedRemindAt? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.04)",
+ border: selectedRemindAt? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(255,255,255,0.08)",
+ color: selectedRemindAt? "#4ade80" : "#374151",
+ cursor: selectedRemindAt? "pointer" : "not-allowed",
+ opacity: reminderSaving? 0.6 : 1 }}>
+ {reminderSaving? "Saving…" : "Set reminder"}
  </button>
  </div>
  </div>
- ) : (
- <button
- onClick={() => {
- setEditingReminder(apt.id);
- setReminderMsg(defaultReminder);
- }}
- style={{
- fontSize: 10,
- padding: "3px 9px",
- borderRadius: 6,
- background: "rgba(37,211,102,0.1)",
- border: "1px solid rgba(37,211,102,0.2)",
- color: "#4ade80",
- cursor: "pointer",
- }}
- >WA Reminder
+ )}
+
+ {/* Expand: cancel confirmation */}
+ {isCancelConfirm && (
+ <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8 }}>
+ <p style={{ margin: "0 0 8px", fontSize: 12, color: "#f87171" }}>Cancel this appointment?</p>
+ <div style={{ display: "flex", gap: 6 }}>
+ <button onClick={() => setCancelConfirmId(null)}
+ style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+ Keep it
  </button>
- ))}
+ <button onClick={async () => { await updateApptStatus(apt.id, "cancelled"); setCancelConfirmId(null); setBookingDetailId(null); }}
+ style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", cursor: "pointer" }}>
+ Yes, cancel appt
+ </button>
  </div>
+ </div>
+ )}
+ </div>
+ </div>,
+ document.body,
  );
  };
 
  return (
  <div>
- <div
- style={{
- display: "flex",
- alignItems: "center",
- justifyContent: "space-between",
- marginBottom: 16,
- }}
- >
- <p
- style={{
- margin: 0,
- fontSize: 16,
- fontWeight: 600,
- color: "#f1f5f9",
- }}
- >Bookings ({appointments.length})
+ {renderBookingDetailModal()}
+ <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
+ Bookings ({confirmedApts.length})
  </p>
- <div style={{ display: "flex", gap: 6 }}>
- {["confirmed", "pending"].map((s) => {
- const count = appointments.filter((a) => a.status === s).length;
- if (!count) return null;
- const sc = statusColors[s];
- return (
- <span
- key={s}
- style={{
- fontSize: 10,
- padding: "2px 8px",
- borderRadius: 99,
- background: sc.bg,
- border: `1px solid ${sc.border}`,
- color: sc.tx,
- textTransform: "capitalize",
- }}
- >
- {count} {s}
- </span>
- );
- })}
- </div>
- </div>
  {appointments.length === 0 && (
- <div
- style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}
- >
+ <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
  <Phone size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
  <p style={{ margin: 0, fontSize: 13 }}>No bookings yet.</p>
+ <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>Bookings appear when customers book a test drive from your listing.</p>
+ <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer" }}>
+ Share a Listing →
+ </button>
  </div>
  )}
+ {/* Awaiting Confirmation — requests, not yet real bookings */}
+ {pendingApts.length > 0 && (
+ <div style={{ marginBottom: 20 }}>
+ <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
+ <Clock size={11} color="#fbbf24" /> Awaiting Confirmation ({pendingApts.length})
+ </p>
+ <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+ {pendingApts.map(renderApptCard)}
+ </div>
+ </div>
+ )}
+ {/* Today */}
  {todayApts.length > 0 && (
  <div style={{ marginBottom: 20 }}>
- <p
- style={{
- margin: "0 0 8px",
- fontSize: 11,
- fontWeight: 600,
- color: "#fbbf24",
- textTransform: "uppercase",
- letterSpacing: "0.08em",
- display: "flex",
- alignItems: "center",
- gap: 5,
- }}
- >
- <Calendar size={11} />Today ({todayApts.length})
+ <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
+ <Calendar size={11} color="#fbbf24" /> Today ({todayApts.length})
  </p>
  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
  {todayApts.map(renderApptCard)}
  </div>
  </div>
  )}
+ {/* Confirmed Upcoming */}
  {upcomingApts.length > 0 && (
- <div>
- {todayApts.length > 0 && (
- <p
- style={{
- margin: "0 0 8px",
- fontSize: 11,
- fontWeight: 600,
- color: "#374151",
- textTransform: "uppercase",
- letterSpacing: "0.08em",
- }}
- >Upcoming
+ <div style={{ marginBottom: 20 }}>
+ <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#4ade80", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
+ <Check size={11} color="#4ade80" /> Confirmed Upcoming ({upcomingApts.length})
  </p>
- )}
- <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+ <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
  {upcomingApts.map(renderApptCard)}
  </div>
+ </div>
+ )}
+ {/* Past — collapsed by default */}
+ {pastApts.length > 0 && (
+ <div style={{ marginTop: 8 }}>
+ <button
+ onClick={() => setPastOpen((o) =>!o)}
+ style={{ display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", cursor: "pointer", padding: "6px 0", width: "100%" }}
+ >
+ <span style={{ fontSize: 10, fontWeight: 700, color: "#4b5563", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+ Past ({pastApts.length})
+ </span>
+ <span style={{ fontSize: 12, color: "#374151" }}>{pastOpen? "▲" : "▼"}</span>
+ </button>
+ {pastOpen && (
+ <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+ {pastApts.map((apt) => {
+ const car = apt.car_listings;
+ const { dateStr, timeStr } = fmtAptDate(apt.appointment_date);
+ const sc = statusColors[apt.status] || statusColors.pending;
+ const carLabel = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
+ // A past booking left in an open status has no automatic terminal
+ // state — offer the two real outcomes explicitly.
+ const needsOutcome = !["cancelled", "completed", "no_show"].includes(apt.status);
+ return (
+ <div key={apt.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 10, padding: "10px 14px", opacity: 0.65 }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 2 }}>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {apt.buyer_name || "—"}
+ </p>
+ <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
+ {STATUS_LABEL[apt.status] || apt.status}
+ </span>
+ </div>
+ <p style={{ margin: "0 0 2px", fontSize: 12, color: "#6b7280", display: "inline-flex", alignItems: "center", gap: 5 }}>
+ <Calendar size={12} /> {dateStr}{timeStr && ` · ${timeStr}`}
+ </p>
+ {(carLabel || apt.buyer_phone) && (
+ <p style={{ margin: 0, fontSize: 11, color: "#4b5563", display: "inline-flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+ {carLabel}
+ {carLabel && apt.buyer_phone && <span>·</span>}
+ {apt.buyer_phone && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Phone size={11} /> {apt.buyer_phone}</span>}
+ </p>
+ )}
+ {needsOutcome && (
+ <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+ <button
+ onClick={() => setAptStatus(apt, "completed")}
+ style={{ fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 6, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.25)", color: "#4ade80", cursor: "pointer", fontFamily: "inherit" }}
+ >
+ Mark Completed
+ </button>
+ <button
+ onClick={() => setAptStatus(apt, "no_show")}
+ style={{ fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 6, background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.25)", color: "#fb923c", cursor: "pointer", fontFamily: "inherit" }}
+ >
+ No-show
+ </button>
+ </div>
+ )}
+ </div>
+ );
+ })}
+ </div>
+ )}
  </div>
  )}
  </div>
@@ -5159,16 +6079,78 @@ export default function SalesmanPremium() {
  const handleSave = async () => {
  setSettingsSaving(true);
  const phone = "+60" + localPhone.replace(/\D/g, "");
- const terms = {
+ const rest = {
+ city: settingsForm.city || null,
+ state: settingsForm.state || null,
+ location: settingsForm.location || null,
+ instagram: settingsForm.instagram || null,
+ tiktok: settingsForm.tiktok || null,
+ facebook: settingsForm.facebook || null,
+ website: settingsForm.website || null,
+ bio: settingsForm.bio || null,
+ response_time: settingsForm.response_time || null,
+ specializations: settingsForm.specializations,
  deposit_policy: settingsForm.deposit_policy || null,
  deposit_terms: settingsForm.deposit_terms.trim() || null,
  processing_fee: String(settingsForm.processing_fee).trim() === "" ? null : (Number(settingsForm.processing_fee) || 0),
  };
- await supabase.from("profiles").update({ full_name: settingsForm.full_name, whatsapp_number: phone, location: settingsForm.location || null, ...terms }).eq("id", userId);
- setProfile((p) => ({ ...p, full_name: settingsForm.full_name, whatsapp_number: phone, location: settingsForm.location || null, ...terms }));
+ await supabase.from("profiles").update({ full_name: settingsForm.full_name, whatsapp_number: phone, ...rest }).eq("id", userId);
+ setProfile((p) => ({ ...p, full_name: settingsForm.full_name, whatsapp_number: phone, ...rest }));
  setSettingsForm((p) => ({ ...p, whatsapp_number: phone }));
  setSettingsSaving(false);
  toast.success("Profile updated");
+ };
+
+ const removeTag = (i) =>
+ setSettingsForm((p) => ({ ...p, specializations: p.specializations.filter((_, j) => j !== i) }));
+
+ const handleTagKeyDown = (e) => {
+ if (e.key === "Enter" && tagInput.trim()) {
+ e.preventDefault();
+ const val = tagInput.trim();
+ if (!settingsForm.specializations.includes(val)) {
+ setSettingsForm((p) => ({ ...p, specializations: [...p.specializations, val] }));
+ }
+ setTagInput("");
+ }
+ };
+
+ // Send a test message to the salesman's own Telegram chat. Solo Premium
+ // accounts have no bot token of their own, so send-telegram falls back to
+ // the platform bot — the chat id typed here is the only thing to get right.
+ // Saves it first so a test that works is a test of what gets persisted.
+ const testTelegramConnection = async () => {
+ const chatId = (settingsForm.telegram_chat_id || "").trim();
+ if (!chatId) { toast.error("Enter a chat ID first"); return; }
+ setTgTesting(true);
+ try {
+ const { error: chatIdErr } = await supabase.from("profiles").update({ telegram_chat_id: chatId }).eq("id", userId);
+ if (chatIdErr) { toast.error("Could not save chat ID"); return; }
+ const { data: { session } } = await supabase.auth.getSession();
+ const { data } = await supabase.functions.invoke("send-telegram", {
+ body: {
+ dealer_id: getDealerIdFromProfile(profile),
+ channel_id: chatId,
+ message: `Telegram connected! You'll get appointment + booking reminders here. — ${profile?.full_name || "ShiftOS"}`,
+ },
+ headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+ });
+ if (data?.ok) {
+ setProfile((p) => ({ ...p, telegram_chat_id: chatId }));
+ toast.success("Test message sent — check Telegram");
+ } else if (data?.error === "not_started") {
+ toast.error(`Message @${data.bot_username || "the bot"} first, then try again`);
+ } else if (data?.error === "no_token") {
+ toast.error("Telegram isn't set up on this account yet");
+ } else {
+ toast.error(data?.description || "Test failed");
+ }
+ } catch (err) {
+ console.error("testTelegramConnection:", err);
+ toast.error("Network error");
+ } finally {
+ setTgTesting(false);
+ }
  };
 
  const initials = (profile?.full_name || profile?.slug || "S")[0].toUpperCase();
@@ -5225,6 +6207,11 @@ export default function SalesmanPremium() {
  </div>
  </div>
 
+ {/* Viewing availability — buyers can only book the days/times set here */}
+ <div style={{ marginBottom: 24, padding: 16, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
+ <AvailabilityEditor ownerId={userId} dealerId={userId} dark />
+ </div>
+
  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
  <div>
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Full Name</label>
@@ -5240,10 +6227,102 @@ export default function SalesmanPremium() {
  <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Malaysia country code pre-applied. Enter digits only.</p>
  </div>
  <div>
+ <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "inline-flex", alignItems: "center", gap: 5 }}><Send size={11} /> Telegram</label>
+ {profile?.telegram_chat_id
+ ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4ade80" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />Connected</span>
+ : <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4b5563" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4b5563", display: "inline-block" }} />Not set</span>
+ }
+ </div>
+ <input value={settingsForm.telegram_chat_id} onChange={(e) => setSettingsForm((p) => ({ ...p, telegram_chat_id: e.target.value }))} placeholder="Your Telegram chat ID" style={inputStyle} />
+ <button type="button" onClick={testTelegramConnection} disabled={tgTesting || !settingsForm.telegram_chat_id.trim()}
+ style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, padding: "8px 14px", borderRadius: 8, background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.3)", color: "#93c5fd", fontFamily: "inherit", cursor: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? "not-allowed" : "pointer", opacity: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? 0.55 : 1 }}>
+ <Send size={13} /> {tgTesting ? "Testing…" : "Send test message"}
+ </button>
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151", lineHeight: 1.6 }}>Message <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: "#93c5fd", textDecoration: "none" }}>@userinfobot</a> on Telegram, send /start, and paste the Id number here.</p>
+ </div>
+ <div style={{ display: "flex", gap: 10 }}>
+ <div style={{ flex: 1 }}>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>City</label>
+ <input value={settingsForm.city} onChange={(e) => setSettingsForm((p) => ({ ...p, city: e.target.value }))} placeholder="e.g. Petaling Jaya" style={inputStyle} />
+ </div>
+ <div style={{ flex: 1 }}>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>State</label>
+ <select value={settingsForm.state} onChange={(e) => setSettingsForm((p) => ({ ...p, state: e.target.value }))} style={{ ...inputStyle, appearance: "none" }}>
+ <option value="">Select state</option>
+ {["Johor","Kedah","Kelantan","Kuala Lumpur","Labuan","Melaka","Negeri Sembilan","Pahang","Penang","Perak","Perlis","Putrajaya","Sabah","Sarawak","Selangor","Terengganu"].map(s => (
+ <option key={s} value={s}>{s}</option>
+ ))}
+ </select>
+ </div>
+ </div>
+ <div>
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Full Address (for map)</label>
  <input value={settingsForm.location} onChange={(e) => setSettingsForm((p) => ({ ...p, location: e.target.value }))} placeholder="e.g. 12, Jalan Ampang, 50450 Kuala Lumpur" style={inputStyle} />
  <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Shown as a map on your public page so buyers can find you.</p>
  </div>
+ <div>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>IC Number <span style={{ color: "#4b5563" }}>(private, verify only)</span></label>
+ {profile?.ic_hash ? (
+ <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 13px", borderRadius: 8, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)" }}>
+ <ShieldCheck size={15} style={{ color: "#22c55e", flexShrink: 0 }} />
+ <span style={{ fontSize: 13, color: "#e5e7eb", fontWeight: 600 }}>Verified</span>
+ </div>
+ ) : (
+ <button onClick={() => { setIcGateVal(""); setIcGateOpen(true); }}
+ style={{ display: "flex", alignItems: "center", gap: 7, padding: "11px 13px", borderRadius: 8, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", width: "100%" }}>
+ <ShieldCheck size={15} style={{ flexShrink: 0 }} /> Verify your MyKad IC
+ </button>
+ )}
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Stored hashed, never shown in plaintext. Buyers see a verified badge only.</p>
+ </div>
+ {/* Public-profile extras — Premium's own bio/specializations block, not
+ offered to Lite yet. Shown on the public agent page with a Read-more
+ toggle and pill tags, same as the linked-salesman panel. */}
+ <div>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Bio</label>
+ <textarea value={settingsForm.bio} onChange={(e) => setSettingsForm((p) => ({ ...p, bio: e.target.value }))}
+ placeholder="e.g. Specializing in Perodua & Honda, 5 years experience in Klang Valley" rows={4}
+ style={{ ...inputStyle, resize: "vertical" }} />
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Shown below your name on your public page, with a "Read more" toggle.</p>
+ </div>
+ <div>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Response Time</label>
+ <input value={settingsForm.response_time} onChange={(e) => setSettingsForm((p) => ({ ...p, response_time: e.target.value }))} placeholder="e.g. Usually replies within 1 hour" style={inputStyle} />
+ </div>
+ <div>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Specializations</label>
+ {settingsForm.specializations.length > 0 && (
+ <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+ {settingsForm.specializations.map((tag, i) => (
+ <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.2)", color: "#fca5a5", borderRadius: 99, padding: "3px 10px", fontSize: 11, fontWeight: 600 }}>
+ {tag}
+ <button onClick={() => removeTag(i)} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", opacity: 0.7 }}>
+ <X size={10} />
+ </button>
+ </span>
+ ))}
+ </div>
+ )}
+ <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown} placeholder="Type a specialization and press Enter" style={inputStyle} />
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Press Enter to add each tag. Shown as pills on your public profile.</p>
+ </div>
+ {/* Social links */}
+ {[
+ { key: "instagram", label: "Instagram", placeholder: "@yourusername", prefix: "instagram.com/" },
+ { key: "tiktok", label: "TikTok", placeholder: "@yourusername", prefix: "tiktok.com/@" },
+ { key: "facebook", label: "Facebook", placeholder: "username or page name", prefix: "facebook.com/" },
+ { key: "website", label: "Website", placeholder: "https://yoursite.com", prefix: null },
+ ].map(({ key, label, placeholder, prefix }) => (
+ <div key={key}>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{label}</label>
+ <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, overflow: "hidden" }}>
+ {prefix && <span style={{ padding: "10px 10px", fontSize: 11, color: "#4b5563", background: "rgba(255,255,255,0.03)", borderRight: "1px solid rgba(255,255,255,0.08)", whiteSpace: "nowrap", flexShrink: 0 }}>{prefix}</span>}
+ <input value={settingsForm[key]} onChange={(e) => setSettingsForm((p) => ({ ...p, [key]: e.target.value }))} placeholder={placeholder}
+ style={{ ...inputStyle, background: "transparent", border: "none", borderRadius: 0, flex: 1, width: "auto" }} />
+ </div>
+ </div>
+ ))}
  {/* Selling terms — you own these listings, so the buyer's questions (is my
  deposit safe, what else do I pay) land on you, not on a dealer. */}
  <div>
@@ -5292,6 +6371,12 @@ export default function SalesmanPremium() {
  >
  {settingsSaving? "Saving..." : "Save Changes"}
  </button>
+ </div>
+ {/* Joining a dealership is a one-time action, not something that needs a
+     permanent nav slot — it lives here, and /salesman-premium/merge still
+     resolves to this section (see TAB_ALIASES). */}
+ <div id="sp-merge" style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+ {renderMerge()}
  </div>
  </div>
  );
@@ -6064,6 +7149,14 @@ export default function SalesmanPremium() {
      </div>
     )}
 
+    {/* Traffic by platform — which channel (Instagram/Facebook/Direct/…) every
+        listing's views and enquiries actually came from, summed across all cars. */}
+    {Object.keys(channelMap).length > 0 && (
+     <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "16px", marginBottom: 16 }}>
+      <ChannelBreakdown rows={Object.values(channelMap).flat()} metric="views" title="Traffic by Platform" />
+     </div>
+    )}
+
     {commissionDetails.length > 0 && (
      <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
       <div style={{ padding: "11px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
@@ -6084,13 +7177,17 @@ export default function SalesmanPremium() {
  // TOUR 
 
  const TOUR_STEPS = [
- { icon: Sparkles, title: "Welcome to ShiftOS Lite", body: "Quick 30-second tour. Each step takes you to the real panel so you can see it live." },
+ { icon: Sparkles, title: "Welcome to ShiftOS Premium", body: "Quick tour of everything your plan unlocks. Each step takes you to the real panel so you can see it live." },
  { icon: BarChart2, title: "Dashboard", body: "Your command centre — KPIs, stale follow-up nudges, listing performance, and recent activity all in one view." },
  { icon: Car, title: "My Listings", body: "Add your cars here. Each card shows views, WA taps, and a CVR bar. Hot = buyers are clicking. Cold = needs a refresh or price drop." },
  { icon: Users, title: "Leads", body: "Track every buyer: New → Contacted → Test Drive → Won. Heat scores show who needs attention. Ping stale leads straight to WhatsApp." },
- { icon: MessageSquare, title: "Enquiries", body: "Buyers who messaged through your listing cards land here. Reply with templates or convert them into pipeline leads in one tap." },
- { icon: Calendar, title: "Bookings", body: "Viewing appointments appear here. Confirm, cancel, or send a WA reminder without leaving the app." },
- { icon: LinkIcon, title: "Join a Dealership", body: "Have an invite code from your dealer? Enter it here to unlock the full panel — shared stock, team leads, commission tracking and more." },
+ { icon: MessageSquare, title: "Inbox", body: "Two views in one tab. Lead History is every buyer who messaged through your listing cards — reply with templates or convert them into pipeline leads in one tap." },
+ { icon: Calendar, title: "Bookings", body: "The other half of your Inbox. Viewing appointments land here — confirm, reschedule, cancel or send a WA reminder without leaving the app." },
+ { icon: TrendingUp, title: "Analytics", body: "Views, WhatsApp taps and conversion rate per listing, plus your total commission and cars sold — all in one view." },
+ { icon: Banknote, title: "Loans", body: "Compare bank rates for a buyer, submit their loan application, and track approval status — a Premium-only feature." },
+ { icon: Megaphone, title: "Outreach Hub", body: "See which leads have gone cold, then work through them with a guided WhatsApp campaign — one tap per contact. Premium-only." },
+ { icon: LinkIcon, title: "Join a Dealership", body: "Have an invite code from your dealer? Enter it at the bottom of Settings to unlock the full panel — shared stock, team leads, commission tracking and more." },
+ { icon: Settings, title: "Settings", body: "Your public profile, WhatsApp templates and account settings live here." },
  ];
 
  const dismissTour = () => {
@@ -6311,6 +7408,13 @@ export default function SalesmanPremium() {
  <meta name="robots" content="noindex, nofollow" />
  </Helmet>
  <style>{`
+ @keyframes sp-lead-glow {
+ 0% { box-shadow: 0 0 0 0 rgba(59,130,246,0.55); border-color: rgba(59,130,246,0.7); }
+ 70% { box-shadow: 0 0 0 12px rgba(59,130,246,0); border-color: rgba(59,130,246,0.7); }
+ 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); border-color: rgba(255,255,255,0.07); }
+ }
+ .sp-lead-glow { animation: sp-lead-glow 1s ease-out; }
+ @media (prefers-reduced-motion: reduce) { .sp-lead-glow { animation: none; border-color: rgba(59,130,246,0.7); } }
  `}</style>
 
  {/* Nav */}
@@ -6778,63 +7882,44 @@ export default function SalesmanPremium() {
  }}
  >
  {activeTab === "dashboard" && renderDashboard()}
- {activeTab === "listings" && renderListings()}
+ {activeTab === "listings" && (
+  <div>
+   <SubTabs
+    value={listingsSubTab}
+    onChange={setListingsSubTab}
+    items={[
+     { key: "cars", label: "Cars", badge: myListings.length },
+     { key: "addons", label: "Add-ons" },
+    ]}
+   />
+   {listingsSubTab === "addons" ? (
+    <ServicesAddonsTab dealerId={getDealerIdFromProfile(profile)} />
+   ) : renderListings()}
+  </div>
+ )}
  {activeTab === "leads" && renderLeads()}
  {activeTab === "enquiries" && (
   <div>
-   {renderEnquiries()}
-   {appointments.length > 0 && (
-    <div style={{ marginTop: 8 }}>
-     <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "20px 0 10px" }}>
-      <Calendar size={13} color="#4b5563" />
-      <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.1em" }}>Appointments ({appointments.length})</p>
-     </div>
-     {appointments.slice(0, 20).map(apt => {
-      const car = apt.car_listings;
-      const aptDate = apt.appointment_date ? new Date(apt.appointment_date) : null;
-      const dateStr = aptDate && !isNaN(aptDate) ? aptDate.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" }) : "—";
-      const timeStr = aptDate && !isNaN(aptDate) ? aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "";
-      const isToday = aptDate && aptDate.toDateString() === new Date().toDateString();
-      const sc = { confirmed: "#4ade80", pending: "#fbbf24", cancelled: "#f87171", rescheduled: "#c084fc" }[apt.status] || "#fbbf24";
-      return (
-       <div key={apt.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px", marginBottom: 8 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 3 }}>
-           <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{apt.buyer_name || "—"}</p>
-           {isToday && <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 99, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd" }}>Today</span>}
-           <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 99, background: `${sc}18`, border: `1px solid ${sc}40`, color: sc }}>{apt.status || "pending"}</span>
-          </div>
-          {car && <p style={{ margin: "0 0 3px", fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
-          <p style={{ margin: 0, fontSize: 11, color: "#9ca3af" }}>{dateStr}{timeStr ? ` · ${timeStr}` : ""}</p>
-         </div>
-         {apt.buyer_phone && (
-          <a
-           href={`https://wa.me/${apt.buyer_phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${apt.buyer_name || ""}! Reminder: your appointment is on ${dateStr}${timeStr ? ` at ${timeStr}` : ""}. See you then!`)}`}
-           target="_blank"
-           rel="noopener noreferrer"
-           style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 7, background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", color: "#4ade80", fontSize: 11, fontWeight: 600, textDecoration: "none", flexShrink: 0 }}
-          >
-           <Phone size={11} />
-           WA
-          </a>
-         )}
-        </div>
-        {apt.notes && <p style={{ margin: "8px 0 0", fontSize: 11, color: "#6b7280", fontStyle: "italic" }}>{apt.notes}</p>}
-       </div>
-      );
-     })}
-    </div>
-   )}
+   {/* Bookings and Lead History are two views of the same inbox, so they share
+       one tab. This replaced a read-only duplicate of the appointments list
+       that used to sit under the enquiries feed — renderBookings() is the
+       real, interactive board. */}
+   <SubTabs
+    value={inboxSubTab}
+    onChange={setInboxSubTab}
+    items={[
+     { key: "bookings", label: "Bookings", badge: pendingBookingsCount, tourId: "bookings" },
+     { key: "enquiries", label: "Lead History", badge: newEnquiriesCount },
+    ]}
+   />
+   {inboxSubTab === "enquiries" ? renderEnquiries() : renderBookings()}
   </div>
  )}
- {activeTab === "bookings" && renderBookings()}
  {activeTab === "analytics" && renderAnalytics()}
  {activeTab === "loans" && renderLoans()}
  {activeTab === "outreach" && showOutreach && (
  <OutreachHub dealerId={profile?.dealer_id} salesmanId={userId} />
  )}
- {activeTab === "merge" && renderMerge()}
  {activeTab === "settings" && renderSettings()}
  </div>
  </div>
@@ -6870,6 +7955,231 @@ export default function SalesmanPremium() {
  {renderNotifPanel()}
  {renderCarDetailPopup()}
  {renderTour()}
+
+ {/* ── Test drive outcome ── advanceLeadStage sets testDriveConfirm and
+ returns, so WITHOUT this modal a lead sitting at test_drive could never
+ be advanced at all: the setter fired and nothing ever rendered it. */}
+ {testDriveConfirm && (() => {
+ const { lead: tdLead, nextStage: tdNext } = testDriveConfirm;
+ const car = tdLead.car_listings;
+ const carName = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
+ const dismiss = () => setTestDriveConfirm(null);
+ return (
+ <div onClick={dismiss} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.72)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+ <div onClick={(e) => e.stopPropagation()} style={{ background: "#0d1117", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, padding: "24px 24px 36px", border: "1px solid rgba(255,255,255,0.08)", borderBottom: "none" }}>
+ <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.25)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+ <Car size={22} style={{ color: "#93c5fd" }} />
+ </div>
+ <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>How did the test drive go?</p>
+ <p style={{ margin: "0 0 24px", fontSize: 13, color: "#6b7280" }}>
+ {tdLead.buyer_name || "Buyer"} · {carName || "no car linked"}
+ </p>
+ <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+ <button
+ onClick={() => { dismiss(); advanceLeadStage(tdLead, tdNext, true); }}
+ style={{ width: "100%", padding: "14px 16px", borderRadius: 12, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.3)", fontSize: 14, fontWeight: 600, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 12, fontFamily: "inherit" }}
+ >
+ <ThumbsUp size={20} style={{ flexShrink: 0, color: "#f87171" }} />
+ <div>
+ <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9" }}>They're interested — move forward</p>
+ <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}>Advance to {(tdNext || "").replace(/_/g, " ")}</p>
+ </div>
+ </button>
+ <button
+ onClick={() => { dismiss(); setLostPromptId(tdLead.id); }}
+ style={{ width: "100%", padding: "14px 16px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 14, fontWeight: 600, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 12, fontFamily: "inherit" }}
+ >
+ <ThumbsDown size={20} style={{ flexShrink: 0, color: "#9ca3af" }} />
+ <div>
+ <p style={{ margin: 0, fontWeight: 700, color: "#9ca3af" }}>Not interested</p>
+ <p style={{ margin: "2px 0 0", fontSize: 12, color: "#4b5563" }}>Mark as lost</p>
+ </div>
+ </button>
+ <button onClick={dismiss} style={{ width: "100%", padding: "10px", borderRadius: 10, background: "transparent", border: "none", color: "#4b5563", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+ Cancel
+ </button>
+ </div>
+ </div>
+ </div>
+ );
+ })()}
+
+ {/* ── Confirm booking ── prefilled, editable WhatsApp message. Both
+ buttons persist the confirm + lead advance before any WA handoff. */}
+ {confirmBookingApt && (
+ <div
+ onClick={() => { setConfirmBookingApt(null); setConfirmBookingMsg(""); }}
+ style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+ >
+ <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 14, width: "100%", maxWidth: 440, padding: 22, maxHeight: "90vh", overflowY: "auto" }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+ <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Confirm booking</p>
+ <button onClick={() => { setConfirmBookingApt(null); setConfirmBookingMsg(""); }} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 2 }}><X size={18} /></button>
+ </div>
+ <p style={{ margin: "0 0 14px", fontSize: 12, color: "#9ca3af", lineHeight: 1.6 }}>
+ Confirms the viewing, adds {confirmBookingApt.buyer_name || "this buyer"} to your pipeline at Viewing Booked, and sets a Telegram reminder 1 hour before.
+ </p>
+ <label style={{ display: "block", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b7280", marginBottom: 7 }}>Message to buyer</label>
+ <textarea
+ value={confirmBookingMsg}
+ onChange={(e) => setConfirmBookingMsg(e.target.value)}
+ rows={5}
+ style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, lineHeight: 1.6, padding: "10px 12px", outline: "none", boxSizing: "border-box", fontFamily: "inherit", resize: "vertical" }}
+ />
+ <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+ <button
+ onClick={moveConfirmBookingToPipeline}
+ style={{ flex: 1, fontSize: 12, fontWeight: 600, padding: "11px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "#cbd5e1", cursor: "pointer", fontFamily: "inherit" }}
+ >
+ Confirm only
+ </button>
+ <button
+ onClick={sendConfirmBooking}
+ disabled={!confirmBookingApt.buyer_phone}
+ style={{ flex: 2, fontSize: 12, fontWeight: 700, padding: "11px", borderRadius: 8, background: "#22c55e", border: "none", color: "#04210f", cursor: confirmBookingApt.buyer_phone? "pointer" : "not-allowed", opacity: confirmBookingApt.buyer_phone? 1 : 0.45, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+ >
+ <Send size={13} /> Confirm + send WhatsApp
+ </button>
+ </div>
+ </div>
+ </div>
+ )}
+
+ {/* ── Seller-initiated booking ── fired when a lead is moved into the
+ booking stage from the pipeline. Creates a CONFIRMED appointment. */}
+ {sellerBookingLead && (
+ <div
+ onClick={() => { if (!sellerBookingSaving) { setSellerBookingLead(null); setSellerBookingDate(""); } }}
+ style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+ >
+ <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 14, width: "100%", maxWidth: 400, padding: 22 }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+ <div style={{ width: 34, height: 34, borderRadius: 9, background: "rgba(96,165,250,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+ <Calendar size={17} style={{ color: "#93c5fd" }} />
+ </div>
+ <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Book a viewing</p>
+ </div>
+ <p style={{ margin: "0 0 16px", fontSize: 12, color: "#9ca3af", lineHeight: 1.6 }}>
+ Pick the slot you agreed with {sellerBookingLead.buyer_name || "this buyer"}. It goes straight into Confirmed Upcoming with a reminder 1 hour before.
+ </p>
+ <label style={{ display: "block", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b7280", marginBottom: 7 }}>Date &amp; time</label>
+ <input
+ type="datetime-local"
+ value={sellerBookingDate}
+ onChange={(e) => setSellerBookingDate(e.target.value)}
+ style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#e5e7eb", fontSize: 14, padding: "11px 13px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+ />
+ <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+ <button
+ onClick={() => { setSellerBookingLead(null); setSellerBookingDate(""); }}
+ disabled={sellerBookingSaving}
+ style={{ flex: 1, fontSize: 13, fontWeight: 600, padding: "11px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", fontFamily: "inherit" }}
+ >
+ Cancel
+ </button>
+ <button
+ onClick={confirmSellerBooking}
+ disabled={sellerBookingSaving ||!sellerBookingDate}
+ style={{ flex: 2, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 8, background: "#2563eb", border: "none", color: "#fff", cursor: (sellerBookingSaving ||!sellerBookingDate)? "not-allowed" : "pointer", opacity: (sellerBookingSaving ||!sellerBookingDate)? 0.5 : 1, fontFamily: "inherit" }}
+ >
+ {sellerBookingSaving? "Booking…" : "Confirm booking"}
+ </button>
+ </div>
+ </div>
+ </div>
+ )}
+
+ {/* ── Mark won ── a win flips the car to sold and moves money, so it is a
+ deliberate confirm rather than the undo-timer used for other stages. */}
+ {wonPrompt && (
+ <div
+ onClick={() => { if (!wonSaving) setWonPrompt(null); }}
+ style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+ >
+ <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 14, width: "100%", maxWidth: 420, padding: 24 }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+ <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(34,197,94,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+ <CheckCircle2 size={18} style={{ color: "#4ade80" }} />
+ </div>
+ <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>Mark this deal won?</p>
+ </div>
+ <p style={{ margin: "0 0 6px", fontSize: 13, color: "#cbd5e1", lineHeight: 1.6 }}>
+ <strong style={{ color: "#f1f5f9" }}>{wonPrompt.lead.buyer_name || "This buyer"}</strong>
+ {wonPrompt.lead.car_listings
+ ? <> — {[wonPrompt.lead.car_listings.year, wonPrompt.lead.car_listings.brand, wonPrompt.lead.car_listings.model].filter(Boolean).join(" ")}</>
+ : null}
+ </p>
+ <p style={{ margin: "0 0 18px", fontSize: 12, color: "#9ca3af", lineHeight: 1.6 }}>
+ {wonPrompt.lead.car_listing_id
+ ? "The car is marked sold and removed from the marketplace, your sold count and commission update, and the handover checklist is created."
+ : "No car is linked to this lead, so nothing will be marked sold — only the lead closes."}
+ </p>
+ <div style={{ display: "flex", gap: 8 }}>
+ <button
+ onClick={() => setWonPrompt(null)}
+ disabled={wonSaving}
+ style={{ flex: 1, fontSize: 13, fontWeight: 600, padding: "11px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", fontFamily: "inherit" }}
+ >
+ Not yet
+ </button>
+ <button
+ onClick={handleMarkWon}
+ disabled={wonSaving}
+ style={{ flex: 2, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 8, background: "#22c55e", border: "none", color: "#04210f", cursor: wonSaving? "not-allowed" : "pointer", opacity: wonSaving? 0.6 : 1, fontFamily: "inherit" }}
+ >
+ {wonSaving? "Saving…" : "Yes, mark won"}
+ </button>
+ </div>
+ </div>
+ </div>
+ )}
+
+ {/* IC verify — voluntary, opened from Settings. Stored HASHED (set_my_ic),
+ never plaintext. Unlike Lite this is never force-opened; always dismissable. */}
+ {icGateOpen && (
+ <div
+ onClick={() => !icGateSaving && setIcGateOpen(false)}
+ style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px" }}
+ >
+ <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 12, width: "90%", maxWidth: 420, padding: 24 }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+ <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(220,38,38,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+ <ShieldCheck size={18} style={{ color: "#f87171" }} />
+ </div>
+ <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Verify your IC</p>
+ </div>
+ <p style={{ margin: "0 0 16px", fontSize: 13, color: "#9ca3af", lineHeight: 1.6 }}>
+ Buyers need to know they're dealing with a real, accountable seller. Enter your MyKad IC once — it's shown as a verified badge on your public page, never as digits.
+ </p>
+ <label style={{ display: "block", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b7280", marginBottom: 7 }}>IC Number (MyKad)</label>
+ <input
+ autoFocus
+ value={icGateVal}
+ onChange={(e) => setIcGateVal(e.target.value.replace(/[^\d-]/g, ""))}
+ placeholder="901231-10-1234"
+ maxLength={14}
+ onKeyDown={(e) => { if (e.key === "Enter") saveIcAndCloseGate(); }}
+ style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#e5e7eb", fontSize: 15, padding: "11px 13px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+ />
+ <p style={{ margin: "7px 0 0", fontSize: 11, color: "#6b7280" }}>12 digits · stored hashed (never in plaintext), verification only.</p>
+ <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+ <button
+ onClick={saveIcAndCloseGate}
+ disabled={icGateSaving || icGateVal.replace(/\D/g, "").length !== 12}
+ style={{ flex: 1, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", opacity: icGateSaving || icGateVal.replace(/\D/g, "").length !== 12 ? 0.5 : 1 }}
+ >
+ {icGateSaving ? "Verifying…" : "Verify & continue"}
+ </button>
+ <button
+ onClick={() => !icGateSaving && setIcGateOpen(false)}
+ style={{ fontSize: 13, fontWeight: 600, padding: "11px 16px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}
+ >
+ Later
+ </button>
+ </div>
+ </div>
+ </div>
+ )}
 
  {/* Broadcast modal */}
  {broadcastCar &&

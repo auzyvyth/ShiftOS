@@ -469,15 +469,12 @@ const TEAM_ROLES = [
 
 const PLAN_META = {
   salesman_lite: { to: "/salesman-onboarding/lite",    variant: "outline" },
-  salesman_full: { to: "/salesman-onboarding/premium", variant: "primary", soon: true },
+  salesman_full: { to: "/salesman-onboarding/premium", variant: "primary" },
   dealer_starter:{ to: "/dealer-onboarding/starter",   variant: "outline" },
   dealer_growth: { to: "/dealer-onboarding/growth",    variant: "primary", popular: true },
   dealer_pro:    { to: "/dealer-onboarding/pro",       variant: "gold" },
 };
 
-// Salesman Premium is not launched yet — its card is shown as "Coming soon"
-// (disabled CTA) via PLAN_META.salesman_full.soon. Drop that flag to go live, or
-// remove "salesman_full" here to hide the card entirely.
 const SALESMAN_PLANS = ["salesman_lite", "salesman_full"];
 const DEALER_PLANS   = ["dealer_starter", "dealer_growth", "dealer_pro"];
 const WA = "https://wa.me/601111521742?text=Hi%2C%20I%27m%20interested%20in%20ShiftOS%20for%20my%20dealership";
@@ -666,8 +663,6 @@ function PriceCard({ planKey }) {
           </li>
         ))}
       </ul>
-      {/* Premium not launched yet — disabled "Coming soon" CTA replaces the
-          onboarding link. Remove PLAN_META.<plan>.soon to restore the button. */}
       {isSoon ? (
         <span aria-disabled="true" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 26px", borderRadius: 11, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#6b7280", fontWeight: 700, fontSize: 14, cursor: "not-allowed", letterSpacing: "0.04em" }}>{t("shiftos.pricing.comingSoon", "Coming soon")}</span>
       ) : (
