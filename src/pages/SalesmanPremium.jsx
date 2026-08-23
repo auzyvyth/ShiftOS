@@ -70,6 +70,7 @@ import {
  Store,
  Camera,
  Zap,
+ MessageCircle,
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
 import OutreachHub from "../components/crm/OutreachHub";
@@ -206,6 +207,8 @@ const preciseUntil = (iso, now = Date.now(), L = {}) => {
 const timeLabels = { ago: "ago", justNow: "just now", in: "in", now: "now" };
 // One neutral chip for a lead whose stage doesn't map to a known hue.
 const STAGE_NEUTRAL = { bg: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.12)", tx: "#cbd5e1" };
+// Booking status labels for the Bookings tab.
+const STATUS_LABEL = { pending: "Pending", confirmed: "Confirmed", rescheduled: "Rescheduled", cancelled: "Cancelled", completed: "Completed", no_show: "No-show" };
 
 const LEAD_STAGES = [
  "new",
@@ -5502,484 +5505,500 @@ export default function SalesmanPremium() {
  // RENDER BOOKINGS 
 
  const renderBookings = () => {
- const isToday = (iso) => {
+ const aptIsToday = (iso) => {
  if (!iso) return false;
- const d = new Date(iso);
- const t = new Date();
- return (
- d.getDate() === t.getDate() &&
- d.getMonth() === t.getMonth() &&
- d.getFullYear() === t.getFullYear()
- );
+ const d = new Date(iso), t = new Date();
+ return d.getDate() === t.getDate() && d.getMonth() === t.getMonth() && d.getFullYear() === t.getFullYear();
  };
- const isNew = (iso) =>
- iso && Date.now() - new Date(iso).getTime() < 2 * 60 * 60 * 1000;
+ const aptIsNew = (iso) => iso && Date.now() - new Date(iso).getTime() < 2 * 60 * 60 * 1000;
 
- // Pending bookings are REQUESTS, not commitments — a window-shopper tap
- // shouldn't sit on the calendar next to real confirmed viewings. They get
- // their own always-visible section (any date); only once confirmed do they
- // join Today/Upcoming/Past. Previously everything landed in one list and
- // "Upcoming" was literally `!isToday`, so past bookings were listed as
- // upcoming forever.
+ const statusColors = {
+ pending: { bg: "rgba(251,191,36,0.12)", border: "rgba(251,191,36,0.3)", tx: "#fbbf24" },
+ confirmed: { bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.3)", tx: "#4ade80" },
+ rescheduled: { bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.3)", tx: "#c084fc" },
+ cancelled: { bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.3)", tx: "#f87171" },
+ completed: { bg: "rgba(107,114,128,0.12)", border: "rgba(107,114,128,0.3)", tx: "#9ca3af" },
+ no_show: { bg: "rgba(251,146,60,0.12)", border: "rgba(251,146,60,0.3)", tx: "#fb923c" },
+ };
+
+ const setAptStatus = async (apt, status) => {
+ const { error } = await supabase.from("appointments").update({ status }).eq("id", apt.id);
+ if (error) { toast.error("Failed to update booking"); return; }
+ setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, status } : a));
+ };
+
+ const buildReminderMessage = (apt) => {
+ const aptDate = new Date(apt.appointment_date);
+ const dateStr = aptDate.toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" });
+ const timeStr = aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" });
+ return `Hi ${apt.buyer_name || ""}! Just a reminder for your appointment on ${dateStr}${timeStr? ` at ${timeStr}` : ""}. See you then! 😊`;
+ };
+
+ const fmtAptDate = (iso) => {
+ if (!iso) return { dateStr: "—", timeStr: "" };
+ const d = new Date(iso);
+ if (isNaN(d)) return { dateStr: "—", timeStr: "" };
+ return {
+ dateStr: d.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" }),
+ timeStr: d.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }),
+ };
+ };
+
  const asc = (a, b) => new Date(a.appointment_date) - new Date(b.appointment_date);
  const newestBooked = (a, b) => new Date(b.created_at) - new Date(a.created_at);
  const newestApt = (a, b) => new Date(b.appointment_date) - new Date(a.appointment_date);
+
+ // Pending bookings are requests, not commitments yet — a window-shopper tap
+ // shouldn't sit on the calendar next to real confirmed viewings. They get
+ // their own always-visible section (any date); only once confirmed do they
+ // join Today/Upcoming/Past.
  const pendingApts = appointments.filter((a) => a.status === "pending").sort(newestBooked);
  const confirmedApts = appointments.filter((a) => a.status!== "pending" && a.status!== "cancelled");
- const todayApts = confirmedApts.filter((a) => isToday(a.appointment_date)).sort(asc);
+ const todayApts = confirmedApts.filter((a) => aptIsToday(a.appointment_date)).sort(asc);
  const upcomingApts = confirmedApts.filter((a) => {
  if (!a.appointment_date) return false;
  const d = new Date(a.appointment_date);
- return!isNaN(d) &&!isToday(a.appointment_date) && d > new Date(nowTick);
- }).sort(asc);
+ return!isNaN(d) &&!aptIsToday(a.appointment_date) && d > new Date(nowTick);
+ }).sort(newestBooked);
  const pastApts = confirmedApts.filter((a) => {
  if (!a.appointment_date) return false;
  const d = new Date(a.appointment_date);
- return!isNaN(d) &&!isToday(a.appointment_date) && d < new Date(nowTick);
+ return!isNaN(d) &&!aptIsToday(a.appointment_date) && d < new Date(nowTick);
  }).sort(newestApt);
 
- const statusColors = {
- confirmed: {
- bg: "rgba(34,197,94,0.12)",
- border: "rgba(34,197,94,0.3)",
- tx: "#4ade80",
- },
- pending: {
- bg: "rgba(251,191,36,0.12)",
- border: "rgba(251,191,36,0.3)",
- tx: "#fbbf24",
- },
- cancelled: {
- bg: "rgba(239,68,68,0.12)",
- border: "rgba(239,68,68,0.3)",
- tx: "#f87171",
- },
- rescheduled: {
- bg: "rgba(167,139,250,0.12)",
- border: "rgba(167,139,250,0.3)",
- tx: "#c084fc",
- },
- completed: {
- bg: "rgba(107,114,128,0.12)",
- border: "rgba(107,114,128,0.3)",
- tx: "#9ca3af",
- },
- no_show: {
- bg: "rgba(251,146,60,0.12)",
- border: "rgba(251,146,60,0.3)",
- tx: "#fb923c",
- },
+ const calcRemindAt = (apt, offsetKey) => {
+ const aptDate = new Date(apt.appointment_date);
+ if (offsetKey === "day_before") {
+ const d = new Date(aptDate); d.setDate(d.getDate() - 1); d.setHours(9, 0, 0, 0); return d;
+ }
+ if (offsetKey === "two_days") {
+ const d = new Date(aptDate); d.setDate(d.getDate() - 2); d.setHours(9, 0, 0, 0); return d;
+ }
+ const mins = { "1h": -60, "2h": -120 };
+ return new Date(aptDate.getTime() + (mins[offsetKey]?? -60) * 60000);
+ };
+
+ const saveReminder = async (apt, remindAt) => {
+ setReminderSaving(true);
+ const { error } = await supabase.from("appointments").update({ remind_at: remindAt.toISOString(), remind_sent: false }).eq("id", apt.id);
+ setReminderSaving(false);
+ if (error) { toast.error("Couldn't set the reminder. Try again."); return; }
+ setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, remind_at: remindAt.toISOString(), remind_sent: false } : a));
+ setReminderPickerAptId(null);
+ setSelectedRemindAt(null);
+ toast.success(`Reminder set — fires ${remindAt.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}`);
+ };
+
+ const clearReminder = async (apt) => {
+ await supabase.from("appointments").update({ remind_at: null, remind_sent: false }).eq("id", apt.id);
+ setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, remind_at: null } : a));
  };
 
  const renderApptCard = (apt) => {
  const car = apt.car_listings;
- const aptDate = apt.appointment_date
-? new Date(apt.appointment_date)
- : null;
- const dateStr =
- aptDate &&!isNaN(aptDate)
-? aptDate.toLocaleDateString("en-MY", {
- weekday: "short",
- day: "numeric",
- month: "short",
- year: "numeric",
- })
- : "—";
- const timeStr =
- aptDate &&!isNaN(aptDate)
-? aptDate.toLocaleTimeString("en-MY", {
- hour: "2-digit",
- minute: "2-digit",
- })
- : "";
- const defaultReminder = `Hi ${apt.buyer_name || ""}! Just a reminder for your appointment on ${dateStr}${timeStr? ` at ${timeStr}` : ""}. See you then! `;
+ const { dateStr, timeStr } = fmtAptDate(apt.appointment_date);
  const sc = statusColors[apt.status] || statusColors.pending;
+ const isRescheduled = apt.status === "rescheduled";
+ const isFuture = apt.appointment_date && new Date(apt.appointment_date) > new Date(nowTick);
+ const carTitle = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : "No car linked";
+ const carPrice = car?.selling_price? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
+ const initials = (apt.buyer_name || "?").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+ const phone = (apt.buyer_phone || "").replace(/\D/g, "");
+ const canConfirm = apt.status!== "confirmed" && apt.status!== "cancelled" && apt.status!== "completed";
 
  return (
- <div
- key={apt.id}
- style={{
- background: "#0d1117",
- border: "1px solid rgba(255,255,255,0.07)",
- borderRadius: 10,
- padding: "12px 14px",
- }}
- >
- <div
- style={{
- display: "flex",
- alignItems: "flex-start",
- justifyContent: "space-between",
- gap: 8,
- marginBottom: 2,
- }}
- >
- <div
- style={{
- display: "flex",
- alignItems: "center",
- gap: 6,
- flex: 1,
- minWidth: 0,
- }}
- >
- <p
- style={{
- margin: 0,
- fontSize: 13,
- fontWeight: 600,
- color: "#e5e7eb",
- overflow: "hidden",
- textOverflow: "ellipsis",
- whiteSpace: "nowrap",
- }}
- >
- {apt.buyer_name || "—"}
- </p>
- {isNew(apt.created_at) && (
- <span
- style={{
- fontSize: 9,
- padding: "1px 5px",
- borderRadius: 99,
- background: "rgba(96,165,250,0.15)",
- border: "1px solid rgba(96,165,250,0.3)",
- color: "#93c5fd",
- flexShrink: 0,
- letterSpacing: "0.05em",
- }}
- >NEW
- </span>
+ <div key={apt.id} style={{ background: "#1b2431", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, overflow: "hidden" }}>
+ <div style={{ padding: "12px 14px 0" }}>
+ <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+ <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(96,165,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 600, color: "#93c5fd" }}>
+ {initials}
+ </div>
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{apt.buyer_name || "Unknown Buyer"}</p>
+ {aptIsNew(apt.created_at) && (
+ <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.35)", color: "#f87171", flexShrink: 0 }}>NEW</span>
  )}
  </div>
- <span
- style={{
- fontSize: 10,
- padding: "2px 7px",
- borderRadius: 99,
- flexShrink: 0,
- background: sc.bg,
- border: `1px solid ${sc.border}`,
- color: sc.tx,
- textTransform: "capitalize",
- }}
- >
- {apt.status}
+ <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize", flexShrink: 0 }}>
+ {STATUS_LABEL[apt.status] || apt.status}
  </span>
  </div>
- {apt.created_at && (
- <p style={{ margin: "0 0 4px", fontSize: 10, color: "#374151" }}>Booked {timeAgo(apt.created_at)} ·{" "}
- {new Date(apt.created_at).toLocaleDateString("en-MY", {
- day: "numeric",
- month: "short",
- year: "numeric",
- })}
- </p>
+ {(carTitle || carPrice) && (
+ <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 3, gap: 8 }}>
+ <p style={{ margin: 0, fontSize: 12, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carTitle}</p>
+ {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#f8fafc", flexShrink: 0 }}>{carPrice}</p>}
+ </div>
  )}
- <p
- style={{
- margin: "0 0 2px",
- fontSize: 12,
- fontWeight: 600,
- color: "#93c5fd",
- }}
- >
- {dateStr}
- {timeStr && ` · ${timeStr}`}
- </p>
- {car && (
- <p style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}>
- {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
- </p>
- )}
- {apt.buyer_phone && (
- <p style={{ margin: "0 0 6px", fontSize: 11, color: "#4b5563" }}>
- {apt.buyer_phone}
- </p>
- )}
- {apt.notes && (
- <p
- style={{
- margin: "0 0 6px",
- fontSize: 10,
- color: "#4b5563",
- fontStyle: "italic",
- }}
- >
- "{apt.notes}"
- </p>
- )}
- {/* status actions — the confirm path also creates/advances the
- pipeline lead and arms the 1h Telegram reminder, so a confirmed
- booking can never sit outside the pipeline. */}
- <div
- style={{
- display: "flex",
- gap: 5,
- flexWrap: "wrap",
- marginBottom: apt.buyer_phone? 6 : 0,
- }}
- >
- {apt.status!== "confirmed" && apt.status!== "cancelled" && apt.status!== "completed" && (
- <>
- <button
- onClick={() => openConfirmBookingModal(apt)}
- title="Confirm this booking and message the buyer on WhatsApp"
- style={{
- fontSize: 10,
- padding: "2px 8px",
- borderRadius: 5,
- background: "rgba(34,197,94,0.08)",
- border: "1px solid rgba(34,197,94,0.2)",
- color: "#4ade80",
- cursor: "pointer",
- }}
- >Confirm + WA
+ </div>
+ </div>
+
+ {/* Date line — the one highlighted data element on the card */}
+ <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+ <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: isRescheduled? "#c084fc" : "#bfdbfe", padding: "4px 10px", borderRadius: 7, background: isRescheduled? "rgba(167,139,250,0.12)" : "rgba(96,165,250,0.12)", border: `1px solid ${isRescheduled? "rgba(167,139,250,0.35)" : "rgba(96,165,250,0.28)"}` }}>
+ <Calendar size={13} /> {dateStr}{timeStr? ` · ${timeStr}` : ""}
+ </span>
+ {isFuture && <span style={{ fontSize: 11, fontWeight: 600, color: "#4ade80" }}>{preciseUntil(apt.appointment_date, nowTick, timeLabels)}</span>}
+ {apt.remind_at &&!apt.remind_sent && <Bell size={12} color="#fbbf24" />}
+ </div>
+ </div>
+
+ {/* Action row — primary CTA + call + ··· details */}
+ <div style={{ display: "flex", gap: 6, padding: "0 14px 12px" }}>
+ {canConfirm && apt.buyer_phone && (
+ <button onClick={() => openConfirmBookingModal(apt)} title="Confirm this booking and message the buyer on WhatsApp"
+ style={{ flex: 1, fontSize: 11, fontWeight: 700, padding: "6px 12px", borderRadius: 7, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.38)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+ <Check size={13} /> Confirm Booking
  </button>
- <button
- onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }}
- title="Mark confirmed without messaging"
- style={{
- fontSize: 10,
- padding: "2px 8px",
- borderRadius: 5,
- background: "rgba(255,255,255,0.05)",
- border: "1px solid rgba(255,255,255,0.12)",
- color: "#cbd5e1",
- cursor: "pointer",
- }}
- >Confirm only
- </button>
- </>
  )}
- <button
- onClick={() => setBookingDetailId(apt.id)}
- title="Booking details — reschedule, reminders, cancel"
- style={{
- fontSize: 10,
- padding: "2px 8px",
- borderRadius: 5,
- background: "rgba(255,255,255,0.04)",
- border: "1px solid rgba(255,255,255,0.1)",
- color: "#9ca3af",
- cursor: "pointer",
- }}
- >Details
+ {canConfirm &&!apt.buyer_phone && (
+ <button onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }} title="Mark appointment as confirmed"
+ style={{ flex: 1, fontSize: 11, fontWeight: 700, padding: "6px 12px", borderRadius: 7, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.38)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+ <Check size={13} /> Confirm Booking
+ </button>
+ )}
+ {apt.status === "confirmed" && apt.buyer_phone && (
+ <button onClick={() => {
+ const p = apt.buyer_phone.replace(/\D/g, "");
+ const msg = buildReminderMessage(apt);
+ window.location.href = `https://wa.me/${p.startsWith("6")? p : "6" + p}?text=${encodeURIComponent(msg)}`;
+ }} title="Send WhatsApp reminder message to buyer"
+ style={{ flex: 1, fontSize: 11, fontWeight: 600, padding: "6px 12px", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.28)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+ <MessageCircle size={13} /> Message
+ </button>
+ )}
+ {phone && (
+ <a href={`tel:${phone}`} title="Call" aria-label="Call buyer"
+ style={{ flexShrink: 0, fontSize: 11, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
+ <Phone size={13} />
+ </a>
+ )}
+ <button onClick={() => setBookingDetailId(apt.id)} title="Booking details" aria-label="Booking details"
+ style={{ flexShrink: 0, fontSize: 13, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", letterSpacing: "0.05em", lineHeight: 1 }}>
+ ···
  </button>
  </div>
- {/* WA reminder */}
- {apt.buyer_phone &&
- (editingReminder === apt.id? (
- <div style={{ marginTop: 4 }}>
- <textarea
- value={reminderMsg}
- onChange={(e) => setReminderMsg(e.target.value)}
- rows={3}
- style={{
- width: "100%",
- background: "rgba(255,255,255,0.04)",
- border: "1px solid rgba(255,255,255,0.1)",
- borderRadius: 7,
- color: "#e5e7eb",
- fontSize: 11,
- padding: "8px 10px",
- outline: "none",
- boxSizing: "border-box",
- fontFamily: "system-ui, sans-serif",
- resize: "vertical",
- lineHeight: 1.5,
- marginBottom: 6,
- }}
+ </div>
+ );
+ };
+
+ // Full booking detail popup — opened from a card's ··· button. Holds the car
+ // image + VIN + notes and the secondary actions (reschedule / set reminder /
+ // cancel) so the card itself stays compact. Portal + body-scroll-lock per the
+ // overlay rules; tapping the backdrop or × closes it.
+ const secBtn = { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 0", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
+ const renderBookingDetailModal = () => {
+ const apt = appointments.find((a) => a.id === bookingDetailId);
+ if (!apt) return null;
+ const car = apt.car_listings;
+ const { dateStr, timeStr } = fmtAptDate(apt.appointment_date);
+ const sc = statusColors[apt.status] || statusColors.pending;
+ const isRescheduling = reschedulingAptId === apt.id;
+ const isReminderPicking = reminderPickerAptId === apt.id;
+ const isCancelConfirm = cancelConfirmId === apt.id;
+ const notCancelled = apt.status!== "cancelled" && apt.status!== "completed";
+ const anyExpander = isRescheduling || isReminderPicking || isCancelConfirm;
+ const carImg = Array.isArray(car?.images)? car.images[0] : null;
+ const carTitle = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : "No car linked";
+ const carVariant = car?.variant || "";
+ const carVin = car?.vin_number || car?.plate_number || "";
+ const carPrice = car?.selling_price? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
+ const isFuture = apt.appointment_date && new Date(apt.appointment_date) > new Date(nowTick);
+ const close = () => { setBookingDetailId(null); setReschedulingAptId(null); setReminderPickerAptId(null); setCancelConfirmId(null); setRescheduleDate(""); setSelectedRemindAt(null); };
+
+ return createPortal(
+ <div onClick={close} style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(3px)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+ <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: "92vh", overflowY: "auto", background: "#1b2431", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "16px 16px 0 0", padding: 20, fontFamily: "system-ui, sans-serif" }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14 }}>
+ <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
+ {STATUS_LABEL[apt.status] || apt.status}
+ </span>
+ <button onClick={close} aria-label="Close" style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+ <X size={16} />
+ </button>
+ </div>
+
+ {/* Car */}
+ <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 14 }}>
+ {carImg? (
+ <img src={carImg} alt="" style={{ width: 84, height: 64, objectFit: "cover", borderRadius: 8, flexShrink: 0, border: "1px solid rgba(255,255,255,0.1)" }} />
+ ) : (
+ <div style={{ width: 84, height: 64, borderRadius: 8, flexShrink: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+ <Car size={20} color="#4b5563" />
+ </div>
+ )}
+ <div style={{ minWidth: 0, flex: 1 }}>
+ <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{carTitle}</p>
+ {carVariant && <p style={{ margin: "0 0 3px", fontSize: 12, color: "#93c5fd" }}>{carVariant}</p>}
+ {carPrice && <p style={{ margin: "0 0 3px", fontSize: 14, fontWeight: 700, color: "#4ade80" }}>{carPrice}</p>}
+ {carVin && <p style={{ margin: 0, fontSize: 11, color: "#94a3b8", fontFamily: "ui-monospace, monospace" }}>{car?.vin_number? "VIN " : "Plate "}{carVin}</p>}
+ </div>
+ </div>
+
+ {/* Buyer */}
+ <div style={{ marginBottom: 14 }}>
+ <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>{apt.buyer_name || "Unknown Buyer"}</p>
+ {apt.buyer_phone && <p style={{ margin: "0 0 4px", fontSize: 13, color: "#cbd5e1", display: "inline-flex", alignItems: "center", gap: 6 }}><Phone size={13} /> {apt.buyer_phone}</p>}
+ {apt.notes && <p style={{ margin: "4px 0 0", fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>&quot;{apt.notes}&quot;</p>}
+ </div>
+
+ {/* Date */}
+ <div style={{ display: "flex", flexDirection: "column", gap: 3, padding: "10px 14px", borderRadius: 10, background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.28)", marginBottom: 14 }}>
+ <span style={{ fontSize: 14, fontWeight: 700, color: "#bfdbfe", display: "inline-flex", alignItems: "center", gap: 6 }}><Calendar size={14} /> {dateStr}</span>
+ {timeStr && <span style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1 }}>{timeStr}</span>}
+ {isFuture && <span style={{ fontSize: 12, fontWeight: 600, color: "#4ade80" }}>{preciseUntil(apt.appointment_date, nowTick, timeLabels)}</span>}
+ </div>
+
+ {/* Reminder indicator */}
+ {apt.remind_at &&!apt.remind_sent? (
+ <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 7, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)", marginBottom: 12 }}>
+ <Bell size={12} color="#4ade80" />
+ <span style={{ fontSize: 11, color: "#4ade80", flex: 1 }}>
+ Reminder: {new Date(apt.remind_at).toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })} {new Date(apt.remind_at).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}
+ </span>
+ <button onClick={() => clearReminder(apt)} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 11, cursor: "pointer", padding: 0 }}>✕</button>
+ </div>
+ ) : apt.remind_sent? (
+ <p style={{ fontSize: 11, color: "#6b7280", margin: "0 0 12px", display: "inline-flex", alignItems: "center", gap: 4 }}><Check size={11} /> Reminder sent</p>
+ ) : null}
+
+ {/* Secondary actions */}
+ {notCancelled &&!anyExpander && (
+ <div style={{ display: "flex", gap: 6 }}>
+ <button style={secBtn} onClick={() => {
+ const existing = apt.appointment_date? new Date(apt.appointment_date) : new Date();
+ const pad = (n) => String(n).padStart(2, "0");
+ setRescheduleDate(`${existing.getFullYear()}-${pad(existing.getMonth() + 1)}-${pad(existing.getDate())}T${pad(existing.getHours())}:${pad(existing.getMinutes())}`);
+ setReschedulingAptId(apt.id); setCancelConfirmId(null); setReminderPickerAptId(null);
+ }}><RefreshCw size={13} /> Move</button>
+ <button style={secBtn} onClick={() => {
+ if (!profile?.telegram_chat_id) { toast.error("Connect Telegram in Settings first"); return; }
+ setReminderPickerAptId(apt.id); setSelectedRemindAt(null); setCancelConfirmId(null); setReschedulingAptId(null);
+ }}><Bell size={13} color={apt.remind_at? "#fbbf24" : undefined} /> Set reminder</button>
+ <button style={{ ...secBtn, color: "#f87171" }} onClick={() => { setCancelConfirmId(apt.id); setReschedulingAptId(null); setReminderPickerAptId(null); }}><X size={13} /> Cancel</button>
+ </div>
+ )}
+
+ {/* Expand: reschedule date picker */}
+ {isRescheduling && (
+ <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 8 }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+ <p style={{ margin: 0, fontSize: 11, color: "#c084fc", fontWeight: 600 }}>Choose new date & time</p>
+ <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }} title="Cancel" style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0, flexShrink: 0 }}>
+ <X size={14} />
+ </button>
+ </div>
+ <input type="datetime-local" value={rescheduleDate} onChange={(e) => setRescheduleDate(e.target.value)}
+ style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "system-ui, sans-serif", marginBottom: 8 }}
  />
  <div style={{ display: "flex", gap: 6 }}>
- <button
- onClick={() => {
- const phone = apt.buyer_phone.replace(/\D/g, "");
- window.open(
- `https://wa.me/${phone.startsWith("6")? phone : "6" + phone}?text=${encodeURIComponent(reminderMsg)}`,
- "_blank",
- "noopener,noreferrer",
+ <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }}
+ style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+ Cancel
+ </button>
+ <button onClick={async () => {
+ if (!rescheduleDate) return;
+ const newDate = new Date(rescheduleDate);
+ const remindAt = new Date(newDate.getTime() - 60 * 60 * 1000).toISOString();
+ await supabase.from("appointments").update({ appointment_date: newDate.toISOString(), status: "rescheduled", remind_at: remindAt, remind_sent: false }).eq("id", apt.id);
+ setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, appointment_date: newDate.toISOString(), status: "rescheduled", remind_at: remindAt, remind_sent: false } : a));
+ setReschedulingAptId(null);
+ setRescheduleDate("");
+ toast.success("Appointment rescheduled!");
+ }}
+ style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.35)", color: "#c084fc", cursor: "pointer" }}>
+ Save New Time
+ </button>
+ </div>
+ </div>
+ )}
+
+ {/* Expand: reminder time picker */}
+ {isReminderPicking && (
+ <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8 }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+ <p style={{ margin: 0, fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>Schedule reminder</p>
+ <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }} title="Cancel" style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0, flexShrink: 0 }}>
+ <X size={14} />
+ </button>
+ </div>
+ <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
+ {[
+ { key: "1h", label: "1h before" },
+ { key: "2h", label: "2h before" },
+ { key: "day_before", label: "Day before 9am" },
+ { key: "two_days", label: "2 days before" },
+ ].map(({ key, label }) => {
+ const rt = calcRemindAt(apt, key);
+ const active = selectedRemindAt && rt.getTime() === selectedRemindAt.getTime();
+ return (
+ <button key={key} onClick={() => setSelectedRemindAt(rt)}
+ style={{ fontSize: 11, padding: "4px 10px", borderRadius: 99, cursor: "pointer",
+ background: active? "rgba(96,165,250,0.15)" : "rgba(255,255,255,0.05)",
+ border: active? "1px solid rgba(96,165,250,0.4)" : "1px solid rgba(255,255,255,0.08)",
+ color: active? "#93c5fd" : "#6b7280" }}>
+ {label}
+ </button>
  );
- setEditingReminder(null);
- }}
- style={{
- fontSize: 10,
- padding: "3px 9px",
- borderRadius: 6,
- background: "rgba(37,211,102,0.1)",
- border: "1px solid rgba(37,211,102,0.2)",
- color: "#4ade80",
- cursor: "pointer",
- }}
- >Send
+ })}
+ </div>
+ <input type="datetime-local"
+ value={selectedRemindAt? selectedRemindAt.toISOString().slice(0, 16) : ""}
+ onChange={(e) => e.target.value && setSelectedRemindAt(new Date(e.target.value))}
+ style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 12, padding: "7px 10px", outline: "none", marginBottom: 8, fontFamily: "inherit", boxSizing: "border-box" }}
+ />
+ <div style={{ display: "flex", gap: 6 }}>
+ <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }}
+ style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+ Cancel
  </button>
- <button
- onClick={() => setEditingReminder(null)}
- style={{
- fontSize: 10,
- padding: "3px 9px",
- borderRadius: 6,
- background: "rgba(255,255,255,0.05)",
- border: "1px solid rgba(255,255,255,0.08)",
- color: "#6b7280",
- cursor: "pointer",
- }}
- >Cancel
+ <button onClick={() => selectedRemindAt && saveReminder(apt, selectedRemindAt)}
+ disabled={!selectedRemindAt || reminderSaving}
+ style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600,
+ background: selectedRemindAt? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.04)",
+ border: selectedRemindAt? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(255,255,255,0.08)",
+ color: selectedRemindAt? "#4ade80" : "#374151",
+ cursor: selectedRemindAt? "pointer" : "not-allowed",
+ opacity: reminderSaving? 0.6 : 1 }}>
+ {reminderSaving? "Saving…" : "Set reminder"}
  </button>
  </div>
  </div>
- ) : (
- <button
- onClick={() => {
- setEditingReminder(apt.id);
- setReminderMsg(defaultReminder);
- }}
- style={{
- fontSize: 10,
- padding: "3px 9px",
- borderRadius: 6,
- background: "rgba(37,211,102,0.1)",
- border: "1px solid rgba(37,211,102,0.2)",
- color: "#4ade80",
- cursor: "pointer",
- }}
- >WA Reminder
+ )}
+
+ {/* Expand: cancel confirmation */}
+ {isCancelConfirm && (
+ <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8 }}>
+ <p style={{ margin: "0 0 8px", fontSize: 12, color: "#f87171" }}>Cancel this appointment?</p>
+ <div style={{ display: "flex", gap: 6 }}>
+ <button onClick={() => setCancelConfirmId(null)}
+ style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+ Keep it
  </button>
- ))}
+ <button onClick={async () => { await updateApptStatus(apt.id, "cancelled"); setCancelConfirmId(null); setBookingDetailId(null); }}
+ style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", cursor: "pointer" }}>
+ Yes, cancel appt
+ </button>
  </div>
+ </div>
+ )}
+ </div>
+ </div>,
+ document.body,
  );
  };
 
  return (
  <div>
- <div
- style={{
- display: "flex",
- alignItems: "center",
- justifyContent: "space-between",
- marginBottom: 16,
- }}
- >
- <p
- style={{
- margin: 0,
- fontSize: 16,
- fontWeight: 600,
- color: "#f1f5f9",
- }}
- >Bookings ({appointments.length})
+ {renderBookingDetailModal()}
+ <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
+ Bookings ({confirmedApts.length})
  </p>
- <div style={{ display: "flex", gap: 6 }}>
- {["confirmed", "pending"].map((s) => {
- const count = appointments.filter((a) => a.status === s).length;
- if (!count) return null;
- const sc = statusColors[s];
- return (
- <span
- key={s}
- style={{
- fontSize: 10,
- padding: "2px 8px",
- borderRadius: 99,
- background: sc.bg,
- border: `1px solid ${sc.border}`,
- color: sc.tx,
- textTransform: "capitalize",
- }}
- >
- {count} {s}
- </span>
- );
- })}
- </div>
- </div>
  {appointments.length === 0 && (
- <div
- style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}
- >
+ <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
  <Phone size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
  <p style={{ margin: 0, fontSize: 13 }}>No bookings yet.</p>
+ <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>Bookings appear when customers book a test drive from your listing.</p>
+ <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer" }}>
+ Share a Listing →
+ </button>
  </div>
  )}
- {/* Awaiting confirmation — buyer requests that need a decision. Shown
- first and at any date, because these are the ones losing you deals. */}
+ {/* Awaiting Confirmation — requests, not yet real bookings */}
  {pendingApts.length > 0 && (
  <div style={{ marginBottom: 20 }}>
- <p
- style={{
- margin: "0 0 8px",
- fontSize: 11,
- fontWeight: 600,
- color: "#fbbf24",
- textTransform: "uppercase",
- letterSpacing: "0.08em",
- display: "flex",
- alignItems: "center",
- gap: 5,
- }}
- >
- <AlertCircle size={11} />Awaiting confirmation ({pendingApts.length})
+ <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
+ <Clock size={11} color="#fbbf24" /> Awaiting Confirmation ({pendingApts.length})
  </p>
  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
  {pendingApts.map(renderApptCard)}
  </div>
  </div>
  )}
+ {/* Today */}
  {todayApts.length > 0 && (
  <div style={{ marginBottom: 20 }}>
- <p
- style={{
- margin: "0 0 8px",
- fontSize: 11,
- fontWeight: 600,
- color: "#4ade80",
- textTransform: "uppercase",
- letterSpacing: "0.08em",
- display: "flex",
- alignItems: "center",
- gap: 5,
- }}
- >
- <Calendar size={11} />Today ({todayApts.length})
+ <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
+ <Calendar size={11} color="#fbbf24" /> Today ({todayApts.length})
  </p>
  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
  {todayApts.map(renderApptCard)}
  </div>
  </div>
  )}
+ {/* Confirmed Upcoming */}
  {upcomingApts.length > 0 && (
  <div style={{ marginBottom: 20 }}>
- <p
- style={{
- margin: "0 0 8px",
- fontSize: 11,
- fontWeight: 600,
- color: "#374151",
- textTransform: "uppercase",
- letterSpacing: "0.08em",
- }}
- >Confirmed upcoming ({upcomingApts.length})
+ <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#4ade80", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
+ <Check size={11} color="#4ade80" /> Confirmed Upcoming ({upcomingApts.length})
  </p>
- <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+ <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
  {upcomingApts.map(renderApptCard)}
  </div>
  </div>
  )}
- {/* Past — collapsed by default so it never crowds out live bookings. */}
+ {/* Past — collapsed by default */}
  {pastApts.length > 0 && (
- <div>
+ <div style={{ marginTop: 8 }}>
  <button
  onClick={() => setPastOpen((o) =>!o)}
- style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "none", border: "none", padding: "6px 0", cursor: "pointer", fontFamily: "inherit" }}
+ style={{ display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", cursor: "pointer", padding: "6px 0", width: "100%" }}
  >
- <span style={{ fontSize: 11, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+ <span style={{ fontSize: 10, fontWeight: 700, color: "#4b5563", letterSpacing: "0.08em", textTransform: "uppercase" }}>
  Past ({pastApts.length})
  </span>
- {pastOpen? <ChevronUp size={13} color="#374151" /> : <ChevronDown size={13} color="#374151" />}
+ <span style={{ fontSize: 12, color: "#374151" }}>{pastOpen? "▲" : "▼"}</span>
  </button>
  {pastOpen && (
- <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
- {pastApts.map(renderApptCard)}
+ <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+ {pastApts.map((apt) => {
+ const car = apt.car_listings;
+ const { dateStr, timeStr } = fmtAptDate(apt.appointment_date);
+ const sc = statusColors[apt.status] || statusColors.pending;
+ const carLabel = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
+ // A past booking left in an open status has no automatic terminal
+ // state — offer the two real outcomes explicitly.
+ const needsOutcome = !["cancelled", "completed", "no_show"].includes(apt.status);
+ return (
+ <div key={apt.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 10, padding: "10px 14px", opacity: 0.65 }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 2 }}>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {apt.buyer_name || "—"}
+ </p>
+ <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
+ {STATUS_LABEL[apt.status] || apt.status}
+ </span>
+ </div>
+ <p style={{ margin: "0 0 2px", fontSize: 12, color: "#6b7280", display: "inline-flex", alignItems: "center", gap: 5 }}>
+ <Calendar size={12} /> {dateStr}{timeStr && ` · ${timeStr}`}
+ </p>
+ {(carLabel || apt.buyer_phone) && (
+ <p style={{ margin: 0, fontSize: 11, color: "#4b5563", display: "inline-flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+ {carLabel}
+ {carLabel && apt.buyer_phone && <span>·</span>}
+ {apt.buyer_phone && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Phone size={11} /> {apt.buyer_phone}</span>}
+ </p>
+ )}
+ {needsOutcome && (
+ <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+ <button
+ onClick={() => setAptStatus(apt, "completed")}
+ style={{ fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 6, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.25)", color: "#4ade80", cursor: "pointer", fontFamily: "inherit" }}
+ >
+ Mark Completed
+ </button>
+ <button
+ onClick={() => setAptStatus(apt, "no_show")}
+ style={{ fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 6, background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.25)", color: "#fb923c", cursor: "pointer", fontFamily: "inherit" }}
+ >
+ No-show
+ </button>
+ </div>
+ )}
+ </div>
+ );
+ })}
  </div>
  )}
  </div>
@@ -7980,192 +7999,6 @@ export default function SalesmanPremium() {
  Cancel
  </button>
  </div>
- </div>
- </div>
- );
- })()}
-
- {/* ── Booking detail sheet ── reschedule to a real slot, arm/clear the
- Telegram reminder, cancel with a confirm. Premium's old "Reschedule"
- button just stamped status='rescheduled' and never asked for a new
- date, so the booking stayed at its original time. */}
- {bookingDetailId && (() => {
- const apt = appointments.find((a) => a.id === bookingDetailId);
- if (!apt) return null;
- const close = () => { setBookingDetailId(null); setReschedulingAptId(null); setReminderPickerAptId(null); setCancelConfirmId(null); setSelectedRemindAt(null); };
- const aptDate = apt.appointment_date? new Date(apt.appointment_date) : null;
- const calcRemindAt = (offsetKey) => {
- const d0 = new Date(apt.appointment_date);
- if (offsetKey === "day_before") { const d = new Date(d0); d.setDate(d.getDate() - 1); d.setHours(9, 0, 0, 0); return d; }
- if (offsetKey === "two_days") { const d = new Date(d0); d.setDate(d.getDate() - 2); d.setHours(9, 0, 0, 0); return d; }
- const mins = { "1h": -60, "2h": -120 };
- return new Date(d0.getTime() + (mins[offsetKey]?? -60) * 60000);
- };
- const saveReminder = async (remindAt) => {
- setReminderSaving(true);
- const { error } = await supabase.from("appointments").update({ remind_at: remindAt.toISOString(), remind_sent: false }).eq("id", apt.id);
- setReminderSaving(false);
- if (error) { toast.error("Could not save the reminder"); return; }
- setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, remind_at: remindAt.toISOString(), remind_sent: false } : a));
- setReminderPickerAptId(null); setSelectedRemindAt(null);
- toast.success(`Telegram reminder set for ${remindAt.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}`);
- };
- const clearReminder = async () => {
- await supabase.from("appointments").update({ remind_at: null, remind_sent: false }).eq("id", apt.id);
- setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, remind_at: null } : a));
- };
- const secBtn = { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 0", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
- const isRescheduling = reschedulingAptId === apt.id;
- const isReminderPicking = reminderPickerAptId === apt.id;
- const isCancelConfirm = cancelConfirmId === apt.id;
- const anyExpander = isRescheduling || isReminderPicking || isCancelConfirm;
- const notCancelled = apt.status!== "cancelled";
- return (
- <div onClick={close} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
- <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: "92vh", overflowY: "auto", background: "#111827", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "16px 16px 0 0", padding: 20 }}>
- <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 14 }}>
- <div style={{ minWidth: 0 }}>
- <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{apt.buyer_name || "Booking"}</p>
- <p style={{ margin: "3px 0 0", fontSize: 12, color: "#9ca3af" }}>
- {aptDate &&!isNaN(aptDate)
- ? `${aptDate.toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" })} · ${aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}`
- : "No date set"}
- </p>
- {apt.car_listings && (
- <p style={{ margin: "3px 0 0", fontSize: 12, color: "#6b7280" }}>
- {[apt.car_listings.year, apt.car_listings.brand, apt.car_listings.model].filter(Boolean).join(" ")}
- </p>
- )}
- </div>
- <button onClick={close} aria-label="Close" style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
- <X size={15} />
- </button>
- </div>
-
- {/* Reminder state */}
- {apt.remind_at &&!apt.remind_sent? (
- <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 7, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)", marginBottom: 12 }}>
- <Bell size={12} color="#4ade80" />
- <span style={{ fontSize: 11, color: "#4ade80", flex: 1 }}>
- Reminder: {new Date(apt.remind_at).toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })} {new Date(apt.remind_at).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}
- </span>
- <button onClick={clearReminder} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 11, cursor: "pointer", padding: 0 }}>✕</button>
- </div>
- ) : apt.remind_sent? (
- <p style={{ fontSize: 11, color: "#6b7280", margin: "0 0 12px", display: "inline-flex", alignItems: "center", gap: 4 }}><Check size={11} /> Reminder sent</p>
- ) : null}
-
- {/* Secondary actions */}
- {notCancelled &&!anyExpander && (
- <div style={{ display: "flex", gap: 6 }}>
- <button style={secBtn} onClick={() => {
- const existing = apt.appointment_date? new Date(apt.appointment_date) : new Date();
- const pad = (n) => String(n).padStart(2, "0");
- setRescheduleDate(`${existing.getFullYear()}-${pad(existing.getMonth() + 1)}-${pad(existing.getDate())}T${pad(existing.getHours())}:${pad(existing.getMinutes())}`);
- setReschedulingAptId(apt.id); setCancelConfirmId(null); setReminderPickerAptId(null);
- }}><RefreshCw size={13} /> Move</button>
- <button style={secBtn} onClick={() => {
- if (!profile?.telegram_chat_id) { toast.error("Connect Telegram in Settings first"); return; }
- setReminderPickerAptId(apt.id); setSelectedRemindAt(null); setCancelConfirmId(null); setReschedulingAptId(null);
- }}><Bell size={13} color={apt.remind_at? "#fbbf24" : undefined} /> Remind</button>
- <button style={{ ...secBtn, color: "#f87171" }} onClick={() => { setCancelConfirmId(apt.id); setReschedulingAptId(null); setReminderPickerAptId(null); }}><X size={13} /> Cancel</button>
- </div>
- )}
-
- {/* Reschedule */}
- {isRescheduling && (
- <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 8 }}>
- <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
- <p style={{ margin: 0, fontSize: 11, color: "#c084fc", fontWeight: 600 }}>Choose a new time</p>
- <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }} style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0 }}><X size={14} /></button>
- </div>
- <input type="datetime-local" value={rescheduleDate} onChange={(e) => setRescheduleDate(e.target.value)}
- style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "inherit", marginBottom: 8 }} />
- <div style={{ display: "flex", gap: 6 }}>
- <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }}
- style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
- <button onClick={async () => {
- if (!rescheduleDate) return;
- const newDate = new Date(rescheduleDate);
- const remindAt = new Date(newDate.getTime() - 60 * 60 * 1000).toISOString();
- const { error } = await supabase.from("appointments").update({ appointment_date: newDate.toISOString(), status: "rescheduled", remind_at: remindAt, remind_sent: false }).eq("id", apt.id);
- if (error) { toast.error("Could not reschedule"); return; }
- setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, appointment_date: newDate.toISOString(), status: "rescheduled", remind_at: remindAt, remind_sent: false } : a));
- setReschedulingAptId(null); setRescheduleDate("");
- toast.success("Booking rescheduled");
- }}
- style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.35)", color: "#c084fc", cursor: "pointer", fontFamily: "inherit" }}>Save new time</button>
- </div>
- </div>
- )}
-
- {/* Telegram reminder picker */}
- {isReminderPicking && (
- <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8 }}>
- <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
- <p style={{ margin: 0, fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>Schedule Telegram reminder</p>
- <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }} style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0 }}><X size={14} /></button>
- </div>
- <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
- {[
- { key: "1h", label: "1 hour before" },
- { key: "2h", label: "2 hours before" },
- { key: "day_before", label: "Day before" },
- { key: "two_days", label: "2 days before" },
- ].map(({ key, label }) => {
- const rt = calcRemindAt(key);
- const active = selectedRemindAt && rt.getTime() === selectedRemindAt.getTime();
- return (
- <button key={key} onClick={() => setSelectedRemindAt(rt)}
- style={{ fontSize: 11, padding: "4px 10px", borderRadius: 99, cursor: "pointer", fontFamily: "inherit",
- background: active? "rgba(96,165,250,0.15)" : "rgba(255,255,255,0.05)",
- border: active? "1px solid rgba(96,165,250,0.4)" : "1px solid rgba(255,255,255,0.08)",
- color: active? "#93c5fd" : "#6b7280" }}>
- {label}
- </button>
- );
- })}
- </div>
- <div style={{ display: "flex", gap: 6 }}>
- <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }}
- style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
- <button onClick={() => selectedRemindAt && saveReminder(selectedRemindAt)}
- disabled={!selectedRemindAt || reminderSaving}
- style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, fontFamily: "inherit",
- background: selectedRemindAt? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.04)",
- border: selectedRemindAt? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(255,255,255,0.08)",
- color: selectedRemindAt? "#4ade80" : "#374151",
- cursor: selectedRemindAt? "pointer" : "not-allowed", opacity: reminderSaving? 0.6 : 1 }}>
- {reminderSaving? "Saving…" : "Set reminder"}
- </button>
- </div>
- </div>
- )}
-
- {/* Cancel confirmation */}
- {isCancelConfirm && (
- <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8 }}>
- <p style={{ margin: "0 0 8px", fontSize: 12, color: "#f87171" }}>Cancel this booking?</p>
- <div style={{ display: "flex", gap: 6 }}>
- <button onClick={() => setCancelConfirmId(null)}
- style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Keep it</button>
- <button onClick={async () => { await updateApptStatus(apt.id, "cancelled"); setCancelConfirmId(null); setBookingDetailId(null); }}
- style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", cursor: "pointer", fontFamily: "inherit" }}>Cancel booking</button>
- </div>
- </div>
- )}
-
- {/* Past-booking outcome */}
- {notCancelled && aptDate &&!isNaN(aptDate) && aptDate < new Date(nowTick) && apt.status!== "completed" && (
- <div style={{ display: "flex", gap: 6, marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
- <button style={{ ...secBtn, color: "#4ade80" }} onClick={async () => { await updateApptStatus(apt.id, "completed"); close(); }}>
- <Check size={13} /> Showed up
- </button>
- <button style={{ ...secBtn, color: "#fbbf24" }} onClick={async () => { await updateApptStatus(apt.id, "no_show"); close(); }}>
- <PhoneOff size={13} /> No show
- </button>
- </div>
- )}
  </div>
  </div>
  );
