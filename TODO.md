@@ -195,13 +195,34 @@ lifecycle while keeping Premium's own AI / broadcast / loans.
   lead to local state. Routed through `autoCreateLeadFromEnq`. `handleAddLead`
   had the same raw-phone bug; also normalized.
 
-**Still not ported from Lite (deliberate, next session):** deal add-ons
-(`handleAttachAddon`/`handleRemoveAddon`), the batch-WhatsApp modal, the
-follow-up modal, `triggerGlow` row highlighting, and the share-win prompt.
-None of these block the pipeline working end to end; they are polish on top
-of it.
+**Still not ported from Lite:** the batch-WhatsApp modal (owner deferred it),
+the follow-up modal, and the share-win prompt.
 
 **Shipped:**
+- **PREM-16: deal add-ons ported, catalogue given a home**
+  (`src/pages/SalesmanPremium.jsx`). Premium could never record back-end
+  gross — `deal_products` had no write path at all, so RevOps/P&L saw RM0 of
+  add-on revenue for every Premium deal.
+  - Attach/remove UI in the lead drawer, above the lost/delete zone: pick
+    from your catalogue, override the price, running RM total in the header.
+  - Catalogue itself is a **sub-tab under Listings** (Cars / Add-ons), not a
+    new page — it reuses the existing `ServicesAddonsTab` component Lite
+    already has, and it sits with the cars because both are "things I sell".
+    Same `dealer_products` rows also feed CarForm's Included Services picker.
+  - Small blue "Add-on" badge on pipeline cards for leads that carry one,
+    from one `deal_products` fetch alongside leads (not N+1 per card).
+  - Verified the write path against the live DB before shipping: both tables
+    are `dealer_id = get_my_dealer_id()`, and `get_my_dealer_id()` returns
+    `id` for `role='salesman' AND dealer_id IS NULL`, matching
+    `getDealerIdFromProfile`. A solo Premium account resolves the same on
+    both sides, so inserts land rather than being silently rejected.
+- **PREM-15: row-glow highlight ported** (`triggerGlow`,
+  `.sp-lead-glow`). Jumping to the pipeline from a follow-up nudge, or from
+  the Stale Leads KPI tile, now pulses the exact cards that prompted the jump
+  instead of dropping the user into an undifferentiated list. Nudge rows and
+  the KPI tile are keyboard-operable; honours `prefers-reduced-motion`.
+- **Extracted `SubTabs`** — Inbox and Listings share one switcher component
+  rather than two copies of the same 25 lines of pill markup.
 - **PREM-14: nav compacted 10 tabs to 8** (`src/pages/SalesmanPremium.jsx`).
   Bookings folded into Enquiries — renamed **Inbox** — as a two-button
   sub-tab (Bookings / Lead History), mirroring Lite's `inboxSubTab`. Merge

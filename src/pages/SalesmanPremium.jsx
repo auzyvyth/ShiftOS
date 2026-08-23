@@ -63,6 +63,7 @@ import {
  ThumbsUp,
  ThumbsDown,
  Clock,
+ Package,
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
 import OutreachHub from "../components/crm/OutreachHub";
@@ -70,6 +71,7 @@ import UpgradeBanner from "../components/ai/UpgradeBanner";
 import AiLoadingState from "../components/ai/AiLoadingState";
 import AiQuotaBadge from "../components/ai/AiQuotaBadge";
 import PushToggle from "../components/PushToggle";
+import ServicesAddonsTab from "../components/salesman/ServicesAddonsTab";
 
 function useWindowSize() {
  const [w, setW] = useState(window.innerWidth);
@@ -196,6 +198,36 @@ function StatusBadge({ status }) {
  );
 }
 
+// Two tabs now host a pair of sibling views (Inbox: bookings / lead history,
+// Listings: cars / add-ons). One switcher, so they cannot drift apart.
+function SubTabs({ value, onChange, items }) {
+ return (
+ <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+ {items.map(({ key, label, badge, tourId }) => (
+ <button
+ key={key}
+ data-tour-id={tourId}
+ onClick={() => onChange(key)}
+ style={{
+ fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 8, cursor: "pointer",
+ background: value === key ? "rgba(37,99,235,0.15)" : "rgba(255,255,255,0.04)",
+ border: `1px solid ${value === key ? "rgba(37,99,235,0.35)" : "rgba(255,255,255,0.08)"}`,
+ color: value === key ? "#93c5fd" : "#6b7280",
+ display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit",
+ }}
+ >
+ {label}
+ {badge > 0 && (
+ <span style={{ fontSize: 10, fontWeight: 700, background: "#2563eb", color: "#fff", borderRadius: 99, padding: "0px 5px", minWidth: 16, textAlign: "center" }}>
+ {badge}
+ </span>
+ )}
+ </button>
+ ))}
+ </div>
+ );
+}
+
 // Top-level Premium tabs, each backed by its own /salesman-premium/:tab route.
 // Anything not in this list falls back to the dashboard.
 const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "analytics", "loans", "outreach", "merge", "settings"];
@@ -233,6 +265,10 @@ export default function SalesmanPremium() {
  const setActiveTab = (tab) => navigate(`/salesman-premium/${tab}`);
  // Bookings is a sub-view of Enquiries now; Lead History is the other half.
  const [inboxSubTab, setInboxSubTab] = useState("bookings");
+ // Listings hosts both halves of "things I sell": the cars, and the paid
+ // add-on catalogue those cars get sold with. Same table the deal-add-on
+ // picker in the lead drawer reads (dealer_products).
+ const [listingsSubTab, setListingsSubTab] = useState("cars");
 
  function switchTab(tab) {
  setActiveTab(tab);
@@ -260,6 +296,20 @@ export default function SalesmanPremium() {
  // leads
  const [leads, setLeads] = useState([]);
  const [staleLeads, setStaleLeads] = useState([]);
+ // Row glow — when a jump lands the user on the Leads tab from somewhere else
+ // (a follow-up nudge, the stale-leads KPI), pulse the exact cards that
+ // prompted the jump so the eye lands on them instead of "somewhere in this
+ // list". Purely visual; clears itself after 1s.
+ const [glowLeadIds, setGlowLeadIds] = useState(() => new Set());
+ const glowTimeoutRef = useRef(null);
+ const triggerGlow = (ids) => {
+ if (!ids || ids.length === 0) return;
+ if (glowTimeoutRef.current) clearTimeout(glowTimeoutRef.current);
+ setGlowLeadIds(new Set(ids));
+ glowTimeoutRef.current = setTimeout(() => setGlowLeadIds(new Set()), 1000);
+ };
+ useEffect(() => () => { if (glowTimeoutRef.current) clearTimeout(glowTimeoutRef.current); }, []);
+ const jumpToLead = (lead) => { switchTab("leads"); triggerGlow([lead.id]); };
  const [leadsLoading, setLeadsLoading] = useState(true);
  const [lostOpen, setLostOpen] = useState(false);
  const [showAddLead, setShowAddLead] = useState(false);
@@ -277,6 +327,73 @@ export default function SalesmanPremium() {
  const [waModalLead, setWaModalLead] = useState(null);
  const [waModalMsg, setWaModalMessage] = useState("");
  const [drawerLeadId, setDrawerLeadId] = useState(null);
+ // Deal add-ons — attach a product from the salesman's own catalogue
+ // (Listings > Add-ons, dealer_products) to this lead as a paid upsell,
+ // tracked in deal_products. Distinct from included_services on a car
+ // listing, which is a free perk bundled into the sale — this is the paid
+ // counterpart, and what RevOps reads as back-end gross.
+ const [dealAddons, setDealAddons] = useState([]);
+ // Lead ids with at least one deal_products row — powers the small "Add-on"
+ // badge on the pipeline card. Fetched once alongside leads rather than
+ // per-card, which would be N+1.
+ const [leadIdsWithAddons, setLeadIdsWithAddons] = useState(() => new Set());
+ const [addonCatalogue, setAddonCatalogue] = useState([]);
+ const [addonsLoading, setAddonsLoading] = useState(false);
+ const [showAttachAddon, setShowAttachAddon] = useState(false);
+ const [addonForm, setAddonForm] = useState({ product_id: "", sold_price: "" });
+ const [attachingAddon, setAttachingAddon] = useState(false);
+ useEffect(() => {
+ if (!drawerLeadId) { setDealAddons([]); setAddonCatalogue([]); setShowAttachAddon(false); return; }
+ const dealerId = getDealerIdFromProfile(profile);
+ if (!dealerId) return;
+ setAddonsLoading(true);
+ Promise.all([
+ supabase.from("dealer_products").select("id, name, category, selling_price").eq("dealer_id", dealerId).eq("is_active", true).order("name"),
+ supabase.from("deal_products").select("id, sold_price, product_id, dealer_products(name, category)").eq("lead_id", drawerLeadId),
+ ]).then(([catRes, dealRes]) => {
+ if (catRes.error) console.error("addonCatalogue:", catRes.error);
+ if (dealRes.error) console.error("dealAddons:", dealRes.error);
+ setAddonCatalogue(catRes.data || []);
+ setDealAddons(dealRes.data || []);
+ setAddonsLoading(false);
+ });
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [drawerLeadId]);
+ const handleAttachAddon = async () => {
+ if (!drawerLeadId || !addonForm.product_id || !addonForm.sold_price) return;
+ const pl = leads.find((l) => l.id === drawerLeadId);
+ setAttachingAddon(true);
+ const { data, error } = await supabase
+ .from("deal_products")
+ .insert({
+ dealer_id: getDealerIdFromProfile(profile),
+ lead_id: drawerLeadId,
+ listing_id: pl?.car_listing_id || null,
+ product_id: addonForm.product_id,
+ sold_price: Number(addonForm.sold_price),
+ })
+ .select("id, sold_price, product_id, dealer_products(name, category)")
+ .single();
+ setAttachingAddon(false);
+ if (error) { console.error("handleAttachAddon:", error); toast.error("Couldn't attach that add-on"); return; }
+ if (data) setDealAddons((p) => [...p, data]);
+ setAddonForm({ product_id: "", sold_price: "" });
+ setShowAttachAddon(false);
+ toast.success("Add-on attached");
+ setLeadIdsWithAddons((p) => new Set(p).add(drawerLeadId));
+ };
+ const handleRemoveAddon = async (id) => {
+ const { error } = await supabase.from("deal_products").delete().eq("id", id);
+ if (error) { console.error("handleRemoveAddon:", error); toast.error("Couldn't remove that add-on"); return; }
+ setDealAddons((p) => {
+ const next = p.filter((a) => a.id!== id);
+ // Last add-on on this lead just went — drop the pipeline badge too.
+ if (next.length === 0 && drawerLeadId) {
+ setLeadIdsWithAddons((sIds) => { const n = new Set(sIds); n.delete(drawerLeadId); return n; });
+ }
+ return next;
+ });
+ };
  const [deletingLeadId, setDeletingLeadId] = useState(null);
  const [lostSavingId, setLostSavingId] = useState(null);
  const [stageSavingId, setStageSavingId] = useState(null);
@@ -667,6 +784,21 @@ export default function SalesmanPremium() {
  const rows = lds || [];
  setLeads(rows);
  setLeadsLoading(false);
+
+ // Which of these leads already carry a paid add-on — feeds the
+ // pipeline card badge. Scoped to the leads we just fetched rather
+ // than re-deriving a dealer id here, so it can never disagree with
+ // what is on screen.
+ if (rows.length > 0) {
+ supabase
+ .from("deal_products")
+ .select("lead_id")
+ .in("lead_id", rows.map((r) => r.id))
+ .then(({ data: addonRows, error: addonErr }) => {
+ if (addonErr) { console.error("fetchLeadAddonFlags:", addonErr); return; }
+ setLeadIdsWithAddons(new Set((addonRows || []).map((r) => r.lead_id).filter(Boolean)));
+ });
+ }
 
  // AI lead scoring — fire-and-forget
  if (rows.length > 0) {
@@ -1891,6 +2023,9 @@ export default function SalesmanPremium() {
  value: staleLeads.length,
  color: "#fb923c",
  warn: staleLeads.length > 0,
+ // Clicking the count is the fastest route to acting on it: jump to the
+ // pipeline with exactly those cards pulsing.
+ onJump: staleLeads.length > 0 ? () => { switchTab("leads"); triggerGlow(staleLeads.map((l) => l.id)); } : null,
  },
  { label: "Appts Today", value: todayAppts, color: "#c084fc" },
  {
@@ -1992,14 +2127,19 @@ export default function SalesmanPremium() {
  marginBottom: 24,
  }}
  >
- {kpis.map(({ label, value, color, warn }) => (
+ {kpis.map(({ label, value, color, warn, onJump }) => (
  <div
  key={label}
+ onClick={onJump || undefined}
+ role={onJump ? "button" : undefined}
+ tabIndex={onJump ? 0 : undefined}
+ onKeyDown={onJump ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onJump(); } } : undefined}
  style={{
  background: "#0d1117",
  border: `1px solid ${warn? "rgba(251,146,60,0.3)" : "rgba(255,255,255,0.07)"}`,
  borderRadius: 10,
  padding: "14px 16px",
+ cursor: onJump ? "pointer" : undefined,
  }}
  >
  <p
@@ -2343,6 +2483,11 @@ export default function SalesmanPremium() {
  }}
  >Follow-up Nudges ({staleLeads.length})
  </p>
+ <button
+ onClick={() => { switchTab("leads"); triggerGlow(staleLeads.map((l) => l.id)); }}
+ style={{ marginLeft: "auto", fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 6, background: "rgba(251,146,60,0.1)", border: "1px solid rgba(251,146,60,0.25)", color: "#fb923c", cursor: "pointer", flexShrink: 0, fontFamily: "inherit" }}
+ >Review all
+ </button>
  </div>
  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
  {staleLeads.map((lead) => (
@@ -2355,7 +2500,13 @@ export default function SalesmanPremium() {
  gap: 8,
  }}
  >
- <div>
+ <div
+ onClick={() => jumpToLead(lead)}
+ role="button"
+ tabIndex={0}
+ onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); jumpToLead(lead); } }}
+ style={{ cursor: "pointer", minWidth: 0 }}
+ >
  <p
  style={{
  margin: 0,
@@ -4094,6 +4245,7 @@ export default function SalesmanPremium() {
  return (
  <div
  key={lead.id}
+ className={glowLeadIds.has(lead.id) ? "sp-lead-glow" : undefined}
  style={{
  background: "#0d1117",
  border: "1px solid rgba(255,255,255,0.07)",
@@ -4114,6 +4266,11 @@ export default function SalesmanPremium() {
  {lead.buyer_name || "—"}
  </p>
  <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+ {leadIdsWithAddons.has(lead.id) && (
+ <span title="This deal has a paid add-on attached" style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, borderRadius: 99, padding: "2px 7px", background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.35)", color: "#93c5fd", whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+ <Package size={9} /> Add-on
+ </span>
+ )}
  <span style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", fontWeight: 600 }}>
  {heat.label}
  </span>
@@ -4750,6 +4907,79 @@ export default function SalesmanPremium() {
  )}
  </div>
  )}
+
+ {/* Divider */}
+ <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} />
+
+ {/* Deal add-ons — paid upsells from this salesman's own catalogue
+     (Listings > Add-ons), attached to this specific deal. This is the
+     back-end gross on the sale, as opposed to a car's free
+     included_services. */}
+ <div>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+ <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>Add-ons</p>
+ {dealAddons.length > 0 && (
+ <span style={{ fontSize: 12, fontWeight: 700, color: "#93c5fd" }}>
+ RM {dealAddons.reduce((sum, a) => sum + (Number(a.sold_price) || 0), 0).toLocaleString("en-MY")}
+ </span>
+ )}
+ </div>
+ {addonsLoading? (
+ <p style={{ fontSize: 12, color: "#4b5563", margin: 0 }}>Loading…</p>
+ ) : (
+ <>
+ {dealAddons.map((a) => (
+ <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "8px 10px", marginBottom: 4, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8 }}>
+ <span style={{ fontSize: 12, color: "#e5e7eb", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.dealer_products?.name || "—"}</span>
+ <span style={{ fontSize: 12, fontWeight: 600, color: "#93c5fd", flexShrink: 0 }}>RM {Number(a.sold_price || 0).toLocaleString("en-MY")}</span>
+ <button onClick={() => handleRemoveAddon(a.id)} title="Remove this add-on" style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", display: "flex", padding: 2, flexShrink: 0 }}>
+ <X size={13} />
+ </button>
+ </div>
+ ))}
+ {!showAttachAddon? (
+ <button onClick={() => { setShowAttachAddon(true); setAddonForm({ product_id: "", sold_price: "" }); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", fontSize: 12, fontWeight: 600, padding: "8px 12px", borderRadius: 8, background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.25)", color: "#93c5fd", cursor: "pointer", fontFamily: "inherit" }}>
+ <Plus size={12} /> Attach an add-on
+ </button>
+ ) : (
+ <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: 12 }}>
+ {addonCatalogue.length === 0? (
+ <p style={{ fontSize: 12, color: "#6b7280", margin: "0 0 8px", lineHeight: 1.5 }}>No products in your catalogue yet. Add them under Listings → Add-ons, then attach them to a deal here.</p>
+ ) : (
+ <>
+ <select
+ value={addonForm.product_id}
+ onChange={(e) => { const sel = addonCatalogue.find((pr) => pr.id === e.target.value); setAddonForm((f) => ({ ...f, product_id: e.target.value, sold_price: sel? String(sel.selling_price) : f.sold_price })); }}
+ style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "8px 10px", color: "#e5e7eb", fontSize: 12, fontFamily: "inherit", marginBottom: 6, boxSizing: "border-box" }}
+ >
+ <option value="">Select a product…</option>
+ {addonCatalogue.map((pr) => (
+ <option key={pr.id} value={pr.id}>{pr.name} — RM {Number(pr.selling_price || 0).toLocaleString("en-MY")}</option>
+ ))}
+ </select>
+ <input
+ type="number"
+ min="0"
+ value={addonForm.sold_price}
+ onChange={(e) => setAddonForm((f) => ({ ...f, sold_price: e.target.value }))}
+ placeholder="Price actually sold at (RM)"
+ style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "8px 10px", color: "#e5e7eb", fontSize: 12, fontFamily: "inherit", marginBottom: 8, boxSizing: "border-box" }}
+ />
+ </>
+ )}
+ <div style={{ display: "flex", gap: 6 }}>
+ <button onClick={() => setShowAttachAddon(false)} style={{ flex: 1, padding: "7px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+ {addonCatalogue.length > 0 && (
+ <button onClick={handleAttachAddon} disabled={attachingAddon ||!addonForm.product_id ||!addonForm.sold_price} style={{ flex: 1, padding: "7px", borderRadius: 8, background: "#2563eb", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", opacity: (!addonForm.product_id ||!addonForm.sold_price || attachingAddon)? 0.5 : 1, fontFamily: "inherit" }}>
+ {attachingAddon? "Attaching…" : "Attach"}
+ </button>
+ )}
+ </div>
+ </div>
+ )}
+ </>
+ )}
+ </div>
 
  {/* Divider */}
  <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} />
@@ -6961,6 +7191,13 @@ export default function SalesmanPremium() {
  <meta name="robots" content="noindex, nofollow" />
  </Helmet>
  <style>{`
+ @keyframes sp-lead-glow {
+ 0% { box-shadow: 0 0 0 0 rgba(59,130,246,0.55); border-color: rgba(59,130,246,0.7); }
+ 70% { box-shadow: 0 0 0 12px rgba(59,130,246,0); border-color: rgba(59,130,246,0.7); }
+ 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); border-color: rgba(255,255,255,0.07); }
+ }
+ .sp-lead-glow { animation: sp-lead-glow 1s ease-out; }
+ @media (prefers-reduced-motion: reduce) { .sp-lead-glow { animation: none; border-color: rgba(59,130,246,0.7); } }
  `}</style>
 
  {/* Nav */}
@@ -7428,7 +7665,21 @@ export default function SalesmanPremium() {
  }}
  >
  {activeTab === "dashboard" && renderDashboard()}
- {activeTab === "listings" && renderListings()}
+ {activeTab === "listings" && (
+  <div>
+   <SubTabs
+    value={listingsSubTab}
+    onChange={setListingsSubTab}
+    items={[
+     { key: "cars", label: "Cars", badge: myListings.length },
+     { key: "addons", label: "Add-ons" },
+    ]}
+   />
+   {listingsSubTab === "addons" ? (
+    <ServicesAddonsTab dealerId={getDealerIdFromProfile(profile)} />
+   ) : renderListings()}
+  </div>
+ )}
  {activeTab === "leads" && renderLeads()}
  {activeTab === "enquiries" && (
   <div>
@@ -7436,32 +7687,14 @@ export default function SalesmanPremium() {
        one tab. This replaced a read-only duplicate of the appointments list
        that used to sit under the enquiries feed — renderBookings() is the
        real, interactive board. */}
-   <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-    {[
-     { key: "bookings", label: "Bookings", badge: pendingBookingsCount },
+   <SubTabs
+    value={inboxSubTab}
+    onChange={setInboxSubTab}
+    items={[
+     { key: "bookings", label: "Bookings", badge: pendingBookingsCount, tourId: "bookings" },
      { key: "enquiries", label: "Lead History", badge: newEnquiriesCount },
-    ].map(({ key, label, badge }) => (
-     <button
-      key={key}
-      data-tour-id={key === "bookings" ? "bookings" : undefined}
-      onClick={() => setInboxSubTab(key)}
-      style={{
-       fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 8, cursor: "pointer",
-       background: inboxSubTab === key ? "rgba(37,99,235,0.15)" : "rgba(255,255,255,0.04)",
-       border: `1px solid ${inboxSubTab === key ? "rgba(37,99,235,0.35)" : "rgba(255,255,255,0.08)"}`,
-       color: inboxSubTab === key ? "#93c5fd" : "#6b7280",
-       display: "flex", alignItems: "center", gap: 6,
-      }}
-     >
-      {label}
-      {badge > 0 && (
-       <span style={{ fontSize: 10, fontWeight: 700, background: "#2563eb", color: "#fff", borderRadius: 99, padding: "0px 5px", minWidth: 16, textAlign: "center" }}>
-        {badge}
-       </span>
-      )}
-     </button>
-    ))}
-   </div>
+    ]}
+   />
    {inboxSubTab === "enquiries" ? renderEnquiries() : renderBookings()}
   </div>
  )}
