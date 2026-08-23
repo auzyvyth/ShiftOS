@@ -199,11 +199,32 @@ lifecycle while keeping Premium's own AI / broadcast / loans.
 (`handleAttachAddon`/`handleRemoveAddon`), the batch-WhatsApp modal, the
 follow-up modal, `triggerGlow` row highlighting, and the share-win prompt.
 None of these block the pipeline working end to end; they are polish on top
-of it. Also still open: Premium has 10 nav tabs vs Lite's 8 — Bookings should
-fold into Enquiries as a sub-tab (Lite's `inboxSubTab` pattern) and Merge
-should move into Settings. Owner asked about compaction; not yet done.
+of it.
 
 **Shipped:**
+- **PREM-14: nav compacted 10 tabs to 8** (`src/pages/SalesmanPremium.jsx`).
+  Bookings folded into Enquiries — renamed **Inbox** — as a two-button
+  sub-tab (Bookings / Lead History), mirroring Lite's `inboxSubTab`. Merge
+  moved out of the nav into a section at the bottom of Settings
+  (`id="sp-merge"`); it is a one-time action, not permanent nav real estate.
+  Loans and Outreach deliberately kept top-level — they are the two things
+  Premium is actually sold on.
+  - Routes did NOT change. `TAB_ALIASES` (`SalesmanPremium.jsx:203`) maps
+    `bookings → enquiries + bookings sub-tab` and `merge → settings + scroll
+    to #sp-merge`, so every old link, every in-app `switchTab("bookings")`
+    call and the tour keep working.
+  - Killed a real redundancy: the Enquiries tab rendered its OWN read-only
+    copy of the appointments list (~48 lines) underneath the enquiry feed,
+    duplicating `renderBookings()` with none of its actions. Deleted — the
+    sub-tab shows the real interactive board.
+  - Killed dead state: `newBookingsCount` was a session-only "unseen" counter
+    that reset to 0 on every reload, so the nav badge lied after a refresh.
+    The Inbox badge now derives from real state
+    (`pendingBookingsCount + newEnquiriesCount`) and survives reloads.
+  - Tour still has all 11 steps — Bookings and Join a Dealership are real
+    features and still get introduced. `TOUR_HIGHLIGHT` repoints the
+    spotlight to the tab that now hosts them, and both step bodies say where
+    to find them.
 - **PREM-1: the three "coming soon" kill switches removed.** Premium was
   fully built but invisible to real customers behind three separate flags:
   `PREMIUM_ENABLED = false` in `SalesmanOnboarding.jsx:210` (any premium

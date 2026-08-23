@@ -24,7 +24,6 @@ import {
  Users,
  MessageSquare,
  Link as LinkIcon,
- GitMerge,
  Megaphone,
  AlertCircle,
  CheckCircle2,
@@ -201,6 +200,15 @@ function StatusBadge({ status }) {
 // Anything not in this list falls back to the dashboard.
 const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "analytics", "loans", "outreach", "merge", "settings"];
 
+// Tabs that no longer own a slot in the nav. Their routes still resolve, so old
+// links, in-app deep links (switchTab) and the tour all keep working — they just
+// land on the tab that now hosts them, pre-selecting the right sub-view or
+// scrolling to the right section.
+const TAB_ALIASES = {
+ bookings: { tab: "enquiries", sub: "bookings" },
+ merge: { tab: "settings", anchor: "sp-merge" },
+};
+
 export default function SalesmanPremium() {
  const navigate = useNavigate();
  const isMobile = useWindowSize() < 768;
@@ -220,14 +228,28 @@ export default function SalesmanPremium() {
  // push browser history — the phone Back button / swipe-back returns to the
  // previous tab instead of exiting the whole app and landing on sign-in.
  const { tab: routeTab } = useParams();
- const activeTab = VALID_PREMIUM_TABS.includes(routeTab) ? routeTab : "dashboard";
+ const resolvedTab = VALID_PREMIUM_TABS.includes(routeTab) ? routeTab : "dashboard";
+ const activeTab = TAB_ALIASES[resolvedTab]?.tab || resolvedTab;
  const setActiveTab = (tab) => navigate(`/salesman-premium/${tab}`);
- const [newBookingsCount, setNewBookingsCount] = useState(0);
+ // Bookings is a sub-view of Enquiries now; Lead History is the other half.
+ const [inboxSubTab, setInboxSubTab] = useState("bookings");
 
  function switchTab(tab) {
- if (tab === "bookings") setNewBookingsCount(0);
  setActiveTab(tab);
  }
+
+ // Land an aliased route on the right sub-view / section of its host tab.
+ useEffect(() => {
+ const alias = TAB_ALIASES[resolvedTab];
+ if (!alias) return;
+ if (alias.sub) setInboxSubTab(alias.sub);
+ if (alias.anchor) {
+ const t = setTimeout(() => {
+ document.getElementById(alias.anchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
+ }, 80);
+ return () => clearTimeout(t);
+ }
+ }, [resolvedTab]);
 
  // listings
  const [myListings, setMyListings] = useState([]);
@@ -738,7 +760,6 @@ export default function SalesmanPremium() {
  (payload) => {
  if (payload.eventType === "INSERT") {
  setAppointments((p) => [payload.new, ...p]);
- setNewBookingsCount((c) => c + 1);
  toast("New booking!", {
  description: payload.new.buyer_name || "New appointment",
  });
@@ -800,11 +821,15 @@ export default function SalesmanPremium() {
  useEffect(() => {
  if (tourStep === null) { setTourTarget(null); return; }
  const TOUR_TABS = [null, "dashboard", "listings", "leads", "enquiries", "bookings", "analytics", "loans", "outreach", "merge", "settings"];
+ // Bookings and Join a Dealership still get their own tour step — they are
+ // real features — but no longer own a nav button, so the spotlight has to
+ // fall on whichever element now hosts them.
+ const TOUR_HIGHLIGHT = { merge: "settings" };
  const tab = TOUR_TABS[tourStep];
  if (!tab) { setTourTarget(null); return; }
  switchTab(tab);
  const measure = () => {
- const el = document.querySelector(`[data-tour-id="${tab}"]`);
+ const el = document.querySelector(`[data-tour-id="${TOUR_HIGHLIGHT[tab] || tab}"]`);
  if (el) setTourTarget(el.getBoundingClientRect());
  };
  const t = setTimeout(measure, 60);
@@ -1629,6 +1654,12 @@ export default function SalesmanPremium() {
 
  // TABS 
 
+ // Bookings folded into Enquiries, so the Enquiries badge has to speak for
+ // both — otherwise a pending viewing request is invisible from the nav.
+ const pendingBookingsCount = appointments.filter((a) => a.status === "pending").length;
+ const newEnquiriesCount = enquiries.filter((e) => e.status === "new").length;
+ const inboxBadge = pendingBookingsCount + newEnquiriesCount;
+
  const TABS_DESKTOP = [
  {
  tab: "dashboard",
@@ -1649,15 +1680,9 @@ export default function SalesmanPremium() {
  },
  {
  tab: "enquiries",
- label: "Enquiries",
+ label: "Inbox",
  icon: <MessageSquare style={{ width: 14, height: 14 }} />,
- badge: enquiries.filter((e) => e.status === "new").length || null,
- },
- {
- tab: "bookings",
- label: "Bookings",
- icon: <Phone style={{ width: 14, height: 14 }} />,
- badge: newBookingsCount || null,
+ badge: inboxBadge || null,
  },
  {
  tab: "analytics",
@@ -1674,11 +1699,6 @@ export default function SalesmanPremium() {
  label: "Outreach",
  icon: <Megaphone style={{ width: 14, height: 14 }} />,
  }] : []),
- {
- tab: "merge",
- label: profile?.dealer_id? "My Dealership" : "Join Dealership",
- icon: <GitMerge style={{ width: 14, height: 14 }} />,
- },
  {
  tab: "settings",
  label: "Settings",
@@ -1702,14 +1722,13 @@ export default function SalesmanPremium() {
  },
  {
  tab: "enquiries",
- label: "Enquiries",
+ label: "Inbox",
  icon: <MessageSquare size={18} />,
- badge: enquiries.filter((e) => e.status === "new").length || null,
+ badge: inboxBadge || null,
  },
  { tab: "analytics", label: "Analytics", icon: <TrendingUp size={18} /> },
  { tab: "loans", label: "Loans", icon: <Banknote size={18} /> },
  ...(showOutreach ? [{ tab: "outreach", label: "Outreach", icon: <Megaphone size={18} /> }] : []),
- { tab: "merge", label: profile?.dealer_id? "Dealer" : "Merge", icon: <GitMerge size={18} /> },
  { tab: "settings", label: "Settings", icon: <Settings size={18} /> },
  ];
 
@@ -5914,6 +5933,12 @@ export default function SalesmanPremium() {
  {settingsSaving? "Saving..." : "Save Changes"}
  </button>
  </div>
+ {/* Joining a dealership is a one-time action, not something that needs a
+     permanent nav slot — it lives here, and /salesman-premium/merge still
+     resolves to this section (see TAB_ALIASES). */}
+ <div id="sp-merge" style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+ {renderMerge()}
+ </div>
  </div>
  );
  };
@@ -6709,12 +6734,12 @@ export default function SalesmanPremium() {
  { icon: BarChart2, title: "Dashboard", body: "Your command centre — KPIs, stale follow-up nudges, listing performance, and recent activity all in one view." },
  { icon: Car, title: "My Listings", body: "Add your cars here. Each card shows views, WA taps, and a CVR bar. Hot = buyers are clicking. Cold = needs a refresh or price drop." },
  { icon: Users, title: "Leads", body: "Track every buyer: New → Contacted → Test Drive → Won. Heat scores show who needs attention. Ping stale leads straight to WhatsApp." },
- { icon: MessageSquare, title: "Enquiries", body: "Buyers who messaged through your listing cards land here. Reply with templates or convert them into pipeline leads in one tap." },
- { icon: Calendar, title: "Bookings", body: "Viewing appointments appear here. Confirm, cancel, or send a WA reminder without leaving the app." },
+ { icon: MessageSquare, title: "Inbox", body: "Two views in one tab. Lead History is every buyer who messaged through your listing cards — reply with templates or convert them into pipeline leads in one tap." },
+ { icon: Calendar, title: "Bookings", body: "The other half of your Inbox. Viewing appointments land here — confirm, reschedule, cancel or send a WA reminder without leaving the app." },
  { icon: TrendingUp, title: "Analytics", body: "Views, WhatsApp taps and conversion rate per listing, plus your total commission and cars sold — all in one view." },
  { icon: Banknote, title: "Loans", body: "Compare bank rates for a buyer, submit their loan application, and track approval status — a Premium-only feature." },
  { icon: Megaphone, title: "Outreach Hub", body: "See which leads have gone cold, then work through them with a guided WhatsApp campaign — one tap per contact. Premium-only." },
- { icon: LinkIcon, title: "Join a Dealership", body: "Have an invite code from your dealer? Enter it here to unlock the full panel — shared stock, team leads, commission tracking and more." },
+ { icon: LinkIcon, title: "Join a Dealership", body: "Have an invite code from your dealer? Enter it at the bottom of Settings to unlock the full panel — shared stock, team leads, commission tracking and more." },
  { icon: Settings, title: "Settings", body: "Your public profile, WhatsApp templates and account settings live here." },
  ];
 
@@ -7407,59 +7432,44 @@ export default function SalesmanPremium() {
  {activeTab === "leads" && renderLeads()}
  {activeTab === "enquiries" && (
   <div>
-   {renderEnquiries()}
-   {appointments.length > 0 && (
-    <div style={{ marginTop: 8 }}>
-     <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "20px 0 10px" }}>
-      <Calendar size={13} color="#4b5563" />
-      <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.1em" }}>Appointments ({appointments.length})</p>
-     </div>
-     {appointments.slice(0, 20).map(apt => {
-      const car = apt.car_listings;
-      const aptDate = apt.appointment_date ? new Date(apt.appointment_date) : null;
-      const dateStr = aptDate && !isNaN(aptDate) ? aptDate.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" }) : "—";
-      const timeStr = aptDate && !isNaN(aptDate) ? aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "";
-      const isToday = aptDate && aptDate.toDateString() === new Date().toDateString();
-      const sc = { confirmed: "#4ade80", pending: "#fbbf24", cancelled: "#f87171", rescheduled: "#c084fc" }[apt.status] || "#fbbf24";
-      return (
-       <div key={apt.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px", marginBottom: 8 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 3 }}>
-           <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{apt.buyer_name || "—"}</p>
-           {isToday && <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 99, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd" }}>Today</span>}
-           <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 99, background: `${sc}18`, border: `1px solid ${sc}40`, color: sc }}>{apt.status || "pending"}</span>
-          </div>
-          {car && <p style={{ margin: "0 0 3px", fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
-          <p style={{ margin: 0, fontSize: 11, color: "#9ca3af" }}>{dateStr}{timeStr ? ` · ${timeStr}` : ""}</p>
-         </div>
-         {apt.buyer_phone && (
-          <a
-           href={`https://wa.me/${apt.buyer_phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${apt.buyer_name || ""}! Reminder: your appointment is on ${dateStr}${timeStr ? ` at ${timeStr}` : ""}. See you then!`)}`}
-           target="_blank"
-           rel="noopener noreferrer"
-           style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 7, background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", color: "#4ade80", fontSize: 11, fontWeight: 600, textDecoration: "none", flexShrink: 0 }}
-          >
-           <Phone size={11} />
-           WA
-          </a>
-         )}
-        </div>
-        {apt.notes && <p style={{ margin: "8px 0 0", fontSize: 11, color: "#6b7280", fontStyle: "italic" }}>{apt.notes}</p>}
-       </div>
-      );
-     })}
-    </div>
-   )}
+   {/* Bookings and Lead History are two views of the same inbox, so they share
+       one tab. This replaced a read-only duplicate of the appointments list
+       that used to sit under the enquiries feed — renderBookings() is the
+       real, interactive board. */}
+   <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+    {[
+     { key: "bookings", label: "Bookings", badge: pendingBookingsCount },
+     { key: "enquiries", label: "Lead History", badge: newEnquiriesCount },
+    ].map(({ key, label, badge }) => (
+     <button
+      key={key}
+      data-tour-id={key === "bookings" ? "bookings" : undefined}
+      onClick={() => setInboxSubTab(key)}
+      style={{
+       fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 8, cursor: "pointer",
+       background: inboxSubTab === key ? "rgba(37,99,235,0.15)" : "rgba(255,255,255,0.04)",
+       border: `1px solid ${inboxSubTab === key ? "rgba(37,99,235,0.35)" : "rgba(255,255,255,0.08)"}`,
+       color: inboxSubTab === key ? "#93c5fd" : "#6b7280",
+       display: "flex", alignItems: "center", gap: 6,
+      }}
+     >
+      {label}
+      {badge > 0 && (
+       <span style={{ fontSize: 10, fontWeight: 700, background: "#2563eb", color: "#fff", borderRadius: 99, padding: "0px 5px", minWidth: 16, textAlign: "center" }}>
+        {badge}
+       </span>
+      )}
+     </button>
+    ))}
+   </div>
+   {inboxSubTab === "enquiries" ? renderEnquiries() : renderBookings()}
   </div>
  )}
- {activeTab === "bookings" && renderBookings()}
  {activeTab === "analytics" && renderAnalytics()}
  {activeTab === "loans" && renderLoans()}
  {activeTab === "outreach" && showOutreach && (
  <OutreachHub dealerId={profile?.dealer_id} salesmanId={userId} />
  )}
- {activeTab === "merge" && renderMerge()}
  {activeTab === "settings" && renderSettings()}
  </div>
  </div>
