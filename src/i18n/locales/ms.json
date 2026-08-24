@@ -297,6 +297,7 @@
       "listingsMobile": "Listing",
       "leads": "Lead",
       "inbox": "Peti Masuk",
+      "chat": "Sembang",
       "performance": "Prestasi",
       "performanceMobile": "Prestasi",
       "merge": "Sertai Pengedar",
@@ -949,6 +950,8 @@
       "leadsSub": "Tambah kenderaan untuk mula kumpul lead. Pembeli yang bertanya pada listing anda akan muncul di sini secara automatik.",
       "inboxTitle": "Peti masuk dikunci",
       "inboxSub": "Tambah kenderaan untuk terima pertanyaan dan tempahan. Setiap mesej dan permintaan test drive akan muncul di sini.",
+      "chatTitle": "Tiada sembang lagi",
+      "chatSub": "Senaraikan kereta pertama anda. Pembeli boleh menghantar mesej terus dari listing, dan setiap perbualan akan masuk di sini.",
       "perfTitle": "Prestasi dikunci",
       "perfSub": "Tambah kenderaan untuk lihat data prestasi anda — paparan, kadar tutup dan kesihatan pipeline semuanya terbina daripada listing anda.",
       "cta": "Tambah kenderaan"

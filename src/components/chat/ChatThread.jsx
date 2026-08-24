@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Check, CheckCheck, Send, AlertCircle, Eye, ShieldAlert, Sparkles, X } from 'lucide-react';
+import { Check, CheckCheck, Send, AlertCircle, Eye, ShieldAlert, Sparkles, X, Lock } from 'lucide-react';
 import { useChatThread, tickState } from '../../hooks/useChat';
 import { supabase } from '../../supabaseClient';
 
@@ -11,7 +11,7 @@ import { supabase } from '../../supabaseClient';
 // stored `body_ai` with numbers already replaced; this renders that, and swaps
 // to `body` only when the reader taps. One rule, in the database.
 
-const THEMES = {
+export const THEMES = {
   light: {
     bg: '#fff', panel: '#f9fafb', border: '#e5e7eb', text: '#111827',
     sub: '#6b7280', mine: '#dc2626', mineText: '#fff',
@@ -86,6 +86,9 @@ function Bubble({ msg, mine, t }) {
 export default function ChatThread({
   threadId, role, theme = 'light', headerName, headerSub, headerRight = null,
   showPrivacyNote = false, height = 460, aiAssist = false, bare = false,
+  // /choose-plan is the real salesman plan picker. NOT '/upgrade' — that path
+  // has no route and falls through to NotFoundPage.
+  aiUpgrade = false, upgradeHref = '/choose-plan',
 }) {
   const t = THEMES[theme] || THEMES.light;
   const { messages, loading, sending, send, markRead } = useChatThread(threadId, role);
@@ -178,6 +181,22 @@ export default function ChatThread({
 
       {notice && (
         <p style={{ margin:0, padding:'7px 14px', fontSize:11.5, color:'#f87171', background:'rgba(248,113,113,0.10)', flexShrink:0 }}>{notice}</p>
+      )}
+
+      {/* Lite has the same chat, without the AI. The locked strip sits in the
+          exact slot the AI bar occupies on Premium so the upgrade shows what is
+          missing where it would have been, instead of a banner bolted on top. */}
+      {!aiAssist && aiUpgrade && (
+        <div style={{ display:'flex', alignItems:'center', gap:9, flexWrap:'wrap', borderTop:`1px solid ${t.border}`, background:t.panel, padding:'9px 12px', flexShrink:0 }}>
+          <Lock size={12} style={{ color:t.sub, flexShrink:0 }} />
+          <p style={{ margin:0, flex:'1 1 150px', minWidth:0, fontSize:11.5, lineHeight:1.5, color:t.sub }}>
+            Draft replies and ask about a buyer with AI on Premium.
+          </p>
+          <a href={upgradeHref}
+            style={{ display:'inline-flex', alignItems:'center', gap:5, flexShrink:0, padding:'6px 12px', borderRadius:8, background:'#dc2626', color:'#fff', fontSize:11.5, fontWeight:700, textDecoration:'none', fontFamily:"system-ui,sans-serif" }}>
+            <Sparkles size={12} /> Upgrade
+          </a>
+        </div>
       )}
 
       {aiAssist && (
