@@ -58,14 +58,11 @@ not scoped, not prioritized — just parked here until picked up on purpose.
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
 
 - **ACT-1: Enable TOTP in Supabase dashboard — DEFERRED until revenue (user: paid)** — 2FA (SEC-1) will not work end-to-end until the TOTP factor type is enabled: Supabase → Authentication → Settings → Multi-Factor → enable **TOTP**. Until then, the "Enable 2FA" button in Settings will error on enroll. Owner is deferring this until revenue/Supabase Pro (treats it as a paid feature — note: standard app-based TOTP MFA is typically free on Supabase; the paid MFA add-on is Phone/SMS, which we are avoiding anyway — worth re-checking billing before permanently shelving). Interim idea from owner: keep Gmail/Google link verification and add an email verification code as a lightweight second factor. NOTE (2026-08-05): TOTP is NOT deprecated — Bank Negara's RMiT (28 Nov 2025) bans **SMS OTP** as a standalone factor, not TOTP. TOTP (authenticator-app codes, RFC 6238) is offline/device-local and is one of the regulator's recommended interception-resistant replacements, so it stays the correct choice here. Do NOT enable Supabase's Phone/SMS OTP factor. Passkeys (FIDO2/WebAuthn) are the gold standard but are not a native Supabase MFA factor yet.
-- **ACT-13: Turn ON anonymous sign-ins (blocks guest chat) — 2026-08-23** — Supabase →
-  Authentication → Sign In / Providers → enable **Anonymous sign-ins**. The in-app buyer
-  chat lets a shopper message a seller without making an account, which needs this. Until
-  it is on, the chat sheet on a car listing shows "Chat isn't available right now" for any
-  visitor who is not already logged in (registered buyers still work). One toggle, no code.
-  Safe to enable: `handle_new_user()` was patched in the same session so an anonymous
-  signup is always given `role='buyer'` — before that patch it would have created a
-  `role='dealer'` profile for every guest. Verified against a real insert.
+> **ACT-13 DONE 2026-08-24** — anonymous sign-ins were enabled by the owner, so guest
+> chat is live. The safety guard was verified in the live database before the chat shipped:
+> `handle_new_user()` forces `role='buyer'` on any anonymous session, so a guest can never
+> be created as a dealer. Do not remove that branch. Note the chat had still never been
+> exercised end to end by a human at the point it went to production.
 
 - **ACT-2: Decide on full 2FA enforcement (SEC-1b)** — Client-side 2FA only challenges the password login path. Google OAuth and magic-link logins are NOT challenged. True enforcement across all auth methods needs RLS policies keyed on `aal2` so the database rejects aal1 sessions. Confirm if/when you want this hardening built.
 
