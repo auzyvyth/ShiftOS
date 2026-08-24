@@ -171,11 +171,30 @@ API assuming it is the only way to give the AI conversation context.
   literally builds `const banks = [{ ...one bank... }]`. Add 2-3
   side-by-side tenure/down-payment comparisons before the application form,
   the way AutoRaptor's Payment Penciling does.
-- [ ] **RAPTOR-3: Equity mining on the Customers tab.** Data already exists —
-  `purchase_date`, `selling_price`, `car_brand`/`model`/`year` on the
-  `customers` table (`renderCustomers`, `SalesmanPremium.jsx:6998`) — no new integration needed,
-  just a query surfacing "bought 3+ years ago, may be trade-up ready."
-  Closest thing to a free win on this list.
+**RAPTOR-3 SHIPPED 2026-08-24 — do not rebuild.** Equity mining on the
+Customers tab (`renderCustomers`, `src/pages/SalesmanPremium.jsx`): a
+`Trade-up ready · N` filter pill, a per-customer strip naming the reason, and a
+WhatsApp message button. Sorted strongest signal first, so the filtered view is
+already a call list.
+Two things the spec got wrong and this build corrects:
+  1. "Bought 3+ years ago" alone returns ZERO rows and will keep returning zero
+     until 2029 — the oldest `customers.purchase_date` in prod is 2026-03-08,
+     the platform is six months old. So the trigger is ownership age >= 3y OR
+     vehicle age >= 5y (now minus `car_year`). Vehicle age fires today: 10 of
+     the 27 live customers qualify. Ownership age takes over as the platform
+     ages; both reasons show when both fire.
+  2. No estimated equity, trade-in value or payoff figure anywhere. `customers`
+     has a selling price but there is no loan tenure or interest rate on any
+     table, so an equity number would be invented — the same rule that governs
+     AI drafts. The feature answers WHO to call, never what to offer, and the
+     filter header says so out loud.
+The WhatsApp opener names no price, instalment, trade-in value or approval. The
+button is hidden when the stored phone has under 9 digits (prod has junk values
+like "601" and "1212112" that would open a dead chat).
+Also fixed while in there: the "Some policies have expired" line put its
+highlighted word on its own line at 375px — the icon and text were siblings in a
+flex row, so the inline span became a flex item.
+
 **RAPTOR-6 SHIPPED 2026-08-24 — do not rebuild.** The car card is now two
 buttons: red "Book a Viewing" plus one neutral **Contact**. Contact opens the
 sheet `BuyerChat` already owned, which gained a chooser step in front of the

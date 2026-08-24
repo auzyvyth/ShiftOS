@@ -391,6 +391,17 @@ Buyers message sellers inside ShiftOS (not WhatsApp). Built 2026-08-23.
   modal, and the real `wa.me` deep link still fires synchronously inside
   `handleEnquirySubmit`, so nothing here is exposed to a popup blocker.
 
+## Equity mining / trade-up list (RAPTOR-3) — built, don't rebuild
+Customers tab in `SalesmanPremium.jsx` (`renderCustomers`) has a `Trade-up
+ready` filter. Two triggers, OR'd: owned 3+ years (`purchase_date`) or a car 5+
+model-years old (`car_year`). The vehicle-age one exists because the platform is
+six months old — an ownership-age-only rule returns zero rows until 2029.
+- **Never show an estimated equity, trade-in or payoff figure here.** No table
+  holds a loan tenure or rate, so any such number is invented. This surfaces WHO
+  to call; the salesman inspects the car before quoting. Same rule as AI drafts.
+- The WhatsApp opener is a fixed string with no price, instalment or approval in
+  it, and only renders when the stored phone has 9+ digits.
+
 ## Follow-up nudges (RAPTOR-1/4) — built, don't rebuild
 A nudge = a reminder with the message already drafted, queued against one lead.
 - `scheduled_nudges` (dealer_id, salesman_id, lead_id, draft_message, reason,
