@@ -176,6 +176,26 @@ API assuming it is the only way to give the AI conversation context.
   `customers` table (`renderCustomers`, `SalesmanPremium.jsx:6998`) — no new integration needed,
   just a query surfacing "bought 3+ years ago, may be trade-up ready."
   Closest thing to a free win on this list.
+- [ ] **RAPTOR-6: Collapse the car-page CTAs into one Contact button.** On
+  `CarDetailPage` the WhatsApp button becomes a single **Contact** button; tapping
+  it opens a small sheet with two choices — WhatsApp, or chat in the app. Owner's
+  call 2026-08-23.
+  Why it is the right move, not just a preference: adding "Chat with the seller"
+  in this session left FOUR stacked CTAs on that card (Book a Viewing / WhatsApp /
+  Call / Chat), which is exactly the button-row clutter CLAUDE.md's anti-slop rules
+  warn about. One Contact button restores a single clear primary plus a short
+  chooser, and it puts in-app chat on equal footing with WhatsApp instead of
+  burying it underneath.
+  Touch points — there are TWO CTA blocks in the file and both must change or the
+  layouts drift apart: `src/pages/CarDetailPage.jsx:2490` (desktop sidebar) and
+  `:3960` (the second layout). `enquiryClick` / `enquiryLabel` are defined once at
+  `:1707-1708` and shared by both. Keep `handleWhatsApp` exactly as-is — it fires
+  the `wa.me` deep link synchronously inside the click handler on purpose (a popup
+  blocker kills it otherwise, see the comment at `:1465`), so the WhatsApp option
+  inside the sheet must still call it directly from a real user gesture, not after
+  an await. Reuse `BuyerChat`'s existing sheet rather than adding a third overlay,
+  and keep passing `isLight={isXdrive}` so it works on both the light marketplace
+  and the dark dealer subdomain.
 - [ ] **RAPTOR-5 (low priority): Click-to-call with auto-logging.** Not
   urgent — Malaysia's WhatsApp-first market makes voice less central than in
   AutoRaptor's US/SMS-centric design. If ever built, auto-log the outcome
