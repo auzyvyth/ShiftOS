@@ -1813,27 +1813,44 @@ export default function SalesmanLite() {
 
   useEffect(() => {
     if (tourStep === null) { setTourTarget(null); return; }
-    // Index-aligned with TOUR_STEPS. "bookings" resolves to the enquiries tab's
-    // bookings sub-tab below; the rest map 1:1 to nav data-tour-id anchors.
-    const TOUR_TABS = [null, "dashboard", "listings", "leads", "enquiries", "bookings", "performance", "services", "settings", "help"];
-    const tab = TOUR_TABS[tourStep];
-    if (!tab) { setTourTarget(null); return; }
-    if (tab === "bookings") {
-      switchTab("enquiries");
-      setInboxSubTab("bookings");
-    } else {
-      switchTab(tab);
-    }
+    // Index-aligned with TOUR_STEPS. Most steps switch to a tab and highlight that
+    // same tab's nav anchor — but chat/services now live as quick-access buttons on
+    // the Dashboard (not their own nav slot), and help now lives inside Settings, so
+    // those three track a target id separate from the tab they switch to.
+    const TOUR_ANCHORS = [
+      null,
+      { tab: "dashboard" },
+      { tab: "listings" },
+      { tab: "leads" },
+      { tab: "enquiries" },
+      { tab: "enquiries", targetId: "bookings", onSwitch: () => setInboxSubTab("bookings") },
+      { tab: "performance" },
+      { tab: "dashboard", targetId: "chat" },
+      { tab: "dashboard", targetId: "services" },
+      { tab: "settings" },
+      { tab: "settings", targetId: "help" },
+    ];
+    const anchor = TOUR_ANCHORS[tourStep];
+    if (!anchor) { setTourTarget(null); return; }
+    switchTab(anchor.tab);
+    anchor.onSwitch?.();
     // The bookings step highlights the actual Bookings sub-tab pill (data-tour-id
     // "bookings"), not the Enquiries nav again — so it visibly "opens" the booking
     // tab rather than pointing at the same sidebar item as the previous step. The
     // pill only mounts after the enquiries tab renders, so give it a touch longer.
-    const targetId = tab;
+    const targetId = anchor.targetId || anchor.tab;
+    // Chat/services/help now sit inside the scrollable content area (dashboard
+    // quick-access row, settings header) instead of the always-visible nav, so a
+    // prior tab's scroll position can leave them off-screen — scroll them into
+    // view before measuring, or the highlight ring (and the bubble anchored to it)
+    // ends up pointing at a rect outside the viewport and reads as clipped.
     const measure = () => {
       const el = document.querySelector(`[data-tour-id="${targetId}"]`);
-      if (el) setTourTarget(el.getBoundingClientRect());
+      if (!el) return;
+      el.scrollIntoView({ block: "center", behavior: "auto" });
+      setTourTarget(el.getBoundingClientRect());
     };
-    const t = setTimeout(measure, tab === "bookings" ? 140 : 80);
+    const t = setTimeout(measure, targetId === "bookings" ? 140 : 80);
     return () => clearTimeout(t);
   }, [tourStep]);
 
@@ -2616,30 +2633,14 @@ export default function SalesmanLite() {
       badge: (enquiries.filter((e) => e.status === "new").length + pendingBookingsCount) || null,
     },
     {
-      tab: "chat",
-      label: t("salesmanLite.tabs.chat"),
-      icon: <MessageCircle style={{ width: 14, height: 14 }} />,
-      badge: chatUnread || null,
-    },
-    {
       tab: "performance",
       label: t("salesmanLite.tabs.performance"),
       icon: <BarChart2 style={{ width: 14, height: 14 }} />,
     },
     {
-      tab: "services",
-      label: t("salesmanLite.tabs.services", { defaultValue: "Services" }),
-      icon: <Package style={{ width: 14, height: 14 }} />,
-    },
-    {
       tab: "settings",
       label: t("salesmanLite.tabs.settings"),
       icon: <Settings style={{ width: 14, height: 14 }} />,
-    },
-    {
-      tab: "help",
-      label: t("salesmanLite.tabs.help"),
-      icon: <BookOpen style={{ width: 14, height: 14 }} />,
     },
   ];
 
@@ -2663,11 +2664,8 @@ export default function SalesmanLite() {
       icon: <MessageSquare size={18} />,
       badge: (enquiries.filter((e) => e.status === "new").length + pendingBookingsCount) || null,
     },
-    { tab: "chat", label: t("salesmanLite.tabs.chat"), icon: <MessageCircle size={18} />, badge: chatUnread || null },
     { tab: "performance", label: t("salesmanLite.tabs.performanceMobile"), icon: <BarChart2 size={18} /> },
-    { tab: "services", label: t("salesmanLite.tabs.services", { defaultValue: "Services" }), icon: <Package size={18} /> },
     { tab: "settings", label: t("salesmanLite.tabs.settings"), icon: <Settings size={18} /> },
-    { tab: "help", label: t("salesmanLite.tabs.help"), icon: <BookOpen size={18} /> },
   ];
 
   // ── NOTIFICATION PANEL ────────────────────────────────────────────────────
@@ -3171,6 +3169,35 @@ export default function SalesmanLite() {
               )}
             </div>
           )}
+        </div>
+
+        {/* Chat & Add-ons moved out of the footer/sidebar nav — they don't need a
+            permanent nav slot, so they live here instead, one tap below the
+            mini-page stats. Still reachable, just not competing for nav space. */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+          <button
+            data-tour-id="chat"
+            onClick={() => switchTab("chat")}
+            style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: R.lg, background: C.surface, border: `1px solid ${C.border}`, cursor: "pointer", fontFamily: "inherit", textAlign: "left", minWidth: 0 }}
+          >
+            <span style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: R.md, background: withAlpha(C.info, 0.1), color: C.infoText, flexShrink: 0 }}>
+              <MessageCircle size={15} />
+              {chatUnread ? <span style={{ position: "absolute", top: -2, right: -2, width: 8, height: 8, borderRadius: "50%", background: C.danger, border: `1.5px solid ${C.surface}` }} /> : null}
+            </span>
+            <span style={{ flex: 1, minWidth: 0, fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("salesmanLite.tabs.chat")}</span>
+            <ChevronRight size={13} style={{ flexShrink: 0, opacity: 0.4, color: C.textMuted }} />
+          </button>
+          <button
+            data-tour-id="services"
+            onClick={() => switchTab("services")}
+            style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: R.lg, background: C.surface, border: `1px solid ${C.border}`, cursor: "pointer", fontFamily: "inherit", textAlign: "left", minWidth: 0 }}
+          >
+            <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: R.md, background: withAlpha(C.success, 0.1), color: C.successText, flexShrink: 0 }}>
+              <Package size={15} />
+            </span>
+            <span style={{ flex: 1, minWidth: 0, fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("salesmanLite.tabs.services", { defaultValue: "Services" })}</span>
+            <ChevronRight size={13} style={{ flexShrink: 0, opacity: 0.4, color: C.textMuted }} />
+          </button>
         </div>
 
         {/* Dashboard body — 2-up grid on desktop, single column on mobile.
@@ -7357,9 +7384,21 @@ export default function SalesmanLite() {
 
     return (
       <div style={{ maxWidth: 560, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
-        <p style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
-          {t("salesmanLite.settings.title")}
-        </p>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 20 }}>
+          <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
+            {t("salesmanLite.settings.title")}
+          </p>
+          {/* Manual/help — moved off the footer/sidebar nav (it doesn't need its
+              own permanent slot) and parked here, next to the settings the user
+              is most likely to need it while filling in. */}
+          <button
+            data-tour-id="help"
+            onClick={() => setActiveTab("help")}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
+          >
+            <BookOpen size={13} /> {t("salesmanLite.tabs.help")}
+          </button>
+        </div>
 
         {/* Avatar */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
@@ -8297,6 +8336,7 @@ export default function SalesmanLite() {
     { icon: MessageSquare, title: t("salesmanLite.tour.steps.inbox.title"),      body: t("salesmanLite.tour.steps.inbox.body") },
     { icon: Calendar,     title: t("salesmanLite.tour.steps.bookings.title"),    body: t("salesmanLite.tour.steps.bookings.body") },
     { icon: BarChart2,    title: t("salesmanLite.tour.steps.performance.title"), body: t("salesmanLite.tour.steps.performance.body") },
+    { icon: MessageCircle, title: t("salesmanLite.tour.steps.chat.title"),       body: t("salesmanLite.tour.steps.chat.body") },
     { icon: Package,      title: t("salesmanLite.tour.steps.services.title"),    body: t("salesmanLite.tour.steps.services.body") },
     { icon: Settings,     title: t("salesmanLite.tour.steps.settings.title"),    body: t("salesmanLite.tour.steps.settings.body") },
     { icon: BookOpen,     title: t("salesmanLite.tour.steps.help.title"),        body: t("salesmanLite.tour.steps.help.body") },

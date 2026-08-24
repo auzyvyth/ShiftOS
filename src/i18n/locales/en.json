@@ -449,6 +449,10 @@
           "title": "Performance",
           "body": "Your sales stats — commission earned, units sold, and ad performance over time. Know what's working."
         },
+        "chat": {
+          "title": "Chat",
+          "body": "Buyers can message you straight from a listing, right here in ShiftOS. Every conversation lands in this one thread list — just below your dashboard stats."
+        },
         "services": {
           "title": "Add-ons",
           "body": "Build your own catalogue of extras — tint, warranty, insurance and more. Attach them to a listing or a deal to add margin on top of the car sale."

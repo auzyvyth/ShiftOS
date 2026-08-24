@@ -443,6 +443,10 @@
           "title": "Prestasi",
           "body": "Statistik jualan anda — komisen diperoleh, unit terjual, dan prestasi setiap iklan dari semasa ke semasa. Tahu apa yang berkesan."
         },
+        "chat": {
+          "title": "Chat",
+          "body": "Pembeli boleh mesej anda terus dari iklan, di dalam ShiftOS sendiri. Setiap perbualan masuk dalam satu senarai — di bawah statistik papan pemuka anda."
+        },
         "services": {
           "title": "Tambahan",
           "body": "Bina katalog tambahan anda sendiri — tint, waranti, insurans dan lain-lain. Lampirkan pada iklan atau deal untuk tambah margin di atas jualan kereta."
