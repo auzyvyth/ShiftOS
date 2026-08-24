@@ -379,6 +379,17 @@ Buyers message sellers inside ShiftOS (not WhatsApp). Built 2026-08-23.
 - Frontend: `src/hooks/useChat.js`, `src/components/chat/{ChatThread,SellerInbox,BuyerChat}.jsx`.
   Notifications reuse the existing path (a `salesman_notifications` row IS the
   push) and fire only on the first unread of a burst.
+- **`BuyerChat` is the car page's ONE Contact button (RAPTOR-6, 2026-08-24)** — it
+  is no longer just the chat trigger. Its sheet has two steps: a chooser (WhatsApp
+  / chat here / call) and then the chat itself. The car card is now exactly two
+  buttons: red "Book a Viewing" (the page owns it) + neutral "Contact". Do NOT
+  add a fourth CTA back onto that card — a new way to reach the seller becomes a
+  row inside the chooser, not another button. `CarDetailPage` has TWO CTA blocks
+  (mobile card and desktop sidebar) and both pass the same props — change one,
+  change the other or the layouts drift. WhatsApp is handed in as `onWhatsApp`
+  and closes the sheet before it runs (overlay rule 3); it opens the enquiry
+  modal, and the real `wa.me` deep link still fires synchronously inside
+  `handleEnquirySubmit`, so nothing here is exposed to a popup blocker.
 
 ## Follow-up nudges (RAPTOR-1/4) — built, don't rebuild
 A nudge = a reminder with the message already drafted, queued against one lead.
