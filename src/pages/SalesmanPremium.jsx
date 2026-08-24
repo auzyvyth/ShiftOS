@@ -151,7 +151,11 @@ const TOUR_TABS = [
 // Steps whose tab has no nav button of its own. `null` = no element to spotlight,
 // so the tour centres its card on screen instead of ringing the wrong button.
 const TOUR_HIGHLIGHT = {
- bookings: "enquiries", // lives inside the Inbox tab
+ // Bookings has no nav button of its own, but it DOES have a real control: the
+ // "Bookings" sub-tab pill inside the Inbox tab (data-tour-id="bookings", set in
+ // salesmanPremium/shared.jsx SubTabs). The step is about that sub-view, so the
+ // ring belongs on the pill — pointing it at the Inbox nav button instead just
+ // told you to open a tab the tour had already opened.
  merge: "settings", // the invite-code box at the bottom of Settings
  customers: null, // reached from the Dashboard, no nav slot
  handover: null,
@@ -1037,16 +1041,25 @@ export default function SalesmanPremium() {
  // to null, which centres the card. Clearing the target on a miss is the fix
  // for the tour "tweaking": it used to leave the previous step's rectangle in
  // place, so the ring sat on the wrong nav item and the bubble pointed at it.
+ let scrolled = false;
  const measure = () => {
  const id = TOUR_HIGHLIGHT[tab] ?? tab;
  const el = id ? document.querySelector(`[data-tour-id="${id}"]`) : null;
- setTourTarget(el ? el.getBoundingClientRect() : null);
- return !!el;
+ if (!el) { setTourTarget(null); return; }
+ const r = el.getBoundingClientRect();
+ // An in-content target (the Bookings pill) can sit below the fold on a phone.
+ // Bring it into view once, then keep measuring so the ring lands where it
+ // ended up rather than where it started.
+ if (!scrolled && (r.top < 0 || r.bottom > window.innerHeight)) {
+ scrolled = true;
+ el.scrollIntoView({ block: "center", behavior: "smooth" });
+ }
+ setTourTarget(r);
  };
- // Tab panels are lazy-loaded, so one 60ms shot was not always enough — retry
- // a few times until the nav has painted, then stop.
- let tries = 0;
- const iv = setInterval(() => { if (measure() || ++tries > 8) clearInterval(iv); }, 60);
+ // Tab panels are lazy-loaded and a scroll takes a moment to settle, so keep
+ // re-measuring for ~0.6s instead of taking one 60ms snapshot.
+ let ticks = 0;
+ const iv = setInterval(() => { measure(); if (++ticks > 10) clearInterval(iv); }, 60);
  // Re-measure on resize/orientation change so the ring never drifts off the
  // button it is supposed to be circling.
  window.addEventListener("resize", measure);
@@ -5039,6 +5052,11 @@ export default function SalesmanPremium() {
  let arrowEl = null;
  const PAD = 12;
  const BUBBLE_W = isMobile? Math.min(320, window.innerWidth - 32) : 300;
+ // Rough card height, used only to decide above-vs-below placement.
+ const BUBBLE_H_EST = 220;
+ // The arrow used to be #1e2d3d while the card was #111827, so it read as a
+ // stray notch rather than part of the bubble. One constant, both.
+ const BUBBLE_BG = "#111827";
 
  if (!tourTarget || isWelcome) {
  // Center on screen for welcome step or if target not found
@@ -5050,33 +5068,8 @@ export default function SalesmanPremium() {
  width: BUBBLE_W,
  zIndex: 1002,
  };
- } else if (isMobile) {
- // Mobile: nav at bottom → bubble sits above the highlighted tab
- const centerX = tourTarget.left + tourTarget.width / 2;
- const bubbleLeft = Math.max(8, Math.min(centerX - BUBBLE_W / 2, window.innerWidth - BUBBLE_W - 8));
- bubbleStyle = {
- position: "fixed",
- bottom: window.innerHeight - tourTarget.top + PAD,
- left: bubbleLeft,
- width: BUBBLE_W,
- zIndex: 1002,
- };
- // Arrow pointing down toward the tab
- const arrowLeft = centerX - bubbleLeft - 8;
- arrowEl = (
- <div style={{
- position: "absolute",
- bottom: -8,
- left: Math.max(12, Math.min(arrowLeft, BUBBLE_W - 28)),
- width: 0,
- height: 0,
- borderLeft: "8px solid transparent",
- borderRight: "8px solid transparent",
- borderTop: "8px solid #1e2d3d",
- }} />
- );
- } else {
- // Desktop: sidebar at left → bubble sits to the right of the highlighted item
+ } else if (!isMobile && tourTarget.right < 260) {
+ // Desktop sidebar item (the nav is 200px wide) → bubble to its right.
  const topPos = Math.max(8, Math.min(tourTarget.top + tourTarget.height / 2 - 80, window.innerHeight - 220));
  bubbleStyle = {
  position: "fixed",
@@ -5095,7 +5088,40 @@ export default function SalesmanPremium() {
  height: 0,
  borderTop: "8px solid transparent",
  borderBottom: "8px solid transparent",
- borderRight: "8px solid #1e2d3d",
+ borderRight: `8px solid ${BUBBLE_BG}`,
+ }} />
+ );
+ } else {
+ // Anything anchored in the page itself: the mobile bottom nav, or an
+ // in-content control like the Bookings sub-tab pill. Sit ABOVE the target
+ // when there is room for the card, otherwise BELOW it — a step pointing at
+ // something near the top of the page used to push the bubble off screen,
+ // because the old code always assumed the target was the bottom nav.
+ const centerX = tourTarget.left + tourTarget.width / 2;
+ const bubbleLeft = Math.max(8, Math.min(centerX - BUBBLE_W / 2, window.innerWidth - BUBBLE_W - 8));
+ const above = tourTarget.top >= BUBBLE_H_EST + PAD;
+ bubbleStyle = {
+ position: "fixed",
+ ...(above
+ ? { bottom: window.innerHeight - tourTarget.top + PAD }
+ : { top: tourTarget.bottom + PAD }),
+ left: bubbleLeft,
+ width: BUBBLE_W,
+ zIndex: 1002,
+ };
+ const arrowLeft = Math.max(12, Math.min(centerX - bubbleLeft - 8, BUBBLE_W - 28));
+ arrowEl = (
+ <div style={{
+ position: "absolute",
+ ...(above ? { bottom: -8 } : { top: -8 }),
+ left: arrowLeft,
+ width: 0,
+ height: 0,
+ borderLeft: "8px solid transparent",
+ borderRight: "8px solid transparent",
+ ...(above
+ ? { borderTop: `8px solid ${BUBBLE_BG}` }
+ : { borderBottom: `8px solid ${BUBBLE_BG}` }),
  }} />
  );
  }
@@ -5125,7 +5151,7 @@ export default function SalesmanPremium() {
  <div
  style={{
  ...bubbleStyle,
- background: "#111827",
+ background: BUBBLE_BG,
  border: "1px solid rgba(59,130,246,0.3)",
  borderRadius: 14,
  padding: "18px 18px 14px",

@@ -52,19 +52,31 @@ export default function ConsentBanner() {
     let scrollHandler, timer;
     if (!c.decided) {
       setAnalytics(c.analytics); setPreferences(c.preferences);
-      // Defer the banner so it doesn't fight the Google One Tap prompt for the
-      // screen on first paint (One Tap only needs strictly-necessary auth
-      // storage, which is never gated). Reveal it once the visitor scrolls into
-      // the page, with a timed fallback so a non-scrolling visitor still gets
-      // the choice.
+      // Scrolling is what surfaces the banner. It stays out of the way on
+      // arrival (so it doesn't fight the Google One Tap prompt for the screen on
+      // first paint — One Tap only needs strictly-necessary auth storage, which
+      // is never gated) and meets the visitor once they've engaged with the page.
+      // Threshold is half a screen so it means the same thing on a phone as on a
+      // desktop, rather than a fixed 250px that is most of a phone viewport.
+      const threshold = Math.min(320, Math.round(window.innerHeight * 0.5));
       const reveal = () => {
         setOpen(true);
         window.removeEventListener('scroll', scrollHandler);
         clearTimeout(timer);
       };
-      scrollHandler = () => { if (window.scrollY > 250) reveal(); };
+      scrollHandler = () => { if (window.scrollY > threshold) reveal(); };
       window.addEventListener('scroll', scrollHandler, { passive: true });
-      timer = setTimeout(reveal, 8000);
+      // Already scrolled on mount (back-navigation restores the position, and no
+      // scroll event fires for that) — check once up front.
+      scrollHandler();
+      // Fallback for a visitor who never scrolls: they still have to be able to
+      // make a choice. It used to be 8s, which fired while people were reading
+      // and made the banner look like it appeared on its own. Long now, so
+      // scrolling is what actually reveals it in practice — except on a page too
+      // short to ever reach the threshold, where the scroll trigger can never
+      // fire and the timer is the only way the banner is reachable at all.
+      const canScroll = document.documentElement.scrollHeight > window.innerHeight + threshold;
+      timer = setTimeout(reveal, canScroll ? 45000 : 6000);
     }
     const reopen = () => {
       const cur = getConsent();

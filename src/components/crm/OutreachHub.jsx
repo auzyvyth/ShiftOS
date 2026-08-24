@@ -26,19 +26,19 @@ const ACTIVE_STAGES = ['enquiry', 'new', 'contacted', 'viewing_booked', 'test_dr
 // per theme and one lookup below — never a second copy of the component.
 const PALETTES = {
   light: {
-    surface:P.surface, surfaceAlt:P.surfaceAlt, fill:P.fill, imgFill:P.imgFill, ring:P.border,
-    border:P.border, text:P.text, textSec:P.textSec, textMuted:P.textMuted, textDim:P.textDim,
-    inkBtn:P.text, inkBtnText:P.surface,
-    okBg:P.okBg, okBorder:P.okBorder, okText:P.okText, okTick:P.okTick,
-    infoBg:P.infoBg, infoBorder:P.infoBorder, infoText:P.infoText,
-    violetBorder:P.violetBorder, violetText:P.violetText, violetStrong:P.violetStrong,
-    dangerBorder:P.dangerBorder, dangerText:P.dangerText,
+    surface:'#fff', surfaceAlt:'#f9fafb', fill:'#f3f4f6', imgFill:'#eef2f7', ring:'#e5e7eb',
+    border:'#e5e7eb', text:'#111827', textSec:'#374151', textMuted:'#6b7280', textDim:'#9ca3af',
+    inkBtn:'#111827', inkBtnText:'#fff',
+    okBg:'#f0fdf4', okBorder:'#86efac', okText:'#15803d', okTick:'#16a34a',
+    infoBg:'#EFF6FF', infoBorder:'#93c5fd', infoText:'#2563eb',
+    violetBorder:'#ddd6fe', violetText:'#6d28d9', violetStrong:'#7c3aed',
+    dangerBorder:'#fecaca', dangerText:'#dc2626',
   },
   dark: {
     surface:'#0d1117', surfaceAlt:'rgba(255,255,255,0.04)', fill:'rgba(255,255,255,0.06)',
     imgFill:'rgba(255,255,255,0.06)', ring:'rgba(255,255,255,0.10)',
     border:'rgba(255,255,255,0.07)', text:'#f1f5f9', textSec:'#94a3b8', textMuted:'#94a3b8', textDim:'#64748b',
-    inkBtn:P.dangerText, inkBtnText:P.surface,
+    inkBtn:'#dc2626', inkBtnText:'#fff',
     okBg:'rgba(34,197,94,0.10)', okBorder:'rgba(34,197,94,0.28)', okText:'#4ade80', okTick:'#4ade80',
     infoBg:'rgba(59,130,246,0.12)', infoBorder:'rgba(59,130,246,0.35)', infoText:'#60a5fa',
     violetBorder:'rgba(167,139,250,0.35)', violetText:'#c4b5fd', violetStrong:'#a78bfa',
