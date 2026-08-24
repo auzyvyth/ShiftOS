@@ -97,7 +97,7 @@ export default function ChatThread({
   const [aiLoading, setAiLoading] = useState(false);
   const [aiAnswer, setAiAnswer] = useState(null);
   const [askText, setAskText] = useState('');
-  const endRef = useRef(null);
+  const listRef = useRef(null);
 
   // The AI never sees a raw phone number: chat-assist fetches the transcript
   // itself from the redacted `chat_messages_ai` view. We send only a thread id.
@@ -125,7 +125,15 @@ export default function ChatThread({
   // Opening the thread, and every message that lands while it is open, counts
   // as read.
   useEffect(() => { if (threadId) markRead(); }, [threadId, messages.length, markRead]);
-  useEffect(() => { endRef.current?.scrollIntoView({ block: 'end' }); }, [messages.length]);
+  // Bottom-pin the message list itself. scrollIntoView() on a bottom marker
+  // walks every scrollable ANCESTOR into view too — including the page body
+  // this sits inside on /account — so a short early conversation kept yanking
+  // the whole page down to bring the (already-visible) marker into view.
+  // Setting scrollTop directly touches only this one container.
+  useEffect(() => {
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages.length]);
 
   const submit = async (e) => {
     e?.preventDefault();
@@ -166,7 +174,7 @@ export default function ChatThread({
         </div>
       )}
 
-      <div style={{ flex:1, overflowY:'auto', padding:'14px', minHeight:0 }}>
+      <div ref={listRef} style={{ flex:1, overflowY:'auto', padding:'14px', minHeight:0 }}>
         {loading ? (
           <p style={{ fontSize:12.5, color:t.sub, textAlign:'center', marginTop:24 }}>Loading…</p>
         ) : messages.length === 0 ? (
@@ -176,7 +184,6 @@ export default function ChatThread({
         ) : messages.map(m => (
           <Bubble key={m.id} msg={m} mine={m.sender_role === role} t={t} />
         ))}
-        <div ref={endRef} />
       </div>
 
       {notice && (

@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Heart, Bell, ArrowLeft, ArrowRight, LogOut, Store, Check, X, Clock, PackageCheck, User, MessageSquare } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Heart, Bell, ArrowLeft, ArrowRight, LogOut, Store, Check, X, Clock, PackageCheck, User, MessageSquare, ChevronRight } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useSavedCars, useSavedCarsDetails } from '../hooks/useSavedCars';
-import CarCard from '../components/CarCard';
-import BuyerInbox from '../components/chat/BuyerInbox';
+import { useBuyerGuard } from '../hooks/useBuyerGuard';
+import { useBuyerThreads } from '../hooks/useChat';
+import { useCTAContext } from '../hooks/useCTAContext';
+import { useCompare, MAX as COMPARE_MAX } from '../hooks/useCompare';
+import ShowroomCard from '../components/ShowroomCard';
 import { POST_SALE_STEPS, STATUS_CONFIG } from '../utils/postSaleSteps';
 
 const STEP_LABEL = Object.fromEntries(POST_SALE_STEPS.map((s) => [s.key, s.label]));
@@ -16,42 +19,15 @@ const STEP_LABEL = Object.fromEntries(POST_SALE_STEPS.map((s) => [s.key, s.label
 // flip this to true to light it back up. Nothing below is deleted.
 const PURCHASE_TRACKER_ENABLED = false;
 
-// Business roles get bounced to their own panel — buyers only ever see /account.
-const SELLER_ROUTES = {
-  superadmin: '/dashboard', dealer: '/dashboard', owner: '/dashboard',
-  manager: '/manager', salesman: '/salesman', accountant: '/accountant',
-  fi_officer: '/fi', admin: '/admin',
-};
-
 export default function AccountPage() {
-  const navigate = useNavigate();
   useEffect(() => { document.title = 'My Account | XDrive'; }, []);
+  const { session, profile, setProfile, checking } = useBuyerGuard();
   const { savedIds, ready } = useSavedCars();
   const { cars } = useSavedCarsDetails(savedIds, ready);
-  const [session, setSession] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [checking, setChecking] = useState(true);
+  const { totalUnread } = useBuyerThreads();
+  const ctaCtx = useCTAContext();
+  const { compareIds, addToCompare, removeFromCompare, isInCompare } = useCompare();
   const [alerts, setAlerts] = useState([]);
-
-  // Auth guard. Not logged in -> /login. A seller (business role) -> their own
-  // panel, so no one ends up with two dashboards. Buyers stay here.
-  useEffect(() => {
-    let active = true;
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!active) return;
-      if (!data.session) { navigate('/buyer-login', { replace: true }); return; }
-      const { data: prof } = await supabase
-        .from('profiles').select('role, full_name, avatar_url, phone')
-        .eq('id', data.session.user.id).maybeSingle();
-      if (!active) return;
-      const sellerRoute = prof?.role && SELLER_ROUTES[prof.role];
-      if (sellerRoute) { navigate(sellerRoute, { replace: true }); return; }
-      setSession(data.session);
-      setProfile(prof || null);
-      setChecking(false);
-    });
-    return () => { active = false; };
-  }, [navigate]);
 
   // Saved searches / price alerts (RLS scopes to the signed-in user)
   useEffect(() => {
@@ -88,9 +64,9 @@ export default function AccountPage() {
     return () => { active = false; window.removeEventListener('focus', onFocus); };
   }, [session]);
 
-  // Editable "Your details" — lets a buyer see/correct the name+phone we captured
-  // from Google (avatar/name) or seeded from their first WhatsApp enquiry. These
-  // feed ContactGate's prefill so they never retype on the next listing.
+  // Editable "your details" — name + phone the marketplace pre-fills into
+  // enquiries. Lives right in the header now (name/avatar/details were three
+  // things describing one person, split across two sections for no reason).
   const [detailName, setDetailName] = useState('');
   const [detailPhone, setDetailPhone] = useState('');
   const [savingDetails, setSavingDetails] = useState(false);
@@ -126,7 +102,6 @@ export default function AccountPage() {
   }
 
   const email = session?.user?.email || 'Your account';
-  const displayName = profile?.full_name || '';
   const avatarUrl = profile?.avatar_url || '';
 
   return (
@@ -144,81 +119,72 @@ export default function AccountPage() {
       </div>
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px 80px' }}>
-        {/* Heading — greet the buyer by name with their Google avatar when we have it */}
-        <div style={{ marginBottom: 32, display: 'flex', alignItems: 'center', gap: 16 }}>
-          {avatarUrl ? (
-            <img src={avatarUrl} alt="" referrerPolicy="no-referrer" style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid #e5e7eb' }} />
-          ) : (
-            <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(220,38,38,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <User size={26} color="#dc2626" />
+        {/* Header — avatar + editable name/phone in one card. This used to be a
+            heading ("MY ACCOUNT") plus a separate "Your Details" form below it,
+            two sections describing the same person. Merged: the name IS the
+            heading, editable in place. */}
+        <div style={{ marginBottom: 32, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 16, padding: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" referrerPolicy="no-referrer" style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid #e5e7eb' }} />
+            ) : (
+              <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(220,38,38,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <User size={26} color="#dc2626" />
+              </div>
+            )}
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <input
+                value={detailName}
+                onChange={(e) => setDetailName(e.target.value)}
+                placeholder="Your name"
+                aria-label="Your name"
+                style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: 'none', borderBottom: '1px dashed #e5e7eb', outline: 'none', background: 'transparent', padding: '2px 0 6px', fontFamily: 'inherit', fontSize: 22, fontWeight: 800, color: '#111827' }}
+              />
+              <p style={{ margin: '8px 0 0', fontSize: 13, color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis' }}>{email}</p>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 14 }}>
+                <input
+                  value={detailPhone}
+                  onChange={(e) => setDetailPhone(e.target.value)}
+                  inputMode="tel"
+                  placeholder="Phone number"
+                  aria-label="Phone number"
+                  style={{ flex: '1 1 200px', minWidth: 0, boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: 10, padding: '9px 13px', fontSize: 13.5, color: '#111827', outline: 'none', fontFamily: 'inherit' }}
+                />
+                <button onClick={saveDetails} disabled={savingDetails}
+                  style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 10, padding: '9px 18px', fontSize: 13.5, fontWeight: 700, cursor: savingDetails ? 'default' : 'pointer', opacity: savingDetails ? 0.7 : 1, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                  {savingDetails ? 'Saving…' : 'Save'}
+                </button>
+                {detailsSaved && <span style={{ fontSize: 12.5, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 5 }}><Check size={13} /> Saved</span>}
+              </div>
+              <p style={{ margin: '10px 0 0', fontSize: 11.5, color: '#9ca3af', lineHeight: 1.5 }}>
+                We pre-fill these into your enquiries so you don't retype them on every listing.
+              </p>
             </div>
-          )}
-          <div style={{ minWidth: 0 }}>
-            <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 38, letterSpacing: '0.04em', margin: 0, color: '#111827', lineHeight: 1 }}>
-              {displayName ? displayName.toUpperCase() : 'MY ACCOUNT'}
-            </h1>
-            <p style={{ margin: '6px 0 0', fontSize: 14, color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis' }}>{email}</p>
           </div>
         </div>
 
-        {/* Become a seller — Salesman Lite */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap', background: '#fff', border: '1px solid #fecaca', borderRadius: 16, padding: 22, marginBottom: 40 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 13, background: 'rgba(220,38,38,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Store size={22} color="#dc2626" />
-          </div>
-          <div style={{ flex: 1, minWidth: 220 }}>
-            <p style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#111827' }}>Want to sell cars on XDrive?</p>
-            <p style={{ margin: '5px 0 0', fontSize: 13.5, color: '#6b7280', lineHeight: 1.5 }}>
-              Start free with <strong style={{ color: '#dc2626' }}>Salesman Lite</strong> — list up to 10 cars, get leads and a personal showroom. No card needed.
-            </p>
-          </div>
-          <Link to="/salesman-onboarding/lite" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: '#dc2626', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 700, padding: '11px 20px', borderRadius: 10, whiteSpace: 'nowrap' }}>
-            Start selling free <ArrowRight size={15} />
-          </Link>
-        </div>
-
-        {/* Your details — name + phone the marketplace pre-fills into enquiries */}
-        <section style={{ marginBottom: 40 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-            <User size={18} color="#dc2626" />
-            <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#111827' }}>Your Details</h2>
-          </div>
-          <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 16, padding: 20 }}>
-            <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6b7280', lineHeight: 1.5 }}>
-              We pre-fill these into your enquiries so you don't retype them on every listing.
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 14 }}>
-              <label style={{ display: 'block' }}>
-                <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Name</span>
-                <input value={detailName} onChange={(e) => setDetailName(e.target.value)} placeholder="Your name"
-                  style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: 10, padding: '11px 13px', fontSize: 14, color: '#111827', outline: 'none' }} />
-              </label>
-              <label style={{ display: 'block' }}>
-                <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Phone</span>
-                <input value={detailPhone} onChange={(e) => setDetailPhone(e.target.value)} inputMode="tel" placeholder="Phone number"
-                  style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: 10, padding: '11px 13px', fontSize: 14, color: '#111827', outline: 'none' }} />
-              </label>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <button onClick={saveDetails} disabled={savingDetails}
-                style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 14, fontWeight: 700, cursor: savingDetails ? 'default' : 'pointer', opacity: savingDetails ? 0.7 : 1, fontFamily: 'inherit' }}>
-                {savingDetails ? 'Saving…' : 'Save'}
-              </button>
-              {detailsSaved && <span style={{ fontSize: 13, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 5 }}><Check size={14} /> Saved</span>}
-            </div>
-          </div>
-        </section>
-
-        {/* Messages — the buyer's own chat inbox. Without this a buyer had to
-            find the exact listing again to carry on a conversation, so it sits
-            above Saved Cars: an unanswered reply is the more urgent thing. */}
-        <section style={{ marginBottom: 44 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+        {/* Messages — a strip, not the full inbox. The conversation itself lives
+            on its own page now (bigger canvas for a chat thread, and it means
+            this page stays a dashboard rather than growing a chat window inside
+            it). The unread count is the only thing that needs to show up here. */}
+        <Link to="/account/messages" style={{ display: 'flex', alignItems: 'center', gap: 14, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '14px 16px', textDecoration: 'none', marginBottom: 40 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 11, background: 'rgba(220,38,38,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <MessageSquare size={18} color="#dc2626" />
-            <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#111827' }}>Messages</h2>
           </div>
-          <BuyerInbox />
-        </section>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#111827' }}>Messages</p>
+            <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#6b7280' }}>
+              {totalUnread > 0 ? `${totalUnread} unread` : 'Chat with sellers about a car'}
+            </p>
+          </div>
+          {totalUnread > 0 && (
+            <span style={{ flexShrink: 0, minWidth: 22, height: 22, borderRadius: 999, background: '#dc2626', color: '#fff', fontSize: 11.5, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px' }}>
+              {totalUnread}
+            </span>
+          )}
+          <ChevronRight size={17} color="#c9c4ba" style={{ flexShrink: 0 }} />
+        </Link>
 
         {/* Purchase tracker — deferred (see PURCHASE_TRACKER_ENABLED). */}
         {PURCHASE_TRACKER_ENABLED && purchases.length > 0 && (
@@ -282,7 +248,9 @@ export default function AccountPage() {
           </section>
         )}
 
-        {/* Saved cars */}
+        {/* Saved cars — same card the showroom grid uses (ShowroomCard), not the
+            plain marketplace CarCard, so a saved car looks and behaves exactly
+            like it did where the buyer found it (gallery swipe, compare, WA). */}
         <section style={{ marginBottom: 44 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
             <Heart size={18} color="#dc2626" fill="#dc2626" />
@@ -297,14 +265,20 @@ export default function AccountPage() {
               </Link>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 20 }}>
-              {cars.map(car => <CarCard key={car.id} car={car} showDiscountBadge />)}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+              {cars.map(car => (
+                <ShowroomCard
+                  key={car.id} car={car} ctaContext={ctaCtx}
+                  inCompare={isInCompare(car.id)} compareFull={compareIds.length >= COMPARE_MAX}
+                  onCompare={() => (isInCompare(car.id) ? removeFromCompare(car.id) : addToCompare(car.id))}
+                />
+              ))}
             </div>
           )}
         </section>
 
         {/* Saved searches / price alerts */}
-        <section>
+        <section style={{ marginBottom: 40 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
             <Bell size={18} color="#dc2626" />
             <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#111827' }}>Saved Searches</h2>
@@ -341,6 +315,24 @@ export default function AccountPage() {
             </div>
           )}
         </section>
+
+        {/* Become a seller — Salesman Lite. Demoted to the bottom: a buyer who
+            just opened their account isn't here to become a dealer, so this is
+            the last thing they see, not the first. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap', background: '#fff', border: '1px solid #fecaca', borderRadius: 16, padding: 22 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 13, background: 'rgba(220,38,38,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Store size={22} color="#dc2626" />
+          </div>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <p style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#111827' }}>Want to sell cars on XDrive?</p>
+            <p style={{ margin: '5px 0 0', fontSize: 13.5, color: '#6b7280', lineHeight: 1.5 }}>
+              Start free with <strong style={{ color: '#dc2626' }}>Salesman Lite</strong> — list up to 10 cars, get leads and a personal showroom. No card needed.
+            </p>
+          </div>
+          <Link to="/salesman-onboarding/lite" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: '#dc2626', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 700, padding: '11px 20px', borderRadius: 10, whiteSpace: 'nowrap' }}>
+            Start selling free <ArrowRight size={15} />
+          </Link>
+        </div>
       </div>
     </div>
   );
