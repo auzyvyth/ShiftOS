@@ -140,6 +140,23 @@ const TAB_ALIASES = {
  merge: { tab: "settings", anchor: "sp-merge" },
 };
 
+// Which tab each tour step opens, index-matched to TOUR_STEPS (step 0 is the
+// welcome card and opens nothing). Every tab a salesman can reach is in here —
+// a step missing from this list means the tour silently skips that page.
+const TOUR_TABS = [
+ null, "dashboard", "listings", "leads", "enquiries", "bookings", "analytics",
+ "loans", "outreach", "chat", "customers", "handover", "merge", "settings",
+];
+
+// Steps whose tab has no nav button of its own. `null` = no element to spotlight,
+// so the tour centres its card on screen instead of ringing the wrong button.
+const TOUR_HIGHLIGHT = {
+ bookings: "enquiries", // lives inside the Inbox tab
+ merge: "settings", // the invite-code box at the bottom of Settings
+ customers: null, // reached from the Dashboard, no nav slot
+ handover: null,
+};
+
 export default function SalesmanPremium() {
  const navigate = useNavigate();
  const isMobile = useWindowSize() < 768;
@@ -462,7 +479,7 @@ export default function SalesmanPremium() {
  // per-car share-channel breakdown (which platform each view/enquiry came from)
  const [channelMap, setChannelMap] = useState({});
  // mini-page (xdrive.my/s/slug) visits + card clicks, broken down by platform
- const [minipageStats, setMinipageStats] = useState({ visits: 0, cardClicks: 0, byChannel: [] });
+ const [minipageStats, setMinipageStats] = useState({ visits: 0, cardClicks: 0, byChannel: [], daily: [] });
  const [cvrHover, setCvrHover] = useState(null);
 
  // car detail popup
@@ -755,6 +772,10 @@ export default function SalesmanPremium() {
  views:     Number(row.views)     || 0,
  enquiries: Number(row.enquiries) || 0,
  daily:     [row.d0, row.d1, row.d2, row.d3, row.d4, row.d5, row.d6],
+ // WhatsApp/call taps per day, oldest first — the RPC has always returned
+ // these (w0..w6) but nothing read them, so the dashboard could only ever
+ // plot views. They feed the combined 7-day chart on the dashboard.
+ waDaily:   [row.w0, row.w1, row.w2, row.w3, row.w4, row.w5, row.w6],
  };
  });
  setCarStatsMap(map);
@@ -787,11 +808,27 @@ export default function SalesmanPremium() {
  .then(({ data: mpRows, error: mpErr }) => {
  if (mpErr) { console.error("fetchMinipageStats:", mpErr); return; }
  const rows = mpRows || [];
- setMinipageStats({
+ setMinipageStats((prev) => ({
+ ...prev,
  visits: rows.reduce((s, r) => s + (Number(r.visits) || 0), 0),
  cardClicks: rows.reduce((s, r) => s + (Number(r.card_clicks) || 0), 0),
  byChannel: rows,
+ }));
  });
+
+ // Mini-page visits per day for the last 7 days. Separate RPC from the
+ // per-channel totals above because that one has no time axis — this is
+ // the third wave on the dashboard's combined traffic chart.
+ supabase
+ .rpc("get_salesman_minipage_daily", { p_slug: profileData.slug })
+ .then(({ data: mpDaily, error: mpdErr }) => {
+ if (mpdErr) { console.error("fetchMinipageDaily:", mpdErr); return; }
+ const r = (mpDaily || [])[0];
+ if (!r) return;
+ setMinipageStats((prev) => ({
+ ...prev,
+ daily: [r.d0, r.d1, r.d2, r.d3, r.d4, r.d5, r.d6].map((v) => Number(v) || 0),
+ }));
  });
  }
  });
@@ -975,20 +1012,29 @@ export default function SalesmanPremium() {
 
  useEffect(() => {
  if (tourStep === null) { setTourTarget(null); return; }
- const TOUR_TABS = [null, "dashboard", "listings", "leads", "enquiries", "bookings", "analytics", "loans", "outreach", "merge", "settings"];
- // Bookings and Join a Dealership still get their own tour step — they are
- // real features — but no longer own a nav button, so the spotlight has to
- // fall on whichever element now hosts them.
- const TOUR_HIGHLIGHT = { merge: "settings" };
  const tab = TOUR_TABS[tourStep];
  if (!tab) { setTourTarget(null); return; }
  switchTab(tab);
+ // Measure the nav button this step points at. Steps whose tab has no nav
+ // button of its own (Bookings, Customers, Handover, Join a Dealership)
+ // either borrow their host tab's button via TOUR_HIGHLIGHT or fall through
+ // to null, which centres the card. Clearing the target on a miss is the fix
+ // for the tour "tweaking": it used to leave the previous step's rectangle in
+ // place, so the ring sat on the wrong nav item and the bubble pointed at it.
  const measure = () => {
- const el = document.querySelector(`[data-tour-id="${TOUR_HIGHLIGHT[tab] || tab}"]`);
- if (el) setTourTarget(el.getBoundingClientRect());
+ const id = TOUR_HIGHLIGHT[tab] ?? tab;
+ const el = id ? document.querySelector(`[data-tour-id="${id}"]`) : null;
+ setTourTarget(el ? el.getBoundingClientRect() : null);
+ return !!el;
  };
- const t = setTimeout(measure, 60);
- return () => clearTimeout(t);
+ // Tab panels are lazy-loaded, so one 60ms shot was not always enough — retry
+ // a few times until the nav has painted, then stop.
+ let tries = 0;
+ const iv = setInterval(() => { if (measure() || ++tries > 8) clearInterval(iv); }, 60);
+ // Re-measure on resize/orientation change so the ring never drifts off the
+ // button it is supposed to be circling.
+ window.addEventListener("resize", measure);
+ return () => { clearInterval(iv); window.removeEventListener("resize", measure); };
  }, [tourStep]);
 
  const handleLogout = async () => {
@@ -4072,6 +4118,22 @@ export default function SalesmanPremium() {
  <div id="sp-merge" style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
  {renderMerge()}
  </div>
+ {/* Replay the tour. It only auto-runs once (localStorage sp_tour_done), so
+     without this there was no way back to it — and no way for anyone who
+     skipped it on day one to find out what the other tabs do. */}
+ <div style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+ <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Product tour</p>
+ <p style={{ margin: "0 0 10px", fontSize: 12, color: "#94a3b8", lineHeight: 1.6 }}>
+ Walks you through every tab — Dashboard, Listings, Leads, Inbox, Bookings, Analytics,
+ Loans, Outreach, Chat, Customers, Handover and Settings — opening each one as it goes.
+ </p>
+ <button
+ onClick={() => { localStorage.removeItem("sp_tour_done"); setTourStep(0); }}
+ style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 14px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#e5e7eb", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+ >
+ <Sparkles size={14} /> Replay the tour
+ </button>
+ </div>
  </div>
  );
  };
@@ -4937,6 +4999,9 @@ export default function SalesmanPremium() {
  { icon: TrendingUp, title: "Analytics", body: "Views, WhatsApp taps and conversion rate per listing, plus your total commission and cars sold — all in one view." },
  { icon: Banknote, title: "Loans", body: "Compare bank rates for a buyer, submit their loan application, and track approval status — a Premium-only feature." },
  { icon: Megaphone, title: "Outreach Hub", body: "See which leads have gone cold, then work through them with a guided WhatsApp campaign — one tap per contact. Premium-only." },
+ { icon: MessageCircle, title: "Chat", body: "Buyers who message you from a listing land here instead of WhatsApp. You see their name, the car, and read receipts — and phone numbers stay masked until you tap them." },
+ { icon: UserCheck, title: "Customers", body: "Everyone who has bought from you. Road tax and insurance expiry are tracked per car, so the app tells you who is due for a renewal call or ready to trade up." },
+ { icon: ClipboardList, title: "Handover", body: "After a deal is won, the 8-step Malaysian handover checklist opens here — loan settlement, insurance, Puspakom, JPJ pindah milik, road tax, geran, keys." },
  { icon: LinkIcon, title: "Join a Dealership", body: "Have an invite code from your dealer? Enter it at the bottom of Settings to unlock the full panel — shared stock, team leads, commission tracking and more." },
  { icon: Settings, title: "Settings", body: "Your public profile, WhatsApp templates and account settings live here." },
  ];
@@ -5717,12 +5782,16 @@ export default function SalesmanPremium() {
  {activeTab === "loans" && renderLoans()}
  {activeTab === "outreach" && showOutreach && (
  <Suspense fallback={<TabLoadingFallback />}>
- <OutreachHub dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} />
+ <OutreachHub dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} theme="dark" />
  </Suspense>
  )}
  {activeTab === "chat" && (
  <Suspense fallback={<TabLoadingFallback />}>
- <SellerInbox salesmanId={userId} />
+ {/* Premium's panel is dark — SellerInbox defaults to the light dealer
+ palette, so without theme="dark" the whole chat tab rendered white
+ on a #080a12 page. Same component, same props Lite passes, minus
+ the upgrade strip (Premium has the AI bar for real). */}
+ <SellerInbox salesmanId={userId} theme="dark" aiAssist={isPremium} aiUpgrade={!isPremium} />
  </Suspense>
  )}
  {activeTab === "customers" && renderCustomers()}
