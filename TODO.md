@@ -100,31 +100,22 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   inline verify against siteverify) before create_lead_from_whatsapp / hunt insert.
   Until done, public lead/hunt writes rely on DB rate limits alone. (Audit F5, 2026-08-03.)
 
-- **ACT-12: three values to set before push notifications can deliver (2026-08-16)** — the
-  code side is done and deployed; these are the only things left, and all three are dashboard
-  paste jobs. Push is currently dead until they are set, and fails safely (no spam) meanwhile.
-  1. **Supabase → Edge Functions → Secrets → `VAPID_PRIVATE_KEY` is MALFORMED.** `send-push`
-     returns `{"error":"vapid_misconfigured","detail":"Vapid private key must be a URL safe
-     Base 64 (without \"=\")"}`. It must be 43 characters of base64url: only `A-Z a-z 0-9 - _`,
-     no `=` padding, no `+`, no `/`. If the current value is standard base64, converting it
-     (`+`→`-`, `/`→`_`, strip `=`) preserves the SAME key and keeps existing subscriptions
-     alive. If it is a PEM/JWK or otherwise unrecoverable, generate a fresh pair — see note
-     below on why that is currently free.
-  2. **Supabase → Edge Functions → Secrets → `PUSH_SHARED_SECRET`** = the value stored in
-     Vault as `push_shared_secret` (`select public.get_push_secret();`). The DB triggers
-     already send it as the `x-push-secret` header; send-push rejects everything without it.
-  3. **Vercel → env → `VITE_VAPID_PUBLIC_KEY`** = the same value as the `VAPID_PUBLIC_KEY`
-     edge secret (87 chars, starts with `B`). Must be ticked for Production and needs a
-     redeploy. Until set, the notification toggle renders but says "not finished being set
-     up" rather than failing silently.
-  NOTE ON REGENERATING: normally swapping VAPID keys is unforgivable because every existing
-  subscription dies. Right now it costs nothing — `send-push` never booted, so not one of the
-  8 stored subscriptions has ever received anything, and both those users can re-enable with
-  one tap on the new toggle. If key 1 is at all awkward to recover, generate a clean pair and
-  `delete from push_subscriptions;`. This is a one-time window — once real users subscribe
-  against a working key, the keys are permanent.
+- ~~ACT-12: three values to set before push notifications can deliver~~ — **RESOLVED,
+  verified live 2026-08-24.** Re-checked against the code per this file's own lesson
+  (below) before re-nagging, instead of trusting the 2026-08-16 note. All three are done:
+  1. VAPID_PRIVATE_KEY is valid — probed `send-push` directly (`net.http_post` from SQL) with
+     no secret: got a clean `401 unauthorized`, not `vapid_misconfigured`. The function boots.
+  2. PUSH_SHARED_SECRET matches Vault — same probe WITH `x-push-secret: get_push_secret()`:
+     `200 {"sent":0}` (0 because the probe used a fake user id, not because it rejected).
+  3. VITE_VAPID_PUBLIC_KEY is set on Vercel — inferred, not checked in the Vercel dashboard
+     directly (no access from here): a real buyer subscription row exists dated today, and
+     the frontend gates `subscribe()` on this env var being non-empty, so a subscription
+     existing at all means it's set. `cron.job` id 7 (`appointment-reminder`, every 5 min)
+     shows a REAL delivery today: `{"sent":1,"failed":0}` at 10:57 UTC. Push works end to end.
+  If push ever looks dead again, verify like this before re-opening ACT-12 — don't take a
+  stale TODO note's word for it.
 
-> Reminder protocol: while ACT-2, ACT-4, ACT-9, ACT-10 or ACT-12 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. **ACT-8 was found ALREADY COMPLETE and removed 2026-08-15** — `package.json` AND `package-lock.json` both resolve `xlsx` to `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, and `vercel.json` CSP already whitelists `cdn.sheetjs.com` in connect-src; it had been sitting in this list as a blocked user-action for weeks after the fact. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then.) LESSON: verify an ACT item against the code before re-surfacing it — a stale nag costs a session's attention every time.
+> Reminder protocol: while ACT-2, ACT-4, ACT-9 or ACT-10 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. **ACT-8 was found ALREADY COMPLETE and removed 2026-08-15** — `package.json` AND `package-lock.json` both resolve `xlsx` to `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, and `vercel.json` CSP already whitelists `cdn.sheetjs.com` in connect-src; it had been sitting in this list as a blocked user-action for weeks after the fact. **ACT-12 verified RESOLVED 2026-08-24** — see entry above; drop from this nag list. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then.) LESSON: verify an ACT item against the code before re-surfacing it — a stale nag costs a session's attention every time.
 
 ## Dev tasks
 
@@ -1309,7 +1300,7 @@ native build.
   the shared secret (servers, any target) or a user JWT (forced to self), failing closed.
   New DB objects: `public.push_to_users`, `public.get_push_secret`, `public.get_cron_edge_key`,
   triggers `trg_push_on_dealer_notification` / `trg_push_on_salesman_notification`.
-  BLOCKED ON ACT-12 (below) for the final end-to-end test.
+  End-to-end verified 2026-08-24 — see ACT-12 (now resolved) above.
 
 - [x] **PUSH-3 (CRITICAL, found + fixed 2026-08-16): `push_to_users` took down BOTH public
   lead-capture paths.** It passed the request body to `net.http_post` as `::text`, but pg_net

@@ -297,6 +297,7 @@
       "listingsMobile": "Listings",
       "leads": "Leads",
       "inbox": "Inbox",
+      "chat": "Chat",
       "performance": "Performance",
       "performanceMobile": "Performance",
       "merge": "Join Dealership",
@@ -959,6 +960,8 @@
       "leadsSub": "Add a vehicle to start collecting leads. Buyers who enquire on your listings land here automatically.",
       "inboxTitle": "Inbox locked",
       "inboxSub": "Add a vehicle to receive enquiries and bookings. Every message and test-drive request shows up here.",
+      "chatTitle": "No chats yet",
+      "chatSub": "List your first car. Buyers can message you straight from the listing, and every conversation lands here.",
       "perfTitle": "Performance locked",
       "perfSub": "Add a vehicle to see your performance data — views, close rate and pipeline health all build from your listings.",
       "cta": "Add a vehicle"

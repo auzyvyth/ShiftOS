@@ -25,6 +25,8 @@ import ChannelBreakdown from "../components/ChannelBreakdown";
 import ShareMenu from "../components/ShareMenu";
 import ReportBugButton from "../components/ReportBugButton";
 import PushToggle from "../components/PushToggle";
+import SellerInbox from "../components/chat/SellerInbox";
+import { useChatThreads } from "../hooks/useChat";
 import {
   LogOut,
   Copy,
@@ -700,7 +702,7 @@ function SellerBookingModal({ lead, dateValue, onChangeDate, onClose, onConfirm,
 
 // Top-level Lite tabs, each backed by its own /salesman-lite/:tab route.
 // Anything not in this list falls back to the dashboard.
-const VALID_LITE_TABS = ["dashboard", "listings", "leads", "enquiries", "performance", "services", "settings", "help"];
+const VALID_LITE_TABS = ["dashboard", "listings", "leads", "enquiries", "chat", "performance", "services", "settings", "help"];
 
 export default function SalesmanLite() {
   const navigate = useNavigate();
@@ -721,6 +723,10 @@ export default function SalesmanLite() {
   const [profile, setProfile] = useState(null);
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Unread buyer-chat count for the nav badge. Deliberately a second hook
+  // instance rather than lifting state out of SellerInbox — each gets its own
+  // realtime channel, and the badge stays live while the tab is closed.
+  const { totalUnread: chatUnread } = useChatThreads({ salesmanId: userId });
   // Each Lite tab is its own route (/salesman-lite/:tab) so tab switches push
   // browser history — the phone Back button / swipe-back returns to the previous
   // tab instead of exiting the whole app (and landing on the sign-in page). The
@@ -2610,6 +2616,12 @@ export default function SalesmanLite() {
       badge: (enquiries.filter((e) => e.status === "new").length + pendingBookingsCount) || null,
     },
     {
+      tab: "chat",
+      label: t("salesmanLite.tabs.chat"),
+      icon: <MessageCircle style={{ width: 14, height: 14 }} />,
+      badge: chatUnread || null,
+    },
+    {
       tab: "performance",
       label: t("salesmanLite.tabs.performance"),
       icon: <BarChart2 style={{ width: 14, height: 14 }} />,
@@ -2651,6 +2663,7 @@ export default function SalesmanLite() {
       icon: <MessageSquare size={18} />,
       badge: (enquiries.filter((e) => e.status === "new").length + pendingBookingsCount) || null,
     },
+    { tab: "chat", label: t("salesmanLite.tabs.chat"), icon: <MessageCircle size={18} />, badge: chatUnread || null },
     { tab: "performance", label: t("salesmanLite.tabs.performanceMobile"), icon: <BarChart2 size={18} /> },
     { tab: "services", label: t("salesmanLite.tabs.services", { defaultValue: "Services" }), icon: <Package size={18} /> },
     { tab: "settings", label: t("salesmanLite.tabs.settings"), icon: <Settings size={18} /> },
@@ -8309,6 +8322,7 @@ export default function SalesmanLite() {
     const cfg = {
       leads:       { Icon: Users,         title: t("salesmanLite.locked.leadsTitle"),  sub: t("salesmanLite.locked.leadsSub") },
       enquiries:   { Icon: MessageSquare, title: t("salesmanLite.locked.inboxTitle"),  sub: t("salesmanLite.locked.inboxSub") },
+      chat:        { Icon: MessageCircle, title: t("salesmanLite.locked.chatTitle", { defaultValue: "No chats yet" }), sub: t("salesmanLite.locked.chatSub", { defaultValue: "List your first car. Buyers can message you straight from the listing, and every conversation lands here." }) },
       performance: { Icon: BarChart2,     title: t("salesmanLite.locked.perfTitle"),   sub: t("salesmanLite.locked.perfSub") },
     }[kind];
     const Icon = cfg.Icon;
@@ -9189,6 +9203,17 @@ export default function SalesmanLite() {
               </div>
               {inboxSubTab === "enquiries" ? renderEnquiries() : renderBookings()}
             </div>
+          ))}
+          {/* Buyer chat. Same component Premium uses — Lite gets the identical
+              inbox, realtime, ticks and number-masking, minus the AI bar, which
+              is replaced by the upgrade strip inside the thread. */}
+          {activeTab === "chat" && (gatedLocked ? renderLockedPanel("chat") : (
+            <SellerInbox
+              salesmanId={userId}
+              theme="dark"
+              aiAssist={false}
+              aiUpgrade
+            />
           ))}
           {activeTab === "services" && (
             <ServicesAddonsTab dealerId={getDealerIdFromProfile(profile)} />
