@@ -18,9 +18,55 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   the old copy wrongly implied Mudah/Carlist charge "per listing"; the
   real model is per-bump, which is what sparked this.)
 
+- **IDEA-2: True WhatsApp Business API integration — in-app inbox +
+  reply-based lead scoring + AI that carries a conversation over days** —
+  owner's framing (2026-08-23): stop competing on "content" (views/likes
+  are vanity metrics — "fishing with a net that's broken," most viewers
+  were never going to buy) and instead give sellers real buyer-intent
+  data. Three asks, all blocked on the same root cause:
+  1. **In-app chat, not deep-links.** Technically possible via the
+     WhatsApp Business Platform (Cloud API) — a real product, not what
+     `wa.me` deep-links do today throughout `SalesmanPremium.jsx` /
+     `SalesmanLite.jsx`. Needs Meta Business verification, a WhatsApp
+     Business Account, and approved message templates for anything sent
+     outside a 24h customer-service window; billed per conversation. The
+     approval/verification process is the real cost here, not the code.
+  2. **Auto lead-scoring by reply rate.** Impossible today — WhatsApp
+     opens outside ShiftOS and nothing comes back in, so the app never
+     sees whether a lead replied. Only becomes buildable once inbound
+     messages land via a Business API webhook; reply-rate/response-time
+     would then feed the existing AI scoring (`ai-proxy`, see
+     `SalesmanPremium.jsx:1024`).
+  3. ~~AI that stays on-message for days, sending unsupervised.~~
+     **SCRATCHED by owner 2026-08-23: "who would want to talk to an AI when
+     buying a car, they need trust."** Correct call — a car is a high-trust,
+     high-ticket purchase; a buyer who suspects they're texting a bot instead
+     of a person stops trusting the thread, which kills the exact channel
+     that closes deals. Not pursuing an AI that messages buyers unsupervised.
+     What survives: AI drafts + times the nudge ("day 3, no reply, here's a
+     suggested message"), a human still reviews and hits send — same pattern
+     as the WA-reply drafting Premium already has
+     (`SalesmanPremium.jsx:2008`). Keeps a real person on every message a
+     buyer receives while still killing the "forgot to follow up" problem.
+  Bigger vision behind this: move sellers past views/likes as their only
+  signal — surface real intent (saved_cars, price_alerts, WA-tap-without-
+  reply, repeat visits, photo/scroll engagement) the way AutoRaptor's
+  equity-mining/lead-scoring does, but from XDrive's own buyer-behavior
+  data. Not scoped — Meta Business verification is a real gate, not just
+  a code change — needs its own design pass before it's a dev task.
+
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
 
 - **ACT-1: Enable TOTP in Supabase dashboard — DEFERRED until revenue (user: paid)** — 2FA (SEC-1) will not work end-to-end until the TOTP factor type is enabled: Supabase → Authentication → Settings → Multi-Factor → enable **TOTP**. Until then, the "Enable 2FA" button in Settings will error on enroll. Owner is deferring this until revenue/Supabase Pro (treats it as a paid feature — note: standard app-based TOTP MFA is typically free on Supabase; the paid MFA add-on is Phone/SMS, which we are avoiding anyway — worth re-checking billing before permanently shelving). Interim idea from owner: keep Gmail/Google link verification and add an email verification code as a lightweight second factor. NOTE (2026-08-05): TOTP is NOT deprecated — Bank Negara's RMiT (28 Nov 2025) bans **SMS OTP** as a standalone factor, not TOTP. TOTP (authenticator-app codes, RFC 6238) is offline/device-local and is one of the regulator's recommended interception-resistant replacements, so it stays the correct choice here. Do NOT enable Supabase's Phone/SMS OTP factor. Passkeys (FIDO2/WebAuthn) are the gold standard but are not a native Supabase MFA factor yet.
+- **ACT-13: Turn ON anonymous sign-ins (blocks guest chat) — 2026-08-23** — Supabase →
+  Authentication → Sign In / Providers → enable **Anonymous sign-ins**. The in-app buyer
+  chat lets a shopper message a seller without making an account, which needs this. Until
+  it is on, the chat sheet on a car listing shows "Chat isn't available right now" for any
+  visitor who is not already logged in (registered buyers still work). One toggle, no code.
+  Safe to enable: `handle_new_user()` was patched in the same session so an anonymous
+  signup is always given `role='buyer'` — before that patch it would have created a
+  `role='dealer'` profile for every guest. Verified against a real insert.
+
 - **ACT-2: Decide on full 2FA enforcement (SEC-1b)** — Client-side 2FA only challenges the password login path. Google OAuth and magic-link logins are NOT challenged. True enforcement across all auth methods needs RLS policies keyed on `aal2` so the database rejects aal1 sessions. Confirm if/when you want this hardening built.
 
 - **ACT-4: Enable Google One Tap (`VITE_GOOGLE_CLIENT_ID`)** — The Google One Tap popup for new marketplace visitors (`src/components/GoogleOneTap.jsx`) is built but no-ops until the Google OAuth **Web client ID** is exposed to the frontend. Steps: (1) Vercel → env `VITE_GOOGLE_CLIENT_ID=<google web client id>` (same client used by Supabase's Google provider); (2) Google Cloud Console → that Web client → add `https://xdrive.my` (+ preview origin) to **Authorized JavaScript origins**; (3) Supabase → Auth → Providers → Google → add the same client ID under **Authorized Client IDs** so `signInWithIdToken` accepts the One Tap token. Until done, the popup simply never shows (no error).
@@ -84,6 +130,95 @@ not scoped, not prioritized — just parked here until picked up on purpose.
 > Reminder protocol: while ACT-2, ACT-4, ACT-9, ACT-10 or ACT-12 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. **ACT-8 was found ALREADY COMPLETE and removed 2026-08-15** — `package.json` AND `package-lock.json` both resolve `xlsx` to `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, and `vercel.json` CSP already whitelists `cdn.sheetjs.com` in connect-src; it had been sitting in this list as a blocked user-action for weeks after the fact. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then.) LESSON: verify an ACT item against the code before re-surfacing it — a stale nag costs a session's attention every time.
 
 ## Dev tasks
+
+---
+
+### SESSION 2026-08-23 — AutoRaptor competitive audit (Salesman Premium)
+
+Full report: published artifact
+https://claude.ai/code/artifact/676e1a78-c251-47c7-aac9-fd459d077973 — complete
+feature census of `SalesmanPremium.jsx` (8,888 lines) cross-referenced against
+AutoRaptor's public product pages. Headline finding: AutoRaptor has NO
+solo-agent product — it's dealership-only, quote-priced (~$399/mo base),
+sold to businesses not individuals. So this isn't a lost-deal comparison,
+it's a feature-mining exercise: what would still save a solo agent real time
+if ported over.
+
+Prioritized gaps worth building, ranked by time saved:
+
+**RAPTOR-1 + RAPTOR-4 SHIPPED 2026-08-23 — do not rebuild.** Timed follow-up
+nudges, AI-drafted, always human-sent. A nudge is a REMINDER with the message
+already written, never an auto-send — the salesman reads the draft and presses
+send in WhatsApp himself, because a buyer must know they are talking to a
+person. Pieces: `scheduled_nudges` table + `fire_due_nudges()` sweep
+(`supabase/migrations/20260823_raptor_scheduled_nudges.sql`, live cron jobid 12,
+every 5 min), `src/hooks/useNudges.js`, `src/components/crm/NudgeQueue.jsx`, and
+the AI-draft + "Remind me to send this later" controls in
+`src/components/crm/OutreachHub.jsx`. The sweep inserts a `salesman_notifications`
+row and lets the existing `trg_push_on_salesman_notification` trigger send the
+push — no edge function, no JWT in cron. AI drafting reuses the `wa_reply` quota
+key (50/day) and the prompt forbids inventing any price, discount or financing
+figure. Still blocked for WHATSAPP conversations: seeing a buyer's reply that came
+in over WhatsApp needs real Meta Business API access (see IDEA-2, and the
+cost/verdict brief at https://claude.ai/code/artifact/e48b6e50-f0bf-4df0-aebb-57ac808f1892
+— headline: dealer-tier only, never worth it for a solo agent). NOTE: the
+in-app chat shipped later the same day makes this a partial problem, not a
+total one — for buyers who chat inside ShiftOS the AI already reads the whole
+conversation (redacted), no Meta account involved. Do not chase the WhatsApp
+API assuming it is the only way to give the AI conversation context.
+- [ ] **RAPTOR-2: Side-by-side deal/payment scenario desking.** Loans tab
+  (`SalesmanPremium.jsx:6940`) produces one scenario per submission — it
+  literally builds `const banks = [{ ...one bank... }]`. Add 2-3
+  side-by-side tenure/down-payment comparisons before the application form,
+  the way AutoRaptor's Payment Penciling does.
+**RAPTOR-3 SHIPPED 2026-08-24 — do not rebuild.** Equity mining on the
+Customers tab (`renderCustomers`, `src/pages/SalesmanPremium.jsx`): a
+`Trade-up ready · N` filter pill, a per-customer strip naming the reason, and a
+WhatsApp message button. Sorted strongest signal first, so the filtered view is
+already a call list.
+Two things the spec got wrong and this build corrects:
+  1. "Bought 3+ years ago" alone returns ZERO rows and will keep returning zero
+     until 2029 — the oldest `customers.purchase_date` in prod is 2026-03-08,
+     the platform is six months old. So the trigger is ownership age >= 3y OR
+     vehicle age >= 5y (now minus `car_year`). Vehicle age fires today: 10 of
+     the 27 live customers qualify. Ownership age takes over as the platform
+     ages; both reasons show when both fire.
+  2. No estimated equity, trade-in value or payoff figure anywhere. `customers`
+     has a selling price but there is no loan tenure or interest rate on any
+     table, so an equity number would be invented — the same rule that governs
+     AI drafts. The feature answers WHO to call, never what to offer, and the
+     filter header says so out loud.
+The WhatsApp opener names no price, instalment, trade-in value or approval. The
+button is hidden when the stored phone has under 9 digits (prod has junk values
+like "601" and "1212112" that would open a dead chat).
+Also fixed while in there: the "Some policies have expired" line put its
+highlighted word on its own line at 375px — the icon and text were siblings in a
+flex row, so the inline span became a flex item.
+
+**RAPTOR-6 SHIPPED 2026-08-24 — do not rebuild.** The car card is now two
+buttons: red "Book a Viewing" plus one neutral **Contact**. Contact opens the
+sheet `BuyerChat` already owned, which gained a chooser step in front of the
+chat — WhatsApp / chat here in XDrive / call the seller — so a new contact
+channel is a row in that list, never a fourth button on the card. Both CTA
+blocks in `src/pages/CarDetailPage.jsx` (mobile card and desktop sidebar) pass
+the same props and must stay in step. WhatsApp comes in as `onWhatsApp` and the
+sheet closes before it runs (overlay rule 3); `handleWhatsApp` only opens the
+enquiry modal, and the real `wa.me` open still happens synchronously inside
+`handleEnquirySubmit`, so no popup blocker is involved. Verified in Chromium at
+375px on both the light marketplace card and the dark subdomain card.
+
+- [ ] **RAPTOR-5 (low priority): Click-to-call with auto-logging.** Not
+  urgent — Malaysia's WhatsApp-first market makes voice less central than in
+  AutoRaptor's US/SMS-centric design. If ever built, auto-log the outcome
+  instead of today's manual log-after-the-fact (`logCall`, `SalesmanPremium.jsx:1356`).
+
+Deliberately NOT recommended (see artifact §04 for the full case): DMS/80+
+inventory integrations (ShiftOS listings already ARE the CRM data, nothing to
+sync), soft credit pull via 700Credit (US-bureau-specific, no Malaysian
+equivalent, needs its own scoping), Digital Retail website widgets (solo
+agents don't have their own dealer website to embed one in), email campaigns
+(Malaysian buyers are WhatsApp-first — this is a Premium strength vs
+AutoRaptor already, not a gap to close).
 
 ---
 

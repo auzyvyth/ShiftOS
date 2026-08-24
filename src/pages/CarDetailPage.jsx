@@ -64,6 +64,7 @@ import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { estimateRoadTax } from "../utils/roadTax";
 import ReviewsSection from "../components/reviews/ReviewsSection";
 import CommentsSection from "../components/comments/CommentsSection";
+import BuyerChat from "../components/chat/BuyerChat";
 import { cdnImg } from "../utils/img";
 import { toast } from "sonner";
 
@@ -2486,17 +2487,15 @@ export default function CarDetailPage() {
               Book a Viewing
             </button>
             )}
-            <div style={{ display:'flex', gap:8 }}>
-              <button onClick={enquiryClick}
-                style={{ flex:1, background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.25)', color: accent('#4ade80', isXdrive), borderRadius:10, padding:'12px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif", minWidth:0 }}>
-                <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{enquiryLabel}</span>
-              </button>
-              {contactPhone && (
-                <button onClick={handleCall} disabled={callLoading} aria-busy={callLoading}
-                  style={{ flex:1, background: th.card2, border:`1px solid ${th.border}`, color: th.textSec, borderRadius:10, padding:'12px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:13, fontWeight:500, cursor: callLoading ? 'wait' : 'pointer', opacity: callLoading ? 0.6 : 1, fontFamily:"system-ui,sans-serif" }}>
-                  <Phone size={13} /> {callLoading ? 'Connecting' : 'Call'}
-                </button>
-              )}
+            {/* RAPTOR-6 — one Contact button, not a row of them. Every way to
+                reach the seller (WhatsApp, in-app chat, call) lives inside the
+                sheet BuyerChat already owns. */}
+            <div style={{ marginTop: 8 }}>
+              <BuyerChat listingId={car.id} isLight={isXdrive}
+                carName={[car.year, car.brand, car.model].filter(Boolean).join(' ')}
+                sellerName={repFirstName ? `Chat with ${repFirstName}` : null}
+                onWhatsApp={enquiryClick} whatsappLabel={enquiryLabel}
+                onCall={handleCall} callLoading={callLoading} showCall={!!contactPhone} />
             </div>
             <div style={{ marginTop:10 }}>
               <PriceIncludes car={car} seller={seller} th={th} />
@@ -3950,17 +3949,14 @@ export default function CarDetailPage() {
             </button>
             )}
 
-            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <button onClick={enquiryClick}
-                style={{ flex: 1, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', color: accent('#4ade80', isXdrive), borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', fontFamily: "system-ui,sans-serif", fontSize: 13, fontWeight: 600, transition: 'all .2s', minWidth: 0 }}>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{enquiryLabel}</span>
-              </button>
-              {contactPhone && (
-                <button onClick={handleCall} disabled={callLoading} aria-busy={callLoading}
-                  style={{ flex: 1, background: th.inputBg, border: `1px solid ${th.inputBorder}`, color: th.textSec, borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: callLoading ? 'wait' : 'pointer', opacity: callLoading ? 0.6 : 1, fontFamily: "system-ui,sans-serif", fontSize: 13, transition: 'all .2s' }}>
-                  <Phone size={13} /> {callLoading ? 'Connecting' : 'Call'}
-                </button>
-              )}
+            {/* RAPTOR-6 — same single Contact button as the mobile card above.
+                Both blocks must stay in step or the two layouts drift. */}
+            <div style={{ marginTop: 8 }}>
+              <BuyerChat listingId={car.id} isLight={isXdrive}
+                carName={[car.year, car.brand, car.model].filter(Boolean).join(' ')}
+                sellerName={repFirstName ? `Chat with ${repFirstName}` : null}
+                onWhatsApp={enquiryClick} whatsappLabel={enquiryLabel}
+                onCall={handleCall} callLoading={callLoading} showCall={!!contactPhone} />
             </div>
 
             {/* Tertiary actions — quiet text links, not more buttons */}

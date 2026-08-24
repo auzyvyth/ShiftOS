@@ -40,7 +40,7 @@ const SEO_KEYWORDS = [
 
 const FAQS = [
   { q: "Is Salesman Lite really free?",
-    a: "Yes. Salesman Lite costs RM0 — no credit card, no contract, no trial that quietly bills you later. You get up to 10 active car listings, your own page on the XDrive marketplace, a lead pipeline to track enquiries, and direct WhatsApp enquiries at no cost. Premium (RM20/month) is there for when you outgrow it — but plenty of agents never need to." },
+    a: "Yes. Salesman Lite costs RM0 — no credit card, no contract, no trial that quietly bills you later. You get up to 10 active car listings, your own page on the XDrive marketplace, a lead pipeline to track enquiries, and direct WhatsApp enquiries at no cost. Premium (RM35/month) is there for when you outgrow it — but plenty of agents never need to." },
   { q: "Do I need to build a website?",
     a: "No. The moment you sign up you get a ready-made page at xdrive.my/s/yourname with all your cars on it. No hosting, no domain, no design work — just add your cars and share the link." },
   { q: "How do buyers contact me?",
@@ -48,7 +48,7 @@ const FAQS = [
   { q: "Can I still use Mudah and Carlist?",
     a: "Absolutely. Salesman Lite works alongside them. The difference is this page is yours, it lives on Malaysia's XDrive marketplace, and it doesn't charge you per listing." },
   { q: "What happens when I have more than 10 cars?",
-    a: "Salesman Premium (RM20/month) triples your cap to 30 listings and adds priority marketplace placement, commission tracking, advanced analytics and a custom subdomain. Your Lite page and cars carry straight over — upgrade any time from your panel." },
+    a: "Salesman Premium (RM35/month) triples your cap to 30 listings and adds priority marketplace placement, commission tracking, advanced analytics and a custom subdomain. Your Lite page and cars carry straight over — upgrade any time from your panel." },
   { q: "How long does setup take?",
     a: "A few minutes. Sign up with email or Google, add your phone and a link name, and you're in your panel — add your first car with a few photos to go live. IC verification can wait until just before your listings appear on the marketplace, so nothing holds up getting started." },
   { q: "Apa itu Salesman Lite?",
@@ -404,7 +404,7 @@ export default function SalesmanLiteLanding() {
               <div className="sll-plan sll-plan-alt">
                 <div className="sll-plan-head">
                   <span className="sll-plan-name">Salesman Premium</span>
-                  <span className="sll-plan-price">RM20<span>/month</span></span>
+                  <span className="sll-plan-price">RM35<span>/month</span></span>
                 </div>
                 <ul className="sll-plan-list">
                   {["Everything in Lite", "Up to 30 active listings", "Priority marketplace placement", "Advanced CRM automation", "Commission tracking", "Advanced analytics + custom subdomain"].map((x) => (

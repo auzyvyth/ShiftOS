@@ -346,6 +346,100 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
   (`src/pages/SalesmanLite.jsx:849`) is NOT push. It only fires while the tab is open.
   Do not confuse the two.
 
+## AI trust boundary — AI drafts, a HUMAN sends (hard rule)
+An AI must never message a car buyer unsupervised. Owner's call, 2026-08-23:
+"who would want to talk to an AI when buying a car, they need trust." AI may
+write a draft; a person reads it and presses send. Do not add an auto-send path
+to any buyer-facing channel (WhatsApp, Telegram, SMS, email), and do not treat a
+scheduled send as an exception — schedule the REMINDER, not the send.
+Any AI message prompt must also forbid inventing a price, discount, deposit,
+instalment, trade-in value, loan rate or financing approval; if a number is
+needed, the draft asks the buyer to confirm with the salesman.
+
+## In-app buyer chat — the AI must never read a raw number
+Buyers message sellers inside ShiftOS (not WhatsApp). Built 2026-08-23.
+- Tables: `chat_threads` (one per listing+buyer, unique index), `chat_messages`
+  (append-only — there is deliberately NO update/delete policy).
+- **Every message is stored twice**: `body` (raw, what the two humans see,
+  revealed on tap) and `body_ai` (`redact_for_ai(body)` — phones, IC, emails
+  masked at 9+ digits). Masking in the UI does NOT hide anything from the AI,
+  because the AI reads the database. So: **every AI path reads the
+  `chat_messages_ai` view, which has no `body` column at all.** Never point an
+  AI feature at `chat_messages`.
+- AI runs server-side (`supabase/functions/chat-assist`) precisely so the prompt
+  can't leak: the browser sends only a thread id, the function fetches the
+  transcript itself. Sellers only; a buyer calling it gets 403.
+- Threads are created ONLY by `start_chat_thread(listing_id)`, which derives
+  dealer_id/salesman_id from the listing — a buyer cannot attach themselves to a
+  seller of their choosing. Posting is capped at 20 messages/minute and you can
+  only post as yourself, as the side you actually are.
+- Guest buyers use Supabase anonymous sign-in (needs the project toggle, ACT-13).
+  `handle_new_user()` forces `role='buyer'` for anonymous users — without that
+  branch every guest gets a `role='dealer'` profile. Do not remove it.
+- Frontend: `src/hooks/useChat.js`, `src/components/chat/{ChatThread,SellerInbox,BuyerChat}.jsx`.
+  Notifications reuse the existing path (a `salesman_notifications` row IS the
+  push) and fire only on the first unread of a burst.
+- **`BuyerChat` is the car page's ONE Contact button (RAPTOR-6, 2026-08-24)** — it
+  is no longer just the chat trigger. Its sheet has two steps: a chooser (WhatsApp
+  / chat here / call) and then the chat itself. The car card is now exactly two
+  buttons: red "Book a Viewing" (the page owns it) + neutral "Contact". Do NOT
+  add a fourth CTA back onto that card — a new way to reach the seller becomes a
+  row inside the chooser, not another button. `CarDetailPage` has TWO CTA blocks
+  (mobile card and desktop sidebar) and both pass the same props — change one,
+  change the other or the layouts drift. WhatsApp is handed in as `onWhatsApp`
+  and closes the sheet before it runs (overlay rule 3); it opens the enquiry
+  modal, and the real `wa.me` deep link still fires synchronously inside
+  `handleEnquirySubmit`, so nothing here is exposed to a popup blocker.
+
+## "This week" call list — the retention loop (don't scatter it again)
+`src/utils/thisWeek.js` (ranking) + `src/components/crm/ThisWeek.jsx` (UI), on
+the Salesman Premium dashboard, first thing on the page. It merges four things
+that already existed on four separate tabs nobody opened: leads never replied
+to, leads going quiet, due nudges, and past buyers with a renewal or an ageing
+car. Sources are the page's existing `leads`/`customers` state plus `useNudges`
+— no new queries.
+- **One row per HUMAN, not per reason.** Someone whose insurance lapsed AND who
+  is trade-up ready is one phone call; extra reasons ride along as `also`.
+- Ranking: never replied > due reminder > going quiet / renewal > trade-up.
+- **`last_contacted_at` is the heartbeat of this feature.** Every path that
+  counts as contacting someone MUST stamp it, or the same names come back
+  tomorrow and the list stops being believable. Writers today: OutreachHub
+  (`:140`), `logCall` and `handleThisWeekContacted` in `SalesmanPremium.jsx`.
+  `updated_at` is NOT a substitute — it moves on any edit.
+- No invented numbers in any draft (no price, instalment, discount, trade-in
+  value, rate or approval), and no auto-send: Message opens WhatsApp with the
+  text and the human presses send.
+
+## Equity mining / trade-up list (RAPTOR-3) — built, don't rebuild
+Customers tab in `SalesmanPremium.jsx` (`renderCustomers`) has a `Trade-up
+ready` filter. Two triggers, OR'd: owned 3+ years (`purchase_date`) or a car 5+
+model-years old (`car_year`). The vehicle-age one exists because the platform is
+six months old — an ownership-age-only rule returns zero rows until 2029.
+- **Never show an estimated equity, trade-in or payoff figure here.** No table
+  holds a loan tenure or rate, so any such number is invented. This surfaces WHO
+  to call; the salesman inspects the car before quoting. Same rule as AI drafts.
+- The WhatsApp opener is a fixed string with no price, instalment or approval in
+  it, and only renders when the stored phone has 9+ digits.
+
+## Follow-up nudges (RAPTOR-1/4) — built, don't rebuild
+A nudge = a reminder with the message already drafted, queued against one lead.
+- `scheduled_nudges` (dealer_id, salesman_id, lead_id, draft_message, reason,
+  ai_drafted, scheduled_for, status, notified_at, actioned_at). status flow:
+  pending -> ready -> sent | dismissed | expired. Partial unique index
+  `scheduled_nudges_one_open_per_lead` allows only ONE open nudge per lead.
+- `fire_due_nudges()` — SECURITY DEFINER sweep, pg_cron jobid 12 every 5 min.
+  Dismisses nudges on closed/deleted leads, expires ignored ones after 7 days,
+  flips due ones to `ready` and inserts a `salesman_notifications` row. That row
+  is the push (trg_push_on_salesman_notification does the rest) — pure SQL, no
+  edge function and no service-role JWT in the cron command.
+- Frontend: `src/hooks/useNudges.js`, `src/components/crm/NudgeQueue.jsx`, and
+  the AI-draft + "Remind me to send this later" controls in
+  `src/components/crm/OutreachHub.jsx` (salesman-scoped only — the dealer-wide
+  hub passes no salesmanId and hides both).
+- AI drafting reuses the `wa_reply` quota key (50/day). `salesman_ai_quota_ok()`
+  returns false for any feature key it doesn't recognise, so inventing a new key
+  would silently disable the button for everyone — reuse an existing one.
+
 ## P&L model (StockTab)
 fetchPnl in DashboardPage.jsx computes per-unit gross in two parts:
 - Front gross = sale price − purchase price − recon cost − included services − commission − handover processing costs

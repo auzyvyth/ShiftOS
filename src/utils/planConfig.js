@@ -9,7 +9,7 @@ export const PLAN_CONFIG = {
   },
   salesman_full: {
     label: 'Salesman Premium',
-    price: 20,
+    price: 35,
     listingCap: 30,
     seatCap: 1,
     isDealer: false,

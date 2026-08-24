@@ -77,6 +77,10 @@ import {
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
 import OutreachHub from "../components/crm/OutreachHub";
+import ThisWeek from "../components/crm/ThisWeek";
+import { useNudges } from "../hooks/useNudges";
+import SellerInbox from "../components/chat/SellerInbox";
+import { useChatThreads } from "../hooks/useChat";
 import UpgradeBanner from "../components/ai/UpgradeBanner";
 import AiLoadingState from "../components/ai/AiLoadingState";
 import AiQuotaBadge from "../components/ai/AiQuotaBadge";
@@ -334,7 +338,7 @@ function SubTabs({ value, onChange, items }) {
 
 // Top-level Premium tabs, each backed by its own /salesman-premium/:tab route.
 // Anything not in this list falls back to the dashboard.
-const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "analytics", "loans", "outreach", "customers", "handover", "merge", "settings"];
+const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "analytics", "loans", "outreach", "chat", "customers", "handover", "merge", "settings"];
 
 // Tabs that no longer own a slot in the nav. Their routes still resolve, so old
 // links, in-app deep links (switchTab) and the tour all keep working — they just
@@ -354,6 +358,13 @@ export default function SalesmanPremium() {
  const [loading, setLoading] = useState(true);
  const [pendingPay, setPendingPay] = useState(false);
  const isPremium = profile?.plan === 'salesman_full';
+ // Unread buyer-chat count for the nav badge. Its own hook instance, separate
+ // from the one inside SellerInbox (each gets a distinct realtime channel).
+ const { totalUnread: chatUnread } = useChatThreads({ salesmanId: userId });
+ // Due follow-up reminders feed the "This week" list on the dashboard. They
+ // used to load only inside OutreachHub, so a reminder you had set was
+ // invisible unless you happened to open that tab.
+ const { due: dueNudges, closeNudge } = useNudges(userId, getDealerIdFromProfile(profile));
  // Premium is solo-only — the redirect guard above sends any salesman with
  // dealer_id set to /salesman before this ever renders, so there is no dealer
  // to grant the ROLE_EXTRAS permission Outreach normally requires. Include it
@@ -1360,8 +1371,13 @@ export default function SalesmanPremium() {
  dealer_id: lead?.dealer_id?? null,
  });
  if (error) { console.error("logCall:", error); toast.error("Failed to log call"); setCallSaving(false); return; }
- await supabase.from("leads").update({ updated_at: new Date().toISOString(), last_call_outcome: callOutcome }).eq("id", logCallLeadId);
- setLeads((p) => p.map((l) => l.id === logCallLeadId? { ...l, updated_at: new Date().toISOString(), last_call_outcome: callOutcome } : l));
+ // Stamp last_contacted_at, not just updated_at. Logging a call IS contact,
+ // and every "gone quiet" surface (This week, OutreachHub) measures from this
+ // column — without it a lead you just phoned keeps being served back to you
+ // as untouched, and the call list stops being believable.
+ const callTs = new Date().toISOString();
+ await supabase.from("leads").update({ updated_at: callTs, last_contacted_at: callTs, last_call_outcome: callOutcome }).eq("id", logCallLeadId);
+ setLeads((p) => p.map((l) => l.id === logCallLeadId? { ...l, updated_at: callTs, last_contacted_at: callTs, last_call_outcome: callOutcome } : l));
  setLeadActivities((p) => { const n = { ...p }; delete n[logCallLeadId]; return n; });
  toast.success("Call logged");
  setCallSaving(false);
@@ -2172,6 +2188,12 @@ export default function SalesmanPremium() {
  icon: <Megaphone style={{ width: 14, height: 14 }} />,
  }] : []),
  {
+ tab: "chat",
+ label: "Chat",
+ icon: <MessageSquare style={{ width: 14, height: 14 }} />,
+ badge: chatUnread || null,
+ },
+ {
  tab: "settings",
  label: "Settings",
  icon: <Settings style={{ width: 14, height: 14 }} />,
@@ -2201,6 +2223,7 @@ export default function SalesmanPremium() {
  { tab: "analytics", label: "Analytics", icon: <TrendingUp size={18} /> },
  { tab: "loans", label: "Loans", icon: <Banknote size={18} /> },
  ...(showOutreach ? [{ tab: "outreach", label: "Outreach", icon: <Megaphone size={18} /> }] : []),
+ { tab: "chat", label: "Chat", icon: <MessageSquare size={18} />, badge: chatUnread || null },
  { tab: "settings", label: "Settings", icon: <Settings size={18} /> },
  ];
 
@@ -2339,6 +2362,25 @@ export default function SalesmanPremium() {
  );
 
  // RENDER DASHBOARD 
+
+ // Acting on a "This week" row has to persist. If it only hid the row in
+ // local state the same person would be back tomorrow, and a call list you
+ // cannot trust is worse than no call list at all.
+ const handleThisWeekContacted = async (item) => {
+ if (item.nudgeId) { closeNudge(item.nudgeId, "sent"); return; }
+ if (!item.leadId) return;   // past-buyer rows have no lead to stamp
+ const ts = new Date().toISOString();
+ setLeads((p) => p.map((l) => (l.id === item.leadId ? { ...l, last_contacted_at: ts } : l)));
+ const { error } = await supabase
+ .from("leads")
+ .update({ last_contacted_at: ts, updated_at: ts })
+ .eq("id", item.leadId);
+ if (error) {
+ console.error("handleThisWeekContacted:", error);
+ toast.error("Could not save that as contacted");
+ setLeads((p) => p.map((l) => (l.id === item.leadId ? { ...l, last_contacted_at: null } : l)));
+ }
+ };
 
  const renderDashboard = () => {
  const activeLeads = leads.filter(
@@ -2531,6 +2573,11 @@ export default function SalesmanPremium() {
 
  return (
  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+ {/* The one call list. Deliberately the first thing on the home screen:
+ everything it shows already existed, spread over four tabs nobody
+ opened. See src/utils/thisWeek.js for the ranking. */}
+ <ThisWeek leads={leads} customers={customers} nudges={dueNudges}
+ repName={profile?.full_name} onContacted={handleThisWeekContacted} />
  {/* Dashboard-only card chrome — layered gradient surface + a soft top
  highlight, richer than the flat CARD token used on every other tab.
  Scoped to this tab; nothing else changes. */}
@@ -6996,16 +7043,43 @@ export default function SalesmanPremium() {
  return d < 0? `${s} · overdue` : d <= 30? `${s} · ${Math.round(d)}d` : s;
  };
 
+ // Equity mining (RAPTOR-3). Two signals, both read straight off the customer
+ // row. Deliberately NO estimated equity or trade-in figure: `customers` has a
+ // selling price but no loan tenure or rate anywhere, so any "you have RM X in
+ // equity" number would be invented. This surfaces WHO to call, not what to offer.
+ //   ownership age — the classic trade cycle; the signal that matures as the
+ //                   platform ages (nobody has owned 3 years yet)
+ //   vehicle age   — works today: a 2019 car sold last month still leaves its
+ //                   owner running a car that is seven model-years old
+ const OWNED_READY_Y = 3;
+ const VEHICLE_READY_Y = 5;
+ const yearsSince = (date) => date ? (today - new Date(date)) / 31557600000 : null;
+ const fmtDuration = (y) => { const m = Math.max(0, Math.round(y * 12)); return m < 12 ? `${m}m` : `${Math.floor(m / 12)}y${m % 12 ? ` ${m % 12}m` : ""}`; };
+ const tradeUpFor = (c) => {
+ const owned = yearsSince(c.purchase_date);
+ const age = c.car_year ? today.getFullYear() - Number(c.car_year) : null;
+ const reasons = [];
+ if (owned !== null && owned >= OWNED_READY_Y) reasons.push(`Owned ${fmtDuration(owned)}`);
+ if (age !== null && age >= VEHICLE_READY_Y) reasons.push(`${c.car_year} car · ${age} yrs`);
+ if (!reasons.length) return null;
+ return { reasons, score: (owned || 0) * 2 + (age || 0) };
+ };
+ const repName = (profile?.full_name || "").split(" ")[0];
+
  const rtDue = customers.filter(c => isDue(c.road_tax_expiry)).length;
  const insDue = customers.filter(c => isDue(c.insurance_expiry)).length;
+ const tradeUpDue = customers.filter(c => tradeUpFor(c)).length;
  const anyExpired = customers.some(c => isExpired(c.road_tax_expiry) || isExpired(c.insurance_expiry));
 
  const filtered = customers.filter(c => {
  if (customerSearch && !`${c.name || ""} ${c.phone || ""}`.toLowerCase().includes(customerSearch.toLowerCase())) return false;
  if (expiryFilter === "ins" && !isDue(c.insurance_expiry)) return false;
  if (expiryFilter === "rt" && !isDue(c.road_tax_expiry)) return false;
+ if (expiryFilter === "trade" && !tradeUpFor(c)) return false;
  return true;
  });
+ // Strongest signal first, so the call list is already in order.
+ if (expiryFilter === "trade") filtered.sort((x, y) => tradeUpFor(y).score - tradeUpFor(x).score);
 
  if (customersLoading) return <p style={{ color: C.textMuted, fontSize: 13 }}>Loading customers…</p>;
 
@@ -7014,7 +7088,7 @@ export default function SalesmanPremium() {
  <p style={{ margin: "0 0 14px", fontSize: 19, fontWeight: 700, color: C.text }}>Customers <span style={{ fontSize: 12, fontWeight: 400, color: C.textMuted }}>· {customers.length} on record</span></p>
 
  <div style={{ display: "flex", gap: 7, marginBottom: 14, flexWrap: "wrap" }}>
- {[{ id: null, label: `All · ${customers.length}` }, { id: "ins", label: `Insurance due · ${insDue}` }, { id: "rt", label: `Road tax due · ${rtDue}` }].map(f => (
+ {[{ id: null, label: `All · ${customers.length}` }, { id: "ins", label: `Insurance due · ${insDue}` }, { id: "rt", label: `Road tax due · ${rtDue}` }, { id: "trade", label: `Trade-up ready · ${tradeUpDue}` }].map(f => (
  <button key={f.id || "all"} onClick={() => setExpiryFilter(f.id)}
  style={{ borderRadius: R.pill, padding: "5px 12px", fontSize: T.size.sm, fontWeight: T.weight.bold, cursor: "pointer", fontFamily: "inherit",
  background: expiryFilter === f.id? withAlpha(C.accent, 0.12) : "transparent", border: `1px solid ${expiryFilter === f.id? withAlpha(C.accent, 0.25) : C.border}`, color: expiryFilter === f.id? C.dangerText : C.textSec }}>
@@ -7024,9 +7098,16 @@ export default function SalesmanPremium() {
  </div>
 
  {anyExpired && (
- <p style={{ display: "flex", alignItems: "center", gap: 8, fontSize: T.size.sm, color: C.textSec, margin: "0 0 14px" }}>
- <AlertCircle size={14} color={C.warnText} style={{ flexShrink: 0 }} />
- Some policies have <span style={{ color: C.warnText, fontWeight: 700 }}>expired</span> — worth a call before renewal.
+ <p style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: T.size.sm, color: C.textSec, margin: "0 0 14px", lineHeight: 1.5 }}>
+ <AlertCircle size={14} color={C.warnText} style={{ flexShrink: 0, marginTop: 2 }} />
+ <span>Some policies have <span style={{ color: C.warnText, fontWeight: 700 }}>expired</span> — worth a call before renewal.</span>
+ </p>
+ )}
+
+ {expiryFilter === "trade" && (
+ <p style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: T.size.sm, color: C.textSec, margin: "0 0 14px", lineHeight: 1.5 }}>
+ <TrendingUp size={14} color={C.infoText} style={{ flexShrink: 0, marginTop: 2 }} />
+ <span>Buyers who have owned {OWNED_READY_Y}+ years, or are running a car {VEHICLE_READY_Y}+ model-years old. It is a list of who to call — XDrive holds no valuation or loan balance, so check the car before you quote any number.</span>
  </p>
  )}
 
@@ -7034,7 +7115,7 @@ export default function SalesmanPremium() {
  style={{ width: "100%", background: C.fillStrong, border: `1px solid ${C.border}`, borderRadius: R.md, padding: "9px 12px", color: C.text, fontSize: T.size.base, outline: "none", fontFamily: "inherit", marginBottom: 14, boxSizing: "border-box" }} />
 
  {filtered.length === 0? (
- <p style={{ textAlign: "center", color: C.textDim, fontSize: 13, padding: "30px 0" }}>No customers yet — they appear here automatically once a deal is won.</p>
+ <p style={{ textAlign: "center", color: C.textDim, fontSize: 13, padding: "30px 0" }}>{customers.length === 0 ? "No customers yet — they appear here automatically once a deal is won." : "No customers match this filter."}</p>
  ) : (
  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
  {filtered.map(c => {
@@ -7055,7 +7136,7 @@ export default function SalesmanPremium() {
  </a>
  )}
  </div>
- <p style={{ margin: "2px 0 0", fontSize: T.size.sm, color: C.textMuted }}>{[c.car_year, c.car_brand, c.car_model].filter(Boolean).join(" ")}{c.car_plate? ` · ${c.car_plate}` : ""}{c.payment_type? ` · ${c.payment_type}` : ""}</p>
+ <p style={{ margin: "2px 0 0", fontSize: T.size.sm, color: C.textMuted }}>{[c.car_year, c.car_brand, c.car_model].filter(Boolean).join(" ")}{c.car_plate? ` · ${c.car_plate}` : ""}{c.payment_type? ` · ${c.payment_type}` : ""}{c.purchase_date? ` · bought ${new Date(c.purchase_date).toLocaleDateString("en-MY", { month: "short", year: "numeric" })}` : ""}</p>
 
  <div style={{ display: "flex", gap: 16, marginTop: 10, flexWrap: "wrap" }}>
  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -7067,6 +7148,28 @@ export default function SalesmanPremium() {
  <p style={{ margin: 0, fontSize: T.size.sm, color: C.textSec }}>Insurance {expiryLabel(c.insurance_expiry)}</p>
  </div>
  </div>
+
+ {(() => {
+ const tu = tradeUpFor(c);
+ if (!tu) return null;
+ // Some rows carry junk phone values ("601", "1212112"). A wa.me link built
+ // from those just opens a dead chat, so only offer it on a plausible number.
+ const digits = (c.phone || "").replace(/\D/g, "");
+ const ph = digits.length >= 9 ? digits : "";
+ // Opening line only — it names no price, instalment, trade-in value or
+ // approval, because nothing here knows any of those.
+ const waMsg = `Hi ${c.name || "there"}, ${repName ? `${repName} here` : "reaching out"} from XDrive. You have had the ${[c.car_year, c.car_brand, c.car_model].filter(Boolean).join(" ")} a while now — if you are thinking about changing cars, I can take a look at it and tell you what your options are. No obligation.`;
+ return (
+ <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap", padding: "7px 10px", borderRadius: R.md, background: withAlpha(C.info, 0.07), border: `1px solid ${withAlpha(C.info, 0.18)}` }}>
+ <TrendingUp size={13} color={C.infoText} style={{ flexShrink: 0 }} />
+ <p style={{ margin: 0, flex: 1, minWidth: 0, fontSize: T.size.sm, color: C.textSec }}>Trade-up ready · <span style={{ color: C.infoText, fontWeight: T.weight.semibold }}>{tu.reasons.join(" · ")}</span></p>
+ {ph && (
+ <button onClick={() => window.open(`https://wa.me/${ph.startsWith("6") ? ph : "6" + ph}?text=${encodeURIComponent(waMsg)}`, "_blank")}
+ style={{ ...SOFT(C.infoText), fontSize: T.size.xs, fontWeight: T.weight.bold, padding: "4px 9px", borderRadius: R.sm, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>Message</button>
+ )}
+ </div>
+ );
+ })()}
 
  {pkgs.map(pkg => (
  <div key={pkg.id} style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10 }}>
@@ -8181,6 +8284,7 @@ export default function SalesmanPremium() {
  {activeTab === "outreach" && showOutreach && (
  <OutreachHub dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} />
  )}
+ {activeTab === "chat" && <SellerInbox salesmanId={userId} />}
  {activeTab === "customers" && renderCustomers()}
  {activeTab === "handover" && renderHandover()}
  {activeTab === "settings" && renderSettings()}

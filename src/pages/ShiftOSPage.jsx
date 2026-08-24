@@ -36,7 +36,7 @@ const FAQS = [
   },
   {
     q: "Berapa harga ShiftOS?",
-    a: "Harga ShiftOS bermula RM0 untuk Salesman Lite (percuma) dan RM20/bulan untuk Salesman Premium. Untuk dealer: Dealer Starter RM299/bulan, Dealer Growth RM599/bulan dan Dealer Pro RM1,199/bulan. Ia software dealer kereta murah berbanding kos rekod manual Excel atau upah kakitangan tambahan.",
+    a: "Harga ShiftOS bermula RM0 untuk Salesman Lite (percuma) dan RM35/bulan untuk Salesman Premium. Untuk dealer: Dealer Starter RM299/bulan, Dealer Growth RM599/bulan dan Dealer Pro RM1,199/bulan. Ia software dealer kereta murah berbanding kos rekod manual Excel atau upah kakitangan tambahan.",
   },
   {
     q: "Adakah ShiftOS sesuai untuk dealer kecil?",
