@@ -537,7 +537,9 @@ function DealerIdentity({ dealer, dealerName, th, isXdrive, anchorId }) {
     dealer.phone && {
       icon: Phone,
       label: 'Landline',
-      value: dealer.phone,
+      // Never render the raw digits — tapping "Call" dials the number
+      // directly via the tel: link without showing it anywhere on screen.
+      value: 'Tap "Call" to ring this dealer directly',
       href: `tel:${dealer.phone}`,
       hrefLabel: 'Call',
     },
@@ -1952,7 +1954,7 @@ export default function CarDetailPage() {
             background: rgba(6,12,20,0.98); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
             border-top: 1px solid rgba(255,255,255,0.07); padding: 12px 16px; gap: 8px;
           }
-          .cdp-mobile-bar-wa { flex: 0 0 auto; border-radius: 10px; font-size: 13px; font-weight: 600; font-family: system-ui, sans-serif; border: 1px solid rgba(34,197,94,0.3); cursor: pointer; background: rgba(34,197,94,0.08); color: #4ade80; padding: 12px 14px; }
+          .cdp-mobile-bar-contact { flex: 0 0 auto; width: 116px; }
           .cdp-mobile-bar-book { flex: 1; border-radius: 10px; font-size: 13px; font-weight: 700; font-family: system-ui, sans-serif; cursor: pointer; background: #dc2626; color: white; padding: 12px 0; border: none; border-top: 2px solid #b91c1c; box-shadow: 0 2px 12px rgba(220,38,38,0.3); }
         }
         @media (max-width: 480px) { .cdp-arrow { display: none; } }
@@ -1979,7 +1981,6 @@ export default function CarDetailPage() {
         .cdp-row:hover { background: rgba(220,38,38,0.03) !important; }
         .cdp-sidebar { background: #ffffff !important; border-color: rgba(15,23,42,0.08) !important; box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 8px 32px rgba(15,23,42,0.06) !important; }
         .cdp-mobile-bar { background: rgba(246,247,249,0.9) !important; border-top-color: rgba(15,23,42,0.07) !important; }
-        .cdp-mobile-bar-wa { border-color: rgba(22,163,74,0.3) !important; background: rgba(22,163,74,0.06) !important; color: #16a34a !important; }
         .cdp-header-redline { background: linear-gradient(to right, #dc2626, rgba(220,38,38,0.25), transparent) !important; }
       `}</style>}
 
@@ -4078,7 +4079,15 @@ export default function CarDetailPage() {
         </div>
         {/* Compare moved up beside the calculator in the title strip so it isn't
             missed; kept out of this bar to avoid duplicating it. */}
-        <button className="cdp-mobile-bar-wa" onClick={handleWhatsApp}>WhatsApp</button>
+        {/* RAPTOR-6 — same one Contact sheet as the CTA card above (WhatsApp /
+            in-app chat / call), not a bare WhatsApp deep link. */}
+        <div className="cdp-mobile-bar-contact">
+          <BuyerChat listingId={car.id} isLight={isXdrive}
+            carName={[car.year, car.brand, car.model].filter(Boolean).join(' ')}
+            sellerName={repFirstName ? `Chat with ${repFirstName}` : null}
+            onWhatsApp={enquiryClick} whatsappLabel={enquiryLabel}
+            onCall={handleCall} callLoading={callLoading} showCall={!!contactPhone} />
+        </div>
         {!isOwnListing && (
         <button className="cdp-mobile-bar-book" onClick={handleBookingClick}>Book a Viewing</button>
         )}
