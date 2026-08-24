@@ -158,21 +158,28 @@ the AI-draft + "Remind me to send this later" controls in
 row and lets the existing `trg_push_on_salesman_notification` trigger send the
 push — no edge function, no JWT in cron. AI drafting reuses the `wa_reply` quota
 key (50/day) and the prompt forbids inventing any price, discount or financing
-figure. Still blocked, and NOT part of what shipped: seeing the buyer's REPLY
-inside ShiftOS needs real WhatsApp Business API access (see IDEA-2).
+figure. Still blocked for WHATSAPP conversations: seeing a buyer's reply that came
+in over WhatsApp needs real Meta Business API access (see IDEA-2, and the
+cost/verdict brief at https://claude.ai/code/artifact/e48b6e50-f0bf-4df0-aebb-57ac808f1892
+— headline: dealer-tier only, never worth it for a solo agent). NOTE: the
+in-app chat shipped later the same day makes this a partial problem, not a
+total one — for buyers who chat inside ShiftOS the AI already reads the whole
+conversation (redacted), no Meta account involved. Do not chase the WhatsApp
+API assuming it is the only way to give the AI conversation context.
 - [ ] **RAPTOR-2: Side-by-side deal/payment scenario desking.** Loans tab
-  (`SalesmanPremium.jsx:6925`) produces one scenario per submission. Add 2-3
+  (`SalesmanPremium.jsx:6940`) produces one scenario per submission — it
+  literally builds `const banks = [{ ...one bank... }]`. Add 2-3
   side-by-side tenure/down-payment comparisons before the application form,
   the way AutoRaptor's Payment Penciling does.
 - [ ] **RAPTOR-3: Equity mining on the Customers tab.** Data already exists —
   `purchase_date`, `selling_price`, `car_brand`/`model`/`year` on the
-  `customers` table (`SalesmanPremium.jsx:6960`) — no new integration needed,
+  `customers` table (`renderCustomers`, `SalesmanPremium.jsx:6998`) — no new integration needed,
   just a query surfacing "bought 3+ years ago, may be trade-up ready."
   Closest thing to a free win on this list.
 - [ ] **RAPTOR-5 (low priority): Click-to-call with auto-logging.** Not
   urgent — Malaysia's WhatsApp-first market makes voice less central than in
   AutoRaptor's US/SMS-centric design. If ever built, auto-log the outcome
-  instead of today's manual log-after-the-fact (`SalesmanPremium.jsx:1351`).
+  instead of today's manual log-after-the-fact (`logCall`, `SalesmanPremium.jsx:1356`).
 
 Deliberately NOT recommended (see artifact §04 for the full case): DMS/80+
 inventory integrations (ShiftOS listings already ARE the CRM data, nothing to
