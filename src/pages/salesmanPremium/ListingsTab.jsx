@@ -21,7 +21,7 @@ export default function ListingsTab({
  statusMenuCarId, actionMenuCarId, confirmDeleteId, cvrHover, profile, isMobile,
  setMyListings, setFilterStatus, setSortBy, setShowAddForm, setShowFastForm,
  setStatusMenuCarId, setActionMenuCarId, setConfirmDeleteId, setCvrHover, setEditListing,
- setSelectedCar,
+ setSelectedCar, setCarDetailImgIdx, setCarDetailTab,
  listingScore, updateListingStatus, handleDeleteListing, handleListingCopy, openBroadcast,
  generateAiCaptions, refreshCommissionData,
 }) {

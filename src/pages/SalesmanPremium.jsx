@@ -5677,7 +5677,7 @@ export default function SalesmanPremium() {
       setShowAddForm={setShowAddForm} setShowFastForm={setShowFastForm}
       setStatusMenuCarId={setStatusMenuCarId} setActionMenuCarId={setActionMenuCarId}
       setConfirmDeleteId={setConfirmDeleteId} setCvrHover={setCvrHover} setEditListing={setEditListing}
-      setSelectedCar={setSelectedCar}
+      setSelectedCar={setSelectedCar} setCarDetailImgIdx={setCarDetailImgIdx} setCarDetailTab={setCarDetailTab}
       listingScore={listingScore} updateListingStatus={updateListingStatus}
       handleDeleteListing={handleDeleteListing} handleListingCopy={handleListingCopy}
       openBroadcast={openBroadcast} generateAiCaptions={generateAiCaptions}
