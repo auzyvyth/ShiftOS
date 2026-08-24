@@ -391,6 +391,25 @@ Buyers message sellers inside ShiftOS (not WhatsApp). Built 2026-08-23.
   modal, and the real `wa.me` deep link still fires synchronously inside
   `handleEnquirySubmit`, so nothing here is exposed to a popup blocker.
 
+## "This week" call list — the retention loop (don't scatter it again)
+`src/utils/thisWeek.js` (ranking) + `src/components/crm/ThisWeek.jsx` (UI), on
+the Salesman Premium dashboard, first thing on the page. It merges four things
+that already existed on four separate tabs nobody opened: leads never replied
+to, leads going quiet, due nudges, and past buyers with a renewal or an ageing
+car. Sources are the page's existing `leads`/`customers` state plus `useNudges`
+— no new queries.
+- **One row per HUMAN, not per reason.** Someone whose insurance lapsed AND who
+  is trade-up ready is one phone call; extra reasons ride along as `also`.
+- Ranking: never replied > due reminder > going quiet / renewal > trade-up.
+- **`last_contacted_at` is the heartbeat of this feature.** Every path that
+  counts as contacting someone MUST stamp it, or the same names come back
+  tomorrow and the list stops being believable. Writers today: OutreachHub
+  (`:140`), `logCall` and `handleThisWeekContacted` in `SalesmanPremium.jsx`.
+  `updated_at` is NOT a substitute — it moves on any edit.
+- No invented numbers in any draft (no price, instalment, discount, trade-in
+  value, rate or approval), and no auto-send: Message opens WhatsApp with the
+  text and the human presses send.
+
 ## Equity mining / trade-up list (RAPTOR-3) — built, don't rebuild
 Customers tab in `SalesmanPremium.jsx` (`renderCustomers`) has a `Trade-up
 ready` filter. Two triggers, OR'd: owned 3+ years (`purchase_date`) or a car 5+

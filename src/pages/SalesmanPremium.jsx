@@ -77,6 +77,8 @@ import {
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
 import OutreachHub from "../components/crm/OutreachHub";
+import ThisWeek from "../components/crm/ThisWeek";
+import { useNudges } from "../hooks/useNudges";
 import SellerInbox from "../components/chat/SellerInbox";
 import { useChatThreads } from "../hooks/useChat";
 import UpgradeBanner from "../components/ai/UpgradeBanner";
@@ -359,6 +361,10 @@ export default function SalesmanPremium() {
  // Unread buyer-chat count for the nav badge. Its own hook instance, separate
  // from the one inside SellerInbox (each gets a distinct realtime channel).
  const { totalUnread: chatUnread } = useChatThreads({ salesmanId: userId });
+ // Due follow-up reminders feed the "This week" list on the dashboard. They
+ // used to load only inside OutreachHub, so a reminder you had set was
+ // invisible unless you happened to open that tab.
+ const { due: dueNudges, closeNudge } = useNudges(userId, getDealerIdFromProfile(profile));
  // Premium is solo-only — the redirect guard above sends any salesman with
  // dealer_id set to /salesman before this ever renders, so there is no dealer
  // to grant the ROLE_EXTRAS permission Outreach normally requires. Include it
@@ -1365,8 +1371,13 @@ export default function SalesmanPremium() {
  dealer_id: lead?.dealer_id?? null,
  });
  if (error) { console.error("logCall:", error); toast.error("Failed to log call"); setCallSaving(false); return; }
- await supabase.from("leads").update({ updated_at: new Date().toISOString(), last_call_outcome: callOutcome }).eq("id", logCallLeadId);
- setLeads((p) => p.map((l) => l.id === logCallLeadId? { ...l, updated_at: new Date().toISOString(), last_call_outcome: callOutcome } : l));
+ // Stamp last_contacted_at, not just updated_at. Logging a call IS contact,
+ // and every "gone quiet" surface (This week, OutreachHub) measures from this
+ // column — without it a lead you just phoned keeps being served back to you
+ // as untouched, and the call list stops being believable.
+ const callTs = new Date().toISOString();
+ await supabase.from("leads").update({ updated_at: callTs, last_contacted_at: callTs, last_call_outcome: callOutcome }).eq("id", logCallLeadId);
+ setLeads((p) => p.map((l) => l.id === logCallLeadId? { ...l, updated_at: callTs, last_contacted_at: callTs, last_call_outcome: callOutcome } : l));
  setLeadActivities((p) => { const n = { ...p }; delete n[logCallLeadId]; return n; });
  toast.success("Call logged");
  setCallSaving(false);
@@ -2352,6 +2363,25 @@ export default function SalesmanPremium() {
 
  // RENDER DASHBOARD 
 
+ // Acting on a "This week" row has to persist. If it only hid the row in
+ // local state the same person would be back tomorrow, and a call list you
+ // cannot trust is worse than no call list at all.
+ const handleThisWeekContacted = async (item) => {
+ if (item.nudgeId) { closeNudge(item.nudgeId, "sent"); return; }
+ if (!item.leadId) return;   // past-buyer rows have no lead to stamp
+ const ts = new Date().toISOString();
+ setLeads((p) => p.map((l) => (l.id === item.leadId ? { ...l, last_contacted_at: ts } : l)));
+ const { error } = await supabase
+ .from("leads")
+ .update({ last_contacted_at: ts, updated_at: ts })
+ .eq("id", item.leadId);
+ if (error) {
+ console.error("handleThisWeekContacted:", error);
+ toast.error("Could not save that as contacted");
+ setLeads((p) => p.map((l) => (l.id === item.leadId ? { ...l, last_contacted_at: null } : l)));
+ }
+ };
+
  const renderDashboard = () => {
  const activeLeads = leads.filter(
  (l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won" && l.stage !== "won",
@@ -2543,6 +2573,11 @@ export default function SalesmanPremium() {
 
  return (
  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+ {/* The one call list. Deliberately the first thing on the home screen:
+ everything it shows already existed, spread over four tabs nobody
+ opened. See src/utils/thisWeek.js for the ranking. */}
+ <ThisWeek leads={leads} customers={customers} nudges={dueNudges}
+ repName={profile?.full_name} onContacted={handleThisWeekContacted} />
  {/* Dashboard-only card chrome — layered gradient surface + a soft top
  highlight, richer than the flat CARD token used on every other tab.
  Scoped to this tab; nothing else changes. */}
