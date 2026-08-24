@@ -2500,7 +2500,7 @@ export default function CarDetailPage() {
               )}
             </div>
             <div style={{ marginTop: 8 }}>
-              <BuyerChat listingId={car.id}
+              <BuyerChat listingId={car.id} isLight={isXdrive}
                 carName={[car.year, car.brand, car.model].filter(Boolean).join(' ')}
                 sellerName={repFirstName ? `Chat with ${repFirstName}` : null} />
             </div>
@@ -3970,7 +3970,7 @@ export default function CarDetailPage() {
             </div>
 
             <div style={{ marginTop: 8 }}>
-              <BuyerChat listingId={car.id}
+              <BuyerChat listingId={car.id} isLight={isXdrive}
                 carName={[car.year, car.brand, car.model].filter(Boolean).join(' ')}
                 sellerName={repFirstName ? `Chat with ${repFirstName}` : null} />
             </div>

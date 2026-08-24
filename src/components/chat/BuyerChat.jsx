@@ -21,7 +21,10 @@ const setConsented = () => {
   try { localStorage.setItem(CONSENT_KEY, '1'); } catch { /* private mode — just ask again */ }
 };
 
-export default function BuyerChat({ listingId, carName, sellerName }) {
+// `isLight` follows CarDetailPage's own theme flag (isXdrive). The trigger
+// button has to live on the page's surface, so it takes the page's colours —
+// styling it for the dark theme is what made it invisible on the light one.
+export default function BuyerChat({ listingId, carName, sellerName, isLight = false }) {
   const [open, setOpen] = useState(false);
   const [accepted, setAccepted] = useState(hasConsented);
   const { threadId, start, starting, needsAnon } = useBuyerThread(listingId);
@@ -109,7 +112,16 @@ export default function BuyerChat({ listingId, carName, sellerName }) {
   return (
     <>
       <button onClick={() => setOpen(true)}
-        style={{ width:'100%', padding:'13px', borderRadius:11, border:'1px solid rgba(255,255,255,0.16)', background:'rgba(255,255,255,0.06)', color:'#f3f4f6', fontSize:14, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+        style={{
+          width:'100%', padding:'13px', borderRadius:11,
+          // Solid dark slate on the light page: real contrast without adding a
+          // second saturated accent beside the red "Book a Viewing".
+          background: isLight ? '#0F172A' : 'rgba(255,255,255,0.07)',
+          border: isLight ? '1px solid #0F172A' : '1px solid rgba(255,255,255,0.16)',
+          color: isLight ? '#ffffff' : '#f3f4f6',
+          fontSize:14, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif",
+          display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+        }}>
         <MessageSquare size={16} /> Chat with the seller
       </button>
       {open && createPortal(panel, document.body)}
