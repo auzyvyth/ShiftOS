@@ -492,6 +492,9 @@ export default function SalesmanPremium() {
  // tour
  const [tourStep, setTourStep] = useState(null);
  const [tourTarget, setTourTarget] = useState(null);
+ // The auto-start below must fire ONCE per mount. Without this guard anything
+ // that re-runs the bootstrap effect drags the tour back to step 0.
+ const tourAutoStarted = useRef(false);
 
  // broadcast
  const [broadcastCar, setBroadcastCar] = useState(null);
@@ -673,7 +676,10 @@ export default function SalesmanPremium() {
  setProfile(profileData);
  setLoading(false);
 
- if (!localStorage.getItem("sp_tour_done")) setTourStep(0);
+ if (!tourAutoStarted.current && !localStorage.getItem("sp_tour_done")) {
+ tourAutoStarted.current = true;
+ setTourStep(0);
+ }
 
  // "Reward the comeback" — a 3+ day gap since the last visit greets the
  // salesman back instead of leading with a stale-leads scold. Client-side
@@ -1008,7 +1014,17 @@ export default function SalesmanPremium() {
  return () => {
  if (channelRef.current) supabase.removeChannel(channelRef.current);
  };
- }, [navigate]);
+ // Mount-time bootstrap only. Deliberately [] and NOT [navigate]: react-router
+ // v7 rebuilds the `navigate` callback whenever the pathname changes (it closes
+ // over the current location for relative paths), and every Premium tab is its
+ // own route — so a [navigate] dep re-ran this entire block on EVERY tab switch.
+ // That refetched profile/listings/analytics/leads/enquiries and re-subscribed
+ // the realtime channel each time, and reset the tour to step 0 the moment it
+ // navigated to the next step's tab, so Next looped back to the welcome card.
+ // Every navigate() call in here is an absolute path, so the mount-time closure
+ // stays correct.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, []);
 
  useEffect(() => {
  if (tourStep === null) { setTourTarget(null); return; }
@@ -4128,7 +4144,7 @@ export default function SalesmanPremium() {
  Loans, Outreach, Chat, Customers, Handover and Settings — opening each one as it goes.
  </p>
  <button
- onClick={() => { localStorage.removeItem("sp_tour_done"); setTourStep(0); }}
+ onClick={() => setTourStep(0)}
  style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 14px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#e5e7eb", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
  >
  <Sparkles size={14} /> Replay the tour
