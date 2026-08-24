@@ -212,3 +212,47 @@ export function useBuyerThread(listingId, { autoStart = false } = {}) {
 
   return { threadId, start, starting, needsAnon };
 }
+
+// Buyer inbox: every conversation this buyer has started, newest first.
+//
+// This CANNOT be a plain table query. A buyer can read their own chat_threads
+// rows, but RLS on `profiles` blocks them from reading the seller's name and
+// photo, so the card has nothing to show. `get_my_chat_threads()` is a
+// SECURITY DEFINER function that assembles the whole card server-side, scoped
+// to buyer_id = auth.uid().
+export function useBuyerThreads() {
+  const [threads, setThreads] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [userId, setUserId]   = useState(null);
+  const instanceRef = useRef(Math.random().toString(36).slice(2, 9));
+
+  const load = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setThreads([]); setUserId(null); setLoading(false); return; }
+    setUserId(user.id);
+    const { data, error } = await supabase.rpc('get_my_chat_threads');
+    // Surface the failure — an empty inbox and a broken call look identical to
+    // the buyer otherwise.
+    if (error) { console.error('useBuyerThreads:', error); setLoading(false); return; }
+    setThreads(data || []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  // A new message bumps last_message_at and buyer_unread on the thread row, so
+  // watching chat_threads keeps the list live without polling.
+  useEffect(() => {
+    if (!userId) return;
+    const ch = supabase
+      .channel(`buyer-inbox:${userId}:${instanceRef.current}`)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'chat_threads', filter: `buyer_id=eq.${userId}` },
+        () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [userId, load]);
+
+  const totalUnread = threads.reduce((n, t) => n + (t.buyer_unread || 0), 0);
+  return { threads, loading, totalUnread, reload: load };
+}
