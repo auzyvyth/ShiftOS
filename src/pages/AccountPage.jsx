@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Heart, Bell, ArrowLeft, ArrowRight, LogOut, Store, Check, X, Clock, PackageCheck, User } from 'lucide-react';
+import { Heart, Bell, ArrowLeft, ArrowRight, LogOut, Store, Check, X, Clock, PackageCheck, User, MessageSquare } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useSavedCars, useSavedCarsDetails } from '../hooks/useSavedCars';
 import CarCard from '../components/CarCard';
+import BuyerInbox from '../components/chat/BuyerInbox';
 import { POST_SALE_STEPS, STATUS_CONFIG } from '../utils/postSaleSteps';
 
 const STEP_LABEL = Object.fromEntries(POST_SALE_STEPS.map((s) => [s.key, s.label]));
@@ -206,6 +207,17 @@ export default function AccountPage() {
               {detailsSaved && <span style={{ fontSize: 13, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 5 }}><Check size={14} /> Saved</span>}
             </div>
           </div>
+        </section>
+
+        {/* Messages — the buyer's own chat inbox. Without this a buyer had to
+            find the exact listing again to carry on a conversation, so it sits
+            above Saved Cars: an unanswered reply is the more urgent thing. */}
+        <section style={{ marginBottom: 44 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+            <MessageSquare size={18} color="#dc2626" />
+            <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#111827' }}>Messages</h2>
+          </div>
+          <BuyerInbox />
         </section>
 
         {/* Purchase tracker — deferred (see PURCHASE_TRACKER_ENABLED). */}

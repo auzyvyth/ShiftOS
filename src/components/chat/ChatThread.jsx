@@ -85,7 +85,7 @@ function Bubble({ msg, mine, t }) {
 
 export default function ChatThread({
   threadId, role, theme = 'light', headerName, headerSub, headerRight = null,
-  showPrivacyNote = false, height = 460, aiAssist = false,
+  showPrivacyNote = false, height = 460, aiAssist = false, bare = false,
 }) {
   const t = THEMES[theme] || THEMES.light;
   const { messages, loading, sending, send, markRead } = useChatThread(threadId, role);
@@ -140,7 +140,9 @@ export default function ChatThread({
   };
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', height, background:t.bg, border:`1px solid ${t.border}`, borderRadius:14, overflow:'hidden', fontFamily:"system-ui,sans-serif" }}>
+    // `bare` drops this component's own border + radius so it can sit flush
+    // inside a container that already draws them (the buyer inbox card).
+    <div style={{ display:'flex', flexDirection:'column', height, background:t.bg, border: bare ? 'none' : `1px solid ${t.border}`, borderRadius: bare ? 0 : 14, overflow:'hidden', fontFamily:"system-ui,sans-serif" }}>
       {headerName && (
         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 14px', borderBottom:`1px solid ${t.border}`, background:t.panel, flexShrink:0 }}>
           <div style={{ flex:1, minWidth:0 }}>
