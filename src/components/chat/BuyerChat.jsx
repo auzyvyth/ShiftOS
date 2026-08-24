@@ -4,8 +4,12 @@ import { MessageSquare, X, ShieldCheck, Loader2 } from 'lucide-react';
 import { useBuyerThread } from '../../hooks/useChat';
 import ChatThread from './ChatThread';
 
-// Buyer-side chat on a car listing. Dark, because it lives on the public
-// marketplace.
+// Buyer-side chat on a car listing.
+//
+// The trigger button follows the page's theme: the main marketplace
+// (xdrive.my) renders light, a dealer subdomain renders dark. CarDetailPage
+// passes its own isXdrive flag in as `isLight`. The sheet itself stays dark on
+// both — it is an overlay over a dimmed page, not part of the surface.
 //
 // A shopper can chat without making an account: the first message signs them in
 // anonymously, and the seller sees them as "Guest 4F2A". If they register later
@@ -109,16 +113,25 @@ export default function BuyerChat({ listingId, carName, sellerName, isLight = fa
     </div>
   );
 
+  // A solid neutral button of equal weight on BOTH surfaces — never a ghost.
+  // Neutral on purpose: the red "Book a Viewing" above stays the only accent.
+  //
+  // Light marketplace: the dark fill defines the shape on its own (#0F172A on a
+  // white card is ~18:1).
+  // Dealer subdomain: the card is #0a1220, and no fill dark enough to stay
+  // neutral clears 3:1 against it — a translucent white fill is the same
+  // barely-there problem the light page had. So the border carries the shape:
+  // #64748B is 3.94:1 against the card, and the #334155 fill holds text at 9.5:1.
+  const btn = isLight
+    ? { bg: '#0F172A', border: '#0F172A', fg: '#FFFFFF' }
+    : { bg: '#334155', border: '#64748B', fg: '#F1F5F9' };
+
   return (
     <>
       <button onClick={() => setOpen(true)}
         style={{
           width:'100%', padding:'13px', borderRadius:11,
-          // Solid dark slate on the light page: real contrast without adding a
-          // second saturated accent beside the red "Book a Viewing".
-          background: isLight ? '#0F172A' : 'rgba(255,255,255,0.07)',
-          border: isLight ? '1px solid #0F172A' : '1px solid rgba(255,255,255,0.16)',
-          color: isLight ? '#ffffff' : '#f3f4f6',
+          background: btn.bg, border: `1px solid ${btn.border}`, color: btn.fg,
           fontSize:14, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif",
           display:'flex', alignItems:'center', justifyContent:'center', gap:8,
         }}>
