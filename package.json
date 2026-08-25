@@ -10,7 +10,8 @@
     "preview": "vite preview --host :: --port 3000",
     "lint": "eslint . --quiet",
     "lint:warn": "eslint .",
-    "start-server": "node server/index.js"
+    "start-server": "node server/index.js",
+    "test:tour": "node tests/tourPlacement.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

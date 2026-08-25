@@ -22,6 +22,12 @@ export const POST_SALE_STEPS = [
     owner: 'customer',
     cost: null,
     optional: false,
+    // Ticking this step done is the moment the expiry date is knowable, so the
+    // checklist asks for it there (prefilled +12 months) and the DB trigger
+    // trg_sync_customer_expiry writes it to customers.insurance_expiry. That is
+    // what feeds the expiry-reminders cron and the "This week" renewal calls —
+    // before this, the date was thrown away and both ran on empty.
+    expiryLabel: 'Policy expires',
     hint: 'Buyer takes out a new motor policy in their own name — required before JPJ transfer and road tax. NCD stays with the seller, it does not pass to the buyer.',
   },
   {
@@ -54,6 +60,7 @@ export const POST_SALE_STEPS = [
     owner: 'runner',
     cost: null,
     optional: false,
+    expiryLabel: 'Road tax expires',
     hint: 'Renew in the buyer’s name after transfer (MyEG/MyJPJ). Requires an in-force insurance policy. Calculated by engine cc.',
   },
   {

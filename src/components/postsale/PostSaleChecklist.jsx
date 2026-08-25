@@ -1,9 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Check, Clock, Circle, MinusCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { usePostSaleTasks } from '../../hooks/usePostSaleTasks';
 import { POST_SALE_STEPS, OWNER_LABELS, STATUS_CONFIG } from '../../utils/postSaleSteps';
 
 const STEP_META = Object.fromEntries(POST_SALE_STEPS.map((s) => [s.key, s]));
+
+// Malaysian motor policies and road tax both run 12 months, so that is the
+// default the expiry field opens with — a correct guess in the normal case, one
+// the rep can overwrite when the policy actually differs.
+const plusMonths = (iso, n) => {
+  const d = iso ? new Date(iso) : new Date();
+  if (isNaN(d)) return '';
+  d.setMonth(d.getMonth() + n);
+  return d.toISOString().slice(0, 10);
+};
 
 function StatusIcon({ status }) {
   if (status === 'done') return <Check size={16} />;
@@ -15,9 +25,21 @@ function StatusIcon({ status }) {
 // Renders the post-sale handover checklist for a won deal. Light-themed to match
 // the dashboard shell. Marking a step done is a single tap on the round button;
 // the row expands (tap anywhere on the title) for notes / due date / cost.
-export default function PostSaleChecklist({ lead, compact = false, dark = false }) {
+export default function PostSaleChecklist({ lead, compact = false, dark = false, onTasksChange = null }) {
   const { tasks, loading, progress, updateTask } = usePostSaleTasks(lead);
   const [expanded, setExpanded] = useState(null);
+
+  // Report the live steps up to whoever owns the board. Ticking a step used to
+  // move the bar in here while the card above it kept showing the old
+  // percentage and the old "Next:" step until the tab was remounted.
+  // The handler is held in a ref deliberately: parents pass an inline arrow, so
+  // keying the effect on it would re-fire on every render and, since reporting
+  // up re-renders the parent, spin forever.
+  const reportRef = useRef(onTasksChange);
+  reportRef.current = onTasksChange;
+  useEffect(() => {
+    if (reportRef.current && tasks.length) reportRef.current(tasks);
+  }, [tasks]);
 
   const th = dark
     ? { rowBg: 'rgba(255,255,255,0.03)', rowDoneBg: 'rgba(255,255,255,0.015)', border: 'rgba(255,255,255,0.1)', text: '#f1f5f9', sub: '#9ca3af', muted: 'rgba(255,255,255,0.4)', track: 'rgba(255,255,255,0.1)', chip: 'rgba(255,255,255,0.06)', inputBg: 'rgba(255,255,255,0.05)', inputBorder: 'rgba(255,255,255,0.15)', totalBg: 'rgba(255,255,255,0.03)' }
@@ -84,6 +106,24 @@ export default function PostSaleChecklist({ lead, compact = false, dark = false 
                   {isOpen ? <ChevronDown size={15} color={th.muted} /> : <ChevronRight size={15} color={th.muted} />}
                 </button>
               </div>
+
+              {/* Capture the date this step produced, at the moment it is produced.
+                  Deliberately NOT hidden behind the expand chevron: it is the
+                  one thing we need from the rep, and it only appears on the two
+                  steps that produce a date, once the step is actually done. */}
+              {isDone && meta.expiryLabel && (
+                <div style={{ marginTop: 9, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '8px 10px', borderRadius: 8, background: th.chip, border: `1px solid ${th.border}` }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: th.sub }}>{meta.expiryLabel}</span>
+                  <input
+                    type="date"
+                    value={t.result_date || plusMonths(t.completed_at, 12)}
+                    onChange={(e) => updateTask(t.id, { result_date: e.target.value || null })}
+                    title="Prefilled 12 months ahead. Correct it if the real policy differs — the customer's renewal reminder runs off this date."
+                    style={{ fontSize: 11.5, padding: '5px 7px', borderRadius: 6, background: th.inputBg, border: `1px solid ${th.inputBorder}`, color: th.text }}
+                  />
+                  <span style={{ fontSize: 10, color: th.muted }}>reminds the customer automatically</span>
+                </div>
+              )}
 
               {isOpen && (
                 <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>

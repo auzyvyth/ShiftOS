@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import ServicePackages from "./ServicePackages";
+import { useServicePackages } from "../../hooks/useServicePackages";
 import { AlertTriangle, Phone, Search, X } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 
@@ -13,12 +15,15 @@ export default function CustomersTab({ dealerId, salesmanId = null }) {
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [handoverMap, setHandoverMap] = useState({});   // lead_id → progress %
-  const [packagesMap, setPackagesMap] = useState({});   // customer_id → [packages]
   const [expandedPkg, setExpandedPkg] = useState(null); // customer_id being expanded
   const [expiryFilter, setExpiryFilter] = useState(null); // 'ins' | 'rt' — show only due/expired
-  const [addPkg, setAddPkg] = useState(null);           // customer_id for add form
-  const [pkgForm, setPkgForm] = useState({ package_name: '', total_visits: 3, valid_months: 12, sold_price: '' });
-  const [pkgSaving, setPkgSaving] = useState(false);
+  // Packages + visits live in useServicePackages, shared with the Salesman
+  // Premium Customers tab. Both pages used to carry their own copy of
+  // add-package / log-visit; a visit is a dated row now, so one owner only.
+  const {
+    packages: packagesMap, visits: pkgVisits, products: pkgProducts,
+    addPackage, logVisit, undoVisit,
+  } = useServicePackages(dealerId, customers.map((c) => c.id));
 
   useEffect(() => {
     let cancelled = false;
@@ -59,58 +64,10 @@ export default function CustomersTab({ dealerId, salesmanId = null }) {
         if (!cancelled) setHandoverMap(pct);
       }
 
-      // Service packages for all customers
-      const custIds = list.map(c => c.id);
-      if (custIds.length > 0) {
-        const { data: pkgs } = await supabase
-          .from("service_packages").select("*").in("customer_id", custIds)
-          .order("created_at", { ascending: false });
-        const pm = {};
-        for (const p of pkgs || []) {
-          if (!pm[p.customer_id]) pm[p.customer_id] = [];
-          pm[p.customer_id].push(p);
-        }
-        if (!cancelled) setPackagesMap(pm);
-      }
-
       if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [dealerId, salesmanId]);
-
-  const handleAddPackage = async (customer) => {
-    if (!pkgForm.package_name) return;
-    setPkgSaving(true);
-    const row = {
-      dealer_id: dealerId,
-      customer_id: customer.id,
-      lead_id: customer.lead_id || null,
-      listing_id: customer.listing_id || null,
-      package_name: pkgForm.package_name,
-      total_visits: Number(pkgForm.total_visits) || 3,
-      valid_months: Number(pkgForm.valid_months) || 12,
-      sold_price: pkgForm.sold_price ? Number(pkgForm.sold_price) : null,
-      sold_at: new Date().toISOString().slice(0, 10),
-    };
-    const { data } = await supabase.from("service_packages").insert(row).select().single();
-    if (data) {
-      setPackagesMap(p => ({ ...p, [customer.id]: [data, ...(p[customer.id] || [])] }));
-      setExpandedPkg(customer.id);
-    }
-    setAddPkg(null);
-    setPkgForm({ package_name: '', total_visits: 3, valid_months: 12, sold_price: '' });
-    setPkgSaving(false);
-  };
-
-  const handleLogVisit = async (pkg) => {
-    if (pkg.used_visits >= pkg.total_visits) return;
-    const updated = { used_visits: pkg.used_visits + 1, updated_at: new Date().toISOString() };
-    await supabase.from("service_packages").update(updated).eq("id", pkg.id);
-    setPackagesMap(p => {
-      const list = (p[pkg.customer_id] || []).map(pk => pk.id === pkg.id ? { ...pk, ...updated } : pk);
-      return { ...p, [pkg.customer_id]: list };
-    });
-  };
 
   const today = new Date();
   const expiryColor = (diff) => diff === null ? "#6b7280" : diff < 0 ? "#f87171" : diff <= 30 ? "#fbbf24" : "#4ade80";
@@ -261,63 +218,19 @@ export default function CustomersTab({ dealerId, salesmanId = null }) {
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
                         <button onClick={() => setEditing({ ...c })} className="text-xs px-3 py-1 rounded-lg bg-gray-50 border border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-colors whitespace-nowrap">Edit</button>
-                        <button onClick={() => { setAddPkg(c.id); setPkgForm({ package_name: '', total_visits: 3, valid_months: 12, sold_price: '' }); }} className="text-xs px-3 py-1 rounded-lg bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 transition-colors whitespace-nowrap">+ Service Plan</button>
+                        <button onClick={() => setExpandedPkg(isExpanded ? null : c.id)} className="text-xs px-3 py-1 rounded-lg bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 transition-colors whitespace-nowrap">Service plans{pkgs.length ? ` (${pkgs.length})` : ''}</button>
                       </div>
                     </td>
                   </tr>
-                  {isExpanded && pkgs.length > 0 && (
+                  {isExpanded && (
                     <tr className="border-b border-gray-100 bg-violet-50/40">
                       <td colSpan={8} className="px-6 py-3">
-                        <p className="text-[10px] font-bold text-violet-600 uppercase tracking-widest mb-2">Service Packages</p>
-                        <div className="flex flex-wrap gap-3">
-                          {pkgs.map(pkg => {
-                            const expired = pkg.expires_at && new Date(pkg.expires_at) < today;
-                            return (
-                              <div key={pkg.id} className="bg-white border border-violet-200 rounded-xl p-3" style={{ minWidth: 180 }}>
-                                <p className="text-sm font-semibold text-gray-900 m-0">{pkg.package_name}</p>
-                                <p className="text-[11px] text-gray-500 mt-1 m-0">{pkg.used_visits}/{pkg.total_visits} visits used</p>
-                                <div style={{ height: 4, borderRadius: 2, background: '#ede9fe', margin: '6px 0' }}>
-                                  <div style={{ height: '100%', width: `${(pkg.used_visits / pkg.total_visits) * 100}%`, borderRadius: 2, background: '#7c3aed' }} />
-                                </div>
-                                {pkg.expires_at && (
-                                  <p className="text-[10px] m-0" style={{ color: expired ? '#f87171' : '#9ca3af' }}>
-                                    {expired ? 'Expired' : 'Expires'} {new Date(pkg.expires_at).toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" })}
-                                  </p>
-                                )}
-                                {pkg.used_visits < pkg.total_visits && !expired && (
-                                  <button onClick={() => handleLogVisit(pkg)} className="mt-2 text-[10px] px-2 py-1 rounded bg-violet-100 text-violet-700 hover:bg-violet-200 transition-colors">Log visit</button>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                  {addPkg === c.id && (
-                    <tr className="border-b border-gray-100 bg-violet-50/60">
-                      <td colSpan={8} className="px-6 py-3">
-                        <p className="text-[10px] font-bold text-violet-600 uppercase tracking-widest mb-2">New Service Package</p>
-                        <div className="flex flex-wrap gap-3 items-end">
-                          <div>
-                            <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">Package Name</label>
-                            <input value={pkgForm.package_name} onChange={e => setPkgForm(p => ({ ...p, package_name: e.target.value }))} placeholder="e.g. Annual Service Plan" className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:border-violet-400" style={{ width: 200 }} />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">Visits</label>
-                            <input type="number" value={pkgForm.total_visits} onChange={e => setPkgForm(p => ({ ...p, total_visits: e.target.value }))} className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:border-violet-400" style={{ width: 70 }} />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">Valid (months)</label>
-                            <input type="number" value={pkgForm.valid_months} onChange={e => setPkgForm(p => ({ ...p, valid_months: e.target.value }))} className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:border-violet-400" style={{ width: 70 }} />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1">Price (RM)</label>
-                            <input type="number" value={pkgForm.sold_price} onChange={e => setPkgForm(p => ({ ...p, sold_price: e.target.value }))} placeholder="0" className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:border-violet-400" style={{ width: 90 }} />
-                          </div>
-                          <button onClick={() => handleAddPackage(c)} disabled={pkgSaving || !pkgForm.package_name} className="px-4 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-semibold disabled:opacity-50">Save</button>
-                          <button onClick={() => setAddPkg(null)} className="px-4 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs">Cancel</button>
-                        </div>
+                        <p className="text-[10px] font-bold text-violet-600 uppercase tracking-widest mb-1">Service Packages</p>
+                        {/* Same component the Salesman Premium Customers tab renders */}
+                        <ServicePackages
+                          customer={c} packages={pkgs} visits={pkgVisits} products={pkgProducts}
+                          onAdd={addPackage} onLogVisit={logVisit} onUndoVisit={undoVisit} theme="light"
+                        />
                       </td>
                     </tr>
                   )}

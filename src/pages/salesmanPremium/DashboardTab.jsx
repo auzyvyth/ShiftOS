@@ -1,7 +1,7 @@
 import React from "react";
 import {
  Bell, Calendar, Car, CheckCircle, ChevronRight, Clock, ExternalLink, Eye, History,
- Link as LinkIcon, MessageCircle, Pin, Store, UserCheck, Users, ClipboardList, Zap,
+ Link as LinkIcon, MessageCircle, Pin, Store, Users, ClipboardList, Zap,
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { toast } from "sonner";
@@ -22,7 +22,8 @@ import {
 // component taking named props) and these imports are new.
 export default function DashboardTab({
  leads, appointments, myListings, carStatsMap, enquiries, staleLeads, isReturning,
- goal, goalEditing, goalDraft, showPrevMonth, customers, dueNudges, profile,
+ goal, goalEditing, goalDraft, showPrevMonth, customers, dueNudges, profile, servicePackages,
+ handoverActive, handoverNext,
  minipageStats, aiFollowups, followupsLoading, browserNotifPerm, notifBannerDismissed,
  isPremium, isMobile,
  setActiveTab, setMobileLeadStage, setGoalDraft, setGoalEditing, setShowPrevMonth,
@@ -47,6 +48,20 @@ export default function DashboardTab({
  return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
  }).length;
 
+ // Subtitle for the Sold shortcut. It has to say what is waiting, not just
+ // name the tab — that is the whole reason the old pair of buttons went
+ // unclicked. Counts only; no invented figure of any kind.
+ const renewalsDue = customers.filter((c) => {
+ const due = (d) => d && (new Date(d) - Date.now()) / 86400000 <= 30;
+ return due(c.road_tax_expiry) || due(c.insurance_expiry);
+ }).length;
+ const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+ const soldSummary = [
+ handoverActive > 0 ? `${plural(handoverActive, "handover")} in progress${handoverNext ? ` · next: ${handoverNext}` : ""}` : null,
+ renewalsDue > 0 ? `${plural(renewalsDue, "renewal")} due` : null,
+ ].filter(Boolean).join(" · ")
+ || (customers.length ? `${plural(customers.length, "buyer")} on record · nothing due` : "Handover checklist and past buyers");
+
  const listingStats = myListings.map((car) => {
  const s = carStatsMap[car.id] ?? {};
  const views = s.views || 0;
@@ -57,28 +72,36 @@ export default function DashboardTab({
  });
  const totalViews = Object.values(carStatsMap).reduce((s, v) => s + (v.views || 0), 0);
  const totalWATaps = Object.values(carStatsMap).reduce((s, v) => s + (v.enquiries || 0), 0);
- // Real 7-day views trend (same carStatsMap.daily source as the Analytics
- // tab's sparklines) — the only one of the 4 mini-page stats with a genuine
- // daily breakdown, so it's the only tile that gets a trend line.
- const viewsTrend = Array(7).fill(0).map((_, i) =>
- Object.values(carStatsMap).reduce((s, v) => s + (v.daily?.[i] || 0), 0)
+ // Real 7-day trends, oldest day first. All three come from data the page
+ // already fetched: listing views (carStatsMap.daily), WhatsApp/call taps
+ // (carStatsMap.waDaily — the w0..w6 columns get_salesman_analytics has
+ // always returned) and mini-page visits (get_salesman_minipage_daily).
+ // They are plotted as ONE chart with three waves rather than four tiles
+ // where only Views had a line.
+ const sumDaily = (key) => Array(7).fill(0).map((_, i) =>
+ Object.values(carStatsMap).reduce((s, v) => s + (Number(v[key]?.[i]) || 0), 0)
  );
- // De-emphasised trend line, accent dot on the latest point only — never a
- // number-on-every-point; the line just shows shape, the dot marks "now".
- const MiniTrend = ({ data }) => {
- if (!data.some(v => v > 0)) return null;
- const max = Math.max(...data, 1);
- const w = 60, h = 20;
- const pts = data.map((v, i) => [(i / (data.length - 1)) * w, h - 3 - (v / max) * (h - 6)]);
- const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
- const last = pts[pts.length - 1];
- return (
- <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: "block", marginTop: 6, overflow: "visible" }}>
- <path d={line} stroke={C.textDim} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
- <circle cx={last[0]} cy={last[1]} r="2.5" fill={C.accent} />
- </svg>
- );
+ const viewsTrend = sumDaily("daily");
+ const waTrend = sumDaily("waDaily");
+ const visitsTrend = Array(7).fill(0).map((_, i) => Number(minipageStats.daily?.[i]) || 0);
+ // d0 = 6 days ago … d6 = today, so the axis labels count backwards from now.
+ const DAY_LABEL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+ const trafficTrend = Array(7).fill(0).map((_, i) => {
+ const d = new Date();
+ d.setDate(d.getDate() - (6 - i));
+ return {
+ day: i === 6 ? "Today" : DAY_LABEL[d.getDay()],
+ views: viewsTrend[i],
+ visits: visitsTrend[i],
+ waTaps: waTrend[i],
  };
+ });
+ const TRAFFIC_SERIES = [
+ { key: "views", label: "Views", hue: C.info },
+ { key: "visits", label: "Page Visits", hue: "#a78bfa" },
+ { key: "waTaps", label: "WA Taps", hue: C.success },
+ ];
+ const hasTrafficTrend = trafficTrend.some((r) => r.views > 0 || r.visits > 0 || r.waTaps > 0);
  const overallCVR = totalViews > 0 ? ((totalWATaps / totalViews) * 100).toFixed(1) : null;
  const bestCVRStat = listingStats.reduce((best, s) => (s.cvr !== null && (best === null || s.cvr > best.cvr)) ? s : best, null);
  const cvrColor = (cvr) => cvr >= 10 ? C.success : cvr >= 5 ? C.warn : C.danger;
@@ -181,6 +204,14 @@ export default function DashboardTab({
  ? Math.round(((trendTotal - prevTrendTotal) / prevTrendTotal) * 100)
  : (trendTotal > 0 ? 100 : null);
  const available = myListings.filter(c => c.status === "available");
+ // The four headline numbers above the traffic chart. The three that have a
+ // wave carry its colour as a dot; Live Listings is a count, not a series.
+ const TRAFFIC_STATS = [
+ { label: "Views", value: totalViews || 0, Icon: Eye, hue: C.info },
+ { label: "Page Visits", value: minipageStats.visits || 0, Icon: LinkIcon, hue: "#a78bfa" },
+ { label: "WA Taps", value: totalWATaps || 0, Icon: MessageCircle, hue: C.success },
+ { label: "Live Listings", value: available.length, Icon: Car, hue: null },
+ ];
  const daysLeft = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate();
  const pct = goal.target > 0 ? Math.min((soldThisMonth / goal.target) * 100, 100) : 0;
  const goalHue = pct >= 100 ? C.success : pct >= 60 ? C.info : C.danger;
@@ -221,11 +252,6 @@ export default function DashboardTab({
 
  return (
  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
- {/* The one call list. Deliberately the first thing on the home screen:
- everything it shows already existed, spread over four tabs nobody
- opened. See src/utils/thisWeek.js for the ranking. */}
- <ThisWeek leads={leads} customers={customers} nudges={dueNudges}
- repName={profile?.full_name} onContacted={handleThisWeekContacted} />
  {/* Dashboard-only card chrome — layered gradient surface + a soft top
  highlight, richer than the flat CARD token used on every other tab.
  Scoped to this tab; nothing else changes. */}
@@ -322,23 +348,18 @@ export default function DashboardTab({
  </div>
  {available.length > 0 && (
  <div style={{ position: "relative", marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
- <div style={{ display: "flex", alignItems: "flex-start", gap: 0, flexWrap: "wrap" }}>
- {[
- { label: "Views", value: totalViews || 0, Icon: Eye, trend: viewsTrend },
- { label: "Page Visits", value: minipageStats.visits || 0, Icon: LinkIcon },
- { label: "WA Taps", value: totalWATaps || 0, Icon: MessageCircle },
- { label: "Live Listings", value: available.length, Icon: Car },
- ].map(({ label, value, Icon, trend }, i) => (
- <div key={label} style={{ display: "flex", alignItems: "flex-start" }}>
- {i > 0 && <div style={{ width: 1, alignSelf: "stretch", background: C.line, margin: isMobile ? "0 14px" : "0 22px" }} />}
- <div style={{ display: "flex", flexDirection: "column", gap: 6, minHeight: 66 }}>
- <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: R.sm, background: C.fillStrong, color: C.textMuted }}>
+ {/* One row, always — four columns on a 375px phone and on desktop
+ alike. It used to be a flex row with flexWrap, so on mobile the
+ tiles broke into a ragged 2+2 and the strip read as a separate
+ (broken) card instead of one line of numbers. */}
+ <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+ {TRAFFIC_STATS.map(({ label, value, Icon, hue }, i) => (
+ <div key={label} style={{ display: "flex", flexDirection: "column", gap: 5, minWidth: 0, paddingLeft: i > 0 ? (isMobile ? 10 : 18) : 0, paddingRight: isMobile ? 6 : 12, borderLeft: i > 0 ? `1px solid ${C.line}` : "none" }}>
+ <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: R.sm, background: hue ? withAlpha(hue, 0.12) : C.fillStrong, color: hue || C.textMuted }}>
  <Icon size={11} strokeWidth={2.2} />
  </span>
- <span style={{ ...STAT, fontSize: isMobile ? T.size.stat : T.size.statLg, color: C.text }}>{value.toLocaleString("en-MY")}</span>
- <span style={EYEBROW}>{label}</span>
- {trend && <MiniTrend data={trend} />}
- </div>
+ <span style={{ ...STAT, fontSize: isMobile ? T.size.stat : T.size.statLg, color: C.text, lineHeight: 1.1 }}>{value.toLocaleString("en-MY")}</span>
+ <span style={{ ...EYEBROW, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
  </div>
  ))}
  </div>
@@ -346,6 +367,54 @@ export default function DashboardTab({
  <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.success }} />
  30 days
  </span>
+
+ {/* ONE traffic chart, three waves. Views used to be the only series with
+ a sparkline (it was the only one the page read a daily array for),
+ which made the strip look like three dead tiles and one live one.
+ WA taps come from w0..w6 on get_salesman_analytics — already returned,
+ never read — and mini-page visits from get_salesman_minipage_daily.
+ Live Listings is a count, not a time series, so it has no wave. */}
+ {hasTrafficTrend && (
+ <div style={{ marginTop: 14 }}>
+ <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 2 }}>
+ <span style={EYEBROW}>Traffic — last 7 days</span>
+ <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+ {TRAFFIC_SERIES.map((sr) => (
+ <span key={sr.key} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: T.size.sm, color: C.textMuted }}>
+ <span style={{ width: 7, height: 7, borderRadius: "50%", background: sr.hue, flexShrink: 0 }} />
+ {sr.label}
+ </span>
+ ))}
+ </div>
+ </div>
+ <div style={{ height: 108, margin: "2px -6px 0" }}>
+ <ResponsiveContainer width="100%" height="100%">
+ <AreaChart data={trafficTrend} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+ <defs>
+ {TRAFFIC_SERIES.map((sr) => (
+ <linearGradient key={sr.key} id={`spTraffic-${sr.key}`} x1="0" y1="0" x2="0" y2="1">
+ <stop offset="0%" stopColor={sr.hue} stopOpacity={0.26} />
+ <stop offset="100%" stopColor={sr.hue} stopOpacity={0} />
+ </linearGradient>
+ ))}
+ </defs>
+ <XAxis dataKey="day" tick={{ fill: C.textDim, fontSize: 10 }} tickLine={false} axisLine={false} interval={0} />
+ <RTooltip
+ cursor={{ stroke: C.borderStrong, strokeWidth: 1 }}
+ contentStyle={{ background: C.surfaceRaised, border: `1px solid ${C.border}`, borderRadius: R.md, fontSize: T.size.sm, padding: "6px 10px" }}
+ labelStyle={{ color: C.textMuted, fontSize: T.size.xs, marginBottom: 2 }}
+ itemStyle={{ padding: 0 }}
+ />
+ {TRAFFIC_SERIES.map((sr) => (
+ <Area key={sr.key} type="monotone" dataKey={sr.key} name={sr.label}
+ stroke={sr.hue} strokeWidth={2} fill={`url(#spTraffic-${sr.key})`}
+ dot={false} activeDot={{ r: 3, strokeWidth: 0 }} isAnimationActive={false} />
+ ))}
+ </AreaChart>
+ </ResponsiveContainer>
+ </div>
+ </div>
+ )}
  {profile?.slug && (
  <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
  <button
@@ -405,23 +474,24 @@ export default function DashboardTab({
 
  </div>
 
- {/* Premium-only tabs — big, plain entry buttons (kept off the
- already-crowded bottom nav). */}
- <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
- {[
- { tab: "customers", label: "Customers", Icon: UserCheck },
- { tab: "handover", label: "Handover", Icon: ClipboardList },
- ].map(({ tab, label, Icon }) => (
+ {/* Shortcut into the Sold tab. This used to be two buttons labelled
+ "Customers" and "Handover" and nothing else — a noun is a menu item
+ people skip, a number is a job. Both halves now live behind one
+ destination that also owns a nav slot, so this is a shortcut, not the
+ only way in. */}
  <button
- key={tab}
- onClick={() => switchTab(tab)}
- style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "18px 14px", borderRadius: R.lg, background: C.surface, border: `1px solid ${C.border}`, color: C.text, cursor: "pointer", fontFamily: "inherit" }}
+ onClick={() => switchTab(handoverActive > 0 ? "handover" : "customers")}
+ style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: "16px 18px", borderRadius: R.lg, background: C.surface, border: `1px solid ${C.border}`, color: C.text, cursor: "pointer", fontFamily: "inherit" }}
  >
- <Icon size={18} color={C.accent} />
- <span style={{ fontSize: T.size.lg, fontWeight: T.weight.semibold }}>{label}</span>
- </button>
- ))}
+ <ClipboardList size={18} color={C.accent} style={{ flexShrink: 0 }} />
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: T.size.lg, fontWeight: T.weight.semibold }}>Sold</p>
+ <p style={{ margin: "2px 0 0", fontSize: T.size.sm, color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {soldSummary}
+ </p>
  </div>
+ <ChevronRight size={16} color={C.textDim} style={{ flexShrink: 0 }} />
+ </button>
 
  {/* Dashboard body — 2-up grid on desktop, single column on mobile */}
  <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: 16, alignItems: "start" }}>
@@ -588,7 +658,7 @@ export default function DashboardTab({
  </div>
 
  {/* KPI strip — spans full grid width, top */}
- <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: 10, order: -2, gridColumn: "1 / -1" }}>
+ <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: 10, order: -3, gridColumn: "1 / -1" }}>
  {[
  { label: "Pipeline", value: activeLeads.length, accent: C.info, Icon: Users },
  { label: "Live Listings", value: myListings.filter(c => c.status === "available").length, accent: C.success, Icon: Car },
@@ -605,6 +675,15 @@ export default function DashboardTab({
  </div>
  ))}
  </div>
+
+ {/* The one call list. Sits directly under the KPI strip: the numbers say how
+ the month is going, this says who to phone about it. Everything it shows
+ already existed, spread over four tabs nobody opened. Ranking is in
+ src/utils/thisWeek.js; the card folds and previews 4 rows so it never
+ pushes the rest of the dashboard off screen. */}
+ <ThisWeek leads={leads} customers={customers} nudges={dueNudges} packages={servicePackages}
+ repName={profile?.full_name} onContacted={handleThisWeekContacted}
+ style={{ order: -2, gridColumn: "1 / -1", marginBottom: 0 }} />
 
  {/* Goal */}
  <div className="sp-insight-card">

@@ -1,11 +1,13 @@
-import React, { useEffect, useRef, useState, Suspense } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { Helmet } from "react-helmet";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
+import useHandover from "../hooks/useHandover";
+import { placeTourCard, tourBand, tourScrollDelta } from "../utils/tourPlacement";
 import { normalizePhone } from "../lib/phone";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { compressImageFile } from "../utils/compressImage";
@@ -90,6 +92,8 @@ import {
 import { callClaude } from "../lib/callClaude";
 const OutreachHub = React.lazy(() => import("../components/crm/OutreachHub"));
 import ThisWeek from "../components/crm/ThisWeek";
+import ServicePackages from "../components/crm/ServicePackages";
+import { useServicePackages } from "../hooks/useServicePackages";
 import { useNudges } from "../hooks/useNudges";
 const SellerInbox = React.lazy(() => import("../components/chat/SellerInbox"));
 import { useChatThreads } from "../hooks/useChat";
@@ -129,7 +133,7 @@ function useWindowSize() {
 
 // Top-level Premium tabs, each backed by its own /salesman-premium/:tab route.
 // Anything not in this list falls back to the dashboard.
-const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "analytics", "loans", "outreach", "chat", "customers", "handover", "merge", "settings"];
+const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "leadhistory", "analytics", "loans", "outreach", "chat", "sold", "customers", "handover", "merge", "settings"];
 
 // Tabs that no longer own a slot in the nav. Their routes still resolve, so old
 // links, in-app deep links (switchTab) and the tour all keep working — they just
@@ -137,8 +141,43 @@ const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "book
 // scrolling to the right section.
 const TAB_ALIASES = {
  bookings: { tab: "enquiries", sub: "bookings" },
+ leadhistory: { tab: "enquiries", sub: "enquiries" },
+ // Handover and Customers are one job — what happens after a deal is won —
+ // split across two destinations nobody found. They are now two halves of the
+ // Sold tab. Both old routes still resolve so existing deep links (?deal=, ?c=)
+ // and anything that links to them keep working.
+ handover: { tab: "sold", sub: "handover" },
+ customers: { tab: "sold", sub: "customers" },
  merge: { tab: "settings", anchor: "sp-merge" },
 };
+
+// Which tab each tour step opens, index-matched to TOUR_STEPS (step 0 is the
+// welcome card and opens nothing). Every tab a salesman can reach is in here —
+// a step missing from this list means the tour silently skips that page.
+const TOUR_TABS = [
+ null, "dashboard", "listings", "leads", "bookings", "leadhistory", "analytics",
+ "loans", "outreach", "chat", "handover", "customers", "merge", "settings",
+];
+
+// Where the spotlight ring goes for a step whose tab is NOT its own nav button.
+// Every step must ring the thing it is actually talking about: pointing at a nav
+// button while describing a box further down the page is what made the card land
+// on top of that box. Keys are TOUR_TABS entries, values are data-tour-id values.
+const TOUR_HIGHLIGHT = {
+ // Bookings / Lead History are the two sub-tab pills inside Inbox
+ // (data-tour-id set in salesmanPremium/shared.jsx SubTabs).
+ merge: "sp-merge", // the invite-code box itself, not the Settings nav button
+ // Both halves of Sold; ring the pill that switches to each one.
+ handover: "sold-handover",
+ customers: "sold-customers",
+};
+
+// Targets that live in the page body rather than in the (fixed) nav. These move
+// when the page scrolls, so the ring has to re-measure on scroll; everything
+// else gets the page scrolled back to the top so the panel starts at its top.
+const TOUR_IN_CONTENT = new Set(["bookings", "leadhistory", "sp-merge", "sold-handover", "sold-customers"]);
+
+
 
 export default function SalesmanPremium() {
  const navigate = useNavigate();
@@ -168,24 +207,38 @@ export default function SalesmanPremium() {
  const { tab: routeTab } = useParams();
  const resolvedTab = VALID_PREMIUM_TABS.includes(routeTab) ? routeTab : "dashboard";
  const activeTab = TAB_ALIASES[resolvedTab]?.tab || resolvedTab;
- const setActiveTab = (tab) => navigate(`/salesman-premium/${tab}`);
+ const setActiveTab = (tab, opts) => navigate(`/salesman-premium/${tab}`, opts);
  // Bookings is a sub-view of Enquiries now; Lead History is the other half.
  const [inboxSubTab, setInboxSubTab] = useState("bookings");
  // Listings hosts both halves of "things I sell": the cars, and the paid
  // add-on catalogue those cars get sold with. Same table the deal-add-on
  // picker in the lead drawer reads (dealer_products).
  const [listingsSubTab, setListingsSubTab] = useState("cars");
+ // Sold hosts both halves of "after the deal is won": the handover checklist
+ // and the buyers those handovers produced.
+ const [soldSubTab, setSoldSubTab] = useState("handover");
 
- function switchTab(tab) {
- setActiveTab(tab);
+ // Set from render below (tourStep lives further down). Read by effects that
+ // must not fight the tour for control of the scroll position.
+ const tourOpenRef = useRef(false);
+
+ // opts is passed straight to navigate(): the tour uses { replace: true } so a
+ // 14-step run does not leave 13 history entries for the back gesture to walk.
+ function switchTab(tab, opts) {
+ setActiveTab(tab, opts);
  }
 
  // Land an aliased route on the right sub-view / section of its host tab.
  useEffect(() => {
  const alias = TAB_ALIASES[resolvedTab];
  if (!alias) return;
- if (alias.sub) setInboxSubTab(alias.sub);
- if (alias.anchor) {
+ if (alias.sub) (alias.tab === "sold" ? setSoldSubTab : setInboxSubTab)(alias.sub);
+ // The tour drives this same route (step 13 = /salesman-premium/merge) and does
+ // its own, exact scroll. Two smooth scrolls to two different offsets cancel
+ // each other mid-flight, which is why that step used to end up with the invite
+ // box jammed against the bottom nav. The tour wins; this only runs for a real
+ // link or a manual visit.
+ if (alias.anchor && !tourOpenRef.current) {
  const t = setTimeout(() => {
  document.getElementById(alias.anchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
  }, 80);
@@ -462,7 +515,7 @@ export default function SalesmanPremium() {
  // per-car share-channel breakdown (which platform each view/enquiry came from)
  const [channelMap, setChannelMap] = useState({});
  // mini-page (xdrive.my/s/slug) visits + card clicks, broken down by platform
- const [minipageStats, setMinipageStats] = useState({ visits: 0, cardClicks: 0, byChannel: [] });
+ const [minipageStats, setMinipageStats] = useState({ visits: 0, cardClicks: 0, byChannel: [], daily: [] });
  const [cvrHover, setCvrHover] = useState(null);
 
  // car detail popup
@@ -474,7 +527,21 @@ export default function SalesmanPremium() {
 
  // tour
  const [tourStep, setTourStep] = useState(null);
+ // The card's real height, measured after render. It used to be a hardcoded
+ // 220px guess used to pick above-vs-below, so a long step ran off screen and
+ // the desktop clamp could cut off the Next button.
+ const tourCardRef = useRef(null);
+ const [tourCardH, setTourCardH] = useState(240);
+ // Same number, readable from the scroll loop below without re-running the
+ // effect: the band the target must land in is measured off the card's height.
+ const tourCardHRef = useRef(240);
+ // Tab the user was on when the tour started, so finishing puts them back.
+ const tourReturnTab = useRef("dashboard");
  const [tourTarget, setTourTarget] = useState(null);
+ // The auto-start below must fire ONCE per mount. Without this guard anything
+ // that re-runs the bootstrap effect drags the tour back to step 0.
+ const tourAutoStarted = useRef(false);
+ tourOpenRef.current = tourStep !== null;
 
  // broadcast
  const [broadcastCar, setBroadcastCar] = useState(null);
@@ -521,10 +588,74 @@ export default function SalesmanPremium() {
  const [customersLoading, setCustomersLoading] = useState(true);
  const [customerSearch, setCustomerSearch] = useState("");
  const [expiryFilter, setExpiryFilter] = useState(null); // 'ins' | 'rt'
- const [packagesMap, setPackagesMap] = useState({}); // customer_id -> [service_packages]
- const [addPkgFor, setAddPkgFor] = useState(null); // customer_id
- const [pkgForm, setPkgForm] = useState({ package_name: "", total_visits: 3, sold_price: "" });
- const [pkgSaving, setPkgSaving] = useState(false);
+ // Prepaid service packages + their visits. Owned by useServicePackages so the
+ // dealer Customers tab and this one share one implementation — they used to
+ // carry two near-identical copies of add-package / log-visit.
+ const {
+ packages: packagesMap, visits: pkgVisits, products: pkgProducts,
+ addPackage, logVisit, undoVisit,
+ } = useServicePackages(getDealerIdFromProfile(profile), customers.map((c) => c.id));
+ // Flat list for the "This week" call list — a package expiring with visits
+ // unused is a customer who already paid and has not come back.
+ const servicePackages = Object.values(packagesMap).flat();
+ // Post-sale state shared by three tabs — Pipeline (the won card's progress
+ // chip), Handover (the board) and Customers (per-buyer progress). ONE instance
+ // for the page: each surface used to answer "what happened after the win?" on
+ // its own, which is why a deal won in the pipeline stayed invisible everywhere
+ // else until a full page reload. See hooks/useHandover.
+ const handover = useHandover(getDealerIdFromProfile(profile), userId);
+ // The next thing blocking the longest-open handover — what the Dashboard's
+ // Sold shortcut says is waiting. Label only; the board owns the detail.
+ const soldNextStep = (() => {
+ const open = handover.deals.filter((d) => handover.progressByLead[d.id] !== 100);
+ const last = open[open.length - 1];
+ return last ? handover.nextStepByLead[last.id]?.label || null : null;
+ })();
+ // Deep links between the three tabs: ?deal= opens one handover, ?c= one customer.
+ const [searchParams] = useSearchParams();
+ const handoverDealParam = searchParams.get("deal");
+ const customerParam = searchParams.get("c");
+ const openHandoverFor = (leadId, from = "dashboard") => navigate(`/salesman-premium/handover?deal=${leadId}&from=${from}`);
+ const openCustomerForLead = (lead, from = "dashboard") => {
+ const cust = customers.find((c) => c.lead_id === lead.id);
+ const qs = `?from=${from}${cust ? `&c=${cust.id}` : ""}`;
+ navigate(`/salesman-premium/customers${qs}`);
+ };
+ // Sold now owns a nav slot, so it is no longer a dead end. The back control
+ // only appears when the user was sent here from somewhere specific (a Pipeline
+ // card's handover chip, a Dashboard tile) and has a place to go back to.
+ const TAB_BACK_LABELS = { dashboard: "Dashboard", leads: "Pipeline" };
+ const fromParam = searchParams.get("from");
+ const backTab = TAB_BACK_LABELS[fromParam] ? fromParam : null;
+ const renderTabBack = () => backTab && (
+ <button
+ onClick={() => navigate(`/salesman-premium/${backTab}`)}
+ style={{ display: "inline-flex", alignItems: "center", gap: 5, margin: "0 0 12px", padding: "6px 11px 6px 8px", borderRadius: R.pill, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, fontSize: T.size.sm, fontWeight: T.weight.semibold, cursor: "pointer", fontFamily: "inherit" }}
+ >
+ <ChevronLeft size={14} />
+ {TAB_BACK_LABELS[backTab]}
+ </button>
+ );
+ // Customers were fetched exactly once, during page bootstrap — a buyer created
+ // by the win trigger could not appear without a reload. This is the refetch.
+ const refreshCustomers = useCallback(async () => {
+ const custDealerId = getDealerIdFromProfile(profile);
+ if (!custDealerId) return;
+ const { data, error: custErr } = await supabase
+ .from("customers").select("*").eq("dealer_id", custDealerId)
+ .order("created_at", { ascending: false });
+ if (custErr) { console.error("refreshCustomers:", custErr); return; }
+ setCustomers(data || []);
+ setCustomersLoading(false);
+ }, [profile]);
+
+ // Arriving from the handover board's "View customer record" — bring that row
+ // into view once the Customers tab has rendered it.
+ useEffect(() => {
+ if (!customerParam || activeTab !== "sold" || soldSubTab !== "customers" || customersLoading) return;
+ const el = document.getElementById(`customer-${customerParam}`);
+ if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+ }, [customerParam, activeTab, soldSubTab, customersLoading, customers.length]);
  const [loanCalc, setLoanCalc] = useState({ carPrice: "", downPayment: "", tenure: 7, income: "" });
  const [loanForm, setLoanForm] = useState({
  buyer_name: "", buyer_phone: "", buyer_ic: "", buyer_employment_type: "Salaried",
@@ -656,7 +787,10 @@ export default function SalesmanPremium() {
  setProfile(profileData);
  setLoading(false);
 
- if (!localStorage.getItem("sp_tour_done")) setTourStep(0);
+ if (!tourAutoStarted.current && !localStorage.getItem("sp_tour_done")) {
+ tourAutoStarted.current = true;
+ startTour();
+ }
 
  // "Reward the comeback" — a 3+ day gap since the last visit greets the
  // salesman back instead of leading with a stale-leads scold. Client-side
@@ -710,13 +844,6 @@ export default function SalesmanPremium() {
  const list = data || [];
  setCustomers(list);
  setCustomersLoading(false);
- const custIds = list.map(c => c.id);
- if (custIds.length === 0) return;
- const { data: pkgs } = await supabase.from("service_packages").select("*")
- .in("customer_id", custIds).order("created_at", { ascending: false });
- const pm = {};
- for (const p of pkgs || []) (pm[p.customer_id] ||= []).push(p);
- setPackagesMap(pm);
  });
 
  // fetch listings with full columns for car detail popup
@@ -755,6 +882,10 @@ export default function SalesmanPremium() {
  views:     Number(row.views)     || 0,
  enquiries: Number(row.enquiries) || 0,
  daily:     [row.d0, row.d1, row.d2, row.d3, row.d4, row.d5, row.d6],
+ // WhatsApp/call taps per day, oldest first — the RPC has always returned
+ // these (w0..w6) but nothing read them, so the dashboard could only ever
+ // plot views. They feed the combined 7-day chart on the dashboard.
+ waDaily:   [row.w0, row.w1, row.w2, row.w3, row.w4, row.w5, row.w6],
  };
  });
  setCarStatsMap(map);
@@ -787,11 +918,27 @@ export default function SalesmanPremium() {
  .then(({ data: mpRows, error: mpErr }) => {
  if (mpErr) { console.error("fetchMinipageStats:", mpErr); return; }
  const rows = mpRows || [];
- setMinipageStats({
+ setMinipageStats((prev) => ({
+ ...prev,
  visits: rows.reduce((s, r) => s + (Number(r.visits) || 0), 0),
  cardClicks: rows.reduce((s, r) => s + (Number(r.card_clicks) || 0), 0),
  byChannel: rows,
+ }));
  });
+
+ // Mini-page visits per day for the last 7 days. Separate RPC from the
+ // per-channel totals above because that one has no time axis — this is
+ // the third wave on the dashboard's combined traffic chart.
+ supabase
+ .rpc("get_salesman_minipage_daily", { p_slug: profileData.slug })
+ .then(({ data: mpDaily, error: mpdErr }) => {
+ if (mpdErr) { console.error("fetchMinipageDaily:", mpdErr); return; }
+ const r = (mpDaily || [])[0];
+ if (!r) return;
+ setMinipageStats((prev) => ({
+ ...prev,
+ daily: [r.d0, r.d1, r.d2, r.d3, r.d4, r.d5, r.d6].map((v) => Number(v) || 0),
+ }));
  });
  }
  });
@@ -971,25 +1118,88 @@ export default function SalesmanPremium() {
  return () => {
  if (channelRef.current) supabase.removeChannel(channelRef.current);
  };
- }, [navigate]);
+ // Mount-time bootstrap only. Deliberately [] and NOT [navigate]: react-router
+ // v7 rebuilds the `navigate` callback whenever the pathname changes (it closes
+ // over the current location for relative paths), and every Premium tab is its
+ // own route — so a [navigate] dep re-ran this entire block on EVERY tab switch.
+ // That refetched profile/listings/analytics/leads/enquiries and re-subscribed
+ // the realtime channel each time, and reset the tour to step 0 the moment it
+ // navigated to the next step's tab, so Next looped back to the welcome card.
+ // Every navigate() call in here is an absolute path, so the mount-time closure
+ // stays correct.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, []);
+
+ // While the tour runs, give the page extra scroll room at the bottom. Without
+ // it the browser clamps at the end of the document, so a target near the end
+ // (the invite box is the last block on Settings) can never be scrolled up out
+ // of the card's lane — it just sits against the bottom nav with the card on
+ // top of it. Removed the moment the tour closes.
+ const tourOpen = tourStep !== null;
+ useEffect(() => {
+ if (!tourOpen) return;
+ const pad = document.createElement("div");
+ pad.setAttribute("data-tour-scroll-room", "");
+ pad.style.cssText = `height:${Math.round(window.innerHeight * 0.8)}px;pointer-events:none`;
+ document.body.appendChild(pad);
+ return () => pad.remove();
+ }, [tourOpen]);
 
  useEffect(() => {
  if (tourStep === null) { setTourTarget(null); return; }
- const TOUR_TABS = [null, "dashboard", "listings", "leads", "enquiries", "bookings", "analytics", "loans", "outreach", "merge", "settings"];
- // Bookings and Join a Dealership still get their own tour step — they are
- // real features — but no longer own a nav button, so the spotlight has to
- // fall on whichever element now hosts them.
- const TOUR_HIGHLIGHT = { merge: "settings" };
  const tab = TOUR_TABS[tourStep];
  if (!tab) { setTourTarget(null); return; }
- switchTab(tab);
+ // replace: a tour that pushes one history entry per step turns the phone's
+ // back gesture into a walk back through the whole tour.
+ switchTab(tab, { replace: true });
+ const id = TOUR_HIGHLIGHT[tab] ?? tab;
+ const inContent = TOUR_IN_CONTENT.has(id);
+ // A step anchored to the nav describes the panel as a whole, so start that
+ // panel at its top — step 12 scrolls the page down to the invite box and the
+ // Settings step that follows used to inherit that scroll position.
+ if (!inContent) window.scrollTo({ top: 0, behavior: "smooth" });
+
+ // Measure the element this step points at. A miss clears the target (the card
+ // then centres itself) rather than leaving the previous step's rectangle in
+ // place, which used to ring the wrong nav item.
+ //
+ // Scrolling is computed, not delegated to scrollIntoView: the target has to
+ // land in the band the card leaves free (above the docked card on mobile,
+ // the middle of the screen on desktop), and scrollIntoView knows nothing
+ // about the card. Up to three corrections, throttled, because tab panels
+ // load lazily and shift the target under us; after that the scroll listener
+ // keeps the ring glued to it.
+ let aligns = 0;
+ let lastAlign = 0;
  const measure = () => {
- const el = document.querySelector(`[data-tour-id="${TOUR_HIGHLIGHT[tab] || tab}"]`);
- if (el) setTourTarget(el.getBoundingClientRect());
+ const el = id ? document.querySelector(`[data-tour-id="${id}"]`) : null;
+ if (!el) { setTourTarget(null); return; }
+ const r = el.getBoundingClientRect();
+ setTourTarget(r);
+ if (!inContent) return;
+ const band = tourBand(window.innerHeight, { dock: isMobile, cardH: tourCardHRef.current });
+ const delta = tourScrollDelta(r, band);
+ const now = Date.now();
+ if (Math.abs(delta) > 8 && aligns < 3 && now - lastAlign > 260) {
+ aligns += 1;
+ lastAlign = now;
+ window.scrollBy({ top: delta, behavior: aligns === 1 ? "smooth" : "auto" });
+ }
  };
- const t = setTimeout(measure, 60);
- return () => clearTimeout(t);
- }, [tourStep]);
+ // Tab panels are lazy-loaded and a smooth scroll takes ~0.5s to settle, so
+ // keep re-measuring for ~1.2s instead of taking one 60ms snapshot.
+ let ticks = 0;
+ const iv = setInterval(() => { measure(); if (++ticks > 20) clearInterval(iv); }, 60);
+ // An in-content target moves with the page, so the ring has to follow it —
+ // capture:true also catches scrolls inside nested scrollers.
+ window.addEventListener("resize", measure);
+ if (inContent) window.addEventListener("scroll", measure, true);
+ return () => {
+ clearInterval(iv);
+ window.removeEventListener("resize", measure);
+ if (inContent) window.removeEventListener("scroll", measure, true);
+ };
+ }, [tourStep, isMobile]);
 
  const handleLogout = async () => {
  await supabase.auth.signOut();
@@ -1581,9 +1791,32 @@ export default function SalesmanPremium() {
  setWonSaving(false);
  setWonPrompt(null);
 
+ // The DB trigger auto_create_customer_on_won has already fanned this out by
+ // the time the update returns — customer row + 8-step checklist both exist.
+ // Pull the shared state forward so Handover and Customers show it now rather
+ // than on the next full page load.
+ handover.addWonDeal({
+ id: leadId,
+ dealer_id: dealerId,
+ buyer_name: lead.buyer_name,
+ phone: lead.phone,
+ car_listing_id: lead.car_listing_id || null,
+ salesman_id: lead.salesman_id || userId,
+ assigned_to: lead.assigned_to || null,
+ updated_at: now,
+ car_listings: lead.car_listings || null,
+ });
+ handover.refresh();
+ refreshCustomers();
+
  const car = lead.car_listings;
  const carLabel = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
- toast.success(carLabel? `Deal won — ${carLabel} marked sold` : "Deal won");
+ const buyerLabel = lead.buyer_name || "The buyer";
+ toast.success(carLabel? `Deal won — ${carLabel} marked sold` : "Deal won", {
+ description: `${buyerLabel} is now in Handover and on your Customers list.`,
+ action: { label: "Open handover", onClick: () => openHandoverFor(leadId, "leads") },
+ duration: 8000,
+ });
  };
 
  const handleAddLead = async () => {
@@ -1964,6 +2197,14 @@ export default function SalesmanPremium() {
  badge: inboxBadge || null,
  },
  {
+ // The end of the funnel: leads -> won -> paperwork + owner. Sold used to have
+ // no nav slot at all, reachable only from two tiles on the Dashboard.
+ tab: "sold",
+ label: "Sold",
+ icon: <ClipboardList style={{ width: 14, height: 14 }} />,
+ badge: handover.activeCount || null,
+ },
+ {
  tab: "analytics",
  label: "Analytics",
  icon: <TrendingUp style={{ width: 14, height: 14 }} />,
@@ -2011,6 +2252,7 @@ export default function SalesmanPremium() {
  icon: <MessageSquare size={18} />,
  badge: inboxBadge || null,
  },
+ { tab: "sold", label: "Sold", icon: <ClipboardList size={18} />, badge: handover.activeCount || null },
  { tab: "analytics", label: "Analytics", icon: <TrendingUp size={18} /> },
  { tab: "loans", label: "Loans", icon: <Banknote size={18} /> },
  ...(showOutreach ? [{ tab: "outreach", label: "Outreach", icon: <Megaphone size={18} /> }] : []),
@@ -2225,6 +2467,10 @@ export default function SalesmanPremium() {
  (s) => s!== "lost" && s!== "closed_won" && s!== "closed_lost",
  ).find((s) =>LEAD_STAGES.indexOf(s) > stageIdx);
  const heat = getHeatScore(lead);
+ // A won lead is not the end of the card's life — the deal is now a handover in
+ // progress, and this is where the pipeline says so instead of going silent.
+ const isWonLead = lead.stage === "won" || lead.stage === "closed_won";
+ const handoverStatus = isWonLead ? handover.statusForLead(lead.id) : null;
  const isConfirmingDelete = deleteConfirmId === lead.id;
  const isPromptingLost = lostPromptId === lead.id;
  const followUpOverdue = lead.follow_up_at && new Date(lead.follow_up_at).getTime() <= Date.now();
@@ -2314,6 +2560,31 @@ export default function SalesmanPremium() {
  <div style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.22)", borderRadius: 7, color: "#fb923c", fontSize: 11, padding: "6px 10px", marginBottom: 12 }}>Follow-up: {timeAgo(lead.follow_up_at)}
  </div>
  )}
+
+ {/* Won -> what happens next. Tapping opens this buyer's handover checklist. */}
+ {isWonLead && (() => {
+ const done = handoverStatus?.done;
+ const pct = handoverStatus?.progress;
+ const tint = done ? "34,197,94" : "148,163,184";
+ const fg = done ? "#4ade80" : "#cbd5e1";
+ const detail = done
+ ? "Handover complete"
+ : pct === undefined || pct === null || pct < 0
+ ? "Handover checklist started"
+ : `Handover ${pct}%${handoverStatus?.next ? ` · Next: ${handoverStatus.next.label}` : ""}`;
+ return (
+ <button
+ onClick={() => openHandoverFor(lead.id, "leads")}
+ style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, textAlign: "left", background: `rgba(${tint},0.08)`, border: `1px solid rgba(${tint},0.2)`, borderRadius: 7, padding: "7px 10px", marginBottom: 12, cursor: "pointer", fontFamily: "inherit" }}
+ >
+ <ClipboardList size={13} color={fg} style={{ flexShrink: 0 }} />
+ <span style={{ flex: 1, minWidth: 0, fontSize: 11, color: fg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ Buyer moved to handover · <span style={{ color: "#9ca3af" }}>{detail}</span>
+ </span>
+ <ChevronRight size={13} color="#6b7280" style={{ flexShrink: 0 }} />
+ </button>
+ );
+ })()}
  </div>
 
  {/* ACTIONS — exactly 3 buttons */}
@@ -4069,8 +4340,25 @@ export default function SalesmanPremium() {
  {/* Joining a dealership is a one-time action, not something that needs a
      permanent nav slot — it lives here, and /salesman-premium/merge still
      resolves to this section (see TAB_ALIASES). */}
- <div id="sp-merge" style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+ <div id="sp-merge" data-tour-id="sp-merge" style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
  {renderMerge()}
+ </div>
+ {/* Replay the tour. It only auto-runs once (localStorage sp_tour_done), so
+     without this there was no way back to it — and no way for anyone who
+     skipped it on day one to find out what the other tabs do. */}
+ <div style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+ <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Product tour</p>
+ <p style={{ margin: "0 0 10px", fontSize: 12, color: "#94a3b8", lineHeight: 1.6 }}>
+ Walks you through every tab — Dashboard, Listings, Leads, Bookings, Lead History,
+ Analytics, Loans, Outreach, Chat, Customers, Handover and Settings — opening each one
+ as it goes, and putting you back where you started at the end.
+ </p>
+ <button
+ onClick={startTour}
+ style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 14px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#e5e7eb", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+ >
+ <Sparkles size={14} /> Replay the tour
+ </button>
  </div>
  </div>
  );
@@ -4549,30 +4837,6 @@ export default function SalesmanPremium() {
 
  // CUSTOMERS (post-sale buyer records + prepaid service packages)
 
- const handleAddPackage = async (customer) => {
- if (!pkgForm.package_name) return;
- setPkgSaving(true);
- const row = {
- dealer_id: getDealerIdFromProfile(profile), customer_id: customer.id, lead_id: customer.lead_id || null,
- listing_id: customer.listing_id || null, package_name: pkgForm.package_name,
- total_visits: Number(pkgForm.total_visits) || 3,
- sold_price: pkgForm.sold_price? Number(pkgForm.sold_price) : null,
- sold_at: new Date().toISOString().slice(0, 10),
- };
- const { data } = await supabase.from("service_packages").insert(row).select().single();
- if (data) setPackagesMap(p => ({ ...p, [customer.id]: [data, ...(p[customer.id] || [])] }));
- setAddPkgFor(null);
- setPkgForm({ package_name: "", total_visits: 3, sold_price: "" });
- setPkgSaving(false);
- };
-
- const handleLogVisit = async (pkg) => {
- if (pkg.used_visits >= pkg.total_visits) return;
- const updated = { used_visits: pkg.used_visits + 1 };
- await supabase.from("service_packages").update(updated).eq("id", pkg.id);
- setPackagesMap(p => ({ ...p, [pkg.customer_id]: (p[pkg.customer_id] || []).map(pk => pk.id === pkg.id? { ...pk, ...updated } : pk) }));
- };
-
  const renderCustomers = () => {
  const today = new Date();
  const daysUntil = (date) => date? (new Date(date) - today) / 86400000 : null;
@@ -4624,11 +4888,15 @@ export default function SalesmanPremium() {
  // Strongest signal first, so the call list is already in order.
  if (expiryFilter === "trade") filtered.sort((x, y) => tradeUpFor(y).score - tradeUpFor(x).score);
 
- if (customersLoading) return <p style={{ color: C.textMuted, fontSize: 13 }}>Loading customers…</p>;
+ // The back control renders in the loading state too — a slow fetch should not
+ // be a dead end on desktop, where there is no swipe.
+ if (customersLoading) return (
+ <p style={{ color: C.textMuted, fontSize: 13 }}>Loading customers…</p>
+ );
 
  return (
- <div style={{ maxWidth: 640 }}>
- <p style={{ margin: "0 0 14px", fontSize: 19, fontWeight: 700, color: C.text }}>Customers <span style={{ fontSize: 12, fontWeight: 400, color: C.textMuted }}>· {customers.length} on record</span></p>
+ <div>
+ <p style={{ margin: "0 0 14px", fontSize: 12, color: C.textMuted }}>Everyone who has bought from you — {customers.length} on record. Road tax and insurance expiry are tracked per car.</p>
 
  <div style={{ display: "flex", gap: 7, marginBottom: 14, flexWrap: "wrap" }}>
  {[{ id: null, label: `All · ${customers.length}` }, { id: "ins", label: `Insurance due · ${insDue}` }, { id: "rt", label: `Road tax due · ${rtDue}` }, { id: "trade", label: `Trade-up ready · ${tradeUpDue}` }].map(f => (
@@ -4664,8 +4932,10 @@ export default function SalesmanPremium() {
  {filtered.map(c => {
  const pkgs = packagesMap[c.id] || [];
  const initials = (c.name || "?").split(" ").filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+ const cHandover = c.lead_id ? handover.statusForLead(c.lead_id) : null;
+ const isLinked = customerParam === c.id;
  return (
- <div key={c.id} style={{ ...CARD, padding: 15 }}>
+ <div key={c.id} id={`customer-${c.id}`} style={{ ...CARD, padding: 15, ...(isLinked ? { borderColor: withAlpha(C.accent, 0.45) } : null) }}>
  <div style={{ display: "flex", alignItems: "flex-start", gap: 11 }}>
  <div style={{ width: 38, height: 38, borderRadius: R.pill, flexShrink: 0, background: C.fillStrong, display: "flex", alignItems: "center", justifyContent: "center" }}>
  <span style={{ fontSize: T.size.base, fontWeight: T.weight.bold, color: C.textSec }}>{initials}</span>
@@ -4714,32 +4984,30 @@ export default function SalesmanPremium() {
  );
  })()}
 
- {pkgs.map(pkg => (
- <div key={pkg.id} style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10 }}>
- <div style={{ flex: 1, minWidth: 0 }}>
- <p style={{ margin: 0, fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.text }}>{pkg.package_name}</p>
- <div style={{ height: 4, borderRadius: R.pill, background: C.fillStrong, marginTop: 5, overflow: "hidden" }}>
- <div style={{ height: "100%", width: `${Math.min(100, (pkg.used_visits / pkg.total_visits) * 100)}%`, borderRadius: R.pill, background: C.accent }} />
- </div>
- </div>
- <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted, flexShrink: 0 }}>{pkg.used_visits}/{pkg.total_visits} visits</p>
- {pkg.used_visits < pkg.total_visits && (
- <button onClick={() => handleLogVisit(pkg)} style={{ ...SOFT(C.accent), fontSize: T.size.xs, fontWeight: T.weight.bold, padding: "4px 9px", borderRadius: R.sm, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>Log visit</button>
+ {/* Where this buyer is in the paperwork. Same shared state the Handover
+ tab and the pipeline card read, so all three always agree. */}
+ {cHandover && (
+ <button
+ onClick={() => openHandoverFor(c.lead_id, "customers")}
+ style={{ marginTop: 10, width: "100%", display: "flex", alignItems: "center", gap: 9, textAlign: "left", padding: "7px 10px", borderRadius: R.md,
+ background: cHandover.done ? withAlpha(C.success, 0.07) : C.fill,
+ border: `1px solid ${cHandover.done ? withAlpha(C.success, 0.18) : C.border}`, cursor: "pointer", fontFamily: "inherit" }}
+ >
+ <ClipboardList size={13} color={cHandover.done ? C.successText : C.textMuted} style={{ flexShrink: 0 }} />
+ <span style={{ flex: 1, minWidth: 0, fontSize: T.size.sm, color: C.textSec, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {cHandover.done
+ ? <>Handover <span style={{ color: C.successText, fontWeight: T.weight.semibold }}>complete</span></>
+ : <>Handover <span style={{ color: C.text, fontWeight: T.weight.semibold }}>{cHandover.progress < 0 ? "starting" : `${cHandover.progress}%`}</span>{cHandover.next ? ` · Next: ${cHandover.next.label}` : ""}</>}
+ </span>
+ <ChevronRight size={13} color={C.textDim} style={{ flexShrink: 0 }} />
+ </button>
  )}
- </div>
- ))}
 
- {addPkgFor === c.id? (
- <div style={{ marginTop: 10, display: "flex", gap: 6, flexWrap: "wrap" }}>
- <input value={pkgForm.package_name} onChange={(e) => setPkgForm(f => ({ ...f, package_name: e.target.value }))} placeholder="Package name" style={{ flex: "1 1 140px", background: C.fillStrong, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "6px 9px", color: C.text, fontSize: 12, outline: "none", fontFamily: "inherit" }} />
- <input type="number" value={pkgForm.total_visits} onChange={(e) => setPkgForm(f => ({ ...f, total_visits: e.target.value }))} placeholder="Visits" style={{ width: 64, background: C.fillStrong, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "6px 9px", color: C.text, fontSize: 12, outline: "none", fontFamily: "inherit" }} />
- <input type="number" value={pkgForm.sold_price} onChange={(e) => setPkgForm(f => ({ ...f, sold_price: e.target.value }))} placeholder="RM price" style={{ width: 84, background: C.fillStrong, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "6px 9px", color: C.text, fontSize: 12, outline: "none", fontFamily: "inherit" }} />
- <button onClick={() => handleAddPackage(c)} disabled={pkgSaving ||!pkgForm.package_name} style={{ fontSize: 11, fontWeight: 700, padding: "6px 12px", borderRadius: R.sm, background: C.accent, border: "none", color: C.onAccent, cursor: "pointer", fontFamily: "inherit" }}>Save</button>
- <button onClick={() => setAddPkgFor(null)} style={{ fontSize: 11, padding: "6px 10px", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
- </div>
- ) : (
- <button onClick={() => setAddPkgFor(c.id)} style={{ marginTop: 10, fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.dangerText, background: "transparent", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>+ Add service package</button>
- )}
+ {/* Shared with the dealer Customers tab — see components/crm/ServicePackages */}
+ <ServicePackages
+ customer={c} packages={pkgs} visits={pkgVisits} products={pkgProducts}
+ onAdd={addPackage} onLogVisit={logVisit} onUndoVisit={undoVisit} theme="dark"
+ />
  </div>
  </div>
  </div>
@@ -4753,12 +5021,39 @@ export default function SalesmanPremium() {
 
  // HANDOVER (post-sale paperwork checklist, shared postsale/PostSaleBoard)
  const renderHandover = () => (
- <div style={{ maxWidth: 640 }}>
- <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: C.text }}>Handover</p>
- <p style={{ margin: "0 0 20px", fontSize: 12, color: C.textMuted }}>Paperwork &amp; delivery for your won deals.</p>
+ <div>
+ <p style={{ margin: "0 0 20px", fontSize: 12, color: C.textMuted }}>Paperwork and delivery for your won deals — loan settlement through to keys.</p>
  <Suspense fallback={<TabLoadingFallback />}>
- <PostSaleBoard dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} dark />
+ <PostSaleBoard
+ dealerId={getDealerIdFromProfile(profile)}
+ salesmanId={userId}
+ dark
+ controller={handover}
+ openDealId={handoverDealParam}
+ onViewCustomer={(lead) => openCustomerForLead(lead, "handover")}
+ />
  </Suspense>
+ </div>
+ );
+
+ // Sold — one destination for everything that happens after a deal is won.
+ // Handover (the paperwork) and Customers (the people it produced) were two
+ // separate tabs reachable only from a pair of unlabelled Dashboard tiles, so
+ // salesmen never found either. Same two-pill pattern as Inbox and Listings.
+ const renderSold = () => (
+ <div style={{ maxWidth: 640 }}>
+ {renderTabBack()}
+ <p style={{ margin: "0 0 4px", fontSize: 19, fontWeight: 700, color: C.text }}>Sold</p>
+ <p style={{ margin: "0 0 14px", fontSize: 12, color: C.textMuted }}>After the deal is won: the handover checklist, then the buyer.</p>
+ <SubTabs
+ value={soldSubTab}
+ onChange={setSoldSubTab}
+ items={[
+ { key: "handover", label: "Handover", badge: handover.activeCount, tourId: "sold-handover" },
+ { key: "customers", label: "Customers", tourId: "sold-customers" },
+ ]}
+ />
+ {soldSubTab === "handover" ? renderHandover() : renderCustomers()}
  </div>
  );
 
@@ -4930,13 +5225,16 @@ export default function SalesmanPremium() {
  const TOUR_STEPS = [
  { icon: Sparkles, title: "Welcome to ShiftOS Premium", body: "Quick tour of everything your plan unlocks. Each step takes you to the real panel so you can see it live." },
  { icon: BarChart2, title: "Dashboard", body: "Your command centre — KPIs, stale follow-up nudges, listing performance, and recent activity all in one view." },
- { icon: Car, title: "My Listings", body: "Add your cars here. Each card shows views, WA taps, and a CVR bar. Hot = buyers are clicking. Cold = needs a refresh or price drop." },
+ { icon: Car, title: "My Listings", body: "Add your cars here. Each card shows views, WA taps, and a CVR bar. Hot = buyers are clicking. Cold = needs a refresh or price drop. The Add-ons pill next to Cars is your paid extras catalogue." },
  { icon: Users, title: "Leads", body: "Track every buyer: New → Contacted → Test Drive → Won. Heat scores show who needs attention. Ping stale leads straight to WhatsApp." },
- { icon: MessageSquare, title: "Inbox", body: "Two views in one tab. Lead History is every buyer who messaged through your listing cards — reply with templates or convert them into pipeline leads in one tap." },
- { icon: Calendar, title: "Bookings", body: "The other half of your Inbox. Viewing appointments land here — confirm, reschedule, cancel or send a WA reminder without leaving the app." },
+ { icon: Calendar, title: "Bookings", body: "Your Inbox opens here. Viewing appointments land in this list — confirm, reschedule, cancel or send a WA reminder without leaving the app." },
+ { icon: MessageSquare, title: "Lead History", body: "The other half of the Inbox. Every buyer who messaged through your listing cards — reply with templates or convert them into pipeline leads in one tap." },
  { icon: TrendingUp, title: "Analytics", body: "Views, WhatsApp taps and conversion rate per listing, plus your total commission and cars sold — all in one view." },
  { icon: Banknote, title: "Loans", body: "Compare bank rates for a buyer, submit their loan application, and track approval status — a Premium-only feature." },
  { icon: Megaphone, title: "Outreach Hub", body: "See which leads have gone cold, then work through them with a guided WhatsApp campaign — one tap per contact. Premium-only." },
+ { icon: MessageCircle, title: "Chat", body: "Buyers who message you from a listing land here instead of WhatsApp. You see their name, the car, and read receipts — and phone numbers stay masked until you tap them." },
+ { icon: ClipboardList, title: "Sold · Handover", body: "Everything after a won deal lives in the Sold tab. This half is the 8-step Malaysian handover checklist — loan settlement, insurance, Puspakom, JPJ pindah milik, road tax, geran, keys. The number on the tab is how many are still open." },
+ { icon: UserCheck, title: "Sold · Customers", body: "The other half: everyone who has bought from you. Road tax and insurance expiry are tracked per car, so the app tells you who is due for a renewal call or is ready to trade up." },
  { icon: LinkIcon, title: "Join a Dealership", body: "Have an invite code from your dealer? Enter it at the bottom of Settings to unlock the full panel — shared stock, team leads, commission tracking and more." },
  { icon: Settings, title: "Settings", body: "Your public profile, WhatsApp templates and account settings live here." },
  ];
@@ -4945,7 +5243,28 @@ export default function SalesmanPremium() {
  localStorage.setItem("sp_tour_done", "1");
  setTourStep(null);
  setTourTarget(null);
+ // The tour walked the user across 13 tabs; finishing or skipping should not
+ // strand them on Settings, scrolled to the invite box.
+ switchTab(tourReturnTab.current || "dashboard", { replace: true });
+ window.scrollTo({ top: 0, behavior: "smooth" });
  };
+
+ const startTour = () => {
+ tourReturnTab.current = activeTab;
+ setTourStep(0);
+ };
+
+ // Measure the rendered card so placement uses its real height. Guarded on a
+ // 2px delta: this runs after every render, and writing state unconditionally
+ // from a layout effect that state feeds back into would loop.
+ useLayoutEffect(() => {
+ const el = tourCardRef.current;
+ if (tourStep === null || !el) return;
+ const h = Math.round(el.getBoundingClientRect().height);
+ if (!h) return;
+ tourCardHRef.current = h;
+ if (Math.abs(h - tourCardH) > 2) setTourCardH(h);
+ }, [tourStep, tourCardH, isMobile]);
 
  const renderTour = () => {
  if (tourStep === null) return null;
@@ -4953,75 +5272,41 @@ export default function SalesmanPremium() {
  const isLast = tourStep === TOUR_STEPS.length - 1;
  const isWelcome = tourStep === 0;
 
- // Compute bubble position from the measured target rect
- let bubbleStyle = {};
- let arrowEl = null;
- const PAD = 12;
- const BUBBLE_W = isMobile? Math.min(320, window.innerWidth - 32) : 300;
+ // Placement: the card is put on whichever side of the target has room, and
+ // never on top of the target itself. See utils/tourPlacement.
+ const BUBBLE_W = isMobile ? Math.min(320, window.innerWidth - 32) : 300;
+ // The arrow used to be #1e2d3d while the card was #111827, so it read as a
+ // stray notch rather than part of the bubble. One constant, both.
+ const BUBBLE_BG = "#111827";
+ // dock: on a phone there is no free column beside the target, so a floating
+ // card always ends up on top of something. Docked, it lives in one fixed strip
+ // above the bottom nav for every step and the page scrolls the target into the
+ // space above it.
+ const place = { dock: isMobile };
+ const { style: bubbleStyle, arrow } = isWelcome
+ ? placeTourCard(null, { w: BUBBLE_W, h: tourCardH }, window.innerWidth, window.innerHeight, place)
+ : placeTourCard(tourTarget, { w: BUBBLE_W, h: tourCardH }, window.innerWidth, window.innerHeight, place);
 
- if (!tourTarget || isWelcome) {
- // Center on screen for welcome step or if target not found
- bubbleStyle = {
- position: "fixed",
- top: "50%",
- left: "50%",
- transform: "translate(-50%, -50%)",
- width: BUBBLE_W,
- zIndex: 1002,
- };
- } else if (isMobile) {
- // Mobile: nav at bottom → bubble sits above the highlighted tab
- const centerX = tourTarget.left + tourTarget.width / 2;
- const bubbleLeft = Math.max(8, Math.min(centerX - BUBBLE_W / 2, window.innerWidth - BUBBLE_W - 8));
- bubbleStyle = {
- position: "fixed",
- bottom: window.innerHeight - tourTarget.top + PAD,
- left: bubbleLeft,
- width: BUBBLE_W,
- zIndex: 1002,
- };
- // Arrow pointing down toward the tab
- const arrowLeft = centerX - bubbleLeft - 8;
- arrowEl = (
+ const arrowEl = arrow && (
  <div style={{
  position: "absolute",
- bottom: -8,
- left: Math.max(12, Math.min(arrowLeft, BUBBLE_W - 28)),
+ ...(arrow.side === "right"
+ ? { left: -8, top: arrow.offset, borderTop: "8px solid transparent", borderBottom: "8px solid transparent", borderRight: `8px solid ${BUBBLE_BG}` }
+ : arrow.side === "left"
+ ? { right: -8, top: arrow.offset, borderTop: "8px solid transparent", borderBottom: "8px solid transparent", borderLeft: `8px solid ${BUBBLE_BG}` }
+ : arrow.side === "bottom"
+ ? { top: -8, left: arrow.offset, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderBottom: `8px solid ${BUBBLE_BG}` }
+ : { bottom: -8, left: arrow.offset, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: `8px solid ${BUBBLE_BG}` }),
  width: 0,
  height: 0,
- borderLeft: "8px solid transparent",
- borderRight: "8px solid transparent",
- borderTop: "8px solid #1e2d3d",
  }} />
  );
- } else {
- // Desktop: sidebar at left → bubble sits to the right of the highlighted item
- const topPos = Math.max(8, Math.min(tourTarget.top + tourTarget.height / 2 - 80, window.innerHeight - 220));
- bubbleStyle = {
- position: "fixed",
- top: topPos,
- left: tourTarget.right + PAD,
- width: BUBBLE_W,
- zIndex: 1002,
- };
- // Arrow pointing left toward the sidebar item
- arrowEl = (
- <div style={{
- position: "absolute",
- left: -8,
- top: Math.min(60, tourTarget.height / 2 + 8),
- width: 0,
- height: 0,
- borderTop: "8px solid transparent",
- borderBottom: "8px solid transparent",
- borderRight: "8px solid #1e2d3d",
- }} />
- );
- }
 
- return (
+ // Portalled to <body>: it is a fixed overlay, and any ancestor with a
+ // transform would otherwise clip it (overlay rule 1).
+ return createPortal(
  <>
- {/* Highlight ring around the target nav item — no backdrop */}
+ {/* Highlight ring around the target — no backdrop */}
  {tourTarget &&!isWelcome && (
  <div
  style={{
@@ -5042,18 +5327,27 @@ export default function SalesmanPremium() {
 
  {/* Bubble */}
  <div
+ ref={tourCardRef}
  style={{
  ...bubbleStyle,
- background: "#111827",
+ background: BUBBLE_BG,
  border: "1px solid rgba(59,130,246,0.3)",
  borderRadius: 14,
  padding: "18px 18px 14px",
  boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
  animation: "tourPop 0.18s ease",
+ zIndex: 1002,
+ boxSizing: "border-box",
  }}
  >
  <style>{`@keyframes tourPop{from{opacity:0;transform:${isWelcome? "translate(-50%,-48%)" : "scale(0.95)"}}to{opacity:1;transform:${isWelcome? "translate(-50%,-50%)" : "scale(1)"}}}`}</style>
  {arrowEl}
+
+ {/* Content scrolls INSIDE the card when a step is taller than the
+ viewport, so the buttons are always reachable. The scroll cannot go
+ on the card itself — the arrow is an absolutely positioned child
+ outside the padding box and overflow would clip it. */}
+ <div style={{ maxHeight: isMobile ? "calc(100vh - 200px)" : "calc(100vh - 64px)", overflowY: "auto" }}>
 
  {/* Header */}
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
@@ -5098,7 +5392,9 @@ export default function SalesmanPremium() {
  </button>
  </div>
  </div>
- </>
+ </div>
+ </>,
+ document.body,
  );
  };
 
@@ -5640,6 +5936,8 @@ export default function SalesmanPremium() {
  goal={goal} goalEditing={goalEditing} goalDraft={goalDraft} showPrevMonth={showPrevMonth}
  customers={customers} dueNudges={dueNudges} profile={profile}
  minipageStats={minipageStats} aiFollowups={aiFollowups} followupsLoading={followupsLoading}
+ servicePackages={servicePackages}
+ handoverActive={handover.activeCount} handoverNext={soldNextStep}
  browserNotifPerm={browserNotifPerm} notifBannerDismissed={notifBannerDismissed}
  isPremium={isPremium} isMobile={isMobile}
  setActiveTab={setActiveTab} setMobileLeadStage={setMobileLeadStage} setGoalDraft={setGoalDraft}
@@ -5699,7 +5997,7 @@ export default function SalesmanPremium() {
     onChange={setInboxSubTab}
     items={[
      { key: "bookings", label: "Bookings", badge: pendingBookingsCount, tourId: "bookings" },
-     { key: "enquiries", label: "Lead History", badge: newEnquiriesCount },
+     { key: "enquiries", label: "Lead History", badge: newEnquiriesCount, tourId: "leadhistory" },
     ]}
    />
    {inboxSubTab === "enquiries" ? renderEnquiries() : renderBookings()}
@@ -5717,16 +6015,19 @@ export default function SalesmanPremium() {
  {activeTab === "loans" && renderLoans()}
  {activeTab === "outreach" && showOutreach && (
  <Suspense fallback={<TabLoadingFallback />}>
- <OutreachHub dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} />
+ <OutreachHub dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} theme="dark" />
  </Suspense>
  )}
  {activeTab === "chat" && (
  <Suspense fallback={<TabLoadingFallback />}>
- <SellerInbox salesmanId={userId} />
+ {/* Premium's panel is dark — SellerInbox defaults to the light dealer
+ palette, so without theme="dark" the whole chat tab rendered white
+ on a #080a12 page. Same component, same props Lite passes, minus
+ the upgrade strip (Premium has the AI bar for real). */}
+ <SellerInbox salesmanId={userId} theme="dark" aiAssist={isPremium} aiUpgrade={!isPremium} />
  </Suspense>
  )}
- {activeTab === "customers" && renderCustomers()}
- {activeTab === "handover" && renderHandover()}
+ {activeTab === "sold" && renderSold()}
  {activeTab === "settings" && renderSettings()}
  </div>
  </div>
@@ -5930,7 +6231,7 @@ export default function SalesmanPremium() {
  </p>
  <p style={{ margin: "0 0 18px", fontSize: 12, color: "#9ca3af", lineHeight: 1.6 }}>
  {wonPrompt.lead.car_listing_id
- ? "The car is marked sold and removed from the marketplace, your sold count and commission update, and the handover checklist is created."
+ ? "The car is marked sold and removed from the marketplace, your sold count and commission update, the buyer is added to Customers, and the 8-step handover checklist starts."
  : "No car is linked to this lead, so nothing will be marked sold — only the lead closes."}
  </p>
  <div style={{ display: "flex", gap: 8 }}>

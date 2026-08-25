@@ -15,15 +15,21 @@ import { buildThisWeek, waLink } from "../../utils/thisWeek";
 // Nothing auto-sends. "Message" opens WhatsApp with the draft in it and the
 // salesman presses send himself, same rule as the nudge queue.
 
-const PREVIEW = 6;
+// Four rows is the whole point of the preview: it sits under the KPI strip on
+// the dashboard, so it has to read as a short call list, not a second page.
+// Everything past the fourth row is one tap away behind "Show all".
+const PREVIEW = 4;
 
-export default function ThisWeek({ leads = [], customers = [], nudges = [], repName = "", onContacted }) {
+export default function ThisWeek({ leads = [], customers = [], nudges = [], packages = [], repName = "", onContacted, style }) {
   const [showAll, setShowAll] = useState(false);
+  // The card folds to its header — a rep who has already worked the list today
+  // shouldn't have to scroll past it to reach the rest of the dashboard.
+  const [collapsed, setCollapsed] = useState(false);
   const [done, setDone] = useState(() => new Set());
 
   const items = useMemo(
-    () => buildThisWeek({ leads, customers, nudges, repName }),
-    [leads, customers, nudges, repName],
+    () => buildThisWeek({ leads, customers, nudges, packages, repName }),
+    [leads, customers, nudges, packages, repName],
   );
   const open = items.filter((i) => !done.has(i.id));
   const shown = showAll ? open : open.slice(0, PREVIEW);
@@ -43,17 +49,25 @@ export default function ThisWeek({ leads = [], customers = [], nudges = [], repN
   };
 
   return (
-    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: R.lg, padding: 16, marginBottom: 16 }}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 4 }}>
-        <p style={{ margin: 0, fontSize: 17, fontWeight: T.weight.bold, color: C.text }}>This week</p>
+    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: R.lg, padding: 16, marginBottom: 16, ...style }}>
+      <button
+        onClick={() => setCollapsed((v) => !v)}
+        aria-expanded={!collapsed}
+        title={collapsed ? "Show this week's call list" : "Hide this week's call list"}
+        style={{ display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: collapsed ? 0 : 4, padding: 0, background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+      >
+        <span style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+          <ChevronDown size={15} color={C.textMuted} style={{ flexShrink: 0, transform: collapsed ? "rotate(-90deg)" : "none", transition: "transform .15s" }} />
+          <span style={{ fontSize: 17, fontWeight: T.weight.bold, color: C.text }}>This week</span>
+        </span>
         {open.length > 0 && (
-          <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted }}>
+          <span style={{ fontSize: T.size.sm, color: C.textMuted, flexShrink: 0 }}>
             <span style={{ color: C.dangerText, fontWeight: T.weight.bold }}>{open.length}</span> to contact
-          </p>
+          </span>
         )}
-      </div>
+      </button>
 
-      {open.length === 0 ? (
+      {collapsed ? null : open.length === 0 ? (
         <p style={{ margin: "10px 0 0", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.6 }}>
           Nothing waiting — you are on top of everyone. New enquiries show up here the moment
           they come in, and past buyers reappear when their road tax or insurance is close.

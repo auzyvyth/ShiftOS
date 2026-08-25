@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../supabaseClient';
-import { ChevronDown, ChevronRight, CheckCircle2, Car, Clock, AlertTriangle } from 'lucide-react';
-import { computeProgress, nextBlocker } from '../../utils/postSaleSteps';
+import { ChevronDown, ChevronRight, CheckCircle2, Car, Clock, AlertTriangle, UserRound, RefreshCw } from 'lucide-react';
+import useHandover from '../../hooks/useHandover';
 import PostSaleChecklist from './PostSaleChecklist';
-
-const WON_STAGES = ['won', 'closed_won'];
 
 // Target handover turnaround in Malaysia (settle loan -> JPJ -> road tax ->
 // handover) is roughly 2-3 weeks. Past 21 days a deal is overdue.
@@ -17,49 +14,36 @@ function daysSince(ts) {
 
 // Lists won deals that still need post-sale processing. dealerId scopes to a
 // dealership; pass salesmanId to scope to one salesman's own sold deals.
-export default function PostSaleBoard({ dealerId, salesmanId = null, dark = false }) {
-  const [deals, setDeals] = useState([]);
-  const [progressMap, setProgressMap] = useState({});
-  const [tasksMap, setTasksMap] = useState({});
-  const [loading, setLoading] = useState(true);
+//
+// `controller` is a useHandover() instance owned by the page. Pass it wherever
+// other surfaces (a pipeline card, a customer row) show handover state too, so
+// all of them read and refresh the same data. Left out, the board keeps its own
+// instance and behaves standalone — that is the dealer dashboard's case.
+export default function PostSaleBoard({
+  dealerId,
+  salesmanId = null,
+  dark = false,
+  controller = null,
+  openDealId = null,
+  onViewCustomer = null,
+}) {
+  // Hooks can't be conditional: always call it, but starve it of a dealerId
+  // when the page already handed us a controller so it never double-fetches.
+  const ownController = useHandover(controller ? null : dealerId, salesmanId);
+  const h = controller || ownController;
+  const { deals, progressByLead: progressMap, nextStepByLead: nextStepMap, loading, error, refresh, setTasksForLead } = h;
+
   const [open, setOpen] = useState(null);
   const [hideDone, setHideDone] = useState(true);
 
+  // Deep link from another tab ("open this buyer's handover") — expand that
+  // deal and scroll it into view once it is on screen.
   useEffect(() => {
-    if (!dealerId) return;
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      let q = supabase
-        .from('leads')
-        .select('id, dealer_id, buyer_name, phone, car_listing_id, salesman_id, assigned_to, loan_bank, loan_amount, loan_status, updated_at, car_listings(brand, model, year, selling_price), salesman_profile:salesman_id(full_name)')
-        .eq('dealer_id', dealerId)
-        .in('stage', WON_STAGES)
-        .eq('is_deleted', false)
-        .order('updated_at', { ascending: false });
-      if (salesmanId) q = q.eq('salesman_id', salesmanId);
-      const { data: wonLeads } = await q;
-      if (cancelled) return;
-      const leads = wonLeads || [];
-      setDeals(leads);
-
-      // One query for all tasks across these deals, then group → progress.
-      const ids = leads.map((l) => l.id);
-      if (ids.length) {
-        const { data: allTasks } = await supabase
-          .from('post_sale_tasks')
-          .select('lead_id, step_key, status')
-          .in('lead_id', ids);
-        const byLead = {};
-        (allTasks || []).forEach((t) => { (byLead[t.lead_id] ||= []).push(t); });
-        const pm = {};
-        ids.forEach((id) => { pm[id] = byLead[id] ? computeProgress(byLead[id]) : -1; });
-        if (!cancelled) { setProgressMap(pm); setTasksMap(byLead); }
-      }
-      setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [dealerId, salesmanId]);
+    if (!openDealId) return;
+    setOpen(openDealId);
+    const el = document.getElementById(`handover-deal-${openDealId}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [openDealId, deals]);
 
   // Theme tokens — light (dealer dashboard shell) or dark (salesman panel).
   const t = dark
@@ -67,7 +51,21 @@ export default function PostSaleBoard({ dealerId, salesmanId = null, dark = fals
     : { panelBg: '#fff', cardBg: '#fff', border: '#e5e7eb', divider: '#f3f4f6', text: '#111827', sub: '#6b7280', chip: '#f3f4f6', chipBorder: '#e5e7eb', chipText: '#374151', track: '#e5e7eb', btnBg: '#f3f4f6' };
   const PANEL = { background: t.panelBg, border: `1px solid ${t.border}`, borderRadius: 16, padding: 'clamp(12px, 3vw, 18px)' };
 
-  if (loading) return <div style={PANEL}><p style={{ fontSize: 13, color: t.sub, margin: 0 }}>Loading sold deals…</p></div>;
+  if (loading && deals.length === 0) return <div style={PANEL}><p style={{ fontSize: 13, color: t.sub, margin: 0 }}>Loading sold deals…</p></div>;
+
+  // A failed read used to render as "No sold deals yet" — the one empty state
+  // that makes a salesman think their win vanished. Say what happened instead.
+  if (error && deals.length === 0) {
+    return (
+      <div style={{ ...PANEL, textAlign: 'center' }}>
+        <AlertTriangle size={24} color="#dc2626" style={{ marginBottom: 8 }} />
+        <p style={{ fontSize: 13, color: t.text, margin: '0 0 10px' }}>Could not load your sold deals.</p>
+        <button onClick={refresh} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: t.chipText, background: t.btnBg, border: `1px solid ${t.border}`, borderRadius: 8, padding: '7px 12px', cursor: 'pointer' }}>
+          <RefreshCw size={13} /> Try again
+        </button>
+      </div>
+    );
+  }
 
   const visible = (hideDone ? deals.filter((d) => progressMap[d.id] !== 100) : deals)
     .slice()
@@ -128,9 +126,9 @@ export default function PostSaleBoard({ dealerId, salesmanId = null, dark = fals
         const done = prog === 100;
         const age = daysSince(d.updated_at);
         const slaColor = done ? '#059669' : age > SLA_BREACH_DAYS ? '#dc2626' : age >= SLA_WARN_DAYS ? '#d97706' : '#9ca3af';
-        const blocker = done ? null : nextBlocker(tasksMap[d.id]);
+        const blocker = done ? null : nextStepMap[d.id];
         return (
-          <div key={d.id} style={{ background: t.cardBg, border: `1px solid ${t.border}`, borderRadius: 12, overflow: 'hidden' }}>
+          <div key={d.id} id={`handover-deal-${d.id}`} style={{ background: t.cardBg, border: `1px solid ${t.border}`, borderRadius: 12, overflow: 'hidden' }}>
             <button
               onClick={() => setOpen(isOpen ? null : d.id)}
               style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
@@ -171,8 +169,16 @@ export default function PostSaleBoard({ dealerId, salesmanId = null, dark = fals
             {isOpen && (
               <div style={{ padding: '0 14px 14px', borderTop: `1px solid ${t.divider}` }}>
                 <div style={{ paddingTop: 12 }}>
-                  <PostSaleChecklist lead={d} dark={dark} />
+                  <PostSaleChecklist lead={d} dark={dark} onTasksChange={(tasks) => setTasksForLead(d.id, tasks)} />
                 </div>
+                {onViewCustomer && (
+                  <button
+                    onClick={() => onViewCustomer(d)}
+                    style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: t.chipText, background: t.btnBg, border: `1px solid ${t.border}`, borderRadius: 8, padding: '7px 12px', cursor: 'pointer' }}
+                  >
+                    <UserRound size={13} /> View customer record
+                  </button>
+                )}
               </div>
             )}
           </div>

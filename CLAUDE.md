@@ -165,7 +165,61 @@ If a lead ever doesn't show for a rep, check `resolve_lead_salesman`, not the pa
 
 ## Post-sale handover (Module A)
 - Won deal (lead.stage = won/closed_won) → DB trigger `auto_create_customer_on_won` fires immediately: flips the linked car to `status='sold'` (sold_at + assigned_to), creates the customers row (name/phone/IC/email/car/plate/price) AND pre-seeds 8-step post_sale_tasks checklist (B7 auto-NA if not financed). Idempotent — safe to re-trigger.
+- Salesman Premium: Handover and Customers are ONE nav tab, `sold` (`/salesman-premium/sold`),
+  with two pills — Handover | Customers (`renderSold` in SalesmanPremium.jsx). They were two
+  separate tabs with no nav slot, reachable only from two unlabelled Dashboard tiles, and nobody
+  found either. `/salesman-premium/handover` and `/salesman-premium/customers` still resolve via
+  TAB_ALIASES, so every existing deep link (`?deal=`, `?c=`, `?from=`) keeps working — do NOT
+  split them back into two destinations.
 - src/components/postsale/{PostSaleBoard,PostSaleChecklist}.jsx + src/hooks/usePostSaleTasks.js + src/utils/postSaleSteps.js
+
+### One post-sale state for Pipeline + Handover + Customers (`useHandover`)
+Pipeline, Handover and Customers all answer the same question — "what happened after
+the win?" — and each used to find out on its own: `PostSaleBoard` fetched on mount and
+`customers` was fetched ONCE at page bootstrap and never refetched. So a deal won in the
+pipeline stayed invisible on the other two tabs until a full page reload, and the pipeline
+never said the buyer had moved into handover at all.
+- `src/hooks/useHandover.js` owns won deals + their `post_sale_tasks` + progress + next
+  step. Instantiate it ONCE per page and pass the same instance to every surface
+  (`SalesmanPremium.jsx` does: `handover` → `PostSaleBoard controller={handover}`, the
+  won lead card's chip, the customer row's chip). `PostSaleBoard` without a `controller`
+  self-instantiates — that is the dealer dashboard and `Salesmanpanel`, unchanged.
+- **Any new path that closes a deal MUST call `handover.refresh()` + `refreshCustomers()`
+  after the write** (see `handleMarkWon`, SalesmanPremium.jsx). The DB trigger has already
+  created the customer and the 8 steps by the time the leads UPDATE returns, so one
+  refetch lands everything; skipping it puts the split-brain straight back.
+- `PostSaleChecklist` reports its live steps up via `onTasksChange` so a ticked step moves
+  the percentage on every surface at once. That callback is held in a REF inside the
+  checklist — parents pass an inline arrow, so keying the effect on it would re-fire every
+  render and, since reporting up re-renders the parent, spin forever.
+- Tabs link both ways: `?deal=<leadId>` on the handover tab opens that deal,
+  `?c=<customerId>` on customers scrolls to that buyer.
+- A failed read in `useHandover` sets `error` and the board renders a retry — it used to
+  swallow the error and render "No sold deals yet", the one empty state that makes a
+  salesman think their win vanished.
+
+### Expiry dates are captured at the handover step, not typed into a form
+`customers.insurance_expiry` / `road_tax_expiry` are what the expiry-reminders cron and
+the "This week" renewal rows run on. Nobody was filling them (1 of 27 customers had an
+insurance date) because the only entry point was a form on the dealer dashboard, while
+the trigger's road-tax carry-over reads `car_listings.road_tax_expiry`, filled on 1 of 69
+listings. The date is captured where it is actually known instead: ticking the handover
+`insurance` or `road_tax` step done writes `post_sale_tasks.result_date` (prefilled +12
+months — both run 12-month terms in Malaysia, editable on the step).
+- DB trigger `trg_sync_customer_expiry` on `post_sale_tasks` fans it out to `customers`,
+  so it fires whichever client ticks the step. Do NOT re-implement this per client.
+- A typed `result_date` always wins; the +12m default only ever FILLS A BLANK, so it
+  cannot stomp a date someone corrected by hand. Reopening a step never blanks a date.
+- `customers` has NO `updated_at` column — writing one throws 42703 and kills the update.
+
+### Service packages: one implementation, shared by both Customers tabs
+`src/hooks/useServicePackages.js` + `src/components/crm/ServicePackages.jsx`, rendered by
+BOTH the dealer CustomersTab and Salesman Premium `renderCustomers`. They previously
+carried two near-identical copies of add-package / log-visit — do not fork it again.
+A package is PICKED from `dealer_products` (the catalogue that already existed) rather
+than retyped as free text; a visit is a dated row with an undo, not an integer someone
+increments. A package expiring with visits unused surfaces in "This week"
+(`kind: 'package_unused'`) — a customer who already paid and has not come back.
 - Malaysian sequence (fees are official rates, editable): loan settlement → buyer insurance → Puspakom B5 (RM30) → B7 (RM60, financed only, auto-NA if not financed) → JPJ pindah milik (RM100, biometric both parties, buyer within 7 days) → road tax → geran collection → handover
 - Handover processing costs (sum of non-NA step costs) are deducted from per-unit gross in StockTab P&L modal
 - F&I add-ons (Module C) already live in LeadDrawer (deal_products); revenue/gross (Module B) in RevOpsPage; customer expiry reminders (Module D) in CustomersTab
@@ -198,7 +252,8 @@ Enforcement points (keep in sync):
   - Never reintroduce a path that lets a non-assignee feature/sell an assigned car.
 post_sale_tasks (dealer_id, lead_id, listing_id, salesman_id, step_key, status[pending|in_progress|done|na], owner_role, due_date, cost, notes, sort_order) — handover checklist per won deal. Steps in src/utils/postSaleSteps.js. Auto-seeded by DB trigger on won + lazy-seeded on first board open. UNIQUE(lead_id, step_key).
 customers (dealer_id, lead_id, listing_id, name, phone, email, ic_number, purchase_date, car_brand, car_model, car_year, car_plate, selling_price, payment_type, road_tax_expiry, insurance_expiry, notes) — auto-created by trigger on won. UNIQUE(lead_id).
-service_packages (dealer_id, customer_id, lead_id, listing_id, package_name, total_visits, used_visits, valid_months, sold_price, sold_at, expires_at[generated]) — prepaid service bundles per customer. Managed in CustomersTab.
+service_packages (dealer_id, customer_id, lead_id, listing_id, product_id→dealer_products, package_name, total_visits, used_visits, valid_months, sold_price, sold_at, expires_at[generated]) — prepaid service bundles per customer. `package_name` is a SNAPSHOT of what was sold; `product_id` links it to the catalogue entry it came from.
+service_visits (dealer_id, package_id, customer_id, visited_on, notes, logged_by) — one row per visit burned against a package. `service_packages.used_visits` is a CACHED count maintained by trigger `trg_sync_package_used_visits` — read it, NEVER write it from the client or it drifts from the rows that are the real record.
 
 ## Service categories (serviceCategories.js)
 Keys: protection, tint, window_tint, warranty, insurance, road_tax, service, accessories, workshop, other
@@ -471,6 +526,28 @@ Both displayed in separate labelled sections in the P&L modal.
 3. **`closeAndRun` pattern for nested actions**: when an action button inside an overlay should open a second modal, ALWAYS close the first overlay before opening the second. Pattern: `const closeAndRun = (fn) => () => { setDetailUnit(null); fn(); };`. Never open two overlays in parallel unless explicitly designed for it.
 4. **SELECT queries for detail drawers must be complete**: never use a partial select for a view that shows all spec fields. Expand the `select()` call to include every column needed before building the detail UI — patching it afterwards requires re-reading the file every time.
 5. **`useModalHistory` race condition**: the hook's `history.back()` cleanup fires `popstate` asynchronously. If you call `setModalA(null)` and `setModalB(open)` in the same tick, the cleanup for A fires `history.back()` which the just-registered B handler catches → B closes immediately. **Do NOT register `useModalHistory` for lightweight popups that have their own × / overlay-click close controls.** Only register it for primary drawers (LeadDrawer, main detail panels).
+
+## Product tour (Salesman Premium) — anchors and placement
+14 steps in `TOUR_STEPS` (SalesmanPremium.jsx), index-matched to `TOUR_TABS`.
+- **Every step rings the thing it is TALKING ABOUT**, never a nav button standing in
+  for it. Pointing at the Settings nav while describing the invite box is what put the
+  card on top of that box. Steps with no nav slot ring their own content:
+  `TOUR_HIGHLIGHT` maps the step's tab -> a `data-tour-id` (`sp-merge`,
+  `customers-heading`, `handover-heading`); the Inbox pair rings the sub-tab pills
+  (`bookings`, `leadhistory`, set in salesmanPremium/shared.jsx SubTabs).
+- **Placement lives in `src/utils/tourPlacement.js` (`placeTourCard`) and its rule is:
+  never overlap the target, never leave the viewport.** It picks the side with the most
+  free space. Do NOT reintroduce a per-surface branch or a guessed card height — the card
+  is MEASURED after render (`tourCardRef` + `tourCardH`). Guarded by
+  `tests/tourPlacement.test.mjs` (`npm run test:tour`) — run it after touching the geometry.
+- The card is portalled to `document.body` (overlay rule 1). Its scroll goes on an INNER
+  wrapper: `overflow` on the card clips the arrow, which is absolutely positioned outside
+  the padding box.
+- Tour navigation uses `switchTab(tab, { replace: true })` — one history entry per step
+  turned the phone back gesture into a walk back through the whole tour. `startTour()`
+  records the entry tab and `dismissTour()` returns there.
+- In-content targets (`TOUR_IN_CONTENT`) re-measure on scroll; nav-anchored steps scroll
+  the page back to the top so the panel starts at its beginning.
 
 ## Prompt discipline
 - Never write more than 80 lines of instructions per prompt
