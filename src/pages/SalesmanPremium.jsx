@@ -1,11 +1,12 @@
-import React, { useEffect, useRef, useState, Suspense } from "react";
+import React, { useCallback, useEffect, useRef, useState, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { Helmet } from "react-helmet";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
+import useHandover from "../hooks/useHandover";
 import { normalizePhone } from "../lib/phone";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { compressImageFile } from "../utils/compressImage";
@@ -557,6 +558,41 @@ export default function SalesmanPremium() {
  // Flat list for the "This week" call list — a package expiring with visits
  // unused is a customer who already paid and has not come back.
  const servicePackages = Object.values(packagesMap).flat();
+ // Post-sale state shared by three tabs — Pipeline (the won card's progress
+ // chip), Handover (the board) and Customers (per-buyer progress). ONE instance
+ // for the page: each surface used to answer "what happened after the win?" on
+ // its own, which is why a deal won in the pipeline stayed invisible everywhere
+ // else until a full page reload. See hooks/useHandover.
+ const handover = useHandover(getDealerIdFromProfile(profile), userId);
+ // Deep links between the three tabs: ?deal= opens one handover, ?c= one customer.
+ const [searchParams] = useSearchParams();
+ const handoverDealParam = searchParams.get("deal");
+ const customerParam = searchParams.get("c");
+ const openHandoverFor = (leadId) => navigate(`/salesman-premium/handover?deal=${leadId}`);
+ const openCustomerForLead = (lead) => {
+ const cust = customers.find((c) => c.lead_id === lead.id);
+ navigate(cust ? `/salesman-premium/customers?c=${cust.id}` : "/salesman-premium/customers");
+ };
+ // Customers were fetched exactly once, during page bootstrap — a buyer created
+ // by the win trigger could not appear without a reload. This is the refetch.
+ const refreshCustomers = useCallback(async () => {
+ const custDealerId = getDealerIdFromProfile(profile);
+ if (!custDealerId) return;
+ const { data, error: custErr } = await supabase
+ .from("customers").select("*").eq("dealer_id", custDealerId)
+ .order("created_at", { ascending: false });
+ if (custErr) { console.error("refreshCustomers:", custErr); return; }
+ setCustomers(data || []);
+ setCustomersLoading(false);
+ }, [profile]);
+
+ // Arriving from the handover board's "View customer record" — bring that row
+ // into view once the Customers tab has rendered it.
+ useEffect(() => {
+ if (!customerParam || activeTab !== "customers" || customersLoading) return;
+ const el = document.getElementById(`customer-${customerParam}`);
+ if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+ }, [customerParam, activeTab, customersLoading, customers.length]);
  const [loanCalc, setLoanCalc] = useState({ carPrice: "", downPayment: "", tenure: 7, income: "" });
  const [loanForm, setLoanForm] = useState({
  buyer_name: "", buyer_phone: "", buyer_ic: "", buyer_employment_type: "Salaried",
@@ -1657,9 +1693,32 @@ export default function SalesmanPremium() {
  setWonSaving(false);
  setWonPrompt(null);
 
+ // The DB trigger auto_create_customer_on_won has already fanned this out by
+ // the time the update returns — customer row + 8-step checklist both exist.
+ // Pull the shared state forward so Handover and Customers show it now rather
+ // than on the next full page load.
+ handover.addWonDeal({
+ id: leadId,
+ dealer_id: dealerId,
+ buyer_name: lead.buyer_name,
+ phone: lead.phone,
+ car_listing_id: lead.car_listing_id || null,
+ salesman_id: lead.salesman_id || userId,
+ assigned_to: lead.assigned_to || null,
+ updated_at: now,
+ car_listings: lead.car_listings || null,
+ });
+ handover.refresh();
+ refreshCustomers();
+
  const car = lead.car_listings;
  const carLabel = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
- toast.success(carLabel? `Deal won — ${carLabel} marked sold` : "Deal won");
+ const buyerLabel = lead.buyer_name || "The buyer";
+ toast.success(carLabel? `Deal won — ${carLabel} marked sold` : "Deal won", {
+ description: `${buyerLabel} is now in Handover and on your Customers list.`,
+ action: { label: "Open handover", onClick: () => openHandoverFor(leadId) },
+ duration: 8000,
+ });
  };
 
  const handleAddLead = async () => {
@@ -2301,6 +2360,10 @@ export default function SalesmanPremium() {
  (s) => s!== "lost" && s!== "closed_won" && s!== "closed_lost",
  ).find((s) =>LEAD_STAGES.indexOf(s) > stageIdx);
  const heat = getHeatScore(lead);
+ // A won lead is not the end of the card's life — the deal is now a handover in
+ // progress, and this is where the pipeline says so instead of going silent.
+ const isWonLead = lead.stage === "won" || lead.stage === "closed_won";
+ const handoverStatus = isWonLead ? handover.statusForLead(lead.id) : null;
  const isConfirmingDelete = deleteConfirmId === lead.id;
  const isPromptingLost = lostPromptId === lead.id;
  const followUpOverdue = lead.follow_up_at && new Date(lead.follow_up_at).getTime() <= Date.now();
@@ -2390,6 +2453,31 @@ export default function SalesmanPremium() {
  <div style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.22)", borderRadius: 7, color: "#fb923c", fontSize: 11, padding: "6px 10px", marginBottom: 12 }}>Follow-up: {timeAgo(lead.follow_up_at)}
  </div>
  )}
+
+ {/* Won -> what happens next. Tapping opens this buyer's handover checklist. */}
+ {isWonLead && (() => {
+ const done = handoverStatus?.done;
+ const pct = handoverStatus?.progress;
+ const tint = done ? "34,197,94" : "148,163,184";
+ const fg = done ? "#4ade80" : "#cbd5e1";
+ const detail = done
+ ? "Handover complete"
+ : pct === undefined || pct === null || pct < 0
+ ? "Handover checklist started"
+ : `Handover ${pct}%${handoverStatus?.next ? ` · Next: ${handoverStatus.next.label}` : ""}`;
+ return (
+ <button
+ onClick={() => openHandoverFor(lead.id)}
+ style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, textAlign: "left", background: `rgba(${tint},0.08)`, border: `1px solid rgba(${tint},0.2)`, borderRadius: 7, padding: "7px 10px", marginBottom: 12, cursor: "pointer", fontFamily: "inherit" }}
+ >
+ <ClipboardList size={13} color={fg} style={{ flexShrink: 0 }} />
+ <span style={{ flex: 1, minWidth: 0, fontSize: 11, color: fg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ Buyer moved to handover · <span style={{ color: "#9ca3af" }}>{detail}</span>
+ </span>
+ <ChevronRight size={13} color="#6b7280" style={{ flexShrink: 0 }} />
+ </button>
+ );
+ })()}
  </div>
 
  {/* ACTIONS — exactly 3 buttons */}
@@ -4732,8 +4820,10 @@ export default function SalesmanPremium() {
  {filtered.map(c => {
  const pkgs = packagesMap[c.id] || [];
  const initials = (c.name || "?").split(" ").filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+ const cHandover = c.lead_id ? handover.statusForLead(c.lead_id) : null;
+ const isLinked = customerParam === c.id;
  return (
- <div key={c.id} style={{ ...CARD, padding: 15 }}>
+ <div key={c.id} id={`customer-${c.id}`} style={{ ...CARD, padding: 15, ...(isLinked ? { borderColor: withAlpha(C.accent, 0.45) } : null) }}>
  <div style={{ display: "flex", alignItems: "flex-start", gap: 11 }}>
  <div style={{ width: 38, height: 38, borderRadius: R.pill, flexShrink: 0, background: C.fillStrong, display: "flex", alignItems: "center", justifyContent: "center" }}>
  <span style={{ fontSize: T.size.base, fontWeight: T.weight.bold, color: C.textSec }}>{initials}</span>
@@ -4782,6 +4872,25 @@ export default function SalesmanPremium() {
  );
  })()}
 
+ {/* Where this buyer is in the paperwork. Same shared state the Handover
+ tab and the pipeline card read, so all three always agree. */}
+ {cHandover && (
+ <button
+ onClick={() => openHandoverFor(c.lead_id)}
+ style={{ marginTop: 10, width: "100%", display: "flex", alignItems: "center", gap: 9, textAlign: "left", padding: "7px 10px", borderRadius: R.md,
+ background: cHandover.done ? withAlpha(C.success, 0.07) : C.fill,
+ border: `1px solid ${cHandover.done ? withAlpha(C.success, 0.18) : C.border}`, cursor: "pointer", fontFamily: "inherit" }}
+ >
+ <ClipboardList size={13} color={cHandover.done ? C.successText : C.textMuted} style={{ flexShrink: 0 }} />
+ <span style={{ flex: 1, minWidth: 0, fontSize: T.size.sm, color: C.textSec, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {cHandover.done
+ ? <>Handover <span style={{ color: C.successText, fontWeight: T.weight.semibold }}>complete</span></>
+ : <>Handover <span style={{ color: C.text, fontWeight: T.weight.semibold }}>{cHandover.progress < 0 ? "starting" : `${cHandover.progress}%`}</span>{cHandover.next ? ` · Next: ${cHandover.next.label}` : ""}</>}
+ </span>
+ <ChevronRight size={13} color={C.textDim} style={{ flexShrink: 0 }} />
+ </button>
+ )}
+
  {/* Shared with the dealer Customers tab — see components/crm/ServicePackages */}
  <ServicePackages
  customer={c} packages={pkgs} visits={pkgVisits} products={pkgProducts}
@@ -4804,7 +4913,14 @@ export default function SalesmanPremium() {
  <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: C.text }}>Handover</p>
  <p style={{ margin: "0 0 20px", fontSize: 12, color: C.textMuted }}>Paperwork &amp; delivery for your won deals.</p>
  <Suspense fallback={<TabLoadingFallback />}>
- <PostSaleBoard dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} dark />
+ <PostSaleBoard
+ dealerId={getDealerIdFromProfile(profile)}
+ salesmanId={userId}
+ dark
+ controller={handover}
+ openDealId={handoverDealParam}
+ onViewCustomer={openCustomerForLead}
+ />
  </Suspense>
  </div>
  );
@@ -5998,7 +6114,7 @@ export default function SalesmanPremium() {
  </p>
  <p style={{ margin: "0 0 18px", fontSize: 12, color: "#9ca3af", lineHeight: 1.6 }}>
  {wonPrompt.lead.car_listing_id
- ? "The car is marked sold and removed from the marketplace, your sold count and commission update, and the handover checklist is created."
+ ? "The car is marked sold and removed from the marketplace, your sold count and commission update, the buyer is added to Customers, and the 8-step handover checklist starts."
  : "No car is linked to this lead, so nothing will be marked sold — only the lead closes."}
  </p>
  <div style={{ display: "flex", gap: 8 }}>

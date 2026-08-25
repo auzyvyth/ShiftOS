@@ -167,6 +167,31 @@ If a lead ever doesn't show for a rep, check `resolve_lead_salesman`, not the pa
 - Won deal (lead.stage = won/closed_won) → DB trigger `auto_create_customer_on_won` fires immediately: flips the linked car to `status='sold'` (sold_at + assigned_to), creates the customers row (name/phone/IC/email/car/plate/price) AND pre-seeds 8-step post_sale_tasks checklist (B7 auto-NA if not financed). Idempotent — safe to re-trigger.
 - src/components/postsale/{PostSaleBoard,PostSaleChecklist}.jsx + src/hooks/usePostSaleTasks.js + src/utils/postSaleSteps.js
 
+### One post-sale state for Pipeline + Handover + Customers (`useHandover`)
+Pipeline, Handover and Customers all answer the same question — "what happened after
+the win?" — and each used to find out on its own: `PostSaleBoard` fetched on mount and
+`customers` was fetched ONCE at page bootstrap and never refetched. So a deal won in the
+pipeline stayed invisible on the other two tabs until a full page reload, and the pipeline
+never said the buyer had moved into handover at all.
+- `src/hooks/useHandover.js` owns won deals + their `post_sale_tasks` + progress + next
+  step. Instantiate it ONCE per page and pass the same instance to every surface
+  (`SalesmanPremium.jsx` does: `handover` → `PostSaleBoard controller={handover}`, the
+  won lead card's chip, the customer row's chip). `PostSaleBoard` without a `controller`
+  self-instantiates — that is the dealer dashboard and `Salesmanpanel`, unchanged.
+- **Any new path that closes a deal MUST call `handover.refresh()` + `refreshCustomers()`
+  after the write** (see `handleMarkWon`, SalesmanPremium.jsx). The DB trigger has already
+  created the customer and the 8 steps by the time the leads UPDATE returns, so one
+  refetch lands everything; skipping it puts the split-brain straight back.
+- `PostSaleChecklist` reports its live steps up via `onTasksChange` so a ticked step moves
+  the percentage on every surface at once. That callback is held in a REF inside the
+  checklist — parents pass an inline arrow, so keying the effect on it would re-fire every
+  render and, since reporting up re-renders the parent, spin forever.
+- Tabs link both ways: `?deal=<leadId>` on the handover tab opens that deal,
+  `?c=<customerId>` on customers scrolls to that buyer.
+- A failed read in `useHandover` sets `error` and the board renders a retry — it used to
+  swallow the error and render "No sold deals yet", the one empty state that makes a
+  salesman think their win vanished.
+
 ### Expiry dates are captured at the handover step, not typed into a form
 `customers.insurance_expiry` / `road_tax_expiry` are what the expiry-reminders cron and
 the "This week" renewal rows run on. Nobody was filling them (1 of 27 customers had an

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Check, Clock, Circle, MinusCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { usePostSaleTasks } from '../../hooks/usePostSaleTasks';
 import { POST_SALE_STEPS, OWNER_LABELS, STATUS_CONFIG } from '../../utils/postSaleSteps';
@@ -25,9 +25,21 @@ function StatusIcon({ status }) {
 // Renders the post-sale handover checklist for a won deal. Light-themed to match
 // the dashboard shell. Marking a step done is a single tap on the round button;
 // the row expands (tap anywhere on the title) for notes / due date / cost.
-export default function PostSaleChecklist({ lead, compact = false, dark = false }) {
+export default function PostSaleChecklist({ lead, compact = false, dark = false, onTasksChange = null }) {
   const { tasks, loading, progress, updateTask } = usePostSaleTasks(lead);
   const [expanded, setExpanded] = useState(null);
+
+  // Report the live steps up to whoever owns the board. Ticking a step used to
+  // move the bar in here while the card above it kept showing the old
+  // percentage and the old "Next:" step until the tab was remounted.
+  // The handler is held in a ref deliberately: parents pass an inline arrow, so
+  // keying the effect on it would re-fire on every render and, since reporting
+  // up re-renders the parent, spin forever.
+  const reportRef = useRef(onTasksChange);
+  reportRef.current = onTasksChange;
+  useEffect(() => {
+    if (reportRef.current && tasks.length) reportRef.current(tasks);
+  }, [tasks]);
 
   const th = dark
     ? { rowBg: 'rgba(255,255,255,0.03)', rowDoneBg: 'rgba(255,255,255,0.015)', border: 'rgba(255,255,255,0.1)', text: '#f1f5f9', sub: '#9ca3af', muted: 'rgba(255,255,255,0.4)', track: 'rgba(255,255,255,0.1)', chip: 'rgba(255,255,255,0.06)', inputBg: 'rgba(255,255,255,0.05)', inputBorder: 'rgba(255,255,255,0.15)', totalBg: 'rgba(255,255,255,0.03)' }
