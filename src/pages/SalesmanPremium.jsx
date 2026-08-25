@@ -568,11 +568,28 @@ export default function SalesmanPremium() {
  const [searchParams] = useSearchParams();
  const handoverDealParam = searchParams.get("deal");
  const customerParam = searchParams.get("c");
- const openHandoverFor = (leadId) => navigate(`/salesman-premium/handover?deal=${leadId}`);
- const openCustomerForLead = (lead) => {
+ const openHandoverFor = (leadId, from = "dashboard") => navigate(`/salesman-premium/handover?deal=${leadId}&from=${from}`);
+ const openCustomerForLead = (lead, from = "dashboard") => {
  const cust = customers.find((c) => c.lead_id === lead.id);
- navigate(cust ? `/salesman-premium/customers?c=${cust.id}` : "/salesman-premium/customers");
+ const qs = `?from=${from}${cust ? `&c=${cust.id}` : ""}`;
+ navigate(`/salesman-premium/customers${qs}`);
  };
+ // Handover and Customers are drill-downs — they are entered from a Dashboard
+ // tile or a link on another tab and own no slot in the nav, so on desktop there
+ // was no way back out short of the browser's own Back button (a phone just
+ // swipes). Every tab that opens one passes ?from=, and this is the way back.
+ const TAB_BACK_LABELS = { dashboard: "Dashboard", leads: "Pipeline", customers: "Customers", handover: "Handover" };
+ const fromParam = searchParams.get("from");
+ const backTab = TAB_BACK_LABELS[fromParam] ? fromParam : "dashboard";
+ const renderTabBack = () => (
+ <button
+ onClick={() => navigate(`/salesman-premium/${backTab}`)}
+ style={{ display: "inline-flex", alignItems: "center", gap: 5, margin: "0 0 12px", padding: "6px 11px 6px 8px", borderRadius: R.pill, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, fontSize: T.size.sm, fontWeight: T.weight.semibold, cursor: "pointer", fontFamily: "inherit" }}
+ >
+ <ChevronLeft size={14} />
+ {TAB_BACK_LABELS[backTab]}
+ </button>
+ );
  // Customers were fetched exactly once, during page bootstrap — a buyer created
  // by the win trigger could not appear without a reload. This is the refetch.
  const refreshCustomers = useCallback(async () => {
@@ -1716,7 +1733,7 @@ export default function SalesmanPremium() {
  const buyerLabel = lead.buyer_name || "The buyer";
  toast.success(carLabel? `Deal won — ${carLabel} marked sold` : "Deal won", {
  description: `${buyerLabel} is now in Handover and on your Customers list.`,
- action: { label: "Open handover", onClick: () => openHandoverFor(leadId) },
+ action: { label: "Open handover", onClick: () => openHandoverFor(leadId, "leads") },
  duration: 8000,
  });
  };
@@ -2467,7 +2484,7 @@ export default function SalesmanPremium() {
  : `Handover ${pct}%${handoverStatus?.next ? ` · Next: ${handoverStatus.next.label}` : ""}`;
  return (
  <button
- onClick={() => openHandoverFor(lead.id)}
+ onClick={() => openHandoverFor(lead.id, "leads")}
  style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, textAlign: "left", background: `rgba(${tint},0.08)`, border: `1px solid rgba(${tint},0.2)`, borderRadius: 7, padding: "7px 10px", marginBottom: 12, cursor: "pointer", fontFamily: "inherit" }}
  >
  <ClipboardList size={13} color={fg} style={{ flexShrink: 0 }} />
@@ -4780,10 +4797,18 @@ export default function SalesmanPremium() {
  // Strongest signal first, so the call list is already in order.
  if (expiryFilter === "trade") filtered.sort((x, y) => tradeUpFor(y).score - tradeUpFor(x).score);
 
- if (customersLoading) return <p style={{ color: C.textMuted, fontSize: 13 }}>Loading customers…</p>;
+ // The back control renders in the loading state too — a slow fetch should not
+ // be a dead end on desktop, where there is no swipe.
+ if (customersLoading) return (
+ <div style={{ maxWidth: 640 }}>
+ {renderTabBack()}
+ <p style={{ color: C.textMuted, fontSize: 13 }}>Loading customers…</p>
+ </div>
+ );
 
  return (
  <div style={{ maxWidth: 640 }}>
+ {renderTabBack()}
  <p style={{ margin: "0 0 14px", fontSize: 19, fontWeight: 700, color: C.text }}>Customers <span style={{ fontSize: 12, fontWeight: 400, color: C.textMuted }}>· {customers.length} on record</span></p>
 
  <div style={{ display: "flex", gap: 7, marginBottom: 14, flexWrap: "wrap" }}>
@@ -4876,7 +4901,7 @@ export default function SalesmanPremium() {
  tab and the pipeline card read, so all three always agree. */}
  {cHandover && (
  <button
- onClick={() => openHandoverFor(c.lead_id)}
+ onClick={() => openHandoverFor(c.lead_id, "customers")}
  style={{ marginTop: 10, width: "100%", display: "flex", alignItems: "center", gap: 9, textAlign: "left", padding: "7px 10px", borderRadius: R.md,
  background: cHandover.done ? withAlpha(C.success, 0.07) : C.fill,
  border: `1px solid ${cHandover.done ? withAlpha(C.success, 0.18) : C.border}`, cursor: "pointer", fontFamily: "inherit" }}
@@ -4910,6 +4935,7 @@ export default function SalesmanPremium() {
  // HANDOVER (post-sale paperwork checklist, shared postsale/PostSaleBoard)
  const renderHandover = () => (
  <div style={{ maxWidth: 640 }}>
+ {renderTabBack()}
  <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: C.text }}>Handover</p>
  <p style={{ margin: "0 0 20px", fontSize: 12, color: C.textMuted }}>Paperwork &amp; delivery for your won deals.</p>
  <Suspense fallback={<TabLoadingFallback />}>
@@ -4919,7 +4945,7 @@ export default function SalesmanPremium() {
  dark
  controller={handover}
  openDealId={handoverDealParam}
- onViewCustomer={openCustomerForLead}
+ onViewCustomer={(lead) => openCustomerForLead(lead, "handover")}
  />
  </Suspense>
  </div>
