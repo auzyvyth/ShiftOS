@@ -133,7 +133,7 @@ function useWindowSize() {
 
 // Top-level Premium tabs, each backed by its own /salesman-premium/:tab route.
 // Anything not in this list falls back to the dashboard.
-const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "leadhistory", "analytics", "loans", "outreach", "chat", "customers", "handover", "merge", "settings"];
+const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "leadhistory", "analytics", "loans", "outreach", "chat", "sold", "customers", "handover", "merge", "settings"];
 
 // Tabs that no longer own a slot in the nav. Their routes still resolve, so old
 // links, in-app deep links (switchTab) and the tour all keep working — they just
@@ -142,6 +142,12 @@ const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "book
 const TAB_ALIASES = {
  bookings: { tab: "enquiries", sub: "bookings" },
  leadhistory: { tab: "enquiries", sub: "enquiries" },
+ // Handover and Customers are one job — what happens after a deal is won —
+ // split across two destinations nobody found. They are now two halves of the
+ // Sold tab. Both old routes still resolve so existing deep links (?deal=, ?c=)
+ // and anything that links to them keep working.
+ handover: { tab: "sold", sub: "handover" },
+ customers: { tab: "sold", sub: "customers" },
  merge: { tab: "settings", anchor: "sp-merge" },
 };
 
@@ -150,7 +156,7 @@ const TAB_ALIASES = {
 // a step missing from this list means the tour silently skips that page.
 const TOUR_TABS = [
  null, "dashboard", "listings", "leads", "bookings", "leadhistory", "analytics",
- "loans", "outreach", "chat", "customers", "handover", "merge", "settings",
+ "loans", "outreach", "chat", "handover", "customers", "merge", "settings",
 ];
 
 // Where the spotlight ring goes for a step whose tab is NOT its own nav button.
@@ -161,14 +167,15 @@ const TOUR_HIGHLIGHT = {
  // Bookings / Lead History are the two sub-tab pills inside Inbox
  // (data-tour-id set in salesmanPremium/shared.jsx SubTabs).
  merge: "sp-merge", // the invite-code box itself, not the Settings nav button
- customers: "customers-heading", // no nav slot; ring the panel's own heading
- handover: "handover-heading",
+ // Both halves of Sold; ring the pill that switches to each one.
+ handover: "sold-handover",
+ customers: "sold-customers",
 };
 
 // Targets that live in the page body rather than in the (fixed) nav. These move
 // when the page scrolls, so the ring has to re-measure on scroll; everything
 // else gets the page scrolled back to the top so the panel starts at its top.
-const TOUR_IN_CONTENT = new Set(["bookings", "leadhistory", "sp-merge", "customers-heading", "handover-heading"]);
+const TOUR_IN_CONTENT = new Set(["bookings", "leadhistory", "sp-merge", "sold-handover", "sold-customers"]);
 
 
 
@@ -207,6 +214,9 @@ export default function SalesmanPremium() {
  // add-on catalogue those cars get sold with. Same table the deal-add-on
  // picker in the lead drawer reads (dealer_products).
  const [listingsSubTab, setListingsSubTab] = useState("cars");
+ // Sold hosts both halves of "after the deal is won": the handover checklist
+ // and the buyers those handovers produced.
+ const [soldSubTab, setSoldSubTab] = useState("handover");
 
  // Set from render below (tourStep lives further down). Read by effects that
  // must not fight the tour for control of the scroll position.
@@ -222,7 +232,7 @@ export default function SalesmanPremium() {
  useEffect(() => {
  const alias = TAB_ALIASES[resolvedTab];
  if (!alias) return;
- if (alias.sub) setInboxSubTab(alias.sub);
+ if (alias.sub) (alias.tab === "sold" ? setSoldSubTab : setInboxSubTab)(alias.sub);
  // The tour drives this same route (step 13 = /salesman-premium/merge) and does
  // its own, exact scroll. Two smooth scrolls to two different offsets cancel
  // each other mid-flight, which is why that step used to end up with the invite
@@ -594,6 +604,13 @@ export default function SalesmanPremium() {
  // its own, which is why a deal won in the pipeline stayed invisible everywhere
  // else until a full page reload. See hooks/useHandover.
  const handover = useHandover(getDealerIdFromProfile(profile), userId);
+ // The next thing blocking the longest-open handover — what the Dashboard's
+ // Sold shortcut says is waiting. Label only; the board owns the detail.
+ const soldNextStep = (() => {
+ const open = handover.deals.filter((d) => handover.progressByLead[d.id] !== 100);
+ const last = open[open.length - 1];
+ return last ? handover.nextStepByLead[last.id]?.label || null : null;
+ })();
  // Deep links between the three tabs: ?deal= opens one handover, ?c= one customer.
  const [searchParams] = useSearchParams();
  const handoverDealParam = searchParams.get("deal");
@@ -604,14 +621,13 @@ export default function SalesmanPremium() {
  const qs = `?from=${from}${cust ? `&c=${cust.id}` : ""}`;
  navigate(`/salesman-premium/customers${qs}`);
  };
- // Handover and Customers are drill-downs — they are entered from a Dashboard
- // tile or a link on another tab and own no slot in the nav, so on desktop there
- // was no way back out short of the browser's own Back button (a phone just
- // swipes). Every tab that opens one passes ?from=, and this is the way back.
- const TAB_BACK_LABELS = { dashboard: "Dashboard", leads: "Pipeline", customers: "Customers", handover: "Handover" };
+ // Sold now owns a nav slot, so it is no longer a dead end. The back control
+ // only appears when the user was sent here from somewhere specific (a Pipeline
+ // card's handover chip, a Dashboard tile) and has a place to go back to.
+ const TAB_BACK_LABELS = { dashboard: "Dashboard", leads: "Pipeline" };
  const fromParam = searchParams.get("from");
- const backTab = TAB_BACK_LABELS[fromParam] ? fromParam : "dashboard";
- const renderTabBack = () => (
+ const backTab = TAB_BACK_LABELS[fromParam] ? fromParam : null;
+ const renderTabBack = () => backTab && (
  <button
  onClick={() => navigate(`/salesman-premium/${backTab}`)}
  style={{ display: "inline-flex", alignItems: "center", gap: 5, margin: "0 0 12px", padding: "6px 11px 6px 8px", borderRadius: R.pill, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, fontSize: T.size.sm, fontWeight: T.weight.semibold, cursor: "pointer", fontFamily: "inherit" }}
@@ -636,10 +652,10 @@ export default function SalesmanPremium() {
  // Arriving from the handover board's "View customer record" — bring that row
  // into view once the Customers tab has rendered it.
  useEffect(() => {
- if (!customerParam || activeTab !== "customers" || customersLoading) return;
+ if (!customerParam || activeTab !== "sold" || soldSubTab !== "customers" || customersLoading) return;
  const el = document.getElementById(`customer-${customerParam}`);
  if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
- }, [customerParam, activeTab, customersLoading, customers.length]);
+ }, [customerParam, activeTab, soldSubTab, customersLoading, customers.length]);
  const [loanCalc, setLoanCalc] = useState({ carPrice: "", downPayment: "", tenure: 7, income: "" });
  const [loanForm, setLoanForm] = useState({
  buyer_name: "", buyer_phone: "", buyer_ic: "", buyer_employment_type: "Salaried",
@@ -2181,6 +2197,14 @@ export default function SalesmanPremium() {
  badge: inboxBadge || null,
  },
  {
+ // The end of the funnel: leads -> won -> paperwork + owner. Sold used to have
+ // no nav slot at all, reachable only from two tiles on the Dashboard.
+ tab: "sold",
+ label: "Sold",
+ icon: <ClipboardList style={{ width: 14, height: 14 }} />,
+ badge: handover.activeCount || null,
+ },
+ {
  tab: "analytics",
  label: "Analytics",
  icon: <TrendingUp style={{ width: 14, height: 14 }} />,
@@ -2228,6 +2252,7 @@ export default function SalesmanPremium() {
  icon: <MessageSquare size={18} />,
  badge: inboxBadge || null,
  },
+ { tab: "sold", label: "Sold", icon: <ClipboardList size={18} />, badge: handover.activeCount || null },
  { tab: "analytics", label: "Analytics", icon: <TrendingUp size={18} /> },
  { tab: "loans", label: "Loans", icon: <Banknote size={18} /> },
  ...(showOutreach ? [{ tab: "outreach", label: "Outreach", icon: <Megaphone size={18} /> }] : []),
@@ -4866,16 +4891,12 @@ export default function SalesmanPremium() {
  // The back control renders in the loading state too — a slow fetch should not
  // be a dead end on desktop, where there is no swipe.
  if (customersLoading) return (
- <div style={{ maxWidth: 640 }}>
- {renderTabBack()}
  <p style={{ color: C.textMuted, fontSize: 13 }}>Loading customers…</p>
- </div>
  );
 
  return (
- <div style={{ maxWidth: 640 }}>
- {renderTabBack()}
- <p data-tour-id="customers-heading" style={{ margin: "0 0 14px", fontSize: 19, fontWeight: 700, color: C.text }}>Customers <span style={{ fontSize: 12, fontWeight: 400, color: C.textMuted }}>· {customers.length} on record</span></p>
+ <div>
+ <p style={{ margin: "0 0 14px", fontSize: 12, color: C.textMuted }}>Everyone who has bought from you — {customers.length} on record. Road tax and insurance expiry are tracked per car.</p>
 
  <div style={{ display: "flex", gap: 7, marginBottom: 14, flexWrap: "wrap" }}>
  {[{ id: null, label: `All · ${customers.length}` }, { id: "ins", label: `Insurance due · ${insDue}` }, { id: "rt", label: `Road tax due · ${rtDue}` }, { id: "trade", label: `Trade-up ready · ${tradeUpDue}` }].map(f => (
@@ -5000,10 +5021,8 @@ export default function SalesmanPremium() {
 
  // HANDOVER (post-sale paperwork checklist, shared postsale/PostSaleBoard)
  const renderHandover = () => (
- <div style={{ maxWidth: 640 }}>
- {renderTabBack()}
- <p data-tour-id="handover-heading" style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: C.text }}>Handover</p>
- <p style={{ margin: "0 0 20px", fontSize: 12, color: C.textMuted }}>Paperwork &amp; delivery for your won deals.</p>
+ <div>
+ <p style={{ margin: "0 0 20px", fontSize: 12, color: C.textMuted }}>Paperwork and delivery for your won deals — loan settlement through to keys.</p>
  <Suspense fallback={<TabLoadingFallback />}>
  <PostSaleBoard
  dealerId={getDealerIdFromProfile(profile)}
@@ -5014,6 +5033,27 @@ export default function SalesmanPremium() {
  onViewCustomer={(lead) => openCustomerForLead(lead, "handover")}
  />
  </Suspense>
+ </div>
+ );
+
+ // Sold — one destination for everything that happens after a deal is won.
+ // Handover (the paperwork) and Customers (the people it produced) were two
+ // separate tabs reachable only from a pair of unlabelled Dashboard tiles, so
+ // salesmen never found either. Same two-pill pattern as Inbox and Listings.
+ const renderSold = () => (
+ <div style={{ maxWidth: 640 }}>
+ {renderTabBack()}
+ <p style={{ margin: "0 0 4px", fontSize: 19, fontWeight: 700, color: C.text }}>Sold</p>
+ <p style={{ margin: "0 0 14px", fontSize: 12, color: C.textMuted }}>After the deal is won: the handover checklist, then the buyer.</p>
+ <SubTabs
+ value={soldSubTab}
+ onChange={setSoldSubTab}
+ items={[
+ { key: "handover", label: "Handover", badge: handover.activeCount, tourId: "sold-handover" },
+ { key: "customers", label: "Customers", tourId: "sold-customers" },
+ ]}
+ />
+ {soldSubTab === "handover" ? renderHandover() : renderCustomers()}
  </div>
  );
 
@@ -5193,8 +5233,8 @@ export default function SalesmanPremium() {
  { icon: Banknote, title: "Loans", body: "Compare bank rates for a buyer, submit their loan application, and track approval status — a Premium-only feature." },
  { icon: Megaphone, title: "Outreach Hub", body: "See which leads have gone cold, then work through them with a guided WhatsApp campaign — one tap per contact. Premium-only." },
  { icon: MessageCircle, title: "Chat", body: "Buyers who message you from a listing land here instead of WhatsApp. You see their name, the car, and read receipts — and phone numbers stay masked until you tap them." },
- { icon: UserCheck, title: "Customers", body: "Everyone who has bought from you. Road tax and insurance expiry are tracked per car, so the app tells you who is due for a renewal call or ready to trade up. Open it any time from the Customers tile on your Dashboard." },
- { icon: ClipboardList, title: "Handover", body: "After a deal is won, the 8-step Malaysian handover checklist opens here — loan settlement, insurance, Puspakom, JPJ pindah milik, road tax, geran, keys. Open it any time from the Handover tile on your Dashboard." },
+ { icon: ClipboardList, title: "Sold · Handover", body: "Everything after a won deal lives in the Sold tab. This half is the 8-step Malaysian handover checklist — loan settlement, insurance, Puspakom, JPJ pindah milik, road tax, geran, keys. The number on the tab is how many are still open." },
+ { icon: UserCheck, title: "Sold · Customers", body: "The other half: everyone who has bought from you. Road tax and insurance expiry are tracked per car, so the app tells you who is due for a renewal call or is ready to trade up." },
  { icon: LinkIcon, title: "Join a Dealership", body: "Have an invite code from your dealer? Enter it at the bottom of Settings to unlock the full panel — shared stock, team leads, commission tracking and more." },
  { icon: Settings, title: "Settings", body: "Your public profile, WhatsApp templates and account settings live here." },
  ];
@@ -5897,6 +5937,7 @@ export default function SalesmanPremium() {
  customers={customers} dueNudges={dueNudges} profile={profile}
  minipageStats={minipageStats} aiFollowups={aiFollowups} followupsLoading={followupsLoading}
  servicePackages={servicePackages}
+ handoverActive={handover.activeCount} handoverNext={soldNextStep}
  browserNotifPerm={browserNotifPerm} notifBannerDismissed={notifBannerDismissed}
  isPremium={isPremium} isMobile={isMobile}
  setActiveTab={setActiveTab} setMobileLeadStage={setMobileLeadStage} setGoalDraft={setGoalDraft}
@@ -5986,8 +6027,7 @@ export default function SalesmanPremium() {
  <SellerInbox salesmanId={userId} theme="dark" aiAssist={isPremium} aiUpgrade={!isPremium} />
  </Suspense>
  )}
- {activeTab === "customers" && renderCustomers()}
- {activeTab === "handover" && renderHandover()}
+ {activeTab === "sold" && renderSold()}
  {activeTab === "settings" && renderSettings()}
  </div>
  </div>

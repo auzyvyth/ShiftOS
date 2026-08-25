@@ -165,6 +165,12 @@ If a lead ever doesn't show for a rep, check `resolve_lead_salesman`, not the pa
 
 ## Post-sale handover (Module A)
 - Won deal (lead.stage = won/closed_won) → DB trigger `auto_create_customer_on_won` fires immediately: flips the linked car to `status='sold'` (sold_at + assigned_to), creates the customers row (name/phone/IC/email/car/plate/price) AND pre-seeds 8-step post_sale_tasks checklist (B7 auto-NA if not financed). Idempotent — safe to re-trigger.
+- Salesman Premium: Handover and Customers are ONE nav tab, `sold` (`/salesman-premium/sold`),
+  with two pills — Handover | Customers (`renderSold` in SalesmanPremium.jsx). They were two
+  separate tabs with no nav slot, reachable only from two unlabelled Dashboard tiles, and nobody
+  found either. `/salesman-premium/handover` and `/salesman-premium/customers` still resolve via
+  TAB_ALIASES, so every existing deep link (`?deal=`, `?c=`, `?from=`) keeps working — do NOT
+  split them back into two destinations.
 - src/components/postsale/{PostSaleBoard,PostSaleChecklist}.jsx + src/hooks/usePostSaleTasks.js + src/utils/postSaleSteps.js
 
 ### One post-sale state for Pipeline + Handover + Customers (`useHandover`)

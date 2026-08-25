@@ -1,7 +1,7 @@
 import React from "react";
 import {
  Bell, Calendar, Car, CheckCircle, ChevronRight, Clock, ExternalLink, Eye, History,
- Link as LinkIcon, MessageCircle, Pin, Store, UserCheck, Users, ClipboardList, Zap,
+ Link as LinkIcon, MessageCircle, Pin, Store, Users, ClipboardList, Zap,
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { toast } from "sonner";
@@ -23,6 +23,7 @@ import {
 export default function DashboardTab({
  leads, appointments, myListings, carStatsMap, enquiries, staleLeads, isReturning,
  goal, goalEditing, goalDraft, showPrevMonth, customers, dueNudges, profile, servicePackages,
+ handoverActive, handoverNext,
  minipageStats, aiFollowups, followupsLoading, browserNotifPerm, notifBannerDismissed,
  isPremium, isMobile,
  setActiveTab, setMobileLeadStage, setGoalDraft, setGoalEditing, setShowPrevMonth,
@@ -46,6 +47,20 @@ export default function DashboardTab({
  const today = new Date();
  return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
  }).length;
+
+ // Subtitle for the Sold shortcut. It has to say what is waiting, not just
+ // name the tab — that is the whole reason the old pair of buttons went
+ // unclicked. Counts only; no invented figure of any kind.
+ const renewalsDue = customers.filter((c) => {
+ const due = (d) => d && (new Date(d) - Date.now()) / 86400000 <= 30;
+ return due(c.road_tax_expiry) || due(c.insurance_expiry);
+ }).length;
+ const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+ const soldSummary = [
+ handoverActive > 0 ? `${plural(handoverActive, "handover")} in progress${handoverNext ? ` · next: ${handoverNext}` : ""}` : null,
+ renewalsDue > 0 ? `${plural(renewalsDue, "renewal")} due` : null,
+ ].filter(Boolean).join(" · ")
+ || (customers.length ? `${plural(customers.length, "buyer")} on record · nothing due` : "Handover checklist and past buyers");
 
  const listingStats = myListings.map((car) => {
  const s = carStatsMap[car.id] ?? {};
@@ -459,23 +474,24 @@ export default function DashboardTab({
 
  </div>
 
- {/* Premium-only tabs — big, plain entry buttons (kept off the
- already-crowded bottom nav). */}
- <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
- {[
- { tab: "customers", label: "Customers", Icon: UserCheck },
- { tab: "handover", label: "Handover", Icon: ClipboardList },
- ].map(({ tab, label, Icon }) => (
+ {/* Shortcut into the Sold tab. This used to be two buttons labelled
+ "Customers" and "Handover" and nothing else — a noun is a menu item
+ people skip, a number is a job. Both halves now live behind one
+ destination that also owns a nav slot, so this is a shortcut, not the
+ only way in. */}
  <button
- key={tab}
- onClick={() => switchTab(tab)}
- style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "18px 14px", borderRadius: R.lg, background: C.surface, border: `1px solid ${C.border}`, color: C.text, cursor: "pointer", fontFamily: "inherit" }}
+ onClick={() => switchTab(handoverActive > 0 ? "handover" : "customers")}
+ style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: "16px 18px", borderRadius: R.lg, background: C.surface, border: `1px solid ${C.border}`, color: C.text, cursor: "pointer", fontFamily: "inherit" }}
  >
- <Icon size={18} color={C.accent} />
- <span style={{ fontSize: T.size.lg, fontWeight: T.weight.semibold }}>{label}</span>
- </button>
- ))}
+ <ClipboardList size={18} color={C.accent} style={{ flexShrink: 0 }} />
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: T.size.lg, fontWeight: T.weight.semibold }}>Sold</p>
+ <p style={{ margin: "2px 0 0", fontSize: T.size.sm, color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {soldSummary}
+ </p>
  </div>
+ <ChevronRight size={16} color={C.textDim} style={{ flexShrink: 0 }} />
+ </button>
 
  {/* Dashboard body — 2-up grid on desktop, single column on mobile */}
  <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: 16, alignItems: "start" }}>
