@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import useHandover from "../hooks/useHandover";
-import { placeTourCard } from "../utils/tourPlacement";
+import { placeTourCard, tourBand, tourScrollDelta } from "../utils/tourPlacement";
 import { normalizePhone } from "../lib/phone";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { compressImageFile } from "../utils/compressImage";
@@ -208,6 +208,10 @@ export default function SalesmanPremium() {
  // picker in the lead drawer reads (dealer_products).
  const [listingsSubTab, setListingsSubTab] = useState("cars");
 
+ // Set from render below (tourStep lives further down). Read by effects that
+ // must not fight the tour for control of the scroll position.
+ const tourOpenRef = useRef(false);
+
  // opts is passed straight to navigate(): the tour uses { replace: true } so a
  // 14-step run does not leave 13 history entries for the back gesture to walk.
  function switchTab(tab, opts) {
@@ -219,7 +223,12 @@ export default function SalesmanPremium() {
  const alias = TAB_ALIASES[resolvedTab];
  if (!alias) return;
  if (alias.sub) setInboxSubTab(alias.sub);
- if (alias.anchor) {
+ // The tour drives this same route (step 13 = /salesman-premium/merge) and does
+ // its own, exact scroll. Two smooth scrolls to two different offsets cancel
+ // each other mid-flight, which is why that step used to end up with the invite
+ // box jammed against the bottom nav. The tour wins; this only runs for a real
+ // link or a manual visit.
+ if (alias.anchor && !tourOpenRef.current) {
  const t = setTimeout(() => {
  document.getElementById(alias.anchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
  }, 80);
@@ -513,12 +522,16 @@ export default function SalesmanPremium() {
  // the desktop clamp could cut off the Next button.
  const tourCardRef = useRef(null);
  const [tourCardH, setTourCardH] = useState(240);
+ // Same number, readable from the scroll loop below without re-running the
+ // effect: the band the target must land in is measured off the card's height.
+ const tourCardHRef = useRef(240);
  // Tab the user was on when the tour started, so finishing puts them back.
  const tourReturnTab = useRef("dashboard");
  const [tourTarget, setTourTarget] = useState(null);
  // The auto-start below must fire ONCE per mount. Without this guard anything
  // that re-runs the bootstrap effect drags the tour back to step 0.
  const tourAutoStarted = useRef(false);
+ tourOpenRef.current = tourStep !== null;
 
  // broadcast
  const [broadcastCar, setBroadcastCar] = useState(null);
@@ -1101,6 +1114,21 @@ export default function SalesmanPremium() {
  // eslint-disable-next-line react-hooks/exhaustive-deps
  }, []);
 
+ // While the tour runs, give the page extra scroll room at the bottom. Without
+ // it the browser clamps at the end of the document, so a target near the end
+ // (the invite box is the last block on Settings) can never be scrolled up out
+ // of the card's lane — it just sits against the bottom nav with the card on
+ // top of it. Removed the moment the tour closes.
+ const tourOpen = tourStep !== null;
+ useEffect(() => {
+ if (!tourOpen) return;
+ const pad = document.createElement("div");
+ pad.setAttribute("data-tour-scroll-room", "");
+ pad.style.cssText = `height:${Math.round(window.innerHeight * 0.8)}px;pointer-events:none`;
+ document.body.appendChild(pad);
+ return () => pad.remove();
+ }, [tourOpen]);
+
  useEffect(() => {
  if (tourStep === null) { setTourTarget(null); return; }
  const tab = TOUR_TABS[tourStep];
@@ -1118,23 +1146,34 @@ export default function SalesmanPremium() {
  // Measure the element this step points at. A miss clears the target (the card
  // then centres itself) rather than leaving the previous step's rectangle in
  // place, which used to ring the wrong nav item.
- let scrolled = false;
+ //
+ // Scrolling is computed, not delegated to scrollIntoView: the target has to
+ // land in the band the card leaves free (above the docked card on mobile,
+ // the middle of the screen on desktop), and scrollIntoView knows nothing
+ // about the card. Up to three corrections, throttled, because tab panels
+ // load lazily and shift the target under us; after that the scroll listener
+ // keeps the ring glued to it.
+ let aligns = 0;
+ let lastAlign = 0;
  const measure = () => {
  const el = id ? document.querySelector(`[data-tour-id="${id}"]`) : null;
  if (!el) { setTourTarget(null); return; }
  const r = el.getBoundingClientRect();
- // An in-content target can sit below the fold. Bring it into view once, then
- // keep measuring so the ring lands where it ended up, not where it started.
- if (!scrolled && (r.top < 0 || r.bottom > window.innerHeight)) {
- scrolled = true;
- el.scrollIntoView({ block: "center", behavior: "smooth" });
- }
  setTourTarget(r);
+ if (!inContent) return;
+ const band = tourBand(window.innerHeight, { dock: isMobile, cardH: tourCardHRef.current });
+ const delta = tourScrollDelta(r, band);
+ const now = Date.now();
+ if (Math.abs(delta) > 8 && aligns < 3 && now - lastAlign > 260) {
+ aligns += 1;
+ lastAlign = now;
+ window.scrollBy({ top: delta, behavior: aligns === 1 ? "smooth" : "auto" });
+ }
  };
- // Tab panels are lazy-loaded and a scroll takes a moment to settle, so keep
- // re-measuring for ~0.6s instead of taking one 60ms snapshot.
+ // Tab panels are lazy-loaded and a smooth scroll takes ~0.5s to settle, so
+ // keep re-measuring for ~1.2s instead of taking one 60ms snapshot.
  let ticks = 0;
- const iv = setInterval(() => { measure(); if (++ticks > 10) clearInterval(iv); }, 60);
+ const iv = setInterval(() => { measure(); if (++ticks > 20) clearInterval(iv); }, 60);
  // An in-content target moves with the page, so the ring has to follow it —
  // capture:true also catches scrolls inside nested scrollers.
  window.addEventListener("resize", measure);
@@ -1144,7 +1183,7 @@ export default function SalesmanPremium() {
  window.removeEventListener("resize", measure);
  if (inContent) window.removeEventListener("scroll", measure, true);
  };
- }, [tourStep]);
+ }, [tourStep, isMobile]);
 
  const handleLogout = async () => {
  await supabase.auth.signOut();
@@ -5182,7 +5221,9 @@ export default function SalesmanPremium() {
  const el = tourCardRef.current;
  if (tourStep === null || !el) return;
  const h = Math.round(el.getBoundingClientRect().height);
- if (h && Math.abs(h - tourCardH) > 2) setTourCardH(h);
+ if (!h) return;
+ tourCardHRef.current = h;
+ if (Math.abs(h - tourCardH) > 2) setTourCardH(h);
  }, [tourStep, tourCardH, isMobile]);
 
  const renderTour = () => {
@@ -5197,9 +5238,14 @@ export default function SalesmanPremium() {
  // The arrow used to be #1e2d3d while the card was #111827, so it read as a
  // stray notch rather than part of the bubble. One constant, both.
  const BUBBLE_BG = "#111827";
+ // dock: on a phone there is no free column beside the target, so a floating
+ // card always ends up on top of something. Docked, it lives in one fixed strip
+ // above the bottom nav for every step and the page scrolls the target into the
+ // space above it.
+ const place = { dock: isMobile };
  const { style: bubbleStyle, arrow } = isWelcome
- ? placeTourCard(null, { w: BUBBLE_W, h: tourCardH }, window.innerWidth, window.innerHeight)
- : placeTourCard(tourTarget, { w: BUBBLE_W, h: tourCardH }, window.innerWidth, window.innerHeight);
+ ? placeTourCard(null, { w: BUBBLE_W, h: tourCardH }, window.innerWidth, window.innerHeight, place)
+ : placeTourCard(tourTarget, { w: BUBBLE_W, h: tourCardH }, window.innerWidth, window.innerHeight, place);
 
  const arrowEl = arrow && (
  <div style={{
@@ -5261,7 +5307,7 @@ export default function SalesmanPremium() {
  viewport, so the buttons are always reachable. The scroll cannot go
  on the card itself — the arrow is an absolutely positioned child
  outside the padding box and overflow would clip it. */}
- <div style={{ maxHeight: "calc(100vh - 64px)", overflowY: "auto" }}>
+ <div style={{ maxHeight: isMobile ? "calc(100vh - 200px)" : "calc(100vh - 64px)", overflowY: "auto" }}>
 
  {/* Header */}
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
