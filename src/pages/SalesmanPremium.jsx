@@ -90,6 +90,8 @@ import {
 import { callClaude } from "../lib/callClaude";
 const OutreachHub = React.lazy(() => import("../components/crm/OutreachHub"));
 import ThisWeek from "../components/crm/ThisWeek";
+import ServicePackages from "../components/crm/ServicePackages";
+import { useServicePackages } from "../hooks/useServicePackages";
 import { useNudges } from "../hooks/useNudges";
 const SellerInbox = React.lazy(() => import("../components/chat/SellerInbox"));
 import { useChatThreads } from "../hooks/useChat";
@@ -545,10 +547,16 @@ export default function SalesmanPremium() {
  const [customersLoading, setCustomersLoading] = useState(true);
  const [customerSearch, setCustomerSearch] = useState("");
  const [expiryFilter, setExpiryFilter] = useState(null); // 'ins' | 'rt'
- const [packagesMap, setPackagesMap] = useState({}); // customer_id -> [service_packages]
- const [addPkgFor, setAddPkgFor] = useState(null); // customer_id
- const [pkgForm, setPkgForm] = useState({ package_name: "", total_visits: 3, sold_price: "" });
- const [pkgSaving, setPkgSaving] = useState(false);
+ // Prepaid service packages + their visits. Owned by useServicePackages so the
+ // dealer Customers tab and this one share one implementation — they used to
+ // carry two near-identical copies of add-package / log-visit.
+ const {
+ packages: packagesMap, visits: pkgVisits, products: pkgProducts,
+ addPackage, logVisit, undoVisit,
+ } = useServicePackages(getDealerIdFromProfile(profile), customers.map((c) => c.id));
+ // Flat list for the "This week" call list — a package expiring with visits
+ // unused is a customer who already paid and has not come back.
+ const servicePackages = Object.values(packagesMap).flat();
  const [loanCalc, setLoanCalc] = useState({ carPrice: "", downPayment: "", tenure: 7, income: "" });
  const [loanForm, setLoanForm] = useState({
  buyer_name: "", buyer_phone: "", buyer_ic: "", buyer_employment_type: "Salaried",
@@ -737,13 +745,6 @@ export default function SalesmanPremium() {
  const list = data || [];
  setCustomers(list);
  setCustomersLoading(false);
- const custIds = list.map(c => c.id);
- if (custIds.length === 0) return;
- const { data: pkgs } = await supabase.from("service_packages").select("*")
- .in("customer_id", custIds).order("created_at", { ascending: false });
- const pm = {};
- for (const p of pkgs || []) (pm[p.customer_id] ||= []).push(p);
- setPackagesMap(pm);
  });
 
  // fetch listings with full columns for car detail popup
@@ -4640,30 +4641,6 @@ export default function SalesmanPremium() {
 
  // CUSTOMERS (post-sale buyer records + prepaid service packages)
 
- const handleAddPackage = async (customer) => {
- if (!pkgForm.package_name) return;
- setPkgSaving(true);
- const row = {
- dealer_id: getDealerIdFromProfile(profile), customer_id: customer.id, lead_id: customer.lead_id || null,
- listing_id: customer.listing_id || null, package_name: pkgForm.package_name,
- total_visits: Number(pkgForm.total_visits) || 3,
- sold_price: pkgForm.sold_price? Number(pkgForm.sold_price) : null,
- sold_at: new Date().toISOString().slice(0, 10),
- };
- const { data } = await supabase.from("service_packages").insert(row).select().single();
- if (data) setPackagesMap(p => ({ ...p, [customer.id]: [data, ...(p[customer.id] || [])] }));
- setAddPkgFor(null);
- setPkgForm({ package_name: "", total_visits: 3, sold_price: "" });
- setPkgSaving(false);
- };
-
- const handleLogVisit = async (pkg) => {
- if (pkg.used_visits >= pkg.total_visits) return;
- const updated = { used_visits: pkg.used_visits + 1 };
- await supabase.from("service_packages").update(updated).eq("id", pkg.id);
- setPackagesMap(p => ({ ...p, [pkg.customer_id]: (p[pkg.customer_id] || []).map(pk => pk.id === pkg.id? { ...pk, ...updated } : pk) }));
- };
-
  const renderCustomers = () => {
  const today = new Date();
  const daysUntil = (date) => date? (new Date(date) - today) / 86400000 : null;
@@ -4805,32 +4782,11 @@ export default function SalesmanPremium() {
  );
  })()}
 
- {pkgs.map(pkg => (
- <div key={pkg.id} style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10 }}>
- <div style={{ flex: 1, minWidth: 0 }}>
- <p style={{ margin: 0, fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.text }}>{pkg.package_name}</p>
- <div style={{ height: 4, borderRadius: R.pill, background: C.fillStrong, marginTop: 5, overflow: "hidden" }}>
- <div style={{ height: "100%", width: `${Math.min(100, (pkg.used_visits / pkg.total_visits) * 100)}%`, borderRadius: R.pill, background: C.accent }} />
- </div>
- </div>
- <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted, flexShrink: 0 }}>{pkg.used_visits}/{pkg.total_visits} visits</p>
- {pkg.used_visits < pkg.total_visits && (
- <button onClick={() => handleLogVisit(pkg)} style={{ ...SOFT(C.accent), fontSize: T.size.xs, fontWeight: T.weight.bold, padding: "4px 9px", borderRadius: R.sm, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>Log visit</button>
- )}
- </div>
- ))}
-
- {addPkgFor === c.id? (
- <div style={{ marginTop: 10, display: "flex", gap: 6, flexWrap: "wrap" }}>
- <input value={pkgForm.package_name} onChange={(e) => setPkgForm(f => ({ ...f, package_name: e.target.value }))} placeholder="Package name" style={{ flex: "1 1 140px", background: C.fillStrong, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "6px 9px", color: C.text, fontSize: 12, outline: "none", fontFamily: "inherit" }} />
- <input type="number" value={pkgForm.total_visits} onChange={(e) => setPkgForm(f => ({ ...f, total_visits: e.target.value }))} placeholder="Visits" style={{ width: 64, background: C.fillStrong, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "6px 9px", color: C.text, fontSize: 12, outline: "none", fontFamily: "inherit" }} />
- <input type="number" value={pkgForm.sold_price} onChange={(e) => setPkgForm(f => ({ ...f, sold_price: e.target.value }))} placeholder="RM price" style={{ width: 84, background: C.fillStrong, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "6px 9px", color: C.text, fontSize: 12, outline: "none", fontFamily: "inherit" }} />
- <button onClick={() => handleAddPackage(c)} disabled={pkgSaving ||!pkgForm.package_name} style={{ fontSize: 11, fontWeight: 700, padding: "6px 12px", borderRadius: R.sm, background: C.accent, border: "none", color: C.onAccent, cursor: "pointer", fontFamily: "inherit" }}>Save</button>
- <button onClick={() => setAddPkgFor(null)} style={{ fontSize: 11, padding: "6px 10px", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
- </div>
- ) : (
- <button onClick={() => setAddPkgFor(c.id)} style={{ marginTop: 10, fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.dangerText, background: "transparent", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>+ Add service package</button>
- )}
+ {/* Shared with the dealer Customers tab — see components/crm/ServicePackages */}
+ <ServicePackages
+ customer={c} packages={pkgs} visits={pkgVisits} products={pkgProducts}
+ onAdd={addPackage} onLogVisit={logVisit} onUndoVisit={undoVisit} theme="dark"
+ />
  </div>
  </div>
  </div>
@@ -5747,6 +5703,7 @@ export default function SalesmanPremium() {
  goal={goal} goalEditing={goalEditing} goalDraft={goalDraft} showPrevMonth={showPrevMonth}
  customers={customers} dueNudges={dueNudges} profile={profile}
  minipageStats={minipageStats} aiFollowups={aiFollowups} followupsLoading={followupsLoading}
+ servicePackages={servicePackages}
  browserNotifPerm={browserNotifPerm} notifBannerDismissed={notifBannerDismissed}
  isPremium={isPremium} isMobile={isMobile}
  setActiveTab={setActiveTab} setMobileLeadStage={setMobileLeadStage} setGoalDraft={setGoalDraft}

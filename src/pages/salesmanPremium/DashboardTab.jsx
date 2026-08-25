@@ -22,7 +22,7 @@ import {
 // component taking named props) and these imports are new.
 export default function DashboardTab({
  leads, appointments, myListings, carStatsMap, enquiries, staleLeads, isReturning,
- goal, goalEditing, goalDraft, showPrevMonth, customers, dueNudges, profile,
+ goal, goalEditing, goalDraft, showPrevMonth, customers, dueNudges, profile, servicePackages,
  minipageStats, aiFollowups, followupsLoading, browserNotifPerm, notifBannerDismissed,
  isPremium, isMobile,
  setActiveTab, setMobileLeadStage, setGoalDraft, setGoalEditing, setShowPrevMonth,
@@ -665,7 +665,7 @@ export default function DashboardTab({
  already existed, spread over four tabs nobody opened. Ranking is in
  src/utils/thisWeek.js; the card folds and previews 4 rows so it never
  pushes the rest of the dashboard off screen. */}
- <ThisWeek leads={leads} customers={customers} nudges={dueNudges}
+ <ThisWeek leads={leads} customers={customers} nudges={dueNudges} packages={servicePackages}
  repName={profile?.full_name} onContacted={handleThisWeekContacted}
  style={{ order: -2, gridColumn: "1 / -1", marginBottom: 0 }} />
 

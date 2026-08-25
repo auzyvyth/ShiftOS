@@ -166,6 +166,29 @@ If a lead ever doesn't show for a rep, check `resolve_lead_salesman`, not the pa
 ## Post-sale handover (Module A)
 - Won deal (lead.stage = won/closed_won) → DB trigger `auto_create_customer_on_won` fires immediately: flips the linked car to `status='sold'` (sold_at + assigned_to), creates the customers row (name/phone/IC/email/car/plate/price) AND pre-seeds 8-step post_sale_tasks checklist (B7 auto-NA if not financed). Idempotent — safe to re-trigger.
 - src/components/postsale/{PostSaleBoard,PostSaleChecklist}.jsx + src/hooks/usePostSaleTasks.js + src/utils/postSaleSteps.js
+
+### Expiry dates are captured at the handover step, not typed into a form
+`customers.insurance_expiry` / `road_tax_expiry` are what the expiry-reminders cron and
+the "This week" renewal rows run on. Nobody was filling them (1 of 27 customers had an
+insurance date) because the only entry point was a form on the dealer dashboard, while
+the trigger's road-tax carry-over reads `car_listings.road_tax_expiry`, filled on 1 of 69
+listings. The date is captured where it is actually known instead: ticking the handover
+`insurance` or `road_tax` step done writes `post_sale_tasks.result_date` (prefilled +12
+months — both run 12-month terms in Malaysia, editable on the step).
+- DB trigger `trg_sync_customer_expiry` on `post_sale_tasks` fans it out to `customers`,
+  so it fires whichever client ticks the step. Do NOT re-implement this per client.
+- A typed `result_date` always wins; the +12m default only ever FILLS A BLANK, so it
+  cannot stomp a date someone corrected by hand. Reopening a step never blanks a date.
+- `customers` has NO `updated_at` column — writing one throws 42703 and kills the update.
+
+### Service packages: one implementation, shared by both Customers tabs
+`src/hooks/useServicePackages.js` + `src/components/crm/ServicePackages.jsx`, rendered by
+BOTH the dealer CustomersTab and Salesman Premium `renderCustomers`. They previously
+carried two near-identical copies of add-package / log-visit — do not fork it again.
+A package is PICKED from `dealer_products` (the catalogue that already existed) rather
+than retyped as free text; a visit is a dated row with an undo, not an integer someone
+increments. A package expiring with visits unused surfaces in "This week"
+(`kind: 'package_unused'`) — a customer who already paid and has not come back.
 - Malaysian sequence (fees are official rates, editable): loan settlement → buyer insurance → Puspakom B5 (RM30) → B7 (RM60, financed only, auto-NA if not financed) → JPJ pindah milik (RM100, biometric both parties, buyer within 7 days) → road tax → geran collection → handover
 - Handover processing costs (sum of non-NA step costs) are deducted from per-unit gross in StockTab P&L modal
 - F&I add-ons (Module C) already live in LeadDrawer (deal_products); revenue/gross (Module B) in RevOpsPage; customer expiry reminders (Module D) in CustomersTab
@@ -198,7 +221,8 @@ Enforcement points (keep in sync):
   - Never reintroduce a path that lets a non-assignee feature/sell an assigned car.
 post_sale_tasks (dealer_id, lead_id, listing_id, salesman_id, step_key, status[pending|in_progress|done|na], owner_role, due_date, cost, notes, sort_order) — handover checklist per won deal. Steps in src/utils/postSaleSteps.js. Auto-seeded by DB trigger on won + lazy-seeded on first board open. UNIQUE(lead_id, step_key).
 customers (dealer_id, lead_id, listing_id, name, phone, email, ic_number, purchase_date, car_brand, car_model, car_year, car_plate, selling_price, payment_type, road_tax_expiry, insurance_expiry, notes) — auto-created by trigger on won. UNIQUE(lead_id).
-service_packages (dealer_id, customer_id, lead_id, listing_id, package_name, total_visits, used_visits, valid_months, sold_price, sold_at, expires_at[generated]) — prepaid service bundles per customer. Managed in CustomersTab.
+service_packages (dealer_id, customer_id, lead_id, listing_id, product_id→dealer_products, package_name, total_visits, used_visits, valid_months, sold_price, sold_at, expires_at[generated]) — prepaid service bundles per customer. `package_name` is a SNAPSHOT of what was sold; `product_id` links it to the catalogue entry it came from.
+service_visits (dealer_id, package_id, customer_id, visited_on, notes, logged_by) — one row per visit burned against a package. `service_packages.used_visits` is a CACHED count maintained by trigger `trg_sync_package_used_visits` — read it, NEVER write it from the client or it drifts from the rows that are the real record.
 
 ## Service categories (serviceCategories.js)
 Keys: protection, tint, window_tint, warranty, insurance, road_tax, service, accessories, workshop, other

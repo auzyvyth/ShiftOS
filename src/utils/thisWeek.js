@@ -21,6 +21,7 @@ const DEAD_STAGES = ["won", "closed_won", "lost", "closed_lost"];
 const NEVER_REPLIED_DAYS = 2;   // an enquiry older than this with no reply at all
 const QUIET_DAYS = 5;           // an open lead untouched this long
 const EXPIRY_DAYS = 45;         // road tax / insurance running out within this
+const PKG_EXPIRY_DAYS = 60;     // prepaid package expiring with visits unused
 const OWNED_READY_Y = 3;
 const VEHICLE_READY_Y = 5;
 
@@ -45,7 +46,7 @@ const firstName = (full) => String(full || "").trim().split(" ")[0] || "";
 const signoff = (repName) => (repName ? `${repName} here from XDrive` : "reaching out from XDrive");
 const round = (n) => Math.max(1, Math.round(n));
 
-export function buildThisWeek({ leads = [], customers = [], nudges = [], repName = "" } = {}) {
+export function buildThisWeek({ leads = [], customers = [], nudges = [], packages = [], repName = "" } = {}) {
   const me = firstName(repName);
   const items = [];
 
@@ -106,6 +107,29 @@ export function buildThisWeek({ leads = [], customers = [], nudges = [], repName
         customerId: c.id, name: c.name || "Unknown buyer", phone: c.phone,
         why: gone ? `${label} expired ${when}` : `${label} due ${when} · ${round(d)}d`, sub: car,
         message: `Hi ${who}, ${signoff(me)}. Your ${label.toLowerCase()} on the ${car || "car"}${plate} ${gone ? `expired on ${when}` : `is due ${when}`}. Want me to help you sort the renewal?`,
+      });
+    }
+
+    // A prepaid package running out of time with visits still on it. This is
+    // someone who has ALREADY paid and has not come back — the cheapest call on
+    // the list. Ranked with renewals: it has a real deadline, unlike a trade-up.
+    for (const pkg of packages) {
+      if (pkg.customer_id !== c.id) continue;
+      const left = (pkg.total_visits || 0) - (pkg.used_visits || 0);
+      if (left <= 0) continue;
+      const d = daysUntil(pkg.expires_at);
+      if (d === null || d > PKG_EXPIRY_DAYS) continue;
+      const when = new Date(pkg.expires_at).toLocaleDateString("en-MY", { day: "numeric", month: "short" });
+      const gone = d < 0;
+      items.push({
+        id: `cust-pkg-${pkg.id}`, kind: "package_unused", rank: 2, age: PKG_EXPIRY_DAYS - d,
+        customerId: c.id, name: c.name || "Unknown buyer", phone: c.phone,
+        why: gone
+          ? `${pkg.package_name} expired ${when} · ${left} visit${left === 1 ? "" : "s"} unused`
+          : `${pkg.package_name} · ${left} visit${left === 1 ? "" : "s"} left, expires ${when}`,
+        sub: car,
+        // No price, no offer — it states what they already bought and asks them in.
+        message: `Hi ${who}, ${signoff(me)}. You still have ${left} visit${left === 1 ? "" : "s"} left on your ${pkg.package_name}${gone ? `, which expired on ${when}` : `, valid until ${when}`}. Want to book ${car ? `the ${car}` : "your car"} in?`,
       });
     }
 

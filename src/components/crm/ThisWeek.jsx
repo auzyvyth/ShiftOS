@@ -20,7 +20,7 @@ import { buildThisWeek, waLink } from "../../utils/thisWeek";
 // Everything past the fourth row is one tap away behind "Show all".
 const PREVIEW = 4;
 
-export default function ThisWeek({ leads = [], customers = [], nudges = [], repName = "", onContacted, style }) {
+export default function ThisWeek({ leads = [], customers = [], nudges = [], packages = [], repName = "", onContacted, style }) {
   const [showAll, setShowAll] = useState(false);
   // The card folds to its header — a rep who has already worked the list today
   // shouldn't have to scroll past it to reach the rest of the dashboard.
@@ -28,8 +28,8 @@ export default function ThisWeek({ leads = [], customers = [], nudges = [], repN
   const [done, setDone] = useState(() => new Set());
 
   const items = useMemo(
-    () => buildThisWeek({ leads, customers, nudges, repName }),
-    [leads, customers, nudges, repName],
+    () => buildThisWeek({ leads, customers, nudges, packages, repName }),
+    [leads, customers, nudges, packages, repName],
   );
   const open = items.filter((i) => !done.has(i.id));
   const shown = showAll ? open : open.slice(0, PREVIEW);
