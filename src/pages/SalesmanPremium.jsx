@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import useHandover from "../hooks/useHandover";
+import { useHideOnScroll } from "../hooks/useHideOnScroll";
 import { placeTourCard } from "../utils/tourPlacement";
 import { normalizePhone } from "../lib/phone";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
@@ -564,6 +565,11 @@ export default function SalesmanPremium() {
  document.body.style.overflow = anyOverlayOpen? "hidden" : "";
  return () => { document.body.style.overflow = ""; };
  }, [anyOverlayOpen]);
+
+ // UX-1 — the topbar gets out of the way while reading a long list. Locked
+ // open whenever an overlay or the tour is up: the mobile nav trigger lives
+ // in that bar, and scrolling behind a locked overlay must not move it.
+ const headerVisible = useHideOnScroll({ locked: anyOverlayOpen || tourStep !== null });
 
  // merge
  const [mergeCode, setMergeCode] = useState("");
@@ -2578,6 +2584,22 @@ export default function SalesmanPremium() {
  <Package size={9} /> Add-on
  </span>
  )}
+ {/* A loan application on this lead. leads.loan_* is kept in step with
+     loan_applications by the DB trigger trg_sync_lead_loan, so this lights
+     up whichever surface submitted the loan. */}
+ {lead.loan_status && lead.loan_status !== "none" && (() => {
+ const ls = {
+ approved: { bg: "rgba(34,197,94,0.15)", bd: "rgba(34,197,94,0.35)", fg: "#4ade80", label: "Loan ok" },
+ rejected: { bg: "rgba(239,68,68,0.15)", bd: "rgba(239,68,68,0.35)", fg: "#f87171", label: "Loan no" },
+ cancelled: { bg: "rgba(255,255,255,0.06)", bd: "rgba(255,255,255,0.12)", fg: "#94a3b8", label: "Loan off" },
+ }[lead.loan_status] || { bg: "rgba(251,191,36,0.15)", bd: "rgba(251,191,36,0.35)", fg: "#fbbf24", label: "Loan in" };
+ return (
+ <span title={[lead.loan_bank, lead.loan_amount ? `RM ${Number(lead.loan_amount).toLocaleString("en-MY")}` : null].filter(Boolean).join(" · ") || "Loan application on this deal"}
+ style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, borderRadius: 99, padding: "2px 7px", background: ls.bg, border: `1px solid ${ls.bd}`, color: ls.fg, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+ <Banknote size={9} /> {ls.label}
+ </span>
+ );
+ })()}
  <span style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", fontWeight: 600 }}>
  {heat.label}
  </span>
@@ -5054,6 +5076,7 @@ export default function SalesmanPremium() {
  leads={leads}
  applications={loanApplications}
  setApplications={setLoanApplications}
+ onLeadSync={(leadId, patch) => setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, ...patch } : l)))}
  />
  </Suspense>
  );
@@ -5325,7 +5348,10 @@ export default function SalesmanPremium() {
  100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); border-color: rgba(255,255,255,0.07); }
  }
  .sp-lead-glow { animation: sp-lead-glow 1s ease-out; }
- @media (prefers-reduced-motion: reduce) { .sp-lead-glow { animation: none; border-color: rgba(59,130,246,0.7); } }
+ @media (prefers-reduced-motion: reduce) {
+ .sp-lead-glow { animation: none; border-color: rgba(59,130,246,0.7); }
+ .sp-topbar { transition: none !important; }
+ }
  `}</style>
 
  {/* Nav — desktop sidebar only; mobile uses the renderMobileNav() drawer
@@ -5528,8 +5554,12 @@ export default function SalesmanPremium() {
  overflowY: "auto",
  }}
  >
- {/* Topbar */}
+ {/* Topbar — hides on scroll down, returns on scroll up (UX-1). Pinned
+     visible whenever an overlay or the tour is open, because the mobile
+     nav trigger lives in here. translateY rather than display: removing a
+     sticky bar from layout makes the page jump. */}
  <div
+ className="sp-topbar"
  style={{
  position: "sticky",
  top: 0,
@@ -5541,6 +5571,9 @@ export default function SalesmanPremium() {
  display: "flex",
  alignItems: "center",
  gap: 12,
+ transform: headerVisible ? "translateY(0)" : "translateY(-100%)",
+ transition: "transform 0.22s ease",
+ willChange: "transform",
  }}
  >
  {isMobile && (

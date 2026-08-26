@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import {
   Banknote, Check, ChevronRight, Plus, Search, Copy, AlertCircle,
-  TrendingDown, User, X, Loader2,
+  TrendingDown, User, X, Loader2, Share2,
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { toast } from "sonner";
@@ -136,6 +136,21 @@ const rollUp = (attempts = []) => {
   if (attempts.every((a) => a.status === "Declined")) return "Declined";
   if (attempts.some((a) => a.status === "Pending")) return "Pending";
   return "Submitted";
+};
+
+// Mirrors the DB trigger trg_sync_lead_loan so the linked lead's badge moves
+// straight away instead of only after a reload. The trigger is what actually
+// persists it — this is the optimistic copy, and the two must agree, including
+// the mapping onto leads.loan_status's CHECK values.
+export const leadPatchFor = (row) => {
+  const attempts = Array.isArray(row.banks) ? row.banks : [];
+  const bank = (attempts.find((a) => a.status === "Approved") || attempts[0])?.name || null;
+  return {
+    loan_bank: bank,
+    loan_amount: row.loan_amount ?? null,
+    loan_status: row.status === "Approved" ? "approved" : row.status === "Declined" ? "rejected" : "submitted",
+    loan_updated_at: new Date().toISOString(),
+  };
 };
 
 /* ── Small shared bits ───────────────────────────────────────────────────── */
@@ -741,10 +756,11 @@ function NewApplication({ userId, dealerId, leads, onCreated }) {
 
 /* ── One saved case ──────────────────────────────────────────────────────── */
 
-function ApplicationCard({ app, onChange }) {
+function ApplicationCard({ app, onChange, onLeadSync }) {
   const [open, setOpen] = useState(false);
   const [addingBank, setAddingBank] = useState(false);
   const [decide, setDecide] = useState(null);   // { idx, status, reason }
+  const [sharing, setSharing] = useState(false);
   const attempts = Array.isArray(app.banks) ? app.banks : [];
   const status = app.status || rollUp(attempts);
   const set = docSetFor(app.buyer_employment_type);
@@ -755,7 +771,9 @@ function ApplicationCard({ app, onChange }) {
     onChange(next);   // optimistic — a tick that lags feels broken
     const { error } = await supabase.from("loan_applications")
       .update({ ...fields, updated_at: new Date().toISOString() }).eq("id", app.id);
-    if (error) { console.error("loan patch:", error); toast.error("Could not save"); onChange(app); }
+    if (error) { console.error("loan patch:", error); toast.error("Could not save"); onChange(app); return; }
+    // The DB trigger has already moved the lead; keep the open pipeline in step.
+    if (next.lead_id) onLeadSync?.(next.lead_id, leadPatchFor(next));
   };
 
   const saveDecision = async () => {
@@ -782,6 +800,29 @@ function ApplicationCard({ app, onChange }) {
   };
 
   const untried = BANKS.filter((b) => !attempts.some((a) => a.name === b.name));
+
+  // The token is minted server-side (ensure_loan_share_token) and only for the
+  // owner of the application; it is reused on later shares so an already-sent
+  // link never goes dead.
+  const shareWithBuyer = async () => {
+    if (sharing) return;
+    setSharing(true);
+    const { data: token, error } = await supabase.rpc("ensure_loan_share_token", { p_id: app.id });
+    setSharing(false);
+    if (error || !token) { console.error("ensure_loan_share_token:", error); toast.error("Could not create the link"); return; }
+    const url = `${window.location.origin}/loan/${token}`;
+    const first = (app.buyer_name || "").split(" ")[0];
+    const msg = `Hi${first ? ` ${first}` : ""}, here's the list of documents for your car loan — it updates as I receive each one:\n${url}`;
+    const digits = (app.buyer_phone || "").replace(/\D/g, "");
+    if (digits.length >= 9) {
+      window.open(`https://wa.me/${digits.startsWith("6") ? digits : "6" + digits}?text=${encodeURIComponent(msg)}`, "_blank");
+      return;
+    }
+    // No usable phone on file — hand them the link rather than a dead chat.
+    navigator.clipboard?.writeText(url)
+      .then(() => toast.success("Link copied — send it to the buyer"))
+      .catch(() => toast.error("Could not copy the link"));
+  };
 
   return (
     <div style={{ background: C.fillSubtle, border: `1px solid ${C.border}`, borderRadius: R.lg, padding: 14, marginBottom: 10 }}>
@@ -888,7 +929,20 @@ function ApplicationCard({ app, onChange }) {
           )}
 
           {/* Documents */}
-          <p style={{ margin: "0 0 8px", fontSize: T.size.xs, textTransform: "uppercase", letterSpacing: T.track.label, color: C.textMuted, fontWeight: T.weight.semibold }}>Documents</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 8, flexWrap: "wrap" }}>
+            <p style={{ margin: 0, fontSize: T.size.xs, textTransform: "uppercase", letterSpacing: T.track.label, color: C.textMuted, fontWeight: T.weight.semibold }}>Documents</p>
+            {/* The buyer gets the same list on their phone, ticking off as each
+                one arrives — beats them turning up with two of seven papers. */}
+            <button onClick={shareWithBuyer} disabled={sharing} style={{
+              marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, flexShrink: 0,
+              padding: "5px 10px", borderRadius: R.sm, fontFamily: "inherit", fontSize: T.size.sm,
+              cursor: sharing ? "wait" : "pointer",
+              background: withAlpha(C.info, 0.1), border: `1px solid ${withAlpha(C.info, 0.28)}`, color: C.infoText,
+            }}>
+              {sharing ? <Loader2 size={12} style={{ animation: "ldspin 1s linear infinite" }} /> : <Share2 size={12} />}
+              Send list to buyer
+            </button>
+          </div>
           <DocChecklist
             employment={app.buyer_employment_type}
             docs={Object.fromEntries(Object.entries(DOCS).map(([k, v]) => [k, !!app[v.col]]))}
@@ -907,13 +961,16 @@ function ApplicationCard({ app, onChange }) {
 
 /* ── Shell ───────────────────────────────────────────────────────────────── */
 
-export default function LoanDesk({ userId, dealerId, leads = [], applications = [], setApplications }) {
+export default function LoanDesk({ userId, dealerId, leads = [], applications = [], setApplications, onLeadSync }) {
   const [view, setView] = useState("new");
 
   const open = applications.filter((a) => !["Approved", "Declined"].includes(a.status || rollUp(a.banks))).length;
 
   return (
     <div style={{ maxWidth: 720 }}>
+      {/* Defined once here, not inside a view: the share button's spinner lives
+          in ApplicationCard, which renders while NewApplication is unmounted. */}
+      <style>{`@keyframes ldspin{to{transform:rotate(360deg)}}`}</style>
       <p style={{ margin: "0 0 4px", fontSize: T.size.xl, fontWeight: T.weight.bold, color: C.text }}>Loans</p>
       <p style={{ margin: "0 0 16px", fontSize: T.size.base, color: C.textMuted, lineHeight: 1.6 }}>
         Work out what the buyer can carry, pick the banks worth trying, and keep every
@@ -943,7 +1000,11 @@ export default function LoanDesk({ userId, dealerId, leads = [], applications = 
       {view === "new" ? (
         <NewApplication
           userId={userId} dealerId={dealerId} leads={leads}
-          onCreated={(row) => { setApplications((p) => [row, ...p]); setView("list"); }}
+          onCreated={(row) => {
+            setApplications((p) => [row, ...p]);
+            if (row.lead_id) onLeadSync?.(row.lead_id, leadPatchFor(row));
+            setView("list");
+          }}
         />
       ) : applications.length === 0 ? (
         <div style={{ ...cardSx, textAlign: "center", padding: "36px 20px" }}>
@@ -964,7 +1025,7 @@ export default function LoanDesk({ userId, dealerId, leads = [], applications = 
             </p>
           )}
           {applications.map((a) => (
-            <ApplicationCard key={a.id} app={a}
+            <ApplicationCard key={a.id} app={a} onLeadSync={onLeadSync}
               onChange={(next) => setApplications((p) => p.map((x) => (x.id === next.id ? next : x)))} />
           ))}
         </div>

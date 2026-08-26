@@ -69,6 +69,7 @@ const ComparePage        = lazy(() => import("./pages/ComparePage"));
 const AccountPage        = lazy(() => import("./pages/AccountPage"));
 const AccountMessagesPage = lazy(() => import("./pages/AccountMessagesPage"));
 const SavedCarsPage      = lazy(() => import("./pages/SavedCarsPage"));
+const LoanSharePage      = lazy(() => import("./pages/LoanSharePage"));
 const FeaturePage        = lazy(() => import("./pages/FeaturePage"));
 const GuidesPage         = lazy(() => import("./pages/GuidesPage"));
 const WaitlistPage       = lazy(() => import("./pages/WaitlistPage"));
@@ -150,6 +151,9 @@ function App() {
           <Route path="/calculator" element={<CalculatorPage />} />
           <Route path="/compare" element={<ComparePage />} />
           <Route path="/saved" element={<SavedCarsPage />} />
+          {/* Buyer-facing loan document checklist, opened from a link the
+              salesman sends. Public + token-gated (get_loan_share). */}
+          <Route path="/loan/:token" element={<LoanSharePage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/account/messages" element={<AccountMessagesPage />} />
           <Route path="/guides/:slug" element={<GuidesPage />} />
