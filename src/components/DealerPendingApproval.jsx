@@ -6,7 +6,7 @@ import { getPlanConfig } from '../utils/planConfig';
 // confirmation. Used both right after onboarding and as the dashboard gate.
 // When an admin marks payment_status != 'pending' (AdminPage "mark received"),
 // the realtime subscription auto-forwards them into the dashboard.
-export default function DealerPendingApproval({ planKey, dealershipName, email, profileId, redirectTo = '/dashboard', variant = 'payment' }) {
+export default function DealerPendingApproval({ planKey, dealershipName, email, profileId, redirectTo = '/dashboard', variant = 'payment', trialDays = 14 }) {
   const cfg = getPlanConfig(planKey);
   const amount = cfg?.price ? `RM ${Number(cfg.price).toLocaleString('en-MY')}` : '';
   const reference = dealershipName || email || '';
@@ -66,7 +66,7 @@ export default function DealerPendingApproval({ planKey, dealershipName, email, 
         </div>
         <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, lineHeight: 1.7, margin: '0 0 22px' }}>
           {expired
-            ? `Your 14-day free trial is over — all your listings, leads and records are safe. Scan the QR to activate${cfg?.label ? ` ${cfg.label}` : ''} and pick up right where you left off.`
+            ? `Your ${trialDays}-day free trial is over — all your listings, leads and records are safe. Scan the QR to activate${cfg?.label ? ` ${cfg.label}` : ''} and pick up right where you left off.`
             : `Scan the QR to pay${cfg?.label ? ` for ${cfg.label}` : ''}. We'll activate your dashboard as soon as we confirm payment.`}
         </p>
 

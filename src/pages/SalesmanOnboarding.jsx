@@ -117,7 +117,7 @@ const TIERS = {
   },
   premium: {
     label: 'SALESMAN PREMIUM',
-    price: 'RM 35 / mo',
+    price: 'First month free, then RM 35 / mo',
     features: [
       'Up to 30 active listings',
       'Priority marketplace placement',
@@ -494,9 +494,13 @@ export default function SalesmanOnboarding() {
         is_active: true,
         onboarding_complete: true,
         plan: tier === 'premium' ? 'salesman_full' : 'salesman_lite',
-        // Premium activates only after manual payment confirmation (admin marks
-        // payment_status='received' in /platform). Lite is free — no gate.
-        payment_status: tier === 'premium' ? 'pending' : null,
+        // Premium's first month is free (subscription_status/trial_ends_at set
+        // by the DB trigger prevent_profile_privilege_escalation, which forces
+        // payment_status to NULL for this exact signup-completing write —
+        // whatever we send here is overridden, the DB decides). After 30 days
+        // the panel gates behind the same manual DuitNow QR flow dealers use
+        // (admin marks payment_status='received' in /platform).
+        payment_status: null,
         pdpa_consent: true,
         pdpa_consent_at: new Date().toISOString(),
         ic_deadline: form.icNumber ? null : new Date(Date.now() + 7 * 86400000).toISOString(),
@@ -729,7 +733,7 @@ export default function SalesmanOnboarding() {
                 <div className="eo-heading">Your Details</div>
                 <p className="eo-sub">
                   {tier === 'premium'
-                    ? 'Your name is what buyers see. Premium requires IC verification upfront, alongside payment — it keeps every paid listing accountable.'
+                    ? 'Your name is what buyers see. Premium requires IC verification upfront — it keeps every listing accountable, and your first month is free.'
                     : 'Your name is what buyers see. IC verification keeps the marketplace trusted — add it now, or later before your listings go live. Your choice.'}
                 </p>
                 <label className="eo-label">FULL LEGAL NAME (AS PER IC)</label>

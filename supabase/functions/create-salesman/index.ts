@@ -177,6 +177,22 @@ serve(async (req) => {
       return json({ error: "invalid_input" }, 400);
     }
 
+    // Authz: a dealer/owner caller may only create salesmen inside their OWN
+    // tenant -- never trust a client-supplied dealer_id, or a dealer could
+    // plant an account inside a competitor's tenant (cross-tenant IDOR).
+    // Only superadmin may target an arbitrary dealer_id (or null, for a
+    // standalone account).
+    const isSuperCaller = callerProfile.role === "superadmin";
+    const effectiveDealerId = isSuperCaller ? (dealer_id ?? null) : callerProfile.id;
+
+    // Pay-first gate for solo Salesman Premium, mirrored from the DB trigger
+    // prevent_profile_privilege_escalation's `gated` rule. That trigger no-ops
+    // for this function's service-role writes (auth.uid() IS NULL short-
+    // circuits it), so without this the row lands with payment_status NULL --
+    // which SalesmanPremium.jsx treats as "grandfathered, pass" -- creating a
+    // permanently free, unpaid Premium account.
+    const paymentStatus = plan === "salesman_full" && !effectiveDealerId ? "pending" : null;
+
     const tempPassword = generatePassword();
 
     // ── Create auth user ────────────────────────────────────────────────────
@@ -188,7 +204,7 @@ serve(async (req) => {
         full_name,
         role: "salesman",
         plan,
-        dealer_id: dealer_id ?? null,
+        dealer_id: effectiveDealerId,
       },
     });
 
@@ -214,7 +230,8 @@ serve(async (req) => {
           full_name,
           role: "salesman",
           plan,
-          dealer_id: dealer_id ?? null,
+          dealer_id: effectiveDealerId,
+          payment_status: paymentStatus,
           phone: phone ?? null,
           // Seed whatsapp_number from the dealer-entered phone — the salesman
           // panel Settings, storefront and enquiry buttons all read
@@ -249,7 +266,8 @@ serve(async (req) => {
         full_name,
         role: "salesman",
         plan,
-        dealer_id: dealer_id ?? null,
+        dealer_id: effectiveDealerId,
+        payment_status: paymentStatus,
         phone: phone ?? null,
         whatsapp_number: phone ?? null,
         slug: slug ?? null,
@@ -266,11 +284,11 @@ serve(async (req) => {
 
     // Propagate dealership name from parent dealer
     let dealershipName = full_name;
-    if (dealer_id) {
+    if (effectiveDealerId) {
       const { data: dealerRow } = await adminClient
         .from("profiles")
         .select("dealership")
-        .eq("id", dealer_id)
+        .eq("id", effectiveDealerId)
         .maybeSingle();
       if (dealerRow?.dealership) {
         dealershipName = dealerRow.dealership;

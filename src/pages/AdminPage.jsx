@@ -311,7 +311,7 @@ export default function AdminPage() {
     // Load ALL salesmen with plan info
     const { data: salesmanData } = await supabase
       .from("profiles")
-      .select("id, full_name, email, created_at, is_active, account_status, deleted_at, role, dealer_id, subdomain, subscription_status, plan, slug, payment_status")
+      .select("id, full_name, email, created_at, is_active, account_status, deleted_at, role, dealer_id, subdomain, subscription_status, trial_ends_at, plan, slug, payment_status")
       .eq("role", "salesman")
       .order("created_at", { ascending: false });
     setSalesmen(salesmanData || []);
@@ -1498,11 +1498,17 @@ export default function AdminPage() {
                                 </td>
                                 <td style={{ padding: "10px 14px" }}>
                                   <div style={{ display: "flex", gap: 5 }}>
-                                    {sm.plan === 'salesman_full' && sm.payment_status === 'pending' && (
+                                    {sm.plan === 'salesman_full' && sm.payment_status !== 'received' && (
+                                      sm.payment_status === 'pending' ||
+                                      (sm.subscription_status === 'trial' && sm.trial_ends_at && new Date(sm.trial_ends_at) < new Date())
+                                    ) && (
                                       <button className="adm-btn"
                                         onClick={async () => {
-                                          const { error } = await supabase.from("profiles").update({ payment_status: "received" }).eq("id", sm.id);
-                                          if (!error) { setSalesmen(prev => prev.map(s => s.id === sm.id ? { ...s, payment_status: "received" } : s)); flashSaved(sm.id); }
+                                          // One click = fully activated: clear whichever gate they're
+                                          // behind (upfront QR or expired first-month-free trial) AND
+                                          // flip the subscription, so they're never paid-but-expired.
+                                          const { error } = await supabase.from("profiles").update({ payment_status: "received", subscription_status: "active" }).eq("id", sm.id);
+                                          if (!error) { setSalesmen(prev => prev.map(s => s.id === sm.id ? { ...s, payment_status: "received", subscription_status: "active" } : s)); flashSaved(sm.id); }
                                         }}
                                         style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ade80", fontWeight: 700 }}>
                                         Mark Paid
