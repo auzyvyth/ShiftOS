@@ -13,10 +13,12 @@ const CarCard = lazy(() => import('@/components/CarCard'));
 const CAROUSEL_GAP = 12;
 
 // Mirrors the compact CarCard's real DOM metrics 1:1 (image aspect-ratio,
-// cc-name/cc-sub/cc-specgrid/cc-footer dimensions, incl. the <520px compact
-// overrides) so swapping the skeleton for the loaded card causes no layout
-// shift. Re-check this against CarCard.jsx's .cc-compact rules if either
-// changes.
+// cc-name/cc-sub/cc-specgrid/cc-footer dimensions, incl. the <520px overrides)
+// so swapping the skeleton for the loaded card causes no layout shift. Some of
+// those mobile overrides live in CarCard's GLOBAL media query, not scoped to
+// .cc-compact, so they hit compact cards too even though nothing here says
+// "compact" — .cc-monthly-row goes display:none, .cc-price-main drops to 16px,
+// .cc-wa shrinks to 28x28. Re-check against CarCard.jsx if either file changes.
 const SkeletonCarouselCard = ({ width }) => {
   const b = '#e8e6e0';
   const s = 'mp-shimmer 1.5s infinite';
@@ -38,10 +40,10 @@ const SkeletonCarouselCard = ({ width }) => {
         <div className="btc-skel-priceblock" style={{ marginBottom: 10 }}>
           {/* Strikethrough row — always 16px reserved on compact cards, empty here */}
           <div style={{ height: 16 }} />
-          {/* Main price — matches cc-price-main (fontSize 20, lineHeight 1.15) + marginTop:1 */}
-          <div style={{ height: 23, width: '68%', background: b, borderRadius: 5, marginTop: 1, animation: s, animationDelay: '0.07s' }} />
-          {/* Monthly pill — matches cc-monthly-row height:20, marginTop:4 */}
-          <div style={{ height: 20, marginTop: 4, display: 'flex', alignItems: 'center' }}>
+          {/* Main price — matches cc-price-main (fontSize 20, lineHeight 1.15) + marginTop:1; fontSize drops to 16 under 520px for EVERY card (CarCard.jsx's mobile media query isn't scoped to non-compact) */}
+          <div className="btc-skel-price-main" style={{ height: 23, width: '68%', background: b, borderRadius: 5, marginTop: 1, animation: s, animationDelay: '0.07s' }} />
+          {/* Monthly pill — matches cc-monthly-row height:20, marginTop:4; that same global mobile query sets .cc-monthly-row{display:none}, so it fully disappears under 520px on every card, compact included */}
+          <div className="btc-skel-monthly" style={{ height: 20, marginTop: 4, display: 'flex', alignItems: 'center' }}>
             <div style={{ height: 20, width: '58%', background: b, borderRadius: 20, animation: s, animationDelay: '0.1s' }} />
           </div>
         </div>
@@ -53,10 +55,10 @@ const SkeletonCarouselCard = ({ width }) => {
         </div>
         {/* Divider — matches cc-divider marginBottom:8 (6 on mobile compact) */}
         <div className="btc-skel-divider" style={{ height: 1, background: '#F1F5F9', marginBottom: 8 }} />
-        {/* Footer row — matches cc-footer minHeight:28 (22 on mobile compact); WA button is 32×32 */}
+        {/* Footer row — matches cc-footer minHeight:28 (22 on mobile compact); WA button is 32×32 desktop, 28×28 under 520px on every card (same unscoped global rule) */}
         <div className="btc-skel-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 28, marginTop: 'auto' }}>
           <div style={{ height: 10, width: '48%', background: b, borderRadius: 4, animation: s, animationDelay: '0.18s' }} />
-          <div style={{ height: 32, width: 32, background: b, borderRadius: 10, animation: s, animationDelay: '0.18s' }} />
+          <div className="btc-skel-wa" style={{ height: 32, width: 32, background: b, borderRadius: 10, animation: s, animationDelay: '0.18s' }} />
         </div>
       </div>
       <style>{`
@@ -66,9 +68,12 @@ const SkeletonCarouselCard = ({ width }) => {
           .btc-skel-name        { min-height: 28px !important; }
           .btc-skel-sub         { height: 12px !important; margin-bottom: 5px !important; }
           .btc-skel-priceblock  { margin-bottom: 6px !important; }
+          .btc-skel-price-main  { height: 18px !important; }
+          .btc-skel-monthly     { display: none !important; }
           .btc-skel-specgrid    { row-gap: 4px !important; column-gap: 6px !important; margin-bottom: 6px !important; }
           .btc-skel-divider     { margin-bottom: 6px !important; }
           .btc-skel-footer      { min-height: 22px !important; }
+          .btc-skel-wa          { width: 28px !important; height: 28px !important; }
         }
       `}</style>
     </div>
