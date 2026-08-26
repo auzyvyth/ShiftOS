@@ -534,6 +534,36 @@ Both displayed in separate labelled sections in the P&L modal.
 - leads.lead_source CHECK only allows: walk_in, whatsapp, referral, drevo_enquiry, enquiry, manual — any other value rejects the whole insert
 - After adding any policy, test it with a real row read before shipping
 
+### A share token is a PASSWORD — check it, don't pattern-match it (bit twice, same day)
+A "secret link" is only secret if the query compares the token to a value the CALLER
+supplied. A predicate that merely describes the token's SHAPE (`length(t) >= 32`,
+`t ~ '^[0-9a-f-]+$'`, `t IS NOT NULL`) is a ROW FILTER, not an ownership check — it
+matches every shared row at once, for anybody, with no token needed. Both live bugs
+on `loan_applications` were exactly this:
+  - policy `loan_share_token_update` → anon could UPDATE every shared application,
+    then set `share_token` to a value of its choosing and read the row back
+  - view `loan_application_share_view` → anon could SELECT every shared application
+    AND the tokens themselves, which unlock the rest
+Rules that follow:
+  - Bearer access belongs in a SECURITY DEFINER **function** that takes the token as
+    an ARGUMENT (`where share_token = p_token`), never in a policy or a view, because
+    only a function can require the caller to present it. `get_loan_share(p_token)` is
+    the pattern to copy.
+  - **Never return the token as a column.** Anything that can read the row can then
+    replay the link.
+  - A share surface is READ-only. There is no legitimate anon INSERT/UPDATE/DELETE on
+    `loan_applications` — if a policy seems to need one, the design is wrong.
+  - `revoke ... from anon` is NOT enough when the grant is held by `PUBLIC` (`=X/...`
+    in `proacl`) — anon inherits it and the revoke silently no-ops. Revoke from
+    `public`, then grant the real roles explicitly. Verify with
+    `has_function_privilege('anon', ...)` / `has_table_privilege('anon', ...)`, never
+    by reading the migration back.
+  - **Never copy grants off an existing object when recreating it.** Migration
+    20260826d recreated that view "verbatim", carrying its `grant ... to anon` along
+    and preserving the hole. Read what each grant allows, or drop it.
+  - Test every anon-reachable surface AS anon before shipping: `set local role anon`
+    inside a DO block that raises at the end, so the probe rolls itself back.
+
 ## Theme — know which surface you're on
 - The DEALER DASHBOARD is LIGHT: white cards (#fff), border #e5e7eb, primary text #111827, secondary #6b7280, accent #dc2626. Any panel embedded in the dealer dashboard (incl. handover/PostSaleBoard, CRM bookings) MUST be light to match — do NOT force a dark wrapper on it.
 - The #080C14 / dark background applies to the PUBLIC marketplace + marketing surfaces (HomePage, hero, public car pages), NOT the dealer dashboard.
