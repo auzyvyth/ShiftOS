@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import {
   Banknote, Check, ChevronRight, Plus, Search, Copy, AlertCircle,
-  TrendingDown, User, X, Loader2, Share2,
+  TrendingDown, User, X, Loader2, Share2, Eye,
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { toast } from "sonner";
@@ -136,6 +136,32 @@ const rollUp = (attempts = []) => {
   if (attempts.every((a) => a.status === "Declined")) return "Declined";
   if (attempts.some((a) => a.status === "Pending")) return "Pending";
   return "Submitted";
+};
+
+// One-tap wording for an outcome note. Written for the BUYER, because the buyer
+// is who reads it on the status link — so it says what it means for them and
+// what happens next, never the bank's internal shorthand. A salesman jotting
+// "CTOS bad, DSR 78" for himself is how someone's credit record ends up
+// forwarded round a WhatsApp group.
+const OUTCOME_NOTES = {
+  Approved: [
+    "Approved as applied for",
+    "Approved, but the bank wants a bigger down payment",
+    "Approved over a shorter loan period than we asked for",
+    "Approved for a smaller amount than we asked for",
+    "Approved once the remaining documents are in",
+  ],
+  Declined: [
+    "This bank could not approve it. We are trying another",
+    "Their minimum income for this amount was not met",
+    "Existing monthly commitments were too high for this amount",
+    "The bank wanted a larger down payment than we agreed",
+    "Credit record needs tidying up before this bank will look again",
+  ],
+  Pending: [
+    "Submitted, waiting for the bank to come back",
+    "The bank has asked for extra documents",
+  ],
 };
 
 // Mirrors the DB trigger trg_sync_lead_loan so the linked lead's badge moves
@@ -812,7 +838,7 @@ function ApplicationCard({ app, onChange, onLeadSync }) {
     if (error || !token) { console.error("ensure_loan_share_token:", error); toast.error("Could not create the link"); return; }
     const url = `${window.location.origin}/loan/${token}`;
     const first = (app.buyer_name || "").split(" ")[0];
-    const msg = `Hi${first ? ` ${first}` : ""}, here's the list of documents for your car loan — it updates as I receive each one:\n${url}`;
+    const msg = `Hi${first ? ` ${first}` : ""}, here's your car loan page — where each bank stands and what documents are still needed. It updates as things move:\n${url}`;
     const digits = (app.buyer_phone || "").replace(/\D/g, "");
     if (digits.length >= 9) {
       window.open(`https://wa.me/${digits.startsWith("6") ? digits : "6" + digits}?text=${encodeURIComponent(msg)}`, "_blank");
@@ -882,9 +908,23 @@ function ApplicationCard({ app, onChange, onLeadSync }) {
                         }}>{s}</button>
                       ))}
                     </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                      {(OUTCOME_NOTES[decide.status] || []).map((t) => (
+                        <button key={t} onClick={() => setDecide((p) => ({ ...p, reason: t }))} style={{
+                          padding: "5px 9px", borderRadius: R.sm, cursor: "pointer", fontFamily: "inherit",
+                          fontSize: T.size.xs, textAlign: "left", lineHeight: 1.35,
+                          background: decide.reason === t ? withAlpha(C.info, 0.12) : C.fill,
+                          border: `1px solid ${decide.reason === t ? withAlpha(C.info, 0.3) : C.border}`,
+                          color: decide.reason === t ? C.infoText : C.textSec,
+                        }}>{t}</button>
+                      ))}
+                    </div>
                     <input value={decide.reason} onChange={(e) => setDecide((p) => ({ ...p, reason: e.target.value }))}
-                      placeholder={decide.status === "Declined" ? "Why? e.g. CTOS record, DSR too high" : "Any condition? e.g. needs 20% down"}
+                      placeholder="Or write it in your own words"
                       style={{ ...inputSx, fontSize: T.size.sm }} />
+                    <p style={{ margin: 0, display: "flex", alignItems: "center", gap: 5, fontSize: T.size.xs, color: C.textDim }}>
+                      <Eye size={11} style={{ flexShrink: 0 }} /> The buyer reads this on their status link
+                    </p>
                     <div style={{ display: "flex", gap: 7 }}>
                       <button onClick={saveDecision} style={{ padding: "7px 14px", borderRadius: R.sm, background: C.accent, border: "none", color: C.onAccent, fontSize: T.size.sm, fontWeight: T.weight.bold, cursor: "pointer", fontFamily: "inherit" }}>Save</button>
                       <button onClick={() => setDecide(null)} style={{ padding: "7px 14px", borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, fontSize: T.size.sm, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
@@ -929,20 +969,7 @@ function ApplicationCard({ app, onChange, onLeadSync }) {
           )}
 
           {/* Documents */}
-          <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 8, flexWrap: "wrap" }}>
-            <p style={{ margin: 0, fontSize: T.size.xs, textTransform: "uppercase", letterSpacing: T.track.label, color: C.textMuted, fontWeight: T.weight.semibold }}>Documents</p>
-            {/* The buyer gets the same list on their phone, ticking off as each
-                one arrives — beats them turning up with two of seven papers. */}
-            <button onClick={shareWithBuyer} disabled={sharing} style={{
-              marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, flexShrink: 0,
-              padding: "5px 10px", borderRadius: R.sm, fontFamily: "inherit", fontSize: T.size.sm,
-              cursor: sharing ? "wait" : "pointer",
-              background: withAlpha(C.info, 0.1), border: `1px solid ${withAlpha(C.info, 0.28)}`, color: C.infoText,
-            }}>
-              {sharing ? <Loader2 size={12} style={{ animation: "ldspin 1s linear infinite" }} /> : <Share2 size={12} />}
-              Send list to buyer
-            </button>
-          </div>
+          <p style={{ margin: "0 0 8px", fontSize: T.size.xs, textTransform: "uppercase", letterSpacing: T.track.label, color: C.textMuted, fontWeight: T.weight.semibold }}>Documents</p>
           <DocChecklist
             employment={app.buyer_employment_type}
             docs={Object.fromEntries(Object.entries(DOCS).map(([k, v]) => [k, !!app[v.col]]))}
@@ -953,6 +980,25 @@ function ApplicationCard({ app, onChange, onLeadSync }) {
           {app.notes && (
             <p style={{ margin: "14px 0 0", fontSize: T.size.sm, color: C.textSec, lineHeight: 1.6 }}>{app.notes}</p>
           )}
+
+          {/* One link answers the "any news?" message three times a day: it shows
+              the buyer where each bank stands and what paperwork is still owed,
+              and it updates itself every time an outcome is recorded above. */}
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
+            <button onClick={shareWithBuyer} disabled={sharing} style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 7, width: "100%",
+              padding: "10px 12px", borderRadius: R.md, fontFamily: "inherit",
+              fontSize: T.size.sm, fontWeight: T.weight.semibold,
+              cursor: sharing ? "wait" : "pointer",
+              background: withAlpha(C.info, 0.1), border: `1px solid ${withAlpha(C.info, 0.28)}`, color: C.infoText,
+            }}>
+              {sharing ? <Loader2 size={13} style={{ animation: "ldspin 1s linear infinite" }} /> : <Share2 size={13} />}
+              Send the buyer their status link
+            </button>
+            <p style={{ margin: "6px 0 0", fontSize: T.size.xs, color: C.textDim, textAlign: "center", lineHeight: 1.5 }}>
+              Shows bank outcomes and outstanding documents. Never their IC, income or your notes.
+            </p>
+          </div>
         </div>
       )}
     </div>
