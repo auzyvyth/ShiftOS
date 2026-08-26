@@ -220,6 +220,10 @@ export default function SalesmanOnboarding() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreePdpa, setAgreePdpa] = useState(false);
   const [showResumeChoice, setShowResumeChoice] = useState(false);
+  // Distinguishes a genuine buyer's real account (never agreed to salesman Terms,
+  // so "continue" must still route through step 0) from a resumed in-progress
+  // salesman signup (already agreed last time — safe to skip straight to step 2).
+  const [resumeIsBuyer, setResumeIsBuyer] = useState(false);
   const [awaitingConfirm, setAwaitingConfirm] = useState(false);
   const [resendMsg, setResendMsg] = useState('');
   const [done, setDone] = useState(false);
@@ -276,9 +280,12 @@ export default function SalesmanOnboarding() {
       // Only offer "resume or start over" when there's actual saved progress. A
       // bare stub (the handle_new_user default dealer row, or a Google sign-in that
       // never filled anything in) has nothing to resume — treat it as a fresh start
-      // instead of prompting over an empty form.
+      // instead of prompting over an empty form. A real buyer account always gets
+      // the chooser too — they already have a live login, so the ACCOUNT step's
+      // "create a password" form is nonsensical for them either way.
       const hasProgress = !!(profile && (profile.full_name || profile.slug || profile.ic_number || profile.phone));
-      if (profile && hasProgress) {
+      const isBuyer = profile?.role === 'buyer';
+      if (profile && (hasProgress || isBuyer)) {
         setForm(p => ({
           ...p,
           fullName: profile.full_name || metaName || p.fullName,
@@ -286,6 +293,7 @@ export default function SalesmanOnboarding() {
           phone: profile.phone || p.phone,
           slug: profile.slug || p.slug,
         }));
+        setResumeIsBuyer(isBuyer);
         setShowResumeChoice(true);
         return;
       }
@@ -310,7 +318,9 @@ export default function SalesmanOnboarding() {
     if (!agreeTerms || !agreePdpa) return;
     sessionStorage.setItem('ob_agreed', '1');
     setErr('');
-    setStep(1);
+    // Already have a live session (a buyer continuing with their existing email) —
+    // skip the ACCOUNT step's email/password form entirely, straight to DETAILS.
+    setStep(userId ? 2 : 1);
   };
 
   const signInWithGoogle = async () => {
@@ -544,15 +554,25 @@ export default function SalesmanOnboarding() {
             <div className="eo-logo-icon">X</div>
             <span className="eo-logo-text">SHIFTOS</span>
           </div>
-          <p className="eo-eyebrow" style={{ textAlign: 'center', marginBottom: 20 }}>INCOMPLETE SIGN-UP FOUND</p>
-          <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 40, letterSpacing: 3, color: '#E8EDF5', marginBottom: 10, textAlign: 'center' }}>WELCOME BACK</div>
-          <p style={{ color: 'rgba(255,255,255,0.32)', fontSize: 13, marginBottom: 4, textAlign: 'center' }}>You have an incomplete sign-up as</p>
-          <p style={{ color: '#E8EDF5', fontWeight: 600, fontSize: 14, marginBottom: 36, textAlign: 'center', wordBreak: 'break-all' }}>{userEmail}</p>
-          <button className="eo-btn" style={{ marginTop: 0 }} onClick={() => { setShowResumeChoice(false); setStep(2); }}>CONTINUE SIGN-UP</button>
-          <button className="eo-ghost" onClick={resetAndStart}>USE A DIFFERENT ACCOUNT</button>
-          <p style={{ textAlign: 'center', marginTop: 24, fontSize: 12, color: 'rgba(255,255,255,0.2)' }}>
-            <a href="/login" style={{ color: 'rgba(220,38,38,0.5)', textDecoration: 'none' }}>Sign in to existing account</a>
+          <p className="eo-eyebrow" style={{ textAlign: 'center', marginBottom: 20 }}>
+            {resumeIsBuyer ? "YOU'RE ALREADY SIGNED IN" : 'INCOMPLETE SIGN-UP FOUND'}
           </p>
+          <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 40, letterSpacing: 3, color: '#E8EDF5', marginBottom: 10, textAlign: 'center' }}>
+            {resumeIsBuyer ? 'CONTINUE WITH THIS EMAIL?' : 'WELCOME BACK'}
+          </div>
+          <p style={{ color: 'rgba(255,255,255,0.32)', fontSize: 13, marginBottom: 4, textAlign: 'center' }}>
+            {resumeIsBuyer ? 'Your XDrive account is signed in as' : 'You have an incomplete sign-up as'}
+          </p>
+          <p style={{ color: '#E8EDF5', fontWeight: 600, fontSize: 14, marginBottom: 36, textAlign: 'center', wordBreak: 'break-all' }}>{userEmail}</p>
+          <button className="eo-btn" style={{ marginTop: 0 }} onClick={() => { setShowResumeChoice(false); setStep(resumeIsBuyer ? 0 : 2); }}>
+            {resumeIsBuyer ? 'CONTINUE WITH THIS EMAIL' : 'CONTINUE SIGN-UP'}
+          </button>
+          <button className="eo-ghost" onClick={resetAndStart}>{resumeIsBuyer ? 'USE ANOTHER EMAIL' : 'USE A DIFFERENT ACCOUNT'}</button>
+          {!resumeIsBuyer && (
+            <p style={{ textAlign: 'center', marginTop: 24, fontSize: 12, color: 'rgba(255,255,255,0.2)' }}>
+              <a href="/login" style={{ color: 'rgba(220,38,38,0.5)', textDecoration: 'none' }}>Sign in to existing account</a>
+            </p>
+          )}
         </div>
       </div>
     </>
