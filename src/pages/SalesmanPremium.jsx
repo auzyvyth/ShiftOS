@@ -556,6 +556,19 @@ export default function SalesmanPremium() {
  const [aiCaptionTab, setAiCaptionTab] = useState("wa");
  const [captionCopied, setCaptionCopied] = useState(false);
 
+ // Body scroll lock for every full-screen overlay in this file (overlay rule
+ // 2 — none of them locked scroll before, so the page kept scrolling behind
+ // an open sheet). One combined effect instead of one per modal.
+ const anyOverlayOpen = !!(
+ showAddLead || waModalLead || bookingDetailId || notifOpen ||
+ testDriveConfirm || broadcastCar || aiCaptionCar ||
+ confirmBookingApt || sellerBookingLead
+ );
+ useEffect(() => {
+ document.body.style.overflow = anyOverlayOpen? "hidden" : "";
+ return () => { document.body.style.overflow = ""; };
+ }, [anyOverlayOpen]);
+
  // merge
  const [mergeCode, setMergeCode] = useState("");
  const [mergeStatus, setMergeStatus] = useState("idle");
@@ -819,7 +832,8 @@ export default function SalesmanPremium() {
  // premium — commission + sold count
  supabase.from("car_listings").select("commission_amount, brand, model, year, sold_at")
  .eq("assigned_to", uid).eq("status", "sold")
- .then(({ data }) => {
+ .then(({ data, error }) => {
+ if (error) { console.error("fetchCommission:", error); toast.error("Could not load your commission"); }
  const rows = data || [];
  setSoldCount(rows.length);
  setCommission(rows.reduce((sum, r) => sum + (Number(r.commission_amount) || 0), 0));
@@ -833,14 +847,18 @@ export default function SalesmanPremium() {
  // premium — loan applications
  supabase.from("loan_applications").select("*").eq("salesman_id", uid)
  .order("created_at", { ascending: false })
- .then(({ data }) => setLoanApplications(data || []));
+ .then(({ data, error }) => {
+ if (error) { console.error("fetchLoanApplications:", error); toast.error("Could not load loan applications"); }
+ setLoanApplications(data || []);
+ });
 
  // premium — customers (post-sale buyer records) + their service packages.
  // A solo salesman's dealer_id resolves to their own id (getDealerIdFromProfile).
  const custDealerId = getDealerIdFromProfile(profileData);
  supabase.from("customers").select("*").eq("dealer_id", custDealerId)
  .order("created_at", { ascending: false })
- .then(async ({ data }) => {
+ .then(async ({ data, error }) => {
+ if (error) { console.error("fetchCustomers:", error); toast.error("Could not load your customers"); }
  const list = data || [];
  setCustomers(list);
  setCustomersLoading(false);
@@ -861,6 +879,7 @@ export default function SalesmanPremium() {
  )
  .eq("dealer_id", uid),
  ]).then(([r1, r2]) => {
+ if (r1.error || r2.error) { console.error("fetchListings:", r1.error || r2.error); toast.error("Could not load your listings"); }
  const seen = new Set();
  const merged = [...(r1.data || []), ...(r2.data || [])]
  .filter((c) => {
@@ -950,7 +969,8 @@ export default function SalesmanPremium() {
  .eq("salesman_id", uid)
  .eq("is_deleted", false)
  .order("updated_at", { ascending: false })
- .then(async ({ data: lds }) => {
+ .then(async ({ data: lds, error: ldsErr }) => {
+ if (ldsErr) { console.error("fetchLeads:", ldsErr); toast.error("Could not load your leads"); }
  const rows = lds || [];
  setLeads(rows);
  setLeadsLoading(false);
@@ -4490,7 +4510,7 @@ export default function SalesmanPremium() {
  // ADD LEAD MODAL 
 
  const renderAddLeadModal = () =>
- showAddLead && (
+ showAddLead && createPortal(
  <div
  onClick={() => setShowAddLead(false)}
  style={{
@@ -4608,13 +4628,14 @@ export default function SalesmanPremium() {
  </button>
  </div>
  </div>
- </div>
+ </div>,
+ document.body,
  );
 
- // WA MESSAGE MODAL 
+ // WA MESSAGE MODAL
 
  const renderWAModal = () =>
- waModalLead && (
+ waModalLead && createPortal(
  <div
  onClick={() => setWaModalLead(null)}
  style={{
@@ -4748,10 +4769,11 @@ export default function SalesmanPremium() {
  </p>
  )}
  </div>
- </div>
+ </div>,
+ document.body,
  );
 
- // LOANS 
+ // LOANS
 
  const BANKS = [
  { name: "Public Bank", rate: 3.20, islamic: false },
