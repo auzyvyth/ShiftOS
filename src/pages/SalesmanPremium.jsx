@@ -5604,7 +5604,7 @@ export default function SalesmanPremium() {
  marginBottom: 0,
  }}
  >
- · Lite Panel
+ · {isPremium? "Premium Panel" : "Lite Panel"}
  </p>
  </div>
  </div>
@@ -5865,7 +5865,7 @@ export default function SalesmanPremium() {
  day: "numeric",
  month: "long",
  })}{" "}
- · Lite Panel
+ · {isPremium? "Premium Panel" : "Lite Panel"}
  </p>
  </div>
  <button
