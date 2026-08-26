@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import useHandover from "../hooks/useHandover";
-import { placeTourCard, tourBand, tourScrollDelta } from "../utils/tourPlacement";
+import { useHideOnScroll } from "../hooks/useHideOnScroll";
+import { placeTourCard } from "../utils/tourPlacement";
 import { normalizePhone } from "../lib/phone";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { freshChannel } from "../lib/realtime";
@@ -38,10 +39,10 @@ import {
  User,
  Phone,
  X,
+ Menu,
  LayoutGrid,
  Users,
  MessageSquare,
- Link as LinkIcon,
  Megaphone,
  AlertCircle,
  CheckCircle2,
@@ -87,7 +88,6 @@ import {
  Camera,
  Zap,
  MessageCircle,
- UserCheck,
  ClipboardList,
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
@@ -103,6 +103,7 @@ import AiLoadingState from "../components/ai/AiLoadingState";
 import AiQuotaBadge from "../components/ai/AiQuotaBadge";
 import PushToggle from "../components/PushToggle";
 const ServicesAddonsTab = React.lazy(() => import("../components/salesman/ServicesAddonsTab"));
+const LoanDesk = React.lazy(() => import("../components/loans/LoanDesk"));
 import ChannelBreakdown from "../components/ChannelBreakdown";
 import ShareMenu from "../components/ShareMenu";
 import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha } from "../theme/tokens";
@@ -152,31 +153,18 @@ const TAB_ALIASES = {
  merge: { tab: "settings", anchor: "sp-merge" },
 };
 
-// Which tab each tour step opens, index-matched to TOUR_STEPS (step 0 is the
-// welcome card and opens nothing). Every tab a salesman can reach is in here —
-// a step missing from this list means the tour silently skips that page.
+// Which tab each tour step rings, index-matched to TOUR_STEPS (step 0 is the
+// welcome card and rings nothing). One step per sidebar link — exactly the
+// 10 tabs in TABS_DESKTOP, nothing past the nav. The tour never navigates
+// anymore (see the tourStep effect): it opens the nav (the drawer on
+// mobile, always-visible on desktop) once and rings each link where it
+// already sits, so there's no separate TOUR_HIGHLIGHT/TOUR_IN_CONTENT
+// distinction to maintain the way there was when steps pointed at things
+// buried inside page content (sub-tab pills, the invite box).
 const TOUR_TABS = [
- null, "dashboard", "listings", "leads", "bookings", "leadhistory", "analytics",
- "loans", "outreach", "chat", "handover", "customers", "merge", "settings",
+ null, "dashboard", "listings", "leads", "enquiries", "sold",
+ "analytics", "loans", "outreach", "chat", "settings",
 ];
-
-// Where the spotlight ring goes for a step whose tab is NOT its own nav button.
-// Every step must ring the thing it is actually talking about: pointing at a nav
-// button while describing a box further down the page is what made the card land
-// on top of that box. Keys are TOUR_TABS entries, values are data-tour-id values.
-const TOUR_HIGHLIGHT = {
- // Bookings / Lead History are the two sub-tab pills inside Inbox
- // (data-tour-id set in salesmanPremium/shared.jsx SubTabs).
- merge: "sp-merge", // the invite-code box itself, not the Settings nav button
- // Both halves of Sold; ring the pill that switches to each one.
- handover: "sold-handover",
- customers: "sold-customers",
-};
-
-// Targets that live in the page body rather than in the (fixed) nav. These move
-// when the page scrolls, so the ring has to re-measure on scroll; everything
-// else gets the page scrolled back to the top so the panel starts at its top.
-const TOUR_IN_CONTENT = new Set(["bookings", "leadhistory", "sp-merge", "sold-handover", "sold-customers"]);
 
 
 
@@ -545,6 +533,13 @@ export default function SalesmanPremium() {
  const tourAutoStarted = useRef(false);
  tourOpenRef.current = tourStep !== null;
 
+ // Mobile nav — a slide-out drawer (replaces the old fixed bottom bar, which
+ // had grown to 10 flex:1 buttons in a 60px strip). See anyOverlayOpen below
+ // for the scroll-lock and the tour-target effect for the auto-open-during-
+ // tour behaviour (a nav-anchored tour step has to make the real button
+ // visible, not ring something hidden inside a closed drawer).
+ const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
  // broadcast
  const [broadcastCar, setBroadcastCar] = useState(null);
  const [broadcastMsg, setBroadcastMsg] = useState("");
@@ -564,12 +559,17 @@ export default function SalesmanPremium() {
  const anyOverlayOpen = !!(
  showAddLead || waModalLead || bookingDetailId || notifOpen ||
  testDriveConfirm || broadcastCar || aiCaptionCar ||
- confirmBookingApt || sellerBookingLead
+ confirmBookingApt || sellerBookingLead || mobileNavOpen
  );
  useEffect(() => {
  document.body.style.overflow = anyOverlayOpen? "hidden" : "";
  return () => { document.body.style.overflow = ""; };
  }, [anyOverlayOpen]);
+
+ // UX-1 — the topbar gets out of the way while reading a long list. Locked
+ // open whenever an overlay or the tour is up: the mobile nav trigger lives
+ // in that bar, and scrolling behind a locked overlay must not move it.
+ const headerVisible = useHideOnScroll({ locked: anyOverlayOpen || tourStep !== null });
 
  // merge
  const [mergeCode, setMergeCode] = useState("");
@@ -671,15 +671,6 @@ export default function SalesmanPremium() {
  const el = document.getElementById(`customer-${customerParam}`);
  if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
  }, [customerParam, activeTab, soldSubTab, customersLoading, customers.length]);
- const [loanCalc, setLoanCalc] = useState({ carPrice: "", downPayment: "", tenure: 7, income: "" });
- const [loanForm, setLoanForm] = useState({
- buyer_name: "", buyer_phone: "", buyer_ic: "", buyer_employment_type: "Salaried",
- car_model: "", car_price: "", bank_name: "", loan_amount: "", down_payment: "",
- interest_rate: "", loan_tenure: 7, monthly_payment: "", buyer_income: "", notes: "",
- });
- const [loanSaving, setLoanSaving] = useState(false);
- const [loanEditId, setLoanEditId] = useState(null);
- const [loanEditStatus, setLoanEditStatus] = useState("");
 
  const channelRef = useRef(null);
  const pendingStageRef = useRef({});
@@ -821,7 +812,18 @@ export default function SalesmanPremium() {
  setProfile(profileData);
  setLoading(false);
 
- if (!tourAutoStarted.current && !localStorage.getItem("sp_tour_done")) {
+ // profiles.onboarding_tour_done is the real, per-account guard (mirrors
+ // SalesmanLite.jsx:1390) — sp_tour_seen_${uid} is only a same-session
+ // backup. The old check here was a bare "sp_tour_done" localStorage key
+ // with no user id in it: the first time the tour was dismissed on ANY
+ // account on a given browser/device, it silently never fired again for
+ // every other account signing in on that same browser — including a
+ // genuinely new signup tested on the same machine.
+ if (
+ !tourAutoStarted.current &&
+ !profileData.onboarding_tour_done &&
+ !localStorage.getItem(`sp_tour_seen_${uid}`)
+ ) {
  tourAutoStarted.current = true;
  startTour();
  }
@@ -1198,75 +1200,27 @@ export default function SalesmanPremium() {
  // eslint-disable-next-line react-hooks/exhaustive-deps
  }, []);
 
- // While the tour runs, give the page extra scroll room at the bottom. Without
- // it the browser clamps at the end of the document, so a target near the end
- // (the invite box is the last block on Settings) can never be scrolled up out
- // of the card's lane — it just sits against the bottom nav with the card on
- // top of it. Removed the moment the tour closes.
- const tourOpen = tourStep !== null;
+ // The tour never navigates — every real step (1..10) rings one of the 10
+ // sidebar links exactly where it already sits: the drawer on mobile (opened
+ // once and held open for the whole run, not toggled per step — the setter
+ // below is a same-value set on every step after the first, so React bails
+ // out with no re-render/re-animation), the always-visible sidebar on
+ // desktop. Nothing here scrolls or switches tabs, so the earlier
+ // scroll-room padding and in-content scroll-compensation logic (needed
+ // when steps pointed at things buried in page content) is gone — every
+ // target is a fixed nav row that doesn't move under its own step.
  useEffect(() => {
- if (!tourOpen) return;
- const pad = document.createElement("div");
- pad.setAttribute("data-tour-scroll-room", "");
- pad.style.cssText = `height:${Math.round(window.innerHeight * 0.8)}px;pointer-events:none`;
- document.body.appendChild(pad);
- return () => pad.remove();
- }, [tourOpen]);
-
- useEffect(() => {
- if (tourStep === null) { setTourTarget(null); return; }
+ if (tourStep === null) { setTourTarget(null); setMobileNavOpen(false); return; }
  const tab = TOUR_TABS[tourStep];
- if (!tab) { setTourTarget(null); return; }
- // replace: a tour that pushes one history entry per step turns the phone's
- // back gesture into a walk back through the whole tour.
- switchTab(tab, { replace: true });
- const id = TOUR_HIGHLIGHT[tab] ?? tab;
- const inContent = TOUR_IN_CONTENT.has(id);
- // A step anchored to the nav describes the panel as a whole, so start that
- // panel at its top — step 12 scrolls the page down to the invite box and the
- // Settings step that follows used to inherit that scroll position.
- if (!inContent) window.scrollTo({ top: 0, behavior: "smooth" });
-
- // Measure the element this step points at. A miss clears the target (the card
- // then centres itself) rather than leaving the previous step's rectangle in
- // place, which used to ring the wrong nav item.
- //
- // Scrolling is computed, not delegated to scrollIntoView: the target has to
- // land in the band the card leaves free (above the docked card on mobile,
- // the middle of the screen on desktop), and scrollIntoView knows nothing
- // about the card. Up to three corrections, throttled, because tab panels
- // load lazily and shift the target under us; after that the scroll listener
- // keeps the ring glued to it.
- let aligns = 0;
- let lastAlign = 0;
+ if (!tab) { setTourTarget(null); setMobileNavOpen(false); return; }
+ if (isMobile) setMobileNavOpen(true);
  const measure = () => {
- const el = id ? document.querySelector(`[data-tour-id="${id}"]`) : null;
- if (!el) { setTourTarget(null); return; }
- const r = el.getBoundingClientRect();
- setTourTarget(r);
- if (!inContent) return;
- const band = tourBand(window.innerHeight, { dock: isMobile, cardH: tourCardHRef.current });
- const delta = tourScrollDelta(r, band);
- const now = Date.now();
- if (Math.abs(delta) > 8 && aligns < 3 && now - lastAlign > 260) {
- aligns += 1;
- lastAlign = now;
- window.scrollBy({ top: delta, behavior: aligns === 1 ? "smooth" : "auto" });
- }
+ const el = document.querySelector(`[data-tour-id="${tab}"]`);
+ setTourTarget(el ? el.getBoundingClientRect() : null);
  };
- // Tab panels are lazy-loaded and a smooth scroll takes ~0.5s to settle, so
- // keep re-measuring for ~1.2s instead of taking one 60ms snapshot.
- let ticks = 0;
- const iv = setInterval(() => { measure(); if (++ticks > 20) clearInterval(iv); }, 60);
- // An in-content target moves with the page, so the ring has to follow it —
- // capture:true also catches scrolls inside nested scrollers.
+ measure();
  window.addEventListener("resize", measure);
- if (inContent) window.addEventListener("scroll", measure, true);
- return () => {
- clearInterval(iv);
- window.removeEventListener("resize", measure);
- if (inContent) window.removeEventListener("scroll", measure, true);
- };
+ return () => window.removeEventListener("resize", measure);
  }, [tourStep, isMobile]);
 
  const handleLogout = async () => {
@@ -2300,35 +2254,7 @@ export default function SalesmanPremium() {
  },
  ];
 
- const TABS_MOBILE = [
- { tab: "dashboard", label: "Dashboard", icon: <LayoutGrid size={18} /> },
- {
- tab: "listings",
- label: "Listings",
- icon: <Car size={18} />,
- badge: myListings.length || null,
- },
- {
- tab: "leads",
- label: "Leads",
- icon: <User size={18} />,
- badge: leads.filter((l) => l.stage!== "lost").length || null,
- },
- {
- tab: "enquiries",
- label: "Inbox",
- icon: <MessageSquare size={18} />,
- badge: inboxBadge || null,
- },
- { tab: "sold", label: "Sold", icon: <ClipboardList size={18} />, badge: handover.activeCount || null },
- { tab: "analytics", label: "Analytics", icon: <TrendingUp size={18} /> },
- { tab: "loans", label: "Loans", icon: <Banknote size={18} /> },
- ...(showOutreach ? [{ tab: "outreach", label: "Outreach", icon: <Megaphone size={18} /> }] : []),
- { tab: "chat", label: "Chat", icon: <MessageSquare size={18} />, badge: chatUnread || null },
- { tab: "settings", label: "Settings", icon: <Settings size={18} /> },
- ];
-
- // NOTIFICATION PANEL 
+ // NOTIFICATION PANEL
 
  const renderNotifPanel = () =>
  notifOpen && (
@@ -2462,7 +2388,87 @@ export default function SalesmanPremium() {
  </div>
  );
 
- // RENDER DASHBOARD 
+ // MOBILE NAV DRAWER — replaces the old fixed bottom bar (had grown to 10
+ // flex:1 buttons in a 60px strip, each icon-only unless active — too
+ // cramped to use). Reuses TABS_DESKTOP (same tab set the desktop sidebar
+ // already renders) rather than a third parallel list. Overlay rules:
+ // portalled to document.body (rule 1), body-scroll-lock via anyOverlayOpen
+ // above (rule 2). Opened by the tour for every real step (see the tourStep
+ // effect) and held open for the whole walkthrough — z-index MUST stay
+ // below the tour's ring (1001) and card (1002) rendered in renderTour(),
+ // or the drawer covers the tour instead of the tour showing the drawer.
+ const renderMobileNav = () =>
+ mobileNavOpen && createPortal(
+ <div
+ // While the tour is driving it (tourStep !== null), it owns open/close —
+ // an accidental tap on the backdrop shouldn't close the drawer out from
+ // under the ring the tour is currently pointing into it.
+ onClick={() => { if (tourStep === null) setMobileNavOpen(false); }}
+ style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.55)" }}
+ >
+ <nav
+ onClick={(e) => e.stopPropagation()}
+ style={{
+ position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 1000,
+ width: "min(78vw, 280px)",
+ background: "#080a12",
+ borderRight: "1px solid rgba(255,255,255,0.07)",
+ display: "flex",
+ flexDirection: "column",
+ overflowY: "auto",
+ boxShadow: "4px 0 24px rgba(0,0,0,0.4)",
+ }}
+ >
+ <div style={{ padding: 16, borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 8 }}>
+ <div style={{ width: 28, height: 28, background: "#2563eb", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontFamily: "'Bebas Neue', sans-serif", fontWeight: 700, color: "#fff", flexShrink: 0 }}>S</div>
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, letterSpacing: "2px", color: "#fff", lineHeight: 1, margin: 0 }}>SHIFTOS</p>
+ <p style={{ fontSize: 10, color: "#4b5563", marginTop: 2, marginBottom: 0 }}>· {isPremium ? "Premium Panel" : "Lite Panel"}</p>
+ </div>
+ <button onClick={() => setMobileNavOpen(false)} aria-label="Close navigation"
+ style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 4, display: "flex", flexShrink: 0 }}>
+ <X size={18} />
+ </button>
+ </div>
+ <p style={{ fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", padding: "12px 16px 4px", fontWeight: 600, margin: 0 }}>Main</p>
+ {TABS_DESKTOP.map(({ tab, label, icon, badge }) => (
+ <button
+ key={tab}
+ data-tour-id={tab}
+ onClick={() => { switchTab(tab); setMobileNavOpen(false); }}
+ style={{
+ display: "flex", alignItems: "center", gap: 10,
+ padding: "10px 16px", margin: "1px 8px", borderRadius: 8, cursor: "pointer",
+ background: activeTab === tab ? "rgba(37,99,235,0.15)" : "transparent",
+ border: activeTab === tab ? "0.5px solid rgba(37,99,235,0.25)" : "0.5px solid transparent",
+ color: activeTab === tab ? "#93c5fd" : "#9ca3af",
+ fontSize: 14, fontWeight: 500, width: "calc(100% - 16px)", textAlign: "left",
+ }}
+ >
+ {icon}
+ <span style={{ flex: 1 }}>{label}</span>
+ {badge ? (
+ <span style={{ fontSize: 10, background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", borderRadius: 99, padding: "1px 6px" }}>{badge}</span>
+ ) : null}
+ </button>
+ ))}
+ <button
+ onClick={() => { setMobileNavOpen(false); handleLogout(); }}
+ style={{
+ display: "flex", alignItems: "center", gap: 10, marginTop: "auto",
+ padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.06)",
+ background: "none", border: "none", borderTopWidth: 1, cursor: "pointer",
+ color: "#6b7280", fontSize: 13, fontWeight: 500, textAlign: "left",
+ }}
+ >
+ <LogOut size={15} /> Log out
+ </button>
+ </nav>
+ </div>,
+ document.body,
+ );
+
+ // RENDER DASHBOARD
 
  // Acting on a "This week" row has to persist. If it only hid the row in
  // local state the same person would be back tomorrow, and a call list you
@@ -2578,6 +2584,22 @@ export default function SalesmanPremium() {
  <Package size={9} /> Add-on
  </span>
  )}
+ {/* A loan application on this lead. leads.loan_* is kept in step with
+     loan_applications by the DB trigger trg_sync_lead_loan, so this lights
+     up whichever surface submitted the loan. */}
+ {lead.loan_status && lead.loan_status !== "none" && (() => {
+ const ls = {
+ approved: { bg: "rgba(34,197,94,0.15)", bd: "rgba(34,197,94,0.35)", fg: "#4ade80", label: "Loan ok" },
+ rejected: { bg: "rgba(239,68,68,0.15)", bd: "rgba(239,68,68,0.35)", fg: "#f87171", label: "Loan no" },
+ cancelled: { bg: "rgba(255,255,255,0.06)", bd: "rgba(255,255,255,0.12)", fg: "#94a3b8", label: "Loan off" },
+ }[lead.loan_status] || { bg: "rgba(251,191,36,0.15)", bd: "rgba(251,191,36,0.35)", fg: "#fbbf24", label: "Loan in" };
+ return (
+ <span title={[lead.loan_bank, lead.loan_amount ? `RM ${Number(lead.loan_amount).toLocaleString("en-MY")}` : null].filter(Boolean).join(" · ") || "Loan application on this deal"}
+ style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, borderRadius: 99, padding: "2px 7px", background: ls.bg, border: `1px solid ${ls.bd}`, color: ls.fg, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+ <Banknote size={9} /> {ls.label}
+ </span>
+ );
+ })()}
  <span style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", fontWeight: 600 }}>
  {heat.label}
  </span>
@@ -4408,11 +4430,11 @@ export default function SalesmanPremium() {
  {/* Joining a dealership is a one-time action, not something that needs a
      permanent nav slot — it lives here, and /salesman-premium/merge still
      resolves to this section (see TAB_ALIASES). */}
- <div id="sp-merge" data-tour-id="sp-merge" style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+ <div id="sp-merge" style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
  {renderMerge()}
  </div>
- {/* Replay the tour. It only auto-runs once (localStorage sp_tour_done), so
-     without this there was no way back to it — and no way for anyone who
+ {/* Replay the tour. It only auto-runs once (profiles.onboarding_tour_done),
+     so without this there was no way back to it — and no way for anyone who
      skipped it on day one to find out what the other tabs do. */}
  <div style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
  <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Product tour</p>
@@ -4821,90 +4843,6 @@ export default function SalesmanPremium() {
  document.body,
  );
 
- // LOANS
-
- const BANKS = [
- { name: "Public Bank", rate: 3.20, islamic: false },
- { name: "CIMB Bank", rate: 3.25, islamic: false },
- { name: "Maybank", rate: 3.30, islamic: false },
- { name: "RHB Bank", rate: 3.50, islamic: false },
- { name: "Hong Leong Bank", rate: 3.50, islamic: false },
- { name: "Affin Bank", rate: 3.50, islamic: false },
- { name: "Bank Muamalat", rate: 3.60, islamic: true },
- { name: "Bank Islam", rate: 3.60, islamic: true },
- ];
-
- const fmtRM = (n) => "RM " + Number(n).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
- const calcBank = (bank) => {
- const price = parseFloat(loanCalc.carPrice) || 0;
- const dp = parseFloat(loanCalc.downPayment) || 0;
- const tenure = parseInt(loanCalc.tenure) || 1;
- const loan = Math.max(0, price - dp);
- const interest = loan * (bank.rate / 100) * tenure;
- const monthly = loan > 0? (loan + interest) / (tenure * 12) : 0;
- return { loan, interest, total: loan + interest, monthly };
- };
-
- const recalcLoanForm = (next) => {
- const loan = parseFloat(next.loan_amount) || 0;
- const rate = parseFloat(next.interest_rate) || 0;
- const tenure = parseInt(next.loan_tenure) || 1;
- const monthly = loan > 0? ((loan * (rate / 100) * tenure + loan) / (tenure * 12)).toFixed(2) : "";
- setLoanForm({ ...next, monthly_payment: monthly });
- };
-
- const selectBank = (bank) => {
- const { loan, monthly } = calcBank(bank);
- recalcLoanForm({
- ...loanForm,
- bank_name: bank.name,
- loan_amount: String(Math.round(loan)),
- down_payment: loanCalc.downPayment || loanForm.down_payment,
- car_price: loanCalc.carPrice || loanForm.car_price,
- interest_rate: String(bank.rate),
- loan_tenure: loanCalc.tenure,
- monthly_payment: monthly.toFixed? monthly.toFixed(2) : monthly,
- buyer_income: loanCalc.income || loanForm.buyer_income,
- });
- setTimeout(() => document.getElementById("sp-loan-form")?.scrollIntoView({ behavior: "smooth" }), 100);
- };
-
- const submitLoan = async () => {
- if (!loanForm.bank_name ||!loanForm.loan_amount) return;
- setLoanSaving(true);
- const banks = [{ name: loanForm.bank_name, rate: parseFloat(loanForm.interest_rate) || 0, monthly_payment: parseFloat(loanForm.monthly_payment) || 0, loan_amount: parseFloat(loanForm.loan_amount) || 0 }];
- const { data, error } = await supabase.from("loan_applications").insert({
- salesman_id: userId,
- dealer_id: profile?.dealer_id || null,
- buyer_name: loanForm.buyer_name || null,
- buyer_phone: loanForm.buyer_phone || null,
- buyer_ic: loanForm.buyer_ic || null,
- buyer_employment_type: loanForm.buyer_employment_type || null,
- car_model: loanForm.car_model || null,
- car_price: loanForm.car_price? parseFloat(loanForm.car_price) : null,
- loan_amount: parseFloat(loanForm.loan_amount),
- down_payment: loanForm.down_payment? parseFloat(loanForm.down_payment) : null,
- loan_tenure: parseInt(loanForm.loan_tenure),
- banks,
- notes: loanForm.notes || null,
- status: "Submitted",
- }).select("*").single();
- setLoanSaving(false);
- if (!error && data) {
- setLoanApplications((p) => [data, ...p]);
- setLoanForm({ buyer_name: "", buyer_phone: "", buyer_ic: "", buyer_employment_type: "Salaried", car_model: "", car_price: "", bank_name: "", loan_amount: "", down_payment: "", interest_rate: "", loan_tenure: 7, monthly_payment: "", buyer_income: "", notes: "" });
- }
- };
-
- const loanInputSx = { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, color: "#fff", padding: "8px 10px", fontSize: 13, outline: "none", width: "100%", fontFamily: "system-ui, sans-serif" };
- const cardSx = { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: 20, marginBottom: 20 };
- const loanStatusColors = { Submitted: { bg: "rgba(59,130,246,.15)", border: "rgba(59,130,246,.3)", color: "#93c5fd" }, Pending: { bg: "rgba(251,191,36,.15)", border: "rgba(251,191,36,.3)", color: "#fbbf24" }, Approved: { bg: "rgba(34,197,94,.15)", border: "rgba(34,197,94,.3)", color: "#4ade80" }, Declined: { bg: "rgba(239,68,68,.15)", border: "rgba(239,68,68,.3)", color: "#f87171" } };
-
- const calcRows = BANKS.map((b) => ({ ...b, ...calcBank(b) }));
- const lowestMonthly = Math.min(...calcRows.map((r) => r.monthly).filter(Boolean));
- const dpPct = loanCalc.carPrice? ((parseFloat(loanCalc.downPayment) || 0) / parseFloat(loanCalc.carPrice) * 100).toFixed(1) : null;
-
  // CUSTOMERS (post-sale buyer records + prepaid service packages)
 
  const renderCustomers = () => {
@@ -5127,190 +5065,52 @@ export default function SalesmanPremium() {
  </div>
  );
 
+ // LOANS — the whole desk lives in components/loans/LoanDesk.jsx. It used to be
+ // three stacked panels here (a calculator, a SECOND form that re-asked the same
+ // car price and down payment, and the list) plus ~80 lines of helpers.
  const renderLoans = () => (
- <div style={{ maxWidth: 900 }}>
- <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>Loan Management</p>
- <p style={{ margin: "0 0 20px", fontSize: 12, color: "#4b5563" }}>Compare banks, submit applications, track approvals.</p>
-
- <div style={cardSx}>
- <p style={{ margin: "0 0 14px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>Loan Comparison Calculator</p>
- <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12, marginBottom: 20 }}>
- {[
- { label: "Car Price (RM)", key: "carPrice", ph: "85000" },
- { label: `Down Payment (RM)${dpPct? ` · ${dpPct}%` : ""}`, key: "downPayment", ph: "10000" },
- { label: "Buyer Income (RM)", key: "income", ph: "5000" },
- ].map(({ label, key, ph }) => (
- <div key={key}>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>{label}</label>
- <input type="number" placeholder={ph} style={loanInputSx} value={loanCalc[key]} onChange={(e) => setLoanCalc((c) => ({ ...c, [key]: e.target.value }))} />
- </div>
- ))}
- <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Tenure</label>
- <select style={loanInputSx} value={loanCalc.tenure} onChange={(e) => setLoanCalc((c) => ({ ...c, tenure: parseInt(e.target.value) }))}>
- {[1,2,3,4,5,6,7].map((y) => <option key={y} value={y}>{y}yr</option>)}
- </select>
- </div>
- </div>
- <div style={{ overflowX: "auto" }}>
- <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
- <thead>
- <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
- {["Bank", "Rate", "Monthly", "Interest", "Total", ""].map((h) => (
- <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "#4b5563", fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>{h}</th>
- ))}
- </tr>
- </thead>
- <tbody>
- {calcRows.map((row) => {
- const isBest = row.monthly > 0 && row.monthly === lowestMonthly;
- return (
- <tr key={row.name} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", borderLeft: isBest? "3px solid #22c55e" : "3px solid transparent", background: isBest? "rgba(34,197,94,.04)" : "transparent" }}>
- <td style={{ padding: "10px", color: "#e5e7eb", fontWeight: 500 }}>
- {row.name}
- {row.islamic && <span style={{ marginLeft: 5, fontSize: 9, padding: "1px 5px", background: "rgba(251,191,36,.1)", border: "1px solid rgba(251,191,36,.2)", color: "#fbbf24", borderRadius: 99 }}>Islamic</span>}
- {isBest && <span style={{ marginLeft: 5, fontSize: 9, padding: "1px 5px", background: "rgba(34,197,94,.1)", border: "1px solid rgba(34,197,94,.2)", color: "#4ade80", borderRadius: 99 }}>Best</span>}
- </td>
- <td style={{ padding: "10px", color: "#9ca3af" }}>{row.rate.toFixed(2)}%</td>
- <td style={{ padding: "10px", color: "#fff", fontWeight: 700, fontFamily: "'Bebas Neue',sans-serif", fontSize: 14 }}>{row.monthly > 0? fmtRM(row.monthly) : "—"}</td>
- <td style={{ padding: "10px", color: "#9ca3af" }}>{row.interest > 0? fmtRM(row.interest) : "—"}</td>
- <td style={{ padding: "10px", color: "#9ca3af" }}>{row.total > 0? fmtRM(row.total) : "—"}</td>
- <td style={{ padding: "10px" }}>
- <button onClick={() => selectBank(row)} style={{ background: "rgba(220,38,38,.12)", border: "1px solid rgba(220,38,38,.25)", color: "#f87171", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>Select</button>
- </td>
- </tr>
- );
- })}
- </tbody>
- </table>
- </div>
- </div>
-
- <div id="sp-loan-form" style={cardSx}>
- <p style={{ margin: "0 0 14px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>Submit Application</p>
- <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(190px,1fr))", gap: 12, marginBottom: 16 }}>
- {[
- { label: "Buyer Name", key: "buyer_name", ph: "Ahmad bin Ali" },
- { label: "Phone", key: "buyer_phone", ph: "123456789" },
- { label: "IC Number", key: "buyer_ic", ph: "901231-10-1234" },
- { label: "Car Model", key: "car_model", ph: "Toyota Vios 2020" },
- { label: "Car Price (RM)", key: "car_price", ph: "85000", type: "number" },
- { label: "Down Payment (RM)", key: "down_payment", ph: "10000", type: "number" },
- { label: "Loan Amount (RM)", key: "loan_amount", ph: "75000", type: "number" },
- { label: "Interest Rate (%)", key: "interest_rate", ph: "3.25", type: "number", step: "0.01" },
- ].map(({ label, key, ph, type = "text", step }) => (
- <div key={key}>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>{label}</label>
- {key === "buyer_phone"? (
- <div style={{ display:"flex", alignItems:"center", ...loanInputSx, padding:0, overflow:"hidden" }}>
- <span style={{ padding:"8px 10px", color:"#6b7280", background:"rgba(255,255,255,0.03)", borderRight:"1px solid rgba(255,255,255,0.08)", fontSize:13, whiteSpace:"nowrap", flexShrink:0 }}>+60</span>
- <input type="tel" placeholder={ph} style={{ flex:1, background:"transparent", border:"none", outline:"none", color:"#fff", fontSize:13, padding:"8px 10px", fontFamily:"inherit" }}
- value={(loanForm.buyer_phone||'').replace(/^\+?60/,'')}
- onChange={(e) => setLoanForm((f) => ({ ...f, buyer_phone: '+60'+e.target.value.replace(/\D/g,'') }))} />
- </div>
- ) : (
- <input type={type} step={step} placeholder={ph} style={loanInputSx} value={loanForm[key]}
- onChange={(e) => key === "loan_amount" || key === "interest_rate"
-? recalcLoanForm({ ...loanForm, [key]: e.target.value })
- : setLoanForm((f) => ({ ...f, [key]: e.target.value }))}
+ <Suspense fallback={<TabLoadingFallback />}>
+ <LoanDesk
+ userId={userId}
+ dealerId={profile?.dealer_id || null}
+ leads={leads}
+ applications={loanApplications}
+ setApplications={setLoanApplications}
+ onLeadSync={(leadId, patch) => setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, ...patch } : l)))}
  />
- )}
- </div>
- ))}
- <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Bank</label>
- <select style={loanInputSx} value={loanForm.bank_name} onChange={(e) => { const b = BANKS.find((x) => x.name === e.target.value); recalcLoanForm({ ...loanForm, bank_name: e.target.value, interest_rate: b? String(b.rate) : loanForm.interest_rate }); }}>
- <option value="">— Select Bank —</option>
- {BANKS.map((b) => <option key={b.name} value={b.name}>{b.name} ({b.rate}%{b.islamic? " · Islamic" : ""})</option>)}
- </select>
- </div>
- <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Tenure (years)</label>
- <select style={loanInputSx} value={loanForm.loan_tenure} onChange={(e) => recalcLoanForm({ ...loanForm, loan_tenure: e.target.value })}>
- {[1,2,3,4,5,6,7].map((y) => <option key={y} value={y}>{y}</option>)}
- </select>
- </div>
- <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Monthly Payment</label>
- <input readOnly style={{ ...loanInputSx, color: "#4ade80", fontFamily: "'Bebas Neue',sans-serif", fontSize: 14 }} value={loanForm.monthly_payment? fmtRM(loanForm.monthly_payment) : ""} />
- </div>
- <div style={{ gridColumn: "1 / -1" }}>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Notes</label>
- <textarea rows={2} style={{ ...loanInputSx, resize: "vertical" }} value={loanForm.notes} onChange={(e) => setLoanForm((f) => ({ ...f, notes: e.target.value }))} />
- </div>
- </div>
- <button onClick={submitLoan} disabled={loanSaving ||!loanForm.bank_name ||!loanForm.loan_amount}
- style={{ background: loanSaving? "#374151" : "#dc2626", border: "none", borderRadius: 7, color: "#fff", padding: "10px 24px", fontSize: 13, fontWeight: 600, cursor: loanSaving? "not-allowed" : "pointer" }}>
- {loanSaving? "Submitting…" : "Submit Application"}
- </button>
- </div>
+ </Suspense>
+ );
 
- <div style={cardSx}>
- <p style={{ margin: "0 0 14px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>My Applications ({loanApplications.length})</p>
- {loanApplications.length === 0? (
- <p style={{ color: "#374151", fontSize: 13, textAlign: "center", padding: "24px 0" }}>No applications yet.</p>
- ) : (
- <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
- {loanApplications.map((app) => {
- const sc = loanStatusColors[app.status] || loanStatusColors.Submitted;
- const bank = Array.isArray(app.banks) && app.banks[0];
- return (
- <div key={app.id} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "12px 14px" }}>
- <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
- <div>
- <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{app.buyer_name || "—"}</p>
- <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>{app.car_model || "—"} {app.car_price? `· RM ${Number(app.car_price).toLocaleString()}` : ""}</p>
- </div>
- <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.color, flexShrink: 0 }}>{app.status}</span>
- </div>
- <div style={{ display: "flex", gap: 16, fontSize: 11, color: "#6b7280" }}>
- {bank && <span>{bank.name} · {bank.rate}%</span>}
- {app.loan_amount && <span>Loan: {fmtRM(app.loan_amount)}</span>}
- {bank?.monthly_payment && <span style={{ color: "#4ade80", fontWeight: 600 }}>RM {Number(bank.monthly_payment).toLocaleString()}/mo</span>}
- <span style={{ marginLeft: "auto" }}>{new Date(app.created_at).toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "2-digit" })}</span>
- </div>
- {loanEditId === app.id? (
- <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
- <select style={{ ...loanInputSx, width: 130, fontSize: 12 }} value={loanEditStatus} onChange={(e) => setLoanEditStatus(e.target.value)}>
- {["Submitted","Pending","Approved","Declined"].map((s) => <option key={s} value={s}>{s}</option>)}
- </select>
- <button onClick={async () => { await supabase.from("loan_applications").update({ status: loanEditStatus }).eq("id", app.id); setLoanApplications((p) => p.map((a) => a.id === app.id? { ...a, status: loanEditStatus } : a)); setLoanEditId(null); }}
- style={{ padding: "6px 12px", borderRadius: 6, background: "rgba(34,197,94,.15)", border: "1px solid rgba(34,197,94,.3)", color: "#4ade80", fontSize: 12, cursor: "pointer" }}>Save</button>
- <button onClick={() => setLoanEditId(null)} style={{ padding: "6px 12px", borderRadius: 6, background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.1)", color: "#6b7280", fontSize: 12, cursor: "pointer" }}>Cancel</button>
- </div>
- ) : (
- <button onClick={() => { setLoanEditId(app.id); setLoanEditStatus(app.status); }} style={{ marginTop: 6, fontSize: 11, padding: "3px 10px", borderRadius: 5, background: "transparent", border: "1px solid rgba(255,255,255,.1)", color: "#6b7280", cursor: "pointer" }}>Edit status</button>
- )}
- </div>
- );
- })}
- </div>
- )}
- </div>
- </div>
- );
 
  // TOUR
 
+ // One step per TOUR_TABS entry — the 10 sidebar links, in nav order, plus
+ // the welcome card. Titles match the nav labels exactly (TABS_DESKTOP)
+ // since the ring and the bubble now always describe the same thing.
  const TOUR_STEPS = [
- { icon: Sparkles, title: "Welcome to ShiftOS Premium", body: "Quick tour of everything your plan unlocks. Each step takes you to the real panel so you can see it live." },
+ { icon: Sparkles, title: "Welcome to ShiftOS Premium", body: "A quick walk down the menu — everything your plan unlocks, one link at a time." },
  { icon: BarChart2, title: "Dashboard", body: "Your command centre — KPIs, stale follow-up nudges, listing performance, and recent activity all in one view." },
  { icon: Car, title: "My Listings", body: "Add your cars here. Each card shows views, WA taps, and a CVR bar. Hot = buyers are clicking. Cold = needs a refresh or price drop. The Add-ons pill next to Cars is your paid extras catalogue." },
  { icon: Users, title: "Leads", body: "Track every buyer: New → Contacted → Test Drive → Won. Heat scores show who needs attention. Ping stale leads straight to WhatsApp." },
- { icon: Calendar, title: "Bookings", body: "Your Inbox opens here. Viewing appointments land in this list — confirm, reschedule, cancel or send a WA reminder without leaving the app." },
- { icon: MessageSquare, title: "Lead History", body: "The other half of the Inbox. Every buyer who messaged through your listing cards — reply with templates or convert them into pipeline leads in one tap." },
+ { icon: MessageSquare, title: "Inbox", body: "Viewing appointments and buyer messages both land here. Bookings — confirm, reschedule, cancel or send a WA reminder. Lead History — everyone who messaged through your listing cards; reply with templates or convert them into pipeline leads in one tap." },
+ { icon: ClipboardList, title: "Sold", body: "Everything after a won deal lives here. Handover is the 8-step Malaysian paperwork checklist — loan settlement, insurance, Puspakom, JPJ pindah milik, road tax, geran, keys. Customers is everyone who's bought from you, with road tax and insurance expiry tracked so the app tells you who's due for a renewal call or ready to trade up." },
  { icon: TrendingUp, title: "Analytics", body: "Views, WhatsApp taps and conversion rate per listing, plus your total commission and cars sold — all in one view." },
  { icon: Banknote, title: "Loans", body: "Compare bank rates for a buyer, submit their loan application, and track approval status — a Premium-only feature." },
- { icon: Megaphone, title: "Outreach Hub", body: "See which leads have gone cold, then work through them with a guided WhatsApp campaign — one tap per contact. Premium-only." },
+ { icon: Megaphone, title: "Outreach", body: "See which leads have gone cold, then work through them with a guided WhatsApp campaign — one tap per contact. Premium-only." },
  { icon: MessageCircle, title: "Chat", body: "Buyers who message you from a listing land here instead of WhatsApp. You see their name, the car, and read receipts — and phone numbers stay masked until you tap them." },
- { icon: ClipboardList, title: "Sold · Handover", body: "Everything after a won deal lives in the Sold tab. This half is the 8-step Malaysian handover checklist — loan settlement, insurance, Puspakom, JPJ pindah milik, road tax, geran, keys. The number on the tab is how many are still open." },
- { icon: UserCheck, title: "Sold · Customers", body: "The other half: everyone who has bought from you. Road tax and insurance expiry are tracked per car, so the app tells you who is due for a renewal call or is ready to trade up." },
- { icon: LinkIcon, title: "Join a Dealership", body: "Have an invite code from your dealer? Enter it at the bottom of Settings to unlock the full panel — shared stock, team leads, commission tracking and more." },
- { icon: Settings, title: "Settings", body: "Your public profile, WhatsApp templates and account settings live here." },
+ { icon: Settings, title: "Settings", body: "Your public profile, WhatsApp templates and account settings live here. Have an invite code from a dealer? Enter it at the bottom of this page to unlock the full panel — shared stock, team leads, commission tracking and more." },
  ];
 
  const dismissTour = () => {
- localStorage.setItem("sp_tour_done", "1");
+ // Per-account DB flag (mirrors SalesmanLite.jsx:8373-8375) is the real
+ // guard read on next mount; the per-user localStorage key is only a
+ // same-session backup so a re-render before the write lands doesn't
+ // re-trigger the tour.
+ if (userId) {
+ localStorage.setItem(`sp_tour_seen_${userId}`, "1");
+ setProfile((p) => (p ? { ...p, onboarding_tour_done: true } : p));
+ supabase.from("profiles").update({ onboarding_tour_done: true }).eq("id", userId).then(() => {});
+ }
  setTourStep(null);
  setTourTarget(null);
  // The tour walked the user across 13 tabs; finishing or skipping should not
@@ -5349,10 +5149,12 @@ export default function SalesmanPremium() {
  // stray notch rather than part of the bubble. One constant, both.
  const BUBBLE_BG = "#111827";
  // dock: on a phone there is no free column beside the target, so a floating
- // card always ends up on top of something. Docked, it lives in one fixed strip
- // above the bottom nav for every step and the page scrolls the target into the
- // space above it.
- const place = { dock: isMobile };
+ // card always ends up on top of something. Docked, it lives in one fixed
+ // strip at the bottom of the screen for every step and the page scrolls
+ // the target into the space above it. navH: 0 — Premium's mobile nav is
+ // now the renderMobileNav() drawer, not a fixed bottom bar, so there's no
+ // nav height to leave clear (unlike Lite/Salesmanpanel's default).
+ const place = { dock: isMobile, navH: 0 };
  const { style: bubbleStyle, arrow } = isWelcome
  ? placeTourCard(null, { w: BUBBLE_W, h: tourCardH }, window.innerWidth, window.innerHeight, place)
  : placeTourCard(tourTarget, { w: BUBBLE_W, h: tourCardH }, window.innerWidth, window.innerHeight, place);
@@ -5546,88 +5348,16 @@ export default function SalesmanPremium() {
  100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); border-color: rgba(255,255,255,0.07); }
  }
  .sp-lead-glow { animation: sp-lead-glow 1s ease-out; }
- @media (prefers-reduced-motion: reduce) { .sp-lead-glow { animation: none; border-color: rgba(59,130,246,0.7); } }
+ @media (prefers-reduced-motion: reduce) {
+ .sp-lead-glow { animation: none; border-color: rgba(59,130,246,0.7); }
+ .sp-topbar { transition: none !important; }
+ }
  `}</style>
 
- {/* Nav */}
- {isMobile? (
- <nav
- style={{
- position: "fixed",
- bottom: 0,
- left: 0,
- right: 0,
- zIndex: 50,
- height: 60,
- background: "#080a12",
- borderTop: "0.5px solid rgba(255,255,255,0.07)",
- display: "flex",
- }}
- >
- {TABS_MOBILE.map(({ tab, label, icon, badge }) => {
- const isActive = activeTab === tab;
- return (
- <button
- key={tab}
- data-tour-id={tab}
- onClick={() => switchTab(tab)}
- style={{
- flex: 1,
- display: "flex",
- flexDirection: "column",
- alignItems: "center",
- justifyContent: "center",
- gap: 2,
- background: "transparent",
- border: "none",
- cursor: "pointer",
- color: isActive? "#93c5fd" : "#4b5563",
- position: "relative",
- padding: "6px 0",
- }}
- >
- {isActive && (
- <div
- style={{
- position: "absolute",
- top: 5,
- left: "50%",
- transform: "translateX(-50%)",
- width: 3,
- height: 3,
- borderRadius: 99,
- background: "#3b82f6",
- }}
- />
- )}
- <div style={{ position: "relative" }}>
- {icon}
- {badge? (
- <span
- style={{
- position: "absolute",
- top: -2,
- right: -2,
- width: 6,
- height: 6,
- background: "#ef4444",
- borderRadius: "50%",
- }}
- />
- ) : null}
- </div>
- {isActive && (
- <span
- style={{ fontSize: 9, color: "#93c5fd", lineHeight: 1 }}
- >
- {label}
- </span>
- )}
- </button>
- );
- })}
- </nav>
- ) : (
+ {/* Nav — desktop sidebar only; mobile uses the renderMobileNav() drawer
+     (portalled to document.body, called near renderNotifPanel()) instead of
+     the old fixed bottom bar. */}
+ {!isMobile && (
  <nav
  style={{
  width: 200,
@@ -5824,8 +5554,12 @@ export default function SalesmanPremium() {
  overflowY: "auto",
  }}
  >
- {/* Topbar */}
+ {/* Topbar — hides on scroll down, returns on scroll up (UX-1). Pinned
+     visible whenever an overlay or the tour is open, because the mobile
+     nav trigger lives in here. translateY rather than display: removing a
+     sticky bar from layout makes the page jump. */}
  <div
+ className="sp-topbar"
  style={{
  position: "sticky",
  top: 0,
@@ -5837,8 +5571,30 @@ export default function SalesmanPremium() {
  display: "flex",
  alignItems: "center",
  gap: 12,
+ transform: headerVisible ? "translateY(0)" : "translateY(-100%)",
+ transition: "transform 0.22s ease",
+ willChange: "transform",
  }}
  >
+ {isMobile && (
+ <button
+ onClick={() => setMobileNavOpen(true)}
+ aria-label="Open navigation"
+ style={{
+ background: "rgba(255,255,255,0.04)",
+ border: "1px solid rgba(255,255,255,0.08)",
+ borderRadius: 8,
+ color: "#93c5fd",
+ padding: "8px 10px",
+ cursor: "pointer",
+ display: "flex",
+ alignItems: "center",
+ flexShrink: 0,
+ }}
+ >
+ <Menu size={17} />
+ </button>
+ )}
  {isMobile? (
  <>
  <div
@@ -6010,7 +5766,10 @@ export default function SalesmanPremium() {
  style={{
  padding: isMobile? "16px 12px" : 24,
  flex: 1,
- paddingBottom: isMobile? 80 : 24,
+ // No longer clearing a fixed bottom nav bar (removed — nav is the
+ // renderMobileNav() drawer now), so mobile no longer needs the extra
+ // 80px reserve; same bottom padding as desktop.
+ paddingBottom: 24,
  }}
  >
  {activeTab === "dashboard" && (
@@ -6146,6 +5905,7 @@ export default function SalesmanPremium() {
  {renderAddLeadModal()}
  {renderWAModal()}
  {renderNotifPanel()}
+ {renderMobileNav()}
  {selectedCar && (
  <Suspense fallback={null}>
  <CarDetailPopup

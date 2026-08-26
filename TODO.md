@@ -121,6 +121,23 @@ not scoped, not prioritized — just parked here until picked up on purpose.
 
 ---
 
+### SESSION 2026-08-26 — Salesman Premium UX
+
+- [ ] **UX-1: auto-hiding sticky header (Salesman Premium topbar).** The topbar
+  (`SalesmanPremium.jsx`, the `{/* Topbar */}` block — `position: sticky; top: 0`)
+  should hide on scroll DOWN and come back the moment the user scrolls UP even a
+  little, the pattern most mobile apps use. Today it is permanently stuck, so it
+  eats vertical space on a phone while a salesman is reading a long list. Needs:
+  a scroll-direction hook (last scrollY vs current, with a small threshold so a
+  1px jitter doesn't flap it), `transform: translateY(-100%)` + a transition
+  rather than toggling `display`, and it must always be shown again at
+  `scrollY === 0`. Watch out: the mobile nav drawer trigger lives in this bar,
+  so it can't be hidden while the drawer or any overlay is open, and
+  `prefers-reduced-motion` should skip the transition. Applies to the Premium
+  panel first; Lite/`Salesmanpanel` share the same pattern if it works well.
+
+---
+
 ### SESSION 2026-08-23 — AutoRaptor competitive audit (Salesman Premium)
 
 Full report: published artifact

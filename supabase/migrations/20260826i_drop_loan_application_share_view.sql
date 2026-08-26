@@ -1,0 +1,27 @@
+-- CRITICAL: anonymous dump of every shared loan application, tokens included.
+--
+-- loan_application_share_view was a SECURITY DEFINER view (so it read
+-- loan_applications with the owner's rights, bypassing RLS entirely), granted
+-- SELECT to anon, with this predicate:
+--
+--   WHERE share_token IS NOT NULL AND length(share_token) >= 32
+--
+-- The same mistake as the policy dropped in 20260826h: a row filter standing in
+-- for an ownership check. It never compares share_token to anything the caller
+-- had to know, so a plain GET on /rest/v1/loan_application_share_view returned
+-- every shared application on the platform. Worse, share_token was one of the
+-- selected COLUMNS - so the dump handed over the tokens themselves, which then
+-- unlock the full record (buyer name, car, financing, document state, salesman
+-- name and WhatsApp number) through get_loan_share. Verified against
+-- production: anon read 2 of 2 rows and their tokens.
+--
+-- anon also held INSERT/UPDATE/DELETE on it. The view is auto-updatable and not
+-- security_invoker, so those writes would have reached the base table with the
+-- owner's rights - a way around loan_applications' RLS altogether.
+--
+-- get_loan_share replaced it: same job, but it takes the token as an argument
+-- and returns only the row that matches, never the token itself, and it strips
+-- rate and monthly from any bank that has not approved. Nothing in the codebase
+-- references the view. It goes.
+
+drop view if exists public.loan_application_share_view;

@@ -1,8 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { MessageSquare, MessageCircle, Phone, ChevronRight, ArrowLeft, X, ShieldCheck, Loader2 } from 'lucide-react';
 import { useBuyerThread } from '../../hooks/useChat';
-import ChatThread from './ChatThread';
+
+// Lazy — ChatThread (message list + useChatThread's live realtime channel)
+// is only ever needed once a visitor has actually started chatting. A
+// static import shipped and parsed it in CarDetailPage's bundle for every
+// single car-detail page view, chat or not. The trigger button and chooser
+// sheet above stay eager since they're what's visible on first paint.
+const ChatThread = lazy(() => import('./ChatThread'));
 
 // The single "Contact" entry point on a car listing (RAPTOR-6).
 //
@@ -49,7 +55,9 @@ export default function BuyerChat({
   const [open, setOpen] = useState(false);
   const [view, setView] = useState('choose');   // 'choose' | 'chat'
   const [accepted, setAccepted] = useState(hasConsented);
-  const { threadId, start, starting, needsAnon } = useBuyerThread(listingId);
+  // active: open — the reattach check only fires once the sheet is opened,
+  // not on page load for every visitor. See useChat.js:useBuyerThread.
+  const { threadId, start, starting, needsAnon } = useBuyerThread(listingId, { active: open });
 
   // Overlay rule 2 — lock the page behind the sheet.
   useEffect(() => {
@@ -177,7 +185,13 @@ export default function BuyerChat({
       <style>{`@keyframes bcspin{to{transform:rotate(360deg)}}`}</style>
     </div>
   ) : (
-    <ChatThread threadId={threadId} role="buyer" theme="dark" height="min(72vh, 560px)" showPrivacyNote />
+    <Suspense fallback={
+      <div style={{ padding: '40px 22px', textAlign: 'center' }}>
+        <Loader2 size={20} style={{ color: 'rgba(255,255,255,0.4)', animation: 'bcspin 1s linear infinite' }} />
+      </div>
+    }>
+      <ChatThread threadId={threadId} role="buyer" theme="dark" height="min(72vh, 560px)" showPrivacyNote />
+    </Suspense>
   );
 
   const onChooser = view === 'choose';
