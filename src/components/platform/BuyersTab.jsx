@@ -289,7 +289,6 @@ export default function BuyersTab() {
                             <Detail label="Signed up" value={b.signed_up_at ? new Date(b.signed_up_at).toLocaleString("en-MY") : null} />
                             <Detail label="Signup method" value={b.provider === "google" ? "Google" : "Email + password"} />
                             <Detail label="Email verified" value={b.email_verified ? "Yes" : "No"} />
-                            <Detail label="PDPA consent" value={b.pdpa_consent ? "Given" : "Not given"} />
                           </Block>
 
                           <Block title="Security">
