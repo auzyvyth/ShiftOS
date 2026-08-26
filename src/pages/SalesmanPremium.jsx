@@ -38,6 +38,7 @@ import {
  User,
  Phone,
  X,
+ Menu,
  LayoutGrid,
  Users,
  MessageSquare,
@@ -545,6 +546,13 @@ export default function SalesmanPremium() {
  const tourAutoStarted = useRef(false);
  tourOpenRef.current = tourStep !== null;
 
+ // Mobile nav — a slide-out drawer (replaces the old fixed bottom bar, which
+ // had grown to 10 flex:1 buttons in a 60px strip). See anyOverlayOpen below
+ // for the scroll-lock and the tour-target effect for the auto-open-during-
+ // tour behaviour (a nav-anchored tour step has to make the real button
+ // visible, not ring something hidden inside a closed drawer).
+ const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
  // broadcast
  const [broadcastCar, setBroadcastCar] = useState(null);
  const [broadcastMsg, setBroadcastMsg] = useState("");
@@ -564,7 +572,7 @@ export default function SalesmanPremium() {
  const anyOverlayOpen = !!(
  showAddLead || waModalLead || bookingDetailId || notifOpen ||
  testDriveConfirm || broadcastCar || aiCaptionCar ||
- confirmBookingApt || sellerBookingLead
+ confirmBookingApt || sellerBookingLead || mobileNavOpen
  );
  useEffect(() => {
  document.body.style.overflow = anyOverlayOpen? "hidden" : "";
@@ -821,7 +829,18 @@ export default function SalesmanPremium() {
  setProfile(profileData);
  setLoading(false);
 
- if (!tourAutoStarted.current && !localStorage.getItem("sp_tour_done")) {
+ // profiles.onboarding_tour_done is the real, per-account guard (mirrors
+ // SalesmanLite.jsx:1390) — sp_tour_seen_${uid} is only a same-session
+ // backup. The old check here was a bare "sp_tour_done" localStorage key
+ // with no user id in it: the first time the tour was dismissed on ANY
+ // account on a given browser/device, it silently never fired again for
+ // every other account signing in on that same browser — including a
+ // genuinely new signup tested on the same machine.
+ if (
+ !tourAutoStarted.current &&
+ !profileData.onboarding_tour_done &&
+ !localStorage.getItem(`sp_tour_seen_${uid}`)
+ ) {
  tourAutoStarted.current = true;
  startTour();
  }
@@ -1214,14 +1233,19 @@ export default function SalesmanPremium() {
  }, [tourOpen]);
 
  useEffect(() => {
- if (tourStep === null) { setTourTarget(null); return; }
+ if (tourStep === null) { setTourTarget(null); setMobileNavOpen(false); return; }
  const tab = TOUR_TABS[tourStep];
- if (!tab) { setTourTarget(null); return; }
+ if (!tab) { setTourTarget(null); setMobileNavOpen(false); return; }
  // replace: a tour that pushes one history entry per step turns the phone's
  // back gesture into a walk back through the whole tour.
  switchTab(tab, { replace: true });
  const id = TOUR_HIGHLIGHT[tab] ?? tab;
  const inContent = TOUR_IN_CONTENT.has(id);
+ // A nav-anchored step (not in TOUR_IN_CONTENT) rings a real button that now
+ // lives inside the mobile drawer instead of a fixed bottom bar — open it
+ // for the duration of that step so there's an actual visible element to
+ // ring, same principle as scrolling an in-page target into view below.
+ if (isMobile) setMobileNavOpen(!inContent);
  // A step anchored to the nav describes the panel as a whole, so start that
  // panel at its top — step 12 scrolls the page down to the invite box and the
  // Settings step that follows used to inherit that scroll position.
@@ -1245,7 +1269,10 @@ export default function SalesmanPremium() {
  const r = el.getBoundingClientRect();
  setTourTarget(r);
  if (!inContent) return;
- const band = tourBand(window.innerHeight, { dock: isMobile, cardH: tourCardHRef.current });
+ // navH: 0 — Premium no longer reserves space for a fixed bottom nav (the
+ // mobile drawer replaced it), unlike Lite/Salesmanpanel which still pass
+ // the shared MOBILE_NAV_H default.
+ const band = tourBand(window.innerHeight, { dock: isMobile, cardH: tourCardHRef.current, navH: 0 });
  const delta = tourScrollDelta(r, band);
  const now = Date.now();
  if (Math.abs(delta) > 8 && aligns < 3 && now - lastAlign > 260) {
@@ -2300,35 +2327,7 @@ export default function SalesmanPremium() {
  },
  ];
 
- const TABS_MOBILE = [
- { tab: "dashboard", label: "Dashboard", icon: <LayoutGrid size={18} /> },
- {
- tab: "listings",
- label: "Listings",
- icon: <Car size={18} />,
- badge: myListings.length || null,
- },
- {
- tab: "leads",
- label: "Leads",
- icon: <User size={18} />,
- badge: leads.filter((l) => l.stage!== "lost").length || null,
- },
- {
- tab: "enquiries",
- label: "Inbox",
- icon: <MessageSquare size={18} />,
- badge: inboxBadge || null,
- },
- { tab: "sold", label: "Sold", icon: <ClipboardList size={18} />, badge: handover.activeCount || null },
- { tab: "analytics", label: "Analytics", icon: <TrendingUp size={18} /> },
- { tab: "loans", label: "Loans", icon: <Banknote size={18} /> },
- ...(showOutreach ? [{ tab: "outreach", label: "Outreach", icon: <Megaphone size={18} /> }] : []),
- { tab: "chat", label: "Chat", icon: <MessageSquare size={18} />, badge: chatUnread || null },
- { tab: "settings", label: "Settings", icon: <Settings size={18} /> },
- ];
-
- // NOTIFICATION PANEL 
+ // NOTIFICATION PANEL
 
  const renderNotifPanel = () =>
  notifOpen && (
@@ -2462,7 +2461,82 @@ export default function SalesmanPremium() {
  </div>
  );
 
- // RENDER DASHBOARD 
+ // MOBILE NAV DRAWER — replaces the old fixed bottom bar (had grown to 10
+ // flex:1 buttons in a 60px strip, each icon-only unless active — too
+ // cramped to use). Reuses TABS_DESKTOP (same tab set the desktop sidebar
+ // already renders) rather than a third parallel list. Overlay rules:
+ // portalled to document.body (rule 1), body-scroll-lock via anyOverlayOpen
+ // above (rule 2). Auto-opened during the tour for nav-anchored steps — see
+ // the tourStep effect — so the ring always points at a real visible button.
+ const renderMobileNav = () =>
+ mobileNavOpen && createPortal(
+ <div
+ onClick={() => setMobileNavOpen(false)}
+ style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(0,0,0,0.55)" }}
+ >
+ <nav
+ onClick={(e) => e.stopPropagation()}
+ style={{
+ position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 1201,
+ width: "min(78vw, 280px)",
+ background: "#080a12",
+ borderRight: "1px solid rgba(255,255,255,0.07)",
+ display: "flex",
+ flexDirection: "column",
+ overflowY: "auto",
+ boxShadow: "4px 0 24px rgba(0,0,0,0.4)",
+ }}
+ >
+ <div style={{ padding: 16, borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 8 }}>
+ <div style={{ width: 28, height: 28, background: "#2563eb", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontFamily: "'Bebas Neue', sans-serif", fontWeight: 700, color: "#fff", flexShrink: 0 }}>S</div>
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, letterSpacing: "2px", color: "#fff", lineHeight: 1, margin: 0 }}>SHIFTOS</p>
+ <p style={{ fontSize: 10, color: "#4b5563", marginTop: 2, marginBottom: 0 }}>· {isPremium ? "Premium Panel" : "Lite Panel"}</p>
+ </div>
+ <button onClick={() => setMobileNavOpen(false)} aria-label="Close navigation"
+ style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 4, display: "flex", flexShrink: 0 }}>
+ <X size={18} />
+ </button>
+ </div>
+ <p style={{ fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", padding: "12px 16px 4px", fontWeight: 600, margin: 0 }}>Main</p>
+ {TABS_DESKTOP.map(({ tab, label, icon, badge }) => (
+ <button
+ key={tab}
+ data-tour-id={tab}
+ onClick={() => { switchTab(tab); setMobileNavOpen(false); }}
+ style={{
+ display: "flex", alignItems: "center", gap: 10,
+ padding: "10px 16px", margin: "1px 8px", borderRadius: 8, cursor: "pointer",
+ background: activeTab === tab ? "rgba(37,99,235,0.15)" : "transparent",
+ border: activeTab === tab ? "0.5px solid rgba(37,99,235,0.25)" : "0.5px solid transparent",
+ color: activeTab === tab ? "#93c5fd" : "#9ca3af",
+ fontSize: 14, fontWeight: 500, width: "calc(100% - 16px)", textAlign: "left",
+ }}
+ >
+ {icon}
+ <span style={{ flex: 1 }}>{label}</span>
+ {badge ? (
+ <span style={{ fontSize: 10, background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", borderRadius: 99, padding: "1px 6px" }}>{badge}</span>
+ ) : null}
+ </button>
+ ))}
+ <button
+ onClick={() => { setMobileNavOpen(false); handleLogout(); }}
+ style={{
+ display: "flex", alignItems: "center", gap: 10, marginTop: "auto",
+ padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.06)",
+ background: "none", border: "none", borderTopWidth: 1, cursor: "pointer",
+ color: "#6b7280", fontSize: 13, fontWeight: 500, textAlign: "left",
+ }}
+ >
+ <LogOut size={15} /> Log out
+ </button>
+ </nav>
+ </div>,
+ document.body,
+ );
+
+ // RENDER DASHBOARD
 
  // Acting on a "This week" row has to persist. If it only hid the row in
  // local state the same person would be back tomorrow, and a call list you
@@ -4411,8 +4485,8 @@ export default function SalesmanPremium() {
  <div id="sp-merge" data-tour-id="sp-merge" style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
  {renderMerge()}
  </div>
- {/* Replay the tour. It only auto-runs once (localStorage sp_tour_done), so
-     without this there was no way back to it — and no way for anyone who
+ {/* Replay the tour. It only auto-runs once (profiles.onboarding_tour_done),
+     so without this there was no way back to it — and no way for anyone who
      skipped it on day one to find out what the other tabs do. */}
  <div style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
  <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Product tour</p>
@@ -5310,7 +5384,15 @@ export default function SalesmanPremium() {
  ];
 
  const dismissTour = () => {
- localStorage.setItem("sp_tour_done", "1");
+ // Per-account DB flag (mirrors SalesmanLite.jsx:8373-8375) is the real
+ // guard read on next mount; the per-user localStorage key is only a
+ // same-session backup so a re-render before the write lands doesn't
+ // re-trigger the tour.
+ if (userId) {
+ localStorage.setItem(`sp_tour_seen_${userId}`, "1");
+ setProfile((p) => (p ? { ...p, onboarding_tour_done: true } : p));
+ supabase.from("profiles").update({ onboarding_tour_done: true }).eq("id", userId).then(() => {});
+ }
  setTourStep(null);
  setTourTarget(null);
  // The tour walked the user across 13 tabs; finishing or skipping should not
@@ -5349,10 +5431,12 @@ export default function SalesmanPremium() {
  // stray notch rather than part of the bubble. One constant, both.
  const BUBBLE_BG = "#111827";
  // dock: on a phone there is no free column beside the target, so a floating
- // card always ends up on top of something. Docked, it lives in one fixed strip
- // above the bottom nav for every step and the page scrolls the target into the
- // space above it.
- const place = { dock: isMobile };
+ // card always ends up on top of something. Docked, it lives in one fixed
+ // strip at the bottom of the screen for every step and the page scrolls
+ // the target into the space above it. navH: 0 — Premium's mobile nav is
+ // now the renderMobileNav() drawer, not a fixed bottom bar, so there's no
+ // nav height to leave clear (unlike Lite/Salesmanpanel's default).
+ const place = { dock: isMobile, navH: 0 };
  const { style: bubbleStyle, arrow } = isWelcome
  ? placeTourCard(null, { w: BUBBLE_W, h: tourCardH }, window.innerWidth, window.innerHeight, place)
  : placeTourCard(tourTarget, { w: BUBBLE_W, h: tourCardH }, window.innerWidth, window.innerHeight, place);
@@ -5549,85 +5633,10 @@ export default function SalesmanPremium() {
  @media (prefers-reduced-motion: reduce) { .sp-lead-glow { animation: none; border-color: rgba(59,130,246,0.7); } }
  `}</style>
 
- {/* Nav */}
- {isMobile? (
- <nav
- style={{
- position: "fixed",
- bottom: 0,
- left: 0,
- right: 0,
- zIndex: 50,
- height: 60,
- background: "#080a12",
- borderTop: "0.5px solid rgba(255,255,255,0.07)",
- display: "flex",
- }}
- >
- {TABS_MOBILE.map(({ tab, label, icon, badge }) => {
- const isActive = activeTab === tab;
- return (
- <button
- key={tab}
- data-tour-id={tab}
- onClick={() => switchTab(tab)}
- style={{
- flex: 1,
- display: "flex",
- flexDirection: "column",
- alignItems: "center",
- justifyContent: "center",
- gap: 2,
- background: "transparent",
- border: "none",
- cursor: "pointer",
- color: isActive? "#93c5fd" : "#4b5563",
- position: "relative",
- padding: "6px 0",
- }}
- >
- {isActive && (
- <div
- style={{
- position: "absolute",
- top: 5,
- left: "50%",
- transform: "translateX(-50%)",
- width: 3,
- height: 3,
- borderRadius: 99,
- background: "#3b82f6",
- }}
- />
- )}
- <div style={{ position: "relative" }}>
- {icon}
- {badge? (
- <span
- style={{
- position: "absolute",
- top: -2,
- right: -2,
- width: 6,
- height: 6,
- background: "#ef4444",
- borderRadius: "50%",
- }}
- />
- ) : null}
- </div>
- {isActive && (
- <span
- style={{ fontSize: 9, color: "#93c5fd", lineHeight: 1 }}
- >
- {label}
- </span>
- )}
- </button>
- );
- })}
- </nav>
- ) : (
+ {/* Nav — desktop sidebar only; mobile uses the renderMobileNav() drawer
+     (portalled to document.body, called near renderNotifPanel()) instead of
+     the old fixed bottom bar. */}
+ {!isMobile && (
  <nav
  style={{
  width: 200,
@@ -5839,6 +5848,25 @@ export default function SalesmanPremium() {
  gap: 12,
  }}
  >
+ {isMobile && (
+ <button
+ onClick={() => setMobileNavOpen(true)}
+ aria-label="Open navigation"
+ style={{
+ background: "rgba(255,255,255,0.04)",
+ border: "1px solid rgba(255,255,255,0.08)",
+ borderRadius: 8,
+ color: "#93c5fd",
+ padding: "8px 10px",
+ cursor: "pointer",
+ display: "flex",
+ alignItems: "center",
+ flexShrink: 0,
+ }}
+ >
+ <Menu size={17} />
+ </button>
+ )}
  {isMobile? (
  <>
  <div
@@ -6010,7 +6038,10 @@ export default function SalesmanPremium() {
  style={{
  padding: isMobile? "16px 12px" : 24,
  flex: 1,
- paddingBottom: isMobile? 80 : 24,
+ // No longer clearing a fixed bottom nav bar (removed — nav is the
+ // renderMobileNav() drawer now), so mobile no longer needs the extra
+ // 80px reserve; same bottom padding as desktop.
+ paddingBottom: 24,
  }}
  >
  {activeTab === "dashboard" && (
@@ -6146,6 +6177,7 @@ export default function SalesmanPremium() {
  {renderAddLeadModal()}
  {renderWAModal()}
  {renderNotifPanel()}
+ {renderMobileNav()}
  {selectedCar && (
  <Suspense fallback={null}>
  <CarDetailPopup
