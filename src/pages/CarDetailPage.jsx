@@ -107,11 +107,25 @@ const estimateFuelCost = (cc, dealerConsumption, distanceKm) => {
 const MARKET_SAMPLE_FLOOR = 5;
 
 const MarketPriceTag = ({ car, isXdrive, th }) => {
+  // Locked per car at first paint. The page loads with a rough view-provided
+  // sample_count, then a background compute_market_avg call overwrites it
+  // with a precise one after the page has already painted (CarDetailPage
+  // load(), ~1268). If that precise count crossed MARKET_SAMPLE_FLOOR, this
+  // block used to flip between two structurally different layouts (a plain
+  // two-line paragraph vs. the header+track+details meter), shifting every
+  // block below it — a real layout shift Speed Insights' CLS metric picks
+  // up on every car-detail view with a market average. Freezing which shape
+  // renders keeps the DOM stable across that later update; only the numbers
+  // and text inside it change.
+  const thinRef = useRef({ id: null, thin: null });
   if (!car?.market_avg_price || !(car.selling_price > 0)) return null;
   const avg = Number(car.market_avg_price);
   const price = Number(car.selling_price);
   const n = Number(car.market_sample_count) || 0;
-  const thin = n < MARKET_SAMPLE_FLOOR;
+  if (thinRef.current.id !== car.id) {
+    thinRef.current = { id: car.id, thin: n < MARKET_SAMPLE_FLOOR };
+  }
+  const thin = thinRef.current.thin;
   const ratio = price / avg;
   const band = ratio <= 0.93 ? "below" : ratio >= 1.07 ? "above" : "fair";
   const cfg = {

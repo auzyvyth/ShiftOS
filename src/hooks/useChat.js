@@ -160,10 +160,11 @@ export function useChatThreads({ salesmanId = null, dealerId = null }) {
 // anonymously if they have no session, so a shopper can chat without making an
 // account. Supabase keeps the same user id if they register later, so the
 // history carries over.
-export function useBuyerThread(listingId, { autoStart = false } = {}) {
+export function useBuyerThread(listingId, { autoStart = false, active = true } = {}) {
   const [threadId, setThreadId] = useState(null);
   const [starting, setStarting] = useState(false);
   const [needsAnon, setNeedsAnon] = useState(false);
+  const checkedRef = useRef(false);
 
   const start = useCallback(async () => {
     if (!listingId || starting) return null;
@@ -190,8 +191,16 @@ export function useBuyerThread(listingId, { autoStart = false } = {}) {
     }
   }, [listingId, starting]);
 
-  // Reattach to an existing thread on load without creating one.
+  // Reattach to an existing thread — deferred until `active` (the Contact
+  // sheet is actually open) and run at most once per mount. This used to
+  // fire unconditionally the moment CarDetailPage rendered: an
+  // `auth.getUser()` plus a `chat_threads` query on every single car-detail
+  // page view for anyone with a session, whether or not they ever opened
+  // Contact — new network work on the site's highest-traffic page that
+  // didn't exist before BuyerChat shipped.
   useEffect(() => {
+    if (!active || checkedRef.current) return;
+    checkedRef.current = true;
     let cancelled = false;
     (async () => {
       if (!listingId) return;
@@ -208,7 +217,7 @@ export function useBuyerThread(listingId, { autoStart = false } = {}) {
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listingId]);
+  }, [listingId, active]);
 
   return { threadId, start, starting, needsAnon };
 }
