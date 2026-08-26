@@ -6,16 +6,16 @@ import PlanPickerModal from '../components/onboarding/PlanPickerModal';
 import { isAdultFromIC } from '../utils/icAge';
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-.eo-root{display:flex;height:100vh;height:100dvh;overflow:hidden;background:#070A12;font-family:system-ui,sans-serif;}
+.eo-root{display:flex;height:100vh;height:100dvh;overflow:hidden;background:#070A12;font-family:'Outfit',system-ui,sans-serif;}
 .eo-left{width:380px;min-width:380px;background:#0C1120;border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;padding:40px 36px;overflow-y:auto;flex-shrink:0;}
 .eo-right{flex:1;min-width:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:64px 48px;position:relative;}
 .eo-logo{display:flex;align-items:center;gap:10px;margin-bottom:32px;}
 .eo-logo-icon{width:30px;height:30px;background:#dc2626;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;font-family:'Bebas Neue',cursive;letter-spacing:1px;}
 .eo-logo-text{font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:4px;color:#E8EDF5;}
-.eo-plan-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:rgba(220,38,38,0.12);border:1px solid rgba(220,38,38,0.25);border-radius:4px;font-size:10px;letter-spacing:0.2em;color:rgba(220,38,38,0.9);text-transform:uppercase;margin-bottom:10px;width:fit-content;}
-.eo-changeplan{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:6px 11px;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.5);cursor:pointer;margin-bottom:32px;font-family:system-ui,sans-serif;transition:border-color 0.15s,color 0.15s;}
+.eo-plan-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);border-radius:20px;font-size:10px;font-weight:600;letter-spacing:0.1em;color:#fff;text-transform:uppercase;margin-bottom:10px;width:fit-content;}
+.eo-changeplan{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:6px 11px;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.5);cursor:pointer;margin-bottom:32px;font-family:'Outfit',system-ui,sans-serif;transition:border-color 0.15s,color 0.15s;}
 .eo-changeplan:hover{border-color:rgba(220,38,38,0.45);color:rgba(255,255,255,0.8);}
 .eo-step-list{display:flex;flex-direction:column;gap:0;flex:1;}
 .eo-step{display:flex;align-items:flex-start;gap:14px;position:relative;}
@@ -38,21 +38,21 @@ const CSS = `
 @keyframes eo-up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 .eo-eyebrow{font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:rgba(220,38,38,0.7);margin-bottom:12px;font-weight:500;}
 .eo-heading{font-family:'Bebas Neue',cursive;font-size:clamp(30px,4vw,42px);letter-spacing:3px;color:#E8EDF5;line-height:1.15;margin-bottom:10px;}
-.eo-sub{font-size:14px;color:rgba(255,255,255,0.32);line-height:1.65;margin-bottom:28px;}
-.eo-label{display:block;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.35);margin-bottom:7px;margin-top:18px;}
-.eo-inp{width:100%;height:48px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:#E8EDF5;font-family:system-ui,sans-serif;font-size:15px;padding:0 14px;outline:none;transition:border-color 0.15s,background 0.15s;}
+.eo-sub{font-size:14px;color:rgba(255,255,255,0.55);line-height:1.65;margin-bottom:28px;}
+.eo-label{display:block;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-bottom:7px;margin-top:18px;}
+.eo-inp{width:100%;height:48px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:#E8EDF5;font-family:'Outfit',system-ui,sans-serif;font-size:15px;padding:0 14px;outline:none;transition:border-color 0.15s,background 0.15s;}
 .eo-inp:focus{border-color:rgba(220,38,38,0.45);background:rgba(255,255,255,0.055);}
-.eo-inp::placeholder{color:rgba(255,255,255,0.18);}
-.eo-select{width:100%;height:48px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:#E8EDF5;font-family:system-ui,sans-serif;font-size:15px;padding:0 14px;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.3)' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;}
+.eo-inp::placeholder{color:rgba(255,255,255,0.3);}
+.eo-select{width:100%;height:48px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:#E8EDF5;font-family:'Outfit',system-ui,sans-serif;font-size:15px;padding:0 14px;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.3)' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;}
 .eo-select:focus{border-color:rgba(220,38,38,0.45);}
-.eo-btn{width:100%;height:48px;background:#dc2626;border:none;border-radius:8px;color:#fff;font-family:system-ui,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;transition:background 0.15s,opacity 0.15s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:24px;}
+.eo-btn{width:100%;height:48px;background:#dc2626;border:none;border-radius:8px;color:#fff;font-family:'Outfit',system-ui,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;transition:background 0.15s,opacity 0.15s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:24px;}
 .eo-btn:hover:not(:disabled){background:#ef4444;}
 .eo-btn:disabled{opacity:0.35;cursor:not-allowed;}
-.eo-ghost{width:100%;height:48px;background:transparent;border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:rgba(255,255,255,0.45);font-family:system-ui,sans-serif;font-size:13px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:border-color 0.15s,color 0.15s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;}
+.eo-ghost{width:100%;height:48px;background:transparent;border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:rgba(255,255,255,0.6);font-family:'Outfit',system-ui,sans-serif;font-size:13px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:border-color 0.15s,color 0.15s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;}
 .eo-ghost:hover:not(:disabled){border-color:rgba(255,255,255,0.18);color:rgba(255,255,255,0.65);}
 .eo-ghost:disabled{opacity:0.3;cursor:not-allowed;}
-.eo-divider{display:flex;align-items:center;gap:14px;margin:18px 0;color:rgba(255,255,255,0.15);font-size:10px;letter-spacing:0.12em;}
-.eo-divider::before,.eo-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.07);}
+.eo-divider{display:flex;align-items:center;gap:14px;margin:18px 0;color:rgba(255,255,255,0.4);font-size:10px;letter-spacing:0.12em;}
+.eo-divider::before,.eo-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.1);}
 .eo-otp-row{display:flex;gap:8px;margin-top:14px;}
 .eo-otp-box{width:48px;height:56px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:#E8EDF5;font-size:22px;font-weight:600;text-align:center;outline:none;transition:border-color 0.15s;caret-color:#dc2626;}
 .eo-otp-box:focus{border-color:#dc2626;background:rgba(220,38,38,0.05);}
@@ -70,14 +70,14 @@ const CSS = `
 .eo-review-key{font-size:10px;color:rgba(255,255,255,0.25);letter-spacing:0.12em;text-transform:uppercase;}
 .eo-review-val{font-size:13px;color:#E8EDF5;font-weight:500;max-width:60%;text-align:right;word-break:break-all;}
 .eo-error{font-size:12px;color:#f87171;margin-top:12px;padding:10px 14px;background:rgba(248,113,113,0.07);border:1px solid rgba(248,113,113,0.15);border-radius:6px;line-height:1.5;}
-.eo-hint{font-size:12px;color:rgba(255,255,255,0.22);margin-top:7px;line-height:1.6;}
+.eo-hint{font-size:12px;color:rgba(255,255,255,0.4);margin-top:7px;line-height:1.6;}
 .eo-mobile-bar{display:none;justify-content:space-between;align-items:center;padding:0 0 20px;width:100%;max-width:480px;}
 .eo-progress-track{position:fixed;top:0;left:0;right:0;height:3px;background:rgba(255,255,255,0.06);z-index:50;}
 .eo-progress-fill{height:100%;background:#dc2626;transition:width 0.35s ease;}
 .eo-mobile-features{display:none;flex-wrap:wrap;gap:7px;padding-bottom:24px;margin-bottom:24px;border-bottom:1px solid rgba(255,255,255,0.06);width:100%;max-width:480px;}
 .eo-mobile-feature-pill{display:flex;align-items:center;gap:6px;font-size:10.5px;color:rgba(255,255,255,0.55);background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:99px;padding:5px 10px;}
 .eo-mobile-feature-dot{width:4px;height:4px;border-radius:50%;background:#dc2626;flex-shrink:0;}
-.eo-mobile-plan-badge{display:none;align-items:center;gap:6px;padding:4px 10px;background:rgba(220,38,38,0.12);border:1px solid rgba(220,38,38,0.25);border-radius:4px;font-size:10px;letter-spacing:0.15em;color:rgba(220,38,38,0.9);text-transform:uppercase;margin-bottom:14px;width:fit-content;}
+.eo-mobile-plan-badge{display:none;align-items:center;gap:6px;padding:5px 12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);border-radius:20px;font-size:10px;font-weight:600;letter-spacing:0.1em;color:#fff;text-transform:uppercase;margin-bottom:14px;width:fit-content;}
 .eo-done-root{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;height:100dvh;background:#070A12;text-align:center;gap:0;padding:40px 24px;}
 .eo-done-ring{width:64px;height:64px;border-radius:50%;background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);display:flex;align-items:center;justify-content:center;margin-bottom:28px;}
 .eo-done-title{font-family:'Bebas Neue',cursive;font-size:clamp(52px,8vw,84px);letter-spacing:4px;color:#E8EDF5;line-height:1.12;margin-bottom:16px;}
@@ -560,7 +560,7 @@ export default function SalesmanOnboarding() {
           <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 40, letterSpacing: 3, color: '#E8EDF5', marginBottom: 10, textAlign: 'center' }}>
             {resumeIsBuyer ? 'CONTINUE WITH THIS EMAIL?' : 'WELCOME BACK'}
           </div>
-          <p style={{ color: 'rgba(255,255,255,0.32)', fontSize: 13, marginBottom: 4, textAlign: 'center' }}>
+          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, marginBottom: 4, textAlign: 'center' }}>
             {resumeIsBuyer ? 'Your XDrive account is signed in as' : 'You have an incomplete sign-up as'}
           </p>
           <p style={{ color: '#E8EDF5', fontWeight: 600, fontSize: 14, marginBottom: 36, textAlign: 'center', wordBreak: 'break-all' }}>{userEmail}</p>
@@ -569,8 +569,8 @@ export default function SalesmanOnboarding() {
           </button>
           <button className="eo-ghost" onClick={resetAndStart}>{resumeIsBuyer ? 'USE ANOTHER EMAIL' : 'USE A DIFFERENT ACCOUNT'}</button>
           {!resumeIsBuyer && (
-            <p style={{ textAlign: 'center', marginTop: 24, fontSize: 12, color: 'rgba(255,255,255,0.2)' }}>
-              <a href="/login" style={{ color: 'rgba(220,38,38,0.5)', textDecoration: 'none' }}>Sign in to existing account</a>
+            <p style={{ textAlign: 'center', marginTop: 24, fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
+              <a href="/login" style={{ color: 'rgba(220,38,38,0.75)', textDecoration: 'none' }}>Sign in to existing account</a>
             </p>
           )}
         </div>
@@ -589,15 +589,15 @@ export default function SalesmanOnboarding() {
           </div>
           <p className="eo-eyebrow" style={{ textAlign: 'center', marginBottom: 20 }}>ONE MORE STEP</p>
           <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 40, letterSpacing: 3, color: '#E8EDF5', marginBottom: 10, textAlign: 'center' }}>CHECK YOUR EMAIL</div>
-          <p style={{ color: 'rgba(255,255,255,0.32)', fontSize: 13, marginBottom: 4, textAlign: 'center' }}>We sent a confirmation link to</p>
+          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, marginBottom: 4, textAlign: 'center' }}>We sent a confirmation link to</p>
           <p style={{ color: '#E8EDF5', fontWeight: 600, fontSize: 14, marginBottom: 36, textAlign: 'center', wordBreak: 'break-all' }}>{userEmail}</p>
-          <p style={{ color: 'rgba(255,255,255,0.28)', fontSize: 12, marginBottom: 24, textAlign: 'center', lineHeight: 1.6 }}>
+          <p style={{ color: 'rgba(255,255,255,0.42)', fontSize: 12, marginBottom: 24, textAlign: 'center', lineHeight: 1.6 }}>
             Click the link to verify your account — it'll bring you straight back here to finish signing up.
           </p>
           <button className="eo-ghost" style={{ marginTop: 0 }} onClick={resendConfirmation}>RESEND EMAIL</button>
           {resendMsg && <div className="eo-hint" style={{ textAlign: 'center', marginTop: 10 }}>{resendMsg}</div>}
-          <p style={{ textAlign: 'center', marginTop: 24, fontSize: 12, color: 'rgba(255,255,255,0.2)' }}>
-            <a href="/login" style={{ color: 'rgba(220,38,38,0.5)', textDecoration: 'none' }}>Sign in to existing account</a>
+          <p style={{ textAlign: 'center', marginTop: 24, fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
+            <a href="/login" style={{ color: 'rgba(220,38,38,0.75)', textDecoration: 'none' }}>Sign in to existing account</a>
           </p>
         </div>
       </div>
@@ -740,9 +740,9 @@ export default function SalesmanOnboarding() {
                 <button className="eo-btn" onClick={signUp} disabled={loading || !form.email || !pwValid || !pwMatch}>
                   {loading ? 'CREATING ACCOUNT…' : 'CREATE ACCOUNT'}
                 </button>
-                <p style={{ textAlign: 'center', marginTop: 18, fontSize: 12, color: 'rgba(255,255,255,0.22)' }}>
+                <p style={{ textAlign: 'center', marginTop: 18, fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
                   Already have an account?{' '}
-                  <a href="/login" style={{ color: 'rgba(220,38,38,0.55)', textDecoration: 'none' }}>Sign in</a>
+                  <a href="/login" style={{ color: 'rgba(220,38,38,0.75)', textDecoration: 'none' }}>Sign in</a>
                 </p>
               </>
             )}
@@ -759,7 +759,7 @@ export default function SalesmanOnboarding() {
                 <label className="eo-label">FULL LEGAL NAME (AS PER IC)</label>
                 <input className="eo-inp" type="text" placeholder="Ahmad bin Abdullah" value={form.fullName}
                   onChange={e => upd('fullName')(e.target.value)} autoComplete="name" />
-                <label className="eo-label">IC NUMBER (MYKAD) <span style={{ color: 'rgba(255,255,255,0.28)', fontWeight: 400 }}>{tier === 'premium' ? '— REQUIRED' : '— OPTIONAL FOR NOW'}</span></label>
+                <label className="eo-label">IC NUMBER (MYKAD) <span style={{ color: tier === 'premium' ? 'rgba(220,38,38,0.85)' : 'rgba(255,255,255,0.4)', fontWeight: tier === 'premium' ? 600 : 400 }}>{tier === 'premium' ? '— REQUIRED' : '— OPTIONAL FOR NOW'}</span></label>
                 <div style={{ position: 'relative' }}>
                   <input className="eo-inp" type={showIc ? 'text' : 'password'} inputMode="numeric"
                     placeholder="901231-10-1234" maxLength={14} value={form.icNumber}
@@ -843,7 +843,7 @@ export default function SalesmanOnboarding() {
                   {MY_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <label className="eo-label">
-                  CITY / AREA <span style={{ color: 'rgba(255,255,255,0.18)', fontWeight: 400 }}>— OPTIONAL</span>
+                  CITY / AREA <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>— OPTIONAL</span>
                 </label>
                 <input className="eo-inp" type="text" placeholder="e.g. Cheras" value={form.city}
                   onChange={e => upd('city')(e.target.value)} />
