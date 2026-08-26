@@ -89,6 +89,7 @@ import {
  Zap,
  MessageCircle,
  ClipboardList,
+  Mail,
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
 const OutreachHub = React.lazy(() => import("../components/crm/OutreachHub"));
@@ -104,6 +105,11 @@ import AiQuotaBadge from "../components/ai/AiQuotaBadge";
 import PushToggle from "../components/PushToggle";
 const ServicesAddonsTab = React.lazy(() => import("../components/salesman/ServicesAddonsTab"));
 const LoanDesk = React.lazy(() => import("../components/loans/LoanDesk"));
+// Every query that loads a lead uses this. The lead drawer renders the linked
+// car in full, so the join has to carry the display fields up front (overlay
+// rule 4) — and there are five call sites, which is exactly how many places a
+// missing field would have had to be added by hand.
+const LEAD_SELECT = "*, car_listings(id, slug, brand, model, year, variant, selling_price, images, mileage, transmission, colour, status)";
 import ChannelBreakdown from "../components/ChannelBreakdown";
 import ShareMenu from "../components/ShareMenu";
 import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha } from "../theme/tokens";
@@ -377,6 +383,7 @@ export default function SalesmanPremium() {
  const [followUpSaving, setFollowUpSaving] = useState(false);
  const [testDriveConfirm, setTestDriveConfirm] = useState(null);
  const [linkCarLeadId, setLinkCarLeadId] = useState(null);
+ const [linkCarQuery, setLinkCarQuery] = useState("");
  const [batchWALeads, setBatchWALeads] = useState(null);
  const [batchWAIdx, setBatchWAIdx] = useState(0);
  const [mobileLeadStage, setMobileLeadStage] = useState("new");
@@ -559,7 +566,8 @@ export default function SalesmanPremium() {
  const anyOverlayOpen = !!(
  showAddLead || waModalLead || bookingDetailId || notifOpen ||
  testDriveConfirm || broadcastCar || aiCaptionCar ||
- confirmBookingApt || sellerBookingLead || mobileNavOpen
+ confirmBookingApt || sellerBookingLead || mobileNavOpen ||
+ drawerLeadId || linkCarLeadId
  );
  useEffect(() => {
  document.body.style.overflow = anyOverlayOpen? "hidden" : "";
@@ -569,7 +577,8 @@ export default function SalesmanPremium() {
  // UX-1 — the topbar gets out of the way while reading a long list. Locked
  // open whenever an overlay or the tour is up: the mobile nav trigger lives
  // in that bar, and scrolling behind a locked overlay must not move it.
- const headerVisible = useHideOnScroll({ locked: anyOverlayOpen || tourStep !== null });
+ const [scrollEl, setScrollEl] = useState(null);
+ const headerVisible = useHideOnScroll({ target: scrollEl, locked: anyOverlayOpen || tourStep !== null });
 
  // merge
  const [mergeCode, setMergeCode] = useState("");
@@ -1094,7 +1103,7 @@ export default function SalesmanPremium() {
  // fetch leads
  supabase
  .from("leads")
- .select("*, car_listings(brand, model, year, selling_price)")
+ .select(LEAD_SELECT)
  .eq("salesman_id", uid)
  .eq("is_deleted", false)
  .order("updated_at", { ascending: false })
@@ -1446,12 +1455,15 @@ export default function SalesmanPremium() {
  setLeads((p) => p.map((l) =>
  l.id === leadId
 ? { ...l, car_listing_id: carId, car_listings: car
-? { brand: car.brand, model: car.model, year: car.year, selling_price: car.selling_price }
+? { id: car.id, slug: car.slug, brand: car.brand, model: car.model, year: car.year,
+ variant: car.variant, selling_price: car.selling_price, images: car.images,
+ mileage: car.mileage, transmission: car.transmission, colour: car.colour, status: car.status }
  : l.car_listings }
  : l
  ));
  setLinkCarLeadId(null);
- toast.success("Car linked to lead!");
+ setLinkCarQuery("");
+ toast.success("Car linked to lead");
  };
 
  const handleLostReason = async (leadId, reason) => {
@@ -1609,7 +1621,7 @@ export default function SalesmanPremium() {
  // A revived/terminal lead may be filtered out of local state — refetch.
  if (!leads.some((l) => l.id === existing.id)) {
  const { data: full } = await supabase.from("leads")
- .select("*, car_listings(brand, model, year, selling_price)")
+ .select(LEAD_SELECT)
  .eq("id", existing.id).single();
  if (full) setLeads((p) => p.some((l) => l.id === full.id)? p.map((l) => l.id === full.id? full : l) : [full, ...p]);
  }
@@ -1621,7 +1633,7 @@ export default function SalesmanPremium() {
  buyer_name: apt.buyer_name || "Unknown", phone,
  car_listing_id: apt.car_listing_id || null,
  stage: "viewing_booked", lead_source: "manual", is_deleted: false,
- }).select("*, car_listings(brand, model, year, selling_price)").single();
+ }).select(LEAD_SELECT).single();
  if (insErr) { console.error("autoUpsertLeadFromAppt insert:", insErr); toast.error("Could not create the lead"); return; }
  if (newLead) {
  setLeads((p) => p.some((l) => l.id === newLead.id)? p.map((l) => l.id === newLead.id? newLead : l) : [newLead, ...p]);
@@ -1736,7 +1748,7 @@ export default function SalesmanPremium() {
  buyer_name: enq.buyer_name || "Unknown", phone,
  notes: enq.buyer_message || null, car_listing_id: enq.listing_id || null,
  stage: "new", lead_source: "enquiry", is_deleted: false,
- }).select("*, car_listings(brand, model, year, selling_price)").single();
+ }).select(LEAD_SELECT).single();
  if (newLead) { setLeads((p) => [newLead, ...p]); toast.success("Added to pipeline"); }
  }
  };
@@ -1862,7 +1874,7 @@ export default function SalesmanPremium() {
  loss_reason: null,
  buyer_state: addLeadForm.buyer_state || null,
  })
- .select("*, car_listings(brand, model, year, selling_price)")
+ .select(LEAD_SELECT)
  .single();
  if (addErr) { console.error("handleAddLead:", addErr); toast.error("Could not add the lead"); }
  if (data) setLeads((p) => [data, ...p]);
@@ -3083,6 +3095,91 @@ export default function SalesmanPremium() {
  </div>
  )}
 
+ {/* LINK A CAR TO A LEAD — the "Link Car" button set linkCarLeadId and
+     nothing rendered for it, so the button did nothing at all and leads were
+     stuck without a car (which in turn left the loan desk with nothing to
+     finance). Portalled per overlay rule 1: it opens from inside the lead
+     drawer, which is itself a fixed panel. */}
+ {linkCarLeadId && createPortal(
+ (() => {
+ const target = leads.find((l) => l.id === linkCarLeadId);
+ const closeLink = () => { setLinkCarLeadId(null); setLinkCarQuery(""); };
+ const q = linkCarQuery.trim().toLowerCase();
+ // Available first: a sold car is almost never the answer, but it stays
+ // reachable because a mislinked lead has to be fixable.
+ const options = [...myListings]
+ .filter((c) => !q || [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ").toLowerCase().includes(q))
+ .sort((a, b) => (a.status === "sold" ? 1 : 0) - (b.status === "sold" ? 1 : 0));
+ return (
+ <div onClick={closeLink} style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(3px)", display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", padding: isMobile ? 0 : 20 }}>
+ <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: isMobile ? "88vh" : "78vh", display: "flex", flexDirection: "column", background: "#0d1117", border: "1px solid rgba(255,255,255,0.1)", borderRadius: isMobile ? "16px 16px 0 0" : 14, fontFamily: "system-ui, sans-serif", overflow: "hidden" }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>Link a car</p>
+ <p style={{ margin: "1px 0 0", fontSize: 11.5, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ to {target?.buyer_name || "this lead"}
+ </p>
+ </div>
+ <button onClick={closeLink} style={{ background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", color: "#9ca3af", borderRadius: 8, padding: 6, display: "flex", flexShrink: 0 }}>
+ <X size={16} />
+ </button>
+ </div>
+
+ <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
+ <Search size={13} color="#4b5563" style={{ flexShrink: 0 }} />
+ <input autoFocus value={linkCarQuery} onChange={(e) => setLinkCarQuery(e.target.value)} placeholder="Search your inventory…"
+ style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "#e5e7eb", fontSize: 13, fontFamily: "inherit" }} />
+ </div>
+
+ <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+ {options.length === 0 ? (
+ <p style={{ margin: 0, padding: "28px 16px", fontSize: 12.5, color: "#4b5563", textAlign: "center" }}>
+ {myListings.length === 0 ? "You have no cars yet. Add one from Listings first." : "No car matches that search."}
+ </p>
+ ) : options.map((c) => {
+ const img = Array.isArray(c.images) ? c.images.find(Boolean) : null;
+ const isLinked = target?.car_listing_id === c.id;
+ return (
+ <button key={c.id} onClick={() => handleLinkCar(linkCarLeadId, c.id)} disabled={isLinked} style={{
+ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
+ padding: "10px 14px", background: isLinked ? "rgba(96,165,250,0.08)" : "transparent",
+ border: "none", borderBottom: "1px solid rgba(255,255,255,0.05)",
+ cursor: isLinked ? "default" : "pointer", fontFamily: "inherit",
+ }}>
+ {img ? (
+ <img src={img} alt="" style={{ width: 54, height: 40, objectFit: "cover", borderRadius: 6, flexShrink: 0, background: "rgba(255,255,255,0.04)" }} />
+ ) : (
+ <div style={{ width: 54, height: 40, borderRadius: 6, flexShrink: 0, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+ <Car size={14} color="#374151" />
+ </div>
+ )}
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: 13, color: "#e5e7eb", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {[c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ")}
+ </p>
+ <p style={{ margin: "1px 0 0", fontSize: 11.5, color: "#6b7280" }}>
+ {c.selling_price ? `RM ${Number(c.selling_price).toLocaleString("en-MY")}` : "No price"}
+ {c.mileage ? ` · ${Number(c.mileage).toLocaleString("en-MY")} km` : ""}
+ </p>
+ </div>
+ {isLinked ? (
+ <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "rgba(96,165,250,0.15)", color: "#93c5fd" }}>
+ <Check size={10} /> Linked
+ </span>
+ ) : c.status === "sold" ? (
+ <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 99, background: "rgba(255,255,255,0.05)", color: "#6b7280" }}>Sold</span>
+ ) : null}
+ </button>
+ );
+ })}
+ </div>
+ </div>
+ </div>
+ );
+ })(),
+ document.body,
+ )}
+
  {/* LEAD DETAIL SIDEBAR */}
  {drawerLeadId && (() => {
  const pl = leads.find(l => l.id === drawerLeadId);
@@ -3090,6 +3187,7 @@ export default function SalesmanPremium() {
  const plCar = pl.car_listings;
  const plCarName = plCar? [plCar.year, plCar.brand, plCar.model].filter(Boolean).join(" ") : null;
  const plCarPrice = plCar?.selling_price? `RM ${Number(plCar.selling_price).toLocaleString("en-MY")}` : null;
+ const plCarImg = Array.isArray(plCar?.images)? plCar.images.find(Boolean) || null : null;
  const plHeat = getHeatScore(pl);
  const plHeatStyle = plHeat.label === "hot"? { bg: "rgba(248,113,113,0.12)", color: "#f87171" } : plHeat.label === "warm"? { bg: "rgba(251,191,36,0.12)", color: "#fbbf24" } : { bg: "rgba(255,255,255,0.05)", color: "#6b7280" };
  const plInitials = (pl.buyer_name || "?").split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase();
@@ -3130,15 +3228,100 @@ export default function SalesmanPremium() {
  </div>
  </div>
 
- {/* price strip */}
- {plCarPrice && (
- <div style={{ padding: "8px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)" }}>
- <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#60a5fa" }}>{plCarPrice}</p>
- </div>
- )}
-
  {/* scrollable body */}
  <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14, WebkitOverflowScrolling: "touch" }}>
+
+ {/* THE CAR — the first thing a salesman needs and the thing this panel
+     used to reduce to a single grey line under the buyer's name. */}
+ <div>
+ <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+ <p style={{ margin: 0, fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>Car</p>
+ <button onClick={() => setLinkCarLeadId(pl.id)} style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4, fontSize: 11, padding: "3px 9px", borderRadius: 6, background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.28)", color: "#93c5fd", cursor: "pointer", fontFamily: "inherit" }}>
+ {plCar ? "Change" : <><Plus size={11} /> Link a car</>}
+ </button>
+ </div>
+ {plCar ? (
+ <div style={{ display: "flex", gap: 11, padding: 10, borderRadius: 9, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
+ {plCarImg ? (
+ <img src={plCarImg} alt="" style={{ width: 78, height: 58, objectFit: "cover", borderRadius: 7, flexShrink: 0, background: "rgba(255,255,255,0.04)" }} />
+ ) : (
+ <div style={{ width: 78, height: 58, borderRadius: 7, flexShrink: 0, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+ <Car size={18} color="#374151" />
+ </div>
+ )}
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {plCarName}{plCar.variant ? ` ${plCar.variant}` : ""}
+ </p>
+ {plCarPrice && <p style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 700, color: "#60a5fa" }}>{plCarPrice}</p>}
+ <p style={{ margin: "3px 0 0", fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {[plCar.mileage ? `${Number(plCar.mileage).toLocaleString("en-MY")} km` : null, plCar.transmission, plCar.colour].filter(Boolean).join(" · ") || "No specs on file"}
+ </p>
+ </div>
+ </div>
+ ) : (
+ <p style={{ margin: 0, padding: "12px 10px", borderRadius: 9, background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.1)", fontSize: 12, color: "#4b5563", textAlign: "center" }}>
+ No car linked yet — a loan started from this lead will have nothing to finance.
+ </p>
+ )}
+ </div>
+
+ {/* CONTACT + STATUS — everything the card shows, which this panel did not. */}
+ <div>
+ <p style={{ margin: "0 0 6px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>Contact</p>
+ <div style={{ display: "flex", flexDirection: "column", gap: 1, borderRadius: 9, overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)" }}>
+ {pl.phone && (
+ <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 11px", background: "rgba(255,255,255,0.02)" }}>
+ <Phone size={12} color="#6b7280" style={{ flexShrink: 0 }} />
+ <a href={`tel:${pl.phone}`} style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "#e5e7eb", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.phone}</a>
+ {String(pl.phone).replace(/\D/g, "").length >= 9 && (
+ <a href={`https://wa.me/${(() => { const dg = String(pl.phone).replace(/\D/g, ""); return dg.startsWith("6") ? dg : "6" + dg; })()}`} target="_blank" rel="noopener noreferrer"
+ style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, fontSize: 11, padding: "3px 8px", borderRadius: 6, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.25)", color: "#4ade80", textDecoration: "none" }}>
+ <MessageCircle size={10} /> WhatsApp
+ </a>
+ )}
+ </div>
+ )}
+ {pl.buyer_email && (
+ <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 11px", background: "rgba(255,255,255,0.02)" }}>
+ <Mail size={12} color="#6b7280" style={{ flexShrink: 0 }} />
+ <a href={`mailto:${pl.buyer_email}`} style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "#e5e7eb", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.buyer_email}</a>
+ </div>
+ )}
+ {pl.follow_up_at && (
+ <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 11px", background: "rgba(255,255,255,0.02)" }}>
+ <Calendar size={12} color="#6b7280" style={{ flexShrink: 0 }} />
+ <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: new Date(pl.follow_up_at).getTime() <= Date.now() ? "#fb923c" : "#e5e7eb" }}>
+ Follow up {timeAgo(pl.follow_up_at)}
+ </span>
+ </div>
+ )}
+ <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 11px", background: "rgba(255,255,255,0.02)", flexWrap: "wrap" }}>
+ {pl.lead_source && (
+ <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 99, background: "rgba(255,255,255,0.05)", color: "#9ca3af", textTransform: "capitalize" }}>
+ {String(pl.lead_source).replace(/_/g, " ")}
+ </span>
+ )}
+ {/* Same loan badge as the pipeline card - kept in step by trg_sync_lead_loan. */}
+ {pl.loan_status && pl.loan_status !== "none" && (() => {
+ const ls = {
+ approved: { bg: "rgba(34,197,94,0.15)", bd: "rgba(34,197,94,0.35)", fg: "#4ade80", label: "Loan approved" },
+ rejected: { bg: "rgba(239,68,68,0.15)", bd: "rgba(239,68,68,0.35)", fg: "#f87171", label: "Loan declined" },
+ cancelled: { bg: "rgba(255,255,255,0.06)", bd: "rgba(255,255,255,0.12)", fg: "#94a3b8", label: "Loan cancelled" },
+ }[pl.loan_status] || { bg: "rgba(251,191,36,0.15)", bd: "rgba(251,191,36,0.35)", fg: "#fbbf24", label: "Loan submitted" };
+ return (
+ <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: ls.bg, border: `1px solid ${ls.bd}`, color: ls.fg }}>
+ <Banknote size={10} /> {ls.label}
+ {pl.loan_bank ? ` · ${pl.loan_bank}` : ""}
+ </span>
+ );
+ })()}
+ {pl.updated_at && (
+ <span style={{ marginLeft: "auto", fontSize: 10.5, color: "#4b5563" }}>Last contact {timeAgo(pl.updated_at)}</span>
+ )}
+ </div>
+ </div>
+ </div>
 
  {/* Notes */}
  <div>
@@ -5543,8 +5726,10 @@ export default function SalesmanPremium() {
  </nav>
  )}
 
- {/* Content */}
+ {/* Content — this is the element that scrolls on desktop (flex child with
+     overflowY:auto), NOT window. The topbar's hide-on-scroll reads it. */}
  <div
+ ref={setScrollEl}
  style={{
  flex: 1,
  minWidth: 0,

@@ -542,11 +542,29 @@ function NewApplication({ userId, dealerId, leads, onCreated }) {
             borderRadius: R.md, background: withAlpha(C.success, 0.07), border: `1px solid ${withAlpha(C.success, 0.2)}`,
           }}>
             <Check size={13} color={C.successText} style={{ flexShrink: 0 }} />
-            <span style={{ flex: 1, minWidth: 0, fontSize: T.size.sm, color: C.textSec }}>Linked to a lead — it will show on that lead too.</span>
+            <span style={{ flex: 1, minWidth: 0, fontSize: T.size.sm, color: C.textSec }}>
+              {d.buyer_name || "Lead"} — it will show on that lead too.
+              {d.listing_id
+                ? d.car_model ? ` Car: ${d.car_model}.` : " Car linked."
+                : ""}
+            </span>
             <button onClick={() => setD((p) => ({ ...p, lead_id: null, listing_id: null }))}
               style={{ background: "none", border: "none", color: C.textDim, cursor: "pointer", padding: 2, display: "flex", flexShrink: 0 }}>
               <X size={14} />
             </button>
+          </div>
+        )}
+
+        {d.lead_id && !d.listing_id && (
+          <div style={{
+            display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 12, padding: "9px 11px",
+            borderRadius: R.md, background: withAlpha(C.warn, 0.07), border: `1px solid ${withAlpha(C.warn, 0.22)}`,
+          }}>
+            <AlertCircle size={13} color={C.warnText} style={{ flexShrink: 0, marginTop: 1 }} />
+            <span style={{ flex: 1, minWidth: 0, fontSize: T.size.sm, color: C.textSec, lineHeight: 1.5 }}>
+              This lead has no car linked, so nothing was filled in below. Link one on the
+              lead in Pipeline and pick it again, or type the car and price yourself.
+            </span>
           </div>
         )}
 
