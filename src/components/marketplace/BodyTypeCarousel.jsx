@@ -12,39 +12,65 @@ const CarCard = lazy(() => import('@/components/CarCard'));
 
 const CAROUSEL_GAP = 12;
 
+// Mirrors the compact CarCard's real DOM metrics 1:1 (image aspect-ratio,
+// cc-name/cc-sub/cc-specgrid/cc-footer dimensions, incl. the <520px compact
+// overrides) so swapping the skeleton for the loaded card causes no layout
+// shift. Re-check this against CarCard.jsx's .cc-compact rules if either
+// changes.
 const SkeletonCarouselCard = ({ width }) => {
   const b = '#e8e6e0';
   const s = 'mp-shimmer 1.5s infinite';
   return (
-    <div style={{ width, flexShrink: 0, background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: 16, overflow: 'hidden' }}>
-      {/* Image — 170px matches CarCard */}
-      <div style={{ height: 170, background: `linear-gradient(90deg,${b} 25%,#f0eeea 50%,${b} 75%)`, backgroundSize: '200% 100%', animation: s }} />
-      {/* Body — matches cc-body padding: 11px 13px 13px */}
-      <div style={{ padding: '11px 13px 13px' }}>
-        {/* Name */}
-        <div style={{ height: 13, width: '80%', background: b, borderRadius: 4, marginBottom: 4, animation: s }} />
-        {/* Sub line */}
-        <div style={{ height: 10, width: '52%', background: b, borderRadius: 4, marginBottom: 17, animation: s, animationDelay: '0.05s' }} />
-        {/* Strikethrough row — 16px reserved (empty, matches always-reserved space) */}
-        <div style={{ height: 16 }} />
-        {/* Main price */}
-        <div style={{ height: 22, width: '68%', background: b, borderRadius: 5, marginBottom: 5, animation: s, animationDelay: '0.07s' }} />
-        {/* Monthly pill */}
-        <div style={{ height: 20, width: '58%', background: b, borderRadius: 20, marginBottom: 10, animation: s, animationDelay: '0.1s' }} />
-        {/* 2×2 spec grid — icon+value rows */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', rowGap: 6, columnGap: 8, marginBottom: 10 }}>
+    <div className="btc-skel" style={{ width, flexShrink: 0, background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Image — aspect-ratio 16:9 matches cc-imgwrap (4:3 on mobile compact, see .btc-skel-img below) */}
+      <div className="btc-skel-img" style={{ aspectRatio: '16 / 9', flexShrink: 0, background: `linear-gradient(90deg,${b} 25%,#f0eeea 50%,${b} 75%)`, backgroundSize: '200% 100%', animation: s }} />
+      {/* Body — matches cc-body padding: 11px 13px 13px (7px 9px 9px on mobile compact) */}
+      <div className="btc-skel-body" style={{ padding: '11px 13px 13px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+        {/* Name — matches cc-name minHeight:34 (28 on mobile compact), marginBottom:2 */}
+        <div className="btc-skel-name" style={{ minHeight: 34, display: 'flex', alignItems: 'center', marginBottom: 2 }}>
+          <div style={{ height: 13, width: '80%', background: b, borderRadius: 4, animation: s }} />
+        </div>
+        {/* Sub line — matches cc-sub height:14, marginBottom:9 (12/5 on mobile compact) */}
+        <div className="btc-skel-sub" style={{ height: 14, marginBottom: 9, display: 'flex', alignItems: 'center' }}>
+          <div style={{ height: 10, width: '52%', background: b, borderRadius: 4, animation: s, animationDelay: '0.05s' }} />
+        </div>
+        {/* Price block — matches cc-price-block marginBottom:10 (6 on mobile compact) */}
+        <div className="btc-skel-priceblock" style={{ marginBottom: 10 }}>
+          {/* Strikethrough row — always 16px reserved on compact cards, empty here */}
+          <div style={{ height: 16 }} />
+          {/* Main price — matches cc-price-main (fontSize 20, lineHeight 1.15) + marginTop:1 */}
+          <div style={{ height: 23, width: '68%', background: b, borderRadius: 5, marginTop: 1, animation: s, animationDelay: '0.07s' }} />
+          {/* Monthly pill — matches cc-monthly-row height:20, marginTop:4 */}
+          <div style={{ height: 20, marginTop: 4, display: 'flex', alignItems: 'center' }}>
+            <div style={{ height: 20, width: '58%', background: b, borderRadius: 20, animation: s, animationDelay: '0.1s' }} />
+          </div>
+        </div>
+        {/* 2×2 spec grid — matches cc-specgrid rowGap:6 columnGap:8 marginBottom:10 (4/6/6 on mobile compact) */}
+        <div className="btc-skel-specgrid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', rowGap: 6, columnGap: 8, marginBottom: 10 }}>
           {[0, 1, 2, 3].map(i => (
             <div key={i} style={{ height: 13, background: b, borderRadius: 4, animation: s, animationDelay: `${0.1 + i * 0.04}s` }} />
           ))}
         </div>
-        {/* Divider */}
-        <div style={{ height: 1, background: '#F1F5F9', marginBottom: 8 }} />
-        {/* Footer row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 28 }}>
+        {/* Divider — matches cc-divider marginBottom:8 (6 on mobile compact) */}
+        <div className="btc-skel-divider" style={{ height: 1, background: '#F1F5F9', marginBottom: 8 }} />
+        {/* Footer row — matches cc-footer minHeight:28 (22 on mobile compact); WA button is 32×32 */}
+        <div className="btc-skel-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 28, marginTop: 'auto' }}>
           <div style={{ height: 10, width: '48%', background: b, borderRadius: 4, animation: s, animationDelay: '0.18s' }} />
-          <div style={{ height: 28, width: 32, background: b, borderRadius: 10, animation: s, animationDelay: '0.18s' }} />
+          <div style={{ height: 32, width: 32, background: b, borderRadius: 10, animation: s, animationDelay: '0.18s' }} />
         </div>
       </div>
+      <style>{`
+        @media (max-width: 520px) {
+          .btc-skel-img         { aspect-ratio: 4 / 3 !important; }
+          .btc-skel-body        { padding: 7px 9px 9px !important; }
+          .btc-skel-name        { min-height: 28px !important; }
+          .btc-skel-sub         { height: 12px !important; margin-bottom: 5px !important; }
+          .btc-skel-priceblock  { margin-bottom: 6px !important; }
+          .btc-skel-specgrid    { row-gap: 4px !important; column-gap: 6px !important; margin-bottom: 6px !important; }
+          .btc-skel-divider     { margin-bottom: 6px !important; }
+          .btc-skel-footer      { min-height: 22px !important; }
+        }
+      `}</style>
     </div>
   );
 };
