@@ -187,6 +187,7 @@ export default function SalesmanPremium() {
  const [userId, setUserId] = useState(null);
  const [loading, setLoading] = useState(true);
  const [pendingPay, setPendingPay] = useState(false);
+ const [trialExpired, setTrialExpired] = useState(false);
  const isPremium = profile?.plan === 'salesman_full';
  // Unread buyer-chat count for the nav badge. Its own hook instance, separate
  // from the one inside SellerInbox (each gets a distinct realtime channel).
@@ -793,6 +794,21 @@ export default function SalesmanPremium() {
  if (profileData.payment_status === "pending") {
  setProfile(profileData);
  setPendingPay(true);
+ setLoading(false);
+ return;
+ }
+
+ // First-month-free promo: a fresh solo Premium signup gets 30 days of full
+ // access (subscription_status='trial', trial_ends_at set by the DB trigger
+ // on insert — see prevent_profile_privilege_escalation). Once that runs
+ // out, same expired-trial QR screen dealers already hit.
+ if (
+ profileData.subscription_status === "trial" &&
+ profileData.trial_ends_at &&
+ new Date(profileData.trial_ends_at) < new Date()
+ ) {
+ setProfile(profileData);
+ setTrialExpired(true);
  setLoading(false);
  return;
  }
@@ -5452,6 +5468,21 @@ export default function SalesmanPremium() {
  if (pendingPay) {
  return (
  <DealerPendingApproval
+ planKey="salesman_full"
+ dealershipName={profile?.full_name}
+ email={profile?.email}
+ profileId={profile?.id}
+ redirectTo="/salesman-premium"
+ />
+ );
+ }
+
+ // First-month-free trial ended — same screen, "expired" dress.
+ if (trialExpired) {
+ return (
+ <DealerPendingApproval
+ variant="expired"
+ trialDays={30}
  planKey="salesman_full"
  dealershipName={profile?.full_name}
  email={profile?.email}
