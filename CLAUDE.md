@@ -401,6 +401,31 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
   (`src/pages/SalesmanLite.jsx:849`) is NOT push. It only fires while the tab is open.
   Do not confuse the two.
 
+### Platform admin push (/platform console) — built 2026-08-26
+The superadmin account gets the SAME alerts the ops Telegram channel gets, on its
+own device. One DB fanout drives both, so they can never disagree.
+- `notify_ops(p_key, p_text)` is the single ops-alert entry point: 15-minute
+  throttle (`ops_alert_state`) -> Telegram -> `push_to_users(<all superadmins>)`.
+  Producers: `notify_admin_on_new_signup`, `notify_admin_on_pending_listing`,
+  `trg_notify_error_log`, `trg_notify_activity_anomaly`. Do NOT add a fifth ops
+  alert that only posts to Telegram — call `notify_ops`.
+  `notify_ops_telegram(p_key, p_text)` still exists as a thin shim (deployed-only
+  edge functions may call it by name); new code must not use it.
+- The push title is the FIRST LINE of the message and the body is the rest, so
+  keep writing ops messages as "headline\ndetail...". URL is always `/platform`;
+  tag is the key's family (`ops:err`, `ops:new_signup`, …) so repeats replace.
+- `push_home_path()` routes `role='superadmin'` to `/platform`. `owner` is a real
+  dealer account and stays on `/dashboard` — do not lump them together.
+- UI: Security console -> **Alerts** tab (`src/components/platform/AlertsTab.jsx`).
+- **The console runs on the ISOLATED `platformClient` session**, and
+  `push_subscriptions` is RLS'd on `auth.uid() = user_id`. So `PushToggle` /
+  `usePushNotifications` / `healPushSubscription` all take a `client` argument
+  (defaults to the main client) and the console passes `platformClient`. Save the
+  admin's device through the main client and the row is rejected — or filed under
+  whichever dealer happens to be logged in on that browser. `usePushHeal`
+  (App.jsx) heals the MAIN client's user only; `AdminPage.jsx` runs its own heal
+  for the platform account.
+
 ## AI trust boundary — AI drafts, a HUMAN sends (hard rule)
 An AI must never message a car buyer unsupervised. Owner's call, 2026-08-23:
 "who would want to talk to an AI when buying a car, they need trust." AI may

@@ -17,6 +17,7 @@ import BroadcastTab from "../components/platform/BroadcastTab";
 import ActivityLogTab from "../components/platform/ActivityLogTab";
 import SessionsTab from "../components/platform/SessionsTab";
 import PostureTab from "../components/platform/PostureTab";
+import AlertsTab from "../components/platform/AlertsTab";
 
 function MktSection({ label, hint, children }) {
   return (
@@ -149,6 +150,9 @@ export default function AdminPage() {
   //   "login"    → no valid superadmin session; show the sign-in gate
   //   "authed"   → superadmin confirmed; render the console
   const [authState, setAuthState] = useState("checking");
+  // Id of the superadmin this console is running as. Needed by the Alerts tab:
+  // a push subscription is stored per user_id, so the toggle has to know who.
+  const [meId, setMeId] = useState(null);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPw, setLoginPw] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
@@ -205,6 +209,20 @@ export default function AdminPage() {
 
   useEffect(() => { checkAuth(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Silent push repair for the platform account. usePushHeal (App.jsx) does the
+  // same job app-wide, but it heals whoever the MAIN client is signed in as —
+  // on /platform that is a different account, or nobody. Without this, an admin
+  // whose browser rotated its push subscription would stay unreachable until
+  // they happened to open Security > Alerts. Never prompts: it only acts where
+  // permission was already granted.
+  useEffect(() => {
+    if (!meId) return;
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    import("../hooks/usePushNotifications")
+      .then(({ healPushSubscription }) => healPushSubscription(meId, supabase))
+      .catch(() => { /* never blocks the console */ });
+  }, [meId]);
+
   // Gate the console on the ISOLATED platform session. Resolution order:
   //   1. An existing platform session (this client's own storageKey).
   //   2. Otherwise adopt a superadmin session handed off from the public /login
@@ -243,6 +261,7 @@ export default function AdminPage() {
       setAuthState("login");
       return;
     }
+    setMeId(userId);
     setAuthState("authed");
     setLoginBusy(false);
     await loadAll();
@@ -615,6 +634,7 @@ export default function AdminPage() {
     { id: "sessions", label: "Sessions" },
     { id: "posture", label: "Posture" },
     { id: "errors", label: "Errors" },
+    { id: "alerts", label: "Alerts" },
   ];
 
   // ── Auth gate ──────────────────────────────────────────────────────────────
@@ -911,6 +931,7 @@ export default function AdminPage() {
                   {securityTab === "sessions" && <SessionsTab />}
                   {securityTab === "posture" && <PostureTab />}
                   {securityTab === "errors" && <ErrorsTab />}
+                  {securityTab === "alerts" && <AlertsTab userId={meId} />}
                 </div>
               </>
             ) : (

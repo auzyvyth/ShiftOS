@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bell, BellOff, Send } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '../supabaseClient';
 import { usePushNotifications, isIOS, isStandalone } from '../hooks/usePushNotifications';
 
 /*
@@ -16,11 +17,20 @@ import { usePushNotifications, isIOS, isStandalone } from '../hooks/usePushNotif
  * `theme='light'` for the dealer dashboard (white cards), `theme='dark'` for the
  * salesman panels — see the Theme section of CLAUDE.md. Getting this wrong gives
  * light text on a white card.
+ *
+ * `client` is the supabase client the subscription is written with. It defaults
+ * to the main one, which is right for every panel EXCEPT the /platform console:
+ * that runs on the isolated `platformClient` session, and push_subscriptions is
+ * RLS'd on auth.uid(), so the platform admin's device has to be saved through
+ * its own client or the write is rejected.
+ *
+ * `description` overrides the default blurb, which names leads and bookings —
+ * true for a seller, meaningless in the platform console.
  */
-export default function PushToggle({ userId, theme = 'dark', style }) {
+export default function PushToggle({ userId, theme = 'dark', style, client = supabase, description }) {
   const { t } = useTranslation();
   const { supported, configured, permission, subscribed, busy, enable, disable, sendTest } =
-    usePushNotifications(userId);
+    usePushNotifications(userId, client);
 
   const light = theme === 'light';
   const c = {
@@ -86,7 +96,7 @@ export default function PushToggle({ userId, theme = 'dark', style }) {
             {subscribed ? <Bell size={14} /> : <BellOff size={14} />} {t('push.title')}
           </p>
           <p style={{ margin: '5px 0 0', fontSize: 11, color: c.body, lineHeight: 1.6 }}>
-            {t('push.description')}
+            {description || t('push.description')}
           </p>
         </div>
         {subscribed && (
