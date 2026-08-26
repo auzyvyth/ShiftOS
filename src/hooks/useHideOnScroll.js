@@ -7,17 +7,18 @@ import { useEffect, useRef, useState } from "react";
  *
  * Returns true when the header should be visible.
  *
- * `target` is the element that actually scrolls, and passing it matters more
- * than it looks. A page does NOT always scroll on window: Salesman Premium's
- * content column is a flex child with `overflowY: auto`, so window.scrollY
- * never moves there and a window-only listener never fires once — the header
- * simply sat still. Pass the scrolling node (a state-held element, not a plain
- * ref: a ref's .current does not re-run this effect when it fills in).
+ * `target` is optional and names the element that scrolls, for layouts that
+ * scroll inside a container rather than on the body. Both it and window are
+ * watched and their offsets summed: in practice only one of the two ever
+ * moves, so the sum tracks the real position without the caller having to know
+ * which. Pass a state-held element, not a plain ref — a ref's .current filling
+ * in after mount does not re-run this effect.
  *
- * Both the element and window are watched, and their offsets are summed. In
- * practice only one of the two ever moves — which one depends on the layout,
- * and on this page it differs between the mobile column and the desktop row —
- * so the sum tracks the real position without the caller having to know which.
+ * Worth knowing if this ever looks broken again: a header that will not hide is
+ * usually a header that is not STICKING, and the usual cause is an ancestor
+ * with `overflow: auto` that never actually scrolls. That ancestor still counts
+ * as the sticky element's scrollport, so the bar sticks to a box that is itself
+ * scrolling away. Check what the scrollport is before blaming this hook.
  *
  * Three rules that keep it from feeling broken:
  *  - a small threshold, so 1px of scroll jitter (or an iOS rubber-band bounce)

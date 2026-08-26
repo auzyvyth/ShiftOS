@@ -5726,8 +5726,15 @@ export default function SalesmanPremium() {
  </nav>
  )}
 
- {/* Content — this is the element that scrolls on desktop (flex child with
-     overflowY:auto), NOT window. The topbar's hide-on-scroll reads it. */}
+ {/* Content. NOTE: no overflow here, deliberately. This column is flex:1
+     inside a container sized by minHeight:100vh, so it always stretches to
+     exactly its own content height and can never overflow — an overflowY:auto
+     on it scrolled nothing, but it still counted as the topbar's SCROLLPORT,
+     so the sticky topbar stuck to a box that was itself scrolling away with
+     the page. It looked like the hide-on-scroll was broken; the bar was never
+     sticking at all. The page scrolls on the body (which is what the sidebar's
+     sticky + height:100vh already assumes), so the topbar's scrollport must be
+     the viewport too. */}
  <div
  ref={setScrollEl}
  style={{
@@ -5736,7 +5743,6 @@ export default function SalesmanPremium() {
  background: "#05070e",
  display: "flex",
  flexDirection: "column",
- overflowY: "auto",
  }}
  >
  {/* Topbar — hides on scroll down, returns on scroll up (UX-1). Pinned
