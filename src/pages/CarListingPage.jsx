@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from
 import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
-import { X, RotateCcw, SlidersHorizontal, Flame, Car, ChevronDown, Search } from 'lucide-react';
+import { X, RotateCcw, SlidersHorizontal, Flame, Car, ChevronDown, Search, Sparkles } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
 import MarketplaceHeader from '../components/MarketplaceHeader';
 import Header from '../components/Header';
@@ -801,6 +801,18 @@ export default function CarListingPage() {
 
         {/* ── Main content ── */}
         <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'20px 20px 80px' }}>
+
+          {/* AI summary teaser — shows whenever a text search is active (q set via
+              the top-bar SearchAutocomplete, the page's one searchbar). Not built
+              yet; this just sets the expectation instead of staying silent. */}
+          {q && (
+            <div style={{ display:'flex', alignItems:'center', gap:'8px', background: dark ? 'rgba(220,38,38,0.08)' : 'rgba(220,38,38,0.06)', border:`1px solid ${dark ? 'rgba(220,38,38,0.25)' : 'rgba(220,38,38,0.18)'}`, borderRadius:'10px', padding:'10px 14px', marginBottom:'14px', fontFamily:"'Outfit',sans-serif" }}>
+              <Sparkles size={14} style={{ color:'#dc2626', flexShrink:0 }} />
+              <span style={{ fontSize:'12.5px', fontWeight:'600', color: dark ? '#f3f4f6' : '#111827' }}>
+                AI summary of "{q}" results — coming soon
+              </span>
+            </div>
+          )}
 
           {/* Results row */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'8px', marginBottom:'16px' }}>

@@ -674,7 +674,7 @@ export default function MarketplacePage() {
               the "Find Cars" button and clipping. Row layout returns at the
               ≥900px hero breakpoint below. ── */
         .mp-hero-search { flex-direction:column; }
-        .mp-hero-search > button { width:100%; justify-content:center; padding:0 22px; }
+        .mp-hero-search > button { width:100%; justify-content:center; padding:14px 22px; }
 
         /* ════════════════════════════════════════
            HERO — MOBILE FIRST
@@ -760,12 +760,12 @@ export default function MarketplacePage() {
              low end (900-1024px) - a wide fixed padding squeezes the input
              down to a few characters. Moderate width here, fuller width once
              there's more room at the 1024px breakpoint below. */
-          .mp-hero-search > button { width: auto; padding: 0 44px; }
+          .mp-hero-search > button { width: auto; padding: 14px 44px; }
         }
 
         /* ── Large desktop ≥1024px ── */
         @media(min-width:1024px) {
-          .mp-hero-search > button { padding: 0 64px; }
+          .mp-hero-search > button { padding: 14px 64px; }
           .mp-filter-fab      { display: none; }
           .mp-desktop-sidebar { display: flex !important; }
         }
