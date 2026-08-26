@@ -25,6 +25,15 @@ import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../supabaseClient';
  *     browser subscription lives on -> the toggle showed a green "On" badge for a
  *     device the server could no longer reach, with no way out but off-then-on.
  * So `subscribed` is now checked against the database, never the browser alone.
+ *
+ * WHICH SUPABASE CLIENT. Everything here takes an optional `client` and defaults
+ * to the main one. The /platform console runs on an ISOLATED auth client
+ * (src/lib/platformClient.js, its own storageKey) so a dealer login in another
+ * tab can't evict the superadmin session — which means the main client's
+ * auth.uid() is NOT the superadmin. push_subscriptions is RLS'd on
+ * `auth.uid() = user_id`, so writing the platform admin's device through the
+ * main client would be silently rejected, and the test push would fire as
+ * whoever the main client is logged in as. The console passes platformClient.
  */
 
 // Public half of the VAPID keypair. Public by design — it ships in the bundle.
@@ -92,8 +101,8 @@ async function clearSwConfig() {
 // Store the device against the account. Returns true only when the row is
 // actually written — a subscription the server never stored can never be pushed
 // to, so reporting success on a failed write would be a lie the user pays for.
-async function saveSubscription(userId, sub) {
-  const { error } = await supabase.from('push_subscriptions').upsert({
+async function saveSubscription(userId, sub, client = supabase) {
+  const { error } = await client.from('push_subscriptions').upsert({
     user_id: userId,
     endpoint: sub.endpoint,
     subscription: sub.toJSON(),
@@ -116,7 +125,7 @@ async function saveSubscription(userId, sub) {
  * away. That is the whole trick: re-subscribing needs no tap from the user, so
  * the "turn it on again every morning" chore disappears.
  */
-export async function healPushSubscription(userId) {
+export async function healPushSubscription(userId, client = supabase) {
   if (!pushSupported() || !VAPID_PUBLIC_KEY || !userId) return { status: 'skipped' };
   if (Notification.permission !== 'granted') return { status: 'not_granted' };
   if (isIOS() && !isStandalone()) return { status: 'ios_needs_install' };
@@ -127,7 +136,7 @@ export async function healPushSubscription(userId) {
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
     }));
-    const saved = await saveSubscription(userId, sub);
+    const saved = await saveSubscription(userId, sub, client);
     return saved ? { status: 'ok', endpoint: sub.endpoint } : { status: 'save_failed' };
   } catch (err) {
     console.error('healPushSubscription:', err);
@@ -135,7 +144,7 @@ export async function healPushSubscription(userId) {
   }
 }
 
-export function usePushNotifications(userId) {
+export function usePushNotifications(userId, client = supabase) {
   const supported = pushSupported();
 
   // Separate from `supported` on purpose: the browser can be perfectly capable
@@ -158,7 +167,7 @@ export function usePushNotifications(userId) {
       const sub = await reg.pushManager.getSubscription();
       if (!sub || !userId) { setSubscribed(false); return false; }
 
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('push_subscriptions')
         .select('id')
         .eq('user_id', userId)
@@ -172,16 +181,16 @@ export function usePushNotifications(userId) {
       setSubscribed(false);
       return false;
     }
-  }, [supported, userId]);
+  }, [supported, userId, client]);
 
   useEffect(() => {
     let cancelled = false;
     // Repair before reading. The app-wide heal may not have run yet (or may have
     // raced this mount), and a Settings page that shows OFF for a device it could
     // have fixed itself is the bug this whole file is about.
-    healPushSubscription(userId).then(() => { if (!cancelled) sync(); });
+    healPushSubscription(userId, client).then(() => { if (!cancelled) sync(); });
     return () => { cancelled = true; };
-  }, [userId, sync]);
+  }, [userId, client, sync]);
 
   const enable = useCallback(async () => {
     if (!supported) return { ok: false, reason: 'unsupported' };
@@ -205,7 +214,7 @@ export function usePushNotifications(userId) {
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       }));
 
-      if (!(await saveSubscription(userId, sub))) return { ok: false, reason: 'save_failed' };
+      if (!(await saveSubscription(userId, sub, client))) return { ok: false, reason: 'save_failed' };
 
       setSubscribed(true);
       return { ok: true };
@@ -215,7 +224,7 @@ export function usePushNotifications(userId) {
     } finally {
       setBusy(false);
     }
-  }, [supported, configured, userId]);
+  }, [supported, configured, userId, client]);
 
   const disable = useCallback(async () => {
     if (!supported || !userId) return { ok: false, reason: 'unsupported' };
@@ -224,7 +233,7 @@ export function usePushNotifications(userId) {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
-        await supabase.from('push_subscriptions').delete()
+        await client.from('push_subscriptions').delete()
           .eq('user_id', userId).eq('endpoint', sub.endpoint);
         await sub.unsubscribe();
       }
@@ -239,7 +248,7 @@ export function usePushNotifications(userId) {
     } finally {
       setBusy(false);
     }
-  }, [supported, userId]);
+  }, [supported, userId, client]);
 
   // Round-trips a real push through the push service, so it proves delivery end
   // to end rather than just that the row saved. send-push forces a logged-in
@@ -248,8 +257,8 @@ export function usePushNotifications(userId) {
     if (!subscribed) return { ok: false, reason: 'not_subscribed' };
     setBusy(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const { data, error } = await supabase.functions.invoke('send-push', {
+      const { data: { session } } = await client.auth.getSession();
+      const { data, error } = await client.functions.invoke('send-push', {
         body: {
           title: 'ShiftOS notifications are on',
           body: 'This is a test. Real alerts will arrive here even with the app closed.',
@@ -276,7 +285,7 @@ export function usePushNotifications(userId) {
     } finally {
       setBusy(false);
     }
-  }, [subscribed, sync]);
+  }, [subscribed, sync, client]);
 
   return { supported, configured, permission, subscribed, busy, enable, disable, sendTest };
 }

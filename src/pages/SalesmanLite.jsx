@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { normalizePhone } from "../lib/phone";
+import { freshChannel } from "../lib/realtime";
 import { cdnImg } from "../utils/img";
 import { compressImageFile } from "../utils/compressImage";
 import CarForm, { buildCopyText } from "../components/CarForm";
@@ -1182,6 +1183,9 @@ export default function SalesmanLite() {
   const [depositCopied, setDepositCopied] = useState(false);
 
   const channelRef = useRef(null);
+  // Set by the unmount cleanup below; read by the async bootstrap before it
+  // subscribes, so a dead mount never leaves a channel behind.
+  const rtCancelledRef = useRef(false);
   const [appointments, setAppointments] = useState([]);
   const [pastOpen, setPastOpen] = useState(false);
   const [enquiries, setEnquiries] = useState([]);
@@ -1628,9 +1632,14 @@ export default function SalesmanLite() {
             setEnquiries((p) => p.map((e) => e.id === row.id ? { ...e, status: "converted" } : e));
           };
 
+          // freshChannel drops any stale channel still holding this topic. Without
+          // that, a channel orphaned by an earlier mount (unmounted mid-bootstrap,
+          // so the cleanup ran before channelRef was ever set) is handed back by
+          // supabase.channel() already joined, and the first .on("postgres_changes")
+          // throws "cannot add postgres_changes callbacks ... after subscribe()".
           if (channelRef.current) supabase.removeChannel(channelRef.current);
-          channelRef.current = supabase
-            .channel("salesman-lite-rt-" + uid)
+          if (!rtCancelledRef.current) {
+          const liteChannel = freshChannel("salesman-lite-rt-" + uid)
             .on("postgres_changes", { event: "*", schema: "public", table: "leads", filter: `salesman_id=eq.${uid}` },
               (payload) => {
                 // Dedup the realtime echo: an optimistic insert (e.g.
@@ -1695,8 +1704,17 @@ export default function SalesmanLite() {
                 }
                 if (payload.eventType === "UPDATE") setAppointments((p) => p.map((a) => a.id === payload.new.id ? { ...a, ...payload.new } : a));
               },
-            )
-            .subscribe();
+            );
+
+          // Unmounted while this bootstrap chain was still running -> drop the
+          // channel instead of joining one the cleanup can no longer reach.
+          if (rtCancelledRef.current) {
+            supabase.removeChannel(liteChannel);
+          } else {
+            channelRef.current = liteChannel;
+            liteChannel.subscribe();
+          }
+          }
         });
 
       // fetch appointments
@@ -1754,7 +1772,11 @@ export default function SalesmanLite() {
 
   useEffect(() => {
     return () => {
-      if (channelRef.current) supabase.removeChannel(channelRef.current);
+      rtCancelledRef.current = true;
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
   }, []);
 

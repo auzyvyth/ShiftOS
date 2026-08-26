@@ -10,6 +10,7 @@ import useHandover from "../hooks/useHandover";
 import { placeTourCard, tourBand, tourScrollDelta } from "../utils/tourPlacement";
 import { normalizePhone } from "../lib/phone";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
+import { freshChannel } from "../lib/realtime";
 import { compressImageFile } from "../utils/compressImage";
 import CarFormFast from "../components/CarFormFast";
 import CarForm from "../components/CarForm";
@@ -727,6 +728,10 @@ export default function SalesmanPremium() {
 
  // auth + profile
  useEffect(() => {
+ // Guards the long async bootstrap below: if the page unmounts mid-chain we
+ // must not go on to subscribe a realtime channel that the (already-run)
+ // cleanup can no longer remove.
+ let cancelled = false;
  const { at: _at, rt: _rt } = readHandoffTokens();
  const authReady = _at && _rt
    ? supabase.auth.setSession({ access_token: _at, refresh_token: _rt })
@@ -843,6 +848,112 @@ export default function SalesmanPremium() {
  supabase.from("profiles").update({ lite_goal: cached }).eq("id", uid).then(() => {});
  }
  } catch {}
+ }
+
+
+ // Realtime. Deliberately set up HERE — before the data fetches — and not
+ // buried at the end of the leads `.then`, where it used to sit behind an
+ // `await` on the AI lead-scoring call. That put a multi-second window between
+ // mount and subscribe in which the page could unmount (a back/forward, a
+ // redirect) while this chain was still running: the cleanup below ran with
+ // `channelRef.current` still null, removed nothing, and the orphaned chain
+ // then subscribed a channel nobody owned. The next mount called
+ // `supabase.channel()` on that same topic, got the already-joined channel
+ // back (supabase-js keeps one channel per topic), and `.on("postgres_changes")`
+ // threw "cannot add postgres_changes callbacks ... after subscribe()" as an
+ // unhandledrejection. `freshChannel` drops any stale holder of the topic, and
+ // `cancelled` stops a dead mount from subscribing at all.
+ // Topic is salesman-PREMIUM-rt: it used to be "salesman-lite-rt-", the exact
+ // string SalesmanLite.jsx uses, so the two pages fought over one topic.
+ if (!cancelled) {
+ const ch = freshChannel("salesman-premium-rt-" + uid)
+ .on(
+ "postgres_changes",
+ {
+ event: "*",
+ schema: "public",
+ table: "leads",
+ filter: `salesman_id=eq.${uid}`,
+ },
+ (payload) => {
+ if (payload.eventType === "INSERT")
+ setLeads((p) => (p.some((l) => l.id === payload.new.id)? p : [payload.new, ...p]));
+ if (payload.eventType === "UPDATE")
+ setLeads((p) =>
+ p.map((l) =>
+ l.id === payload.new.id? { ...l, ...payload.new } : l,
+ ),
+ );
+ if (payload.eventType === "DELETE")
+ setLeads((p) => p.filter((l) => l.id!== payload.old.id));
+ },
+ )
+ .on(
+ "postgres_changes",
+ {
+ event: "INSERT",
+ schema: "public",
+ table: "salesman_notifications",
+ filter: `salesman_id=eq.${uid}`,
+ },
+ (payload) => {
+ toast(payload.new.title, { description: payload.new.body });
+ setNotifications((p) => [payload.new, ...p]);
+ },
+ )
+ .on(
+ "postgres_changes",
+ {
+ event: "*",
+ schema: "public",
+ table: "whatsapp_enquiries",
+ filter: `dealer_id=eq.${uid}`,
+ },
+ (payload) => {
+ if (payload.eventType === "INSERT") {
+ setEnquiries((p) => (p.some((e) => e.id === payload.new.id)? p : [payload.new, ...p]));
+ toast("New enquiry!", {
+ description: payload.new.buyer_name || "Someone enquired",
+ });
+ }
+ if (payload.eventType === "UPDATE")
+ setEnquiries((p) =>
+ p.map((e) =>
+ e.id === payload.new.id? { ...e, ...payload.new } : e,
+ ),
+ );
+ },
+ )
+ .on(
+ "postgres_changes",
+ {
+ event: "*",
+ schema: "public",
+ table: "appointments",
+ filter: `salesman_id=eq.${uid}`,
+ },
+ (payload) => {
+ if (payload.eventType === "INSERT") {
+ setAppointments((p) => (p.some((a) => a.id === payload.new.id)? p : [payload.new, ...p]));
+ toast("New booking!", {
+ description: payload.new.buyer_name || "New appointment",
+ });
+ }
+ if (payload.eventType === "UPDATE")
+ setAppointments((p) =>
+ p.map((a) =>
+ a.id === payload.new.id? { ...a, ...payload.new } : a,
+ ),
+ );
+ },
+ );
+ // Unmounted while the chain above was running -> never join, just drop it.
+ if (cancelled) {
+ supabase.removeChannel(ch);
+ } else {
+ channelRef.current = ch;
+ ch.subscribe();
+ }
  }
 
  // premium — commission + sold count
@@ -1028,89 +1139,6 @@ export default function SalesmanPremium() {
  finally { setScoreLoading(false); }
  }
 
- channelRef.current = supabase
- .channel("salesman-lite-rt-" + uid)
- .on(
- "postgres_changes",
- {
- event: "*",
- schema: "public",
- table: "leads",
- filter: `salesman_id=eq.${uid}`,
- },
- (payload) => {
- if (payload.eventType === "INSERT")
- setLeads((p) => [payload.new, ...p]);
- if (payload.eventType === "UPDATE")
- setLeads((p) =>
- p.map((l) =>
- l.id === payload.new.id? { ...l, ...payload.new } : l,
- ),
- );
- if (payload.eventType === "DELETE")
- setLeads((p) => p.filter((l) => l.id!== payload.old.id));
- },
- )
- .on(
- "postgres_changes",
- {
- event: "INSERT",
- schema: "public",
- table: "salesman_notifications",
- filter: `salesman_id=eq.${uid}`,
- },
- (payload) => {
- toast(payload.new.title, { description: payload.new.body });
- setNotifications((p) => [payload.new, ...p]);
- },
- )
- .on(
- "postgres_changes",
- {
- event: "*",
- schema: "public",
- table: "whatsapp_enquiries",
- filter: `dealer_id=eq.${uid}`,
- },
- (payload) => {
- if (payload.eventType === "INSERT") {
- setEnquiries((p) => [payload.new, ...p]);
- toast("New enquiry!", {
- description: payload.new.buyer_name || "Someone enquired",
- });
- }
- if (payload.eventType === "UPDATE")
- setEnquiries((p) =>
- p.map((e) =>
- e.id === payload.new.id? { ...e, ...payload.new } : e,
- ),
- );
- },
- )
- .on(
- "postgres_changes",
- {
- event: "*",
- schema: "public",
- table: "appointments",
- filter: `salesman_id=eq.${uid}`,
- },
- (payload) => {
- if (payload.eventType === "INSERT") {
- setAppointments((p) => [payload.new, ...p]);
- toast("New booking!", {
- description: payload.new.buyer_name || "New appointment",
- });
- }
- if (payload.eventType === "UPDATE")
- setAppointments((p) =>
- p.map((a) =>
- a.id === payload.new.id? { ...a, ...payload.new } : a,
- ),
- );
- },
- )
- .subscribe();
  });
 
  // fetch appointments
@@ -1152,7 +1180,11 @@ export default function SalesmanPremium() {
  .then(({ data: enqs }) => setEnquiries(enqs || []));
  });
  return () => {
- if (channelRef.current) supabase.removeChannel(channelRef.current);
+ cancelled = true;
+ if (channelRef.current) {
+ supabase.removeChannel(channelRef.current);
+ channelRef.current = null;
+ }
  };
  // Mount-time bootstrap only. Deliberately [] and NOT [navigate]: react-router
  // v7 rebuilds the `navigate` callback whenever the pathname changes (it closes
