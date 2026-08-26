@@ -121,20 +121,49 @@ not scoped, not prioritized — just parked here until picked up on purpose.
 
 ---
 
-### SESSION 2026-08-26 — Salesman Premium UX
+### SESSION 2026-08-26 — Security follow-ups
 
-- [ ] **UX-1: auto-hiding sticky header (Salesman Premium topbar).** The topbar
-  (`SalesmanPremium.jsx`, the `{/* Topbar */}` block — `position: sticky; top: 0`)
-  should hide on scroll DOWN and come back the moment the user scrolls UP even a
-  little, the pattern most mobile apps use. Today it is permanently stuck, so it
-  eats vertical space on a phone while a salesman is reading a long list. Needs:
-  a scroll-direction hook (last scrollY vs current, with a small threshold so a
-  1px jitter doesn't flap it), `transform: translateY(-100%)` + a transition
-  rather than toggling `display`, and it must always be shown again at
-  `scrollY === 0`. Watch out: the mobile nav drawer trigger lives in this bar,
-  so it can't be hidden while the drawer or any overlay is open, and
-  `prefers-reduced-motion` should skip the transition. Applies to the Premium
-  panel first; Lite/`Salesmanpanel` share the same pattern if it works well.
+- [ ] **SEC-1: rate-limit anon INSERT on `dealer_notifications` and
+  `salesman_notifications` (push-spam vector).** Both tables carry an
+  `anon_trigger_insert` policy that lets a logged-out caller INSERT a
+  notification row, and **an insert into either table IS a push** —
+  `trg_push_on_dealer_notification` / `trg_push_on_salesman_notification` fire
+  `push_to_users()` on every row (see CLAUDE.md "Web push"). There is no rate
+  limit on either policy, so anyone who can guess or read a `dealer_id` /
+  `salesman_id` can spam a rep's phone indefinitely. Found in the 2026-08-26
+  Premium security sweep; reported rather than fixed because the fix touches
+  live push paths.
+  - Why the policies exist: two notification triggers are NOT `SECURITY
+    DEFINER`, so they run as the anon caller and need the policy to write —
+    `notify_new_booking` (on `bookings`) and `notify_dealer_salesman_note`
+    (on `salesman_notes`). Every other producer is already definer.
+  - **Preferred fix:** make those two `SECURITY DEFINER` (matching
+    `notify_new_enquiry`, `notify_salesman_new_booking` etc.), then DROP both
+    `anon_trigger_insert` policies entirely. No legitimate client inserts a
+    notification directly — they are all trigger fanout.
+  - **Fallback if a direct anon insert turns out to be needed:** add a rate
+    guard to the policy's WITH CHECK, mirroring the ones that already exist
+    (`appointments_public_rate_ok`, `leads_public_rate_ok`,
+    `whatsapp_enquiry_rate_ok`, `analytics_rate_limit_ok`).
+  - **Must be tested end-to-end before shipping:** an anon booking through the
+    public storefront, and a public WhatsApp enquiry, both still firing their
+    push. Getting this wrong silently kills booking/enquiry notifications —
+    the trigger functions swallow their own errors (`exception when others` +
+    `raise warning`) precisely so a push failure never blocks the row write,
+    so a broken path will NOT throw, it will just go quiet.
+  - Verify as anon, not by reading the migration back: `set local role anon`
+    inside a `DO` block that raises at the end so the probe rolls itself back.
+
+- [ ] **SEC-2: salesman analytics RPCs are still cross-readable by any logged-in
+  user.** `get_salesman_minipage_stats(text)`, `get_salesman_minipage_daily(text)`
+  and `get_salesman_channel_breakdown(uuid[], text)` are `SECURITY DEFINER` and
+  scoped only by a slug. Anon EXECUTE was revoked (migrations `20260826j`/`k`),
+  but any authenticated user can still pass another rep's slug and read their
+  views, enquiries and daily traffic. Fix is a caller check inside each
+  function. Not done yet because a linked salesman's slug is not always their
+  own profile's slug — `Salesmanpanel.jsx` passes `profileData.slug || ""` —
+  so the predicate has to allow "my slug OR a slug belonging to my dealer",
+  and Salesmanpanel + Lite + Premium all need re-testing together.
 
 ---
 
