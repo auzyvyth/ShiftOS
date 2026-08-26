@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import useHandover from "../hooks/useHandover";
-import { placeTourCard, tourBand, tourScrollDelta } from "../utils/tourPlacement";
+import { placeTourCard } from "../utils/tourPlacement";
 import { normalizePhone } from "../lib/phone";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { freshChannel } from "../lib/realtime";
@@ -42,7 +42,6 @@ import {
  LayoutGrid,
  Users,
  MessageSquare,
- Link as LinkIcon,
  Megaphone,
  AlertCircle,
  CheckCircle2,
@@ -88,7 +87,6 @@ import {
  Camera,
  Zap,
  MessageCircle,
- UserCheck,
  ClipboardList,
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
@@ -153,31 +151,18 @@ const TAB_ALIASES = {
  merge: { tab: "settings", anchor: "sp-merge" },
 };
 
-// Which tab each tour step opens, index-matched to TOUR_STEPS (step 0 is the
-// welcome card and opens nothing). Every tab a salesman can reach is in here —
-// a step missing from this list means the tour silently skips that page.
+// Which tab each tour step rings, index-matched to TOUR_STEPS (step 0 is the
+// welcome card and rings nothing). One step per sidebar link — exactly the
+// 10 tabs in TABS_DESKTOP, nothing past the nav. The tour never navigates
+// anymore (see the tourStep effect): it opens the nav (the drawer on
+// mobile, always-visible on desktop) once and rings each link where it
+// already sits, so there's no separate TOUR_HIGHLIGHT/TOUR_IN_CONTENT
+// distinction to maintain the way there was when steps pointed at things
+// buried inside page content (sub-tab pills, the invite box).
 const TOUR_TABS = [
- null, "dashboard", "listings", "leads", "bookings", "leadhistory", "analytics",
- "loans", "outreach", "chat", "handover", "customers", "merge", "settings",
+ null, "dashboard", "listings", "leads", "enquiries", "sold",
+ "analytics", "loans", "outreach", "chat", "settings",
 ];
-
-// Where the spotlight ring goes for a step whose tab is NOT its own nav button.
-// Every step must ring the thing it is actually talking about: pointing at a nav
-// button while describing a box further down the page is what made the card land
-// on top of that box. Keys are TOUR_TABS entries, values are data-tour-id values.
-const TOUR_HIGHLIGHT = {
- // Bookings / Lead History are the two sub-tab pills inside Inbox
- // (data-tour-id set in salesmanPremium/shared.jsx SubTabs).
- merge: "sp-merge", // the invite-code box itself, not the Settings nav button
- // Both halves of Sold; ring the pill that switches to each one.
- handover: "sold-handover",
- customers: "sold-customers",
-};
-
-// Targets that live in the page body rather than in the (fixed) nav. These move
-// when the page scrolls, so the ring has to re-measure on scroll; everything
-// else gets the page scrolled back to the top so the panel starts at its top.
-const TOUR_IN_CONTENT = new Set(["bookings", "leadhistory", "sp-merge", "sold-handover", "sold-customers"]);
 
 
 
@@ -1217,83 +1202,27 @@ export default function SalesmanPremium() {
  // eslint-disable-next-line react-hooks/exhaustive-deps
  }, []);
 
- // While the tour runs, give the page extra scroll room at the bottom. Without
- // it the browser clamps at the end of the document, so a target near the end
- // (the invite box is the last block on Settings) can never be scrolled up out
- // of the card's lane — it just sits against the bottom nav with the card on
- // top of it. Removed the moment the tour closes.
- const tourOpen = tourStep !== null;
- useEffect(() => {
- if (!tourOpen) return;
- const pad = document.createElement("div");
- pad.setAttribute("data-tour-scroll-room", "");
- pad.style.cssText = `height:${Math.round(window.innerHeight * 0.8)}px;pointer-events:none`;
- document.body.appendChild(pad);
- return () => pad.remove();
- }, [tourOpen]);
-
+ // The tour never navigates — every real step (1..10) rings one of the 10
+ // sidebar links exactly where it already sits: the drawer on mobile (opened
+ // once and held open for the whole run, not toggled per step — the setter
+ // below is a same-value set on every step after the first, so React bails
+ // out with no re-render/re-animation), the always-visible sidebar on
+ // desktop. Nothing here scrolls or switches tabs, so the earlier
+ // scroll-room padding and in-content scroll-compensation logic (needed
+ // when steps pointed at things buried in page content) is gone — every
+ // target is a fixed nav row that doesn't move under its own step.
  useEffect(() => {
  if (tourStep === null) { setTourTarget(null); setMobileNavOpen(false); return; }
  const tab = TOUR_TABS[tourStep];
  if (!tab) { setTourTarget(null); setMobileNavOpen(false); return; }
- // replace: a tour that pushes one history entry per step turns the phone's
- // back gesture into a walk back through the whole tour.
- switchTab(tab, { replace: true });
- const id = TOUR_HIGHLIGHT[tab] ?? tab;
- const inContent = TOUR_IN_CONTENT.has(id);
- // A nav-anchored step (not in TOUR_IN_CONTENT) rings a real button that now
- // lives inside the mobile drawer instead of a fixed bottom bar — open it
- // for the duration of that step so there's an actual visible element to
- // ring, same principle as scrolling an in-page target into view below.
- if (isMobile) setMobileNavOpen(!inContent);
- // A step anchored to the nav describes the panel as a whole, so start that
- // panel at its top — step 12 scrolls the page down to the invite box and the
- // Settings step that follows used to inherit that scroll position.
- if (!inContent) window.scrollTo({ top: 0, behavior: "smooth" });
-
- // Measure the element this step points at. A miss clears the target (the card
- // then centres itself) rather than leaving the previous step's rectangle in
- // place, which used to ring the wrong nav item.
- //
- // Scrolling is computed, not delegated to scrollIntoView: the target has to
- // land in the band the card leaves free (above the docked card on mobile,
- // the middle of the screen on desktop), and scrollIntoView knows nothing
- // about the card. Up to three corrections, throttled, because tab panels
- // load lazily and shift the target under us; after that the scroll listener
- // keeps the ring glued to it.
- let aligns = 0;
- let lastAlign = 0;
+ if (isMobile) setMobileNavOpen(true);
  const measure = () => {
- const el = id ? document.querySelector(`[data-tour-id="${id}"]`) : null;
- if (!el) { setTourTarget(null); return; }
- const r = el.getBoundingClientRect();
- setTourTarget(r);
- if (!inContent) return;
- // navH: 0 — Premium no longer reserves space for a fixed bottom nav (the
- // mobile drawer replaced it), unlike Lite/Salesmanpanel which still pass
- // the shared MOBILE_NAV_H default.
- const band = tourBand(window.innerHeight, { dock: isMobile, cardH: tourCardHRef.current, navH: 0 });
- const delta = tourScrollDelta(r, band);
- const now = Date.now();
- if (Math.abs(delta) > 8 && aligns < 3 && now - lastAlign > 260) {
- aligns += 1;
- lastAlign = now;
- window.scrollBy({ top: delta, behavior: aligns === 1 ? "smooth" : "auto" });
- }
+ const el = document.querySelector(`[data-tour-id="${tab}"]`);
+ setTourTarget(el ? el.getBoundingClientRect() : null);
  };
- // Tab panels are lazy-loaded and a smooth scroll takes ~0.5s to settle, so
- // keep re-measuring for ~1.2s instead of taking one 60ms snapshot.
- let ticks = 0;
- const iv = setInterval(() => { measure(); if (++ticks > 20) clearInterval(iv); }, 60);
- // An in-content target moves with the page, so the ring has to follow it —
- // capture:true also catches scrolls inside nested scrollers.
+ measure();
  window.addEventListener("resize", measure);
- if (inContent) window.addEventListener("scroll", measure, true);
- return () => {
- clearInterval(iv);
- window.removeEventListener("resize", measure);
- if (inContent) window.removeEventListener("scroll", measure, true);
- };
+ return () => window.removeEventListener("resize", measure);
  }, [tourStep, isMobile]);
 
  const handleLogout = async () => {
@@ -2466,18 +2395,23 @@ export default function SalesmanPremium() {
  // cramped to use). Reuses TABS_DESKTOP (same tab set the desktop sidebar
  // already renders) rather than a third parallel list. Overlay rules:
  // portalled to document.body (rule 1), body-scroll-lock via anyOverlayOpen
- // above (rule 2). Auto-opened during the tour for nav-anchored steps — see
- // the tourStep effect — so the ring always points at a real visible button.
+ // above (rule 2). Opened by the tour for every real step (see the tourStep
+ // effect) and held open for the whole walkthrough — z-index MUST stay
+ // below the tour's ring (1001) and card (1002) rendered in renderTour(),
+ // or the drawer covers the tour instead of the tour showing the drawer.
  const renderMobileNav = () =>
  mobileNavOpen && createPortal(
  <div
- onClick={() => setMobileNavOpen(false)}
- style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(0,0,0,0.55)" }}
+ // While the tour is driving it (tourStep !== null), it owns open/close —
+ // an accidental tap on the backdrop shouldn't close the drawer out from
+ // under the ring the tour is currently pointing into it.
+ onClick={() => { if (tourStep === null) setMobileNavOpen(false); }}
+ style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.55)" }}
  >
  <nav
  onClick={(e) => e.stopPropagation()}
  style={{
- position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 1201,
+ position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 1000,
  width: "min(78vw, 280px)",
  background: "#080a12",
  borderRight: "1px solid rgba(255,255,255,0.07)",
@@ -4482,7 +4416,7 @@ export default function SalesmanPremium() {
  {/* Joining a dealership is a one-time action, not something that needs a
      permanent nav slot — it lives here, and /salesman-premium/merge still
      resolves to this section (see TAB_ALIASES). */}
- <div id="sp-merge" data-tour-id="sp-merge" style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+ <div id="sp-merge" style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
  {renderMerge()}
  </div>
  {/* Replay the tour. It only auto-runs once (profiles.onboarding_tour_done),
@@ -5366,21 +5300,21 @@ export default function SalesmanPremium() {
 
  // TOUR
 
+ // One step per TOUR_TABS entry — the 10 sidebar links, in nav order, plus
+ // the welcome card. Titles match the nav labels exactly (TABS_DESKTOP)
+ // since the ring and the bubble now always describe the same thing.
  const TOUR_STEPS = [
- { icon: Sparkles, title: "Welcome to ShiftOS Premium", body: "Quick tour of everything your plan unlocks. Each step takes you to the real panel so you can see it live." },
+ { icon: Sparkles, title: "Welcome to ShiftOS Premium", body: "A quick walk down the menu — everything your plan unlocks, one link at a time." },
  { icon: BarChart2, title: "Dashboard", body: "Your command centre — KPIs, stale follow-up nudges, listing performance, and recent activity all in one view." },
  { icon: Car, title: "My Listings", body: "Add your cars here. Each card shows views, WA taps, and a CVR bar. Hot = buyers are clicking. Cold = needs a refresh or price drop. The Add-ons pill next to Cars is your paid extras catalogue." },
  { icon: Users, title: "Leads", body: "Track every buyer: New → Contacted → Test Drive → Won. Heat scores show who needs attention. Ping stale leads straight to WhatsApp." },
- { icon: Calendar, title: "Bookings", body: "Your Inbox opens here. Viewing appointments land in this list — confirm, reschedule, cancel or send a WA reminder without leaving the app." },
- { icon: MessageSquare, title: "Lead History", body: "The other half of the Inbox. Every buyer who messaged through your listing cards — reply with templates or convert them into pipeline leads in one tap." },
+ { icon: MessageSquare, title: "Inbox", body: "Viewing appointments and buyer messages both land here. Bookings — confirm, reschedule, cancel or send a WA reminder. Lead History — everyone who messaged through your listing cards; reply with templates or convert them into pipeline leads in one tap." },
+ { icon: ClipboardList, title: "Sold", body: "Everything after a won deal lives here. Handover is the 8-step Malaysian paperwork checklist — loan settlement, insurance, Puspakom, JPJ pindah milik, road tax, geran, keys. Customers is everyone who's bought from you, with road tax and insurance expiry tracked so the app tells you who's due for a renewal call or ready to trade up." },
  { icon: TrendingUp, title: "Analytics", body: "Views, WhatsApp taps and conversion rate per listing, plus your total commission and cars sold — all in one view." },
  { icon: Banknote, title: "Loans", body: "Compare bank rates for a buyer, submit their loan application, and track approval status — a Premium-only feature." },
- { icon: Megaphone, title: "Outreach Hub", body: "See which leads have gone cold, then work through them with a guided WhatsApp campaign — one tap per contact. Premium-only." },
+ { icon: Megaphone, title: "Outreach", body: "See which leads have gone cold, then work through them with a guided WhatsApp campaign — one tap per contact. Premium-only." },
  { icon: MessageCircle, title: "Chat", body: "Buyers who message you from a listing land here instead of WhatsApp. You see their name, the car, and read receipts — and phone numbers stay masked until you tap them." },
- { icon: ClipboardList, title: "Sold · Handover", body: "Everything after a won deal lives in the Sold tab. This half is the 8-step Malaysian handover checklist — loan settlement, insurance, Puspakom, JPJ pindah milik, road tax, geran, keys. The number on the tab is how many are still open." },
- { icon: UserCheck, title: "Sold · Customers", body: "The other half: everyone who has bought from you. Road tax and insurance expiry are tracked per car, so the app tells you who is due for a renewal call or is ready to trade up." },
- { icon: LinkIcon, title: "Join a Dealership", body: "Have an invite code from your dealer? Enter it at the bottom of Settings to unlock the full panel — shared stock, team leads, commission tracking and more." },
- { icon: Settings, title: "Settings", body: "Your public profile, WhatsApp templates and account settings live here." },
+ { icon: Settings, title: "Settings", body: "Your public profile, WhatsApp templates and account settings live here. Have an invite code from a dealer? Enter it at the bottom of this page to unlock the full panel — shared stock, team leads, commission tracking and more." },
  ];
 
  const dismissTour = () => {
