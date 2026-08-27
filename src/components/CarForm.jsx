@@ -783,7 +783,19 @@ function VideoPreview({ url }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const cfDraftKey = (uid) => `carform_draft_${uid}`;
-const cfSaveDraft = (uid, form, step) => { try { localStorage.setItem(cfDraftKey(uid), JSON.stringify({ form, step, savedAt: Date.now() })); } catch (_) {} };
+const cfSaveDraft = (uid, form, step) => {
+  try {
+    // form.images can hold raw File objects for photos still mid-upload.
+    // File/Blob has no enumerable properties, so JSON.stringify silently
+    // turns each into `{}` — restoring that draft later leaves nameless
+    // placeholders in form.images that crash uploadImages() on publish
+    // ("Cannot read properties of undefined (reading 'replace')"). Only
+    // already-uploaded URLs survive a draft; unfinished files are dropped
+    // and the user re-adds them.
+    const safeImages = (form.images || []).filter((img) => typeof img === "string");
+    localStorage.setItem(cfDraftKey(uid), JSON.stringify({ form: { ...form, images: safeImages }, step, savedAt: Date.now() }));
+  } catch (_) {}
+};
 const cfLoadDraft = (uid) => { try { const r = localStorage.getItem(cfDraftKey(uid)); if (!r) return null; const d = JSON.parse(r); if (Date.now() - d.savedAt > DRAFT_TTL_MS) { localStorage.removeItem(cfDraftKey(uid)); return null; } return d; } catch (_) { return null; } };
 const cfClearDraft = (uid) => { try { localStorage.removeItem(cfDraftKey(uid)); } catch (_) {} };
 
@@ -906,7 +918,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     if (slotType) setUploadingSlot(slotType);
     else setDocUploading(true);
     try {
-      const path = `docs/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const path = `docs/${Date.now()}-${(file.name || "document").replace(/[^a-zA-Z0-9._-]/g, "_")}`;
       const { error } = await supabase.storage
         .from("car-images")
         .upload(path, file);
@@ -1334,7 +1346,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           (blob) =>
             resolve(
               blob
-                ? new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" })
+                ? new File([blob], (file.name || "photo.jpg").replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" })
                 : file,
             ),
           "image/jpeg",
@@ -1358,7 +1370,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     // (foldername[1] = auth.uid()) can match — flat root paths carried no owner
     // and were undeletable. profile.id is the logged-in user's auth uid.
     const folder = profile?.id ? `${profile.id}/` : "";
-    const path = `${folder}${Date.now()}-${rand}-${compressed.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    const path = `${folder}${Date.now()}-${rand}-${(compressed.name || "photo.jpg").replace(/[^a-zA-Z0-9._-]/g, "_")}`;
     let lastErr = null;
     for (let attempt = 0; attempt < 3; attempt++) {
       const { error } = await supabase.storage
@@ -1639,7 +1651,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       // Same uid-folder scoping as the eager path, so images uploaded at publish
       // are owner-scoped and deletable under the storage RLS delete policy.
       const folder = profile?.id ? `${profile.id}/` : "";
-      const name = `${folder}${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const name = `${folder}${Date.now()}-${(file.name || "photo.jpg").replace(/[^a-zA-Z0-9._-]/g, "_")}`;
       const { error } = await supabase.storage
         .from("car-images")
         .upload(name, file, { upsert: true, contentType: file.type || "image/jpeg" });
