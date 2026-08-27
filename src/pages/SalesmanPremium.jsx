@@ -382,6 +382,7 @@ export default function SalesmanPremium() {
  const [followUpDate, setFollowUpDate] = useState("");
  const [followUpSaving, setFollowUpSaving] = useState(false);
  const [testDriveConfirm, setTestDriveConfirm] = useState(null);
+ const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
  const [linkCarLeadId, setLinkCarLeadId] = useState(null);
  const [linkCarQuery, setLinkCarQuery] = useState("");
  const [batchWALeads, setBatchWALeads] = useState(null);
@@ -567,7 +568,7 @@ export default function SalesmanPremium() {
  showAddLead || waModalLead || bookingDetailId || notifOpen ||
  testDriveConfirm || broadcastCar || aiCaptionCar ||
  confirmBookingApt || sellerBookingLead || mobileNavOpen ||
- drawerLeadId || linkCarLeadId
+ drawerLeadId || linkCarLeadId || logoutConfirmOpen
  );
  useEffect(() => {
  document.body.style.overflow = anyOverlayOpen? "hidden" : "";
@@ -2465,7 +2466,7 @@ export default function SalesmanPremium() {
  </button>
  ))}
  <button
- onClick={() => { setMobileNavOpen(false); handleLogout(); }}
+ onClick={() => { setMobileNavOpen(false); setLogoutConfirmOpen(true); }}
  style={{
  display: "flex", alignItems: "center", gap: 10, marginTop: "auto",
  padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.06)",
@@ -5711,7 +5712,7 @@ export default function SalesmanPremium() {
  <p style={{ fontSize: 10, color: "#4b5563", margin: 0 }}>lite</p>
  </div>
  <button
- onClick={handleLogout}
+ onClick={() => setLogoutConfirmOpen(true)}
  style={{
  background: "transparent",
  border: "none",
@@ -5847,7 +5848,7 @@ export default function SalesmanPremium() {
  )}
  </button>
  <button
- onClick={handleLogout}
+ onClick={() => setLogoutConfirmOpen(true)}
  style={{
  background: "rgba(255,255,255,0.04)",
  border: "1px solid rgba(255,255,255,0.08)",
@@ -6111,6 +6112,37 @@ export default function SalesmanPremium() {
  </Suspense>
  )}
  {renderTour()}
+
+ {/* ── Log out confirm ── all three logout buttons (mobile nav drawer,
+ desktop sidebar, mobile topbar) open this instead of calling
+ handleLogout directly. */}
+ {logoutConfirmOpen && (
+ <div
+ onClick={() => setLogoutConfirmOpen(false)}
+ style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(0,0,0,0.72)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+ >
+ <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 14, width: "100%", maxWidth: 340, padding: 22, border: "1px solid rgba(255,255,255,0.08)" }}>
+ <p style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>Log out?</p>
+ <p style={{ margin: "0 0 20px", fontSize: 13, color: "#6b7280" }}>
+ You'll need to sign in again to get back to your dashboard.
+ </p>
+ <div style={{ display: "flex", gap: 8 }}>
+ <button
+ onClick={() => setLogoutConfirmOpen(false)}
+ style={{ flex: 1, fontSize: 13, fontWeight: 600, padding: "11px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "#cbd5e1", cursor: "pointer", fontFamily: "inherit" }}
+ >
+ Cancel
+ </button>
+ <button
+ onClick={() => { setLogoutConfirmOpen(false); handleLogout(); }}
+ style={{ flex: 1, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 8, background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.35)", color: "#f87171", cursor: "pointer", fontFamily: "inherit" }}
+ >
+ Log out
+ </button>
+ </div>
+ </div>
+ </div>
+ )}
 
  {/* ── Test drive outcome ── advanceLeadStage sets testDriveConfirm and
  returns, so WITHOUT this modal a lead sitting at test_drive could never
