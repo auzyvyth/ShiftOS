@@ -211,6 +211,33 @@ const STATE_CITIES = {
   Sarawak: ["Kuching", "Miri", "Sibu", "Bintulu", "Limbang", "Kota Samarahan"],
 };
 
+// Map a profile's stored location onto what this form can actually accept.
+//
+// The two sides do not agree, and prefilling blindly would set values the
+// selects cannot show: onboarding offers 16 states (Labuan, Perlis and
+// Putrajaya among them) and takes the city as FREE TEXT, while this form has
+// cities for 13 states and constrains the city to that state's list. So an
+// unknown state is dropped entirely (nothing else would work — the city list
+// hangs off the state), while a city that is not on the list is KEPT and added
+// to the dropdown's options by `cityOptions` below. Most real sellers stored a
+// city this form has never heard of ("Gombak", "Wilayah Persekutuan"), and
+// dropping those would leave the feature half-working for the people who have
+// it. `car_listings.city` is only ever displayed, never matched against a fixed
+// list, so carrying a seller's own wording through is safe.
+// Matching is case- and space-insensitive so "kuala lumpur" finds "Kuala Lumpur".
+function matchKnownLocation(rawState, rawCity) {
+  const norm = (v) => String(v || "").trim().toLowerCase().replace(/\s+/g, " ");
+  const stateKey = Object.keys(STATE_CITIES).find((k) => norm(k) === norm(rawState));
+  if (!stateKey) return { state: "", city: "" };
+  const cityMatch = (STATE_CITIES[stateKey] || []).find((c) => norm(c) === norm(rawCity));
+  if (cityMatch) return { state: stateKey, city: cityMatch };
+  // Title-cased: a carried-through city is printed on the public listing, and
+  // "gombak" is how someone typed it at 1am, not how it should read there.
+  const own = String(rawCity || "").trim().replace(/\s+/g, " ")
+    .replace(/\b\p{L}[\p{L}'’-]*/gu, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+  return { state: stateKey, city: own };
+}
+
 const CONDITIONS = ["used", "recon", "new"];
 const BODY_TYPES = ["Sedan", "SUV", "MPV", "Hatchback", "Coupe", "Pickup"];
 const FUEL_TYPES = ["Petrol", "Diesel", "Hybrid", "Electric"];
@@ -816,7 +843,15 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
 
   // In create mode, pre-fill state/city (and any other defaults) from the caller.
   // In edit mode, initialListing is unused — the pre-fill effect below populates from `listing`.
-  const [form, setForm] = useState(() => listing ? initialListing : { ...initialListing, ...(defaultValues || {}) });
+  const [form, setForm] = useState(() => listing ? initialListing : {
+    ...initialListing,
+    ...(defaultValues || {}),
+    // Any location a caller seeds goes through the same matcher as the profile
+    // prefill below — one rule for what this form will accept, not two.
+    ...(defaultValues?.state || defaultValues?.city
+      ? matchKnownLocation(defaultValues.state, defaultValues.city)
+      : {}),
+  });
   const [step, setStep] = useState(1);
   const [draftBanner, setDraftBanner] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState(null);
@@ -983,17 +1018,48 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   const [serviceSearch, setServiceSearch] = useState("");
   const [commissionConfig, setCommissionConfig] = useState(null); // SET-4
   const [handlesRti, setHandlesRti] = useState(true); // profiles.handles_roadtax_insurance
+  // Where the dealer is. Only used as the SECOND fallback for the location
+  // prefill below — a salesman created by a dealer often has no city of their
+  // own, but the cars they list sit in the dealer's yard.
+  const [dealerLocation, setDealerLocation] = useState(null);
   const navigate = useNavigate();
 
   // SET-4: load dealer commission rule for the suggested-commission helper
   useEffect(() => {
     if (!dealerId) return;
-    supabase.from("profiles").select("commission_config, handles_roadtax_insurance").eq("id", dealerId).maybeSingle()
+    supabase.from("profiles").select("commission_config, handles_roadtax_insurance, state, city").eq("id", dealerId).maybeSingle()
       .then(({ data }) => {
         setCommissionConfig(data?.commission_config || null);
         setHandlesRti(data?.handles_roadtax_insurance !== false);
+        setDealerLocation(data ? { state: data.state || "", city: data.city || "" } : null);
       });
   }, [dealerId]);
+
+  // ── Location prefill ─────────────────────────────────────────────────────
+  // Every seller states their state and city at onboarding, then had to pick
+  // them again on every single listing. This fills them in from the profile
+  // the form already loads, so the step is a confirmation rather than data
+  // entry — and it stays fully editable, because a car is not always where its
+  // seller is.
+  //
+  // It lives HERE, not in each caller: the dealer dashboard passed
+  // `defaultValues` for this and Salesman Lite, Salesman Premium and the
+  // manager panel did not, which is exactly the kind of per-caller drift that
+  // leaves three of five surfaces without the feature.
+  //
+  // Rules, in order: never in edit mode; never over a value that is already
+  // there (a restored draft, or `defaultValues` from the caller); own profile
+  // first, then the dealer's. The functional updater reads the CURRENT form, so
+  // it cannot race the draft-restore effect above.
+  useEffect(() => {
+    if (listing || !profile?.id) return;
+    const { state: st, city: ct } = matchKnownLocation(
+      profile.state || dealerLocation?.state,
+      profile.city || dealerLocation?.city,
+    );
+    if (!st) return;
+    setForm((f) => (f.state || f.city ? f : { ...f, state: st, city: ct }));
+  }, [listing, profile?.id, profile?.state, profile?.city, dealerLocation]);
 
   useEffect(() => {
     previewUrlsRef.current = previews;
@@ -1045,8 +1111,13 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         registrationDate: listing.registration_date || "",
         plate_number: listing.plate_number || "",
         vin_number: listing.vin_number || "",
-        state: listing.state || defaultValues?.state || "",
-        city: listing.city || defaultValues?.city || "",
+        // Edit mode. `defaultValues` is how the dealer dashboard seeds a stock
+        // unit's location when publishing one that has none; it goes through the
+        // same matcher as the prefill so a state this form cannot render never
+        // reaches the select from either direction.
+        ...(listing.state
+          ? { state: listing.state, city: listing.city || "" }
+          : matchKnownLocation(defaultValues?.state, defaultValues?.city)),
         basePrice: listing.base_price ? String(listing.base_price) : "",
         sellingPrice: listing.selling_price
           ? String(listing.selling_price)
@@ -1250,8 +1321,13 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   const handleChange = (e) => set(e.target.name, e.target.value);
   const modelOptions =
     form.brand && CAR_DATA[form.brand] ? CAR_DATA[form.brand] : [];
-  const cityOptions =
-    form.state && STATE_CITIES[form.state] ? STATE_CITIES[form.state] : [];
+  // The seller's own city rides along when it is not one of ours, so the
+  // prefill above has something the dropdown can actually show.
+  const cityOptions = (() => {
+    const list = form.state && STATE_CITIES[form.state] ? STATE_CITIES[form.state] : [];
+    if (form.city && !list.includes(form.city)) return [form.city, ...list];
+    return list;
+  })();
 
   // Auto-suggest auction grade based on mileage + age
   const suggestedGrade = useMemo(() => {
@@ -3508,7 +3584,13 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           <button onClick={() => {
             const d = cfLoadDraft(profile?.id);
             if (d) {
-              setForm(d.form);
+              // Drafts saved before the location prefill existed have no state
+              // or city — resuming one should not undo the prefill.
+              const loc = matchKnownLocation(
+                profile?.state || dealerLocation?.state,
+                profile?.city || dealerLocation?.city,
+              );
+              setForm(d.form?.state || d.form?.city ? d.form : { ...d.form, ...loc });
               setStep(d.step || 1);
               // Re-hydrate image previews from saved URLs so the photo step isn't empty
               if (Array.isArray(d.form?.images) && d.form.images.length > 0) {
