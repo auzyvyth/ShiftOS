@@ -443,9 +443,19 @@ export default function AdminPage() {
       };
     }));
 
-    // Badge count for the identity-approval queue (self-signup sellers pending
-    // review). Cheap superadmin RPC; the Verify tab loads the full rows itself.
-    supabase.rpc("get_pending_approvals").then(({ data }) => setPendingUsersCount((data || []).length));
+    // Badge count for the approvals queue. Counts BOTH things that tab now
+    // holds: self-signup sellers awaiting access, and ID checks from already-
+    // approved sellers waiting on the Verified badge. A user sitting in both is
+    // counted once, matching how the tab lists them. Cheap superadmin RPCs; the
+    // Verify tab loads the full rows itself.
+    Promise.all([
+      supabase.rpc("get_pending_approvals"),
+      supabase.rpc("get_pending_kyc"),
+    ]).then(([signup, kyc]) => {
+      const ids = new Set((signup.data || []).map((r) => r.id));
+      (kyc.data || []).forEach((r) => ids.add(r.id));
+      setPendingUsersCount(ids.size);
+    });
   }
 
   async function saveField(id, field, value) {

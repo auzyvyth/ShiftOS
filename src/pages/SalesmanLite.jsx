@@ -26,6 +26,7 @@ import ChannelBreakdown from "../components/ChannelBreakdown";
 import ShareMenu from "../components/ShareMenu";
 import ReportBugButton from "../components/ReportBugButton";
 import PushToggle from "../components/PushToggle";
+import VerifyIdentity from "../components/kyc/VerifyIdentity";
 import SellerInbox from "../components/chat/SellerInbox";
 import { useChatThreads } from "../hooks/useChat";
 import {
@@ -1296,7 +1297,7 @@ export default function SalesmanLite() {
 
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("id, email, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, location, ic_hash, ic_last4, ic_verified_at, ic_deadline, created_at, account_status, approval_status, rejection_reason, kyc_submitted_at, deleted_at, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
+        .select("id, email, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, location, ic_hash, ic_last4, ic_verified_at, ic_deadline, created_at, account_status, approval_status, rejection_reason, is_verified, kyc_submitted_at, deleted_at, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
         .eq("id", uid)
         .maybeSingle();
 
@@ -7480,6 +7481,17 @@ export default function SalesmanLite() {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Identity verification — earns the public Verified badge. Sits first
+              because it is the one thing here that changes how buyers see every
+              listing. Purely opt-in: skipping it just means no badge. */}
+          <VerifyIdentity
+            profile={profile}
+            userId={userId}
+            onSubmitted={() =>
+              setProfile((p) => ({ ...p, kyc_submitted_at: new Date().toISOString() }))
+            }
+          />
+
           {/* Profile basics */}
           <div style={cardStyle}>
             <p style={sectionLabelStyle}>{t("salesmanLite.settings.profileSection")}</p>
