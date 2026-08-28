@@ -14,6 +14,19 @@ function fmtDate(str) {
   return str ? new Date(str).toLocaleString("en-MY", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
 }
 
+// Written as instructions to the seller, not verdicts about them: this text is
+// shown verbatim in their dashboard, and a rejection they can act on comes back
+// as a good account instead of a support message or a lost seller.
+const REJECT_REASONS = [
+  "ID photo is too blurry to read — please retake in good light",
+  "The name on your ID doesn't match your account name",
+  "The ID photo is cut off — we need all four corners visible",
+  "Selfie doesn't clearly show your face with the ID",
+  "This ID has expired — please submit a current one",
+  "Details you entered don't match your ID",
+  "We couldn't verify your business details",
+];
+
 const PLAN_LABEL = {
   salesman_lite: "Salesman Lite (free)", salesman_full: "Salesman Premium",
   dealer_starter: "Dealer Starter", dealer_growth: "Dealer Growth",
@@ -221,8 +234,33 @@ export default function UserApprovalsTab() {
                     {rejectFor === r.id ? (
                       <div style={{ marginTop: 16, padding: "12px 14px", background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.18)", borderRadius: 8 }}>
                         <p style={{ margin: "0 0 8px", fontSize: 12, color: "#f87171", fontWeight: 600 }}>Reason for rejection — shown to the user</p>
+                        {/* Preset reasons: the seller reads this verbatim in
+                            their dashboard, so a one-tap wording that actually
+                            tells them what to fix beats a hurried "blurry".
+                            Still editable — pick one, then adjust. */}
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                          {REJECT_REASONS.map((preset) => {
+                            const active = rejectReason === preset;
+                            return (
+                              <button
+                                key={preset}
+                                type="button"
+                                onClick={() => setRejectReason(active ? "" : preset)}
+                                style={{
+                                  fontSize: 11, padding: "5px 10px", borderRadius: 999,
+                                  background: active ? "rgba(239,68,68,0.16)" : "rgba(255,255,255,0.04)",
+                                  border: `1px solid ${active ? "rgba(239,68,68,0.45)" : "rgba(255,255,255,0.1)"}`,
+                                  color: active ? "#fca5a5" : "#9ca3af",
+                                  cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+                                }}
+                              >
+                                {preset}
+                              </button>
+                            );
+                          })}
+                        </div>
                         <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={2}
-                          placeholder="e.g. IC photo is blurry / name doesn't match…"
+                          placeholder="Pick a reason above, or write your own…"
                           style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", resize: "vertical", fontFamily: "system-ui, sans-serif", outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
                         <div style={{ display: "flex", gap: 8 }}>
                           <button onClick={() => { setRejectFor(null); setRejectReason(""); }}

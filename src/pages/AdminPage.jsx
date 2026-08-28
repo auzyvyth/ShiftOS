@@ -223,6 +223,44 @@ export default function AdminPage() {
       .catch(() => { /* never blocks the console */ });
   }, [meId]);
 
+  // Live approval queues. Push tells you when the console is CLOSED, but it is
+  // not a dependable "instant" signal on its own: a browser can silently rotate
+  // its subscription (send-push deletes it on a 410) and the admin is then
+  // unreachable with nothing on screen to say so. With the console open,
+  // realtime is the reliable path — a car submitted for approval or a seller
+  // finishing onboarding shows up here without a refresh.
+  //
+  // Both queues are rebuilt through loadAll() rather than patched in place, so
+  // the derived fraud checks (duplicate plate, shared phone, live counts) stay
+  // correct instead of drifting from a partial insert.
+  useEffect(() => {
+    if (!meId) return;
+    let timer = null;
+    const bump = () => { clearTimeout(timer); timer = setTimeout(() => loadAll(), 400); };
+    const channel = supabase
+      .channel("platform-approval-queues")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "car_listings", filter: "status=eq.pending_approval" },
+        bump,
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "kyc_documents" }, bump)
+      .subscribe();
+
+    // Backstop for the signup queue. `profiles` is deliberately NOT in the
+    // realtime publication — it is the most-written table in the app, and
+    // publishing it would put every subscriber's RLS in the path of every
+    // profile update. A slow poll is the cheaper trade here; push covers the
+    // case where this console is closed.
+    const poll = setInterval(() => loadAll(), 60000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(poll);
+      supabase.removeChannel(channel);
+    };
+  }, [meId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Gate the console on the ISOLATED platform session. Resolution order:
   //   1. An existing platform session (this client's own storageKey).
   //   2. Otherwise adopt a superadmin session handed off from the public /login
