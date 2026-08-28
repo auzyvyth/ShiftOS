@@ -405,7 +405,7 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
 `AdminPage.jsx` `NAV` array. Five sections in the left rail, each with its own tab
 strip; `activeSection` picks the section, `activeTab` the tab (ids are unique
 across all sections, one state each).
-  work → home, review · people → dealers, salesman, waitlist
+  work → home, review · people → accounts, waitlist
   marketplace → marketplace(Settings), funnel, engagement, buyers, broadcast, platform(Volume)
   money → billing · safety → activity, sessions, posture, errors, alerts
 - It landed on Dealers, a directory; it lands on **Home** now — the queues are the
@@ -425,6 +425,27 @@ across all sections, one state each).
   question (P1). Symptom: marketplace settings sat in one console, marketplace
   analytics in another. Keep the taxonomy single: a new destination goes in the
   section matching what the operator is DOING, never a new product console.
+- **Dealers and Salesmen are ONE table** — `src/components/platform/AccountsTab.jsx`,
+  role filter (All / Dealers / Standalone / Under a dealer). They are the same
+  object with a different `role`; two tables is what let them drift to two
+  standards (the paying account could not be deleted, the growth account could be
+  destroyed in one click). Clicking a row opens the ACCOUNT RECORD — identity,
+  plan/billing, activity, actions — instead of four tabs and four searches. Every
+  write to an account lives there; do not add action buttons back onto the row.
+- **Activity counts come from `get_account_activity(p_ids)`, never client-side
+  queries.** `leads` has no superadmin SELECT policy and must not get one — lead
+  rows carry buyer name, phone, IC and address. The RPC returns COUNTS ONLY. It
+  is also the one activity source for dealers and salesmen alike.
+- **Suspension goes through `set_account_suspended(user, bool, reason)`** — never
+  write `profiles.is_active` directly. It stamps `suspension_reason` +
+  `suspended_at` and inserts the dealer/salesman notification row, and that row
+  IS the push. The reason is shown to the seller verbatim in `SuspendedBanner`
+  (now rendered by SalesmanLite and SalesmanPremium too — they showed nothing
+  before, so a suspended standalone seller lost the marketplace with a working
+  dashboard and no explanation).
+- Global search lives in the console header and searches accounts, pending
+  listings and waitlist out of already-loaded state — no queries. Per-tab search
+  boxes are for filtering within a tab, not for finding someone.
 - Account deletion in the console is a SOFT delete (`account_status='deleted'` +
   `is_active=false` + `deleted_at`), the same three columns the `delete-account`
   edge function writes, with a Restore button for the 30-day window. Migration

@@ -28,6 +28,7 @@ import ReportBugButton from "../components/ReportBugButton";
 import PushToggle from "../components/PushToggle";
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
 import AccountReviewBanner from "../components/AccountReviewBanner";
+import SuspendedBanner from "../components/SuspendedBanner";
 import SellerInbox from "../components/chat/SellerInbox";
 import { useChatThreads } from "../hooks/useChat";
 import {
@@ -9248,6 +9249,9 @@ export default function SalesmanLite() {
               their listings, so the work is ready the moment they're approved.
               A rejection always carries the reason — being told "no" with no
               way to fix it is what turns a seller into a support ticket. */}
+          {/* Suspension used to be invisible here: the seller lost the
+              marketplace but kept a working dashboard with no explanation (A5). */}
+          <SuspendedBanner />
           <AccountReviewBanner profile={profile} />
 
           {activeTab === "dashboard" && renderDashboard()}

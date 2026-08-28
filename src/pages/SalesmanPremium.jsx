@@ -10,6 +10,7 @@ import useHandover from "../hooks/useHandover";
 import { useHideOnScroll } from "../hooks/useHideOnScroll";
 import { placeTourCard } from "../utils/tourPlacement";
 import { normalizePhone } from "../lib/phone";
+import SuspendedBanner from "../components/SuspendedBanner";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { freshChannel } from "../lib/realtime";
 import { compressImageFile } from "../utils/compressImage";
@@ -5522,6 +5523,11 @@ export default function SalesmanPremium() {
  color: "#fff",
  }}
  >
+ {/* Suspension was invisible to standalone sellers: the dealer dashboard
+ and the salesman panel both showed this, Lite and Premium showed nothing,
+ so a suspended seller lost the marketplace with a working dashboard and
+ no explanation (A5). */}
+ <SuspendedBanner />
  <Helmet>
  <meta name="robots" content="noindex, nofollow" />
  </Helmet>
