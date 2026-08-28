@@ -17,11 +17,11 @@ own tab strip — 17 destinations total.
 
 | Console | Defined | Tabs |
 |---|---|---|
-| ShiftOS Ops | `AdminPage.jsx:656` | Dealers, Salesmen, Verify, Approvals, Waitlist, Platform Stats, Marketplace, Billing |
+| ShiftOS Ops | `AdminPage.jsx:656` | ~~Dealers, Salesmen, Verify, Approvals, Waitlist, Platform Stats, Marketplace, Billing~~ → Home, Review, Dealers, Salesmen, Waitlist, Platform Stats, Marketplace, Billing (P3/P4 done) |
 | XDrive Ops | `AdminPage.jsx:673` | Funnel, Engagement, Buyers, Broadcast |
 | Security | `AdminPage.jsx:680` | Activity Log, Sessions, Posture, Errors, Alerts |
 
-Landing point: console `shiftos` (`:179`), tab `dealers` (`:175`) — a browse table.
+Landing point: console `shiftos` (`:179`), tab `home` (`:175`) — the review queues. Was `dealers`, a browse table, until P3.
 
 ---
 
@@ -57,13 +57,13 @@ Everything below follows from this.
   This is the same "two things that should be one" failure the dealer-dashboard
   audit is full of. Fix: MRR and subscription mix live in exactly one place.
 
-- [ ] **P3 — No "what needs me right now" home.** The console opens on Dealers,
+- [x] **P3 — No "what needs me right now" home.** The console opens on Dealers,
   a directory. The actual daily job is the two queues. An operator should never
   have to go looking for their own work — it should be the first thing rendered.
 
 ## HIGH
 
-- [ ] **P4 — The daily work is split across two vaguely-named tabs.** "Verify"
+- [x] **P4 — The daily work is split across two vaguely-named tabs.** "Verify"
   (accounts) and "Approvals" (listings) — neither name says what it holds, and
   since the e-KYC change Verify now holds two different kinds of item (signups
   and ID checks). One review queue, filterable by type, is one habit instead of

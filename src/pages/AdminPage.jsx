@@ -172,7 +172,12 @@ export default function AdminPage() {
   const [sortBy, setSortBy] = useState("created_at");
   const [dealerStats, setDealerStats] = useState({});
   const [expandedDealer, setExpandedDealer] = useState(null);
-  const [activeTab, setActiveTab] = useState("dealers");
+  // The console lands on Home, not a directory (P3). The daily job is the review
+  // queue; an operator should never have to go looking for their own work.
+  const [activeTab, setActiveTab] = useState("home");
+  // Review queue type filter: "all" | "listings" | "signups" | "ids" (P4).
+  const [reviewFilter, setReviewFilter] = useState("all");
+  const [reviewRefreshKey, setReviewRefreshKey] = useState(0);
   // Top-level consoles in the superadmin panel. "shiftos" = the existing SaaS ops
   // (dealers/approvals/billing…); "xdrive" = public marketplace analytics;
   // "security" = audit forensics, sessions and posture.
@@ -188,6 +193,8 @@ export default function AdminPage() {
   const [waitlistSearch, setWaitlistSearch] = useState("");
   const [pendingListings, setPendingListings] = useState([]);
   const [pendingUsersCount, setPendingUsersCount] = useState(0);
+  const [pendingSignupCount, setPendingSignupCount] = useState(0);
+  const [pendingKycCount, setPendingKycCount] = useState(0);
   const [rejectingId, setRejectingId] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
   const [approvalActioning, setApprovalActioning] = useState(null);
@@ -493,9 +500,13 @@ export default function AdminPage() {
       supabase.rpc("get_pending_approvals"),
       supabase.rpc("get_pending_kyc"),
     ]).then(([signup, kyc]) => {
-      const ids = new Set((signup.data || []).map((r) => r.id));
-      (kyc.data || []).forEach((r) => ids.add(r.id));
-      setPendingUsersCount(ids.size);
+      const signupIds = new Set((signup.data || []).map((r) => r.id));
+      // A user sitting in both queues is listed once, under signup -- so the ID
+      // count here must exclude them or the pills add up to more than the list.
+      const kycOnly = (kyc.data || []).filter((r) => !signupIds.has(r.id));
+      setPendingSignupCount(signupIds.size);
+      setPendingKycCount(kycOnly.length);
+      setPendingUsersCount(signupIds.size + kycOnly.length);
     });
   }
 
@@ -700,16 +711,42 @@ export default function AdminPage() {
     </div>
   );
 
+  // Everything waiting on a decision, in one number. "Verify" (accounts) and
+  // "Approvals" (listings) were two vaguely-named tabs holding three kinds of
+  // item between them; they are now one Review queue with a type filter (P4).
+  const reviewCount = pendingListings.length + pendingUsersCount;
+
   const TABS = [
+    { id: "home",     label: "Home" },
+    { id: "review",   label: "Review", badge: reviewCount },
     { id: "dealers",  label: `Dealers (${stats.total})` },
     { id: "salesman", label: `Salesmen (${salesmen.length})` },
-    { id: "verify", label: "Verify", badge: pendingUsersCount },
-    { id: "approvals", label: "Approvals", badge: pendingListings.length },
     { id: "waitlist", label: `Waitlist (${waitlist.length})` },
     { id: "platform",    label: "Platform Stats" },
     { id: "marketplace", label: "Marketplace" },
     { id: "billing",     label: "Billing" },
   ];
+
+  // Jump straight from a Home queue card into the right slice of Review.
+  function openReview(filter) {
+    setReviewFilter(filter);
+    setActiveTab("review");
+  }
+
+  function daysAgo(str) {
+    if (!str) return null;
+    return Math.floor((Date.now() - new Date(str)) / 86400000);
+  }
+
+  // "waiting 3 days" reads as pressure in a way a bare count does not.
+  function oldestWaitLabel(rows, field = "created_at") {
+    if (!rows.length) return null;
+    const oldest = rows.reduce((a, b) => (new Date(a[field]) < new Date(b[field]) ? a : b));
+    const d = daysAgo(oldest[field]);
+    if (d === null) return null;
+    if (d <= 0) return "oldest today";
+    return `oldest waiting ${d} day${d === 1 ? "" : "s"}`;
+  }
 
   const CONSOLES = [
     { id: "shiftos",  label: "ShiftOS Ops", sub: "Dealers · approvals · billing" },
@@ -731,6 +768,73 @@ export default function AdminPage() {
     { id: "errors", label: "Errors" },
     { id: "alerts", label: "Alerts" },
   ];
+
+  // ── Home ───────────────────────────────────────────────────────────────────
+  // The landing page answers one question: what needs me right now. It states
+  // queue depth and how long the oldest item has waited, then hands off to
+  // Review. It deliberately shows NO money: MRR and plan mix belong in one
+  // place (Billing), and a fourth copy of them is the problem, not the fix.
+  const QueueCard = ({ label, n, sub, onClick }) => {
+    const waiting = n > 0;
+    return (
+      <button onClick={onClick}
+        style={{
+          textAlign: "left", cursor: "pointer", fontFamily: "inherit", padding: "18px 20px",
+          borderRadius: 12, minWidth: 0,
+          background: waiting ? "rgba(220,38,38,0.06)" : "rgba(255,255,255,0.03)",
+          border: `1px solid ${waiting ? "rgba(220,38,38,0.28)" : "rgba(255,255,255,0.07)"}`,
+        }}>
+        <p style={{ margin: 0, fontSize: 11, color: waiting ? "#f87171" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700 }}>{label}</p>
+        <p style={{ margin: "8px 0 0", fontSize: 30, fontWeight: 700, lineHeight: 1, color: waiting ? "#f5f5f5" : "#4b5563", fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.05em" }}>{n}</p>
+        <p style={{ margin: "6px 0 0", fontSize: 11.5, color: waiting ? "#9ca3af" : "#374151" }}>{sub}</p>
+      </button>
+    );
+  };
+
+  const HealthStat = ({ label, value, sub }) => (
+    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "13px 16px", minWidth: 0 }}>
+      <p style={{ margin: 0, fontSize: 10.5, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.09em", fontWeight: 700 }}>{label}</p>
+      <p style={{ margin: "5px 0 0", fontSize: 19, fontWeight: 700, color: "#e5e7eb" }}>{value}</p>
+      {sub && <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "#4b5563" }}>{sub}</p>}
+    </div>
+  );
+
+  const HomeTab = () => {
+    const listingWait = oldestWaitLabel(pendingListings);
+    const clear = reviewCount === 0;
+    return (
+      <div>
+        <div style={{ marginBottom: 20 }}>
+          <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>
+            {clear ? "Nothing waiting on you" : `${reviewCount} ${reviewCount === 1 ? "thing needs" : "things need"} your decision`}
+          </p>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>
+            {clear ? "Every queue is clear. New items land here and push to your phone." : "Tap a queue to open it in Review."}
+          </p>
+        </div>
+
+        <div className="adm-home-queues" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginBottom: 30 }}>
+          <QueueCard label="Cars to approve" n={pendingListings.length}
+            sub={pendingListings.length ? (listingWait || "waiting") : "none waiting"}
+            onClick={() => openReview("listings")} />
+          <QueueCard label="New sellers" n={pendingSignupCount}
+            sub={pendingSignupCount ? "cannot reach their dashboard yet" : "none waiting"}
+            onClick={() => openReview("signups")} />
+          <QueueCard label="ID checks" n={pendingKycCount}
+            sub={pendingKycCount ? "waiting on the Verified badge" : "none waiting"}
+            onClick={() => openReview("ids")} />
+        </div>
+
+        <p style={{ margin: "0 0 10px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700 }}>Platform</p>
+        <div className="adm-home-health" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10 }}>
+          <HealthStat label="Dealers" value={stats.total} sub={`${stats.active} active · ${stats.trial} on trial`} />
+          <HealthStat label="Salesmen" value={salesmen.length} sub={`${salesmen.filter(s => !s.dealer_id).length} standalone`} />
+          <HealthStat label="Live listings" value={stats.totalListings} />
+          <HealthStat label="Waitlist" value={waitlist.length} sub="not signed up yet" />
+        </div>
+      </div>
+    );
+  };
 
   // ── Auth gate ──────────────────────────────────────────────────────────────
   // The console never renders under a non-superadmin session. While the isolated
@@ -852,6 +956,8 @@ export default function AdminPage() {
           .adm-approval { flex-wrap: wrap; }
           .adm-approval-actions { width: 100%; }
           .adm-approval-actions button { flex: 1; }
+          .adm-home-queues { grid-template-columns: 1fr !important; }
+          .adm-home-health { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
         }
       `}</style>
 
@@ -1074,20 +1180,81 @@ export default function AdminPage() {
         <div className="adm-content" style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 28px 80px" }}>
           {loading ? (
             <div style={{ textAlign: "center", padding: 80, color: "#4b5563" }}>Loading…</div>
-          ) : activeTab === "verify" ? (
-            /* ── USER APPROVALS (identity/KYC) TAB ── */
-            <UserApprovalsTab />
-          ) : activeTab === "approvals" ? (
-            /* ── APPROVALS TAB ── */
+          ) : activeTab === "home" ? (
+            /* ── HOME ── the console opens on the work, not a directory (P3) */
+            <HomeTab />
+          ) : activeTab === "review" ? (
+            /* ── REVIEW ── one queue, three kinds of item, filter by type (P4) */
             <div>
-              <div style={{ marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ marginBottom: 16, display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
                 <div>
-                  <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>Listing Approvals</p>
-                  <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>Listings from standalone salesman-lite accounts waiting for review</p>
+                  <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>Review</p>
+                  <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>Everything waiting on your decision — cars, new sellers, ID checks</p>
                 </div>
-                {pendingListings.length === 0 && (
-                  <span style={{ fontSize: 12, color: "#4ade80" }}>✓ All clear</span>
-                )}
+                <button onClick={() => { loadAll(); setReviewRefreshKey(k => k + 1); }}
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", fontSize: 12, padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit" }}>
+                  ↻ Refresh
+                </button>
+              </div>
+
+              {/* Type filter. Counts are the real queue depths, so the pills
+                  double as the "how much is left" readout. */}
+              <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 20 }}>
+                {[
+                  { id: "all", label: "All", n: reviewCount },
+                  { id: "listings", label: "Cars", n: pendingListings.length },
+                  { id: "signups", label: "New sellers", n: pendingSignupCount },
+                  { id: "ids", label: "ID checks", n: pendingKycCount },
+                ].map(f => {
+                  const on = reviewFilter === f.id;
+                  return (
+                    <button key={f.id} onClick={() => setReviewFilter(f.id)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 6, padding: "6px 13px", borderRadius: 99,
+                        fontSize: 12.5, fontWeight: on ? 700 : 500, cursor: "pointer", fontFamily: "inherit",
+                        background: on ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.03)",
+                        border: `1px solid ${on ? "rgba(220,38,38,0.35)" : "rgba(255,255,255,0.08)"}`,
+                        color: on ? "#f87171" : "#9ca3af",
+                      }}>
+                      {f.label}
+                      <span style={{ fontSize: 11, fontWeight: 700, color: on ? "#f87171" : "#4b5563" }}>{f.n}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {reviewCount === 0 && (
+                <div style={{ textAlign: "center", padding: "60px 0", color: "#374151" }}>
+                  <p style={{ fontSize: 32, marginBottom: 8 }}>✓</p>
+                  <p style={{ fontSize: 14, color: "#4b5563" }}>Nothing waiting. You are all clear.</p>
+                </div>
+              )}
+
+              {/* Empty for THIS filter while other queues still have work. */}
+              {reviewCount > 0 && (
+                (reviewFilter === "listings" && pendingListings.length === 0) ||
+                (reviewFilter === "signups" && pendingSignupCount === 0) ||
+                (reviewFilter === "ids" && pendingKycCount === 0)
+              ) && (
+                <p style={{ fontSize: 13, color: "#4b5563", padding: "34px 0", textAlign: "center" }}>Nothing in this queue.</p>
+              )}
+
+              {(reviewFilter === "all" || reviewFilter === "signups" || reviewFilter === "ids") && (
+                <div style={{ marginBottom: reviewFilter === "all" ? 28 : 0 }}>
+                  <UserApprovalsTab
+                    embedded
+                    refreshKey={reviewRefreshKey}
+                    kindFilter={reviewFilter === "signups" ? "signup" : reviewFilter === "ids" ? "kyc" : null}
+                    onCounts={({ signups, ids }) => { setPendingSignupCount(signups); setPendingKycCount(ids); setPendingUsersCount(signups + ids); }}
+                  />
+                </div>
+              )}
+
+              {(reviewFilter === "all" || reviewFilter === "listings") && pendingListings.length > 0 && (
+              <div>
+              <div style={{ marginBottom: 14 }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#e5e7eb" }}>Cars waiting to go live</p>
+                <p style={{ margin: "3px 0 0", fontSize: 11.5, color: "#6b7280" }}>Listings from standalone salesman accounts — they stay off the marketplace until you approve</p>
               </div>
 
               {/* Bulk action toolbar */}
@@ -1165,12 +1332,9 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {pendingListings.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "60px 0", color: "#374151" }}>
-                  <p style={{ fontSize: 32, marginBottom: 8 }}>✓</p>
-                  <p style={{ fontSize: 14, color: "#4b5563" }}>No listings pending approval</p>
-                </div>
-              ) : (
+              {/* The whole block only renders when there are cars waiting, so the
+                  "all clear" state lives once on Review, not once per type. */}
+              {(
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {pendingListings.map(listing => {
                     const salesman = listing.profiles;
@@ -1410,6 +1574,8 @@ export default function AdminPage() {
                     );
                   })}
                 </div>
+              )}
+              </div>
               )}
             </div>
           ) : activeTab === "waitlist" ? (
