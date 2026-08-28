@@ -146,6 +146,10 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
   const [suspendFor, setSuspendFor] = useState(null);
   const [suspendReason, setSuspendReason] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
+  // "Show this dealer's team" (A8). Filters by dealer_id -- a linked salesman
+  // has no dealership of their own, so searching the dealer's name would match
+  // nothing.
+  const [teamOf, setTeamOf] = useState(null);
   const [busy, setBusy] = useState(null);
   const [saved, setSaved] = useState(null);
   // A9: billing state used to write straight through on the change event, so a
@@ -162,7 +166,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
   onFocusHandledRef.current = onFocusHandled;
   useEffect(() => {
     if (!focusId) return;
-    setSearch(""); setRoleFilter("all"); setStatusFilter("all");
+    setSearch(""); setRoleFilter("all"); setStatusFilter("all"); setTeamOf(null);
     setOpenId(focusId);
     onFocusHandledRef.current?.();
   }, [focusId]);
@@ -184,6 +188,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
     const q = search.trim().toLowerCase();
     return accounts
       .filter(a => {
+        if (teamOf && a.dealer_id !== teamOf) return false;
         if (roleFilter !== "all" && accountKind(a) !== roleFilter) return false;
         if (statusFilter !== "all" && statusOf(a).id !== statusFilter) return false;
         if (!q) return true;
@@ -196,7 +201,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
         if (sortBy === "name") return (a.dealership || a.full_name || "").localeCompare(b.dealership || b.full_name || "");
         return new Date(b.created_at) - new Date(a.created_at);
       });
-  }, [accounts, stats, search, roleFilter, statusFilter, sortBy]);
+  }, [accounts, stats, search, roleFilter, statusFilter, sortBy, teamOf]);
 
   const open = openId ? byId[openId] : null;
 
@@ -340,6 +345,15 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
         })}
       </div>
 
+      {teamOf && (
+        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12, background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.25)", borderRadius: 8, padding: "8px 12px" }}>
+          <span style={{ fontSize: 12, color: "#93c5fd", flex: 1, minWidth: 0 }}>
+            Showing the team of {byId[teamOf]?.dealership || byId[teamOf]?.full_name || "that dealer"}
+          </span>
+          <button onClick={() => setTeamOf(null)} style={btn()}>Show everyone</button>
+        </div>
+      )}
+
       <div className="adm-toolbar" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         <input value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search name, email, dealership, subdomain, phone…"
@@ -412,7 +426,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
       {open && createPortal(
         <div onClick={() => setOpenId(null)}
           style={{ position: "fixed", inset: 0, zIndex: 900, background: "rgba(0,0,0,0.72)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "flex-end" }}>
-          <div onClick={e => e.stopPropagation()}
+          <div key={open.id} onClick={e => e.stopPropagation()}
             style={{ width: "min(520px, 100%)", height: "100%", overflowY: "auto", background: "#0b0f16", borderLeft: "1px solid rgba(255,255,255,0.08)", padding: "22px 22px 60px" }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 6 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -479,7 +493,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
                   {accountKind(open) === "dealer" && (
                     <Field label="Team" value={
                       s.team ? (
-                        <button onClick={() => { setOpenId(null); setRoleFilter("linked"); setSearch(open.dealership || open.full_name || ""); }}
+                        <button onClick={() => { setOpenId(null); setRoleFilter("all"); setStatusFilter("all"); setSearch(""); setTeamOf(open.id); }}
                           style={{ background: "none", border: "none", color: "#60a5fa", cursor: "pointer", font: "inherit", fontWeight: 600, padding: 0 }}>
                           {s.team} {s.team === 1 ? "person" : "people"} →
                         </button>
