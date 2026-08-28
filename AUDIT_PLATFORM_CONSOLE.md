@@ -15,11 +15,11 @@ Reference for "done right" in this repo: `AUDIT_DEALER_DASHBOARD.md`.
 `src/pages/AdminPage.jsx` (2,052 lines) renders three "consoles", each with its
 own tab strip — 17 destinations total.
 
-| Console | Defined | Tabs |
+| Section (was: console) | Defined | Tabs |
 |---|---|---|
 | ShiftOS Ops | `AdminPage.jsx:656` | ~~Dealers, Salesmen, Verify, Approvals, Waitlist, Platform Stats, Marketplace, Billing~~ → Home, Review, Dealers, Salesmen, Waitlist, Platform Stats, Marketplace, Billing (P3/P4 done) |
-| XDrive Ops | `AdminPage.jsx:673` | Funnel, Engagement, Buyers, Broadcast |
-| Security | `AdminPage.jsx:680` | Activity Log, Sessions, Posture, Errors, Alerts |
+| ~~XDrive Ops~~ → folded into Marketplace | `AdminPage.jsx` NAV | Settings, Funnel, Engagement, Buyers, Broadcast, Volume (P1 done) |
+| Security → Safety | `AdminPage.jsx` NAV | Activity Log, Sessions, Posture, Errors, Alerts |
 
 Landing point: console `shiftos` (`:179`), tab `home` (`:175`) — the review queues. Was `dealers`, a browse table, until P3.
 
@@ -44,7 +44,7 @@ Everything below follows from this.
 
 ## CRITICAL
 
-- [ ] **P1 — Mixed taxonomy at the top level.** Product-split and function-split
+- [x] **P1 — Mixed taxonomy at the top level.** Product-split and function-split
   side by side (`:667`). Pick ONE. Recommended: split by what you are doing
   (work / people / product / money / safety), because that is how the day
   actually runs — you do not sit down to "do XDrive", you sit down to clear

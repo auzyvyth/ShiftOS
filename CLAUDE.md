@@ -401,6 +401,37 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
   (`src/pages/SalesmanLite.jsx:849`) is NOT push. It only fires while the tab is open.
   Do not confuse the two.
 
+## Platform console (/platform) nav — ONE taxonomy: what am I doing
+`AdminPage.jsx` `NAV` array. Five sections in the left rail, each with its own tab
+strip; `activeSection` picks the section, `activeTab` the tab (ids are unique
+across all sections, one state each).
+  work → home, review · people → dealers, salesman, waitlist
+  marketplace → marketplace(Settings), funnel, engagement, buyers, broadcast, platform(Volume)
+  money → billing · safety → activity, sessions, posture, errors, alerts
+- It landed on Dealers, a directory; it lands on **Home** now — the queues are the
+  daily job (P3). Home shows counts and how long the oldest item has waited, and
+  states NO money.
+- **Review is ONE queue** for three kinds of item — cars, new sellers, ID checks —
+  filtered by type pills (P4). Do NOT split it back into "Verify" + "Approvals".
+  `UserApprovalsTab` takes `kindFilter`/`embedded`/`refreshKey`/`onCounts` so the
+  merged queue can host it; with no props it renders standalone exactly as before.
+- **MRR and subscription mix are stated in Billing and nowhere else** (P2). They
+  used to render on Dealers, Platform Stats AND Billing, and the copies disagreed
+  (Billing multiplied plan price by every dealer, counting trial + expired as
+  revenue). There is no `stats.mrr` any more — revenue is computed once, in
+  `BillingTab`. Do not add a second copy to a dashboard "for convenience".
+- The rail used to be three consoles — "ShiftOS Ops" and "XDrive Ops" split by
+  PRODUCT, "Security" split by FUNCTION — so the top level answered no single
+  question (P1). Symptom: marketplace settings sat in one console, marketplace
+  analytics in another. Keep the taxonomy single: a new destination goes in the
+  section matching what the operator is DOING, never a new product console.
+- Account deletion in the console is a SOFT delete (`account_status='deleted'` +
+  `is_active=false` + `deleted_at`), the same three columns the `delete-account`
+  edge function writes, with a Restore button for the 30-day window. Migration
+  20260828e dropped both DELETE policies on `profiles`, so a client-side hard
+  delete is now impossible — do not add one back. Full findings and what is still
+  open: `AUDIT_PLATFORM_CONSOLE.md`.
+
 ### Platform admin push (/platform console) — built 2026-08-26
 The superadmin account gets the SAME alerts the ops Telegram channel gets, on its
 own device. One DB fanout drives both, so they can never disagree.
@@ -416,7 +447,7 @@ own device. One DB fanout drives both, so they can never disagree.
   tag is the key's family (`ops:err`, `ops:new_signup`, …) so repeats replace.
 - `push_home_path()` routes `role='superadmin'` to `/platform`. `owner` is a real
   dealer account and stays on `/dashboard` — do not lump them together.
-- UI: Security console -> **Alerts** tab (`src/components/platform/AlertsTab.jsx`).
+- UI: Safety section -> **Alerts** tab (`src/components/platform/AlertsTab.jsx`).
 - **The console runs on the ISOLATED `platformClient` session**, and
   `push_subscriptions` is RLS'd on `auth.uid() = user_id`. So `PushToggle` /
   `usePushNotifications` / `healPushSubscription` all take a `client` argument

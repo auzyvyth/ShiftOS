@@ -248,9 +248,7 @@ export default function AdminPage() {
   // Top-level consoles in the superadmin panel. "shiftos" = the existing SaaS ops
   // (dealers/approvals/billing…); "xdrive" = public marketplace analytics;
   // "security" = audit forensics, sessions and posture.
-  const [activeConsole, setActiveConsole] = useState("shiftos");
-  const [xdriveTab, setXdriveTab] = useState("funnel");
-  const [securityTab, setSecurityTab] = useState("activity");
+  const [activeSection, setActiveSection] = useState("work");
   const [salesmanSearch, setSalesmanSearch] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
   // Surfaces a failed account action instead of leaving the console looking
@@ -769,20 +767,63 @@ export default function AdminPage() {
   // item between them; they are now one Review queue with a type filter (P4).
   const reviewCount = pendingListings.length + pendingUsersCount;
 
-  const TABS = [
-    { id: "home",     label: "Home" },
-    { id: "review",   label: "Review", badge: reviewCount },
-    { id: "dealers",  label: `Dealers (${stats.total})` },
-    { id: "salesman", label: `Salesmen (${salesmen.length})` },
-    { id: "waitlist", label: `Waitlist (${waitlist.length})` },
-    { id: "platform",    label: "Platform Stats" },
-    { id: "marketplace", label: "Marketplace" },
-    { id: "billing",     label: "Billing" },
+  // ── One taxonomy: what am I doing (P1) ──────────────────────────────────────
+  // The rail used to mix two. "ShiftOS Ops" and "XDrive Ops" split by PRODUCT
+  // while "Security" split by FUNCTION, so the top level answered no single
+  // question -- neither "which product?" nor "what am I doing?", but both at
+  // once -- and every navigation was a guess. The clearest symptom: marketplace
+  // SETTINGS lived under ShiftOS Ops while marketplace ANALYTICS lived under
+  // XDrive Ops. Same subject, two consoles, split by a rule invisible from the
+  // outside. They are one section now.
+  //
+  // Sections are ordered by how the day actually runs: you sit down to clear
+  // the queue, not to "do XDrive".
+  const NAV = [
+    { id: "work", label: "Work", sub: "Your queue", badge: reviewCount, tabs: [
+      { id: "home",   label: "Home" },
+      { id: "review", label: "Review", badge: reviewCount },
+    ] },
+    { id: "people", label: "People", sub: "Dealers · salesmen", tabs: [
+      { id: "dealers",  label: `Dealers (${stats.total})` },
+      { id: "salesman", label: `Salesmen (${salesmen.length})` },
+      { id: "waitlist", label: `Waitlist (${waitlist.length})` },
+    ] },
+    { id: "marketplace", label: "Marketplace", sub: "XDrive settings · analytics", tabs: [
+      { id: "marketplace", label: "Settings" },
+      { id: "funnel",      label: "Funnel" },
+      { id: "engagement",  label: "Engagement" },
+      { id: "buyers",      label: "Buyers" },
+      { id: "broadcast",   label: "Broadcast" },
+      { id: "platform",    label: "Volume" },
+    ] },
+    { id: "money", label: "Money", sub: "Plans · revenue", tabs: [
+      { id: "billing", label: "Billing" },
+    ] },
+    { id: "safety", label: "Safety", sub: "Audit · sessions · errors", tabs: [
+      { id: "activity", label: "Activity Log" },
+      { id: "sessions", label: "Sessions" },
+      { id: "posture",  label: "Posture" },
+      { id: "errors",   label: "Errors" },
+      { id: "alerts",   label: "Alerts" },
+    ] },
   ];
+
+  const currentSection = NAV.find(sec => sec.id === activeSection) || NAV[0];
+  const TABS = currentSection.tabs;
+
+  // Switching section lands on its first tab, so the strip and the body never
+  // disagree about what is open.
+  function switchSection(id) {
+    const sec = NAV.find(n => n.id === id);
+    if (!sec) return;
+    setActiveSection(id);
+    setActiveTab(sec.tabs[0].id);
+  }
 
   // Jump straight from a Home queue card into the right slice of Review.
   function openReview(filter) {
     setReviewFilter(filter);
+    setActiveSection("work");
     setActiveTab("review");
   }
 
@@ -800,27 +841,6 @@ export default function AdminPage() {
     if (d <= 0) return "oldest today";
     return `oldest waiting ${d} day${d === 1 ? "" : "s"}`;
   }
-
-  const CONSOLES = [
-    { id: "shiftos",  label: "ShiftOS Ops", sub: "Dealers · approvals · billing" },
-    { id: "xdrive",   label: "XDrive Ops",  sub: "Marketplace analytics" },
-    { id: "security", label: "Security",    sub: "Audit · sessions · posture" },
-  ];
-
-  const XDRIVE_TABS = [
-    { id: "funnel", label: "Funnel" },
-    { id: "engagement", label: "Engagement" },
-    { id: "buyers", label: "Buyers" },
-    { id: "broadcast", label: "Broadcast" },
-  ];
-
-  const SECURITY_TABS = [
-    { id: "activity", label: "Activity Log" },
-    { id: "sessions", label: "Sessions" },
-    { id: "posture", label: "Posture" },
-    { id: "errors", label: "Errors" },
-    { id: "alerts", label: "Alerts" },
-  ];
 
   // ── Home ───────────────────────────────────────────────────────────────────
   // The landing page answers one question: what needs me right now. It states
@@ -992,7 +1012,9 @@ export default function AdminPage() {
         .adm-mobile-console { display: none; }
         @media (max-width: 720px) {
           .adm-sidebar { display: none; }
-          .adm-mobile-console { display: flex; gap: 6px; padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+          .adm-mobile-console { display: flex; gap: 6px; padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06);
+            overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+          .adm-mobile-console::-webkit-scrollbar { display: none; }
         }
         /* Mobile — make the console navigable on a phone (375px+) */
         @media (max-width: 720px) {
@@ -1142,80 +1164,48 @@ export default function AdminPage() {
           </div>
         </header>
 
-        {/* Two-console shell: left rail (desktop) / segmented switcher (mobile) */}
+        {/* Console shell: section rail (desktop) / segmented switcher (mobile) */}
         <div className="adm-shell">
           <aside className="adm-sidebar">
-            <p style={{ fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700, padding: "0 4px 8px" }}>Consoles</p>
-            {CONSOLES.map(c => {
-              const on = activeConsole === c.id;
+            <p style={{ fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700, padding: "0 4px 8px" }}>Sections</p>
+            {NAV.map(sec => {
+              const on = activeSection === sec.id;
               return (
-                <button key={c.id} className="adm-console-btn" onClick={() => setActiveConsole(c.id)}
+                <button key={sec.id} className="adm-console-btn" onClick={() => switchSection(sec.id)}
                   style={{ background: on ? "rgba(220,38,38,0.1)" : undefined, borderColor: on ? "rgba(220,38,38,0.3)" : "transparent" }}>
-                  <span style={{ display: "block", fontSize: 13, fontWeight: 700, color: on ? "#f87171" : "#e5e7eb" }}>{c.label}</span>
-                  <span style={{ display: "block", fontSize: 10, color: "#6b7280", marginTop: 2 }}>{c.sub}</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: on ? "#f87171" : "#e5e7eb" }}>
+                    {sec.label}
+                    {sec.badge > 0 && (
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "rgba(220,38,38,0.18)", border: "1px solid rgba(220,38,38,0.35)", color: "#f87171" }}>
+                        {sec.badge}
+                      </span>
+                    )}
+                  </span>
+                  <span style={{ display: "block", fontSize: 10, color: "#6b7280", marginTop: 2 }}>{sec.sub}</span>
                 </button>
               );
             })}
           </aside>
 
           <div className="adm-main">
-            {/* Mobile console switcher */}
+            {/* Mobile section switcher */}
             <div className="adm-mobile-console">
-              {CONSOLES.map(c => {
-                const on = activeConsole === c.id;
+              {NAV.map(sec => {
+                const on = activeSection === sec.id;
                 return (
-                  <button key={c.id} onClick={() => setActiveConsole(c.id)}
-                    style={{ flex: 1, fontSize: 12, fontWeight: 700, padding: "9px 10px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit",
+                  <button key={sec.id} onClick={() => switchSection(sec.id)}
+                    style={{ flex: "0 0 auto", fontSize: 12, fontWeight: 700, padding: "9px 13px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
                       background: on ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.03)",
                       border: on ? "1px solid rgba(220,38,38,0.3)" : "1px solid rgba(255,255,255,0.08)",
                       color: on ? "#f87171" : "#9ca3af" }}>
-                    {c.label}
+                    {sec.label}
+                    {sec.badge > 0 && <span style={{ marginLeft: 5, fontSize: 10 }}>{sec.badge}</span>}
                   </button>
                 );
               })}
             </div>
 
-            {activeConsole === "xdrive" ? (
-              /* ══ XDRIVE OPS CONSOLE ══ */
-              <>
-                <div className="adm-tabs" style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 28px", background: "rgba(255,255,255,0.01)" }}>
-                  {XDRIVE_TABS.map(t => (
-                    <button key={t.id} className="adm-tab" onClick={() => setXdriveTab(t.id)}
-                      style={{ padding: "12px 16px", background: "none", border: "none", borderBottom: xdriveTab === t.id ? "2px solid #dc2626" : "2px solid transparent", color: xdriveTab === t.id ? "#fff" : "#6b7280", fontSize: 13, fontWeight: xdriveTab === t.id ? 600 : 400, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s", whiteSpace: "nowrap" }}>
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="adm-content" style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 28px 80px" }}>
-                  {xdriveTab === "funnel" && <FunnelTab />}
-                  {xdriveTab === "engagement" && <EngagementTab />}
-                  {xdriveTab === "buyers" && <BuyersTab />}
-                  {xdriveTab === "broadcast" && <BroadcastTab dealers={dealers} salesmen={salesmen} />}
-                </div>
-              </>
-            ) : activeConsole === "security" ? (
-              /* ══ SECURITY CONSOLE ══ */
-              <>
-                <div className="adm-tabs" style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 28px", background: "rgba(255,255,255,0.01)" }}>
-                  {SECURITY_TABS.map(t => (
-                    <button key={t.id} className="adm-tab" onClick={() => setSecurityTab(t.id)}
-                      style={{ padding: "12px 16px", background: "none", border: "none", borderBottom: securityTab === t.id ? "2px solid #dc2626" : "2px solid transparent", color: securityTab === t.id ? "#fff" : "#6b7280", fontSize: 13, fontWeight: securityTab === t.id ? 600 : 400, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s", whiteSpace: "nowrap" }}>
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="adm-content" style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 28px 80px" }}>
-                  {securityTab === "activity" && <ActivityLogTab />}
-                  {securityTab === "sessions" && <SessionsTab />}
-                  {securityTab === "posture" && <PostureTab />}
-                  {securityTab === "errors" && <ErrorsTab />}
-                  {securityTab === "alerts" && <AlertsTab userId={meId} />}
-                </div>
-              </>
-            ) : (
-            /* ══ SHIFTOS OPS CONSOLE ══ */
-            <>
-        {/* Tabs */}
+        {/* Tabs within the section */}
         <div className="adm-tabs" style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 28px", background: "rgba(255,255,255,0.01)" }}>
           {TABS.map(t => (
             <button key={t.id} className="adm-tab" onClick={() => setActiveTab(t.id)}
@@ -1233,6 +1223,24 @@ export default function AdminPage() {
         <div className="adm-content" style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 28px 80px" }}>
           {loading ? (
             <div style={{ textAlign: "center", padding: 80, color: "#4b5563" }}>Loading…</div>
+          ) : activeTab === "funnel" ? (
+            <FunnelTab />
+          ) : activeTab === "engagement" ? (
+            <EngagementTab />
+          ) : activeTab === "buyers" ? (
+            <BuyersTab />
+          ) : activeTab === "broadcast" ? (
+            <BroadcastTab dealers={dealers} salesmen={salesmen} />
+          ) : activeTab === "activity" ? (
+            <ActivityLogTab />
+          ) : activeTab === "sessions" ? (
+            <SessionsTab />
+          ) : activeTab === "posture" ? (
+            <PostureTab />
+          ) : activeTab === "errors" ? (
+            <ErrorsTab />
+          ) : activeTab === "alerts" ? (
+            <AlertsTab userId={meId} />
           ) : activeTab === "home" ? (
             /* ── HOME ── the console opens on the work, not a directory (P3) */
             <HomeTab />
@@ -2152,7 +2160,7 @@ export default function AdminPage() {
           ) : activeTab === "billing" ? (
             /* ── BILLING TAB ── */
             <BillingTab dealers={dealers} dealerStats={dealerStats} />
-          ) : (
+          ) : activeTab === "dealers" ? (
             /* ── DEALERS TAB ── */
             <>
               {/* No stat row here on purpose (P2): this tab is the dealer
@@ -2335,10 +2343,8 @@ export default function AdminPage() {
                 </div>
               </div>
             </>
-          )}
+          ) : null}
         </div>
-            </>
-            )}
           </div>
         </div>
       </div>
