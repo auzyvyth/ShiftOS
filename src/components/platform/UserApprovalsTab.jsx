@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { platformClient as supabase } from "../../lib/platformClient";
 import InfoHint from "../ui/InfoHint";
 
@@ -63,7 +63,13 @@ function Row({ label, value }) {
   );
 }
 
-export default function UserApprovalsTab() {
+// Props exist so the merged Review queue can host this list (P4). Standalone it
+// still renders exactly as before: no props = own heading, own refresh, no filter.
+//   kindFilter  "signup" | "kyc" | null -- which rows to show
+//   embedded    hide the heading/refresh; the host renders one set for all types
+//   refreshKey  bump to reload, so the host's single Refresh covers this list too
+//   onCounts    reports { signups, ids } up so the host can label its filter pills
+export default function UserApprovalsTab({ kindFilter = null, embedded = false, refreshKey = 0, onCounts } = {}) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
   const [rows, setRows] = useState([]);
@@ -101,7 +107,22 @@ export default function UserApprovalsTab() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); }, [load, refreshKey]);
+
+  // Report counts up for the host's filter pills. The callback is held in a REF
+  // and the effect keys on `rows` only: hosts pass an inline arrow, so keying on
+  // the callback would re-fire every render, and reporting up re-renders the
+  // host -- that spins forever.
+  const onCountsRef = useRef(onCounts);
+  onCountsRef.current = onCounts;
+  useEffect(() => {
+    onCountsRef.current?.({
+      signups: rows.filter((r) => r._kind === "signup").length,
+      ids: rows.filter((r) => r._kind === "kyc").length,
+    });
+  }, [rows]);
+
+  const visible = kindFilter ? rows.filter((r) => r._kind === kindFilter) : rows;
 
   // Sign the three image paths only when a card is opened (short 2-min TTL).
   const openCard = async (r) => {
@@ -148,6 +169,7 @@ export default function UserApprovalsTab() {
 
   return (
     <div>
+      {!embedded && (
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
         <div>
           <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>User Approvals
@@ -160,19 +182,22 @@ export default function UserApprovalsTab() {
           ↻ Refresh
         </button>
       </div>
+      )}
 
       {loading ? (
         <div style={{ textAlign: "center", padding: 80, color: "#4b5563" }}>Loading queue…</div>
       ) : err ? (
         <div style={{ textAlign: "center", padding: 60, color: "#f87171", fontSize: 13 }}>Error: {err}</div>
-      ) : rows.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px 0", color: "#374151" }}>
-          <p style={{ fontSize: 32, marginBottom: 8 }}>✓</p>
-          <p style={{ fontSize: 14, color: "#4b5563" }}>No accounts waiting for review</p>
-        </div>
+      ) : visible.length === 0 ? (
+        embedded ? null : (
+          <div style={{ textAlign: "center", padding: "60px 0", color: "#374151" }}>
+            <p style={{ fontSize: 32, marginBottom: 8 }}>✓</p>
+            <p style={{ fontSize: 14, color: "#4b5563" }}>No accounts waiting for review</p>
+          </div>
+        )
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {rows.map((r) => {
+          {visible.map((r) => {
             const open = expanded === r.id;
             const tier = r.kyc_tier || (["salesman_lite"].includes(r.plan) ? "free" : "premium");
             const u = urls[r.id] || {};

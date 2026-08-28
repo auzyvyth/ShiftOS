@@ -15,13 +15,13 @@ Reference for "done right" in this repo: `AUDIT_DEALER_DASHBOARD.md`.
 `src/pages/AdminPage.jsx` (2,052 lines) renders three "consoles", each with its
 own tab strip — 17 destinations total.
 
-| Console | Defined | Tabs |
+| Section (was: console) | Defined | Tabs |
 |---|---|---|
-| ShiftOS Ops | `AdminPage.jsx:656` | Dealers, Salesmen, Verify, Approvals, Waitlist, Platform Stats, Marketplace, Billing |
-| XDrive Ops | `AdminPage.jsx:673` | Funnel, Engagement, Buyers, Broadcast |
-| Security | `AdminPage.jsx:680` | Activity Log, Sessions, Posture, Errors, Alerts |
+| ShiftOS Ops | `AdminPage.jsx:656` | ~~Dealers, Salesmen, Verify, Approvals, Waitlist, Platform Stats, Marketplace, Billing~~ → Home, Review, Dealers, Salesmen, Waitlist, Platform Stats, Marketplace, Billing (P3/P4 done) |
+| ~~XDrive Ops~~ → folded into Marketplace | `AdminPage.jsx` NAV | Settings, Funnel, Engagement, Buyers, Broadcast, Volume (P1 done) |
+| Security → Safety | `AdminPage.jsx` NAV | Activity Log, Sessions, Posture, Errors, Alerts |
 
-Landing point: console `shiftos` (`:179`), tab `dealers` (`:175`) — a browse table.
+Landing point: console `shiftos` (`:179`), tab `home` (`:175`) — the review queues. Was `dealers`, a browse table, until P3.
 
 ---
 
@@ -44,62 +44,66 @@ Everything below follows from this.
 
 ## CRITICAL
 
-- [ ] **P1 — Mixed taxonomy at the top level.** Product-split and function-split
+- [x] **P1 — Mixed taxonomy at the top level.** Product-split and function-split
   side by side (`:667`). Pick ONE. Recommended: split by what you are doing
   (work / people / product / money / safety), because that is how the day
   actually runs — you do not sit down to "do XDrive", you sit down to clear
   approvals.
 
-- [ ] **P2 — The same numbers are rendered on three different tabs.**
+- [x] **P2 — The same numbers are rendered on three different tabs.**
   Total / Active / Trial / Expired / MRR appear on Dealers (`:1861`),
   Platform Stats (`:1467`) and Billing (`BillingTab`, `:71`, as plan chips with
   per-plan MRR). Three surfaces, one truth, no indication which is canonical.
   This is the same "two things that should be one" failure the dealer-dashboard
   audit is full of. Fix: MRR and subscription mix live in exactly one place.
 
-- [ ] **P3 — No "what needs me right now" home.** The console opens on Dealers,
+- [x] **P3 — No "what needs me right now" home.** The console opens on Dealers,
   a directory. The actual daily job is the two queues. An operator should never
   have to go looking for their own work — it should be the first thing rendered.
 
 ## HIGH
 
-- [ ] **P4 — The daily work is split across two vaguely-named tabs.** "Verify"
+- [x] **P4 — The daily work is split across two vaguely-named tabs.** "Verify"
   (accounts) and "Approvals" (listings) — neither name says what it holds, and
   since the e-KYC change Verify now holds two different kinds of item (signups
   and ID checks). One review queue, filterable by type, is one habit instead of
   three.
 
-- [ ] **P5 — Accounts are split into two tables by role.** Dealers (`:1857`) and
+- [x] **P5 — Accounts are split into two tables by role.** Dealers (`:1857`) and
   Salesmen (`:1497`) are separate tabs with separate search boxes and separate
   filters. They are the same object with a different `role`. Standard practice is
   one Accounts table with a role filter.
 
-- [ ] **P6 — The console is tab-oriented, not object-oriented.** This is the
+- [x] **P6 — The console is tab-oriented, not object-oriented.** This is the
   biggest structural gap versus professional tooling. To understand ONE dealer
   today you visit Dealers (who they are), Billing (what they pay), Approvals
   (what they submitted) and Activity Log (what they did) — four tabs, four
   searches, and you assemble the picture in your head. There is no dealer record.
 
-- [ ] **P7 — Three separate search boxes, no global search.** Waitlist (`:1376`),
+- [x] **P7 — Three separate search boxes, no global search.** Waitlist (`:1376`),
   Salesmen (`:1502`), Dealers (`:1869`). Nothing searches across object types, so
   finding "that guy who emailed me" means guessing which tab he is in first.
 
 ## MEDIUM
 
-- [ ] **P8 — Flat tab strip gives launch-era and daily surfaces equal weight.**
+- [x] **P8 — Flat tab strip gives launch-era and daily surfaces equal weight.**
   Waitlist sits beside Approvals as though they matter equally. They do not.
 
-- [ ] **P9 — Analytics scattered across three tabs in two consoles.** Platform
+- [x] **P9 — Analytics scattered across three tabs in two consoles.** Platform
   Stats (ShiftOS) vs Funnel and Engagement (XDrive). No stated boundary between
   them.
 
-- [ ] **P10 — "Platform Stats" is a name that means nothing.** Every tab in a
+- [x] **P10 — "Platform Stats" is a name that means nothing.** Every tab in a
   platform console is platform stats. Name surfaces after the decision they
   support (Revenue, Growth), not after the data they contain.
 
 - [ ] **P11 — `AdminPage.jsx` is 2,052 lines** holding eight tab bodies inline
   while the other nine live in `src/components/platform/`. Two conventions in one
   file. The inline ones are the ones that duplicated their stat cards.
+  PARTLY DONE: the Dealers and Salesmen bodies (~530 lines) left the file as
+  `components/platform/AccountsTab.jsx`, and the file is down to ~1,880 lines.
+  Still inline: Review (listings), Waitlist, Volume, Marketplace settings,
+  Billing, Home. Extract them the same way.
 
 ---
 
@@ -167,7 +171,7 @@ Plus, cutting across all of it: **one global search**.
 
 # Part 2 — Sellers and dealers management (the Dealers + Salesmen tabs)
 
-Drill-down on P5/P6. Dealers tab: `AdminPage.jsx:1857`. Salesmen tab: `:1497`.
+Drill-down on P5/P6. Both tabs are now ONE: `src/components/platform/AccountsTab.jsx`.
 
 ## What each tab can actually do today
 
@@ -188,7 +192,7 @@ growth account can be destroyed in one click.
 
 ## CRITICAL
 
-- [ ] **A1 — "Delete" on a salesman irreversibly destroys their entire history.**
+- [x] **A1 — "Delete" on a salesman irreversibly destroys their entire history.**
   `deleteSalesman` (`:563`) runs a raw `DELETE` on `profiles`. That FK cascades
   through ~50 tables — `car_listings`, `leads`, `lead_activities`, `customers`,
   `deal_financials`, `deal_products`, `chat_threads`, `whatsapp_enquiries`,
@@ -205,7 +209,7 @@ growth account can be destroyed in one click.
   Fix: the admin action should soft-delete through the same path, not
   `DELETE FROM profiles`.
 
-- [ ] **A2 — The delete can also fail silently and look like nothing happened.**
+- [x] **A2 — The delete can also fail silently and look like nothing happened.**
   Four FKs onto `profiles` are `NO ACTION`: `dealer_invites.accepted_by`,
   `profiles.approved_by`, `profiles.verified_by`, `profiles.plan_granted_by`.
   If that salesman ever accepted an invite or approved/verified anyone, the
@@ -214,44 +218,44 @@ growth account can be destroyed in one click.
 
 ## HIGH
 
-- [ ] **A3 — Dealer suspend never checks whether it worked.** `toggleSuspend`
+- [x] **A3 — Dealer suspend never checks whether it worked.** `toggleSuspend`
   (`:551`) fires the update and calls `updateLocal` unconditionally — no error
   check, unlike `toggleSalesmanSuspend` (`:557`) which does check. If the write
   is rejected the row greys out and you believe the dealer is suspended while
   they are still trading.
 
-- [ ] **A4 — You cannot tell an active seller from a dead one.** The salesmen
+- [x] **A4 — You cannot tell an active seller from a dead one.** The salesmen
   query (`:371`) fetches no counts at all — no listings, no enquiries, no sold.
   Dealers get `dealerStats`; salesmen get nothing. Lite sellers are the growth
   engine and the console cannot answer "which of them are actually using this?"
   Note the data already exists — `listing_count_cache` is read in the Approvals
   tab (`:1127`), just not here.
 
-- [ ] **A5 — Suspension captures no reason and notifies nobody.** One click,
+- [x] **A5 — Suspension captures no reason and notifies nobody.** One click,
   no note, no message. The seller sees `SuspendedBanner` and is told nothing.
   We just built preset rejection reasons for account review; suspension — which
   is harsher — has none.
 
-- [ ] **A6 — Salesmen have no verified-badge control** even though e-KYC now
+- [x] **A6 — Salesmen have no verified-badge control** even though e-KYC now
   gives them a badge on their marketplace cards. `toggleVerified` (`:2014`)
   exists only for dealers. The only salesman path is the review queue.
 
 ## MEDIUM
 
-- [ ] **A7 — "Dealer ID" column shows a truncated raw UUID** (`:1634`,
+- [x] **A7 — "Dealer ID" column shows a truncated raw UUID** (`:1634`,
   `sm.dealer_id?.slice(0, 12)`). Meaningless to a human and not clickable. It
   should be the dealership name, linking to that dealer.
 
-- [ ] **A8 — No navigation between the two tabs.** A dealer's `team` count
+- [x] **A8 — No navigation between the two tabs.** A dealer's `team` count
   (`:1953`) is inert text. Seeing a dealer's salesmen means switching tabs and
   eyeballing truncated UUIDs. This is P6 in its most concrete form.
 
-- [ ] **A9 — Billing-state edits auto-save on change with no confirm and no
+- [x] **A9 — Billing-state edits auto-save on change with no confirm and no
   undo.** `subscription_status` (`:1930`) and `trial_ends_at` (`:1939`) write
   straight through on the change event. A misclick silently moves a dealer
   between trial/active/expired. There is an activity log but no undo.
 
-- [ ] **A10 — Salesman grouping is a filter expressed as fixed layout.**
+- [x] **A10 — Salesman grouping is a filter expressed as fixed layout.**
   Standalone vs Under-Dealer are hard-coded sections (`:1507`, `:1607`). They
   cannot be collapsed, sorted or combined, and a third category has nowhere to
   go.

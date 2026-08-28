@@ -11,6 +11,7 @@ import { PLAN_CONFIG } from "../utils/planConfig";
 import FunnelTab from "../components/platform/FunnelTab";
 import EngagementTab from "../components/platform/EngagementTab";
 import UserApprovalsTab from "../components/platform/UserApprovalsTab";
+import AccountsTab from "../components/platform/AccountsTab";
 import BuyersTab from "../components/platform/BuyersTab";
 import ErrorsTab from "../components/platform/ErrorsTab";
 import BroadcastTab from "../components/platform/BroadcastTab";
@@ -68,26 +69,93 @@ function UsageBar({ used, cap, danger }) {
   );
 }
 
+// Module scope, not inside AdminPage: BillingTab is a top-level component and
+// renders these too.
+const StatCard = ({ label, value, sub, color = "#e5e7eb" }) => (
+  <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "20px 24px" }}>
+    <p style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>{label}</p>
+    <p style={{ fontSize: 28, fontWeight: 700, color, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.05em" }}>{value}</p>
+    {sub && <p style={{ fontSize: 11, color: "#4b5563", marginTop: 4 }}>{sub}</p>}
+  </div>
+);
+
+// Billing is the ONE place MRR and subscription mix are stated (P2). The same
+// Total / Active / Trial / Expired / MRR figures used to render on Dealers and
+// on Platform Stats as well -- three surfaces, one truth, no indication which
+// was canonical, and they disagreed: the per-plan chips here multiplied plan
+// price by EVERY dealer on that plan, counting trial and expired accounts as
+// revenue. Only a paying dealer is revenue, and it is counted here only.
 function BillingTab({ dealers, dealerStats }) {
   const rows = dealers.map(d => {
     const cfg = PLAN_CONFIG[d.plan] || null;
     const ds = dealerStats[d.id] || {};
     return { ...d, cfg, ds };
   });
-  const planCounts = {};
-  rows.forEach(r => { const k = r.plan || 'none'; planCounts[k] = (planCounts[k] || 0) + 1; });
+  const paying = r => r.subscription_status === 'active';
+  const plans = {};
+  rows.forEach(r => {
+    const k = r.plan || 'none';
+    if (!plans[k]) plans[k] = { total: 0, paying: 0 };
+    plans[k].total += 1;
+    if (paying(r)) plans[k].paying += 1;
+  });
+  const counts = {
+    total: rows.length,
+    active: rows.filter(paying).length,
+    trial: rows.filter(r => r.subscription_status === 'trial').length,
+    expired: rows.filter(r => r.subscription_status === 'expired').length,
+  };
+  // Unknown / legacy plans count 0 rather than silently inflating MRR.
+  const mrr = rows.filter(paying).reduce((sum, r) => sum + (r.cfg?.price ?? 0), 0);
 
   return (
     <div>
-      {/* Summary chips */}
+      <div style={{ marginBottom: 18 }}>
+        <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#f1f5f9' }}>Billing</p>
+        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7280' }}>The only place revenue and plan mix are stated. Counts are dealers; MRR counts paying dealers only.</p>
+      </div>
+
+      <div className="adm-stat4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 22 }}>
+        <StatCard label="Est. MRR" value={`RM ${mrr.toLocaleString()}`} color="#dc2626" sub="Sum of paying plan prices" />
+        <StatCard label="Paying" value={counts.active} color="#4ade80" />
+        <StatCard label="On trial" value={counts.trial} color="#facc15" />
+        <StatCard label="Expired" value={counts.expired} color="#f87171" />
+        <StatCard label="Total dealers" value={counts.total} />
+      </div>
+
+      {/* Subscription mix */}
+      <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 20, marginBottom: 20 }}>
+        <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14 }}>Subscription mix</p>
+        <div style={{ display: 'flex', gap: 0, height: 10, borderRadius: 5, overflow: 'hidden', marginBottom: 12, background: 'rgba(255,255,255,0.04)' }}>
+          {counts.total > 0 && (
+            <>
+              <div style={{ flex: counts.active, background: '#16a34a' }} />
+              <div style={{ flex: counts.trial, background: '#ca8a04' }} />
+              <div style={{ flex: counts.expired, background: '#dc2626' }} />
+            </>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+          {[{ label: 'Paying', count: counts.active, color: '#16a34a' }, { label: 'Trial', count: counts.trial, color: '#ca8a04' }, { label: 'Expired', count: counts.expired, color: '#dc2626' }].map(({ label, count, color }) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+              <span style={{ fontSize: 12, color: '#9ca3af' }}>{label}: <strong style={{ color: '#e5e7eb' }}>{count}</strong></span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Per-plan chips */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
-        {Object.entries(planCounts).map(([plan, count]) => {
+        {Object.entries(plans).map(([plan, c]) => {
           const cfg = PLAN_CONFIG[plan];
           return (
             <div key={plan} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '8px 14px', minWidth: 120 }}>
               <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>{cfg?.label || plan}</p>
-              <p style={{ fontSize: 20, fontWeight: 700, color: '#f0f0f0' }}>{count}</p>
-              {cfg && <p style={{ fontSize: 10, color: '#4b5563' }}>RM {(cfg.price * count).toLocaleString()} MRR</p>}
+              <p style={{ fontSize: 20, fontWeight: 700, color: '#f0f0f0' }}>{c.total}</p>
+              <p style={{ fontSize: 10, color: '#4b5563' }}>
+                {cfg ? `${c.paying} paying · RM ${(cfg.price * c.paying).toLocaleString()} MRR` : `${c.paying} paying`}
+              </p>
             </div>
           );
         })}
@@ -162,29 +230,42 @@ export default function AdminPage() {
   const [dealers, setDealers] = useState([]);
   const [salesmen, setSalesmen] = useState([]);
   const [stats, setStats] = useState({
-    total: 0, active: 0, trial: 0, expired: 0, mrr: 0,
+    total: 0, active: 0, trial: 0, expired: 0,
     totalListings: 0, totalEnquiries: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [saved, setSaved] = useState({});
-  const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [sortBy, setSortBy] = useState("created_at");
-  const [dealerStats, setDealerStats] = useState({});
-  const [expandedDealer, setExpandedDealer] = useState(null);
-  const [activeTab, setActiveTab] = useState("dealers");
+  // Every account in one list (P5); `dealers` / `salesmen` are views over it,
+  // kept because BillingTab and the broadcast tab read them.
+  const [accounts, setAccounts] = useState([]);
+  const [accountStats, setAccountStats] = useState({});
+  // Id to open in the account record — set by global search (P7) and by the
+  // dealer <-> team links inside the record (A8).
+  const [focusAccount, setFocusAccount] = useState(null);
+  // Global search (P7). There were three search boxes -- waitlist, salesmen,
+  // dealers -- and nothing searched across object types, so finding "that guy
+  // who emailed me" meant guessing which tab he was in first. This searches
+  // everything already loaded, so it costs no queries.
+  const [globalQ, setGlobalQ] = useState("");
+  const [globalOpen, setGlobalOpen] = useState(false);
+  // The console lands on Home, not a directory (P3). The daily job is the review
+  // queue; an operator should never have to go looking for their own work.
+  const [activeTab, setActiveTab] = useState("home");
+  // Review queue type filter: "all" | "listings" | "signups" | "ids" (P4).
+  const [reviewFilter, setReviewFilter] = useState("all");
+  const [reviewRefreshKey, setReviewRefreshKey] = useState(0);
   // Top-level consoles in the superadmin panel. "shiftos" = the existing SaaS ops
   // (dealers/approvals/billing…); "xdrive" = public marketplace analytics;
   // "security" = audit forensics, sessions and posture.
-  const [activeConsole, setActiveConsole] = useState("shiftos");
-  const [xdriveTab, setXdriveTab] = useState("funnel");
-  const [securityTab, setSecurityTab] = useState("activity");
-  const [salesmanSearch, setSalesmanSearch] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [activeSection, setActiveSection] = useState("work");
+  // Surfaces a failed account action instead of leaving the console looking
+  // like nothing happened (A2).
+  const [actionError, setActionError] = useState(null);
   const [waitlist, setWaitlist] = useState([]);
   const [waitlistSearch, setWaitlistSearch] = useState("");
   const [pendingListings, setPendingListings] = useState([]);
   const [pendingUsersCount, setPendingUsersCount] = useState(0);
+  const [pendingSignupCount, setPendingSignupCount] = useState(0);
+  const [pendingKycCount, setPendingKycCount] = useState(0);
   const [rejectingId, setRejectingId] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
   const [approvalActioning, setApprovalActioning] = useState(null);
@@ -356,64 +437,52 @@ export default function AdminPage() {
     setLoading(true);
 
     // Load dealers
-    const { data: dealerData } = await supabase
+    // ONE query for every account (P5). Dealers and salesmen are the same
+    // object with a different role; fetching them separately is what let the
+    // two halves of the console drift to different standards. `dealers` and
+    // `salesmen` below are just views over this list.
+    //
+    // ic_number is deliberately NOT selected: the console shows ic_last4, and
+    // a full IC has no business crossing the wire to build a table.
+    const { data: accountData } = await supabase
       .from("profiles")
-      .select("id, full_name, email, dealership, subdomain, role, subscription_status, trial_ends_at, created_at, is_active, city, state, whatsapp_number, business_type, payment_status, plan, is_verified, ssm_number, ic_number, ic_last4, ic_verified_at")
-      .in("role", ["dealer", "owner", "superadmin"])
+      .select("id, full_name, email, phone, dealership, subdomain, slug, role, dealer_id, subscription_status, trial_ends_at, created_at, is_active, account_status, deleted_at, city, state, whatsapp_number, business_type, payment_status, plan, is_verified, verified_at, ssm_number, ic_last4, ic_verified_at, kyc_submitted_at, suspension_reason, suspended_at")
+      .in("role", ["dealer", "owner", "superadmin", "salesman"])
       .order("created_at", { ascending: false });
 
-    const dealers = dealerData || [];
+    const allAccounts = accountData || [];
+    setAccounts(allAccounts);
+    const dealers = allAccounts.filter(a => ["dealer", "owner", "superadmin"].includes(a.role));
     setDealers(dealers);
-
-    // Load ALL salesmen with plan info
-    const { data: salesmanData } = await supabase
-      .from("profiles")
-      .select("id, full_name, email, created_at, is_active, account_status, deleted_at, role, dealer_id, subdomain, subscription_status, trial_ends_at, plan, slug, payment_status")
-      .eq("role", "salesman")
-      .order("created_at", { ascending: false });
-    setSalesmen(salesmanData || []);
+    setSalesmen(allAccounts.filter(a => a.role === "salesman"));
 
     // Global stats
     const active = dealers.filter(d => d.subscription_status === "active").length;
     const trial  = dealers.filter(d => d.subscription_status === "trial").length;
     const expired = dealers.filter(d => d.subscription_status === "expired").length;
-    // Sum each active dealer's ACTUAL plan price rather than a flat per-head
-    // figure — a Starter (RM299) and a Group (RM2,999) are not the same revenue.
-    // PLAN_CONFIG mirrors the plan_config table; unknown/legacy plans count 0
-    // rather than silently inflating MRR.
-    const mrr = dealers
-      .filter(d => d.subscription_status === "active")
-      .reduce((sum, d) => sum + (PLAN_CONFIG[d.plan]?.price ?? 0), 0);
 
     const { count: totalListings } = await supabase
       .from("car_listings").select("*", { count: "exact", head: true });
     const { count: totalEnquiries } = await supabase
       .from("whatsapp_enquiries").select("*", { count: "exact", head: true });
 
-    setStats({ total: dealers.length, active, trial, expired, mrr,
+    // No mrr here: revenue is computed once, in BillingTab (P2).
+    setStats({ total: dealers.length, active, trial, expired,
       totalListings: totalListings || 0, totalEnquiries: totalEnquiries || 0 });
 
-    // Per-dealer stats
-    if (dealers.length > 0) {
-      const ids = dealers.map(d => d.id);
-      const { data: listingCounts } = await supabase
-        .from("car_listings").select("dealer_id, status").in("dealer_id", ids);
-      const { data: enquiryCounts } = await supabase
-        .from("whatsapp_enquiries").select("dealer_id").in("dealer_id", ids);
-      const { data: teamCounts } = await supabase
-        .from("profiles").select("dealer_id").in("dealer_id", ids).neq("role", "dealer");
-
-      const perDealer = {};
-      dealers.forEach(d => {
-        perDealer[d.id] = {
-          listings:  listingCounts?.filter(l => l.dealer_id === d.id).length || 0,
-          available: listingCounts?.filter(l => l.dealer_id === d.id && l.status === "available").length || 0,
-          sold:      listingCounts?.filter(l => l.dealer_id === d.id && l.status === "sold").length || 0,
-          enquiries: enquiryCounts?.filter(e => e.dealer_id === d.id).length || 0,
-          team:      teamCounts?.filter(t => t.dealer_id === d.id).length || 0,
-        };
-      });
-      setDealerStats(perDealer);
+    // Activity for EVERY account, from one RPC (A4). Salesmen had no counts at
+    // all before, so the console could not say which Lite sellers actually use
+    // the product. Counts come from get_account_activity rather than more
+    // client-side queries because `leads` has no superadmin SELECT policy and
+    // must not get one -- lead rows carry buyer name, phone, IC and address.
+    // The RPC returns numbers only.
+    if (allAccounts.length > 0) {
+      const { data: activity, error: actErr } = await supabase
+        .rpc("get_account_activity", { p_ids: allAccounts.map(a => a.id) });
+      if (actErr) setActionError(`Could not load account activity: ${actErr.message}`);
+      const byAccount = {};
+      (activity || []).forEach(r => { byAccount[r.id] = r; });
+      setAccountStats(byAccount);
     }
     setLoading(false);
 
@@ -490,18 +559,14 @@ export default function AdminPage() {
       supabase.rpc("get_pending_approvals"),
       supabase.rpc("get_pending_kyc"),
     ]).then(([signup, kyc]) => {
-      const ids = new Set((signup.data || []).map((r) => r.id));
-      (kyc.data || []).forEach((r) => ids.add(r.id));
-      setPendingUsersCount(ids.size);
+      const signupIds = new Set((signup.data || []).map((r) => r.id));
+      // A user sitting in both queues is listed once, under signup -- so the ID
+      // count here must exclude them or the pills add up to more than the list.
+      const kycOnly = (kyc.data || []).filter((r) => !signupIds.has(r.id));
+      setPendingSignupCount(signupIds.size);
+      setPendingKycCount(kycOnly.length);
+      setPendingUsersCount(signupIds.size + kycOnly.length);
     });
-  }
-
-  async function saveField(id, field, value) {
-    const { error } = await supabase.from("profiles").update({ [field]: value }).eq("id", id);
-    if (!error) {
-      flashSaved(id);
-      setDealers(prev => prev.map(d => d.id === id ? { ...d, [field]: value } : d));
-    }
   }
 
   // Mark a listing's uploaded documents as reviewed by the platform. Superadmin
@@ -513,113 +578,10 @@ export default function AdminPage() {
     setPendingListings(p => p.map(l => l.id === listing.id ? { ...l, docs_verified: next } : l));
   }
 
-  // Verify / unverify a dealer's business identity (SSM + IC reviewed).
-  // Stamps who verified and when for the audit trail.
-  async function toggleVerified(dealer) {
-    const next = !dealer.is_verified;
-    const { data: { user } } = await supabase.auth.getUser();
-    const patch = next
-      ? { is_verified: true, verified_at: new Date().toISOString(), verified_by: user?.id ?? null }
-      : { is_verified: false, verified_at: null, verified_by: null };
-    const { error } = await supabase.from("profiles").update(patch).eq("id", dealer.id);
-    if (!error) {
-      flashSaved(dealer.id);
-      setDealers(prev => prev.map(d => d.id === dealer.id ? { ...d, ...patch } : d));
-    }
-  }
-
-  function flashSaved(id) {
-    setSaved(prev => ({ ...prev, [id]: true }));
-    setTimeout(() => setSaved(prev => { const n = { ...prev }; delete n[id]; return n; }), 2000);
-  }
-
-  function updateLocal(id, field, value) {
-    setDealers(prev => prev.map(d => d.id === id ? { ...d, [field]: value } : d));
-  }
-
-  async function extendTrial(id, days) {
-    const newDate = new Date(Date.now() + days * 86400000).toISOString();
-    const { error } = await supabase.from("profiles")
-      .update({ trial_ends_at: newDate, subscription_status: "trial" }).eq("id", id);
-    if (!error) {
-      updateLocal(id, "trial_ends_at", newDate);
-      updateLocal(id, "subscription_status", "trial");
-      flashSaved(id);
-    }
-  }
-
-  async function toggleSuspend(dealer) {
-    const newActive = !dealer.is_active;
-    await supabase.from("profiles").update({ is_active: newActive }).eq("id", dealer.id);
-    updateLocal(dealer.id, "is_active", newActive);
-  }
-
-  async function toggleSalesmanSuspend(sm) {
-    const newActive = !sm.is_active;
-    const { error } = await supabase.from("profiles").update({ is_active: newActive }).eq("id", sm.id);
-    if (!error) setSalesmen(prev => prev.map(s => s.id === sm.id ? { ...s, is_active: newActive } : s));
-  }
-
-  async function deleteSalesman(id) {
-    const { error } = await supabase.from("profiles").delete().eq("id", id);
-    if (!error) {
-      setSalesmen(prev => prev.filter(s => s.id !== id));
-      setConfirmDelete(null);
-    }
-  }
-
   function fmtDate(str) {
     if (!str) return "—";
     return new Date(str).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" });
   }
-
-  function trialDaysLeft(str) {
-    if (!str) return null;
-    return Math.ceil((new Date(str) - Date.now()) / 86400000);
-  }
-
-  // Account status label — distinguishes a soft-deleted account (LITE-3, 30-day
-  // purge grace) from a genuinely suspended one. Deleted rows also have
-  // is_active=false, so this must be checked BEFORE the suspended branch.
-  function accountStatus(row) {
-    if (row.account_status === "deleted") {
-      const purgeDays = row.deleted_at
-        ? Math.max(0, 30 - Math.floor((Date.now() - new Date(row.deleted_at)) / 86400000))
-        : null;
-      return {
-        text: purgeDays !== null ? `⊘ Deleted · purges in ${purgeDays}d` : "⊘ Deleted",
-        color: "#9ca3af",
-      };
-    }
-    if (row.is_active === false) return { text: "○ Suspended", color: "#f87171" };
-    return { text: "● Active", color: "#4ade80" };
-  }
-
-  function toDateInputVal(str) {
-    if (!str) return "";
-    return new Date(str).toISOString().slice(0, 10);
-  }
-
-  const filtered = dealers
-    .filter(d => {
-      const matchSearch = !search ||
-        [d.full_name, d.dealership, d.email, d.subdomain]
-          .some(v => v?.toLowerCase().includes(search.toLowerCase()));
-      const matchStatus = filterStatus === "all" || d.subscription_status === filterStatus;
-      return matchSearch && matchStatus;
-    })
-    .sort((a, b) => {
-      if (sortBy === "created_at") return new Date(b.created_at) - new Date(a.created_at);
-      if (sortBy === "listings") return (dealerStats[b.id]?.listings || 0) - (dealerStats[a.id]?.listings || 0);
-      if (sortBy === "name") return (a.dealership || "").localeCompare(b.dealership || "");
-      return 0;
-    });
-
-  const filteredSalesmen = salesmen.filter(s =>
-    !salesmanSearch ||
-    [s.full_name, s.email, s.subdomain]
-      .some(v => v?.toLowerCase().includes(salesmanSearch.toLowerCase()))
-  );
 
   // Load marketplace settings when tab is first opened
   useEffect(() => {
@@ -645,45 +607,206 @@ export default function AdminPage() {
     }
   }
 
-  const StatCard = ({ label, value, sub, color = "#e5e7eb" }) => (
-    <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "20px 24px" }}>
-      <p style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>{label}</p>
-      <p style={{ fontSize: 28, fontWeight: 700, color, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.05em" }}>{value}</p>
-      {sub && <p style={{ fontSize: 11, color: "#4b5563", marginTop: 4 }}>{sub}</p>}
+  // Everything waiting on a decision, in one number. "Verify" (accounts) and
+  // "Approvals" (listings) were two vaguely-named tabs holding three kinds of
+  // item between them; they are now one Review queue with a type filter (P4).
+  const reviewCount = pendingListings.length + pendingUsersCount;
+
+  // ── One taxonomy: what am I doing (P1) ──────────────────────────────────────
+  // The rail used to mix two. "ShiftOS Ops" and "XDrive Ops" split by PRODUCT
+  // while "Security" split by FUNCTION, so the top level answered no single
+  // question -- neither "which product?" nor "what am I doing?", but both at
+  // once -- and every navigation was a guess. The clearest symptom: marketplace
+  // SETTINGS lived under ShiftOS Ops while marketplace ANALYTICS lived under
+  // XDrive Ops. Same subject, two consoles, split by a rule invisible from the
+  // outside. They are one section now.
+  //
+  // Sections are ordered by how the day actually runs: you sit down to clear
+  // the queue, not to "do XDrive".
+  const NAV = [
+    { id: "work", label: "Work", sub: "Your queue", badge: reviewCount, tabs: [
+      { id: "home",   label: "Home" },
+      { id: "review", label: "Review", badge: reviewCount },
+    ] },
+    { id: "people", label: "People", sub: "Accounts · waitlist", tabs: [
+      { id: "accounts", label: `Accounts (${accounts.length})` },
+      // Waitlist stays its own destination on purpose: a waitlist row is an
+      // email that never signed up. It has no profile, no plan and no actions
+      // in common with an account, so folding it into the accounts table would
+      // put two different objects in one list.
+      { id: "waitlist", label: `Waitlist (${waitlist.length})` },
+    ] },
+    { id: "marketplace", label: "Marketplace", sub: "XDrive settings · analytics", tabs: [
+      { id: "marketplace", label: "Settings" },
+      { id: "funnel",      label: "Funnel" },
+      { id: "engagement",  label: "Engagement" },
+      { id: "buyers",      label: "Buyers" },
+      { id: "broadcast",   label: "Broadcast" },
+      { id: "platform",    label: "Volume" },
+    ] },
+    { id: "money", label: "Money", sub: "Plans · revenue", tabs: [
+      { id: "billing", label: "Billing" },
+    ] },
+    { id: "safety", label: "Safety", sub: "Audit · sessions · errors", tabs: [
+      { id: "activity", label: "Activity Log" },
+      { id: "sessions", label: "Sessions" },
+      { id: "posture",  label: "Posture" },
+      { id: "errors",   label: "Errors" },
+      { id: "alerts",   label: "Alerts" },
+    ] },
+  ];
+
+  const currentSection = NAV.find(sec => sec.id === activeSection) || NAV[0];
+  const TABS = currentSection.tabs;
+
+  // Switching section lands on its first tab, so the strip and the body never
+  // disagree about what is open.
+  function switchSection(id) {
+    const sec = NAV.find(n => n.id === id);
+    if (!sec) return;
+    setActiveSection(id);
+    setActiveTab(sec.tabs[0].id);
+  }
+
+  // Jump straight from a Home queue card into the right slice of Review.
+  function openReview(filter) {
+    setReviewFilter(filter);
+    setActiveSection("work");
+    setActiveTab("review");
+  }
+
+  // One place for the child tables to write a row back into local state, so a
+  // successful write shows immediately without a full reload.
+  function patchAccount(id, patch) {
+    setAccounts(prev => prev.map(a => (a.id === id ? { ...a, ...patch } : a)));
+    setDealers(prev => prev.map(a => (a.id === id ? { ...a, ...patch } : a)));
+    setSalesmen(prev => prev.map(a => (a.id === id ? { ...a, ...patch } : a)));
+  }
+
+  const globalResults = (() => {
+    const q = globalQ.trim().toLowerCase();
+    if (q.length < 2) return [];
+    const hits = [];
+    accounts.forEach(a => {
+      if ([a.full_name, a.email, a.dealership, a.subdomain, a.slug, a.phone, a.whatsapp_number]
+        .some(v => v && String(v).toLowerCase().includes(q))) {
+        hits.push({
+          kind: "account", id: a.id,
+          title: a.dealership || a.full_name || a.email,
+          sub: `${["dealer", "owner", "superadmin"].includes(a.role) ? "Dealer" : a.dealer_id ? "Salesman · under a dealer" : "Standalone seller"} · ${a.email}`,
+        });
+      }
+    });
+    pendingListings.forEach(l => {
+      const name = [l.year, l.brand, l.model, l.variant].filter(Boolean).join(" ");
+      if ([name, l.plate_number, l.profiles?.full_name].some(v => v && String(v).toLowerCase().includes(q))) {
+        hits.push({ kind: "listing", id: l.id, title: name || "Listing", sub: `Waiting for approval · ${l.profiles?.full_name || "unknown seller"}` });
+      }
+    });
+    waitlist.forEach(w => {
+      if ([w.name, w.phone, w.referral_code].some(v => v && String(v).toLowerCase().includes(q))) {
+        hits.push({ kind: "waitlist", id: w.id, title: w.name || w.phone, sub: `Waitlist #${w.position} · ${w.phone || ""}` });
+      }
+    });
+    return hits.slice(0, 8);
+  })();
+
+  function goToResult(r) {
+    setGlobalOpen(false);
+    setGlobalQ("");
+    if (r.kind === "account") {
+      setActiveSection("people");
+      setActiveTab("accounts");
+      setFocusAccount(r.id);
+    } else if (r.kind === "listing") {
+      openReview("listings");
+    } else {
+      setActiveSection("people");
+      setActiveTab("waitlist");
+    }
+  }
+
+  function daysAgo(str) {
+    if (!str) return null;
+    return Math.floor((Date.now() - new Date(str)) / 86400000);
+  }
+
+  // "waiting 3 days" reads as pressure in a way a bare count does not.
+  function oldestWaitLabel(rows, field = "created_at") {
+    if (!rows.length) return null;
+    const oldest = rows.reduce((a, b) => (new Date(a[field]) < new Date(b[field]) ? a : b));
+    const d = daysAgo(oldest[field]);
+    if (d === null) return null;
+    if (d <= 0) return "oldest today";
+    return `oldest waiting ${d} day${d === 1 ? "" : "s"}`;
+  }
+
+  // ── Home ───────────────────────────────────────────────────────────────────
+  // The landing page answers one question: what needs me right now. It states
+  // queue depth and how long the oldest item has waited, then hands off to
+  // Review. It deliberately shows NO money: MRR and plan mix belong in one
+  // place (Billing), and a fourth copy of them is the problem, not the fix.
+  const QueueCard = ({ label, n, sub, onClick }) => {
+    const waiting = n > 0;
+    return (
+      <button onClick={onClick}
+        style={{
+          textAlign: "left", cursor: "pointer", fontFamily: "inherit", padding: "18px 20px",
+          borderRadius: 12, minWidth: 0,
+          background: waiting ? "rgba(220,38,38,0.06)" : "rgba(255,255,255,0.03)",
+          border: `1px solid ${waiting ? "rgba(220,38,38,0.28)" : "rgba(255,255,255,0.07)"}`,
+        }}>
+        <p style={{ margin: 0, fontSize: 11, color: waiting ? "#f87171" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700 }}>{label}</p>
+        <p style={{ margin: "8px 0 0", fontSize: 30, fontWeight: 700, lineHeight: 1, color: waiting ? "#f5f5f5" : "#4b5563", fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.05em" }}>{n}</p>
+        <p style={{ margin: "6px 0 0", fontSize: 11.5, color: waiting ? "#9ca3af" : "#374151" }}>{sub}</p>
+      </button>
+    );
+  };
+
+  const HealthStat = ({ label, value, sub }) => (
+    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "13px 16px", minWidth: 0 }}>
+      <p style={{ margin: 0, fontSize: 10.5, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.09em", fontWeight: 700 }}>{label}</p>
+      <p style={{ margin: "5px 0 0", fontSize: 19, fontWeight: 700, color: "#e5e7eb" }}>{value}</p>
+      {sub && <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "#4b5563" }}>{sub}</p>}
     </div>
   );
 
-  const TABS = [
-    { id: "dealers",  label: `Dealers (${stats.total})` },
-    { id: "salesman", label: `Salesmen (${salesmen.length})` },
-    { id: "verify", label: "Verify", badge: pendingUsersCount },
-    { id: "approvals", label: "Approvals", badge: pendingListings.length },
-    { id: "waitlist", label: `Waitlist (${waitlist.length})` },
-    { id: "platform",    label: "Platform Stats" },
-    { id: "marketplace", label: "Marketplace" },
-    { id: "billing",     label: "Billing" },
-  ];
+  const HomeTab = () => {
+    const listingWait = oldestWaitLabel(pendingListings);
+    const clear = reviewCount === 0;
+    return (
+      <div>
+        <div style={{ marginBottom: 20 }}>
+          <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>
+            {clear ? "Nothing waiting on you" : `${reviewCount} ${reviewCount === 1 ? "thing needs" : "things need"} your decision`}
+          </p>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>
+            {clear ? "Every queue is clear. New items land here and push to your phone." : "Tap a queue to open it in Review."}
+          </p>
+        </div>
 
-  const CONSOLES = [
-    { id: "shiftos",  label: "ShiftOS Ops", sub: "Dealers · approvals · billing" },
-    { id: "xdrive",   label: "XDrive Ops",  sub: "Marketplace analytics" },
-    { id: "security", label: "Security",    sub: "Audit · sessions · posture" },
-  ];
+        <div className="adm-home-queues" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginBottom: 30 }}>
+          <QueueCard label="Cars to approve" n={pendingListings.length}
+            sub={pendingListings.length ? (listingWait || "waiting") : "none waiting"}
+            onClick={() => openReview("listings")} />
+          <QueueCard label="New sellers" n={pendingSignupCount}
+            sub={pendingSignupCount ? "cannot reach their dashboard yet" : "none waiting"}
+            onClick={() => openReview("signups")} />
+          <QueueCard label="ID checks" n={pendingKycCount}
+            sub={pendingKycCount ? "waiting on the Verified badge" : "none waiting"}
+            onClick={() => openReview("ids")} />
+        </div>
 
-  const XDRIVE_TABS = [
-    { id: "funnel", label: "Funnel" },
-    { id: "engagement", label: "Engagement" },
-    { id: "buyers", label: "Buyers" },
-    { id: "broadcast", label: "Broadcast" },
-  ];
-
-  const SECURITY_TABS = [
-    { id: "activity", label: "Activity Log" },
-    { id: "sessions", label: "Sessions" },
-    { id: "posture", label: "Posture" },
-    { id: "errors", label: "Errors" },
-    { id: "alerts", label: "Alerts" },
-  ];
+        <p style={{ margin: "0 0 10px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700 }}>Platform</p>
+        <div className="adm-home-health" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10 }}>
+          <HealthStat label="Dealers" value={stats.total} sub={`${stats.active} active · ${stats.trial} on trial`} />
+          <HealthStat label="Salesmen" value={salesmen.length} sub={`${salesmen.filter(s => !s.dealer_id).length} standalone`} />
+          <HealthStat label="Live listings" value={stats.totalListings} />
+          <HealthStat label="Waitlist" value={waitlist.length} sub="not signed up yet" />
+        </div>
+      </div>
+    );
+  };
 
   // ── Auth gate ──────────────────────────────────────────────────────────────
   // The console never renders under a non-superadmin session. While the isolated
@@ -788,7 +911,9 @@ export default function AdminPage() {
         .adm-mobile-console { display: none; }
         @media (max-width: 720px) {
           .adm-sidebar { display: none; }
-          .adm-mobile-console { display: flex; gap: 6px; padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+          .adm-mobile-console { display: flex; gap: 6px; padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06);
+            overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+          .adm-mobile-console::-webkit-scrollbar { display: none; }
         }
         /* Mobile — make the console navigable on a phone (375px+) */
         @media (max-width: 720px) {
@@ -796,6 +921,7 @@ export default function AdminPage() {
           .adm-tabs { padding: 0 8px !important; flex-wrap: nowrap !important; }
           .adm-tab { flex-shrink: 0; padding: 11px 12px !important; font-size: 12px !important; }
           .adm-content { padding: 16px 14px 64px !important; }
+          .adm-globalsearch { display: none; }
           .adm-search { width: 100% !important; box-sizing: border-box; }
           .adm-toolbar { flex-direction: column; align-items: stretch !important; }
           .adm-toolbar > * { margin-left: 0 !important; width: 100%; box-sizing: border-box; }
@@ -805,32 +931,12 @@ export default function AdminPage() {
           .adm-approval { flex-wrap: wrap; }
           .adm-approval-actions { width: 100%; }
           .adm-approval-actions button { flex: 1; }
+          .adm-home-queues { grid-template-columns: 1fr !important; }
+          .adm-home-health { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
         }
       `}</style>
 
       <div className="adm-root">
-        {/* Delete confirm modal */}
-        {confirmDelete && (
-          <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
-            <div className="modal-box" onClick={e => e.stopPropagation()}>
-              <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>Delete Salesman Account?</p>
-              <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 20 }}>
-                This will permanently delete <strong style={{ color: "#f5f5f5" }}>{confirmDelete.email}</strong> from the platform. This cannot be undone.
-              </p>
-              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                <button className="adm-btn" onClick={() => setConfirmDelete(null)}
-                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af" }}>
-                  Cancel
-                </button>
-                <button className="adm-btn" onClick={() => deleteSalesman(confirmDelete.id)}
-                  style={{ background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.4)", color: "#f87171" }}>
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Blast modal */}
         {blastModal && (() => {
           const filtered = waitlist.filter(w =>
@@ -900,6 +1006,29 @@ export default function AdminPage() {
               <span style={{ color: "#374151", fontSize: 13, fontFamily: "system-ui,sans-serif", fontWeight: 500, letterSpacing: 1 }}>Superadmin</span>
             </span>
           </div>
+          <div className="adm-globalsearch" style={{ position: "relative", flex: 1, maxWidth: 380, margin: "0 20px" }}>
+            <input
+              value={globalQ}
+              onChange={e => { setGlobalQ(e.target.value); setGlobalOpen(true); }}
+              onFocus={() => setGlobalOpen(true)}
+              onBlur={() => setTimeout(() => setGlobalOpen(false), 150)}
+              placeholder="Search accounts, listings, waitlist…"
+              style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 7, color: "#e5e7eb", fontSize: 12.5, padding: "7px 11px", fontFamily: "inherit" }} />
+            {globalOpen && globalQ.trim().length >= 2 && (
+              <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, background: "#0b0f16", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, overflow: "hidden", boxShadow: "0 12px 34px rgba(0,0,0,0.6)", zIndex: 40 }}>
+                {globalResults.length === 0 ? (
+                  <p style={{ margin: 0, padding: "12px 13px", fontSize: 12, color: "#4b5563" }}>Nothing matches that.</p>
+                ) : globalResults.map(r => (
+                  <button key={`${r.kind}-${r.id}`} onMouseDown={() => goToResult(r)}
+                    style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", borderBottom: "1px solid rgba(255,255,255,0.04)", padding: "9px 13px", cursor: "pointer", fontFamily: "inherit" }}>
+                    <span style={{ display: "block", fontSize: 12.5, color: "#e5e7eb", fontWeight: 600 }}>{r.title}</span>
+                    <span style={{ display: "block", fontSize: 11, color: "#6b7280", marginTop: 1 }}>{r.sub}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={loadAll}
               style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", fontSize: 12, padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit" }}>
@@ -912,80 +1041,48 @@ export default function AdminPage() {
           </div>
         </header>
 
-        {/* Two-console shell: left rail (desktop) / segmented switcher (mobile) */}
+        {/* Console shell: section rail (desktop) / segmented switcher (mobile) */}
         <div className="adm-shell">
           <aside className="adm-sidebar">
-            <p style={{ fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700, padding: "0 4px 8px" }}>Consoles</p>
-            {CONSOLES.map(c => {
-              const on = activeConsole === c.id;
+            <p style={{ fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700, padding: "0 4px 8px" }}>Sections</p>
+            {NAV.map(sec => {
+              const on = activeSection === sec.id;
               return (
-                <button key={c.id} className="adm-console-btn" onClick={() => setActiveConsole(c.id)}
+                <button key={sec.id} className="adm-console-btn" onClick={() => switchSection(sec.id)}
                   style={{ background: on ? "rgba(220,38,38,0.1)" : undefined, borderColor: on ? "rgba(220,38,38,0.3)" : "transparent" }}>
-                  <span style={{ display: "block", fontSize: 13, fontWeight: 700, color: on ? "#f87171" : "#e5e7eb" }}>{c.label}</span>
-                  <span style={{ display: "block", fontSize: 10, color: "#6b7280", marginTop: 2 }}>{c.sub}</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: on ? "#f87171" : "#e5e7eb" }}>
+                    {sec.label}
+                    {sec.badge > 0 && (
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "rgba(220,38,38,0.18)", border: "1px solid rgba(220,38,38,0.35)", color: "#f87171" }}>
+                        {sec.badge}
+                      </span>
+                    )}
+                  </span>
+                  <span style={{ display: "block", fontSize: 10, color: "#6b7280", marginTop: 2 }}>{sec.sub}</span>
                 </button>
               );
             })}
           </aside>
 
           <div className="adm-main">
-            {/* Mobile console switcher */}
+            {/* Mobile section switcher */}
             <div className="adm-mobile-console">
-              {CONSOLES.map(c => {
-                const on = activeConsole === c.id;
+              {NAV.map(sec => {
+                const on = activeSection === sec.id;
                 return (
-                  <button key={c.id} onClick={() => setActiveConsole(c.id)}
-                    style={{ flex: 1, fontSize: 12, fontWeight: 700, padding: "9px 10px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit",
+                  <button key={sec.id} onClick={() => switchSection(sec.id)}
+                    style={{ flex: "0 0 auto", fontSize: 12, fontWeight: 700, padding: "9px 13px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
                       background: on ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.03)",
                       border: on ? "1px solid rgba(220,38,38,0.3)" : "1px solid rgba(255,255,255,0.08)",
                       color: on ? "#f87171" : "#9ca3af" }}>
-                    {c.label}
+                    {sec.label}
+                    {sec.badge > 0 && <span style={{ marginLeft: 5, fontSize: 10 }}>{sec.badge}</span>}
                   </button>
                 );
               })}
             </div>
 
-            {activeConsole === "xdrive" ? (
-              /* ══ XDRIVE OPS CONSOLE ══ */
-              <>
-                <div className="adm-tabs" style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 28px", background: "rgba(255,255,255,0.01)" }}>
-                  {XDRIVE_TABS.map(t => (
-                    <button key={t.id} className="adm-tab" onClick={() => setXdriveTab(t.id)}
-                      style={{ padding: "12px 16px", background: "none", border: "none", borderBottom: xdriveTab === t.id ? "2px solid #dc2626" : "2px solid transparent", color: xdriveTab === t.id ? "#fff" : "#6b7280", fontSize: 13, fontWeight: xdriveTab === t.id ? 600 : 400, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s", whiteSpace: "nowrap" }}>
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="adm-content" style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 28px 80px" }}>
-                  {xdriveTab === "funnel" && <FunnelTab />}
-                  {xdriveTab === "engagement" && <EngagementTab />}
-                  {xdriveTab === "buyers" && <BuyersTab />}
-                  {xdriveTab === "broadcast" && <BroadcastTab dealers={dealers} salesmen={salesmen} />}
-                </div>
-              </>
-            ) : activeConsole === "security" ? (
-              /* ══ SECURITY CONSOLE ══ */
-              <>
-                <div className="adm-tabs" style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 28px", background: "rgba(255,255,255,0.01)" }}>
-                  {SECURITY_TABS.map(t => (
-                    <button key={t.id} className="adm-tab" onClick={() => setSecurityTab(t.id)}
-                      style={{ padding: "12px 16px", background: "none", border: "none", borderBottom: securityTab === t.id ? "2px solid #dc2626" : "2px solid transparent", color: securityTab === t.id ? "#fff" : "#6b7280", fontSize: 13, fontWeight: securityTab === t.id ? 600 : 400, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s", whiteSpace: "nowrap" }}>
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="adm-content" style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 28px 80px" }}>
-                  {securityTab === "activity" && <ActivityLogTab />}
-                  {securityTab === "sessions" && <SessionsTab />}
-                  {securityTab === "posture" && <PostureTab />}
-                  {securityTab === "errors" && <ErrorsTab />}
-                  {securityTab === "alerts" && <AlertsTab userId={meId} />}
-                </div>
-              </>
-            ) : (
-            /* ══ SHIFTOS OPS CONSOLE ══ */
-            <>
-        {/* Tabs */}
+        {/* Tabs within the section */}
         <div className="adm-tabs" style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 28px", background: "rgba(255,255,255,0.01)" }}>
           {TABS.map(t => (
             <button key={t.id} className="adm-tab" onClick={() => setActiveTab(t.id)}
@@ -1003,20 +1100,99 @@ export default function AdminPage() {
         <div className="adm-content" style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 28px 80px" }}>
           {loading ? (
             <div style={{ textAlign: "center", padding: 80, color: "#4b5563" }}>Loading…</div>
-          ) : activeTab === "verify" ? (
-            /* ── USER APPROVALS (identity/KYC) TAB ── */
-            <UserApprovalsTab />
-          ) : activeTab === "approvals" ? (
-            /* ── APPROVALS TAB ── */
+          ) : activeTab === "funnel" ? (
+            <FunnelTab />
+          ) : activeTab === "engagement" ? (
+            <EngagementTab />
+          ) : activeTab === "buyers" ? (
+            <BuyersTab />
+          ) : activeTab === "broadcast" ? (
+            <BroadcastTab dealers={dealers} salesmen={salesmen} />
+          ) : activeTab === "activity" ? (
+            <ActivityLogTab />
+          ) : activeTab === "sessions" ? (
+            <SessionsTab />
+          ) : activeTab === "posture" ? (
+            <PostureTab />
+          ) : activeTab === "errors" ? (
+            <ErrorsTab />
+          ) : activeTab === "alerts" ? (
+            <AlertsTab userId={meId} />
+          ) : activeTab === "home" ? (
+            /* ── HOME ── the console opens on the work, not a directory (P3) */
+            <HomeTab />
+          ) : activeTab === "review" ? (
+            /* ── REVIEW ── one queue, three kinds of item, filter by type (P4) */
             <div>
-              <div style={{ marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ marginBottom: 16, display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
                 <div>
-                  <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>Listing Approvals</p>
-                  <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>Listings from standalone salesman-lite accounts waiting for review</p>
+                  <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>Review</p>
+                  <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>Everything waiting on your decision — cars, new sellers, ID checks</p>
                 </div>
-                {pendingListings.length === 0 && (
-                  <span style={{ fontSize: 12, color: "#4ade80" }}>✓ All clear</span>
-                )}
+                <button onClick={() => { loadAll(); setReviewRefreshKey(k => k + 1); }}
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", fontSize: 12, padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit" }}>
+                  ↻ Refresh
+                </button>
+              </div>
+
+              {/* Type filter. Counts are the real queue depths, so the pills
+                  double as the "how much is left" readout. */}
+              <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 20 }}>
+                {[
+                  { id: "all", label: "All", n: reviewCount },
+                  { id: "listings", label: "Cars", n: pendingListings.length },
+                  { id: "signups", label: "New sellers", n: pendingSignupCount },
+                  { id: "ids", label: "ID checks", n: pendingKycCount },
+                ].map(f => {
+                  const on = reviewFilter === f.id;
+                  return (
+                    <button key={f.id} onClick={() => setReviewFilter(f.id)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 6, padding: "6px 13px", borderRadius: 99,
+                        fontSize: 12.5, fontWeight: on ? 700 : 500, cursor: "pointer", fontFamily: "inherit",
+                        background: on ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.03)",
+                        border: `1px solid ${on ? "rgba(220,38,38,0.35)" : "rgba(255,255,255,0.08)"}`,
+                        color: on ? "#f87171" : "#9ca3af",
+                      }}>
+                      {f.label}
+                      <span style={{ fontSize: 11, fontWeight: 700, color: on ? "#f87171" : "#4b5563" }}>{f.n}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {reviewCount === 0 && (
+                <div style={{ textAlign: "center", padding: "60px 0", color: "#374151" }}>
+                  <p style={{ fontSize: 32, marginBottom: 8 }}>✓</p>
+                  <p style={{ fontSize: 14, color: "#4b5563" }}>Nothing waiting. You are all clear.</p>
+                </div>
+              )}
+
+              {/* Empty for THIS filter while other queues still have work. */}
+              {reviewCount > 0 && (
+                (reviewFilter === "listings" && pendingListings.length === 0) ||
+                (reviewFilter === "signups" && pendingSignupCount === 0) ||
+                (reviewFilter === "ids" && pendingKycCount === 0)
+              ) && (
+                <p style={{ fontSize: 13, color: "#4b5563", padding: "34px 0", textAlign: "center" }}>Nothing in this queue.</p>
+              )}
+
+              {(reviewFilter === "all" || reviewFilter === "signups" || reviewFilter === "ids") && (
+                <div style={{ marginBottom: reviewFilter === "all" ? 28 : 0 }}>
+                  <UserApprovalsTab
+                    embedded
+                    refreshKey={reviewRefreshKey}
+                    kindFilter={reviewFilter === "signups" ? "signup" : reviewFilter === "ids" ? "kyc" : null}
+                    onCounts={({ signups, ids }) => { setPendingSignupCount(signups); setPendingKycCount(ids); setPendingUsersCount(signups + ids); }}
+                  />
+                </div>
+              )}
+
+              {(reviewFilter === "all" || reviewFilter === "listings") && pendingListings.length > 0 && (
+              <div>
+              <div style={{ marginBottom: 14 }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#e5e7eb" }}>Cars waiting to go live</p>
+                <p style={{ margin: "3px 0 0", fontSize: 11.5, color: "#6b7280" }}>Listings from standalone salesman accounts — they stay off the marketplace until you approve</p>
               </div>
 
               {/* Bulk action toolbar */}
@@ -1094,12 +1270,9 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {pendingListings.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "60px 0", color: "#374151" }}>
-                  <p style={{ fontSize: 32, marginBottom: 8 }}>✓</p>
-                  <p style={{ fontSize: 14, color: "#4b5563" }}>No listings pending approval</p>
-                </div>
-              ) : (
+              {/* The whole block only renders when there are cars waiting, so the
+                  "all clear" state lives once on Review, not once per type. */}
+              {(
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {pendingListings.map(listing => {
                     const salesman = listing.profiles;
@@ -1340,6 +1513,8 @@ export default function AdminPage() {
                   })}
                 </div>
               )}
+              </div>
+              )}
             </div>
           ) : activeTab === "waitlist" ? (
             /* ── WAITLIST TAB ── */
@@ -1463,203 +1638,38 @@ export default function AdminPage() {
             })()
           ) : activeTab === "platform" ? (
             <>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 32 }}>
-                <StatCard label="Total Dealers" value={stats.total} />
-                <StatCard label="Active (Paid)" value={stats.active} color="#4ade80" sub={`RM ${stats.mrr.toLocaleString()} MRR`} />
-                <StatCard label="On Trial" value={stats.trial} color="#facc15" />
-                <StatCard label="Expired" value={stats.expired} color="#f87171" />
+              <div style={{ marginBottom: 18 }}>
+                <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>Volume</p>
+                <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>Volume across the whole platform. Revenue and subscription mix live in Billing.</p>
+              </div>
+              {/* The dealer / trial / expired / MRR cards and the subscription
+                  breakdown that used to sit here were the same figures Billing
+                  states, and the third copy of them (P2). Removed, not moved. */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
                 <StatCard label="Total Listings" value={stats.totalListings.toLocaleString()} />
                 <StatCard label="Total Enquiries" value={stats.totalEnquiries.toLocaleString()} />
-                <StatCard label="Est. MRR" value={`RM ${stats.mrr.toLocaleString()}`} color="#dc2626" sub="Sum of active plan prices" />
-              </div>
-              <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: 24 }}>
-                <p style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16 }}>Subscription Breakdown</p>
-                <div style={{ display: "flex", gap: 0, height: 12, borderRadius: 6, overflow: "hidden", marginBottom: 12 }}>
-                  {stats.total > 0 && (
-                    <>
-                      <div style={{ flex: stats.active, background: "#16a34a" }} />
-                      <div style={{ flex: stats.trial, background: "#ca8a04" }} />
-                      <div style={{ flex: stats.expired, background: "#dc2626" }} />
-                    </>
-                  )}
-                </div>
-                <div style={{ display: "flex", gap: 20 }}>
-                  {[{ label: "Active", count: stats.active, color: "#16a34a" }, { label: "Trial", count: stats.trial, color: "#ca8a04" }, { label: "Expired", count: stats.expired, color: "#dc2626" }].map(({ label, count, color }) => (
-                    <div key={label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: color }} />
-                      <span style={{ fontSize: 12, color: "#9ca3af" }}>{label}: <strong style={{ color: "#e5e7eb" }}>{count}</strong></span>
-                    </div>
-                  ))}
-                </div>
+                <StatCard label="Dealers" value={stats.total} sub="mix and revenue in Billing" />
+                <StatCard label="Salesmen" value={salesmen.length} sub={`${salesmen.filter(s => !s.dealer_id).length} standalone`} />
               </div>
             </>
 
-          ) : activeTab === "salesman" ? (
-            /* ── SALESMEN TAB ── */
-            <>
-              <div className="adm-toolbar" style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <input value={salesmanSearch} onChange={e => setSalesmanSearch(e.target.value)}
-                  placeholder="Search name, email, slug…" className="adm-input adm-search" style={{ width: 280 }} />
-                <span style={{ fontSize: 12, color: "#4b5563", marginLeft: "auto" }}>{filteredSalesmen.length} accounts</span>
-              </div>
+          ) : activeTab === "accounts" ? (
+            /* ── ACCOUNTS ── one table for dealers and salesmen (P5), with the
+               account record behind a row click (P6). Replaces the separate
+               Dealers and Salesmen tabs, their two search boxes and their two
+               different standards of what you were allowed to do to an account. */
+            <AccountsTab
+              accounts={accounts}
+              stats={accountStats}
+              loading={loading}
+              error={actionError}
+              setError={setActionError}
+              onRefresh={loadAll}
+              onPatch={patchAccount}
+              focusId={focusAccount}
+              onFocusHandled={() => setFocusAccount(null)}
+            />
 
-              {/* ── Group 1: Standalone Lite ── */}
-              {(() => {
-                // Standalone (no dealer) salesmen: lite + solo premium. Solo
-                // premium pay RM35/mo themselves and need a payment-approval action.
-                const lites = filteredSalesmen.filter(s => !s.dealer_id && (s.plan === 'salesman_lite' || s.plan === 'salesman_full'));
-                return (
-                  <div style={{ marginBottom: 24 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em" }}>Standalone Salesmen</span>
-                      <span style={{ fontSize: 11, color: "#4b5563", background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: 20, padding: "1px 8px" }}>{lites.length}</span>
-                      <span style={{ fontSize: 10, color: "#374151", marginLeft: 4 }}>Lite + solo Premium · no dealer</span>
-                    </div>
-                    <div style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
-                      <div style={{ overflowX: "auto" }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                          <thead>
-                            <tr style={{ background: "rgba(255,255,255,0.025)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                              {["Account", "Slug / Profile", "Sub Status", "Joined", "Status", "Actions"].map(h => (
-                                <th key={h} style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6b7280", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {lites.length === 0 ? (
-                              <tr><td colSpan={6} style={{ textAlign: "center", padding: 32, color: "#4b5563", fontSize: 12 }}>No standalone lite accounts.</td></tr>
-                            ) : lites.map(sm => (
-                              <tr key={sm.id} className="adm-row" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", opacity: sm.is_active === false ? 0.45 : 1 }}>
-                                <td style={{ padding: "10px 14px" }}>
-                                  <div style={{ fontWeight: 600, color: "#f0f0f0", marginBottom: 2 }}>{sm.full_name || "—"}</div>
-                                  <div style={{ fontSize: 11, color: "#6b7280" }}>{sm.email}</div>
-                                </td>
-                                <td style={{ padding: "10px 14px", color: "#9ca3af" }}>
-                                  {sm.slug ? (
-                                    <a href={`https://xdrive.my/s/${sm.slug}`} target="_blank" rel="noreferrer" style={{ color: "#fbbf24", textDecoration: "none" }}>
-                                      /s/{sm.slug} ↗
-                                    </a>
-                                  ) : "—"}
-                                </td>
-                                <td style={{ padding: "10px 14px" }}>
-                                  <select className="adm-select" value={sm.subscription_status || "trial"}
-                                    onChange={async e => {
-                                      const val = e.target.value;
-                                      const { error } = await supabase.from("profiles").update({ subscription_status: val }).eq("id", sm.id);
-                                      if (!error) { setSalesmen(prev => prev.map(s => s.id === sm.id ? { ...s, subscription_status: val } : s)); flashSaved(sm.id); }
-                                    }}>
-                                    <option value="trial">trial</option>
-                                    <option value="active">active</option>
-                                    <option value="expired">expired</option>
-                                  </select>
-                                </td>
-                                <td style={{ padding: "10px 14px", color: "#6b7280", whiteSpace: "nowrap" }}>{fmtDate(sm.created_at)}</td>
-                                <td style={{ padding: "10px 14px" }}>
-                                  {(() => { const st = accountStatus(sm); return (
-                                    <span style={{ fontSize: 11, fontWeight: 600, color: st.color }}>{st.text}</span>
-                                  ); })()}
-                                  {sm.plan === 'salesman_full' && (
-                                    <span style={{ display: "block", marginTop: 4, fontSize: 10, fontWeight: 700, color: sm.payment_status === 'pending' ? "#fbbf24" : "#c084fc" }}>
-                                      {sm.payment_status === 'pending' ? "◷ Premium · Pending payment" : "★ Premium"}
-                                    </span>
-                                  )}
-                                  {saved[sm.id] && <span style={{ fontSize: 10, color: "#4ade80", marginLeft: 6 }}>✓</span>}
-                                </td>
-                                <td style={{ padding: "10px 14px" }}>
-                                  <div style={{ display: "flex", gap: 5 }}>
-                                    {sm.plan === 'salesman_full' && sm.payment_status !== 'received' && (
-                                      sm.payment_status === 'pending' ||
-                                      (sm.subscription_status === 'trial' && sm.trial_ends_at && new Date(sm.trial_ends_at) < new Date())
-                                    ) && (
-                                      <button className="adm-btn"
-                                        onClick={async () => {
-                                          // One click = fully activated: clear whichever gate they're
-                                          // behind (upfront QR or expired first-month-free trial) AND
-                                          // flip the subscription, so they're never paid-but-expired.
-                                          const { error } = await supabase.from("profiles").update({ payment_status: "received", subscription_status: "active" }).eq("id", sm.id);
-                                          if (!error) { setSalesmen(prev => prev.map(s => s.id === sm.id ? { ...s, payment_status: "received", subscription_status: "active" } : s)); flashSaved(sm.id); }
-                                        }}
-                                        style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ade80", fontWeight: 700 }}>
-                                        Mark Paid
-                                      </button>
-                                    )}
-                                    <button className="adm-btn" onClick={() => toggleSalesmanSuspend(sm)}
-                                      style={{ background: sm.is_active === false ? "rgba(74,222,128,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${sm.is_active === false ? "rgba(74,222,128,0.2)" : "rgba(239,68,68,0.2)"}`, color: sm.is_active === false ? "#4ade80" : "#f87171" }}>
-                                      {sm.is_active === false ? "Unsuspend" : "Suspend"}
-                                    </button>
-                                    <button className="adm-btn" onClick={() => setConfirmDelete(sm)}
-                                      style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171" }}>
-                                      Delete
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* ── Group 2: Under Dealer (salesman_full) ── */}
-              {(() => {
-                const full = filteredSalesmen.filter(s => s.plan === 'salesman_full' && s.dealer_id);
-                if (full.length === 0) return null;
-                return (
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: "#60a5fa", textTransform: "uppercase", letterSpacing: "0.08em" }}>Under Dealer (SalesmanPanel)</span>
-                      <span style={{ fontSize: 11, color: "#4b5563", background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.2)", borderRadius: 20, padding: "1px 8px" }}>{full.length}</span>
-                      <span style={{ fontSize: 10, color: "#374151", marginLeft: 4 }}>Created by or merged into a dealer</span>
-                    </div>
-                    <div style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
-                      <div style={{ overflowX: "auto" }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                          <thead>
-                            <tr style={{ background: "rgba(255,255,255,0.025)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                              {["Account", "Dealer ID", "Joined", "Status", "Actions"].map(h => (
-                                <th key={h} style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6b7280", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {full.map(sm => (
-                              <tr key={sm.id} className="adm-row" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", opacity: sm.is_active === false ? 0.45 : 1 }}>
-                                <td style={{ padding: "10px 14px" }}>
-                                  <div style={{ fontWeight: 600, color: "#f0f0f0", marginBottom: 2 }}>{sm.full_name || "—"}</div>
-                                  <div style={{ fontSize: 11, color: "#6b7280" }}>{sm.email}</div>
-                                </td>
-                                <td style={{ padding: "10px 14px", color: "#6b7280", fontSize: 11, fontFamily: "monospace" }}>{sm.dealer_id?.slice(0, 12)}…</td>
-                                <td style={{ padding: "10px 14px", color: "#6b7280", whiteSpace: "nowrap" }}>{fmtDate(sm.created_at)}</td>
-                                <td style={{ padding: "10px 14px" }}>
-                                  {(() => { const st = accountStatus(sm); return (
-                                    <span style={{ fontSize: 11, fontWeight: 600, color: st.color }}>{st.text}</span>
-                                  ); })()}
-                                </td>
-                                <td style={{ padding: "10px 14px" }}>
-                                  <div style={{ display: "flex", gap: 5 }}>
-                                    <button className="adm-btn" onClick={() => toggleSalesmanSuspend(sm)}
-                                      style={{ background: sm.is_active === false ? "rgba(74,222,128,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${sm.is_active === false ? "rgba(74,222,128,0.2)" : "rgba(239,68,68,0.2)"}`, color: sm.is_active === false ? "#4ade80" : "#f87171" }}>
-                                      {sm.is_active === false ? "Unsuspend" : "Suspend"}
-                                    </button>
-                                    <button className="adm-btn" onClick={() => setConfirmDelete(sm)}
-                                      style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171" }}>
-                                      Delete
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </>
 
           ) : activeTab === "marketplace" ? (
             /* ── MARKETPLACE TAB ── */
@@ -1853,197 +1863,9 @@ export default function AdminPage() {
 
           ) : activeTab === "billing" ? (
             /* ── BILLING TAB ── */
-            <BillingTab dealers={dealers} dealerStats={dealerStats} />
-          ) : (
-            /* ── DEALERS TAB ── */
-            <>
-              <div className="adm-stat4" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
-                <StatCard label="Total" value={stats.total} />
-                <StatCard label="Active" value={stats.active} color="#4ade80" sub={`RM ${stats.mrr.toLocaleString()} MRR`} />
-                <StatCard label="Trial" value={stats.trial} color="#facc15" />
-                <StatCard label="Expired" value={stats.expired} color="#f87171" />
-              </div>
-
-              <div className="adm-toolbar" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-                <input value={search} onChange={e => setSearch(e.target.value)}
-                  placeholder="Search dealer, email, subdomain…" className="adm-input adm-search" style={{ width: 260 }} />
-                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="adm-select">
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="trial">Trial</option>
-                  <option value="expired">Expired</option>
-                </select>
-                <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="adm-select">
-                  <option value="created_at">Newest First</option>
-                  <option value="listings">Most Listings</option>
-                  <option value="name">Name A–Z</option>
-                </select>
-                <span style={{ fontSize: 12, color: "#4b5563", marginLeft: "auto" }}>{filtered.length} dealers</span>
-              </div>
-
-              <div style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                    <thead>
-                      <tr style={{ background: "rgba(255,255,255,0.025)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                        {["Dealer", "Subdomain", "Status", "Trial Ends", "Listings", "Enquiries", "Team", "Joined", "Actions", ""].map(h => (
-                          <th key={h} style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6b7280", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filtered.length === 0 ? (
-                        <tr><td colSpan={10} style={{ textAlign: "center", padding: 40, color: "#4b5563" }}>No dealers found.</td></tr>
-                      ) : filtered.map(d => {
-                        const ds = dealerStats[d.id] || {};
-                        const daysLeft = trialDaysLeft(d.trial_ends_at);
-                        const isExpanded = expandedDealer === d.id;
-
-                        return (
-                          <React.Fragment key={d.id}>
-                            <tr className="adm-row"
-                              style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", opacity: d.is_active === false ? 0.45 : 1 }}>
-                              {/* Dealer */}
-                              <td style={{ padding: "10px 14px" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", marginBottom: 2 }}>
-                                  <span style={{ fontWeight: 600, color: "#f0f0f0" }}>{d.dealership || d.full_name || "—"}</span>
-                                  {d.is_verified && (
-                                    <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 99, background: "rgba(37,99,235,0.14)", border: "1px solid rgba(37,99,235,0.35)", color: "#60a5fa", fontWeight: 700, letterSpacing: "0.06em", whiteSpace: "nowrap" }}>✓ VERIFIED</span>
-                                  )}
-                                  {d.payment_status === "pending" && (
-                                    <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 99, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", color: "#fbbf24", fontWeight: 700, letterSpacing: "0.06em", whiteSpace: "nowrap" }}>PAYMENT PENDING</span>
-                                  )}
-                                </div>
-                                <div style={{ fontSize: 11, color: "#6b7280" }}>{d.email}</div>
-                                {d.city && <div style={{ fontSize: 10, color: "#4b5563" }}>{d.city}{d.state ? ", " + d.state : ""}</div>}
-                              </td>
-                              {/* Subdomain */}
-                              <td style={{ padding: "10px 14px" }}>
-                                <input className="adm-input" value={d.subdomain || ""}
-                                  onChange={e => updateLocal(d.id, "subdomain", e.target.value)}
-                                  onBlur={e => saveField(d.id, "subdomain", e.target.value || null)}
-                                  placeholder="none" style={{ width: 110 }} />
-                              </td>
-                              {/* Status */}
-                              <td style={{ padding: "10px 14px" }}>
-                                <select className="adm-select" value={d.subscription_status || ""}
-                                  onChange={e => { updateLocal(d.id, "subscription_status", e.target.value); saveField(d.id, "subscription_status", e.target.value); }}>
-                                  <option value="trial">trial</option>
-                                  <option value="active">active</option>
-                                  <option value="expired">expired</option>
-                                </select>
-                              </td>
-                              {/* Trial ends */}
-                              <td style={{ padding: "10px 14px" }}>
-                                <input type="date" className="adm-input" value={toDateInputVal(d.trial_ends_at)}
-                                  onChange={e => { updateLocal(d.id, "trial_ends_at", e.target.value); saveField(d.id, "trial_ends_at", e.target.value || null); }}
-                                  style={{ width: 130 }} />
-                                {d.subscription_status === "trial" && daysLeft !== null && (
-                                  <div style={{ fontSize: 10, marginTop: 3, color: daysLeft <= 3 ? "#f87171" : daysLeft <= 7 ? "#facc15" : "#6b7280" }}>
-                                    {daysLeft > 0 ? `${daysLeft}d left` : "Expired"}
-                                  </div>
-                                )}
-                              </td>
-                              {/* Listings */}
-                              <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                                <div style={{ fontWeight: 600, color: "#e5e7eb" }}>{ds.listings || 0}</div>
-                                <div style={{ fontSize: 10, color: "#6b7280" }}>{ds.available || 0} live · {ds.sold || 0} sold</div>
-                              </td>
-                              <td style={{ padding: "10px 14px", textAlign: "center", color: "#e5e7eb", fontWeight: 600 }}>{ds.enquiries || 0}</td>
-                              <td style={{ padding: "10px 14px", textAlign: "center", color: "#9ca3af" }}>{ds.team || 0}</td>
-                              <td style={{ padding: "10px 14px", color: "#6b7280", whiteSpace: "nowrap" }}>{fmtDate(d.created_at)}</td>
-                              {/* Actions */}
-                              <td style={{ padding: "10px 14px" }}>
-                                <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                                  <button className="adm-btn" onClick={() => extendTrial(d.id, 14)}
-                                    style={{ background: "rgba(250,204,21,0.08)", border: "1px solid rgba(250,204,21,0.2)", color: "#facc15" }}>+14d</button>
-                                  <button className="adm-btn" onClick={() => extendTrial(d.id, 30)}
-                                    style={{ background: "rgba(250,204,21,0.08)", border: "1px solid rgba(250,204,21,0.2)", color: "#facc15" }}>+30d</button>
-                                  <button className="adm-btn" onClick={() => toggleSuspend(d)}
-                                    style={{ background: d.is_active === false ? "rgba(74,222,128,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${d.is_active === false ? "rgba(74,222,128,0.2)" : "rgba(239,68,68,0.2)"}`, color: d.is_active === false ? "#4ade80" : "#f87171" }}>
-                                    {d.is_active === false ? "Unsuspend" : "Suspend"}
-                                  </button>
-                                </div>
-                              </td>
-                              {/* Expand */}
-                              <td style={{ padding: "10px 10px" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                  {saved[d.id] && <span style={{ fontSize: 10, color: "#4ade80", fontWeight: 700 }}>✓</span>}
-                                  <button onClick={() => setExpandedDealer(isExpanded ? null : d.id)}
-                                    style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", fontSize: 14, padding: "2px 6px" }}>
-                                    {isExpanded ? "▲" : "▼"}
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                            {/* Expanded row */}
-                            {isExpanded && (
-                              <tr className="adm-expand">
-                                <td colSpan={10} style={{ padding: "16px 24px" }}>
-                                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
-                                    <div>
-                                      <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Contact</p>
-                                      <p style={{ fontSize: 12, color: "#e5e7eb", marginBottom: 4 }}>{d.full_name || "—"}</p>
-                                      <p style={{ fontSize: 12, color: "#9ca3af", marginBottom: 4 }}>{d.email}</p>
-                                      {d.whatsapp_number && <p style={{ fontSize: 12, color: "#9ca3af" }}>📱 {d.whatsapp_number}</p>}
-                                    </div>
-                                    <div>
-                                      <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Business</p>
-                                      <p style={{ fontSize: 12, color: "#e5e7eb", marginBottom: 4 }}>{d.business_type || "—"}</p>
-                                      <p style={{ fontSize: 12, color: "#9ca3af", marginBottom: 4 }}>{d.city}{d.state ? ", " + d.state : ""}</p>
-                                      <p style={{ fontSize: 12, color: "#9ca3af", marginBottom: 4 }}>SSM: <span style={{ color: d.ssm_number ? "#e5e7eb" : "#6b7280" }}>{d.ssm_number || "not provided"}</span></p>
-                                      <p style={{ fontSize: 12, color: "#9ca3af" }}>IC: <span style={{ color: (d.ic_last4 || d.ic_number) ? "#e5e7eb" : "#6b7280" }}>{d.ic_last4 ? `•••••• •• ${d.ic_last4} (verified)` : d.ic_number || "not provided"}</span></p>
-                                    </div>
-                                    <div>
-                                      <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Performance</p>
-                                      <p style={{ fontSize: 12, color: "#e5e7eb", marginBottom: 4 }}>{ds.listings || 0} total listings</p>
-                                      <p style={{ fontSize: 12, color: "#9ca3af", marginBottom: 4 }}>{ds.sold || 0} sold · {ds.available || 0} live</p>
-                                      <p style={{ fontSize: 12, color: "#9ca3af" }}>{ds.enquiries || 0} enquiries · {ds.team || 0} team members</p>
-                                    </div>
-                                    <div>
-                                      <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Quick Actions</p>
-                                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                        {d.subdomain && (
-                                          <a href={`https://${d.subdomain}.xdrive.my`} target="_blank" rel="noreferrer"
-                                            style={{ fontSize: 12, color: "#dc2626", textDecoration: "none" }}>↗ View Storefront</a>
-                                        )}
-                                        <button onClick={() => { saveField(d.id, "subscription_status", "active"); updateLocal(d.id, "subscription_status", "active"); }}
-                                          style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", color: "#4ade80", padding: "5px 10px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontFamily: "inherit", fontWeight: 600, textAlign: "left" }}>
-                                          ✓ Mark as Active (Paid)
-                                        </button>
-                                        <button onClick={() => toggleVerified(d)}
-                                          style={{ background: d.is_verified ? "rgba(148,163,184,0.08)" : "rgba(37,99,235,0.1)", border: `1px solid ${d.is_verified ? "rgba(148,163,184,0.25)" : "rgba(37,99,235,0.3)"}`, color: d.is_verified ? "#94a3b8" : "#60a5fa", padding: "5px 10px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontFamily: "inherit", fontWeight: 600, textAlign: "left" }}>
-                                          {d.is_verified ? "Remove verified badge" : "✓ Verify dealer (SSM + IC checked)"}
-                                        </button>
-                                        {d.payment_status === "pending" && (
-                                          <button onClick={async () => {
-                                            // One click = fully activated: clear the payment gate AND
-                                            // flip the subscription, so the dealer isn't paid-but-expired.
-                                            const { error } = await supabase.from("profiles").update({ payment_status: "received", subscription_status: "active" }).eq("id", d.id);
-                                            if (!error) { flashSaved(d.id); setDealers(prev => prev.map(x => x.id === d.id ? { ...x, payment_status: "received", subscription_status: "active" } : x)); }
-                                          }}
-                                            style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.25)", color: "#fbbf24", padding: "5px 10px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontFamily: "inherit", fontWeight: 600, textAlign: "left" }}>
-                                            ✓ Mark Payment Received
-                                          </button>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
-                          </React.Fragment>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </>
-          )}
+            <BillingTab dealers={dealers} dealerStats={accountStats} />
+          ) : null}
         </div>
-            </>
-            )}
           </div>
         </div>
       </div>

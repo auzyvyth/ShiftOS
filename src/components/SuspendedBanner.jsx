@@ -3,16 +3,23 @@ import { supabase } from "../supabaseClient";
 
 export default function SuspendedBanner() {
   const [suspended, setSuspended] = useState(false);
+  // Why. The wall used to say only "contact support", so a seller had no idea
+  // what to fix and support got the question instead (A5). The admin console
+  // now records a reason written as something they can act on.
+  const [reason, setReason] = useState(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
       const { data } = await supabase
         .from("profiles")
-        .select("is_active")
+        .select("is_active, suspension_reason")
         .eq("id", user.id)
         .maybeSingle();
-      if (data?.is_active === false) setSuspended(true);
+      if (data?.is_active === false) {
+        setSuspended(true);
+        setReason(data.suspension_reason || null);
+      }
     });
   }, []);
 
@@ -64,9 +71,28 @@ export default function SuspendedBanner() {
             marginBottom: 28,
           }}
         >
-          Your account has been suspended. Please contact XDrive support to
-          resolve this.
+          {reason
+            ? "Your account has been suspended for the reason below. Sort it out and contact us to have it lifted."
+            : "Your account has been suspended. Please contact XDrive support to resolve this."}
         </p>
+        {reason && (
+          <p
+            style={{
+              fontFamily: "system-ui, sans-serif",
+              fontSize: 13.5,
+              color: "#fca5a5",
+              background: "rgba(220,38,38,0.08)",
+              border: "1px solid rgba(220,38,38,0.28)",
+              borderRadius: 10,
+              padding: "12px 14px",
+              lineHeight: 1.55,
+              marginBottom: 24,
+              textAlign: "left",
+            }}
+          >
+            {reason}
+          </p>
+        )}
         <a
           href="https://wa.me/601111521742"
           target="_blank"
