@@ -27,6 +27,7 @@ import ShareMenu from "../components/ShareMenu";
 import ReportBugButton from "../components/ReportBugButton";
 import PushToggle from "../components/PushToggle";
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
+import AccountReviewBanner from "../components/AccountReviewBanner";
 import SellerInbox from "../components/chat/SellerInbox";
 import { useChatThreads } from "../hooks/useChat";
 import {
@@ -9242,6 +9243,13 @@ export default function SalesmanLite() {
             paddingBottom: isMobile ? 80 : 24,
           }}
         >
+          {/* Account review status. Deliberately a banner on every tab, not a
+              blocking gate: a seller under review can and should keep building
+              their listings, so the work is ready the moment they're approved.
+              A rejection always carries the reason — being told "no" with no
+              way to fix it is what turns a seller into a support ticket. */}
+          <AccountReviewBanner profile={profile} />
+
           {activeTab === "dashboard" && renderDashboard()}
           {activeTab === "listings" && renderListings()}
           {activeTab === "leads" && (gatedLocked ? renderLockedPanel("leads") : renderLeads())}
