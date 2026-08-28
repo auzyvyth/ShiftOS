@@ -50,7 +50,7 @@ Everything below follows from this.
   actually runs — you do not sit down to "do XDrive", you sit down to clear
   approvals.
 
-- [ ] **P2 — The same numbers are rendered on three different tabs.**
+- [x] **P2 — The same numbers are rendered on three different tabs.**
   Total / Active / Trial / Expired / MRR appear on Dealers (`:1861`),
   Platform Stats (`:1467`) and Billing (`BillingTab`, `:71`, as plan chips with
   per-plan MRR). Three surfaces, one truth, no indication which is canonical.
