@@ -60,11 +60,31 @@ export default function UserApprovalsTab() {
   const [rejectFor, setRejectFor] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
 
+  // Two queues, one list. A row is either a SIGNUP (account can't reach its
+  // dashboard until approved) or a KYC submission from an already-approved
+  // seller who wants the Verified badge. They share every field the card
+  // renders, so they share the card — only the decision RPC differs.
   const load = useCallback(async () => {
     setLoading(true); setErr(null);
-    const { data, error } = await supabase.rpc("get_pending_approvals");
-    if (error) { setErr(error.message); setLoading(false); return; }
-    setRows(data || []);
+    const [signup, kyc] = await Promise.all([
+      supabase.rpc("get_pending_approvals"),
+      supabase.rpc("get_pending_kyc"),
+    ]);
+    if (signup.error) { setErr(signup.error.message); setLoading(false); return; }
+    if (kyc.error) { setErr(kyc.error.message); setLoading(false); return; }
+
+    const signupRows = (signup.data || []).map((r) => ({ ...r, _kind: "signup" }));
+    const seen = new Set(signupRows.map((r) => r.id));
+    // A pending signup already shows that user's documents, so don't list them twice.
+    const kycRows = (kyc.data || [])
+      .filter((r) => !seen.has(r.id))
+      .map((r) => ({
+        ...r,
+        _kind: "kyc",
+        kyc_submitted_at: r.submitted_at,
+        has_docs: !!(r.front_path || r.back_path || r.selfie_path),
+      }));
+    setRows([...signupRows, ...kycRows]);
     setLoading(false);
   }, []);
 
@@ -100,9 +120,12 @@ export default function UserApprovalsTab() {
       const { error: rmErr } = await supabase.storage.from("kyc-docs").remove(paths);
       if (rmErr) purgeFailed = true;
     }
-    const { error } = await supabase.rpc("decide_user_approval", {
-      p_user_id: userId, p_approve: approve, p_reason: reason || null,
-    });
+    // A KYC row decides identity only (the badge). A signup row decides account
+    // access, and grants the badge too when documents were attached.
+    const { error } = await supabase.rpc(
+      row?._kind === "kyc" ? "decide_kyc_verification" : "decide_user_approval",
+      { p_user_id: userId, p_approve: approve, p_reason: reason || null },
+    );
     setActing(null);
     if (error) { setErr(error.message); return; }
     if (purgeFailed) setErr("Decision saved, but the ID images may not have been fully deleted — check the kyc-docs bucket.");
@@ -115,9 +138,9 @@ export default function UserApprovalsTab() {
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
         <div>
           <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>User Approvals
-            <InfoHint title="What is this?" text="New dealers and solo salesmen can't reach their dashboard until you approve them here. Free accounts show their submitted details; paid accounts also attach IC front/back and a selfie. The photos are shown as private, expiring links and are permanently deleted the instant you approve or reject." />
+            <InfoHint title="What is this?" text="Two queues in one list. Plain rows are new dealers and solo salesmen who can't reach their dashboard until you approve them. Rows tagged ID CHECK are sellers who are already approved and have submitted their MyKad to earn the public Verified badge — approving one only grants the badge, it changes nothing about their access. Photos are shown as private, expiring links and are permanently deleted the instant you approve or reject." />
           </p>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>Self-signup sellers awaiting identity review</p>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>Account approvals and identity (ID) checks</p>
         </div>
         <button onClick={load}
           style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", fontSize: 12, padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit" }}>
@@ -153,6 +176,9 @@ export default function UserApprovalsTab() {
                       <span style={{ fontSize: 13.5, color: "#e5e7eb", fontWeight: 600 }}>{r.full_name || "No name"}</span>
                       <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 99, background: tier === "premium" ? "rgba(192,132,252,0.14)" : "rgba(148,163,184,0.14)", color: tier === "premium" ? "#c084fc" : "#94a3b8", letterSpacing: "0.04em", textTransform: "uppercase" }}>{tier}</span>
                       <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 99, background: "rgba(96,165,250,0.14)", color: "#60a5fa", letterSpacing: "0.04em", textTransform: "uppercase" }}>{r.role}</span>
+                      {r._kind === "kyc" && (
+                        <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 99, background: "rgba(34,197,94,0.14)", color: "#4ade80", letterSpacing: "0.04em", textTransform: "uppercase" }}>ID check</span>
+                      )}
                     </div>
                     <p style={{ margin: 0, fontSize: 11.5, color: "#6b7280", wordBreak: "break-word" }}>
                       {r.email}<span style={{ color: "#475569" }}> · {fmtDate(r.kyc_submitted_at || r.created_at)}</span>
@@ -175,16 +201,19 @@ export default function UserApprovalsTab() {
                       </div>
                       <div>
                         <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 8px" }}>ID documents</p>
-                        {tier === "free" ? (
-                          <p style={{ fontSize: 12, color: "#4b5563" }}>Free account — IC number only, no photos required.</p>
-                        ) : !r.has_docs ? (
-                          <p style={{ fontSize: 12, color: "#facc15" }}>Premium account, no documents submitted yet.</p>
-                        ) : (
+                        {/* Free sellers may now attach ID too (that is how a Lite
+                            seller earns the badge), so photos are keyed off
+                            has_docs rather than tier. */}
+                        {r.has_docs ? (
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                             <DocThumb label="IC front" url={u.front} />
                             <DocThumb label="IC back" url={u.back} />
                             <DocThumb label="Selfie" url={u.selfie} />
                           </div>
+                        ) : tier === "free" ? (
+                          <p style={{ fontSize: 12, color: "#4b5563" }}>Free account — IC number only, no ID photos submitted.</p>
+                        ) : (
+                          <p style={{ fontSize: 12, color: "#facc15" }}>Premium account, no documents submitted yet.</p>
                         )}
                       </div>
                     </div>
