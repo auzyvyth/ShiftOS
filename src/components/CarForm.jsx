@@ -1655,7 +1655,18 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       const { error } = await supabase.storage
         .from("car-images")
         .upload(name, file, { upsert: true, contentType: file.type || "image/jpeg" });
-      if (error) throw error;
+      if (error) {
+        // Tag it as an IMAGE failure. A storage RLS rejection also carries
+        // code 42501, which the publish catch-block otherwise reports as
+        // "your account isn't fully activated" — a misdiagnosis that sent a
+        // whole debugging cycle after the seller's approval status while the
+        // real fault was the upload.
+        const e = new Error(
+          `Photo "${file.name || "image"}" failed to upload: ${error.message || "unknown error"}`,
+        );
+        e.__imageUpload = true;
+        throw e;
+      }
       urls.push(
         supabase.storage.from("car-images").getPublicUrl(name).data.publicUrl,
       );
@@ -1917,7 +1928,11 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       }
     } catch (err) {
       const msg = err?.message || "";
-      if (msg.includes('listing_cap_exceeded') || (err?.code === 'P0001' && msg.includes('listing cap'))) {
+      // Checked FIRST: an image-upload failure must never be reported as an
+      // account/permission problem (see uploadImages).
+      if (err?.__imageUpload) {
+        toast.error(`${msg}. Remove that photo and add it again, then publish.`);
+      } else if (msg.includes('listing_cap_exceeded') || (err?.code === 'P0001' && msg.includes('listing cap'))) {
         setCapError(true);
       } else if (msg.includes('subscription_inactive')) {
         toast.error("Your trial or subscription has ended. Activate your plan to publish new listings.");
