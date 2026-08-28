@@ -163,6 +163,127 @@ Plus, cutting across all of it: **one global search**.
 5. **P1 + P9** — retire the three-console split as the sections above absorb it.
 6. **P11** — move the remaining inline tab bodies into `components/platform/`.
 
+---
+
+# Part 2 — Sellers and dealers management (the Dealers + Salesmen tabs)
+
+Drill-down on P5/P6. Dealers tab: `AdminPage.jsx:1857`. Salesmen tab: `:1497`.
+
+## What each tab can actually do today
+
+| | Dealers | Salesmen |
+|---|---|---|
+| Search | yes (`:1869`) | yes (`:1502`) |
+| Status filter / sort | yes | **no** |
+| Performance columns | listings, enquiries, team | **none** |
+| Detail view | expandable row (`:1980`) | **none** |
+| Inline edit | subdomain, status, trial end | subscription status |
+| Verify badge control | yes (`:2014`) | **no** |
+| Suspend | yes | yes |
+| Delete | **no** | yes — hard delete (`:1590`) |
+
+The two halves of one job were built to different standards, and the gaps are
+not symmetrical in a safe direction: the paying account cannot be deleted, the
+growth account can be destroyed in one click.
+
+## CRITICAL
+
+- [ ] **A1 — "Delete" on a salesman irreversibly destroys their entire history.**
+  `deleteSalesman` (`:563`) runs a raw `DELETE` on `profiles`. That FK cascades
+  through ~50 tables — `car_listings`, `leads`, `lead_activities`, `customers`,
+  `deal_financials`, `deal_products`, `chat_threads`, `whatsapp_enquiries`,
+  `analytics_events`, `reviews`. For a standalone Lite/Premium seller
+  `dealer_id IS NULL`, so they ARE their own dealer and every car they ever
+  listed cascades away with them.
+  It also destroys records that are the PLATFORM's, not theirs: sold-car rows
+  feeding MRR and GP reporting, buyer reviews, and analytics history.
+  The platform already has a designed deletion path this bypasses entirely —
+  `delete-account` + `purge-deleted-accounts` edge functions, soft-delete via
+  `account_status='deleted'` + `deleted_at`, with a 30-day recovery window
+  (CLAUDE.md, and migration 20260815b treats `is_active=false OR
+  account_status='deleted'` as the marketplace cut-off).
+  Fix: the admin action should soft-delete through the same path, not
+  `DELETE FROM profiles`.
+
+- [ ] **A2 — The delete can also fail silently and look like nothing happened.**
+  Four FKs onto `profiles` are `NO ACTION`: `dealer_invites.accepted_by`,
+  `profiles.approved_by`, `profiles.verified_by`, `profiles.plan_granted_by`.
+  If that salesman ever accepted an invite or approved/verified anyone, the
+  delete raises a FK error — and `deleteSalesman` only acts `if (!error)`, with
+  no `else`. The modal stays open, nothing changes, nothing is reported.
+
+## HIGH
+
+- [ ] **A3 — Dealer suspend never checks whether it worked.** `toggleSuspend`
+  (`:551`) fires the update and calls `updateLocal` unconditionally — no error
+  check, unlike `toggleSalesmanSuspend` (`:557`) which does check. If the write
+  is rejected the row greys out and you believe the dealer is suspended while
+  they are still trading.
+
+- [ ] **A4 — You cannot tell an active seller from a dead one.** The salesmen
+  query (`:371`) fetches no counts at all — no listings, no enquiries, no sold.
+  Dealers get `dealerStats`; salesmen get nothing. Lite sellers are the growth
+  engine and the console cannot answer "which of them are actually using this?"
+  Note the data already exists — `listing_count_cache` is read in the Approvals
+  tab (`:1127`), just not here.
+
+- [ ] **A5 — Suspension captures no reason and notifies nobody.** One click,
+  no note, no message. The seller sees `SuspendedBanner` and is told nothing.
+  We just built preset rejection reasons for account review; suspension — which
+  is harsher — has none.
+
+- [ ] **A6 — Salesmen have no verified-badge control** even though e-KYC now
+  gives them a badge on their marketplace cards. `toggleVerified` (`:2014`)
+  exists only for dealers. The only salesman path is the review queue.
+
+## MEDIUM
+
+- [ ] **A7 — "Dealer ID" column shows a truncated raw UUID** (`:1634`,
+  `sm.dealer_id?.slice(0, 12)`). Meaningless to a human and not clickable. It
+  should be the dealership name, linking to that dealer.
+
+- [ ] **A8 — No navigation between the two tabs.** A dealer's `team` count
+  (`:1953`) is inert text. Seeing a dealer's salesmen means switching tabs and
+  eyeballing truncated UUIDs. This is P6 in its most concrete form.
+
+- [ ] **A9 — Billing-state edits auto-save on change with no confirm and no
+  undo.** `subscription_status` (`:1930`) and `trial_ends_at` (`:1939`) write
+  straight through on the change event. A misclick silently moves a dealer
+  between trial/active/expired. There is an activity log but no undo.
+
+- [ ] **A10 — Salesman grouping is a filter expressed as fixed layout.**
+  Standalone vs Under-Dealer are hard-coded sections (`:1507`, `:1607`). They
+  cannot be collapsed, sorted or combined, and a third category has nowhere to
+  go.
+
+## How established consoles handle account management
+
+- **Soft delete, always.** Stripe, Shopify and Intercom archive/cancel; they do
+  not offer an operator a button that erases history. Where true deletion is
+  offered (GDPR erasure) it is a separate, slower, logged flow — never a red
+  button in a row. This is A1.
+- **State changes are transitions, not field edits.** You "Cancel subscription"
+  or "Extend trial", each logged with an actor and reason — you do not type into
+  the billing state. This is A9.
+- **One account record.** Everything about a customer on one page. This is A8.
+- **Lifecycle is visible.** Real consoles show last-seen, last-active, usage —
+  because the actual daily question is "is this account healthy?", which this
+  console cannot currently answer for a salesman. This is A4.
+
+## Suggested order
+
+1. **A1 + A2** — make deletion safe. Highest risk, and one afternoon: route the
+   admin action through the existing soft-delete path and surface the error.
+2. **A3** — one-line error check; a silently-failed suspension is a trust bug.
+3. **A4** — fetch salesman counts. Cheap, and it is the number you actually
+   want when looking at that tab.
+4. **A5 + A6** — reason on suspend, verify control for salesmen.
+5. **A7 + A8** — resolve dealer names, make team and dealer links clickable.
+6. **A9 + A10** — confirm on billing-state change; fold grouping into a filter.
+
+The merged Accounts table (P5) and account record (P6) subsume A7, A8 and A10 —
+so do those two while restructuring, not before.
+
 ### Deliberately NOT recommended
 
 - Do not add tabs to fix findability. The problem is 17 destinations, not 16.
