@@ -181,6 +181,9 @@ export default function AdminPage() {
   const [securityTab, setSecurityTab] = useState("activity");
   const [salesmanSearch, setSalesmanSearch] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
+  // Surfaces a failed account action instead of leaving the console looking
+  // like nothing happened (A2).
+  const [actionError, setActionError] = useState(null);
   const [waitlist, setWaitlist] = useState([]);
   const [waitlistSearch, setWaitlistSearch] = useState("");
   const [pendingListings, setPendingListings] = useState([]);
@@ -549,23 +552,67 @@ export default function AdminPage() {
   }
 
   async function toggleSuspend(dealer) {
+    setActionError(null);
     const newActive = !dealer.is_active;
-    await supabase.from("profiles").update({ is_active: newActive }).eq("id", dealer.id);
+    const { error } = await supabase.from("profiles").update({ is_active: newActive }).eq("id", dealer.id);
+    if (error) {
+      setActionError(`Could not ${newActive ? "unsuspend" : "suspend"} ${dealer.email || "that dealer"}: ${error.message}`);
+      return;
+    }
     updateLocal(dealer.id, "is_active", newActive);
   }
 
   async function toggleSalesmanSuspend(sm) {
+    setActionError(null);
     const newActive = !sm.is_active;
     const { error } = await supabase.from("profiles").update({ is_active: newActive }).eq("id", sm.id);
-    if (!error) setSalesmen(prev => prev.map(s => s.id === sm.id ? { ...s, is_active: newActive } : s));
+    if (error) {
+      setActionError(`Could not ${newActive ? "unsuspend" : "suspend"} ${sm.email || "that seller"}: ${error.message}`);
+      return;
+    }
+    setSalesmen(prev => prev.map(s => s.id === sm.id ? { ...s, is_active: newActive } : s));
   }
 
-  async function deleteSalesman(id) {
-    const { error } = await supabase.from("profiles").delete().eq("id", id);
-    if (!error) {
-      setSalesmen(prev => prev.filter(s => s.id !== id));
-      setConfirmDelete(null);
+  // Deletion is a SOFT delete, never a row delete (A1).
+  //
+  // `DELETE FROM profiles` cascades through ~50 tables. For a standalone Lite or
+  // solo Premium seller `dealer_id IS NULL` -- they ARE their own dealer -- so
+  // every car, lead, customer, deal and chat thread they own goes with them,
+  // including rows the PLATFORM reports on: sold cars feeding MRR/GP, buyer
+  // reviews, analytics history. It can also fail outright: four FKs onto
+  // profiles are NO ACTION (dealer_invites.accepted_by, profiles.approved_by,
+  // profiles.verified_by, profiles.plan_granted_by), so deleting anyone who ever
+  // accepted an invite or approved someone raises a FK error.
+  //
+  // This writes the same three columns the self-service `delete-account` edge
+  // function writes, so both routes land in ONE state: the seller drops off the
+  // marketplace and their mini page immediately (migration 20260815b), and
+  // `purge-deleted-accounts` hard-deletes them after the 30-day grace window.
+  // Do NOT reintroduce a client-side hard delete here -- migration 20260828e
+  // drops the RLS policy that allowed it.
+  async function scheduleSalesmanDeletion(sm) {
+    setActionError(null);
+    const patch = { account_status: "deleted", is_active: false, deleted_at: new Date().toISOString() };
+    const { error } = await supabase.from("profiles").update(patch).eq("id", sm.id);
+    if (error) {
+      setActionError(`Could not delete ${sm.email || "that account"}: ${error.message}`);
+      return;
     }
+    setSalesmen(prev => prev.map(s => s.id === sm.id ? { ...s, ...patch } : s));
+    setConfirmDelete(null);
+  }
+
+  // Undo, available for the whole 30-day window. Mirrors the reactivation a
+  // returning seller gets on login (SalesmanLite.jsx:1964).
+  async function restoreSalesman(sm) {
+    setActionError(null);
+    const patch = { account_status: "active", is_active: true, deleted_at: null };
+    const { error } = await supabase.from("profiles").update(patch).eq("id", sm.id);
+    if (error) {
+      setActionError(`Could not restore ${sm.email || "that account"}: ${error.message}`);
+      return;
+    }
+    setSalesmen(prev => prev.map(s => s.id === sm.id ? { ...s, ...patch } : s));
   }
 
   function fmtDate(str) {
@@ -813,21 +860,45 @@ export default function AdminPage() {
         {confirmDelete && (
           <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
             <div className="modal-box" onClick={e => e.stopPropagation()}>
-              <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>Delete Salesman Account?</p>
-              <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 20 }}>
-                This will permanently delete <strong style={{ color: "#f5f5f5" }}>{confirmDelete.email}</strong> from the platform. This cannot be undone.
+              <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>Delete this account?</p>
+              <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 12 }}>
+                <strong style={{ color: "#f5f5f5" }}>{confirmDelete.email}</strong> comes off the marketplace straight away and their mini page stops loading.
               </p>
+              <ul style={{ fontSize: 12, color: "#9ca3af", margin: "0 0 16px", paddingLeft: 18, lineHeight: 1.7 }}>
+                <li>Nothing is destroyed today. Their cars, leads and sold deals stay in the database.</li>
+                <li>You can restore them from this table for 30 days.</li>
+                <li>After 30 days the account is purged for good, automatically.</li>
+              </ul>
+              {actionError && (
+                <p style={{ fontSize: 12, color: "#f87171", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 8, padding: "8px 10px", marginBottom: 14 }}>
+                  {actionError}
+                </p>
+              )}
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                <button className="adm-btn" onClick={() => setConfirmDelete(null)}
+                <button className="adm-btn" onClick={() => { setActionError(null); setConfirmDelete(null); }}
                   style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af" }}>
                   Cancel
                 </button>
-                <button className="adm-btn" onClick={() => deleteSalesman(confirmDelete.id)}
+                <button className="adm-btn" onClick={() => scheduleSalesmanDeletion(confirmDelete)}
                   style={{ background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.4)", color: "#f87171" }}>
-                  Delete
+                  Delete account
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Failed account action -- never let one look like it worked (A2/A3) */}
+        {actionError && !confirmDelete && (
+          <div style={{
+            display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 14,
+            background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)",
+            borderRadius: 10, padding: "10px 12px",
+          }}>
+            <span style={{ fontSize: 12, color: "#f87171", flex: 1, minWidth: 0 }}>{actionError}</span>
+            <button onClick={() => setActionError(null)}
+              style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0 }}
+              aria-label="Dismiss">×</button>
           </div>
         )}
 
@@ -1583,14 +1654,26 @@ export default function AdminPage() {
                                         Mark Paid
                                       </button>
                                     )}
-                                    <button className="adm-btn" onClick={() => toggleSalesmanSuspend(sm)}
-                                      style={{ background: sm.is_active === false ? "rgba(74,222,128,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${sm.is_active === false ? "rgba(74,222,128,0.2)" : "rgba(239,68,68,0.2)"}`, color: sm.is_active === false ? "#4ade80" : "#f87171" }}>
-                                      {sm.is_active === false ? "Unsuspend" : "Suspend"}
-                                    </button>
-                                    <button className="adm-btn" onClick={() => setConfirmDelete(sm)}
-                                      style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171" }}>
-                                      Delete
-                                    </button>
+                                    {sm.account_status === "deleted" ? (
+                                      /* Deleted rows also carry is_active=false, so Suspend would be
+                                         meaningless here -- and unsuspending would leave the account
+                                         active-but-deleted. Restore is the only sensible action. */
+                                      <button className="adm-btn" onClick={() => restoreSalesman(sm)}
+                                        style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", color: "#4ade80" }}>
+                                        Restore
+                                      </button>
+                                    ) : (
+                                      <>
+                                        <button className="adm-btn" onClick={() => toggleSalesmanSuspend(sm)}
+                                          style={{ background: sm.is_active === false ? "rgba(74,222,128,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${sm.is_active === false ? "rgba(74,222,128,0.2)" : "rgba(239,68,68,0.2)"}`, color: sm.is_active === false ? "#4ade80" : "#f87171" }}>
+                                          {sm.is_active === false ? "Unsuspend" : "Suspend"}
+                                        </button>
+                                        <button className="adm-btn" onClick={() => { setActionError(null); setConfirmDelete(sm); }}
+                                          style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171" }}>
+                                          Delete
+                                        </button>
+                                      </>
+                                    )}
                                   </div>
                                 </td>
                               </tr>
@@ -1640,14 +1723,26 @@ export default function AdminPage() {
                                 </td>
                                 <td style={{ padding: "10px 14px" }}>
                                   <div style={{ display: "flex", gap: 5 }}>
-                                    <button className="adm-btn" onClick={() => toggleSalesmanSuspend(sm)}
-                                      style={{ background: sm.is_active === false ? "rgba(74,222,128,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${sm.is_active === false ? "rgba(74,222,128,0.2)" : "rgba(239,68,68,0.2)"}`, color: sm.is_active === false ? "#4ade80" : "#f87171" }}>
-                                      {sm.is_active === false ? "Unsuspend" : "Suspend"}
-                                    </button>
-                                    <button className="adm-btn" onClick={() => setConfirmDelete(sm)}
-                                      style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171" }}>
-                                      Delete
-                                    </button>
+                                    {sm.account_status === "deleted" ? (
+                                      /* Deleted rows also carry is_active=false, so Suspend would be
+                                         meaningless here -- and unsuspending would leave the account
+                                         active-but-deleted. Restore is the only sensible action. */
+                                      <button className="adm-btn" onClick={() => restoreSalesman(sm)}
+                                        style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", color: "#4ade80" }}>
+                                        Restore
+                                      </button>
+                                    ) : (
+                                      <>
+                                        <button className="adm-btn" onClick={() => toggleSalesmanSuspend(sm)}
+                                          style={{ background: sm.is_active === false ? "rgba(74,222,128,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${sm.is_active === false ? "rgba(74,222,128,0.2)" : "rgba(239,68,68,0.2)"}`, color: sm.is_active === false ? "#4ade80" : "#f87171" }}>
+                                          {sm.is_active === false ? "Unsuspend" : "Suspend"}
+                                        </button>
+                                        <button className="adm-btn" onClick={() => { setActionError(null); setConfirmDelete(sm); }}
+                                          style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171" }}>
+                                          Delete
+                                        </button>
+                                      </>
+                                    )}
                                   </div>
                                 </td>
                               </tr>

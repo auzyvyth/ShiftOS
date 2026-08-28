@@ -188,7 +188,7 @@ growth account can be destroyed in one click.
 
 ## CRITICAL
 
-- [ ] **A1 — "Delete" on a salesman irreversibly destroys their entire history.**
+- [x] **A1 — "Delete" on a salesman irreversibly destroys their entire history.**
   `deleteSalesman` (`:563`) runs a raw `DELETE` on `profiles`. That FK cascades
   through ~50 tables — `car_listings`, `leads`, `lead_activities`, `customers`,
   `deal_financials`, `deal_products`, `chat_threads`, `whatsapp_enquiries`,
@@ -205,7 +205,7 @@ growth account can be destroyed in one click.
   Fix: the admin action should soft-delete through the same path, not
   `DELETE FROM profiles`.
 
-- [ ] **A2 — The delete can also fail silently and look like nothing happened.**
+- [x] **A2 — The delete can also fail silently and look like nothing happened.**
   Four FKs onto `profiles` are `NO ACTION`: `dealer_invites.accepted_by`,
   `profiles.approved_by`, `profiles.verified_by`, `profiles.plan_granted_by`.
   If that salesman ever accepted an invite or approved/verified anyone, the
@@ -214,7 +214,7 @@ growth account can be destroyed in one click.
 
 ## HIGH
 
-- [ ] **A3 — Dealer suspend never checks whether it worked.** `toggleSuspend`
+- [x] **A3 — Dealer suspend never checks whether it worked.** `toggleSuspend`
   (`:551`) fires the update and calls `updateLocal` unconditionally — no error
   check, unlike `toggleSalesmanSuspend` (`:557`) which does check. If the write
   is rejected the row greys out and you believe the dealer is suspended while
