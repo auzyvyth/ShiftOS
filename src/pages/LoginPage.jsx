@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { ArrowLeft } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { handoffSuffix } from "../lib/authHandoff";
 import { markBuyerIntent } from "../lib/buyerAuth";
@@ -689,6 +690,9 @@ export default function LoginPage() {
         /* Left footer */
         .lr-left-footer { font-size: 11px; color: rgba(255,255,255,0.15); position: relative; z-index: 1; }
 
+        .lr-back { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: rgba(255,255,255,0.35); text-decoration: none; margin-bottom: 22px; width: max-content; }
+        .lr-back:hover { color: rgba(255,255,255,0.6); }
+
         /* Form area */
         .lr-form-head { margin-bottom: 32px; }
         .lr-form-eyebrow { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: rgba(220,38,38,0.8); font-weight: 600; margin-bottom: 8px; }
@@ -814,6 +818,8 @@ export default function LoginPage() {
 
         {/* Right — form panel */}
         <div className={`lr-right${mounted ? ' in' : ''}`}>
+          <Link to="/" className="lr-back"><ArrowLeft size={14} /> Back to marketplace</Link>
+
           <div className="lr-form-head">
             <p className="lr-form-eyebrow">Welcome Back</p>
             <h2 className="lr-form-title">SIGN IN</h2>
