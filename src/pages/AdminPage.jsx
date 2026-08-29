@@ -317,7 +317,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (!meId) return;
     let timer = null;
-    const bump = () => { clearTimeout(timer); timer = setTimeout(() => loadAll(), 400); };
+    const bump = () => { clearTimeout(timer); timer = setTimeout(() => loadAll(true), 400); };
     const channel = supabase
       .channel("platform-approval-queues")
       .on(
@@ -333,7 +333,7 @@ export default function AdminPage() {
     // publishing it would put every subscriber's RLS in the path of every
     // profile update. A slow poll is the cheaper trade here; push covers the
     // case where this console is closed.
-    const poll = setInterval(() => loadAll(), 60000);
+    const poll = setInterval(() => loadAll(true), 60000);
 
     return () => {
       clearTimeout(timer);
@@ -433,8 +433,12 @@ export default function AdminPage() {
     setAuthState("login");
   }
 
-  async function loadAll() {
-    setLoading(true);
+  async function loadAll(silent = false) {
+    // silent=true is for the 60s profiles-table backstop poll and the realtime
+    // bump (see the effect above) — those refetch everything in the background
+    // and must NOT blank the whole console to a "Loading…" placeholder every
+    // time, which is what made the console look like it reloads every minute.
+    if (!silent) setLoading(true);
 
     // Load dealers
     // ONE query for every account (P5). Dealers and salesmen are the same
@@ -484,7 +488,7 @@ export default function AdminPage() {
       (activity || []).forEach(r => { byAccount[r.id] = r; });
       setAccountStats(byAccount);
     }
-    setLoading(false);
+    if (!silent) setLoading(false);
 
     // Load waitlist
     const { data: wl } = await supabase
@@ -1418,7 +1422,14 @@ export default function AdminPage() {
                                     supabase.rpc("decide_user_approval", { p_user_id: listing.dealer_id, p_approve: true }),
                                   ]);
                                   if (listingErr || sellerErr) { alert("Error: " + (listingErr?.message || sellerErr?.message)); }
-                                  else { setPendingListings(p => p.filter(l => l.id !== listing.id)); }
+                                  else {
+                                    setPendingListings(p => p.filter(l => l.id !== listing.id));
+                                    // decide_user_approval only touches profiles — the embedded
+                                    // UserApprovalsTab (Sellers/ID-checks queue) and the Home tab's
+                                    // queue badges have their own state and never learn the seller
+                                    // was just approved unless told to refetch.
+                                    setReviewRefreshKey(k => k + 1);
+                                  }
                                   setApprovalActioning(null);
                                 }}
                                 style={{ fontSize: 12, fontWeight: 700, padding: "7px 16px", borderRadius: 8, background: isActioning ? "rgba(96,165,250,0.06)" : "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd", cursor: isActioning ? "not-allowed" : "pointer", opacity: isActioning ? 0.6 : 1 }}
