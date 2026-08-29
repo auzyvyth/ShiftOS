@@ -396,6 +396,19 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
   existing subscription dies silently — no error the user ever sees, they just stop
   getting notifications and cannot be migrated. If a key must change, every user has to
   re-subscribe from scratch. There is also no such thing as running two keys side by side.
+- **BUYERS get push too, and the ask lives in the conversation** —
+  `src/components/chat/BuyerPushPrompt.jsx`, rendered by `ChatThread` for
+  `role='buyer'` after the buyer has sent their FIRST message (so it covers both
+  BuyerChat on the car page and BuyerInbox on /account/messages, one
+  implementation). A seller's reply already pushed the buyer
+  (`chat_after_message` -> `push_to_users`), but `PushToggle` was on every seller
+  panel and no buyer surface, so no buyer had a subscription and chat was a
+  channel the seller could answer on and the buyer never heard back through — a
+  guest who closed the tab never learned there was a reply. Do NOT reuse
+  `PushToggle` here (settings card, wrong shape) and do NOT prompt on chat open:
+  both sides share `usePushNotifications`, which owns every browser trap, and a
+  permission prompt before the buyer has typed anything gets reflexively blocked
+  — a denied permission is a dead end no later prompt can recover.
 - iOS only allows web push for a PWA installed to the home screen (16.4+). PWA-1 shipped
   the install prompt, so that prerequisite is met — `src/components/InstallPrompt.jsx`.
 - The local `Notification.permission` code in Salesman Lite
