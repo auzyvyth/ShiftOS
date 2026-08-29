@@ -62,8 +62,7 @@ import { trackEvent, getSlugFromURL } from "../utils/analytics";
 import { useMarketplaceTracking } from "../hooks/useMarketplaceTracking";
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { estimateRoadTax } from "../utils/roadTax";
-import ReviewsSection from "../components/reviews/ReviewsSection";
-import CommentsSection from "../components/comments/CommentsSection";
+import SellerFeedback from "../components/feedback/SellerFeedback";
 import BuyerChat from "../components/chat/BuyerChat";
 import { cdnImg, cdnSrcSet } from "../utils/img";
 import { toast } from "sonner";
@@ -1717,7 +1716,7 @@ export default function CarDetailPage() {
   // `dealer` alone was reading nothing and falling back to defaults.
   const seller = dealer || salesmanProfile || null;
 
-  // Review tally, lifted out of ReviewsSection so it can sit beside the seller's
+  // Review tally, lifted out of SellerFeedback so it can sit beside the seller's
   // name. Below REVIEW_FLOOR the average is withheld: an average of one review is
   // a single stranger's opinion wearing the clothes of a statistic.
   const REVIEW_FLOOR = 3;
@@ -2966,11 +2965,8 @@ export default function CarDetailPage() {
           {/* About this dealer (mobile) */}
           <DealerIdentity dealer={dealer} dealerName={dealerName} th={th} isXdrive={isXdrive} anchorId="dealer-identity-m" />
 
-          {/* Reviews (mobile) */}
-          <ReviewsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} isXdrive={isXdrive} anchorId="reviews-m" onSummary={handleReviewSummary} />
-
-          {/* Q&A (mobile) */}
-          <CommentsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} />
+          {/* Reviews + Q&A, one section (mobile) */}
+          <SellerFeedback dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} anchorId="reviews-m" onSummary={handleReviewSummary} />
 
         </div>
 
@@ -3855,11 +3851,8 @@ export default function CarDetailPage() {
             {/* ── ABOUT THIS DEALER (desktop) ── */}
             <DealerIdentity dealer={dealer} dealerName={dealerName} th={th} isXdrive={isXdrive} anchorId="dealer-identity-d" />
 
-            {/* ── REVIEWS (desktop) ── */}
-            <ReviewsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} isXdrive={isXdrive} anchorId="reviews-d" onSummary={handleReviewSummary} />
-
-            {/* ── Q&A (desktop) ── */}
-            <CommentsSection dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} />
+            {/* ── REVIEWS + Q&A, one section (desktop) ── */}
+            <SellerFeedback dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} anchorId="reviews-d" onSummary={handleReviewSummary} />
 
             {/* BOOKING ANCHOR */}
             <div ref={bookingRef} id="booking-form" style={{ marginTop: 56 }} />
