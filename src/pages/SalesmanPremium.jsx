@@ -92,6 +92,7 @@ import { callClaude } from "../lib/callClaude";
 const OutreachHub = React.lazy(() => import("../components/crm/OutreachHub"));
 import ThisWeek from "../components/crm/ThisWeek";
 import { buildThisWeek } from "../utils/thisWeek";
+import NotificationPanel from "../components/notifications/NotificationPanel";
 import ServicePackages from "../components/crm/ServicePackages";
 import { useServicePackages } from "../hooks/useServicePackages";
 import { useNudges } from "../hooks/useNudges";
@@ -1228,7 +1229,10 @@ export default function SalesmanPremium() {
  // fetch notifications
  supabase
  .from("salesman_notifications")
- .select("id, title, body, is_read, created_at")
+ // type + ref_id are what turn a row into a link to the thing it is about.
+ // They were always on the table; not selecting them is why every
+ // notification rendered as dead plain text.
+ .select("id, type, ref_id, title, body, is_read, created_at")
  .eq("salesman_id", uid)
  .order("created_at", { ascending: false })
  .limit(30)
@@ -1588,15 +1592,46 @@ export default function SalesmanPremium() {
 
  const unreadCount = notifications.filter((n) =>!n.is_read).length;
 
- const markNotifRead = async (notif) => {
- if (notif.is_read) return;
- await supabase
+ // Rows the panel reports as actually seen on screen (see NotificationPanel).
+ // Batched: one write per scroll burst, not one per row.
+ const markNotifsSeen = async (ids) => {
+ const fresh = ids.filter((id) => notifications.some((n) => n.id === id && !n.is_read));
+ if (!fresh.length) return;
+ setNotifications((p) => p.map((n) => (fresh.includes(n.id)? { ...n, is_read: true } : n)));
+ const { error } = await supabase
  .from("salesman_notifications")
  .update({ is_read: true })
- .eq("id", notif.id);
- setNotifications((p) =>
- p.map((n) => (n.id === notif.id? { ...n, is_read: true } : n)),
- );
+ .in("id", fresh);
+ // Put the dots back rather than leaving the badge lying about what is read.
+ if (error) setNotifications((p) => p.map((n) => (fresh.includes(n.id)? { ...n, is_read: false } : n)));
+ };
+
+ // A notification is about something that lives on a page. ref_id per type is
+ // verified in NOTIF_TARGETS (NotificationPanel.jsx); anything without a target
+ // (broadcasts) never reaches here because the panel doesn't make it clickable.
+ const openNotif = (n) => {
+ setNotifOpen(false);
+ switch (n.type) {
+ case "chat_message":
+ // ref_id IS the thread id, so the sheet opens without a lookup.
+ setChatSheet({ threadId: n.ref_id, buyerName: n.title || "Buyer" });
+ break;
+ case "new_booking":
+ case "booking_unconfirmed":
+ switchTab("enquiries");
+ setInboxSubTab("bookings");
+ break;
+ case "new_enquiry":
+ switchTab("enquiries");
+ setInboxSubTab("enquiries");
+ break;
+ case "listing_approved":
+ case "listing_rejected":
+ switchTab("listings");
+ break;
+ default:
+ break;
+ }
  };
 
  const markAllNotifsRead = async () => {
@@ -2358,138 +2393,21 @@ export default function SalesmanPremium() {
  },
  ];
 
- // NOTIFICATION PANEL
+ // NOTIFICATION PANEL — markup lives in the shared component (Lite renders the
+ // same one). This page only owns where each notification goes.
 
  const renderNotifPanel = () =>
  notifOpen && (
- <div
- onClick={() => setNotifOpen(false)}
- style={{
- position: "fixed",
- inset: 0,
- zIndex: 998,
- }}
- >
- <div
- onClick={(e) => e.stopPropagation()}
- style={{
- position: "fixed",
- top: isMobile? 60 : 58,
- right: isMobile? 8 : 24,
- width: 320,
- maxHeight: 420,
- background: "#111827",
- border: "1px solid rgba(255,255,255,0.1)",
- borderRadius: 12,
- zIndex: 999,
- display: "flex",
- flexDirection: "column",
- overflow: "hidden",
- boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
- }}
- >
- <div
- style={{
- display: "flex",
- alignItems: "center",
- justifyContent: "space-between",
- padding: "12px 16px",
- borderBottom: "1px solid rgba(255,255,255,0.07)",
- }}
- >
- <p
- style={{
- margin: 0,
- fontSize: 13,
- fontWeight: 600,
- color: "#f1f5f9",
- }}
- >Notifications{" "}
- {unreadCount > 0 && (
- <span
- style={{
- marginLeft: 6,
- fontSize: 10,
- background: "#ef4444",
- color: "#fff",
- borderRadius: 99,
- padding: "1px 6px",
- }}
- >
- {unreadCount}
- </span>
- )}
- </p>
- {unreadCount > 0 && (
- <button
- onClick={markAllNotifsRead}
- style={{
- background: "none",
- border: "none",
- fontSize: 10,
- color: "#60a5fa",
- cursor: "pointer",
- padding: 0,
- }}
- >Mark all read
- </button>
- )}
- </div>
- <div style={{ overflowY: "auto", flex: 1 }}>
- {notifications.length === 0 && (
- <p
- style={{
- margin: 0,
- padding: "24px 16px",
- fontSize: 12,
- color: "#4b5563",
- textAlign: "center",
- }}
- >No notifications yet.
- </p>
- )}
- {notifications.map((n) => (
- <div
- key={n.id}
- onClick={() => markNotifRead(n)}
- style={{
- padding: "12px 16px",
- borderBottom: "1px solid rgba(255,255,255,0.04)",
- background: n.is_read
-? "transparent"
- : "rgba(96,165,250,0.06)",
- cursor: "pointer",
- }}
- >
- <p
- style={{
- margin: "0 0 2px",
- fontSize: 12,
- fontWeight: 600,
- color: n.is_read? "#9ca3af" : "#f1f5f9",
- }}
- >
- {n.title}
- </p>
- {n.body && (
- <p
- style={{
- margin: "0 0 4px",
- fontSize: 11,
- color: "#4b5563",
- }}
- >
- {n.body}
- </p>
- )}
- <p style={{ margin: 0, fontSize: 10, color: "#374151" }}>
- {timeAgo(n.created_at)}
- </p>
- </div>
- ))}
- </div>
- </div>
- </div>
+ <NotificationPanel
+ notifications={notifications}
+ unreadCount={unreadCount}
+ isMobile={isMobile}
+ timeAgo={timeAgo}
+ onSeen={markNotifsSeen}
+ onMarkAllRead={markAllNotifsRead}
+ onOpen={openNotif}
+ onClose={() => setNotifOpen(false)}
+ />
  );
 
  // MOBILE NAV DRAWER — replaces the old fixed bottom bar (had grown to 10

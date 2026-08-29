@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, MessageSquare } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import ChatThread, { THEMES } from './ChatThread';
+import useVisualViewport from '../../hooks/useVisualViewport';
 
 // One in-app conversation, opened over whatever surface you are already on.
 //
@@ -27,6 +28,10 @@ export default function ChatSheet({
   upgradeHref = '/choose-plan',
   onClose,
 }) {
+  // Size to the area the keyboard leaves behind, not to `vh` — see
+  // useVisualViewport. Without this the composer sits under the keyboard and
+  // the browser scrolls the whole sheet up to reach it.
+  const vv = useVisualViewport();
   const [threadId, setThreadId] = useState(threadIdProp);
   // loading | ready | none | error — 'none' and 'error' look identical to the
   // seller otherwise, and "no conversation" on a lead that has one is the kind
@@ -98,8 +103,11 @@ export default function ChatSheet({
     <>
       <div onClick={onClose}
         style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }} />
-      <div style={{ position: 'fixed', inset: 0, zIndex: 2001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 14, pointerEvents: 'none' }}>
-        <div style={{ width: '100%', maxWidth: 520, height: 'min(640px, 88vh)', pointerEvents: 'auto', fontFamily: 'system-ui, sans-serif' }}>
+      {/* Pinned to the VISUAL viewport (top/height from useVisualViewport)
+          rather than `inset:0`, so when the keyboard opens this box shrinks to
+          the space above it and the sheet inside it never goes underneath. */}
+      <div style={{ position: 'fixed', top: vv.offsetTop, left: 0, right: 0, height: vv.height, zIndex: 2001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 14, pointerEvents: 'none' }}>
+        <div style={{ width: '100%', maxWidth: 520, height: 'min(640px, 100%)', pointerEvents: 'auto', fontFamily: 'system-ui, sans-serif' }}>
           {state === 'loading' && message('Opening the conversation…', 'One moment.')}
           {state === 'none' && message(
             'No in-app conversation',

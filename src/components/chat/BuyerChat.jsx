@@ -2,6 +2,7 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { MessageSquare, MessageCircle, Phone, ChevronRight, ArrowLeft, X, ShieldCheck, Loader2 } from 'lucide-react';
 import { useBuyerThread } from '../../hooks/useChat';
+import useVisualViewport from '../../hooks/useVisualViewport';
 
 // Lazy — ChatThread (message list + useChatThread's live realtime channel)
 // is only ever needed once a visitor has actually started chatting. A
@@ -52,6 +53,10 @@ export default function BuyerChat({
   callLoading = false,
   showCall = false,
 }) {
+  // Size to the area the keyboard leaves behind, not to `vh` — see
+  // useVisualViewport. Without this the composer sits under the keyboard and
+  // the browser scrolls the whole sheet up to reach it.
+  const vv = useVisualViewport();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState('choose');   // 'choose' | 'chat'
   const [accepted, setAccepted] = useState(hasConsented);
@@ -190,15 +195,23 @@ export default function BuyerChat({
         <Loader2 size={20} style={{ color: 'rgba(255,255,255,0.4)', animation: 'bcspin 1s linear infinite' }} />
       </div>
     }>
-      <ChatThread threadId={threadId} role="buyer" theme="dark" height="min(72vh, 560px)" showPrivacyNote />
+      {/* Explicit px height off the VISUAL viewport, not `vh`: the thread has to
+          end where the keyboard begins, and `vh` never shrinks for a keyboard.
+          The subtraction covers this sheet's own header plus breathing room. */}
+      <ChatThread threadId={threadId} role="buyer" theme="dark"
+        height={Math.max(260, Math.min(560, vv.height - 120))} showPrivacyNote />
     </Suspense>
   );
 
   const onChooser = view === 'choose';
 
   const panel = (
+    // Pinned to the VISUAL viewport (top/height from useVisualViewport) rather
+    // than `inset:0`: when the keyboard opens this box shrinks to the space
+    // above it, so the sheet's bottom edge — and its composer — land just above
+    // the keyboard instead of behind it.
     <div onClick={close}
-      style={{ position:'fixed', inset:0, zIndex:11000, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(3px)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
+      style={{ position:'fixed', top: vv.offsetTop, left:0, right:0, height: vv.height, zIndex:11000, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(3px)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
       <div onClick={e => e.stopPropagation()} className="bc-sheet"
         style={{ background:'#0f1420', border:'1px solid rgba(255,255,255,0.10)', width:'100%', maxWidth:460, display:'flex', flexDirection:'column', fontFamily:"system-ui,sans-serif" }}>
 
@@ -224,9 +237,11 @@ export default function BuyerChat({
         {onChooser ? chooser : chatGate}
       </div>
       <style>{`
-        .bc-sheet{border-radius:18px 18px 0 0;max-height:88vh}
+        /* 100% = the visual viewport box set on the parent, so the sheet can
+           never extend under the keyboard. Was 88vh, which could not shrink. */
+        .bc-sheet{border-radius:18px 18px 0 0;max-height:100%;overflow-y:auto}
         @media(min-width:640px){
-          .bc-sheet{border-radius:16px;margin-bottom:5vh}
+          .bc-sheet{border-radius:16px;margin-bottom:5vh;max-height:calc(100% - 5vh)}
         }
       `}</style>
     </div>
