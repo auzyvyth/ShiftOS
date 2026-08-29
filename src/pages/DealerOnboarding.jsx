@@ -5,6 +5,7 @@ import LegalContent from '../components/onboarding/LegalContent';
 import PlanPickerModal from '../components/onboarding/PlanPickerModal';
 import { isReservedSubdomain } from '../utils/reservedSubdomains';
 import { isAdultFromIC } from '../utils/icAge';
+import { MY_STATES, cityOptionsFor } from '../utils/locations';
 import DealerPendingApproval from '../components/DealerPendingApproval';
 
 // Same design system CSS as SalesmanOnboarding (eo- prefix)
@@ -137,11 +138,6 @@ const TIERS = {
   },
 };
 
-const MY_STATES = [
-  'Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka',
-  'Negeri Sembilan','Pahang','Penang','Perak','Perlis','Putrajaya',
-  'Sabah','Sarawak','Selangor','Terengganu',
-];
 
 const DEALER_TYPES = [
   'Independent Dealer','Franchise Dealer','Used Car Lot',
@@ -704,15 +700,19 @@ export default function DealerOnboarding() {
                 <div className="eo-heading">Location</div>
                 <p className="eo-sub">Your location helps buyers find your dealership on xdrive.my.</p>
                 <label className="eo-label">STATE</label>
-                <select className="eo-select" value={form.state} onChange={e => upd('state')(e.target.value)}>
+                <select className="eo-select" value={form.state}
+                  onChange={e => setForm(p => ({ ...p, state: e.target.value, city: '' }))}>
                   <option value="">Select state</option>
                   {MY_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <label className="eo-label">
                   CITY / AREA <span style={{ color: 'rgba(255,255,255,0.18)', fontWeight: 400 }}>— OPTIONAL</span>
                 </label>
-                <input className="eo-inp" type="text" placeholder="e.g. Butterworth" value={form.city}
-                  onChange={e => upd('city')(e.target.value)} />
+                <select className="eo-select" value={form.city} disabled={!form.state}
+                  onChange={e => upd('city')(e.target.value)}>
+                  <option value="">{form.state ? 'Select city / area' : 'Select a state first'}</option>
+                  {cityOptionsFor(form.state, form.city).map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
                 <label className="eo-label">
                   SHOWROOM ADDRESS <span style={{ color: 'rgba(255,255,255,0.18)', fontWeight: 400 }}>— OPTIONAL</span>
                 </label>

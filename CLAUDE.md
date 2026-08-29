@@ -149,8 +149,9 @@ Every server-side path that turns an inbound contact into a `leads` row MUST get
 `salesman_id` from the SECURITY DEFINER helper `resolve_lead_salesman(p_dealer_id, p_car_id,
 p_ref_slug, p_explicit)`. Do NOT re-implement the resolution inline — that drift is what
 made WhatsApp/enquiry leads vanish from a salesman's pipeline TWICE. Callers today:
-`create_lead_from_whatsapp` (ContactGate/WhatsApp tap) and the `enquiry_to_lead` trigger
-(enquiry form). Resolution order, first hit wins:
+`create_lead_from_whatsapp` (ContactGate/WhatsApp tap), the `enquiry_to_lead` trigger
+(enquiry form), and `start_chat_thread` (in-app chat — it resolves once onto
+`chat_threads.salesman_id`, and `chat_after_message` reuses that rather than resolving again). Resolution order, first hit wins:
   1. explicit rep the caller already resolved (e.g. api/enquiry.js set `salesman_id`)
   2. `ref_slug` → must be `role='salesman'` AND scoped to this dealer (`id=dealer OR dealer_id=dealer`)
   3. `car_listings.assigned_to` (the exclusivity-lock closer)
@@ -395,6 +396,19 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
   existing subscription dies silently — no error the user ever sees, they just stop
   getting notifications and cannot be migrated. If a key must change, every user has to
   re-subscribe from scratch. There is also no such thing as running two keys side by side.
+- **BUYERS get push too, and the ask lives in the conversation** —
+  `src/components/chat/BuyerPushPrompt.jsx`, rendered by `ChatThread` for
+  `role='buyer'` after the buyer has sent their FIRST message (so it covers both
+  BuyerChat on the car page and BuyerInbox on /account/messages, one
+  implementation). A seller's reply already pushed the buyer
+  (`chat_after_message` -> `push_to_users`), but `PushToggle` was on every seller
+  panel and no buyer surface, so no buyer had a subscription and chat was a
+  channel the seller could answer on and the buyer never heard back through — a
+  guest who closed the tab never learned there was a reply. Do NOT reuse
+  `PushToggle` here (settings card, wrong shape) and do NOT prompt on chat open:
+  both sides share `usePushNotifications`, which owns every browser trap, and a
+  permission prompt before the buyer has typed anything gets reflexively blocked
+  — a denied permission is a dead end no later prompt can recover.
 - iOS only allows web push for a PWA installed to the home screen (16.4+). PWA-1 shipped
   the install prompt, so that prerequisite is met — `src/components/InstallPrompt.jsx`.
 - The local `Notification.permission` code in Salesman Lite
@@ -511,6 +525,43 @@ Buyers message sellers inside ShiftOS (not WhatsApp). Built 2026-08-23.
 - Frontend: `src/hooks/useChat.js`, `src/components/chat/{ChatThread,SellerInbox,BuyerChat}.jsx`.
   Notifications reuse the existing path (a `salesman_notifications` row IS the
   push) and fire only on the first unread of a burst.
+- **A buyer message creates a pipeline lead** (`chat_after_message`, migration
+  20260829). Every other inbound path did and chat did not, so a buyer who chose
+  "chat here" existed in the Inbox and nowhere else — no pipeline row, no
+  follow-up, invisible to "This week" and to every count. The lead is created on
+  the buyer's FIRST MESSAGE, not when the thread opens (opening a chat and
+  typing nothing is not a lead), `lead_source='chat'`, and `chat_threads.lead_id`
+  makes it exactly one per thread. Notes carry `body_ai`, never `body`.
+  A guest buyer has no phone, so the lead has none — the pipeline card and the
+  detail panel hide the WhatsApp/Call actions rather than linking to `wa.me/`
+  with nothing after it.
+- **`chat_threads.lead_id` is NOT unique — one lead can own several threads.**
+  A buyer who chats about a second car gets a second thread, and
+  `chat_after_message` dedups it onto the SAME lead by phone. So every lead ->
+  thread lookup takes the newest (`order last_message_at desc, limit 1`);
+  `.maybeSingle()` throws PGRST116 the moment a buyer chats about two cars, and
+  the failure looks like "this buyer has no conversation".
+- **Answering a chat lead goes through `src/components/chat/ChatSheet.jsx`, one
+  portalled conversation opened over whatever surface you are on.** Do NOT add a
+  per-surface "go to the Inbox" link: `SellerInbox` is an embedded TAB in
+  SalesmanLite/SalesmanPremium, not a route, and the dealer dashboard has no
+  inbox at all — a dealer's only way into a chat on their own listing is this
+  sheet. RLS already allows it (`chat_thread_role()` returns `'seller'` for the
+  thread's salesman AND for its `dealer_id`).
+- The pipeline card shows the chat in place of the WhatsApp button when a thread
+  exists — not beside it (that row is capped at three buttons and one accent).
+  Which leads have a thread comes from the `useChatThreads` rows the nav badge
+  ALREADY loads (`threadByLead`), so no pipeline surface gains a query; the
+  dealer's LeadDrawer has no such hook and does one indexed read on open.
+- Every lead detail panel has a phone field that renders when the lead has NO
+  number — that empty row is the point. Saving reads the row back (the
+  normalize trigger rewrites it) and rejects under 9 digits.
+- **De-dup on phone always goes through `normalize_my_phone`, on BOTH sides.**
+  `trg_leads_normalize_phone` stores every `leads.phone` as `60xxxxxxxxx`, so
+  comparing a raw `"0123456789"` against it never matches and the same buyer
+  gets a new lead per channel. This was live in `create_lead_from_whatsapp`
+  until 2026-08-29. `profiles` stores the local `01…` form — never compare the
+  two columns raw.
 - **`BuyerChat` is the car page's ONE Contact button (RAPTOR-6, 2026-08-24)** — it
   is no longer just the chat trigger. Its sheet has two steps: a chooser (WhatsApp
   / chat here / call) and then the chat itself. The car card is now exactly two

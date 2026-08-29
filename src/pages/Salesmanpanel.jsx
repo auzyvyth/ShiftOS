@@ -10,6 +10,8 @@ import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { usePermissions } from "../hooks/usePermissions";
 import { hasFeature } from "../lib/permissions";
 import OutreachHub from "../components/crm/OutreachHub";
+import ChatSheet from "../components/chat/ChatSheet";
+import { useChatThreads } from "../hooks/useChat";
 import CustomersTab from "../components/crm/CustomersTab";
 import AvailabilityEditor from "../components/AvailabilityEditor";
 import { usePresence } from "../hooks/usePresence";
@@ -169,6 +171,16 @@ export default function SalesmanPanel() {
  // sees this salesman as live (keyed on the dealer's profile id).
  usePresence(profile?.dealer_id || profile?.id || null);
  const [userId, setUserId] = useState(null);
+ // This panel has NO inbox tab, so a buyer who chose "chat here" on a car
+ // assigned to this rep had no reachable channel at all. chat_threads.lead_id
+ // is written by the DB trigger on the buyer's first message; the map lets the
+ // pipeline show which leads have a live conversation.
+ const { threads: chatThreads } = useChatThreads({ salesmanId: userId });
+ const threadByLead = new Map();
+ // One lead can have MORE than one thread — a buyer who chats about a second
+ // car gets a second thread that dedups onto the same lead. These rows arrive
+ // ordered by last_message_at desc, so the first one seen is the live one.
+ chatThreads.forEach((th) => { if (th.lead_id && !threadByLead.has(th.lead_id)) threadByLead.set(th.lead_id, th); });
  const [loading, setLoading] = useState(true);
  const [activeTab, setActiveTab] = useState("dashboard");
  const [moreOpen, setMoreOpen] = useState(false);
@@ -232,6 +244,10 @@ export default function SalesmanPanel() {
 
  // Leads
  const [leads, setLeads] = useState([]);
+ const [chatSheet, setChatSheet] = useState(null);
+ const [editPhoneLeadId, setEditPhoneLeadId] = useState(null);
+ const [editPhoneVal, setEditPhoneVal] = useState("");
+ const [phoneSavingId, setPhoneSavingId] = useState(null);
  const [staleLeads, setStaleLeads] = useState([]);
  const [leaderboard, setLeaderboard] = useState([]);
  const [leadsLoading, setLeadsLoading] = useState(true);
@@ -1712,6 +1728,30 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const defaultMsg = `Hi ${name}! Macam mana, still interested dalam ${carName} tu? Jom kita discuss lagi — saya boleh tolong cari yang terbaik untuk you `;
  setWaModalLead(lead);
  setWaModalMessage(defaultMsg);
+ };
+
+ // A chat lead from a guest buyer starts with NO phone — they never gave one.
+ // This puts the number on the record the moment they share it in the chat.
+ // updated_at only: saving a number is not a contact event, and last_contacted_at
+ // is what the follow-up lists run on.
+ const saveLeadPhone = async (leadId) => {
+ const digits = editPhoneVal.replace(/\D/g, "");
+ if (digits.length < 9) { toast.error("That does not look like a full phone number"); return; }
+ setPhoneSavingId(leadId);
+ // trg_leads_normalize_phone rewrites this to the 60xxxxxxxxx form on write, so
+ // read the row back rather than trusting what was typed — de-dup and every
+ // wa.me link downstream compare against the stored form.
+ const { data, error } = await supabase
+ .from("leads")
+ .update({ phone: editPhoneVal.trim(), updated_at: new Date().toISOString() })
+ .eq("id", leadId)
+ .select("phone")
+ .maybeSingle();
+ setPhoneSavingId(null);
+ if (error) { console.error("saveLeadPhone:", error); toast.error("Failed to save phone number"); return; }
+ const stored = data?.phone || editPhoneVal.trim();
+ setLeads((p) => p.map((l) => (l.id === leadId? { ...l, phone: stored } : l)));
+ setEditPhoneLeadId(null);
  };
 
  const saveLeadNote = async (leadId) => {
@@ -4983,6 +5023,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  (s) => s!== "lost" && s!== "closed_won" && s!== "closed_lost",
  ).find((s) =>LEAD_STAGES.indexOf(s) > stageIdx);
  const heat = getHeatScore(lead);
+ const leadThread = threadByLead.get(lead.id) || null;
  const isConfirmingDelete = deleteConfirmId === lead.id;
  const isPromptingLost = lostPromptId === lead.id;
  const followUpOverdue = lead.follow_up_at && new Date(lead.follow_up_at).getTime() <= Date.now();
@@ -5094,7 +5135,24 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  
  </a>
  )}
- {lead.phone? (
+ {/* A buyer who chatted in the app is reachable HERE, and a guest buyer is
+     reachable nowhere else — they never gave a phone. The chat takes the
+     WhatsApp slot rather than sitting beside it; WhatsApp stays one tap away
+     in the detail panel. */}
+ {leadThread? (
+ <button
+ onClick={() => setChatSheet({ threadId: leadThread.id, buyerName: lead.buyer_name || "Buyer", carLabel: carName })}
+ title="Open the in-app chat with this buyer"
+ style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#e5e7eb", cursor: "pointer", fontFamily: "inherit" }}
+ >
+ <MessageSquare size={12} />Chat
+ {leadThread.seller_unread > 0 && (
+ <span style={{ minWidth: 15, height: 15, borderRadius: 99, background: "#dc2626", color: "#fff", fontSize: 9, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
+ {leadThread.seller_unread}
+ </span>
+ )}
+ </button>
+ ) : lead.phone? (
  <button
  onClick={() => {
  const waCarName = car? `${car.brand} ${car.model}` : "kereta tu";
@@ -5331,6 +5389,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const plHeat = getHeatScore(pl);
  const plHeatStyle = plHeat.label === "hot"? { bg: "rgba(248,113,113,0.12)", color: "#f87171" } : plHeat.label === "warm"? { bg: "rgba(251,191,36,0.12)", color: "#fbbf24" } : { bg: "rgba(255,255,255,0.05)", color: "#6b7280" };
  const plInitials = (pl.buyer_name || "?").split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase();
+ const plThread = threadByLead.get(pl.id) || null;
  const plIsPromptingLost = lostPromptId === pl.id;
  const plIsConfirmingDelete = deleteConfirmId === pl.id;
  const pbCar = pl.car_listings;
@@ -5433,18 +5492,70 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  )}
 
  {/* Buyer contact */}
- {(pl.phone || pl.buyer_email || pl.buyer_ic || pl.buyer_state || pl.source || pl.lead_source) && (
+ {(plThread || pl.phone || pl.buyer_email || pl.buyer_ic || pl.buyer_state || pl.source || pl.lead_source) && (
  <div>
  <p style={{ margin: "0 0 6px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>Buyer</p>
  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
- {pl.phone && (
+ {/* The in-app conversation. For a guest buyer this is the only channel
+     that exists, so it sits above the number. */}
+ {plThread && (
+ <button
+ onClick={() => setChatSheet({ threadId: plThread.id, buyerName: pl.buyer_name || "Buyer", carLabel: plCarName })}
+ style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: "8px 10px", cursor: "pointer", fontFamily: "inherit" }}
+ >
+ <MessageSquare size={12} color="#6b7280" style={{ flexShrink: 0 }} />
+ <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "#e5e7eb" }}>In-app chat</span>
+ {plThread.seller_unread > 0 && (
+ <span style={{ flexShrink: 0, minWidth: 17, height: 17, borderRadius: 99, background: "#dc2626", color: "#fff", fontSize: 10, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 5px" }}>
+ {plThread.seller_unread}
+ </span>
+ )}
+ <ChevronRight size={13} color="#4b5563" style={{ flexShrink: 0 }} />
+ </button>
+ )}
+
+ {/* Phone. Always rendered, because the EMPTY row is the one that matters:
+     a chat lead arrives with no number and there was no way to add one. */}
+ {editPhoneLeadId === pl.id? (
+ <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+ <input
+ autoFocus
+ type="tel"
+ inputMode="tel"
+ value={editPhoneVal}
+ onChange={(e) => setEditPhoneVal(e.target.value)}
+ onKeyDown={(e) => { if (e.key === "Enter") saveLeadPhone(pl.id); if (e.key === "Escape") setEditPhoneLeadId(null); }}
+ placeholder="012 345 6789"
+ aria-label="Buyer phone number"
+ style={{ flex: 1, minWidth: 0, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 6, color: "#e5e7eb", fontSize: 13, padding: "6px 9px", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+ />
+ <button onClick={() => saveLeadPhone(pl.id)} disabled={phoneSavingId === pl.id}
+ style={{ flexShrink: 0, fontSize: 11, padding: "6px 11px", borderRadius: 6, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", fontWeight: 600, fontFamily: "inherit", opacity: phoneSavingId === pl.id? 0.5 : 1 }}>
+ {phoneSavingId === pl.id? "\u2026" : "Save"}
+ </button>
+ <button onClick={() => setEditPhoneLeadId(null)} aria-label="Cancel"
+ style={{ flexShrink: 0, background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 2, display: "flex" }}>
+ <X size={13} />
+ </button>
+ </div>
+ ) : pl.phone? (
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
  <span style={{ fontSize: 13, color: "#cbd5e1", fontFamily: "monospace" }}>{pl.phone}</span>
- <div style={{ display: "flex", gap: 6 }}>
+ <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+ <button onClick={() => { setEditPhoneLeadId(pl.id); setEditPhoneVal(pl.phone || ""); }} aria-label="Edit phone number"
+ style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 2, display: "flex" }}>
+ <Pencil size={11} />
+ </button>
  <a href={`tel:${pl.phone}`} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#9ca3af", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, padding: "4px 9px", textDecoration: "none" }}><Phone size={11} /> Call</a>
  <a href={`https://wa.me/${(pl.phone || "").replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#4ade80", background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.22)", borderRadius: 6, padding: "4px 9px", textDecoration: "none" }}>WA</a>
  </div>
  </div>
+ ) : (
+ <button onClick={() => { setEditPhoneLeadId(pl.id); setEditPhoneVal(""); }}
+ style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", textAlign: "left", background: "none", border: "none", padding: 0, color: "#6b7280", fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
+ <Plus size={11} />
+ {plThread? "Add their number when they share it" : "Add phone number"}
+ </button>
  )}
  {[
  pl.buyer_email && { label: "Email", val: pl.buyer_email },
@@ -8817,6 +8928,19 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </div>,
  document.body,
  )}
+ {/* One in-app conversation, over whatever tab you are on. Mounted at page
+     level so the pipeline card and the lead panel open the same sheet. No AI
+     bar here — chat-assist is a salesman-plan feature. */}
+ {chatSheet && (
+ <ChatSheet
+ threadId={chatSheet.threadId}
+ buyerName={chatSheet.buyerName}
+ carLabel={chatSheet.carLabel}
+ theme="dark"
+ onClose={() => setChatSheet(null)}
+ />
+ )}
+
  </div>
  </>
  );

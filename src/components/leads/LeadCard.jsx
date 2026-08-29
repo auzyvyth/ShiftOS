@@ -137,7 +137,10 @@ export default function LeadCard({ lead, onOpen }) {
         </div>
       </div>
 
-      {/* WhatsApp — always visible on mobile, dimmed on desktop until hover */}
+      {/* WhatsApp — always visible on mobile, dimmed on desktop until hover.
+          Hidden without a phone: a chat lead from a guest buyer has none, and
+          formatWhatsAppURL would render a link to wa.me/ with nothing after it. */}
+      {lead.phone && (
       <a
         href={formatWhatsAppURL(lead.phone)}
         target="_blank"
@@ -155,6 +158,7 @@ export default function LeadCard({ lead, onOpen }) {
       >
         <MessageCircle style={{ width: 14, height: 14, color: '#16a34a' }} />
       </a>
+      )}
 
       <style>{`
         @media (hover: hover) {

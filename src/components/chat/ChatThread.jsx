@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Check, CheckCheck, Send, AlertCircle, Eye, ShieldAlert, Sparkles, X, Lock } from 'lucide-react';
 import { useChatThread, tickState } from '../../hooks/useChat';
+import BuyerPushPrompt from './BuyerPushPrompt';
 import { supabase } from '../../supabaseClient';
 
 // One conversation. Shared by the buyer widget (dark, on the marketplace) and
@@ -231,6 +232,15 @@ export default function ChatThread({
             The AI reads this chat with phone numbers and IC numbers already stripped out. Drafts are yours to edit and send.
           </p>
         </div>
+      )}
+
+      {/* The buyer's half of notifications. Only after they have actually sent
+          something — the moment they start waiting on a reply is the moment the
+          ask makes sense, and a permission prompt fired on open is the kind
+          people reflexively block. Sits in the slot the seller's AI bar
+          occupies, so neither side gains a layout of its own. */}
+      {role === 'buyer' && messages.some(m => m.sender_role === 'buyer') && (
+        <BuyerPushPrompt t={t} />
       )}
 
       <form onSubmit={submit} style={{ display:'flex', gap:8, padding:10, borderTop:`1px solid ${t.border}`, background:t.panel, flexShrink:0 }}>

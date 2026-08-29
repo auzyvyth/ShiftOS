@@ -10,6 +10,7 @@ import MarketplaceFooter from '../components/MarketplaceFooter';
 import StickyWhatsAppButton from '../components/StickyWhatsAppButton';
 import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
+import { MY_STATES } from '../utils/locations';
 import { trackEvent } from '../utils/analytics';
 import { chassisSearch } from '../utils/chassisCodes';
 import { useMarketplaceTracking } from '../hooks/useMarketplaceTracking';
@@ -39,7 +40,6 @@ const FINANCING_TYPES = [
   { value:'cash',          label:'Cash Only'     },
   { value:'sambung_bayar', label:'Sambung Bayar' },
 ];
-const MY_STATES = ['Kuala Lumpur','Selangor','Johor','Penang','Perak','Kedah','Pahang','Negeri Sembilan','Melaka','Sabah','Sarawak','Terengganu','Kelantan','Perlis'];
 const SORT_OPTIONS = [
   { label:'Newest First',       short:'Newest',   value:'newest'      },
   { label:'Price: Low to High', short:'Price ↑',  value:'price_asc'   },

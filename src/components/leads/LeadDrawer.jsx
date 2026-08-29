@@ -3,11 +3,13 @@ import {
   X, MessageCircle, Phone, Calendar, Trash2, ExternalLink, User,
   Pencil, Check, ChevronRight, ChevronDown, ChevronUp, Send, Search,
   AlertTriangle, FileText, Plus, Package, Link, Copy, Presentation, CreditCard, MapPin,
+  MessageSquare,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../supabaseClient';
 import LeadSourceBadge from './LeadSourceBadge';
 import PostSaleChecklist from '../postsale/PostSaleChecklist';
+import ChatSheet from '../chat/ChatSheet';
 import { useLeadActivities } from '../../hooks/useLeadActivities';
 import {
   formatWhatsAppURL, calcInstalment, getLeadAgeDays, ageTextColor,
@@ -155,6 +157,12 @@ function calcInsuranceEst(sum, ncd, vehicleType, cc) {
 export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDelete, teamMembers = [] }) {
   const [lead, setLead]               = useState(initialLead);
   const [editingField, setEditingField] = useState(null); // 'name' | 'phone'
+  // The in-app conversation behind this lead, if there is one. The dealer
+  // dashboard has no Inbox tab, so this drawer is the only place a dealer can
+  // read or answer a buyer who chose 'chat here' on a car page. RLS already
+  // allows it: chat_thread_role() returns 'seller' for the thread's dealer_id.
+  const [chatThread, setChatThread] = useState(null);
+  const [chatOpen, setChatOpen] = useState(false);
   const [editVal, setEditVal]         = useState('');
   const [followUpDate, setFollowUpDate] = useState(initialLead?.follow_up_at || '');
   const [savingFollowUp, setSavingFollowUp] = useState(false);
@@ -291,6 +299,31 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     };
     fetch();
   }, [lead?.id, lead?.dealer_id]);
+
+  // Does this lead have an in-app conversation? chat_threads.lead_id is set by
+  // the DB trigger when a buyer's first message creates the lead, so this is one
+  // indexed read per drawer open. It runs for EVERY lead, not just lead_source
+  // 'chat': a buyer who first came in on WhatsApp can start a chat later, and
+  // that thread links to the same lead.
+  useEffect(() => {
+    if (!lead?.id) { setChatThread(null); return; }
+    let cancelled = false;
+    (async () => {
+      // A buyer who chats about a second car gets a second thread that dedups
+      // onto the SAME lead, so lead_id is not unique — maybeSingle() would throw
+      // PGRST116 and silently hide the button. Take the live conversation.
+      const { data, error } = await supabase
+        .from('chat_threads')
+        .select('id, seller_unread')
+        .eq('lead_id', lead.id)
+        .order('last_message_at', { ascending: false, nullsFirst: false })
+        .limit(1);
+      if (cancelled) return;
+      if (error) { console.error('LeadDrawer chat thread:', error); setChatThread(null); return; }
+      setChatThread(data?.[0] || null);
+    })();
+    return () => { cancelled = true; };
+  }, [lead?.id]);
 
   // Fetch appointments for this lead
   useEffect(() => {
@@ -635,12 +668,18 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   // ── Inline edit ──────────────────────────────────────────────────────────────
   function startEdit(field) {
     setEditingField(field);
-    setEditVal(field === 'name' ? lead.buyer_name : lead.phone);
+    setEditVal((field === 'name' ? lead.buyer_name : lead.phone) || '');
   }
 
   async function saveEdit() {
-    if (!editVal.trim() || editingField === null) { setEditingField(null); return; }
+    if (!(editVal || '').trim() || editingField === null) { setEditingField(null); return; }
     const field = editingField;
+    // A phone shorter than this is junk ('601', '1212112') and produces a
+    // wa.me link that goes nowhere.
+    if (field === 'phone' && editVal.replace(/\D/g, '').length < 9) {
+      toast.error('That does not look like a full phone number');
+      return;
+    }
     const payload = field === 'name' ? { buyer_name: editVal.trim() } : { phone: editVal.trim() };
     setEditingField(null);
     try {
@@ -900,6 +939,20 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
 
   return (
     <>
+      {/* The conversation, over this drawer. ChatSheet portals to document.body
+          so it clears this drawer's stacking context; it deliberately layers ON
+          TOP rather than replacing the drawer, so closing the chat puts the
+          seller back on the lead they were reading. */}
+      {chatOpen && chatThread && (
+        <ChatSheet
+          threadId={chatThread.id}
+          buyerName={lead.buyer_name || 'Buyer'}
+          carLabel={carLabel}
+          theme="light"
+          onClose={() => { setChatOpen(false); setChatThread(t => (t ? { ...t, seller_unread: 0 } : t)); }}
+        />
+      )}
+
       {/* Backdrop */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }} onClick={onClose} />
 
@@ -966,14 +1019,45 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
 
             {/* Action buttons */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-              <a href={formatWhatsAppURL(lead.phone)} target="_blank" rel="noopener noreferrer"
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
-                <MessageCircle style={{ width: 13, height: 13 }} />WhatsApp
-              </a>
-              <a href={`tel:${lead.phone}`}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
-                <Phone style={{ width: 13, height: 13 }} />Call
-              </a>
+              {/* A lead from the in-app chat can have no phone at all — a guest
+                  buyer never gave one. Rendering the two buttons anyway sends
+                  the seller to wa.me/ and tel: with nothing after them. */}
+              {/* The in-app chat. For a guest buyer this is the ONLY channel that
+                  exists — they never gave a phone — so it leads. Neutral on
+                  purpose: WhatsApp and Call already own a colour each and a
+                  fourth accent in one row is noise. */}
+              {chatThread && (
+                <button onClick={() => setChatOpen(true)}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#fff', border: '1px solid #d1d5db', color: '#111827', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <MessageSquare style={{ width: 13, height: 13 }} />Chat
+                  {chatThread.seller_unread > 0 && (
+                    <span style={{ minWidth: 16, height: 16, borderRadius: 99, background: '#dc2626', color: '#fff', fontSize: 9, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>
+                      {chatThread.seller_unread}
+                    </span>
+                  )}
+                </button>
+              )}
+              {lead.phone ? (
+                <>
+                  <a href={formatWhatsAppURL(lead.phone)} target="_blank" rel="noopener noreferrer"
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+                    <MessageCircle style={{ width: 13, height: 13 }} />WhatsApp
+                  </a>
+                  <a href={`tel:${lead.phone}`}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+                    <Phone style={{ width: 13, height: 13 }} />Call
+                  </a>
+                </>
+              ) : (
+                /* This used to be a dead grey label reading "reply in Inbox" —
+                   advice that pointed at a tab the dealer dashboard does not
+                   have. It is the control that puts the number on the lead the
+                   moment the buyer shares it in the chat. */
+                <button onClick={() => startEdit('phone')}
+                  style={{ flex: chatThread ? 1 : 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#fff', border: '1px dashed #d1d5db', color: '#6b7280', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <Plus style={{ width: 13, height: 13 }} />Add phone
+                </button>
+              )}
               {nextStage && !isTerminal && (
                 <button onClick={() => handleStageChange(nextStage)}
                   style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#dc2626', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>

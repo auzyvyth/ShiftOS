@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { getRef } from '../utils/refTracking';
 import { loadBuyerDetails, saveBuyerDetails } from '../utils/consent';
 import { supabase } from '../supabaseClient';
+import { MY_STATES } from '../utils/locations';
 import Turnstile from './Turnstile';
 
 // Lazy for the same reason as in ConsentBanner: this component is reachable from
@@ -11,7 +12,6 @@ import Turnstile from './Turnstile';
 // marketplace entry bundle for a link almost nobody taps.
 const LegalModal = lazy(() => import('./LegalModal'));
 
-const MY_STATES = ['Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka','Negeri Sembilan','Pahang','Penang','Perak','Perlis','Putrajaya','Sabah','Sarawak','Selangor','Terengganu'];
 
 // Gate shown before a buyer opens WhatsApp. Captures the buyer's name (required)
 // plus phone and state (both optional, so friction stays low), creates a real

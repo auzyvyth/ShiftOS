@@ -3,9 +3,9 @@ import { supabase } from "../supabaseClient";
 import { useProfile } from "../hooks/useProfile";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { Camera, Upload, X, Zap } from "lucide-react";
+import { MY_STATES as STATES } from "../utils/locations";
 
 const MAKES = ["Perodua","Proton","Toyota","Honda","Mazda","Mitsubishi","Nissan","Hyundai","Kia","BMW","Mercedes-Benz","Audi","Volkswagen","Ford","Subaru","Suzuki","Isuzu","Peugeot","Renault","Volvo","Other"];
-const STATES = ["Johor","Kedah","Kelantan","Kuala Lumpur","Labuan","Melaka","Negeri Sembilan","Pahang","Penang","Perak","Perlis","Putrajaya","Sabah","Sarawak","Selangor","Terengganu"];
 const YEARS = Array.from({ length: 35 }, (_, i) => String(new Date().getFullYear() - i));
 const BUCKET = "car-images";
 

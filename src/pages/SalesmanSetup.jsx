@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { MY_STATES, cityOptionsFor, matchKnownLocation } from '../utils/locations';
 
 const STRONG_PW = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
@@ -13,11 +14,6 @@ function normalizePhone(raw) {
 }
 const validIC = (ic) => /^\d{12}$/.test((ic || '').replace(/-/g, ''));
 
-const MY_STATES = [
-  'Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan', 'Pahang',
-  'Pulau Pinang', 'Perak', 'Perlis', 'Sabah', 'Sarawak', 'Selangor',
-  'Terengganu', 'Kuala Lumpur', 'Labuan', 'Putrajaya',
-];
 
 // Onboarding page for a dealer-created salesman who clicked the emailed setup
 // link. The link is a Supabase recovery action link, so a session is already
@@ -69,8 +65,12 @@ export default function SalesmanSetup() {
       if (profile?.avatar_url) setAvatarUrl(profile.avatar_url);
       if (profile?.job_title) setJobTitle(profile.job_title);
       if (profile?.bio) setBio(profile.bio);
-      if (profile?.city) setCity(profile.city);
-      if (profile?.state) setStateVal(profile.state);
+      // Normalized on the way in: this page stored "Pulau Pinang" for months
+      // while every other surface stored "Penang", so a returning salesman's
+      // own state would not match its own dropdown.
+      const loc = matchKnownLocation(profile?.state, profile?.city);
+      if (loc.state) setStateVal(loc.state);
+      if (loc.city) setCity(loc.city);
       setPhase('setup');
     };
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
@@ -277,11 +277,15 @@ export default function SalesmanSetup() {
               <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <label style={S.label}>CITY</label>
-                  <input type="text" value={city} maxLength={40} onChange={e => setCity(e.target.value)} placeholder="e.g. Petaling Jaya" style={S.input} />
+                  <select value={city} disabled={!stateVal} onChange={e => setCity(e.target.value)}
+                    style={{ ...S.input, appearance: 'none', cursor: stateVal ? 'pointer' : 'not-allowed', paddingRight: 14, opacity: stateVal ? 1 : 0.5 }}>
+                    <option value="" disabled>{stateVal ? 'Select…' : 'Pick a state first'}</option>
+                    {cityOptionsFor(stateVal, city).map(c => <option key={c} value={c} style={{ color: '#000' }}>{c}</option>)}
+                  </select>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <label style={S.label}>STATE</label>
-                  <select value={stateVal} onChange={e => setStateVal(e.target.value)} style={{ ...S.input, appearance: 'none', cursor: 'pointer', paddingRight: 14 }}>
+                  <select value={stateVal} onChange={e => { setStateVal(e.target.value); setCity(''); }} style={{ ...S.input, appearance: 'none', cursor: 'pointer', paddingRight: 14 }}>
                     <option value="" disabled>Select…</option>
                     {MY_STATES.map(s => <option key={s} value={s} style={{ color: '#000' }}>{s}</option>)}
                   </select>
