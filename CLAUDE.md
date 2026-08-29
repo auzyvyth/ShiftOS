@@ -519,9 +519,30 @@ Buyers message sellers inside ShiftOS (not WhatsApp). Built 2026-08-23.
   the buyer's FIRST MESSAGE, not when the thread opens (opening a chat and
   typing nothing is not a lead), `lead_source='chat'`, and `chat_threads.lead_id`
   makes it exactly one per thread. Notes carry `body_ai`, never `body`.
-  A guest buyer has no phone, so the lead has none — LeadCard and LeadDrawer
-  hide the WhatsApp/Call actions rather than linking to `wa.me/` with nothing
-  after it.
+  A guest buyer has no phone, so the lead has none — the pipeline card and the
+  detail panel hide the WhatsApp/Call actions rather than linking to `wa.me/`
+  with nothing after it.
+- **`chat_threads.lead_id` is NOT unique — one lead can own several threads.**
+  A buyer who chats about a second car gets a second thread, and
+  `chat_after_message` dedups it onto the SAME lead by phone. So every lead ->
+  thread lookup takes the newest (`order last_message_at desc, limit 1`);
+  `.maybeSingle()` throws PGRST116 the moment a buyer chats about two cars, and
+  the failure looks like "this buyer has no conversation".
+- **Answering a chat lead goes through `src/components/chat/ChatSheet.jsx`, one
+  portalled conversation opened over whatever surface you are on.** Do NOT add a
+  per-surface "go to the Inbox" link: `SellerInbox` is an embedded TAB in
+  SalesmanLite/SalesmanPremium, not a route, and the dealer dashboard has no
+  inbox at all — a dealer's only way into a chat on their own listing is this
+  sheet. RLS already allows it (`chat_thread_role()` returns `'seller'` for the
+  thread's salesman AND for its `dealer_id`).
+- The pipeline card shows the chat in place of the WhatsApp button when a thread
+  exists — not beside it (that row is capped at three buttons and one accent).
+  Which leads have a thread comes from the `useChatThreads` rows the nav badge
+  ALREADY loads (`threadByLead`), so no pipeline surface gains a query; the
+  dealer's LeadDrawer has no such hook and does one indexed read on open.
+- Every lead detail panel has a phone field that renders when the lead has NO
+  number — that empty row is the point. Saving reads the row back (the
+  normalize trigger rewrites it) and rejects under 9 digits.
 - **De-dup on phone always goes through `normalize_my_phone`, on BOTH sides.**
   `trg_leads_normalize_phone` stores every `leads.phone` as `60xxxxxxxxx`, so
   comparing a raw `"0123456789"` against it never matches and the same buyer
