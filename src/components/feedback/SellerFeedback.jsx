@@ -72,6 +72,8 @@ export default function SellerFeedback({ dealerId, listingId, sellerName = 'this
   const [replyTo, setReplyTo] = useState(null);
   const [replyBody, setReplyBody] = useState('');
   const [saving, setSaving] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const VISIBLE = 5;
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -129,6 +131,12 @@ export default function SellerFeedback({ dealerId, listingId, sellerName = 'this
       .filter(e => filter === 'all' || e.kind === filter)
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }, [reviews, comments, filter]);
+
+  // Collapsed by default — a car page with 40 reviews stacked open turned this
+  // section into most of the page's scroll length. Switching filters re-collapses
+  // it so "Questions" doesn't inherit an expansion made while looking at reviews.
+  useEffect(() => { setExpanded(false); }, [filter]);
+  const visibleFeed = expanded ? feed : feed.slice(0, VISIBLE);
 
   const defaultName = () => {
     const meta = session?.user?.user_metadata || {};
@@ -371,7 +379,7 @@ export default function SellerFeedback({ dealerId, listingId, sellerName = 'this
 
       {feed.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', marginTop: 16 }}>
-          {feed.map(e => (
+          {visibleFeed.map(e => (
             <div key={`${e.kind}-${e.id}`} style={{ borderTop: `1px solid ${th.borderSec || th.border}`, paddingTop: 13, paddingBottom: 13 }}>
               <AuthorLine
                 authorId={e.authorId} authorName={e.authorName} created_at={e.created_at}
@@ -426,6 +434,15 @@ export default function SellerFeedback({ dealerId, listingId, sellerName = 'this
               )}
             </div>
           ))}
+          {!expanded && feed.length > VISIBLE && (
+            <button onClick={() => setExpanded(true)} style={{
+              alignSelf: 'center', marginTop: 14, background: 'none', cursor: 'pointer',
+              border: `1px solid ${th.border}`, borderRadius: 999, padding: '8px 18px',
+              fontSize: 12.5, fontWeight: 700, color: th.textSec, fontFamily: 'system-ui,sans-serif',
+            }}>
+              Show all {feed.length}
+            </button>
+          )}
         </div>
       )}
     </div>

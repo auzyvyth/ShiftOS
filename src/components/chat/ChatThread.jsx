@@ -3,6 +3,7 @@ import { Check, CheckCheck, Send, AlertCircle, Eye, ShieldAlert, Sparkles, X, Lo
 import { useChatThread, tickState } from '../../hooks/useChat';
 import BuyerPushPrompt from './BuyerPushPrompt';
 import { supabase } from '../../supabaseClient';
+import useVisualViewport from '../../hooks/useVisualViewport';
 
 // One conversation. Shared by the buyer widget (dark, on the marketplace) and
 // the seller inbox (light, in the panel), so ticks, masking and the send box
@@ -99,6 +100,20 @@ export default function ChatThread({
   const [aiAnswer, setAiAnswer] = useState(null);
   const [askText, setAskText] = useState('');
   const listRef = useRef(null);
+  const inputRef = useRef(null);
+  const { height: vvHeight } = useVisualViewport();
+
+  // This thread sits in the normal page flow (BuyerInbox on /account/messages,
+  // the dealer/salesman inbox tabs) — not a fixed-position sheet like ChatSheet
+  // — but the same bug reaches it: the browser's native scroll-into-view on
+  // focus targets the LAYOUT viewport, which doesn't shrink for the keyboard,
+  // so the composer can still end up rendered underneath it. Re-scroll the
+  // input using the real visible height whenever the keyboard opens or closes.
+  useEffect(() => {
+    if (document.activeElement === inputRef.current) {
+      inputRef.current.scrollIntoView({ block: 'end', behavior: 'smooth' });
+    }
+  }, [vvHeight]);
 
   // The AI never sees a raw phone number: chat-assist fetches the transcript
   // itself from the redacted `chat_messages_ai` view. We send only a thread id.
@@ -244,7 +259,8 @@ export default function ChatThread({
       )}
 
       <form onSubmit={submit} style={{ display:'flex', gap:8, padding:10, borderTop:`1px solid ${t.border}`, background:t.panel, flexShrink:0 }}>
-        <input value={draft} onChange={e => setDraft(e.target.value)} placeholder="Type a message"
+        <input ref={inputRef} value={draft} onChange={e => setDraft(e.target.value)} placeholder="Type a message"
+          onFocus={() => inputRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })}
           maxLength={4000} aria-label="Message"
           style={{ flex:1, minWidth:0, boxSizing:'border-box', padding:'11px 14px', borderRadius:10, border:`1px solid ${t.border}`, background:t.inputBg, color:t.text, fontSize:14, fontFamily:"system-ui,sans-serif", outline:'none' }} />
         <button type="submit" disabled={!draft.trim() || sending} aria-label="Send"
