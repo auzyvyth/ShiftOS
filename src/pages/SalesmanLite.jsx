@@ -30,6 +30,7 @@ import VerifyIdentity from "../components/kyc/VerifyIdentity";
 import AccountReviewBanner from "../components/AccountReviewBanner";
 import SuspendedBanner from "../components/SuspendedBanner";
 import SellerInbox from "../components/chat/SellerInbox";
+import ChatSheet from "../components/chat/ChatSheet";
 import { useChatThreads } from "../hooks/useChat";
 import {
   LogOut,
@@ -730,7 +731,17 @@ export default function SalesmanLite() {
   // Unread buyer-chat count for the nav badge. Deliberately a second hook
   // instance rather than lifting state out of SellerInbox — each gets its own
   // realtime channel, and the badge stays live while the tab is closed.
-  const { totalUnread: chatUnread } = useChatThreads({ salesmanId: userId });
+  const { threads: chatThreads, totalUnread: chatUnread } = useChatThreads({ salesmanId: userId });
+  // chat_threads.lead_id is written by the DB trigger when a buyer's first
+  // message creates the lead. These rows are already loaded for the badge
+  // above, so the pipeline learns which leads have a live conversation (and
+  // what is unread) without a single extra query.
+  const threadByLead = new Map();
+  // One lead can have MORE than one thread — a buyer who chats about a second
+  // car gets a second thread that dedups onto the same lead. These rows arrive
+  // ordered by last_message_at desc, so the first one seen is the live one.
+  chatThreads.forEach((th) => { if (th.lead_id && !threadByLead.has(th.lead_id)) threadByLead.set(th.lead_id, th); });
+  const [chatSheet, setChatSheet] = useState(null);
   // Each Lite tab is its own route (/salesman-lite/:tab) so tab switches push
   // browser history — the phone Back button / swipe-back returns to the previous
   // tab instead of exiting the whole app (and landing on the sign-in page). The
@@ -938,6 +949,9 @@ export default function SalesmanLite() {
   };
   const [stageSavingId, setStageSavingId] = useState(null);
   const [editingNoteId, setEditingNoteId] = useState(null);
+  const [editPhoneLeadId, setEditPhoneLeadId] = useState(null);
+  const [editPhoneVal, setEditPhoneVal] = useState("");
+  const [phoneSavingId, setPhoneSavingId] = useState(null);
   const [editNoteVal, setEditNoteVal] = useState("");
   const [notesSavingId, setNotesSavingId] = useState(null);
   const [waModalLead, setWaModalLead] = useState(null);
@@ -2066,6 +2080,30 @@ export default function SalesmanLite() {
     const defaultMsg = `Hi ${name}! Macam mana, still interested dalam ${carName} tu? Jom kita discuss lagi — saya boleh tolong cari yang terbaik untuk you 😊`;
     setWaModalLead(lead);
     setWaModalMessage(defaultMsg);
+  };
+
+  // A chat lead from a guest buyer starts with NO phone — they never gave one.
+  // This puts the number on the record the moment they share it in the chat.
+  // updated_at only: saving a number is not a contact event, and last_contacted_at
+  // is what the follow-up lists run on.
+  const saveLeadPhone = async (leadId) => {
+    const digits = editPhoneVal.replace(/\D/g, "");
+    if (digits.length < 9) { toast.error(t("salesmanLite.toast.phoneTooShort", { defaultValue: "That does not look like a full phone number" })); return; }
+    setPhoneSavingId(leadId);
+    // trg_leads_normalize_phone rewrites this to the 60xxxxxxxxx form on write,
+    // so read the row back instead of trusting what was typed — de-dup and every
+    // wa.me link downstream compare against the stored form.
+    const { data, error } = await supabase
+      .from("leads")
+      .update({ phone: editPhoneVal.trim(), updated_at: new Date().toISOString() })
+      .eq("id", leadId)
+      .select("phone")
+      .maybeSingle();
+    setPhoneSavingId(null);
+    if (error) { console.error("saveLeadPhone:", error); toast.error(t("salesmanLite.toast.phoneSaveFailed", { defaultValue: "Failed to save phone number" })); return; }
+    const stored = data?.phone || editPhoneVal.trim();
+    setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, phone: stored } : l)));
+    setEditPhoneLeadId(null);
   };
 
   const saveLeadNote = async (leadId) => {
@@ -5729,6 +5767,7 @@ export default function SalesmanLite() {
         (s) => s !== "lost" && s !== "closed_won" && s !== "closed_lost",
       ).find((s) => LEAD_STAGES.indexOf(s) > stageIdx);
       const heat = getHeatScore(lead);
+      const leadThread = threadByLead.get(lead.id) || null;
       const isConfirmingDelete = deleteConfirmId === lead.id;
       const isPromptingLost = lostPromptId === lead.id;
       const followUpOverdue = lead.follow_up_at && new Date(lead.follow_up_at).getTime() <= Date.now();
@@ -5847,7 +5886,26 @@ export default function SalesmanLite() {
                 <Phone size={13} />
               </a>
             )}
-            {lead.phone ? (
+            {/* A buyer who chatted in the app is reachable HERE, and a guest buyer
+                is reachable nowhere else — they never gave a phone. The in-app
+                chat takes the WhatsApp slot rather than sitting beside it: this
+                row is capped at three buttons, and WhatsApp is one tap away in
+                the detail panel. */}
+            {leadThread ? (
+              <button
+                onClick={() => setChatSheet({ threadId: leadThread.id, buyerName: lead.buyer_name || "Buyer", carLabel: carName })}
+                title={t("salesmanLite.leads.openChat", { defaultValue: "Open the in-app chat with this buyer" })}
+                style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: T.size.sm, fontWeight: T.weight.semibold, padding: "6px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.borderStrong}`, color: C.text, cursor: "pointer", fontFamily: "inherit" }}
+              >
+                <MessageSquare size={12} />
+                {t("salesmanLite.leads.chat", { defaultValue: "Chat" })}
+                {leadThread.seller_unread > 0 && (
+                  <span style={{ minWidth: 15, height: 15, borderRadius: 99, background: C.accent, color: "#fff", fontSize: T.size.xs, fontWeight: T.weight.bold, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
+                    {leadThread.seller_unread}
+                  </span>
+                )}
+              </button>
+            ) : lead.phone ? (
               <button
                 onClick={() => {
                   const waCarName = car ? `${car.brand} ${car.model}` : "kereta tu";
@@ -6251,6 +6309,7 @@ export default function SalesmanLite() {
           const plHeat = getHeatScore(pl);
           const plHeatStyle = plHeat.label === "hot" ? { bg: withAlpha(C.dangerText, 0.12), color: C.dangerText } : plHeat.label === "warm" ? { bg: withAlpha(C.warn, 0.12), color: C.warnText } : { bg: C.line, color: C.textMuted };
           const plInitials = (pl.buyer_name || "?").split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase();
+          const plThread = threadByLead.get(pl.id) || null;
           const plIsPromptingLost = lostPromptId === pl.id;
           const plIsConfirmingDelete = deleteConfirmId === pl.id;
           const close = () => { setDrawerLeadId(null); setEditingNoteId(null); setExpandedActivityLeadId(null); setLostPromptId(null); setDeleteConfirmId(null); };
@@ -6324,6 +6383,79 @@ export default function SalesmanLite() {
 
                 {/* scrollable body */}
                 <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14, WebkitOverflowScrolling: "touch" }}>
+
+                  {/* CONTACT — this panel used to show the phone only as a grey
+                      subtitle under the name, with no way to add or fix one. A
+                      chat lead arrives with no number at all, so the empty row
+                      is the one that matters. */}
+                  <div>
+                    <p style={{ margin: "0 0 6px", fontSize: T.size.xs, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.1em" }}>{t("salesmanLite.drawer.contact", { defaultValue: "Contact" })}</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 1, borderRadius: R.md, overflow: "hidden", border: `1px solid ${C.border}` }}>
+                      {plThread && (
+                        <button
+                          onClick={() => setChatSheet({ threadId: plThread.id, buyerName: pl.buyer_name || "Buyer", carLabel: plCarName })}
+                          style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 11px", background: C.fillSubtle, border: "none", width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}
+                        >
+                          <MessageSquare size={12} color={C.textMuted} style={{ flexShrink: 0 }} />
+                          <span style={{ flex: 1, minWidth: 0, fontSize: T.size.sm, color: C.text }}>{t("salesmanLite.drawer.inAppChat", { defaultValue: "In-app chat" })}</span>
+                          {plThread.seller_unread > 0 && (
+                            <span style={{ flexShrink: 0, minWidth: 17, height: 17, borderRadius: 99, background: C.accent, color: "#fff", fontSize: T.size.xs, fontWeight: T.weight.bold, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 5px" }}>
+                              {plThread.seller_unread}
+                            </span>
+                          )}
+                          <ChevronRight size={13} color={C.textDim} style={{ flexShrink: 0 }} />
+                        </button>
+                      )}
+                      <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 11px", background: C.fillSubtle }}>
+                        <Phone size={12} color={C.textMuted} style={{ flexShrink: 0 }} />
+                        {editPhoneLeadId === pl.id ? (
+                          <>
+                            <input
+                              autoFocus
+                              type="tel"
+                              inputMode="tel"
+                              value={editPhoneVal}
+                              onChange={(e) => setEditPhoneVal(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === "Enter") saveLeadPhone(pl.id); if (e.key === "Escape") setEditPhoneLeadId(null); }}
+                              placeholder="012 345 6789"
+                              aria-label={t("salesmanLite.drawer.phoneLabel", { defaultValue: "Buyer phone number" })}
+                              style={{ flex: 1, minWidth: 0, background: C.line, border: `1px solid ${withAlpha(C.accent, 0.3)}`, borderRadius: R.sm, color: C.text, fontSize: T.size.sm, padding: "5px 9px", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+                            />
+                            <button onClick={() => saveLeadPhone(pl.id)} disabled={phoneSavingId === pl.id}
+                              style={{ flexShrink: 0, fontSize: T.size.sm, padding: "5px 11px", borderRadius: R.sm, background: withAlpha(C.accent, 0.12), border: `1px solid ${withAlpha(C.accent, 0.22)}`, color: C.dangerText, cursor: "pointer", fontWeight: T.weight.semibold, fontFamily: "inherit", opacity: phoneSavingId === pl.id ? 0.5 : 1 }}>
+                              {phoneSavingId === pl.id ? "\u2026" : t("salesmanLite.drawer.save")}
+                            </button>
+                            <button onClick={() => setEditPhoneLeadId(null)} aria-label={t("salesmanLite.drawer.cancel")}
+                              style={{ flexShrink: 0, background: "none", border: "none", color: C.textMuted, cursor: "pointer", padding: 2, display: "flex" }}>
+                              <X size={13} />
+                            </button>
+                          </>
+                        ) : pl.phone ? (
+                          <>
+                            <a href={`tel:${pl.phone}`} style={{ flex: 1, minWidth: 0, fontSize: T.size.sm, color: C.text, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.phone}</a>
+                            <button onClick={() => { setEditPhoneLeadId(pl.id); setEditPhoneVal(pl.phone || ""); }} aria-label={t("salesmanLite.drawer.editPhone", { defaultValue: "Edit phone number" })}
+                              style={{ flexShrink: 0, background: "none", border: "none", color: C.textDim, cursor: "pointer", padding: 2, display: "flex" }}>
+                              <Pencil size={11} />
+                            </button>
+                            {String(pl.phone).replace(/\D/g, "").length >= 9 && (
+                              <a href={`https://wa.me/${(() => { const dg = String(pl.phone).replace(/\D/g, ""); return dg.startsWith("6") ? dg : "6" + dg; })()}`} target="_blank" rel="noopener noreferrer"
+                                style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, fontSize: T.size.sm, padding: "3px 8px", borderRadius: R.sm, background: withAlpha(C.success, 0.1), border: `1px solid ${withAlpha(C.success, 0.25)}`, color: C.successText, textDecoration: "none" }}>
+                                <MessageCircle size={10} /> WhatsApp
+                              </a>
+                            )}
+                          </>
+                        ) : (
+                          <button onClick={() => { setEditPhoneLeadId(pl.id); setEditPhoneVal(""); }}
+                            style={{ flex: 1, minWidth: 0, textAlign: "left", background: "none", border: "none", padding: 0, color: C.textMuted, fontSize: T.size.sm, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}>
+                            <Plus size={11} />
+                            {plThread
+                              ? t("salesmanLite.drawer.addPhoneWhenShared", { defaultValue: "Add their number when they share it" })
+                              : t("salesmanLite.drawer.addPhone", { defaultValue: "Add phone number" })}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
                   {/* Notes */}
                   <div>
@@ -9842,6 +9974,22 @@ export default function SalesmanLite() {
           </div>
         );
       })()}
+      {/* One in-app conversation, over whatever tab you are on. Mounted at page
+          level (not inside the leads render) so the pipeline card, the lead
+          panel and anything added later open the same sheet. Lite gets the
+          locked AI strip inside the thread, same as the inbox. */}
+      {chatSheet && (
+        <ChatSheet
+          threadId={chatSheet.threadId}
+          buyerName={chatSheet.buyerName}
+          carLabel={chatSheet.carLabel}
+          theme="dark"
+          aiAssist={false}
+          aiUpgrade
+          onClose={() => setChatSheet(null)}
+        />
+      )}
+
     </div>
   );
 }
