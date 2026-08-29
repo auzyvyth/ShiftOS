@@ -635,11 +635,10 @@ function Skeleton() {
     ? 'linear-gradient(90deg,#e7eaef 25%,#f1f3f6 50%,#e7eaef 75%)'
     : 'linear-gradient(90deg,#0a1220 25%,#111e30 50%,#0a1220 75%)';
   const border    = isXdrive ? 'rgba(15,23,42,0.07)' : 'rgba(255,255,255,0.06)';
-  const headerBg  = isXdrive ? 'rgba(246,247,249,0.9)' : 'rgba(6,12,20,0.93)';
   const mosaicGap = isXdrive ? '#e2e6ec' : '#000';
 
   return (
-    <div style={{ background: pageBg, minHeight: '100vh' }}>
+    <div style={{ background: pageBg, minHeight: '100vh', position: 'relative' }}>
       <style>{`
         @keyframes sk-shimmer { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
         .sk-b { background:${shimmerGr}; background-size:600px 100%; animation:sk-shimmer 1.5s infinite; border-radius:4px; }
@@ -647,12 +646,14 @@ function Skeleton() {
         @media (min-width:901px) { .sk-mobile  { display:none !important; } }
       `}</style>
 
-      {/* Header — same on all breakpoints */}
-      <div style={{ height:60, background:headerBg, borderBottom:`1px solid ${border}`, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 28px', boxSizing:'border-box' }}>
-        <div className="sk-b" style={{ width:56, height:14 }} />
-        <div style={{ display:'flex', gap:8 }}>
-          <div className="sk-b" style={{ width:60, height:28, borderRadius:6 }} />
-          <div className="sk-b" style={{ width:80, height:28, borderRadius:6 }} />
+      {/* Header — same on all breakpoints. Overlays the mosaic rather than
+          sitting above it, so the skeleton and the loaded page put the photo
+          in the same place and nothing jumps 60px on load. */}
+      <div style={{ position:'absolute', top:0, left:0, right:0, height:60, zIndex:100, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 20px', boxSizing:'border-box', pointerEvents:'none' }}>
+        <div className="sk-b" style={{ width:22, height:22, borderRadius:6 }} />
+        <div style={{ display:'flex', gap:10 }}>
+          <div className="sk-b" style={{ width:22, height:22, borderRadius:6 }} />
+          <div className="sk-b" style={{ width:22, height:22, borderRadius:6 }} />
         </div>
       </div>
 
@@ -1814,7 +1815,6 @@ export default function CarDetailPage() {
         @keyframes cdp-scanLine  { 0% { top: 0; opacity: .6; } 100% { top: 100%; opacity: 0; } }
         @keyframes cdp-pulse     { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
         @keyframes cdp-shimmerIn { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: scaleX(1); } }
-        @keyframes cdp-redline   { from { width: 0; } to { width: 100%; } }
 
         .cdp-root { background: #060c14; min-height: 100vh; font-family: system-ui, sans-serif; color: #e2e8f0; }
 
@@ -1839,18 +1839,35 @@ export default function CarDetailPage() {
           backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
           border-bottom-color: rgba(255,255,255,0.06);
         }
-        .cdp-back-btn {
-          display: flex; align-items: center; gap: 7px;
-          background: none; border: none; color: #64748b;
-          font-size: 13px; cursor: pointer;
-          font-family: system-ui, sans-serif; padding: 0;
-          transition: color 0.2s, filter 0.2s; letter-spacing: 0.02em;
-          /* Only bare-text control in the header — needs its own legibility
-             cushion while the header is transparent over a busy photo. */
-          filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
+        /* Soft scrim behind the bare icons — a white car under a transparent
+           header washes them out otherwise. Hands over to the solid
+           background at exactly the point that appears. */
+        .cdp-header::before {
+          content: ''; position: absolute; top: 0; left: 0; right: 0; height: 120px;
+          background: linear-gradient(to bottom, rgba(0,0,0,0.45), transparent);
+          pointer-events: none; opacity: 1; transition: opacity 0.25s ease;
         }
-        .cdp-header-scrolled .cdp-back-btn { filter: none; }
-        .cdp-back-btn:hover { color: #e2e8f0; }
+        .cdp-header-scrolled::before { opacity: 0; }
+        .cdp-header > * { position: relative; z-index: 1; }
+
+        /* Icon-only, borderless controls. Padding (not icon size) carries the
+           ~36px tap target. */
+        .cdp-hdr-icon {
+          background: none; border: none; padding: 7px; margin: 0;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; line-height: 1; color: #fff;
+          transition: color 0.18s, filter 0.18s;
+          filter: drop-shadow(0 1px 4px rgba(0,0,0,0.55));
+        }
+        /* Active states carry their own accent in every scroll state / theme,
+           so they're excluded from the neutral colour rules rather than
+           fighting them with inline styles. */
+        .cdp-hdr-icon.cdp-hdr-on { color: #dc2626; }
+        .cdp-hdr-icon.cdp-hdr-ok { color: #16a34a; }
+        .cdp-header-scrolled .cdp-hdr-icon { filter: none; }
+        .cdp-header-scrolled .cdp-hdr-icon:not(.cdp-hdr-on):not(.cdp-hdr-ok) { color: rgba(255,255,255,0.72); }
+        .cdp-header-scrolled .cdp-hdr-icon:not(.cdp-hdr-on):not(.cdp-hdr-ok):hover { color: #e2e8f0; }
+        .cdp-back-btn { margin-left: -7px; }
         .cdp-header-title {
           font-size: 13px; font-weight: 500; color: white;
           opacity: 0; transition: opacity 0.3s; pointer-events: none;
@@ -1858,19 +1875,6 @@ export default function CarDetailPage() {
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .cdp-header-title.visible { opacity: 1; }
-        .cdp-enquire-btn {
-          background: #dc2626; border: none;
-          color: white; border-radius: 6px; padding: 6px 18px;
-          font-size: 11px; cursor: pointer; letter-spacing: 0.08em;
-          font-family: system-ui, sans-serif; transition: all 0.2s;
-          text-transform: uppercase; font-weight: 600;
-        }
-        .cdp-enquire-btn:hover { background: #b91c1c; }
-        .cdp-header-redline {
-          position: absolute; bottom: 0; left: 0; height: 1px;
-          background: linear-gradient(to right, #dc2626, rgba(220,38,38,0.3), transparent);
-          animation: cdp-redline 3s ease forwards; pointer-events: none;
-        }
 
         /* ── mosaic ── */
         .cdp-mosaic-grid {
@@ -1947,14 +1951,13 @@ export default function CarDetailPage() {
         .cdp-wa-btn:hover { transform: scale(1.015); box-shadow: 0 6px 24px rgba(34,197,94,0.3) !important; }
 
         /* ── header actions ── */
-        .cdp-header-actions { display: flex; align-items: center; gap: 8px; }
-        .cdp-mobile-enquire { display: none !important; }
-        .cdp-mobile-share   { display: none !important; }
+        /* Three bare icons fit every breakpoint, so there is no separate
+           mobile action set to keep in sync — only Compare drops out on
+           small screens (a desktop-shaped feature). */
+        .cdp-header-actions { display: flex; align-items: center; gap: 2px; margin-right: -7px; }
         @media (max-width: 900px) {
-          .cdp-header { padding: 0 20px; }
-          .cdp-header-actions { display: none; }
-          .cdp-mobile-enquire { display: inline-flex !important; }
-          .cdp-mobile-share   { display: inline-flex !important; }
+          .cdp-header { padding: 0 16px; }
+          .cdp-hdr-compare { display: none; }
         }
 
         /* ── lightbox ── */
@@ -1996,8 +1999,10 @@ export default function CarDetailPage() {
         .cdp-root { background: #F6F7F9 !important; color: #0F172A !important; }
         .cdp-header { background: transparent !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; border-bottom-color: transparent !important; }
         .cdp-header-scrolled { background: rgba(246,247,249,0.85) !important; backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important; border-bottom-color: rgba(15,23,42,0.07) !important; }
-        .cdp-back-btn { color: #64748b !important; }
-        .cdp-back-btn:hover { color: #0F172A !important; }
+        /* Icons stay white while they sit on the photo, in this theme too —
+           they only take the light palette once the header is opaque. */
+        .cdp-header-scrolled .cdp-hdr-icon:not(.cdp-hdr-on):not(.cdp-hdr-ok) { color: #64748b !important; }
+        .cdp-header-scrolled .cdp-hdr-icon:not(.cdp-hdr-on):not(.cdp-hdr-ok):hover { color: #0F172A !important; }
         .cdp-header-title { color: #0F172A !important; }
         .cdp-img-shimmer { background: linear-gradient(90deg,#e7eaef 25%,#f1f3f6 50%,#e7eaef 75%) !important; background-size: 400px 100% !important; }
         .sk { background: linear-gradient(90deg,#e7eaef 25%,#f1f3f6 50%,#e7eaef 75%) !important; background-size: 600px 100% !important; }
@@ -2012,45 +2017,37 @@ export default function CarDetailPage() {
         .cdp-row:hover { background: rgba(220,38,38,0.03) !important; }
         .cdp-sidebar { background: #ffffff !important; border-color: rgba(15,23,42,0.08) !important; box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 8px 32px rgba(15,23,42,0.06) !important; }
         .cdp-mobile-bar { background: rgba(246,247,249,0.9) !important; border-top-color: rgba(15,23,42,0.07) !important; }
-        .cdp-header-redline { background: linear-gradient(to right, #dc2626, rgba(220,38,38,0.25), transparent) !important; }
       `}</style>}
 
       <div className="cdp-root">
         {/* ── header ── */}
         <header className={`cdp-header${showTitle ? " cdp-header-scrolled" : ""}`}>
-          <button className="cdp-back-btn" onClick={handleBack}>
-            <ArrowLeft size={14} /> Back
+          <button className="cdp-hdr-icon cdp-back-btn" onClick={handleBack} aria-label="Back">
+            <ArrowLeft size={22} />
           </button>
           <span className={`cdp-header-title${showTitle ? " visible" : ""}`}>
             {carTitle}
           </span>
           <div className="cdp-header-actions">
-            <div style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${th.inputBorder}`, borderRadius: 8, padding: '6px 8px', display: 'flex', alignItems: 'center' }}>
-              <HeartButton listingId={car?.id} size={16} />
-            </div>
+            <HeartButton
+              listingId={car?.id}
+              size={21}
+              style={{ padding: 7, filter: showTitle ? 'none' : 'drop-shadow(0 1px 4px rgba(0,0,0,0.55))' }}
+              idleColor={showTitle ? (isXdrive ? '#64748b' : 'rgba(255,255,255,0.72)') : '#fff'}
+            />
             <button
+              className={`cdp-hdr-icon cdp-hdr-compare${car?.id && isInCompare(car.id) ? ' cdp-hdr-on' : ''}`}
               onClick={() => { if (!car?.id) return; isInCompare(car.id) ? removeFromCompare(car.id) : addToCompare(car.id); }}
-              style={{ background: car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.15)' : th.card2, border: `1px solid ${car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.4)' : th.border}`, borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 5, color: car?.id && isInCompare(car.id) ? (isXdrive ? '#dc2626' : '#f87171') : th.textSec, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "system-ui,sans-serif", transition: 'all 0.18s', whiteSpace: 'nowrap' }}>
-              <ArrowLeftRight size={13} />
-              {car?.id && isInCompare(car.id) ? 'In Compare' : 'Compare'}
+              aria-label={car?.id && isInCompare(car.id) ? 'Remove from compare' : 'Add to compare'}>
+              <ArrowLeftRight size={20} />
             </button>
             <button
+              className={`cdp-hdr-icon${shareCopied ? ' cdp-hdr-ok' : ''}`}
               onClick={handleShare}
-              style={{ background: shareCopied ? 'rgba(22,163,74,0.1)' : th.card2, border: `1px solid ${shareCopied ? 'rgba(22,163,74,0.35)' : th.border}`, borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 5, color: shareCopied ? '#16a34a' : th.textSec, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "system-ui,sans-serif", transition: 'all 0.18s', whiteSpace: 'nowrap' }}>
-              {shareCopied ? <Check size={13} /> : <Share2 size={13} />}
-              {shareCopied ? 'Copied!' : 'Share'}
+              aria-label={shareCopied ? 'Link copied' : 'Share'}>
+              {shareCopied ? <Check size={21} /> : <Share2 size={20} />}
             </button>
-            <button className="cdp-enquire-btn" onClick={handleWhatsApp}>Enquire</button>
           </div>
-          <button
-            className="cdp-mobile-share"
-            onClick={handleShare}
-            style={{ alignItems: 'center', gap: 5, background: shareCopied ? 'rgba(22,163,74,0.1)' : th.card2, border: `1px solid ${shareCopied ? 'rgba(22,163,74,0.35)' : th.border}`, borderRadius: 6, padding: '6px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "system-ui,sans-serif", color: shareCopied ? '#16a34a' : th.textSec, transition: 'all 0.18s', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            {shareCopied ? <Check size={13}/> : <Share2 size={13}/>}
-            {shareCopied ? 'Copied!' : 'Share'}
-          </button>
-          <button className="cdp-enquire-btn cdp-mobile-enquire" onClick={handleWhatsApp}>Enquire</button>
-          <div className="cdp-header-redline" />
         </header>
 
         {/* ── SECTION 1: Photo Mosaic ── */}

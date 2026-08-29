@@ -1,7 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { cdnImg } from '../../utils/img';
+
+const SLIDE_MS = 420;
+// After a manual swipe, hold the auto-timer off for a while so the set the
+// visitor just pulled into view doesn't slide away under them. Mirrors
+// HeroCarousel.jsx's TOUCH_PAUSE.
+const TOUCH_PAUSE = 15000;
 
 function chunk(arr, size) {
   const out = [];
@@ -15,25 +21,148 @@ const fmtPrice = (car) => {
 };
 
 // One titled row of 3 car tiles (photo + price only) inside the marketplace
-// hero, replacing the old "Browse by Budget" grid. Auto-advances through the
-// pool 3-at-a-time every 5s using a CSS animationend timer — mirrors
-// HeroCarousel.jsx's pattern (no setInterval, auto-throttles on hidden tabs)
-// rather than a JS interval. A pool of 3 or fewer never renders the timer —
-// there's nothing new to cycle to.
+// hero, replacing the old "Browse by Budget" grid.
+//
+// Motion: three layers (prev / current / next) sit side by side inside one
+// transformed group, so advancing slides the old set out while the new one
+// comes in. Neighbours wrap around the pool, which is why looping past the
+// last set still slides FORWARD instead of rewinding across the whole row.
+// After each commit the group silently recentres on the new index with the
+// transition off — the standard infinite-carousel recentre.
+//
+// Auto-advance still rides the CSS animationend timer (mirrors
+// HeroCarousel.jsx: no setInterval, auto-throttles on hidden tabs). A pool of
+// 3 or fewer never renders the timer — there's nothing new to cycle to.
 export default function HeroCarRow({ eyebrow, title, cars, viewAllHref }) {
   const chunks = useMemo(() => chunk(cars, 3), [cars]);
   const [idx, setIdx] = useState(0);
+  const [dir, setDir] = useState(0);          // 0 idle | -1 → next | +1 → prev
+  const [snapBack, setSnapBack] = useState(false);
+  const [dragDx, setDragDx] = useState(null); // px while a finger is down
   const [animKey, setAnimKey] = useState(0);
   const [paused, setPaused] = useState(false);
 
-  // Guards against a stale index when the pool changes shape (e.g. row 1
-  // flips from 'all' to 'hot' and the new pool has fewer chunks).
-  const safeIdx = idx < chunks.length ? idx : 0;
-  const current = chunks[safeIdx] || [];
+  const stageRef = useRef(null);
+  const touch = useRef(null);        // { x, y, locked } for the live gesture
+  const suppressClick = useRef(false);
+  const pauseTimer = useRef(null);
+  const clickTimer = useRef(null);
 
-  const advance = () => {
-    setIdx((safeIdx + 1) % chunks.length);
-    setAnimKey((k) => k + 1);
+  // Guards a stale index when the pool changes shape (e.g. row 1 flips from
+  // 'all' to 'hot' and the new pool has fewer chunks).
+  const len = chunks.length;
+  const safeIdx = idx < len ? idx : 0;
+  const at = (offset) => (len ? chunks[(safeIdx + offset + len) % len] : null);
+
+  const restartTimer = () => setAnimKey((k) => k + 1);
+
+  const commit = (d) => {
+    if (len < 2 || dir !== 0) return;
+    setSnapBack(false);
+    setDragDx(null);
+    setDir(d);
+  };
+
+  const settle = (e) => {
+    // A tile's own hover transform transition bubbles up here — settling on
+    // it would advance the row on hover.
+    if (e && (e.target !== e.currentTarget || e.propertyName !== 'transform')) return;
+    if (snapBack) { setSnapBack(false); return; }
+    if (dir === 0) return;
+    // -1 slid left, so the set that landed under the viewport is the NEXT one.
+    setIdx((safeIdx + (dir === -1 ? 1 : -1) + len) % len);
+    setDir(0);
+    restartTimer();
+  };
+
+  const holdAuto = () => {
+    clearTimeout(pauseTimer.current);
+    setPaused(true);
+    pauseTimer.current = setTimeout(() => setPaused(false), TOUCH_PAUSE);
+  };
+
+  /* ── Touch swipe. A gesture that reads as vertical is released back to the
+     page so a normal scroll is never hijacked on mobile. ── */
+  const onTouchStart = (e) => {
+    if (len < 2 || dir !== 0) return;
+    const t = e.touches[0];
+    touch.current = { x: t.clientX, y: t.clientY, locked: false };
+  };
+
+  const onTouchMove = (e) => {
+    const g = touch.current;
+    if (!g) return;
+    const t = e.touches[0];
+    const dx = t.clientX - g.x;
+    const dy = t.clientY - g.y;
+    if (!g.locked) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      if (Math.abs(dy) > Math.abs(dx)) { touch.current = null; setDragDx(null); return; }
+      g.locked = true;
+      suppressClick.current = true;
+    }
+    setDragDx(dx);
+  };
+
+  const onTouchEnd = () => {
+    const g = touch.current;
+    touch.current = null;
+    if (!g || !g.locked) { setDragDx(null); return; }
+    const width = stageRef.current?.offsetWidth || 1;
+    const dx = dragDx || 0;
+    holdAuto();
+    setDragDx(null);
+    // The click that follows a lift-off is swallowed by onTileClick, but a
+    // drag that ends on a gap produces none — release the latch on a timer so
+    // it can't eat a genuine tap later.
+    clearTimeout(clickTimer.current);
+    clickTimer.current = setTimeout(() => { suppressClick.current = false; }, 400);
+    if (Math.abs(dx) > Math.max(40, width * 0.25)) commit(dx < 0 ? -1 : 1);
+    else setSnapBack(true);
+  };
+
+  // A finger that dragged the row must not also open the tile it lifted off.
+  const onTileClick = (e) => {
+    if (!suppressClick.current) return;
+    suppressClick.current = false;
+    clearTimeout(clickTimer.current);
+    e.preventDefault();
+  };
+
+  useEffect(() => () => {
+    clearTimeout(pauseTimer.current);
+    clearTimeout(clickTimer.current);
+  }, []);
+
+  const transform =
+    dragDx !== null ? `translateX(${dragDx}px)` :
+    dir !== 0       ? `translateX(${dir * 100}%)` :
+    'translateX(0)';
+  // Transition only while committing or snapping back — the recentre after a
+  // commit has to be instant or the row visibly rewinds.
+  const animating = dir !== 0 || snapBack;
+
+  const layer = (offset, cls) => {
+    const set = at(offset);
+    if (!set) return null;
+    return (
+      <div className={`mp-carrow-layer ${cls}`}>
+        <div className="mp-carrow-grid">
+          {set.map((car) => (
+            <Link
+              key={car.id}
+              to={`/showroom/${car.slug || car.id}`}
+              className="mp-carrow-item"
+              onClick={onTileClick}
+              draggable={false}
+            >
+              <div className="mp-carrow-img" style={{ backgroundImage: `url(${cdnImg(car.images?.[0], 300, 65)})` }} />
+              <span className="mp-carrow-price">{fmtPrice(car)}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -53,27 +182,37 @@ export default function HeroCarRow({ eyebrow, title, cars, viewAllHref }) {
         )}
       </div>
 
-      {current.length === 0 ? (
+      {len === 0 ? (
         <div style={{ padding: '18px 0', color: 'rgba(255,255,255,0.35)', fontSize: 12, fontFamily: "'Outfit',sans-serif" }}>
           No cars listed yet
         </div>
       ) : (
-        <div className="mp-carrow-grid">
-          {current.map((car) => (
-            <Link key={car.id} to={`/showroom/${car.slug || car.id}`} className="mp-carrow-item">
-              <div className="mp-carrow-img" style={{ backgroundImage: `url(${cdnImg(car.images?.[0], 300, 65)})` }} />
-              <span className="mp-carrow-price">{fmtPrice(car)}</span>
-            </Link>
-          ))}
+        <div
+          ref={stageRef}
+          className="mp-carrow-stage"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchEnd}
+        >
+          <div
+            className="mp-carrow-group"
+            style={{ transform, transitionDuration: animating ? `${SLIDE_MS}ms` : '0ms' }}
+            onTransitionEnd={settle}
+          >
+            {len > 1 && layer(-1, 'mp-carrow-prev')}
+            {layer(0, 'mp-carrow-curr')}
+            {len > 1 && layer(1, 'mp-carrow-next')}
+          </div>
         </div>
       )}
 
-      {chunks.length > 1 && (
+      {len > 1 && (
         <div
           key={animKey}
           className="mp-carrow-progress"
-          style={{ animationDuration: '5000ms', animationPlayState: paused ? 'paused' : 'running' }}
-          onAnimationEnd={advance}
+          style={{ animationDuration: '5000ms', animationPlayState: paused || dir !== 0 ? 'paused' : 'running' }}
+          onAnimationEnd={() => commit(-1)}
         />
       )}
     </div>

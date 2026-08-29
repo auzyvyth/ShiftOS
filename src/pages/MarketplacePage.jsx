@@ -781,6 +781,15 @@ export default function MarketplacePage() {
         .mp-trust-item:nth-child(odd) { border-right: 1px solid rgba(255,255,255,.08); }
 
         /* Hero car rows (replaces the old "Browse by Budget" grid) */
+        /* Three sets sit side by side in one transformed group so advancing
+           slides rather than swaps. The current layer is in flow so it drives
+           the stage height; its neighbours are absolute at ±100%. */
+        .mp-carrow-stage { position: relative; overflow: hidden; touch-action: pan-y; }
+        .mp-carrow-group { position: relative; transition-property: transform; transition-timing-function: cubic-bezier(.22,.61,.36,1); will-change: transform; }
+        .mp-carrow-layer { width: 100%; }
+        .mp-carrow-curr  { position: relative; }
+        .mp-carrow-prev  { position: absolute; top: 0; left: -100%; }
+        .mp-carrow-next  { position: absolute; top: 0; left: 100%; }
         .mp-carrow-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
         .mp-carrow-item { display: block; text-decoration: none; border-radius: 8px; overflow: hidden; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); transition: transform .2s ease, border-color .2s ease; }
         .mp-carrow-item:hover { transform: translateY(-3px); border-color: rgba(220,38,38,.45); }
@@ -788,6 +797,9 @@ export default function MarketplacePage() {
         .mp-carrow-price { display: block; padding: 6px 8px 8px; font-size: 11px; font-weight: 700; color: #fff; font-family: 'Outfit',sans-serif; }
         .mp-carrow-progress { position: absolute; opacity: 0; width: 0; animation-name: mp-carrow-fill; animation-timing-function: linear; animation-fill-mode: forwards; }
         @keyframes mp-carrow-fill { from { width: 0; } to { width: 100%; } }
+        @media (prefers-reduced-motion: reduce) {
+          .mp-carrow-group { transition-duration: 0ms !important; }
+        }
 
         /* Results layout — column on mobile */
         .mp-filter-fab      { display: none; }
