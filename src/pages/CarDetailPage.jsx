@@ -2319,9 +2319,10 @@ export default function CarDetailPage() {
             MOBILE LAYOUT (≤900px) — M1 through M8
             ══════════════════════════════════════════ */}
 
-        {/* M1 — Swipeable image. `contain` (not `cover`) + a slightly taller frame
-            so every uploaded photo is shown whole, never cropped, whatever its
-            aspect ratio. Letterbox fills with the dark frame colour. */}
+        {/* M1 — Swipeable image. `cover` so the photo fills the frame edge to
+            edge — `contain` left dark letterbox bars beside any photo whose
+            aspect ratio didn't match the frame. The full uncropped photo is
+            one tap away in the lightbox. */}
         <div className="cdp-mobile-only" style={{ position:'relative', height:'clamp(240px,64vw,420px)', overflow:'hidden', background:'#080f18', cursor:'zoom-in' }}
           onTouchStart={galleryTouchStart} onTouchEnd={galleryTouchEnd}
           onClick={() => { if (gallerySwiped.current) { gallerySwiped.current = false; return; } setLbOpen(true); }}>
@@ -2331,7 +2332,7 @@ export default function CarDetailPage() {
             srcSet={cdnSrcSet(images[activeIdx], HERO_WIDTHS, 72)}
             sizes={HERO_SIZES}
             alt={carTitle} fetchPriority="high" decoding="async"
-            style={{ width:'100%', height:'100%', objectFit:'contain' }}
+            style={{ width:'100%', height:'100%', objectFit:'cover' }}
             onLoad={() => setImgLoaded(true)}
             onError={e => {
               if (images[activeIdx] && !e.currentTarget.dataset.fb && e.currentTarget.src !== images[activeIdx]) {
