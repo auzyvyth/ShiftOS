@@ -91,6 +91,7 @@ import {
 import { callClaude } from "../lib/callClaude";
 const OutreachHub = React.lazy(() => import("../components/crm/OutreachHub"));
 import ThisWeek from "../components/crm/ThisWeek";
+import { buildThisWeek } from "../utils/thisWeek";
 import ServicePackages from "../components/crm/ServicePackages";
 import { useServicePackages } from "../hooks/useServicePackages";
 import { useNudges } from "../hooks/useNudges";
@@ -2288,6 +2289,15 @@ export default function SalesmanPremium() {
  const newEnquiriesCount = enquiries.filter((e) => e.status === "new").length;
  const inboxBadge = pendingBookingsCount + newEnquiriesCount;
 
+ // Same call list as the Dashboard's "This week" card (never replied / going
+ // quiet / a due reminder), filtered down to the lead-tied rows — renewals and
+ // trade-up rows key off a customer, not a lead, and belong under Sold instead.
+ // A raw "how many leads am I working" count doesn't tell you WHICH ones need
+ // action, so the nav badge uses this instead of leads.length.
+ const leadsNeedingFollowUp = buildThisWeek({
+ leads, customers, nudges: dueNudges, packages: servicePackages, repName: profile?.full_name,
+ }).filter((i) => i.leadId).length;
+
  const TABS_DESKTOP = [
  {
  tab: "dashboard",
@@ -2301,10 +2311,16 @@ export default function SalesmanPremium() {
  badge: myListings.length || null,
  },
  {
+ tab: "chat",
+ label: "Chat",
+ icon: <MessageSquare style={{ width: 14, height: 14 }} />,
+ badge: chatUnread || null,
+ },
+ {
  tab: "leads",
  label: "Leads",
  icon: <User style={{ width: 14, height: 14 }} />,
- badge: leads.filter((l) => l.stage!== "lost").length || null,
+ badge: leadsNeedingFollowUp || null,
  },
  {
  tab: "enquiries",
@@ -2335,12 +2351,6 @@ export default function SalesmanPremium() {
  label: "Outreach",
  icon: <Megaphone style={{ width: 14, height: 14 }} />,
  }] : []),
- {
- tab: "chat",
- label: "Chat",
- icon: <MessageSquare style={{ width: 14, height: 14 }} />,
- badge: chatUnread || null,
- },
  {
  tab: "settings",
  label: "Settings",

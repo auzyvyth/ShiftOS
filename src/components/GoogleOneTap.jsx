@@ -23,6 +23,23 @@ const GSI_SRC = 'https://accounts.google.com/gsi/client';
 const DISMISS_KEY = 'xdrive_onetap_dismissed_at';
 const DISMISS_WINDOW = 24 * 60 * 60 * 1000; // don't nag for 24h after a dismissal
 
+// One Tap's "Authorized JavaScript origins" check runs against whatever origin
+// the embedding browser reports — and in-app browsers (the Google app's own
+// in-app tab, Facebook/Instagram/Line's, etc.) don't reliably report the real
+// page origin the way Chrome does. Google then blocks with a hard "Access
+// blocked: origin_mismatch" page, even when the domain IS on the authorized
+// list. There is no origin fix for that — it's the embedding browser, not the
+// config — so the only real fix is to not show One Tap there at all and let
+// the visitor use the plain "Continue with Google" button instead (a full
+// top-level redirect, which those browsers handle fine).
+function isEmbeddedBrowser() {
+  const ua = navigator.userAgent || '';
+  // GSA = Google Search App's in-app browser (the "other Google app").
+  // FBAN/FBAV = Facebook, Instagram = Instagram's in-app tab, Line = LINE.
+  // ";wv)" is Android's own marker for a plain in-app WebView.
+  return /GSA\/|FBAN|FBAV|Instagram|Line\/|; ?wv\)/i.test(ua);
+}
+
 function loadGsi() {
   return new Promise((resolve, reject) => {
     if (window.google?.accounts?.id) return resolve();
@@ -59,6 +76,7 @@ export default function GoogleOneTap() {
   useEffect(() => {
     if (!CLIENT_ID || started.current) return;
     if (isSubdomain()) return; // marketplace only, not dealer storefronts
+    if (isEmbeddedBrowser()) return; // see isEmbeddedBrowser() above
     started.current = true;
     let cancelled = false;
 
