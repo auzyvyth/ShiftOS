@@ -24,12 +24,8 @@ import AvailabilityEditor from "../components/AvailabilityEditor";
 const PostSaleBoard = React.lazy(() => import("../components/postsale/PostSaleBoard"));
 const DashboardTab = React.lazy(() => import("./salesmanPremium/DashboardTab"));
 const ListingsTab = React.lazy(() => import("./salesmanPremium/ListingsTab"));
-// Same module as ListingsTab (named export, not default) — sharing the import()
-// specifier means bundlers put both in the one chunk, so this doesn't cost a
-// second network request beyond what opening the Listings tab already pays.
-const CarDetailPopup = React.lazy(() =>
- import("./salesmanPremium/ListingsTab").then((m) => ({ default: m.CarDetailPopup })),
-);
+// Shared with SalesmanLite — see src/components/CarDetailPopup.jsx.
+const CarDetailPopup = React.lazy(() => import("../components/CarDetailPopup"));
 const AnalyticsTab = React.lazy(() => import("./salesmanPremium/AnalyticsTab"));
 import {
  LogOut,
@@ -1056,18 +1052,18 @@ export default function SalesmanPremium() {
  });
 
  // fetch listings with full columns for car detail popup
+ // Must include every column CarForm's edit prefill reads AND every column
+ // CarDetailPopup's Paperwork/Mechanical tabs display, or editing/viewing a
+ // listing silently blanks those fields (see overlay rule 4).
+ const LISTING_SELECT = "id, slug, year, brand, model, variant, selling_price, original_price, base_price, purchase_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, specs, city, state, condition, engine_cc, horsepower, cylinders, doors, seats, fuel_consumption, created_at, included_services, included_services_cost, recon_cost, sold_at, commission_amount, rejection_reason, is_recon, auction_grade, interior_grade, import_country, auction_house, local_reg_date, chassis_status, damage_map, video_url, car_documents, registration_date, plate_number, vin_number, previous_owners, road_tax_expiry, loan_eligible, payment_type, warranty_months, deposit_amount, sambung_monthly, sambung_months_left, sambung_balance, sambung_deposit, sambung_bank";
  Promise.all([
  supabase
  .from("car_listings")
- .select(
- "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, sold_at, commission_amount",
- )
+ .select(LISTING_SELECT)
  .eq("assigned_to", uid),
  supabase
  .from("car_listings")
- .select(
- "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, sold_at, commission_amount",
- )
+ .select(LISTING_SELECT)
  .eq("dealer_id", uid),
  ]).then(([r1, r2]) => {
  if (r1.error || r2.error) { console.error("fetchListings:", r1.error || r2.error); toast.error("Could not load your listings"); }
@@ -6264,13 +6260,45 @@ export default function SalesmanPremium() {
  {selectedCar && (
  <Suspense fallback={null}>
  <CarDetailPopup
- selectedCar={selectedCar} carStatsMap={carStatsMap} listingCopied={listingCopied}
+ selectedCar={selectedCar} carStatsMap={carStatsMap}
  carDetailImgIdx={carDetailImgIdx} carDetailTab={carDetailTab} carDetailLbOpen={carDetailLbOpen}
  isMobile={isMobile}
  setCarDetailImgIdx={setCarDetailImgIdx} setCarDetailTab={setCarDetailTab}
  setCarDetailLbOpen={setCarDetailLbOpen} setSelectedCar={setSelectedCar}
- handleListingCopy={handleListingCopy} openBroadcast={openBroadcast}
- generateAiCaptions={generateAiCaptions}
+ actions={[
+ {
+ key: "link",
+ label: (<><Copy size={13} style={{ flexShrink: 0 }} />Copy Link</>),
+ color: listingCopied[selectedCar.id] === "link" ? "#4ade80" : "#9ca3af",
+ bg: listingCopied[selectedCar.id] === "link" ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.04)",
+ border: listingCopied[selectedCar.id] === "link" ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.08)",
+ onClick: () => handleListingCopy(selectedCar, "link"),
+ },
+ {
+ key: "wa",
+ label: (<><MessageSquare size={13} style={{ flexShrink: 0 }} />WA Caption</>),
+ color: "#4ade80",
+ bg: "rgba(37,211,102,0.06)",
+ border: "rgba(37,211,102,0.2)",
+ onClick: () => handleListingCopy(selectedCar, "wa"),
+ },
+ {
+ key: "ai",
+ label: (<><Sparkles size={13} style={{ flexShrink: 0 }} />AI Caption</>),
+ color: "#c084fc",
+ bg: "rgba(168,85,247,0.08)",
+ border: "rgba(168,85,247,0.25)",
+ onClick: () => { generateAiCaptions(selectedCar); setSelectedCar(null); },
+ },
+ {
+ key: "broadcast",
+ label: (<><Bell size={13} style={{ flexShrink: 0 }} />Broadcast</>),
+ color: "#fb923c",
+ bg: "rgba(249,115,22,0.08)",
+ border: "rgba(249,115,22,0.25)",
+ onClick: () => { openBroadcast(selectedCar); setSelectedCar(null); },
+ },
+ ]}
  />
  </Suspense>
  )}

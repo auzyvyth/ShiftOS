@@ -183,7 +183,7 @@ function SortableSection({ id, section, complete, collapsed, onToggle, children 
   );
 }
 
-const DOC_TYPES = [
+export const DOC_TYPES = [
   { key: "registration_card", label: "Geran / Registration Card", color: "#0ea5e9" },
   { key: "puspakom", label: "Puspakom Inspection", color: "#22c55e" },
   { key: "service_history", label: "Service History", color: "#60a5fa" },
