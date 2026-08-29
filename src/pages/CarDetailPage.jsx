@@ -49,7 +49,7 @@ import DamageMap from "../components/DamageMap";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { supabase } from "../supabaseClient";
 import FinancingCalculator from "../components/FinancingCalculator";
-import CarCard from "../components/CarCard";
+import SimilarCars from "../components/car/SimilarCars";
 import BookingCalendar from "../components/BookingCalendar";
 import Turnstile from "../components/Turnstile";
 import LegalModal from "../components/LegalModal";
@@ -65,7 +65,7 @@ import { estimateRoadTax } from "../utils/roadTax";
 import ReviewsSection from "../components/reviews/ReviewsSection";
 import CommentsSection from "../components/comments/CommentsSection";
 import BuyerChat from "../components/chat/BuyerChat";
-import { cdnImg } from "../utils/img";
+import { cdnImg, cdnSrcSet } from "../utils/img";
 import { toast } from "sonner";
 
 /* ─── helpers ─── */
@@ -626,6 +626,17 @@ const inputStyle = (focused, th) => ({
   transition: "border-color 0.2s",
 });
 
+/* Hero photo sizing. A single fixed width made a 390px phone download a
+   1280-1600px image; the srcset lets the browser pick. The primary cell is
+   ~62% of the viewport on desktop and full-bleed below 900px. */
+const HERO_WIDTHS = [480, 640, 828, 1080, 1280, 1600];
+const HERO_SIZES  = '(max-width: 900px) 100vw, 62vw';
+
+/* Card fields for the "more from this seller" / "you might also like" rails.
+   body_type and dealer_id feed the similar-cars matching and scoring. */
+const SIM_FIELDS =
+  "id, slug, year, brand, model, variant, body_type, dealer_id, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, car_documents";
+
 /* ─── skeleton ─── */
 function Skeleton() {
   const isXdrive = !isSubdomain();
@@ -905,7 +916,13 @@ export default function CarDetailPage() {
   const { addToCompare, removeFromCompare, isInCompare } = useCompare();
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [similarCars, setSimilarCars] = useState([]);
+  const [simBuckets, setSimBuckets] = useState(null);
+  // The mobile and desktop sections are display:none in the other layout, and
+  // a display:none node never intersects — so both are registered and whichever
+  // is actually visible triggers the fetch.
+  const simRefMobile = useRef(null);
+  const simRefDesktop = useRef(null);
+  const simFetched = useRef(false);
   const [sellerCars, setSellerCars] = useState([]);
   const [salesmanProfile, setSalesmanProfile] = useState(null);
 
@@ -922,7 +939,6 @@ export default function CarDetailPage() {
   /* sticky title */
   const [showTitle, setShowTitle] = useState(false);
   const heroRef = useRef(null);
-  const autoRef = useRef(null);
 
   /* current user — used to suppress booking button on own listings */
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -1057,10 +1073,7 @@ export default function CarDetailPage() {
   const [lbZoom, setLbZoom] = useState(1);
   const [lbPan, setLbPan] = useState({ x: 0, y: 0 });
   const lbDrag = useRef({ active: false, ox: 0, oy: 0 });
-  const lbOpenRef = useRef(false);
   const lbTouch = useRef({ startX: 0, startY: 0 });
-  const pauseRef = useRef(false);
-  const resumeTimer = useRef(null);
   const galleryTouch = useRef({ startX: 0, startY: 0 });
   // Set when a touch turns out to be a swipe, so the trailing click (which fires
   // on touchend) doesn't also open the lightbox — tap opens, swipe changes slide.
@@ -1073,7 +1086,6 @@ export default function CarDetailPage() {
   }
 
   useEffect(() => {
-    lbOpenRef.current = lbOpen;
     if (!lbOpen) return;
     const onKey = (e) => {
       if (e.key === "Escape") closeLb();
@@ -1173,10 +1185,9 @@ export default function CarDetailPage() {
           .then(() => {});
       }
 
-      const simFields =
-        "id, slug, year, brand, model, variant, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, car_documents";
+      const simFields = SIM_FIELDS;
 
-      const [visibleServices, dealerData, salesmanData, similarCarsData, sellerCarsData] =
+      const [visibleServices, dealerData, salesmanData, sellerCarsData] =
         await Promise.all([
           // Filter included_services against active dealer_products
           (async () => {
@@ -1222,39 +1233,6 @@ export default function CarDetailPage() {
                 .then((r) => r.data)
             : Promise.resolve(null),
 
-          // Similar cars (2-step chain internally)
-          (async () => {
-            let similar = [];
-            if (carData.dealer_id) {
-              const { data } = await supabase
-                .from("public_car_listings")
-                .select(simFields)
-                .eq("dealer_id", carData.dealer_id)
-                .eq("brand", carData.brand)
-                .in("status", ["available", "reserved"])
-                .neq("id", carData.id)
-                .order("created_at", { ascending: false })
-                .limit(6);
-              similar = data || [];
-            }
-            if (similar.length < 3) {
-              const seen = new Set([carData.id, ...similar.map((c) => c.id)]);
-              const { data } = await supabase
-                .from("public_car_listings")
-                .select(simFields)
-                .eq("brand", carData.brand)
-                .in("status", ["available", "reserved"])
-                .neq("id", carData.id)
-                .order("created_at", { ascending: false })
-                .limit(9);
-              similar = [
-                ...similar,
-                ...(data || []).filter((c) => !seen.has(c.id)),
-              ].slice(0, 6);
-            }
-            return similar;
-          })(),
-
           // More from this seller — the dealer's other live listings (any brand),
           // newest first. Only fetched when the listing has a dealer_id.
           carData.dealer_id
@@ -1273,7 +1251,6 @@ export default function CarDetailPage() {
       setCar({ ...carData, included_services: visibleServices });
       setDealer(dealerData);
       setSalesmanProfile(salesmanData);
-      setSimilarCars(similarCarsData);
       setSellerCars(sellerCarsData);
       setLoading(false);
 
@@ -1332,20 +1309,10 @@ export default function CarDetailPage() {
       });
   }, [car?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (!car) return;
-    const imgs = car?.images?.length ? car.images : [];
-    if (imgs.length <= 1) return;
-    autoRef.current = setInterval(() => {
-      if (lbOpenRef.current || pauseRef.current) return;
-      setSlideDir("next");
-      setSlideKey((k) => k + 1);
-      setActiveIdx((i) => (i + 1) % imgs.length);
-    }, 5000);
-    return () => clearInterval(autoRef.current);
-  }, [car]);
-
-  // Preload next 2 images so the slide never shows an unloaded frame
+  // Preload the neighbouring slides. This MUST warm the same URL the <img>
+  // actually requests — it used to preload the raw storage original (2-5 MB),
+  // which warmed nothing the gallery uses and stole bandwidth from the hero
+  // photo still being fetched.
   const preloadedSet = useRef(new Set());
   useEffect(() => {
     const imgs = car?.images;
@@ -1354,9 +1321,13 @@ export default function CarDetailPage() {
       if (preloadedSet.current.has(i)) return;
       preloadedSet.current.add(i);
       const img = new Image();
-      img.src = imgs[i];
+      // cdnImg/cdnSrcSet are module imports; `disp` only exists on the loaded
+      // render path, so it must not be reached from here.
+      const ss = cdnSrcSet(imgs[i], HERO_WIDTHS, 72);
+      if (ss) { img.sizes = HERO_SIZES; img.srcset = ss; }
+      img.src = cdnImg(imgs[i], 1280, 72);
     });
-  }, [activeIdx, car]);
+  }, [activeIdx, car]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!heroRef.current) return;
@@ -1368,12 +1339,47 @@ export default function CarDetailPage() {
     return () => obs.disconnect();
   }, [car]);
 
+  /* ── "You might also like" buckets — fetched only once the section nears the
+     viewport (same lazy pattern as the marketplace body-type carousels). Four
+     small parallel queries fill every tab in one go, so switching tabs costs
+     nothing, and none of it competes with the hero photo at page load. ── */
+  useEffect(() => {
+    const els = [simRefMobile.current, simRefDesktop.current].filter(Boolean);
+    if (!els.length || !car?.id || simFetched.current) return;
+    const obs = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting || simFetched.current) return;
+      simFetched.current = true;
+
+      const base = () => supabase
+        .from("public_car_listings")
+        .select(SIM_FIELDS)
+        .in("status", ["available", "reserved"])
+        .neq("id", car.id)
+        .order("created_at", { ascending: false })
+        .limit(12);
+
+      const price = Number(car.selling_price) || 0;
+      const queries = {
+        model: car.brand && car.model ? base().eq("brand", car.brand).eq("model", car.model) : null,
+        brand: car.brand ? base().eq("brand", car.brand) : null,
+        // Any brand — this is what lets other makes into the list.
+        body:  car.body_type ? base().eq("body_type", car.body_type) : null,
+        price: price > 0 ? base().gte("selling_price", Math.round(price * 0.85)).lte("selling_price", Math.round(price * 1.15)) : null,
+      };
+
+      const keys = Object.keys(queries).filter((k) => queries[k]);
+      Promise.all(keys.map((k) => queries[k].then(({ data }) => data || []).catch(() => [])))
+        .then((results) => {
+          const out = {};
+          keys.forEach((k, i) => { out[k] = results[i]; });
+          setSimBuckets(out);
+        });
+    }, { rootMargin: "400px" });
+    els.forEach((el) => obs.observe(el));
+    return () => obs.disconnect();
+  }, [car?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function go(idx, dir) {
-    pauseRef.current = true;
-    clearTimeout(resumeTimer.current);
-    resumeTimer.current = setTimeout(() => {
-      pauseRef.current = false;
-    }, 4000);
     setSlideDir(dir);
     setSlideKey((k) => k + 1);
     setActiveIdx(idx);
@@ -1626,6 +1632,9 @@ export default function CarDetailPage() {
   const images = car.images?.length ? car.images : ["/placeholder-car.jpg"];
   // Resized WebP for the on-page gallery (full-res is kept for the lightbox zoom).
   const disp = (u, w = 1280) => cdnImg(u, w, 72);
+  const heroPreload = images[0] && images[0] !== "/placeholder-car.jpg"
+    ? { href: disp(images[0], 1280), srcSet: cdnSrcSet(images[0], HERO_WIDTHS, 72) }
+    : null;
   const onImgErr = (orig) => (e) => {
     if (orig && !e.currentTarget.dataset.fb && e.currentTarget.src !== orig) {
       e.currentTarget.dataset.fb = '1';
@@ -1775,6 +1784,11 @@ export default function CarDetailPage() {
             <meta key="td" name="twitter:description" content={desc} />,
             <meta key="ti" name="twitter:image" content={img} />,
             car ? <link key="c" rel="canonical" href={url} /> : null,
+            // Start the hero photo fetch from the document head instead of
+            // waiting for React to mount and render the <img>.
+            heroPreload
+              ? <link key="pl" rel="preload" as="image" href={heroPreload.href} imagesrcset={heroPreload.srcSet} imagesizes={HERO_SIZES} fetchpriority="high" />
+              : null,
           ].filter(Boolean);
         })()}
         <script type="application/ld+json">{JSON.stringify({
@@ -2061,20 +2075,13 @@ export default function CarDetailPage() {
             >
               <img
                 key={slideKey}
-                src={disp(images[activeIdx], 1600)}
+                src={disp(images[activeIdx], 1280)}
+                srcSet={cdnSrcSet(images[activeIdx], HERO_WIDTHS, 72)}
+                sizes={HERO_SIZES}
                 alt={carTitle}
                 fetchPriority="high"
                 decoding="async"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  transition: "transform 6s ease",
-                  transform: "scale(1.03)",
-                }}
-                onLoad={(e) => {
-                  e.currentTarget.style.transform = "scale(1)";
-                }}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 onError={onImgErr(images[activeIdx])}
               />
               {imgCount > 1 && (
@@ -2214,21 +2221,14 @@ export default function CarDetailPage() {
               key={slideKey}
               className={`cdp-main-img cdp-slide-${slideDir}`}
               src={disp(images[activeIdx], 1280)}
+              srcSet={cdnSrcSet(images[activeIdx], HERO_WIDTHS, 72)}
+              sizes={HERO_SIZES}
               alt={carTitle}
               fetchPriority={activeIdx === 0 ? "high" : "auto"}
               loading={activeIdx === 0 ? "eager" : "lazy"}
               decoding="async"
-              style={{
-                opacity: 0,
-                transform: "scale(1.04)",
-                transition: "opacity 1.2s ease, transform 6s ease",
-              }}
               onClick={() => setLbOpen(true)}
-              onLoad={(e) => {
-                setImgLoaded(true);
-                e.currentTarget.style.opacity = "0.9";
-                e.currentTarget.style.transform = "scale(1)";
-              }}
+              onLoad={() => setImgLoaded(true)}
               onError={(e) => {
                 if (images[activeIdx] && !e.currentTarget.dataset.fb && e.currentTarget.src !== images[activeIdx]) {
                   e.currentTarget.dataset.fb = '1';
@@ -2327,9 +2327,12 @@ export default function CarDetailPage() {
           onClick={() => { if (gallerySwiped.current) { gallerySwiped.current = false; return; } setLbOpen(true); }}>
           {!imgLoaded && <div className="cdp-img-shimmer" />}
           <img key={slideKey} className={`cdp-main-img cdp-slide-${slideDir}`}
-            src={disp(images[activeIdx], 1280)} alt={carTitle} fetchPriority="high" decoding="async"
-            style={{ width:'100%', height:'100%', objectFit:'contain', opacity:0, transition:'opacity 0.8s ease' }}
-            onLoad={e => { setImgLoaded(true); e.currentTarget.style.opacity = '1'; }}
+            src={disp(images[activeIdx], 1280)}
+            srcSet={cdnSrcSet(images[activeIdx], HERO_WIDTHS, 72)}
+            sizes={HERO_SIZES}
+            alt={carTitle} fetchPriority="high" decoding="async"
+            style={{ width:'100%', height:'100%', objectFit:'contain' }}
+            onLoad={() => setImgLoaded(true)}
             onError={e => {
               if (images[activeIdx] && !e.currentTarget.dataset.fb && e.currentTarget.src !== images[activeIdx]) {
                 e.currentTarget.dataset.fb = '1'; e.currentTarget.src = images[activeIdx];
@@ -3014,19 +3017,18 @@ export default function CarDetailPage() {
         )}
 
         {/* M8 — Similar cars */}
-        {similarCars.length > 0 && (
-          <div className="cdp-mobile-only" style={{ background: th.pageBg, padding:'28px 20px', marginBottom:80 }}>
-            <p style={{ fontSize:'10px', textTransform:'uppercase', letterSpacing:'0.2em', color:'#dc2626', margin:'0 0 4px', fontWeight:700 }}>You might also like</p>
-            <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'2.2rem', letterSpacing:'0.06em', color: th.text, margin:'0 0 20px', borderLeft:'3px solid #dc2626', paddingLeft:'12px' }}>
-              More {car.brand}
-            </h2>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              {similarCars.map(s => (
-                <CarCard key={s.id} car={s} ctaContext={ctaCtx} showCompare />
-              ))}
-            </div>
-          </div>
-        )}
+        <div ref={simRefMobile} className="cdp-mobile-only">
+          {simBuckets && (
+            <SimilarCars
+              car={car}
+              buckets={simBuckets}
+              ctaContext={ctaCtx}
+              variant="mobile"
+              th={th}
+              wrapStyle={{ background: th.pageBg, padding: '28px 20px', marginBottom: 80 }}
+            />
+          )}
+        </div>
 
         {/* ── SECTION 2: Body (desktop only) ── */}
         <div className="cdp-body-wrap cdp-desktop-only">
@@ -3869,24 +3871,17 @@ export default function CarDetailPage() {
             )}
 
             {/* SIMILAR CARS */}
-            {similarCars.length > 0 && (
-              <div style={{ marginTop: 64, background: th.card2, border: `1px solid ${th.borderSec}`, borderRadius: 16, padding: '32px 28px' }}>
-                <p style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.2em', color: '#dc2626', margin: '0 0 4px', fontWeight: 700 }}>You might also like</p>
-                <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '2.4rem', letterSpacing: '0.06em', color: th.text, margin: '0 0 28px', borderLeft: '3px solid #dc2626', paddingLeft: '14px' }}>
-                  More {car.brand}
-                </h2>
-                <div className="cdp-similar-grid">
-                  {similarCars.map(s => <CarCard key={s.id} car={s} ctaContext={ctaCtx} showCompare />)}
-                </div>
-                <div className="cdp-similar-scroll">
-                  {similarCars.map(s => (
-                    <div key={s.id} style={{ flexShrink: 0, width: '72vw', scrollSnapAlign: 'start' }}>
-                      <CarCard car={s} ctaContext={ctaCtx} showCompare />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <div ref={simRefDesktop}>
+              {simBuckets && (
+                <SimilarCars
+                  car={car}
+                  buckets={simBuckets}
+                  ctaContext={ctaCtx}
+                  th={th}
+                  wrapStyle={{ marginTop: 64, background: th.card2, border: `1px solid ${th.borderSec}`, borderRadius: 16, padding: '32px 28px' }}
+                />
+              )}
+            </div>
           </div>{/* end left column */}
 
           {/* ── RIGHT SIDEBAR ── */}
