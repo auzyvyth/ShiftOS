@@ -826,26 +826,49 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   // slotType — the upload came from one of the named trust-document slots, so
   // the file REPLACES whatever sits in that slot rather than appending a second
   // copy. Without it the file appends using the free-form type picker.
+  const ALLOWED_DOC_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+  const MAX_DOC_BYTES = 10 * 1024 * 1024;
+
   const handleDocumentFile = async (e, slotType) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!ALLOWED_DOC_TYPES.includes(file.type)) {
+      toast.error("Only PDF, JPG, PNG or WEBP files are allowed");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_DOC_BYTES) {
+      toast.error("File is too large — max 10MB");
+      e.target.value = "";
+      return;
+    }
     if (slotType) setUploadingSlot(slotType);
     else setDocUploading(true);
     try {
-      const path = `docs/${Date.now()}-${(file.name || "document").replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      // Owner-scoped + random, same as photo uploads (uploadOne, above) — the
+      // storage RLS delete policy matches on foldername[1] = auth.uid(), and a
+      // flat docs/ path with no owner folder can never satisfy it, so a
+      // replaced/removed document was orphaned in storage forever.
+      const rand = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
+      const folder = profile?.id ? `${profile.id}/` : "";
+      const path = `${folder}docs/${Date.now()}-${rand}-${(file.name || "document").replace(/[^a-zA-Z0-9._-]/g, "_")}`;
       const { error } = await supabase.storage
         .from("car-images")
-        .upload(path, file);
+        .upload(path, file, { contentType: file.type });
       if (error) throw error;
       const url = supabase.storage.from("car-images").getPublicUrl(path)
         .data.publicUrl;
       const type = slotType || docTypeInput;
       setForm((f) => {
         const docs = [...(f.car_documents || [])];
-        const entry = { type, name: file.name, url };
+        const entry = { type, name: file.name, url, path };
         const at = slotType ? docs.findIndex((d) => d.type === slotType) : -1;
+        const prev = at >= 0 ? docs[at] : null;
         if (at >= 0) docs[at] = entry;
         else docs.push(entry);
+        // The slot's old file is now replaced — its storage object would
+        // otherwise sit orphaned forever, same problem removeDocument fixes.
+        if (prev?.path) supabase.storage.from("car-images").remove([prev.path]).catch(() => {});
         // Attaching the geran clears any "can't provide it" reason — the
         // document is the stronger answer and the two must never both be set.
         return {
@@ -863,10 +886,14 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   };
 
   const removeDocument = (i) => {
+    const doc = (form.car_documents || [])[i];
     setForm((f) => ({
       ...f,
       car_documents: (f.car_documents || []).filter((_, j) => j !== i),
     }));
+    // Old entries (uploaded before the owner-scoped path fix) have no `path`
+    // to clean up — nothing to do for those beyond dropping the array entry.
+    if (doc?.path) supabase.storage.from("car-images").remove([doc.path]).catch(() => {});
   };
 
   // ── Trust documents ──────────────────────────────────────────────────────
@@ -1267,9 +1294,15 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     e.target.value = "";
   };
 
+  // `draftId` state isn't visible to a second overlapping call until the
+  // insert resolves and re-renders — two file batches added in quick
+  // succession both read draftId as null and both insert a draft row. The
+  // ref is set synchronously, so the second call sees it immediately.
+  const creatingDraftRef = useRef(false);
   const createDraftIfNeeded = async (firstUrl) => {
-    if (draftId) return;
+    if (draftId || creatingDraftRef.current) return;
     if (!dealerId) return;
+    creatingDraftRef.current = true;
     try {
       const { data, error } = await supabase
         .from("car_listings")
