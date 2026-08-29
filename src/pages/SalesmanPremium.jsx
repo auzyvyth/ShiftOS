@@ -703,6 +703,33 @@ export default function SalesmanPremium() {
  const [enquiries, setEnquiries] = useState([]);
  // analyticsEvents removed — aggregated server-side via get_salesman_analytics RPC
 
+ // ── local cache helpers (ported from SalesmanLite.jsx) ────────────────────
+ const CACHE_TTL = 30 * 60 * 1000; // 30 min
+ const readCache = (key) => {
+ try {
+ const raw = localStorage.getItem(key);
+ if (!raw) return null;
+ const { ts, data } = JSON.parse(raw);
+ return Date.now() - ts < CACHE_TTL ? data : null;
+ } catch (e) { console.error("readCache:", e); return null; }
+ };
+ const writeCache = (key, data) => {
+ try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch (e) { console.error("writeCache:", e); }
+ };
+ const precacheImages = (listings) => {
+ if (!("caches" in window)) return;
+ const urls = listings.flatMap((c) => (Array.isArray(c.images) ? c.images.slice(0, 2) : [])).filter(Boolean);
+ if (!urls.length) return;
+ caches.open("sp-images-v1").then(async (cache) => {
+ // batch 4 at a time to avoid saturating bandwidth on first load
+ for (let i = 0; i < urls.length; i += 4) {
+ await Promise.all(urls.slice(i, i + 4).map((url) =>
+ cache.match(url).then((hit) => { if (!hit) return cache.add(url).catch(() => {}); })
+ ));
+ }
+ }).catch(() => {});
+ };
+
  // stale leads (48h + overdue follow-ups)
  useEffect(() => {
  const now = new Date();
@@ -836,6 +863,16 @@ export default function SalesmanPremium() {
 
  setProfile(profileData);
  setLoading(false);
+
+ // seed from cache immediately so UI is instant, real fetches below replace it
+ const cachedListings = readCache(`sp_listings_${uid}`);
+ if (cachedListings) setMyListings(cachedListings);
+ const cachedLeads = readCache(`sp_leads_${uid}`);
+ if (cachedLeads) { setLeads(cachedLeads); setLeadsLoading(false); }
+ const cachedEnquiries = readCache(`sp_enquiries_${uid}`);
+ if (cachedEnquiries) setEnquiries(cachedEnquiries);
+ const cachedAppts = readCache(`sp_appts_${uid}`);
+ if (cachedAppts) setAppointments(cachedAppts);
 
  // profiles.onboarding_tour_done is the real, per-account guard (mirrors
  // SalesmanLite.jsx:1390) — sp_tour_seen_${uid} is only a same-session
@@ -1043,6 +1080,8 @@ export default function SalesmanPremium() {
  })
  .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
  setMyListings(merged);
+ writeCache(`sp_listings_${uid}`, merged);
+ precacheImages(merged);
  });
 
  // Analytics: server-side aggregation via RPC — one row per car, no raw events in browser
@@ -1128,6 +1167,7 @@ export default function SalesmanPremium() {
  const rows = lds || [];
  setLeads(rows);
  setLeadsLoading(false);
+ writeCache(`sp_leads_${uid}`, rows);
 
  // Which of these leads already carry a paid add-on — feeds the
  // pipeline card badge. Scoped to the leads we just fetched rather
@@ -1185,6 +1225,7 @@ export default function SalesmanPremium() {
  .then(({ data: apts, error: aptsErr }) => {
  if (aptsErr) { console.error("fetchAppointments:", aptsErr); toast.error("Could not load bookings"); return; }
  setAppointments(apts || []);
+ writeCache(`sp_appts_${uid}`, apts || []);
  });
 
  // fetch notifications
@@ -1204,7 +1245,10 @@ export default function SalesmanPremium() {
  )
  .eq("dealer_id", uid)
  .order("created_at", { ascending: false })
- .then(({ data: enqs }) => setEnquiries(enqs || []));
+ .then(({ data: enqs }) => {
+ setEnquiries(enqs || []);
+ writeCache(`sp_enquiries_${uid}`, enqs || []);
+ });
  });
  return () => {
  cancelled = true;
