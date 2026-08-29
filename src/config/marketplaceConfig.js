@@ -1,3 +1,4 @@
+import { MY_STATES } from '../utils/locations';
 // Canonical brand whitelist used for filtering. Must cover every brand the
 // brand strips link to AND every brand value that can exist in the DB (from
 // CarForm CAR_DATA), otherwise sanitizeBrand() drops the param and the page
@@ -19,7 +20,10 @@ export const FINANCING_TYPES = [
   { value: 'cash',          label: 'Cash Only' },
   { value: 'sambung_bayar', label: 'Sambung Bayar' },
 ];
-export const MY_STATES = ['Kuala Lumpur','Selangor','Johor','Penang','Perak','Kedah','Pahang','Negeri Sembilan','Melaka','Sabah','Sarawak','Terengganu','Kelantan','Perlis'];
+// Re-exported from the one list (src/utils/locations.js). This copy was
+// missing Labuan and Putrajaya, so a seller in either could not be filtered
+// for on the marketplace even though signup let them pick it.
+export { MY_STATES };
 export const SORT_OPTIONS = [
   { label: 'Newest First',       value: 'newest' },
   { label: 'Price: Low to High', value: 'price_asc' },

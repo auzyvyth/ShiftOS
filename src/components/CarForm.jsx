@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
+import { STATE_CITIES, cityOptionsFor, matchKnownLocation } from "../utils/locations";
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
 import {
@@ -114,129 +115,7 @@ export { CAR_DATA };
 
 const ALL_BRANDS = Object.keys(CAR_DATA).sort();
 
-const STATE_CITIES = {
-  "Kuala Lumpur": [
-    "Kuala Lumpur City Centre",
-    "Chow Kit",
-    "Bangsar",
-    "Mont Kiara",
-    "Kepong",
-    "Setapak",
-    "Wangsa Maju",
-    "Titiwangsa",
-    "Brickfields",
-    "Cheras",
-    "Bukit Jalil",
-    "Sri Petaling",
-  ],
-  Selangor: [
-    "Shah Alam",
-    "Petaling Jaya",
-    "Subang Jaya",
-    "Klang",
-    "Ampang",
-    "Puchong",
-    "Sepang",
-    "Rawang",
-    "Kajang",
-    "Cyberjaya",
-    "Putrajaya",
-    "Damansara",
-    "Sungai Buloh",
-  ],
-  Penang: [
-    "George Town",
-    "Butterworth",
-    "Bukit Mertajam",
-    "Bayan Lepas",
-    "Batu Ferringhi",
-    "Gelugor",
-    "Seberang Jaya",
-    "Perai",
-    "Sungai Jawi",
-    "Nibong Tebal",
-    "Kepala Batas",
-    "Balik Pulau",
-  ],
-  Johor: [
-    "Johor Bahru",
-    "Iskandar Puteri",
-    "Skudai",
-    "Kulai",
-    "Batu Pahat",
-    "Muar",
-    "Kluang",
-    "Pasir Gudang",
-    "Senai",
-  ],
-  Perak: [
-    "Ipoh",
-    "Taiping",
-    "Teluk Intan",
-    "Sitiawan",
-    "Lumut",
-    "Kampar",
-    "Tanjung Malim",
-    "Kuala Kangsar",
-  ],
-  Melaka: ["Melaka City", "Ayer Keroh", "Bukit Katil", "Alor Gajah", "Jasin"],
-  "Negeri Sembilan": [
-    "Seremban",
-    "Port Dickson",
-    "Nilai",
-    "Rembau",
-    "Tampin",
-    "Senawang",
-  ],
-  Kedah: ["Alor Setar", "Sungai Petani", "Kulim", "Langkawi", "Baling"],
-  Kelantan: ["Kota Bharu", "Pasir Mas", "Tanah Merah", "Machang", "Gua Musang"],
-  Terengganu: ["Kuala Terengganu", "Kemaman", "Dungun", "Kerteh", "Marang"],
-  Pahang: [
-    "Kuantan",
-    "Temerloh",
-    "Bentong",
-    "Raub",
-    "Cameron Highlands",
-    "Genting Highlands",
-  ],
-  Sabah: [
-    "Kota Kinabalu",
-    "Sandakan",
-    "Tawau",
-    "Lahad Datu",
-    "Keningau",
-    "Semporna",
-    "Kota Belud",
-  ],
-  Sarawak: ["Kuching", "Miri", "Sibu", "Bintulu", "Limbang", "Kota Samarahan"],
-};
 
-// Map a profile's stored location onto what this form can actually accept.
-//
-// The two sides do not agree, and prefilling blindly would set values the
-// selects cannot show: onboarding offers 16 states (Labuan, Perlis and
-// Putrajaya among them) and takes the city as FREE TEXT, while this form has
-// cities for 13 states and constrains the city to that state's list. So an
-// unknown state is dropped entirely (nothing else would work — the city list
-// hangs off the state), while a city that is not on the list is KEPT and added
-// to the dropdown's options by `cityOptions` below. Most real sellers stored a
-// city this form has never heard of ("Gombak", "Wilayah Persekutuan"), and
-// dropping those would leave the feature half-working for the people who have
-// it. `car_listings.city` is only ever displayed, never matched against a fixed
-// list, so carrying a seller's own wording through is safe.
-// Matching is case- and space-insensitive so "kuala lumpur" finds "Kuala Lumpur".
-function matchKnownLocation(rawState, rawCity) {
-  const norm = (v) => String(v || "").trim().toLowerCase().replace(/\s+/g, " ");
-  const stateKey = Object.keys(STATE_CITIES).find((k) => norm(k) === norm(rawState));
-  if (!stateKey) return { state: "", city: "" };
-  const cityMatch = (STATE_CITIES[stateKey] || []).find((c) => norm(c) === norm(rawCity));
-  if (cityMatch) return { state: stateKey, city: cityMatch };
-  // Title-cased: a carried-through city is printed on the public listing, and
-  // "gombak" is how someone typed it at 1am, not how it should read there.
-  const own = String(rawCity || "").trim().replace(/\s+/g, " ")
-    .replace(/\b\p{L}[\p{L}'’-]*/gu, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-  return { state: stateKey, city: own };
-}
 
 const CONDITIONS = ["used", "recon", "new"];
 const BODY_TYPES = ["Sedan", "SUV", "MPV", "Hatchback", "Coupe", "Pickup"];
@@ -1323,11 +1202,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     form.brand && CAR_DATA[form.brand] ? CAR_DATA[form.brand] : [];
   // The seller's own city rides along when it is not one of ours, so the
   // prefill above has something the dropdown can actually show.
-  const cityOptions = (() => {
-    const list = form.state && STATE_CITIES[form.state] ? STATE_CITIES[form.state] : [];
-    if (form.city && !list.includes(form.city)) return [form.city, ...list];
-    return list;
-  })();
+  const cityOptions = cityOptionsFor(form.state, form.city);
 
   // Auto-suggest auction grade based on mileage + age
   const suggestedGrade = useMemo(() => {
