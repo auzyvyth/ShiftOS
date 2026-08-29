@@ -1787,7 +1787,7 @@ export default function CarDetailPage() {
             // Start the hero photo fetch from the document head instead of
             // waiting for React to mount and render the <img>.
             heroPreload
-              ? <link key="pl" rel="preload" as="image" href={heroPreload.href} imagesrcset={heroPreload.srcSet} imagesizes={HERO_SIZES} fetchpriority="high" />
+              ? <link key="pl" rel="preload" as="image" href={heroPreload.href} imageSrcSet={heroPreload.srcSet} imageSizes={HERO_SIZES} fetchPriority="high" />
               : null,
           ].filter(Boolean);
         })()}
