@@ -16,6 +16,7 @@ import { readCache, writeCache, precacheImages } from '../utils/localCache';
 import { PRICE_STEPS } from '../components/PriceDrumPicker';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import BodyTypeCarousel from '../components/marketplace/BodyTypeCarousel';
+import HeroCarRow from '../components/marketplace/HeroCarRow';
 import AdvancedSearchModal from '../components/marketplace/AdvancedSearchModal';
 import SkeletonCard from '../components/ui/SkeletonCard';
 import {
@@ -29,6 +30,11 @@ import {
 
 /* ── Constants ─────────────────────────────────────────────────────────────── */
 const PER_PAGE = 12;
+
+/* Trimmed field list for the hero rows (photo + price only, above-the-fold
+   critical path) — the full CAR_FIELDS (29 cols) is for detail-heavy grids,
+   not warranted here. */
+const HERO_ROW_FIELDS = 'id,slug,brand,model,variant,year,selling_price,original_price,images,created_at';
 
 /* sanitizePrice depends on PRICE_STEPS from PriceDrumPicker so lives here */
 function sanitizePrice(val) {
@@ -138,6 +144,58 @@ export default function MarketplacePage() {
     }
     fetchStats();
   }, []);
+
+  /* ── Hero rows: "All Cars"/"Hot Deals" + "MPV" — fetched eagerly on mount
+     (unlike bodyTypeCars below, this is above the fold and must be visible
+     on first paint, not lazy-loaded on scroll). ── */
+  const [row1Pool, setRow1Pool] = useState([]);
+  const [row1Mode, setRow1Mode] = useState('all'); // 'all' | 'hot'
+  const [row2Pool, setRow2Pool] = useState([]);
+
+  useEffect(() => {
+    supabase.from('public_car_listings')
+      .select(HERO_ROW_FIELDS)
+      .in('status', ['available', 'reserved'])
+      .order('created_at', { ascending: false })
+      .limit(12)
+      .then(({ data }) => setRow1Pool(data || []));
+
+    supabase.from('public_car_listings')
+      .select(HERO_ROW_FIELDS)
+      .in('status', ['available', 'reserved'])
+      .eq('body_type', 'MPV')
+      .order('created_at', { ascending: false })
+      .limit(12)
+      .then(({ data }) => setRow2Pool(data || []));
+  }, []);
+
+  /* Row 1 upgrades to "Hot Deals" the moment any exist. Gated on the actual
+     fetched/filtered rows (not just stats.hotDeals > 0) so the title can
+     never flip over to "Hot Deals" while showing an empty row, if the RPC
+     count and this query ever disagree. There's no dedicated hot-deal
+     system yet — this reuses the same discount-based definition as
+     HomePage.jsx's isHotDeal()/CarCard's hasDiscount (>= 3% off). */
+  useEffect(() => {
+    if (!(stats.hotDeals > 0)) return;
+    supabase.from('public_car_listings')
+      .select(HERO_ROW_FIELDS)
+      .in('status', ['available', 'reserved'])
+      .not('original_price', 'is', null)
+      .gt('original_price', 0)
+      .order('created_at', { ascending: false })
+      .limit(30)
+      .then(({ data }) => {
+        const discountPct = (c) => (c.original_price - c.selling_price) / c.original_price;
+        const hot = (data || [])
+          .filter(c => c.original_price > 0 && c.selling_price > 0 && c.selling_price <= c.original_price * 0.97)
+          .sort((a, b) => discountPct(b) - discountPct(a))
+          .slice(0, 12);
+        if (hot.length > 0) {
+          setRow1Pool(hot);
+          setRow1Mode('hot');
+        }
+      });
+  }, [stats.hotDeals]);
 
   /* ── Fetch body type carousels — only when section enters viewport ── */
   useEffect(() => {
@@ -722,11 +780,14 @@ export default function MarketplacePage() {
         .mp-trust-item  { padding: 6px 10px; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .mp-trust-item:nth-child(odd) { border-right: 1px solid rgba(255,255,255,.08); }
 
-        /* Budget cards */
-        .mp-budget-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
-        .mp-budget-item { display: block; width: auto; text-decoration: none; border-radius: 8px; overflow: hidden; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); transition: transform .2s ease, border-color .2s ease; }
-        .mp-budget-item:hover { transform: translateY(-3px); border-color: rgba(220,38,38,.45) !important; }
-        .mp-budget-icon { height: 52px; display: flex; align-items: center; justify-content: center; }
+        /* Hero car rows (replaces the old "Browse by Budget" grid) */
+        .mp-carrow-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
+        .mp-carrow-item { display: block; text-decoration: none; border-radius: 8px; overflow: hidden; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); transition: transform .2s ease, border-color .2s ease; }
+        .mp-carrow-item:hover { transform: translateY(-3px); border-color: rgba(220,38,38,.45); }
+        .mp-carrow-img { height: 52px; background-size: cover; background-position: center; background-color: rgba(255,255,255,0.04); }
+        .mp-carrow-price { display: block; padding: 6px 8px 8px; font-size: 11px; font-weight: 700; color: #fff; font-family: 'Outfit',sans-serif; }
+        .mp-carrow-progress { position: absolute; opacity: 0; width: 0; animation-name: mp-carrow-fill; animation-timing-function: linear; animation-fill-mode: forwards; }
+        @keyframes mp-carrow-fill { from { width: 0; } to { width: 100%; } }
 
         /* Results layout — column on mobile */
         .mp-filter-fab      { display: none; }
@@ -751,8 +812,8 @@ export default function MarketplacePage() {
           .mp-trust-item    { padding: 0 28px; }
           /* Desktop: dividers between all four (last cell has none). */
           .mp-trust-item:nth-child(even):not(:last-child) { border-right: 1px solid rgba(255,255,255,.08); }
-          .mp-budget-grid   { gap: 10px; }
-          .mp-budget-icon   { height: 80px; }
+          .mp-carrow-grid   { gap: 10px; }
+          .mp-carrow-img    { height: 80px; }
           .mp-filter-fab    { display: flex; }
           .mp-cars-layout   { flex-direction: row; }
           .mp-hero-search   { flex-direction: row; }
@@ -940,28 +1001,23 @@ export default function MarketplacePage() {
               </div>
             </div>
 
-            {/* RIGHT: Browse by Budget */}
+            {/* RIGHT: live inventory rows — proof of real, moving stock reads as
+                more trustworthy than a static price-shortcut grid (the budget
+                <select> in the search bar above already covers that filter). */}
             <div className="mp-hero-right">
-              <p style={{ margin:'0 0 4px', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.16em', color:'rgba(220,38,38,0.8)', fontFamily:"'Outfit',sans-serif" }}>Shop Smarter</p>
-              <h2 style={{ margin:'0 0 16px', fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(26px,3vw,44px)', color:'#ffffff', letterSpacing:'0.02em', lineHeight:1 }}>BROWSE BY BUDGET</h2>
-              <div className="mp-budget-grid">
-                {[
-                  { big:'RM 30K',  sub:'& under', value:'30000',  color:'#9ca3af', bg:'rgba(148,163,184,0.08)' },
-                  { big:'RM 50K',  sub:'& under', value:'50000',  color:'#cbd5e1', bg:'rgba(203,213,225,0.08)' },
-                  { big:'RM 80K',  sub:'& under', value:'80000',  color:'#e2e8f0', bg:'rgba(226,232,240,0.08)' },
-                  { big:'RM 120K', sub:'& under', value:'120000', color:'#fca5a5', bg:'rgba(220,38,38,0.10)'   },
-                  { big:'RM 200K', sub:'& under', value:'200000', color:'#f87171', bg:'rgba(220,38,38,0.16)'   },
-                  { big:'ALL',     sub:'Any price', value:'',     color:'#ffffff', bg:'rgba(255,255,255,0.08)' },
-                ].map(({ big, sub, value, color, bg }) => (
-                  <Link key={big} to={value ? `/showroom?max_price=${value}` : '/showroom'} className="mp-budget-item">
-                    <div className="mp-budget-icon" style={{ background: bg }}>
-                      <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(18px,2.4vw,26px)', lineHeight:1, letterSpacing:'0.02em', color }}>{big}</span>
-                    </div>
-                    <div style={{ padding:'6px 8px 8px' }}>
-                      <span style={{ fontSize:'10px', fontWeight:'600', color:'rgba(255,255,255,0.5)', fontFamily:"'Outfit',sans-serif", textTransform:'uppercase', letterSpacing:'0.06em' }}>{sub}</span>
-                    </div>
-                  </Link>
-                ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <HeroCarRow
+                  eyebrow="Shop Smarter"
+                  title={row1Mode === 'hot' ? 'HOT DEALS' : 'ALL CARS'}
+                  cars={row1Pool}
+                  viewAllHref={row1Mode === 'hot' ? '/showroom?hot_deals=true' : '/showroom'}
+                />
+                <HeroCarRow
+                  eyebrow="Popular in Malaysia"
+                  title="MPV"
+                  cars={row2Pool}
+                  viewAllHref="/showroom?body_type=MPV"
+                />
               </div>
             </div>
 

@@ -1819,21 +1819,37 @@ export default function CarDetailPage() {
         .cdp-root { background: #060c14; min-height: 100vh; font-family: system-ui, sans-serif; color: #e2e8f0; }
 
         /* ── header ── */
+        /* Transparent-over-hero until scrolled past it, so the hero photo
+           fills the entire top of the viewport with no header-reserved gap.
+           position: fixed (not sticky) so it floats over the hero instead of
+           pushing it down; .cdp-header-scrolled (toggled off the existing
+           heroRef IntersectionObserver's showTitle state) brings the
+           background/blur back once the hero has scrolled out of view. */
         .cdp-header {
-          position: sticky; top: 0; z-index: 100;
+          position: fixed; top: 0; left: 0; right: 0; z-index: 100;
           display: flex; align-items: center; justify-content: space-between;
           padding: 0 28px; height: 60px;
+          background: transparent;
+          backdrop-filter: none; -webkit-backdrop-filter: none;
+          border-bottom: 1px solid transparent;
+          transition: background 0.25s ease, backdrop-filter 0.25s ease, border-color 0.25s ease;
+        }
+        .cdp-header-scrolled {
           background: rgba(6,12,20,0.93);
           backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-          border-bottom: 1px solid rgba(255,255,255,0.06);
+          border-bottom-color: rgba(255,255,255,0.06);
         }
         .cdp-back-btn {
           display: flex; align-items: center; gap: 7px;
           background: none; border: none; color: #64748b;
           font-size: 13px; cursor: pointer;
           font-family: system-ui, sans-serif; padding: 0;
-          transition: color 0.2s; letter-spacing: 0.02em;
+          transition: color 0.2s, filter 0.2s; letter-spacing: 0.02em;
+          /* Only bare-text control in the header — needs its own legibility
+             cushion while the header is transparent over a busy photo. */
+          filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
         }
+        .cdp-header-scrolled .cdp-back-btn { filter: none; }
         .cdp-back-btn:hover { color: #e2e8f0; }
         .cdp-header-title {
           font-size: 13px; font-weight: 500; color: white;
@@ -1978,7 +1994,8 @@ export default function CarDetailPage() {
       {isXdrive && <style>{`
         body { background: #F6F7F9 !important; }
         .cdp-root { background: #F6F7F9 !important; color: #0F172A !important; }
-        .cdp-header { background: rgba(246,247,249,0.85) !important; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom-color: rgba(15,23,42,0.07) !important; }
+        .cdp-header { background: transparent !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; border-bottom-color: transparent !important; }
+        .cdp-header-scrolled { background: rgba(246,247,249,0.85) !important; backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important; border-bottom-color: rgba(15,23,42,0.07) !important; }
         .cdp-back-btn { color: #64748b !important; }
         .cdp-back-btn:hover { color: #0F172A !important; }
         .cdp-header-title { color: #0F172A !important; }
@@ -2000,7 +2017,7 @@ export default function CarDetailPage() {
 
       <div className="cdp-root">
         {/* ── header ── */}
-        <header className="cdp-header" style={{ position: "sticky" }}>
+        <header className={`cdp-header${showTitle ? " cdp-header-scrolled" : ""}`}>
           <button className="cdp-back-btn" onClick={handleBack}>
             <ArrowLeft size={14} /> Back
           </button>
