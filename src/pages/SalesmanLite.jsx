@@ -1222,6 +1222,13 @@ export default function SalesmanLite() {
   const writeCache = (key, data) => {
     try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch (e) { console.error("writeCache:", e); }
   };
+  // Buyer IC and home address are identity documents, not UI-necessary for the
+  // stale-while-refetching preview this cache exists for — strip them before
+  // they sit in localStorage, which has no expiry of its own (the 30-min TTL
+  // above only stops the app from TRUSTING a stale read, it never deletes the
+  // entry). Live in-memory state (setLeads) still gets the real values.
+  const redactLeadsForCache = (rows) =>
+    (rows || []).map(({ buyer_ic, buyer_address, ...rest }) => rest);
   const precacheImages = (listings) => {
     if (!("caches" in window)) return;
     const urls = listings.flatMap((c) => (Array.isArray(c.images) ? c.images.slice(0, 2) : [])).filter(Boolean);
@@ -1314,7 +1321,7 @@ export default function SalesmanLite() {
 
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("id, email, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, location, ic_hash, ic_last4, ic_verified_at, ic_deadline, created_at, account_status, approval_status, rejection_reason, is_verified, kyc_submitted_at, deleted_at, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
+        .select("id, email, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, city, state, location, ic_hash, ic_last4, ic_verified_at, ic_deadline, created_at, account_status, approval_status, rejection_reason, is_verified, kyc_submitted_at, deleted_at, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
         .eq("id", uid)
         .maybeSingle();
 
@@ -1543,7 +1550,7 @@ export default function SalesmanLite() {
           const fetchedLeads = lds || [];
           setLeads(fetchedLeads);
           setLeadsLoading(false);
-          writeCache(`slite_leads_${uid}`, fetchedLeads);
+          writeCache(`slite_leads_${uid}`, redactLeadsForCache(fetchedLeads));
 
           // Which of these leads already have a paid add-on attached — feeds
           // the pipeline card badge (see leadIdsWithAddons).
