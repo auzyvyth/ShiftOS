@@ -79,6 +79,19 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   `salesman_ai_quota_ok()` daily-cap pattern rather than inventing new
   metering, since at RM35/month the whole Premium tier price has to cover
   the Claude API cost per user.
+  Second half of the ask (2026-08-29): it should also be a creative partner,
+  not just a Q&A layer — listing copywriting and ad copy that's actually
+  better than what a seller would write themselves. This one's a different
+  shape from the metrics Q&A above: it needs the CAR's own data (brand,
+  model, year, mileage, price, condition, included services), not the
+  dealer's business metrics, so it's closer to the existing AI Caption
+  Writer (`SalesmanPremium.jsx:2173`, currently "coming soon") than to
+  `gm_pnl_snapshot` — likely the same feature, generalized: caption writer
+  today only serves one preset shape (WA/TikTok/IG/FB caption); "creative
+  partner" implies also full listing descriptions, and maybe critiquing an
+  existing listing's photos/copy and suggesting what's weak about it. Scope
+  later alongside the metrics copilot — same funding blocker, same
+  per-listing quota pattern as `feature="caption"` already uses.
 
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
 
