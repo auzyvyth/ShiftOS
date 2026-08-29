@@ -9,6 +9,7 @@ import { supabase } from '../../supabaseClient';
 import { callClaude } from '../../lib/callClaude';
 import { useNudges, NUDGE_PRESETS } from '../../hooks/useNudges';
 import NudgeQueue from './NudgeQueue';
+import { AI_FEATURES_ENABLED } from '../../utils/aiFeatureFlag';
 
 // Unified Outreach — reads the SAME `leads` record the Pipeline and Bookings
 // tabs use (single source of truth), so contacting / editing here reflects
@@ -462,10 +463,17 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
                     Preview · editable{aiIsDraft ? ' · AI draft' : ''}
                   </p>
                   {salesmanId && (
-                    <button onClick={aiDraft} disabled={aiLoading}
-                      style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:8, background:P.surface, border:`1px solid ${P.violetBorder}`, color:P.violetText, fontSize:11, fontWeight:600, cursor: aiLoading ? 'wait' : 'pointer', fontFamily:"system-ui,sans-serif", opacity: aiLoading ? 0.6 : 1 }}>
-                      <Sparkles size={11} /> {aiLoading ? 'Writing…' : 'AI draft'}
-                    </button>
+                    AI_FEATURES_ENABLED ? (
+                      <button onClick={aiDraft} disabled={aiLoading}
+                        style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:8, background:P.surface, border:`1px solid ${P.violetBorder}`, color:P.violetText, fontSize:11, fontWeight:600, cursor: aiLoading ? 'wait' : 'pointer', fontFamily:"system-ui,sans-serif", opacity: aiLoading ? 0.6 : 1 }}>
+                        <Sparkles size={11} /> {aiLoading ? 'Writing…' : 'AI draft'}
+                      </button>
+                    ) : (
+                      <span title="No Anthropic API credits loaded yet"
+                        style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:8, background:'transparent', border:`1px solid ${P.border}`, color:P.textSec, fontSize:11, fontWeight:600, fontFamily:"system-ui,sans-serif", opacity:0.7 }}>
+                        <Sparkles size={11} /> AI draft — coming soon
+                      </span>
+                    )
                   )}
                 </div>
                 <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={6}

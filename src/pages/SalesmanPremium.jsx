@@ -103,6 +103,7 @@ import UpgradeBanner from "../components/ai/UpgradeBanner";
 import AiLoadingState from "../components/ai/AiLoadingState";
 import AiQuotaBadge from "../components/ai/AiQuotaBadge";
 import PushToggle from "../components/PushToggle";
+import { AI_FEATURES_ENABLED } from "../utils/aiFeatureFlag";
 const ServicesAddonsTab = React.lazy(() => import("../components/salesman/ServicesAddonsTab"));
 const LoanDesk = React.lazy(() => import("../components/loans/LoanDesk"));
 // Every query that loads a lead uses this. The lead drawer renders the linked
@@ -6212,11 +6213,11 @@ export default function SalesmanPremium() {
  },
  {
  key: "ai",
- label: (<><Sparkles size={13} style={{ flexShrink: 0 }} />AI Caption</>),
+ label: (<><Sparkles size={13} style={{ flexShrink: 0 }} />AI Caption{AI_FEATURES_ENABLED ? "" : " (soon)"}</>),
  color: "#c084fc",
  bg: "rgba(168,85,247,0.08)",
  border: "rgba(168,85,247,0.25)",
- onClick: () => { generateAiCaptions(selectedCar); setSelectedCar(null); },
+ onClick: () => { if (AI_FEATURES_ENABLED) generateAiCaptions(selectedCar); setAiCaptionCar(selectedCar); setSelectedCar(null); },
  },
  {
  key: "broadcast",
@@ -6701,7 +6702,7 @@ export default function SalesmanPremium() {
  </p>
  </div>
  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
- {isPremium && (
+ {AI_FEATURES_ENABLED && isPremium && (
  <AiQuotaBadge userId={userId} feature="caption" />
  )}
  <button
@@ -6713,7 +6714,11 @@ export default function SalesmanPremium() {
  </div>
  </div>
 
- {!isPremium? (
+ {!AI_FEATURES_ENABLED ? (
+ <p style={{ fontSize: 12.5, color: "#9ca3af", lineHeight: 1.6, margin: "0 0 4px" }}>
+ AI Caption Writer is coming soon.
+ </p>
+ ) : !isPremium? (
  <UpgradeBanner feature="AI Caption Writer" />
  ) : (
  <>
