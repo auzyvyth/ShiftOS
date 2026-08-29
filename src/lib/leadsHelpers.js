@@ -118,10 +118,13 @@ export const SOURCE_CONFIG = {
   referral:      { label: 'Referral',  bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
   other:         { label: 'Other',     bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
   manual:        { label: 'Manual',    bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
+  chat:          { label: 'App Chat',  bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
 };
 
-// leads.lead_source has a DB CHECK constraint allowing only this set — any
-// other value rejects the whole insert. Forms that create leads must offer
+// What a HUMAN may pick when creating a lead by hand. The DB CHECK also allows
+// 'chat', but only the chat_after_message trigger may write it — a person
+// cannot retroactively declare that a buyer started an in-app conversation.
+// Any value outside the CHECK rejects the whole insert, so forms must offer
 // only these (SOURCE_CONFIG carries extra display-only aliases for older rows).
 export const LEAD_SOURCE_DB_VALUES = ['walk_in', 'whatsapp', 'referral', 'drevo_enquiry', 'enquiry', 'manual'];
 

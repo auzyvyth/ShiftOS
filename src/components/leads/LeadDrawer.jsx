@@ -966,14 +966,26 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
 
             {/* Action buttons */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-              <a href={formatWhatsAppURL(lead.phone)} target="_blank" rel="noopener noreferrer"
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
-                <MessageCircle style={{ width: 13, height: 13 }} />WhatsApp
-              </a>
-              <a href={`tel:${lead.phone}`}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
-                <Phone style={{ width: 13, height: 13 }} />Call
-              </a>
+              {/* A lead from the in-app chat can have no phone at all — a guest
+                  buyer never gave one. Rendering the two buttons anyway sends
+                  the seller to wa.me/ and tel: with nothing after them. */}
+              {lead.phone ? (
+                <>
+                  <a href={formatWhatsAppURL(lead.phone)} target="_blank" rel="noopener noreferrer"
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+                    <MessageCircle style={{ width: 13, height: 13 }} />WhatsApp
+                  </a>
+                  <a href={`tel:${lead.phone}`}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+                    <Phone style={{ width: 13, height: 13 }} />Call
+                  </a>
+                </>
+              ) : (
+                <span style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#f9fafb', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 12, fontWeight: 600 }}>
+                  <MessageCircle style={{ width: 13, height: 13 }} />
+                  {lead.lead_source === 'chat' ? 'No phone yet — reply in Inbox' : 'No phone on this lead'}
+                </span>
+              )}
               {nextStage && !isTerminal && (
                 <button onClick={() => handleStageChange(nextStage)}
                   style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#dc2626', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>

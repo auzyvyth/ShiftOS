@@ -149,8 +149,9 @@ Every server-side path that turns an inbound contact into a `leads` row MUST get
 `salesman_id` from the SECURITY DEFINER helper `resolve_lead_salesman(p_dealer_id, p_car_id,
 p_ref_slug, p_explicit)`. Do NOT re-implement the resolution inline — that drift is what
 made WhatsApp/enquiry leads vanish from a salesman's pipeline TWICE. Callers today:
-`create_lead_from_whatsapp` (ContactGate/WhatsApp tap) and the `enquiry_to_lead` trigger
-(enquiry form). Resolution order, first hit wins:
+`create_lead_from_whatsapp` (ContactGate/WhatsApp tap), the `enquiry_to_lead` trigger
+(enquiry form), and `start_chat_thread` (in-app chat — it resolves once onto
+`chat_threads.salesman_id`, and `chat_after_message` reuses that rather than resolving again). Resolution order, first hit wins:
   1. explicit rep the caller already resolved (e.g. api/enquiry.js set `salesman_id`)
   2. `ref_slug` → must be `role='salesman'` AND scoped to this dealer (`id=dealer OR dealer_id=dealer`)
   3. `car_listings.assigned_to` (the exclusivity-lock closer)
@@ -511,6 +512,22 @@ Buyers message sellers inside ShiftOS (not WhatsApp). Built 2026-08-23.
 - Frontend: `src/hooks/useChat.js`, `src/components/chat/{ChatThread,SellerInbox,BuyerChat}.jsx`.
   Notifications reuse the existing path (a `salesman_notifications` row IS the
   push) and fire only on the first unread of a burst.
+- **A buyer message creates a pipeline lead** (`chat_after_message`, migration
+  20260829). Every other inbound path did and chat did not, so a buyer who chose
+  "chat here" existed in the Inbox and nowhere else — no pipeline row, no
+  follow-up, invisible to "This week" and to every count. The lead is created on
+  the buyer's FIRST MESSAGE, not when the thread opens (opening a chat and
+  typing nothing is not a lead), `lead_source='chat'`, and `chat_threads.lead_id`
+  makes it exactly one per thread. Notes carry `body_ai`, never `body`.
+  A guest buyer has no phone, so the lead has none — LeadCard and LeadDrawer
+  hide the WhatsApp/Call actions rather than linking to `wa.me/` with nothing
+  after it.
+- **De-dup on phone always goes through `normalize_my_phone`, on BOTH sides.**
+  `trg_leads_normalize_phone` stores every `leads.phone` as `60xxxxxxxxx`, so
+  comparing a raw `"0123456789"` against it never matches and the same buyer
+  gets a new lead per channel. This was live in `create_lead_from_whatsapp`
+  until 2026-08-29. `profiles` stores the local `01…` form — never compare the
+  two columns raw.
 - **`BuyerChat` is the car page's ONE Contact button (RAPTOR-6, 2026-08-24)** — it
   is no longer just the chat trigger. Its sheet has two steps: a chooser (WhatsApp
   / chat here / call) and then the chat itself. The car card is now exactly two
