@@ -49,7 +49,7 @@ import DamageMap from "../components/DamageMap";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { supabase } from "../supabaseClient";
 import FinancingCalculator from "../components/FinancingCalculator";
-import CarCard from "../components/CarCard";
+import SimilarCars from "../components/car/SimilarCars";
 import BookingCalendar from "../components/BookingCalendar";
 import Turnstile from "../components/Turnstile";
 import LegalModal from "../components/LegalModal";
@@ -65,7 +65,7 @@ import { estimateRoadTax } from "../utils/roadTax";
 import ReviewsSection from "../components/reviews/ReviewsSection";
 import CommentsSection from "../components/comments/CommentsSection";
 import BuyerChat from "../components/chat/BuyerChat";
-import { cdnImg } from "../utils/img";
+import { cdnImg, cdnSrcSet } from "../utils/img";
 import { toast } from "sonner";
 
 /* ─── helpers ─── */
@@ -626,6 +626,17 @@ const inputStyle = (focused, th) => ({
   transition: "border-color 0.2s",
 });
 
+/* Hero photo sizing. A single fixed width made a 390px phone download a
+   1280-1600px image; the srcset lets the browser pick. The primary cell is
+   ~62% of the viewport on desktop and full-bleed below 900px. */
+const HERO_WIDTHS = [480, 640, 828, 1080, 1280, 1600];
+const HERO_SIZES  = '(max-width: 900px) 100vw, 62vw';
+
+/* Card fields for the "more from this seller" / "you might also like" rails.
+   body_type and dealer_id feed the similar-cars matching and scoring. */
+const SIM_FIELDS =
+  "id, slug, year, brand, model, variant, body_type, dealer_id, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, car_documents";
+
 /* ─── skeleton ─── */
 function Skeleton() {
   const isXdrive = !isSubdomain();
@@ -635,11 +646,10 @@ function Skeleton() {
     ? 'linear-gradient(90deg,#e7eaef 25%,#f1f3f6 50%,#e7eaef 75%)'
     : 'linear-gradient(90deg,#0a1220 25%,#111e30 50%,#0a1220 75%)';
   const border    = isXdrive ? 'rgba(15,23,42,0.07)' : 'rgba(255,255,255,0.06)';
-  const headerBg  = isXdrive ? 'rgba(246,247,249,0.9)' : 'rgba(6,12,20,0.93)';
   const mosaicGap = isXdrive ? '#e2e6ec' : '#000';
 
   return (
-    <div style={{ background: pageBg, minHeight: '100vh' }}>
+    <div style={{ background: pageBg, minHeight: '100vh', position: 'relative' }}>
       <style>{`
         @keyframes sk-shimmer { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
         .sk-b { background:${shimmerGr}; background-size:600px 100%; animation:sk-shimmer 1.5s infinite; border-radius:4px; }
@@ -647,12 +657,14 @@ function Skeleton() {
         @media (min-width:901px) { .sk-mobile  { display:none !important; } }
       `}</style>
 
-      {/* Header — same on all breakpoints */}
-      <div style={{ height:60, background:headerBg, borderBottom:`1px solid ${border}`, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 28px', boxSizing:'border-box' }}>
-        <div className="sk-b" style={{ width:56, height:14 }} />
-        <div style={{ display:'flex', gap:8 }}>
-          <div className="sk-b" style={{ width:60, height:28, borderRadius:6 }} />
-          <div className="sk-b" style={{ width:80, height:28, borderRadius:6 }} />
+      {/* Header — same on all breakpoints. Overlays the mosaic rather than
+          sitting above it, so the skeleton and the loaded page put the photo
+          in the same place and nothing jumps 60px on load. */}
+      <div style={{ position:'absolute', top:0, left:0, right:0, height:60, zIndex:100, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 20px', boxSizing:'border-box', pointerEvents:'none' }}>
+        <div className="sk-b" style={{ width:22, height:22, borderRadius:6 }} />
+        <div style={{ display:'flex', gap:10 }}>
+          <div className="sk-b" style={{ width:22, height:22, borderRadius:6 }} />
+          <div className="sk-b" style={{ width:22, height:22, borderRadius:6 }} />
         </div>
       </div>
 
@@ -904,7 +916,13 @@ export default function CarDetailPage() {
   const { addToCompare, removeFromCompare, isInCompare } = useCompare();
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [similarCars, setSimilarCars] = useState([]);
+  const [simBuckets, setSimBuckets] = useState(null);
+  // The mobile and desktop sections are display:none in the other layout, and
+  // a display:none node never intersects — so both are registered and whichever
+  // is actually visible triggers the fetch.
+  const simRefMobile = useRef(null);
+  const simRefDesktop = useRef(null);
+  const simFetched = useRef(false);
   const [sellerCars, setSellerCars] = useState([]);
   const [salesmanProfile, setSalesmanProfile] = useState(null);
 
@@ -921,7 +939,6 @@ export default function CarDetailPage() {
   /* sticky title */
   const [showTitle, setShowTitle] = useState(false);
   const heroRef = useRef(null);
-  const autoRef = useRef(null);
 
   /* current user — used to suppress booking button on own listings */
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -1056,10 +1073,7 @@ export default function CarDetailPage() {
   const [lbZoom, setLbZoom] = useState(1);
   const [lbPan, setLbPan] = useState({ x: 0, y: 0 });
   const lbDrag = useRef({ active: false, ox: 0, oy: 0 });
-  const lbOpenRef = useRef(false);
   const lbTouch = useRef({ startX: 0, startY: 0 });
-  const pauseRef = useRef(false);
-  const resumeTimer = useRef(null);
   const galleryTouch = useRef({ startX: 0, startY: 0 });
   // Set when a touch turns out to be a swipe, so the trailing click (which fires
   // on touchend) doesn't also open the lightbox — tap opens, swipe changes slide.
@@ -1072,7 +1086,6 @@ export default function CarDetailPage() {
   }
 
   useEffect(() => {
-    lbOpenRef.current = lbOpen;
     if (!lbOpen) return;
     const onKey = (e) => {
       if (e.key === "Escape") closeLb();
@@ -1172,10 +1185,9 @@ export default function CarDetailPage() {
           .then(() => {});
       }
 
-      const simFields =
-        "id, slug, year, brand, model, variant, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, car_documents";
+      const simFields = SIM_FIELDS;
 
-      const [visibleServices, dealerData, salesmanData, similarCarsData, sellerCarsData] =
+      const [visibleServices, dealerData, salesmanData, sellerCarsData] =
         await Promise.all([
           // Filter included_services against active dealer_products
           (async () => {
@@ -1221,39 +1233,6 @@ export default function CarDetailPage() {
                 .then((r) => r.data)
             : Promise.resolve(null),
 
-          // Similar cars (2-step chain internally)
-          (async () => {
-            let similar = [];
-            if (carData.dealer_id) {
-              const { data } = await supabase
-                .from("public_car_listings")
-                .select(simFields)
-                .eq("dealer_id", carData.dealer_id)
-                .eq("brand", carData.brand)
-                .in("status", ["available", "reserved"])
-                .neq("id", carData.id)
-                .order("created_at", { ascending: false })
-                .limit(6);
-              similar = data || [];
-            }
-            if (similar.length < 3) {
-              const seen = new Set([carData.id, ...similar.map((c) => c.id)]);
-              const { data } = await supabase
-                .from("public_car_listings")
-                .select(simFields)
-                .eq("brand", carData.brand)
-                .in("status", ["available", "reserved"])
-                .neq("id", carData.id)
-                .order("created_at", { ascending: false })
-                .limit(9);
-              similar = [
-                ...similar,
-                ...(data || []).filter((c) => !seen.has(c.id)),
-              ].slice(0, 6);
-            }
-            return similar;
-          })(),
-
           // More from this seller — the dealer's other live listings (any brand),
           // newest first. Only fetched when the listing has a dealer_id.
           carData.dealer_id
@@ -1272,7 +1251,6 @@ export default function CarDetailPage() {
       setCar({ ...carData, included_services: visibleServices });
       setDealer(dealerData);
       setSalesmanProfile(salesmanData);
-      setSimilarCars(similarCarsData);
       setSellerCars(sellerCarsData);
       setLoading(false);
 
@@ -1331,20 +1309,10 @@ export default function CarDetailPage() {
       });
   }, [car?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (!car) return;
-    const imgs = car?.images?.length ? car.images : [];
-    if (imgs.length <= 1) return;
-    autoRef.current = setInterval(() => {
-      if (lbOpenRef.current || pauseRef.current) return;
-      setSlideDir("next");
-      setSlideKey((k) => k + 1);
-      setActiveIdx((i) => (i + 1) % imgs.length);
-    }, 5000);
-    return () => clearInterval(autoRef.current);
-  }, [car]);
-
-  // Preload next 2 images so the slide never shows an unloaded frame
+  // Preload the neighbouring slides. This MUST warm the same URL the <img>
+  // actually requests — it used to preload the raw storage original (2-5 MB),
+  // which warmed nothing the gallery uses and stole bandwidth from the hero
+  // photo still being fetched.
   const preloadedSet = useRef(new Set());
   useEffect(() => {
     const imgs = car?.images;
@@ -1353,9 +1321,13 @@ export default function CarDetailPage() {
       if (preloadedSet.current.has(i)) return;
       preloadedSet.current.add(i);
       const img = new Image();
-      img.src = imgs[i];
+      // cdnImg/cdnSrcSet are module imports; `disp` only exists on the loaded
+      // render path, so it must not be reached from here.
+      const ss = cdnSrcSet(imgs[i], HERO_WIDTHS, 72);
+      if (ss) { img.sizes = HERO_SIZES; img.srcset = ss; }
+      img.src = cdnImg(imgs[i], 1280, 72);
     });
-  }, [activeIdx, car]);
+  }, [activeIdx, car]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!heroRef.current) return;
@@ -1367,12 +1339,47 @@ export default function CarDetailPage() {
     return () => obs.disconnect();
   }, [car]);
 
+  /* ── "You might also like" buckets — fetched only once the section nears the
+     viewport (same lazy pattern as the marketplace body-type carousels). Four
+     small parallel queries fill every tab in one go, so switching tabs costs
+     nothing, and none of it competes with the hero photo at page load. ── */
+  useEffect(() => {
+    const els = [simRefMobile.current, simRefDesktop.current].filter(Boolean);
+    if (!els.length || !car?.id || simFetched.current) return;
+    const obs = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting || simFetched.current) return;
+      simFetched.current = true;
+
+      const base = () => supabase
+        .from("public_car_listings")
+        .select(SIM_FIELDS)
+        .in("status", ["available", "reserved"])
+        .neq("id", car.id)
+        .order("created_at", { ascending: false })
+        .limit(12);
+
+      const price = Number(car.selling_price) || 0;
+      const queries = {
+        model: car.brand && car.model ? base().eq("brand", car.brand).eq("model", car.model) : null,
+        brand: car.brand ? base().eq("brand", car.brand) : null,
+        // Any brand — this is what lets other makes into the list.
+        body:  car.body_type ? base().eq("body_type", car.body_type) : null,
+        price: price > 0 ? base().gte("selling_price", Math.round(price * 0.85)).lte("selling_price", Math.round(price * 1.15)) : null,
+      };
+
+      const keys = Object.keys(queries).filter((k) => queries[k]);
+      Promise.all(keys.map((k) => queries[k].then(({ data }) => data || []).catch(() => [])))
+        .then((results) => {
+          const out = {};
+          keys.forEach((k, i) => { out[k] = results[i]; });
+          setSimBuckets(out);
+        });
+    }, { rootMargin: "400px" });
+    els.forEach((el) => obs.observe(el));
+    return () => obs.disconnect();
+  }, [car?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function go(idx, dir) {
-    pauseRef.current = true;
-    clearTimeout(resumeTimer.current);
-    resumeTimer.current = setTimeout(() => {
-      pauseRef.current = false;
-    }, 4000);
     setSlideDir(dir);
     setSlideKey((k) => k + 1);
     setActiveIdx(idx);
@@ -1625,6 +1632,9 @@ export default function CarDetailPage() {
   const images = car.images?.length ? car.images : ["/placeholder-car.jpg"];
   // Resized WebP for the on-page gallery (full-res is kept for the lightbox zoom).
   const disp = (u, w = 1280) => cdnImg(u, w, 72);
+  const heroPreload = images[0] && images[0] !== "/placeholder-car.jpg"
+    ? { href: disp(images[0], 1280), srcSet: cdnSrcSet(images[0], HERO_WIDTHS, 72) }
+    : null;
   const onImgErr = (orig) => (e) => {
     if (orig && !e.currentTarget.dataset.fb && e.currentTarget.src !== orig) {
       e.currentTarget.dataset.fb = '1';
@@ -1774,6 +1784,11 @@ export default function CarDetailPage() {
             <meta key="td" name="twitter:description" content={desc} />,
             <meta key="ti" name="twitter:image" content={img} />,
             car ? <link key="c" rel="canonical" href={url} /> : null,
+            // Start the hero photo fetch from the document head instead of
+            // waiting for React to mount and render the <img>.
+            heroPreload
+              ? <link key="pl" rel="preload" as="image" href={heroPreload.href} imagesrcset={heroPreload.srcSet} imagesizes={HERO_SIZES} fetchpriority="high" />
+              : null,
           ].filter(Boolean);
         })()}
         <script type="application/ld+json">{JSON.stringify({
@@ -1814,27 +1829,59 @@ export default function CarDetailPage() {
         @keyframes cdp-scanLine  { 0% { top: 0; opacity: .6; } 100% { top: 100%; opacity: 0; } }
         @keyframes cdp-pulse     { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
         @keyframes cdp-shimmerIn { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: scaleX(1); } }
-        @keyframes cdp-redline   { from { width: 0; } to { width: 100%; } }
 
         .cdp-root { background: #060c14; min-height: 100vh; font-family: system-ui, sans-serif; color: #e2e8f0; }
 
         /* ── header ── */
+        /* Transparent-over-hero until scrolled past it, so the hero photo
+           fills the entire top of the viewport with no header-reserved gap.
+           position: fixed (not sticky) so it floats over the hero instead of
+           pushing it down; .cdp-header-scrolled (toggled off the existing
+           heroRef IntersectionObserver's showTitle state) brings the
+           background/blur back once the hero has scrolled out of view. */
         .cdp-header {
-          position: sticky; top: 0; z-index: 100;
+          position: fixed; top: 0; left: 0; right: 0; z-index: 100;
           display: flex; align-items: center; justify-content: space-between;
           padding: 0 28px; height: 60px;
+          background: transparent;
+          backdrop-filter: none; -webkit-backdrop-filter: none;
+          border-bottom: 1px solid transparent;
+          transition: background 0.25s ease, backdrop-filter 0.25s ease, border-color 0.25s ease;
+        }
+        .cdp-header-scrolled {
           background: rgba(6,12,20,0.93);
           backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-          border-bottom: 1px solid rgba(255,255,255,0.06);
+          border-bottom-color: rgba(255,255,255,0.06);
         }
-        .cdp-back-btn {
-          display: flex; align-items: center; gap: 7px;
-          background: none; border: none; color: #64748b;
-          font-size: 13px; cursor: pointer;
-          font-family: system-ui, sans-serif; padding: 0;
-          transition: color 0.2s; letter-spacing: 0.02em;
+        /* Soft scrim behind the bare icons — a white car under a transparent
+           header washes them out otherwise. Hands over to the solid
+           background at exactly the point that appears. */
+        .cdp-header::before {
+          content: ''; position: absolute; top: 0; left: 0; right: 0; height: 120px;
+          background: linear-gradient(to bottom, rgba(0,0,0,0.45), transparent);
+          pointer-events: none; opacity: 1; transition: opacity 0.25s ease;
         }
-        .cdp-back-btn:hover { color: #e2e8f0; }
+        .cdp-header-scrolled::before { opacity: 0; }
+        .cdp-header > * { position: relative; z-index: 1; }
+
+        /* Icon-only, borderless controls. Padding (not icon size) carries the
+           ~36px tap target. */
+        .cdp-hdr-icon {
+          background: none; border: none; padding: 7px; margin: 0;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; line-height: 1; color: #fff;
+          transition: color 0.18s, filter 0.18s;
+          filter: drop-shadow(0 1px 4px rgba(0,0,0,0.55));
+        }
+        /* Active states carry their own accent in every scroll state / theme,
+           so they're excluded from the neutral colour rules rather than
+           fighting them with inline styles. */
+        .cdp-hdr-icon.cdp-hdr-on { color: #dc2626; }
+        .cdp-hdr-icon.cdp-hdr-ok { color: #16a34a; }
+        .cdp-header-scrolled .cdp-hdr-icon { filter: none; }
+        .cdp-header-scrolled .cdp-hdr-icon:not(.cdp-hdr-on):not(.cdp-hdr-ok) { color: rgba(255,255,255,0.72); }
+        .cdp-header-scrolled .cdp-hdr-icon:not(.cdp-hdr-on):not(.cdp-hdr-ok):hover { color: #e2e8f0; }
+        .cdp-back-btn { margin-left: -7px; }
         .cdp-header-title {
           font-size: 13px; font-weight: 500; color: white;
           opacity: 0; transition: opacity 0.3s; pointer-events: none;
@@ -1842,19 +1889,6 @@ export default function CarDetailPage() {
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .cdp-header-title.visible { opacity: 1; }
-        .cdp-enquire-btn {
-          background: #dc2626; border: none;
-          color: white; border-radius: 6px; padding: 6px 18px;
-          font-size: 11px; cursor: pointer; letter-spacing: 0.08em;
-          font-family: system-ui, sans-serif; transition: all 0.2s;
-          text-transform: uppercase; font-weight: 600;
-        }
-        .cdp-enquire-btn:hover { background: #b91c1c; }
-        .cdp-header-redline {
-          position: absolute; bottom: 0; left: 0; height: 1px;
-          background: linear-gradient(to right, #dc2626, rgba(220,38,38,0.3), transparent);
-          animation: cdp-redline 3s ease forwards; pointer-events: none;
-        }
 
         /* ── mosaic ── */
         .cdp-mosaic-grid {
@@ -1931,14 +1965,13 @@ export default function CarDetailPage() {
         .cdp-wa-btn:hover { transform: scale(1.015); box-shadow: 0 6px 24px rgba(34,197,94,0.3) !important; }
 
         /* ── header actions ── */
-        .cdp-header-actions { display: flex; align-items: center; gap: 8px; }
-        .cdp-mobile-enquire { display: none !important; }
-        .cdp-mobile-share   { display: none !important; }
+        /* Three bare icons fit every breakpoint, so there is no separate
+           mobile action set to keep in sync — only Compare drops out on
+           small screens (a desktop-shaped feature). */
+        .cdp-header-actions { display: flex; align-items: center; gap: 2px; margin-right: -7px; }
         @media (max-width: 900px) {
-          .cdp-header { padding: 0 20px; }
-          .cdp-header-actions { display: none; }
-          .cdp-mobile-enquire { display: inline-flex !important; }
-          .cdp-mobile-share   { display: inline-flex !important; }
+          .cdp-header { padding: 0 16px; }
+          .cdp-hdr-compare { display: none; }
         }
 
         /* ── lightbox ── */
@@ -1978,9 +2011,12 @@ export default function CarDetailPage() {
       {isXdrive && <style>{`
         body { background: #F6F7F9 !important; }
         .cdp-root { background: #F6F7F9 !important; color: #0F172A !important; }
-        .cdp-header { background: rgba(246,247,249,0.85) !important; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom-color: rgba(15,23,42,0.07) !important; }
-        .cdp-back-btn { color: #64748b !important; }
-        .cdp-back-btn:hover { color: #0F172A !important; }
+        .cdp-header { background: transparent !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; border-bottom-color: transparent !important; }
+        .cdp-header-scrolled { background: rgba(246,247,249,0.85) !important; backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important; border-bottom-color: rgba(15,23,42,0.07) !important; }
+        /* Icons stay white while they sit on the photo, in this theme too —
+           they only take the light palette once the header is opaque. */
+        .cdp-header-scrolled .cdp-hdr-icon:not(.cdp-hdr-on):not(.cdp-hdr-ok) { color: #64748b !important; }
+        .cdp-header-scrolled .cdp-hdr-icon:not(.cdp-hdr-on):not(.cdp-hdr-ok):hover { color: #0F172A !important; }
         .cdp-header-title { color: #0F172A !important; }
         .cdp-img-shimmer { background: linear-gradient(90deg,#e7eaef 25%,#f1f3f6 50%,#e7eaef 75%) !important; background-size: 400px 100% !important; }
         .sk { background: linear-gradient(90deg,#e7eaef 25%,#f1f3f6 50%,#e7eaef 75%) !important; background-size: 600px 100% !important; }
@@ -1995,45 +2031,37 @@ export default function CarDetailPage() {
         .cdp-row:hover { background: rgba(220,38,38,0.03) !important; }
         .cdp-sidebar { background: #ffffff !important; border-color: rgba(15,23,42,0.08) !important; box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 8px 32px rgba(15,23,42,0.06) !important; }
         .cdp-mobile-bar { background: rgba(246,247,249,0.9) !important; border-top-color: rgba(15,23,42,0.07) !important; }
-        .cdp-header-redline { background: linear-gradient(to right, #dc2626, rgba(220,38,38,0.25), transparent) !important; }
       `}</style>}
 
       <div className="cdp-root">
         {/* ── header ── */}
-        <header className="cdp-header" style={{ position: "sticky" }}>
-          <button className="cdp-back-btn" onClick={handleBack}>
-            <ArrowLeft size={14} /> Back
+        <header className={`cdp-header${showTitle ? " cdp-header-scrolled" : ""}`}>
+          <button className="cdp-hdr-icon cdp-back-btn" onClick={handleBack} aria-label="Back">
+            <ArrowLeft size={22} />
           </button>
           <span className={`cdp-header-title${showTitle ? " visible" : ""}`}>
             {carTitle}
           </span>
           <div className="cdp-header-actions">
-            <div style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${th.inputBorder}`, borderRadius: 8, padding: '6px 8px', display: 'flex', alignItems: 'center' }}>
-              <HeartButton listingId={car?.id} size={16} />
-            </div>
+            <HeartButton
+              listingId={car?.id}
+              size={21}
+              style={{ padding: 7, filter: showTitle ? 'none' : 'drop-shadow(0 1px 4px rgba(0,0,0,0.55))' }}
+              idleColor={showTitle ? (isXdrive ? '#64748b' : 'rgba(255,255,255,0.72)') : '#fff'}
+            />
             <button
+              className={`cdp-hdr-icon cdp-hdr-compare${car?.id && isInCompare(car.id) ? ' cdp-hdr-on' : ''}`}
               onClick={() => { if (!car?.id) return; isInCompare(car.id) ? removeFromCompare(car.id) : addToCompare(car.id); }}
-              style={{ background: car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.15)' : th.card2, border: `1px solid ${car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.4)' : th.border}`, borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 5, color: car?.id && isInCompare(car.id) ? (isXdrive ? '#dc2626' : '#f87171') : th.textSec, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "system-ui,sans-serif", transition: 'all 0.18s', whiteSpace: 'nowrap' }}>
-              <ArrowLeftRight size={13} />
-              {car?.id && isInCompare(car.id) ? 'In Compare' : 'Compare'}
+              aria-label={car?.id && isInCompare(car.id) ? 'Remove from compare' : 'Add to compare'}>
+              <ArrowLeftRight size={20} />
             </button>
             <button
+              className={`cdp-hdr-icon${shareCopied ? ' cdp-hdr-ok' : ''}`}
               onClick={handleShare}
-              style={{ background: shareCopied ? 'rgba(22,163,74,0.1)' : th.card2, border: `1px solid ${shareCopied ? 'rgba(22,163,74,0.35)' : th.border}`, borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 5, color: shareCopied ? '#16a34a' : th.textSec, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "system-ui,sans-serif", transition: 'all 0.18s', whiteSpace: 'nowrap' }}>
-              {shareCopied ? <Check size={13} /> : <Share2 size={13} />}
-              {shareCopied ? 'Copied!' : 'Share'}
+              aria-label={shareCopied ? 'Link copied' : 'Share'}>
+              {shareCopied ? <Check size={21} /> : <Share2 size={20} />}
             </button>
-            <button className="cdp-enquire-btn" onClick={handleWhatsApp}>Enquire</button>
           </div>
-          <button
-            className="cdp-mobile-share"
-            onClick={handleShare}
-            style={{ alignItems: 'center', gap: 5, background: shareCopied ? 'rgba(22,163,74,0.1)' : th.card2, border: `1px solid ${shareCopied ? 'rgba(22,163,74,0.35)' : th.border}`, borderRadius: 6, padding: '6px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "system-ui,sans-serif", color: shareCopied ? '#16a34a' : th.textSec, transition: 'all 0.18s', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            {shareCopied ? <Check size={13}/> : <Share2 size={13}/>}
-            {shareCopied ? 'Copied!' : 'Share'}
-          </button>
-          <button className="cdp-enquire-btn cdp-mobile-enquire" onClick={handleWhatsApp}>Enquire</button>
-          <div className="cdp-header-redline" />
         </header>
 
         {/* ── SECTION 1: Photo Mosaic ── */}
@@ -2047,20 +2075,13 @@ export default function CarDetailPage() {
             >
               <img
                 key={slideKey}
-                src={disp(images[activeIdx], 1600)}
+                src={disp(images[activeIdx], 1280)}
+                srcSet={cdnSrcSet(images[activeIdx], HERO_WIDTHS, 72)}
+                sizes={HERO_SIZES}
                 alt={carTitle}
                 fetchPriority="high"
                 decoding="async"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  transition: "transform 6s ease",
-                  transform: "scale(1.03)",
-                }}
-                onLoad={(e) => {
-                  e.currentTarget.style.transform = "scale(1)";
-                }}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 onError={onImgErr(images[activeIdx])}
               />
               {imgCount > 1 && (
@@ -2200,21 +2221,14 @@ export default function CarDetailPage() {
               key={slideKey}
               className={`cdp-main-img cdp-slide-${slideDir}`}
               src={disp(images[activeIdx], 1280)}
+              srcSet={cdnSrcSet(images[activeIdx], HERO_WIDTHS, 72)}
+              sizes={HERO_SIZES}
               alt={carTitle}
               fetchPriority={activeIdx === 0 ? "high" : "auto"}
               loading={activeIdx === 0 ? "eager" : "lazy"}
               decoding="async"
-              style={{
-                opacity: 0,
-                transform: "scale(1.04)",
-                transition: "opacity 1.2s ease, transform 6s ease",
-              }}
               onClick={() => setLbOpen(true)}
-              onLoad={(e) => {
-                setImgLoaded(true);
-                e.currentTarget.style.opacity = "0.9";
-                e.currentTarget.style.transform = "scale(1)";
-              }}
+              onLoad={() => setImgLoaded(true)}
               onError={(e) => {
                 if (images[activeIdx] && !e.currentTarget.dataset.fb && e.currentTarget.src !== images[activeIdx]) {
                   e.currentTarget.dataset.fb = '1';
@@ -2305,17 +2319,21 @@ export default function CarDetailPage() {
             MOBILE LAYOUT (≤900px) — M1 through M8
             ══════════════════════════════════════════ */}
 
-        {/* M1 — Swipeable image. `contain` (not `cover`) + a slightly taller frame
-            so every uploaded photo is shown whole, never cropped, whatever its
-            aspect ratio. Letterbox fills with the dark frame colour. */}
+        {/* M1 — Swipeable image. `cover` so the photo fills the frame edge to
+            edge — `contain` left dark letterbox bars beside any photo whose
+            aspect ratio didn't match the frame. The full uncropped photo is
+            one tap away in the lightbox. */}
         <div className="cdp-mobile-only" style={{ position:'relative', height:'clamp(240px,64vw,420px)', overflow:'hidden', background:'#080f18', cursor:'zoom-in' }}
           onTouchStart={galleryTouchStart} onTouchEnd={galleryTouchEnd}
           onClick={() => { if (gallerySwiped.current) { gallerySwiped.current = false; return; } setLbOpen(true); }}>
           {!imgLoaded && <div className="cdp-img-shimmer" />}
           <img key={slideKey} className={`cdp-main-img cdp-slide-${slideDir}`}
-            src={disp(images[activeIdx], 1280)} alt={carTitle} fetchPriority="high" decoding="async"
-            style={{ width:'100%', height:'100%', objectFit:'contain', opacity:0, transition:'opacity 0.8s ease' }}
-            onLoad={e => { setImgLoaded(true); e.currentTarget.style.opacity = '1'; }}
+            src={disp(images[activeIdx], 1280)}
+            srcSet={cdnSrcSet(images[activeIdx], HERO_WIDTHS, 72)}
+            sizes={HERO_SIZES}
+            alt={carTitle} fetchPriority="high" decoding="async"
+            style={{ width:'100%', height:'100%', objectFit:'cover' }}
+            onLoad={() => setImgLoaded(true)}
             onError={e => {
               if (images[activeIdx] && !e.currentTarget.dataset.fb && e.currentTarget.src !== images[activeIdx]) {
                 e.currentTarget.dataset.fb = '1'; e.currentTarget.src = images[activeIdx];
@@ -3000,19 +3018,18 @@ export default function CarDetailPage() {
         )}
 
         {/* M8 — Similar cars */}
-        {similarCars.length > 0 && (
-          <div className="cdp-mobile-only" style={{ background: th.pageBg, padding:'28px 20px', marginBottom:80 }}>
-            <p style={{ fontSize:'10px', textTransform:'uppercase', letterSpacing:'0.2em', color:'#dc2626', margin:'0 0 4px', fontWeight:700 }}>You might also like</p>
-            <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'2.2rem', letterSpacing:'0.06em', color: th.text, margin:'0 0 20px', borderLeft:'3px solid #dc2626', paddingLeft:'12px' }}>
-              More {car.brand}
-            </h2>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              {similarCars.map(s => (
-                <CarCard key={s.id} car={s} ctaContext={ctaCtx} showCompare />
-              ))}
-            </div>
-          </div>
-        )}
+        <div ref={simRefMobile} className="cdp-mobile-only">
+          {simBuckets && (
+            <SimilarCars
+              car={car}
+              buckets={simBuckets}
+              ctaContext={ctaCtx}
+              variant="mobile"
+              th={th}
+              wrapStyle={{ background: th.pageBg, padding: '28px 20px', marginBottom: 80 }}
+            />
+          )}
+        </div>
 
         {/* ── SECTION 2: Body (desktop only) ── */}
         <div className="cdp-body-wrap cdp-desktop-only">
@@ -3855,24 +3872,17 @@ export default function CarDetailPage() {
             )}
 
             {/* SIMILAR CARS */}
-            {similarCars.length > 0 && (
-              <div style={{ marginTop: 64, background: th.card2, border: `1px solid ${th.borderSec}`, borderRadius: 16, padding: '32px 28px' }}>
-                <p style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.2em', color: '#dc2626', margin: '0 0 4px', fontWeight: 700 }}>You might also like</p>
-                <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '2.4rem', letterSpacing: '0.06em', color: th.text, margin: '0 0 28px', borderLeft: '3px solid #dc2626', paddingLeft: '14px' }}>
-                  More {car.brand}
-                </h2>
-                <div className="cdp-similar-grid">
-                  {similarCars.map(s => <CarCard key={s.id} car={s} ctaContext={ctaCtx} showCompare />)}
-                </div>
-                <div className="cdp-similar-scroll">
-                  {similarCars.map(s => (
-                    <div key={s.id} style={{ flexShrink: 0, width: '72vw', scrollSnapAlign: 'start' }}>
-                      <CarCard car={s} ctaContext={ctaCtx} showCompare />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <div ref={simRefDesktop}>
+              {simBuckets && (
+                <SimilarCars
+                  car={car}
+                  buckets={simBuckets}
+                  ctaContext={ctaCtx}
+                  th={th}
+                  wrapStyle={{ marginTop: 64, background: th.card2, border: `1px solid ${th.borderSec}`, borderRadius: 16, padding: '32px 28px' }}
+                />
+              )}
+            </div>
           </div>{/* end left column */}
 
           {/* ── RIGHT SIDEBAR ── */}
