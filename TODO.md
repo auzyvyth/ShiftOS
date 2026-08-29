@@ -58,11 +58,25 @@ not scoped, not prioritized — just parked here until picked up on purpose.
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
 
 - **ACT-1: Enable TOTP in Supabase dashboard — DEFERRED until revenue (user: paid)** — 2FA (SEC-1) will not work end-to-end until the TOTP factor type is enabled: Supabase → Authentication → Settings → Multi-Factor → enable **TOTP**. Until then, the "Enable 2FA" button in Settings will error on enroll. Owner is deferring this until revenue/Supabase Pro (treats it as a paid feature — note: standard app-based TOTP MFA is typically free on Supabase; the paid MFA add-on is Phone/SMS, which we are avoiding anyway — worth re-checking billing before permanently shelving). Interim idea from owner: keep Gmail/Google link verification and add an email verification code as a lightweight second factor. NOTE (2026-08-05): TOTP is NOT deprecated — Bank Negara's RMiT (28 Nov 2025) bans **SMS OTP** as a standalone factor, not TOTP. TOTP (authenticator-app codes, RFC 6238) is offline/device-local and is one of the regulator's recommended interception-resistant replacements, so it stays the correct choice here. Do NOT enable Supabase's Phone/SMS OTP factor. Passkeys (FIDO2/WebAuthn) are the gold standard but are not a native Supabase MFA factor yet.
-> **ACT-13 DONE 2026-08-24** — anonymous sign-ins were enabled by the owner, so guest
-> chat is live. The safety guard was verified in the live database before the chat shipped:
-> `handle_new_user()` forces `role='buyer'` on any anonymous session, so a guest can never
-> be created as a dealer. Do not remove that branch. Note the chat had still never been
-> exercised end to end by a human at the point it went to production.
+- **ACT-13 RE-OPENED 2026-08-29 — guest chat is DOWN. Turn on anonymous sign-ins:**
+  Supabase -> Authentication -> Sign In / Providers -> **Allow anonymous sign-ins**.
+  It was recorded as done on 2026-08-24, but the first real human test failed: a guest
+  tapping "chat here" gets the `needsAnon` screen ("Chat isn't available right now"),
+  which `useBuyerThread` (src/hooks/useChat.js:186) shows only when
+  `supabase.auth.signInAnonymously()` returns an error.
+  Evidence it is the toggle and nothing else, checked 2026-08-29:
+    - `auth.users` holds 0 anonymous users out of 23. Not one has ever been created.
+    - A normal email signup succeeded 2026-08-28, so signups work and captcha is not
+      the blocker — only the anonymous path is refused.
+    - The database is clean: inserting an `is_anonymous` user in a rolling-back
+      transaction runs the whole trigger chain and produces
+      `role=buyer, is_active=t, approval=approved`. Nothing on `profiles` rejects it,
+      so the refusal happens in the auth service before it reaches Postgres.
+  The safety guard is verified and must stay: `handle_new_user()` forces `role='buyer'`
+  on any anonymous session, so a guest can never be created as a dealer.
+  Until this is on, EVERY guest buyer is pushed to WhatsApp, in-app chat has no guest
+  traffic, no chat leads reach the pipeline, and the buyer notification prompt
+  (BuyerPushPrompt) can only be tested while signed in.
 
 - **ACT-2: Decide on full 2FA enforcement (SEC-1b)** — Client-side 2FA only challenges the password login path. Google OAuth and magic-link logins are NOT challenged. True enforcement across all auth methods needs RLS policies keyed on `aal2` so the database rejects aal1 sessions. Confirm if/when you want this hardening built.
 
