@@ -718,9 +718,19 @@ export default function SalesmanPremium() {
  const refreshSales = useCallback(async (overrideUid = null) => {
  const sid = overrideUid || userId;
  if (!sid) return;
+ // Keyed on assigned_to OR "my own listing that is not locked to anyone
+ // else". assigned_to alone was silently wrong for the path that does not go
+ // through a won lead: `update_listing_status` (the Listings tab status menu)
+ // only writes `status`, and nothing stamps assigned_to — only the won-trigger
+ // does. So a solo seller who marked a car sold straight from Listings had it
+ // counted by the Dashboard (keyed on dealer_id) and ignored by this page
+ // FOREVER, not just until a reload. Premium is solo-only (a salesman with a
+ // dealer_id is redirected to /salesman before this renders), so "my listing
+ // with no assignee" is unambiguously mine.
  const { data, error: cErr } = await supabase
  .from("car_listings").select("commission_amount, brand, model, year, sold_at")
- .eq("assigned_to", sid).eq("status", "sold");
+ .or(`assigned_to.eq.${sid},and(dealer_id.eq.${sid},assigned_to.is.null)`)
+ .eq("status", "sold");
  if (cErr) { console.error("refreshSales:", cErr); toast.error("Could not load your commission"); return; }
  const rows = data || [];
  setSoldCount(rows.length);
@@ -2139,6 +2149,11 @@ export default function SalesmanPremium() {
  return;
  }
  refreshCommissionData();
+ // Analytics/Performance keeps its OWN sold+commission state (refreshSales).
+ // Without this the Dashboard moved and Performance sat at 0 sold / RM 0
+ // until a full page reload — the same split brain handleMarkWon already
+ // fixes for the won-lead path. Any new path that sells a car must call both.
+ refreshSales();
  };
 
  const handleDeleteListing = async (carId) => {
@@ -6149,7 +6164,7 @@ export default function SalesmanPremium() {
  carStatsMap={carStatsMap} enquiries={enquiries} thisMonthSales={thisMonthSales}
  commission={commission} soldCount={soldCount} myListings={myListings}
  channelMap={channelMap} commissionDetails={commissionDetails} isMobile={isMobile}
- leads={leads} onOpenTab={switchTab}
+ leads={leads} onOpenTab={switchTab} minipageStats={minipageStats}
  onAddListing={() => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }}
  />
  </Suspense>

@@ -33,8 +33,14 @@ import { buildSalesPerformance, formatDuration, sourceLabel } from "../../utils/
 export default function AnalyticsTab({
  carStatsMap, enquiries, thisMonthSales, commission, soldCount, myListings,
  channelMap, commissionDetails, isMobile, onAddListing, leads = [], onOpenTab,
+ minipageStats = { visits: 0, cardClicks: 0, byChannel: [] },
 }) {
   const [sub, setSub] = useState("selling");
+  // Which slice of "where did my traffic come from" is on screen. Car pages and
+  // the mini page are two different journeys — a tap from an Instagram bio link
+  // lands on the mini page, a shared listing link lands on a car — so they are
+  // shown apart as well as together rather than silently summed into one bar.
+  const [trafficView, setTrafficView] = useState("all");
   const [openInsights, setOpenInsights] = useState(() => new Set());
   const toggleInsight = (key) => setOpenInsights((prev) => {
     const next = new Set(prev);
@@ -122,6 +128,27 @@ export default function AnalyticsTab({
   );
 
   const hasListings = myListings.length > 0;
+
+  // Car-page traffic by platform, summed across every car.
+  const carChannelRows = Object.values(channelMap).flat();
+  // Mini-page traffic by platform. The RPC calls them visits/card_clicks; they
+  // are the same two ideas as views/enquiries, so they are renamed once here
+  // rather than teaching ChannelBreakdown a second row shape.
+  const miniChannelRows = (minipageStats.byChannel || []).map((r) => ({
+    channel: r.channel,
+    views: Number(r.visits) || 0,
+    enquiries: Number(r.card_clicks) || 0,
+  }));
+  const TRAFFIC_VIEWS = [
+    { key: "all", label: "All" },
+    { key: "cars", label: "Car pages" },
+    { key: "minipage", label: "Mini page" },
+  ];
+  // ChannelBreakdown already sums duplicate channels, so "All" is a plain
+  // concat — no need to merge by hand.
+  const trafficRows = trafficView === "cars" ? carChannelRows
+    : trafficView === "minipage" ? miniChannelRows
+    : [...carChannelRows, ...miniChannelRows];
 
   // A card that cannot say anything useful yet says WHAT unlocks it, rather
   // than drawing an empty chart or a row of zeroes.
@@ -420,8 +447,12 @@ export default function AnalyticsTab({
     <div>
       {/* Traffic */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 10, marginBottom: 12 }}>
-        <Metric label="Listing views" value={totalViews} sub="All time" data={viewsD} id="views" />
-        <Metric label="WhatsApp taps" value={totalWA} sub="All time" />
+        {/* "All time" was wrong on these three: get_salesman_analytics defaults
+            to a rolling `now() - 30 days` cutoff and the caller passes none, so
+            the numbers have always been last-30-days. The channel breakdown
+            below IS all-time, which is why the two never reconciled. */}
+        <Metric label="Listing views" value={totalViews} sub="Last 30 days" data={viewsD} id="views" />
+        <Metric label="WhatsApp taps" value={totalWA} sub="Last 30 days" />
         <Metric
           label="Tap-through"
           value={cvr !== null ? `${cvr}%` : "—"}
@@ -463,8 +494,10 @@ export default function AnalyticsTab({
             <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
               <BarChart2 size={13} /> Listing performance
             </span>
+            {/* Same rolling window as the tiles above — this table reads the
+                same carStatsMap, so it was mislabelled for the same reason. */}
             <span style={{ fontSize: T.size.xs, fontWeight: T.weight.normal, letterSpacing: 0, textTransform: "none", color: C.textDim }}>
-              All time
+              Last 30 days
             </span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 54px 54px 62px", padding: "8px 18px", borderBottom: `1px solid ${C.line}` }}>
@@ -497,10 +530,52 @@ export default function AnalyticsTab({
         </div>
       )}
 
-      {/* Where the views and enquiries actually came from, summed across cars. */}
-      {Object.keys(channelMap).length > 0 && (
+      {/* Where the traffic actually came from. Two sources, shown apart and
+          together: car listing pages (a shared car link) and the mini page
+          (xdrive.my/s/<slug> — the Instagram/TikTok bio link). The Analytics
+          tab previously showed only the car half, so every visit that arrived
+          through a bio link was invisible here even though the dashboard
+          already had the numbers. */}
+      {(carChannelRows.length > 0 || miniChannelRows.length > 0) && (
         <div style={{ ...CARD, padding: 16, marginBottom: 12 }}>
-          <ChannelBreakdown rows={Object.values(channelMap).flat()} metric="views" title="Traffic by platform" />
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+            <span style={EYEBROW}>Traffic by platform</span>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {TRAFFIC_VIEWS.map(({ key, label }) => {
+                const on = trafficView === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setTrafficView(key)}
+                    style={{
+                      fontSize: T.size.sm, fontWeight: T.weight.semibold, padding: "4px 10px",
+                      borderRadius: R.pill, cursor: "pointer", fontFamily: "inherit",
+                      background: on ? withAlpha(C.info, 0.15) : C.fill,
+                      border: `1px solid ${on ? withAlpha(C.info, 0.3) : C.border}`,
+                      color: on ? C.infoText : C.textMuted,
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <ChannelBreakdown
+            rows={trafficRows}
+            metric="views"
+            title=""
+            viewsLabel={trafficView === "minipage" ? "visits" : "views"}
+            enquiriesLabel={trafficView === "minipage" ? "clicks" : "WA"}
+            emptyHint={
+              trafficView === "minipage"
+                ? "No mini-page visits attributed yet — share your profile link with the buttons in Listings to tag them."
+                : "No attributed traffic yet — share a listing with the share menu to start tracking."
+            }
+          />
+          <p style={{ margin: "10px 0 0", fontSize: T.size.sm, color: C.textDim, lineHeight: 1.5 }}>
+            A platform only shows up when the visit arrived through a tagged share link. Everything else counts as Direct.
+          </p>
         </div>
       )}
 
