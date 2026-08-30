@@ -120,6 +120,26 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   which has no role guard to bounce them back) — that bug should be fixed
   on its own regardless of whether this redesign happens.
 
+- **IDEA-5: one plan page for every seller tier — and deliberately NO buyer
+  card on it** — owner's framing (2026-08-30), following the one-door sign-in
+  work: a single "create an account" surface listing Salesman Lite (free),
+  Salesman Premium (RM35), and the dealer tiers (RM299/599/1199/2999), replacing
+  the scattered entry points (`/for-salesmen`, `/shiftos#pricing`, the Get
+  Started dropdown, `/choose-plan`). Owner's open question was whether buyers
+  should also pick a "buyer plan" there.
+  Recommendation on that question: no. A plan is something you pay for or that
+  caps what you can do, and buyers have neither a price nor a cap, so a "Buyer —
+  Free" card next to Dealer Pro reframes browsing as a product tier and revives
+  the same "which one am I?" question the merged sign-in door just removed. It
+  also leaks the seller funnel: every visitor gets a legitimate reason to click
+  the cheapest card and leave. Buyers should reach an account only through the
+  thing they were already doing (save a car, message a seller), never a tier
+  choice — the saved-cars hook already does the right shape here
+  (`useSavedCars.js:10/17` works logged out in localStorage, then migrates the
+  rows on sign-in at `:21-30`).
+  Prerequisite, not optional: AUTH-1 below. This page is the surface that would
+  turn the anonymous-session-becomes-a-seller hole into a routine occurrence.
+
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
 
 - **ACT-1: Enable TOTP in Supabase dashboard — DEFERRED until revenue (user: paid)** — 2FA (SEC-1) will not work end-to-end until the TOTP factor type is enabled: Supabase → Authentication → Settings → Multi-Factor → enable **TOTP**. Until then, the "Enable 2FA" button in Settings will error on enroll. Owner is deferring this until revenue/Supabase Pro (treats it as a paid feature — note: standard app-based TOTP MFA is typically free on Supabase; the paid MFA add-on is Phone/SMS, which we are avoiding anyway — worth re-checking billing before permanently shelving). Interim idea from owner: keep Gmail/Google link verification and add an email verification code as a lightweight second factor. NOTE (2026-08-05): TOTP is NOT deprecated — Bank Negara's RMiT (28 Nov 2025) bans **SMS OTP** as a standalone factor, not TOTP. TOTP (authenticator-app codes, RFC 6238) is offline/device-local and is one of the regulator's recommended interception-resistant replacements, so it stays the correct choice here. Do NOT enable Supabase's Phone/SMS OTP factor. Passkeys (FIDO2/WebAuthn) are the gold standard but are not a native Supabase MFA factor yet.
@@ -190,6 +210,47 @@ not scoped, not prioritized — just parked here until picked up on purpose.
 > Reminder protocol: while ACT-2, ACT-4, ACT-9 or ACT-10 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. **ACT-8 was found ALREADY COMPLETE and removed 2026-08-15** — `package.json` AND `package-lock.json` both resolve `xlsx` to `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, and `vercel.json` CSP already whitelists `cdn.sheetjs.com` in connect-src; it had been sitting in this list as a blocked user-action for weeks after the fact. **ACT-12 verified RESOLVED 2026-08-24** — see entry above; drop from this nag list. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then.) LESSON: verify an ACT item against the code before re-surfacing it — a stale nag costs a session's attention every time.
 
 ## Dev tasks
+
+---
+
+### SESSION 2026-08-30 — identity found while designing the plan page
+
+- [ ] **AUTH-1: an ANONYMOUS session can promote itself to a seller account.**
+  Live example today: profile `c8cd260e-c308-4020-a234-d9f98906e64c` —
+  `auth.users.is_anonymous = true`, `email = ''`, yet `role='salesman'`,
+  `plan='salesman_lite'`, `dealership='SITI ZAHIRAH'`. `handle_new_user()` does
+  the right thing (it forces `role='buyer'` for anonymous users); something
+  AFTER signup rewrote the role, and RLS
+  `users_upsert_own_profile_no_escalation` permits a user to set their own role
+  to anything except superadmin. The likely path is exactly the one the new plan
+  page will industrialise: a guest gets an anonymous session from opening a car
+  chat, later taps a sell CTA, and the salesman onboarding writes role + plan +
+  dealership onto that anonymous identity.
+  Two consequences: (a) the account is UNRECOVERABLE — no email, no password, so
+  when that browser clears storage the account and anything it listed is
+  orphaned with no way to sign back in or reset; (b) an unverified anonymous
+  visitor can hold a seller account on the public marketplace. Only 1 such row
+  today and it has 0 listings, so this is cheap to fix now and expensive later.
+  FIX: seller onboarding must refuse to run on an anonymous session — force the
+  upgrade to a real identity first (Supabase supports converting an anonymous
+  user via linkIdentity / updateUser with an email), and consider a DB guard so
+  a role change to a seller role is rejected while `is_anonymous` is true.
+
+- [ ] **CHAT-1: a seller messaging another seller lands in their pipeline as a
+  retail lead.** `start_chat_thread` (SECURITY DEFINER) only checks that
+  `auth.uid()` is not null — it never asks whether the caller is themselves a
+  seller — so the caller is written as `buyer_id` and `chat_after_message`
+  files a `leads` row with `lead_source='chat'`. Already happening: 2 of 9
+  `chat_threads` have a seller account on the buyer side, and both produced
+  real leads (in PremiumMotors' and AiryMotors' pipelines). Dealer-to-dealer
+  trade is legitimate in the Malaysian used-car market, so the chat itself
+  should stay; what is wrong is filing it as retail demand, where it inflates
+  lead counts and conversion rates and shows a competitor's name as a prospect.
+  FIX: detect a seller on the buyer side and mark the thread as trade — no
+  `leads` row, or a distinct source excluded from pipeline counts.
+  Note `CarDetailPage.jsx:1647` already hides the contact CTAs on your OWN
+  listing (`isOwnListing`), but that is a UI-only guard; `start_chat_thread`
+  itself would still allow a self-thread if called directly.
 
 ---
 
