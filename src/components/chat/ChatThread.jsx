@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Check, CheckCheck, Send, AlertCircle, Eye, ShieldAlert, Sparkles, X, Lock } from 'lucide-react';
 import { useChatThread, tickState } from '../../hooks/useChat';
 import BuyerPushPrompt from './BuyerPushPrompt';
@@ -148,12 +148,62 @@ export default function ChatThread({
     setKbFocused(true);
   };
 
+  // The composer GROWS with the message instead of hiding it.
+  //
+  // It was a single-line <input>, so anything past about thirty characters
+  // scrolled out of sight to the left. A seller writing a real pitch — specs,
+  // financing, condition notes — could not reread what they had written or spot
+  // a typo before sending. Every chat app people actually use grows the field
+  // and caps it; this does the same.
+  //
+  // Height is measured, not guessed: reset to 'auto' first so scrollHeight
+  // reports the CONTENT height rather than the height we last set (without the
+  // reset the box can only ever grow, never shrink back when text is deleted).
+  // Past the cap it scrolls, so a 300-word message stays readable in a box that
+  // never eats the conversation above it.
+  const MAX_COMPOSER_H = 140;
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    // box-sizing is border-box, so `height` has to cover the border too, but
+    // scrollHeight counts only content + padding. Adding the 2px back stops the
+    // field from being permanently one hair too short and showing a scrollbar
+    // on a single line of text.
+    const borders = el.offsetHeight - el.clientHeight;
+    const needed = el.scrollHeight + borders;
+    el.style.height = `${Math.min(needed, MAX_COMPOSER_H)}px`;
+    el.style.overflowY = needed > MAX_COMPOSER_H ? 'auto' : 'hidden';
+    // The pinned composer is positioned off its own height (top = bottom edge
+    // minus composerH) and the spacer below reserves exactly that much. Growing
+    // without re-measuring would slide the box down behind the keyboard, one
+    // line at a time. Same value is a no-op re-render, so this cannot loop.
+    if (formRef.current) setComposerH(formRef.current.offsetHeight);
+  }, [draft]);
+
+  // Enter sends on a desktop keyboard; on a phone Enter is the return key and
+  // must insert a newline, or a multi-line message becomes impossible to type.
+  // Shift+Enter is always a newline. `(hover: hover) and (pointer: fine)` is the
+  // capability test for a real mouse+keyboard, not a width breakpoint — a small
+  // laptop window is still a desktop.
+  const onComposerKeyDown = (e) => {
+    if (e.key !== 'Enter' || e.shiftKey) return;
+    const hasKeyboard = typeof window !== 'undefined'
+      && window.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
+    if (!hasKeyboard) return;
+    e.preventDefault();
+    submit();
+  };
+
   // Keep the newest message in view as the keyboard opens and closes. scrollTop
   // on this one container only — never scrollIntoView, see above.
+  // composerH is in here because a growing composer eats the list's height in
+  // the flow layouts (SellerInbox, BuyerInbox) — without it the newest message
+  // slides out of sight behind the box as the seller types a long one.
   useEffect(() => {
     const el = listRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [pinned, vv.height]);
+  }, [pinned, vv.height, composerH]);
 
   // The AI never sees a raw phone number: chat-assist fetches the transcript
   // itself from the redacted `chat_messages_ai` view. We send only a thread id.
@@ -323,7 +373,7 @@ export default function ChatThread({
           which do create a containing block) pass viewportPinned and never pin. */}
       <form onSubmit={submit} ref={formRef}
         style={{
-          display:'flex', gap:8, padding:10, borderTop:`1px solid ${t.border}`,
+          display:'flex', gap:8, alignItems:'flex-end', padding:10, borderTop:`1px solid ${t.border}`,
           background:t.panel, flexShrink:0, boxSizing:'border-box',
           ...(pinned ? {
             position:'fixed', left:0, right:0,
@@ -333,10 +383,10 @@ export default function ChatThread({
             zIndex:60,
           } : null),
         }}>
-        <input ref={inputRef} value={draft} onChange={e => setDraft(e.target.value)} placeholder="Type a message"
-          onFocus={focusComposer} onBlur={() => setKbFocused(false)}
-          maxLength={4000} aria-label="Message"
-          style={{ flex:1, minWidth:0, boxSizing:'border-box', padding:'11px 14px', borderRadius:10, border:`1px solid ${t.border}`, background:t.inputBg, color:t.text, fontSize:14, fontFamily:"system-ui,sans-serif", outline:'none' }} />
+        <textarea ref={inputRef} value={draft} onChange={e => setDraft(e.target.value)} placeholder="Type a message"
+          onFocus={focusComposer} onBlur={() => setKbFocused(false)} onKeyDown={onComposerKeyDown}
+          rows={1} maxLength={4000} aria-label="Message"
+          style={{ flex:1, minWidth:0, boxSizing:'border-box', padding:'11px 14px', borderRadius:10, border:`1px solid ${t.border}`, background:t.inputBg, color:t.text, fontSize:14, lineHeight:1.4, fontFamily:"system-ui,sans-serif", outline:'none', resize:'none', display:'block' }} />
         {/* Keeps focus in the input: without this the tap blurs it, the bar
             unpins out from under the finger before the click lands, and the
             keyboard shuts between every message. */}

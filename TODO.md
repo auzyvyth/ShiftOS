@@ -257,13 +257,16 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   Upgrading still works: linking an email flips `is_anonymous` to false and the
   same write then succeeds.
 
-  STILL OPEN, needs an owner decision (not a code fix):
-  profile `c8cd260e-c308-4020-a234-d9f98906e64c` ("SITI ZAHIRAH") already exists
-  in the broken state — `role='salesman'`, `is_active=true`, live storefront
-  slug `sitizahirah`, 0 listings, and `auth.users.email = NULL`. Nobody can ever
-  sign into it again; there is no address to send a reset to. Options: leave it,
-  or set it back to `role='buyer'` / `is_active=false` to clear the dead
-  storefront. Left alone deliberately — it is a real person's account.
+  CLEANUP DONE 2026-08-30 (owner's call): profile
+  `c8cd260e-c308-4020-a234-d9f98906e64c` ("SITI ZAHIRAH") was the one account
+  already created this way. Reverted to `role='buyer'` with `plan`, `slug`,
+  `dealership` cleared and `onboarding_complete=false`, which removes the dead
+  storefront and frees the `sitizahirah` slug. It had 0 listings and 0 leads, so
+  nothing was lost. Left `is_active=true` on purpose — she is a legitimate
+  buyer with 2 live chat threads, and deactivating would have broken those for
+  no gain; the storefront dies with the role and slug, not with the flag.
+  Verified after: 0 anonymous accounts hold a non-buyer role, her 2 threads
+  intact, slug free.
 
 - [x] **CHAT-1 — DONE 2026-08-30. Seller-to-seller chat no longer files a
   retail lead.** `chat_after_message` now reads the buyer side's role and skips
