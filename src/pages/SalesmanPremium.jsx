@@ -701,6 +701,38 @@ export default function SalesmanPremium() {
  setCustomersLoading(false);
  }, [profile]);
 
+ // Everything the Analytics tab says about sales. This used to be an anonymous
+ // .then() buried in the bootstrap effect, so it ran once and never again:
+ // marking a car sold updated the Dashboard (refreshCommissionData) while
+ // Analytics kept reporting 0 sold / RM 0 commission until a full page reload.
+ // Same page, two commission states, one of them refreshed — that is the split
+ // brain the win path is supposed to have exactly one of.
+ //
+ // Keyed on assigned_to because that is the closer: the won-trigger stamps it
+ // with COALESCE(assigned_to, closer), so it answers "cars *I* sold" rather
+ // than "cars my dealership sold". For a solo seller the two are the same id.
+ // `overrideUid` exists because bootstrap calls this in the same pass that
+ // does setUserId(uid) — the state update has not landed in this closure yet,
+ // so reading userId here would be null and the fetch would silently no-op.
+ const refreshSales = useCallback(async (overrideUid = null) => {
+ const sid = overrideUid || userId;
+ if (!sid) return;
+ const { data, error: cErr } = await supabase
+ .from("car_listings").select("commission_amount, brand, model, year, sold_at")
+ .eq("assigned_to", sid).eq("status", "sold");
+ if (cErr) { console.error("refreshSales:", cErr); toast.error("Could not load your commission"); return; }
+ const rows = data || [];
+ setSoldCount(rows.length);
+ setCommission(rows.reduce((sum, r) => sum + (Number(r.commission_amount) || 0), 0));
+ setCommissionDetails(
+ rows.filter((r) => r.commission_amount)
+ .sort((a, b) => new Date(b.sold_at) - new Date(a.sold_at))
+ .slice(0, 5),
+ );
+ const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+ setThisMonthSales(rows.filter((r) => r.sold_at && r.sold_at >= monthStart).length);
+ }, [userId]);
+
  // Arriving from the handover board's "View customer record" — bring that row
  // into view once the Customers tab has rendered it.
  useEffect(() => {
@@ -1032,20 +1064,9 @@ export default function SalesmanPremium() {
  }
  }
 
- // premium — commission + sold count
- supabase.from("car_listings").select("commission_amount, brand, model, year, sold_at")
- .eq("assigned_to", uid).eq("status", "sold")
- .then(({ data, error }) => {
- if (error) { console.error("fetchCommission:", error); toast.error("Could not load your commission"); }
- const rows = data || [];
- setSoldCount(rows.length);
- setCommission(rows.reduce((sum, r) => sum + (Number(r.commission_amount) || 0), 0));
- setCommissionDetails(
- rows.filter(r => r.commission_amount).sort((a, b) => new Date(b.sold_at) - new Date(a.sold_at)).slice(0, 5)
- );
- const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
- setThisMonthSales(rows.filter(r => r.sold_at && r.sold_at >= monthStart).length);
- });
+ // premium — commission + sold count (Analytics tab). One implementation,
+ // refreshSales(), so the win path can pull it forward too.
+ refreshSales(uid);
 
  // premium — loan applications
  supabase.from("loan_applications").select("*").eq("salesman_id", uid)
@@ -1974,6 +1995,9 @@ export default function SalesmanPremium() {
  });
  handover.refresh();
  refreshCustomers();
+ // Analytics reads its own sold/commission state; without this it stays at
+ // 0 sold / RM 0 while the Dashboard already shows the win.
+ refreshSales();
 
  const car = lead.car_listings;
  const carLabel = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
@@ -5319,6 +5343,7 @@ export default function SalesmanPremium() {
  controller={handover}
  openDealId={handoverDealParam}
  onViewCustomer={(lead) => openCustomerForLead(lead, "handover")}
+ onExpiryWritten={refreshCustomers}
  />
  </Suspense>
  </div>
@@ -6148,6 +6173,7 @@ export default function SalesmanPremium() {
  carStatsMap={carStatsMap} enquiries={enquiries} thisMonthSales={thisMonthSales}
  commission={commission} soldCount={soldCount} myListings={myListings}
  channelMap={channelMap} commissionDetails={commissionDetails} isMobile={isMobile}
+ onAddListing={() => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }}
  />
  </Suspense>
  )}
