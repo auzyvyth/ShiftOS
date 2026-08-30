@@ -837,31 +837,46 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       e.target.value = "";
       return;
     }
-    if (file.size > MAX_DOC_BYTES) {
-      toast.error("File is too large — max 10MB");
-      e.target.value = "";
-      return;
-    }
     if (slotType) setUploadingSlot(slotType);
     else setDocUploading(true);
     try {
+      // Compress photographed documents before the size check, so a 12MB phone
+      // snap of a geran uploads instead of being rejected. Bigger and higher
+      // quality than listing photos (1800/0.9 vs 1200/0.82) because these have
+      // to stay READABLE — a compressed-to-mush geran is worthless. PDFs pass
+      // through untouched: compressing one needs a real PDF library, and a
+      // document-scan PDF is almost always well under the cap anyway.
+      const upload = file.type === "application/pdf"
+        ? file
+        : await compressImage(file, 1800, 0.9);
+      if (upload.size > MAX_DOC_BYTES) {
+        toast.error(
+          file.type === "application/pdf"
+            ? "PDF is too large — max 10MB"
+            : "Image is still over 10MB after compression — try a smaller one",
+        );
+        setUploadingSlot(null);
+        setDocUploading(false);
+        e.target.value = "";
+        return;
+      }
       // Owner-scoped + random, same as photo uploads (uploadOne, above) — the
       // storage RLS delete policy matches on foldername[1] = auth.uid(), and a
       // flat docs/ path with no owner folder can never satisfy it, so a
       // replaced/removed document was orphaned in storage forever.
       const rand = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
       const folder = profile?.id ? `${profile.id}/` : "";
-      const path = `${folder}docs/${Date.now()}-${rand}-${(file.name || "document").replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const path = `${folder}docs/${Date.now()}-${rand}-${(upload.name || "document").replace(/[^a-zA-Z0-9._-]/g, "_")}`;
       const { error } = await supabase.storage
         .from("car-images")
-        .upload(path, file, { contentType: file.type });
+        .upload(path, upload, { contentType: upload.type });
       if (error) throw error;
       const url = supabase.storage.from("car-images").getPublicUrl(path)
         .data.publicUrl;
       const type = slotType || docTypeInput;
       setForm((f) => {
         const docs = [...(f.car_documents || [])];
-        const entry = { type, name: file.name, url, path };
+        const entry = { type, name: upload.name, url, path };
         const at = slotType ? docs.findIndex((d) => d.type === slotType) : -1;
         const prev = at >= 0 ? docs[at] : null;
         if (at >= 0) docs[at] = entry;
