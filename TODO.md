@@ -93,6 +93,33 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   later alongside the metrics copilot — same funding blocker, same
   per-listing quota pattern as `feature="caption"` already uses.
 
+- **IDEA-4: One account, one door — stop making people classify themselves
+  at sign-in** — owner's framing (2026-08-30), triggered by a real new user:
+  a friend was told to "log in as a buyer" and reported ending up in the Lite
+  dashboard. Her row is a correct buyer (`role='buyer'`, no listings, no
+  leads, nothing written), so no data was wrong — the confusion is the
+  product's. Today sign-in asks people to pick a door BEFORE they are
+  identified: the header dropdown offers `/buyer-login` and `/login`
+  ("Access your dashboard"), and the main marketplace nav has a link
+  literally labelled "Salesman Lite" (`MarketplaceHeader.jsx:290` →
+  `/for-salesmen`). Nobody arriving thinks "I am a buyer account" — they
+  think "that is my Google account" — and both doors run the same Google
+  OAuth anyway, so the choice buys nothing and costs comprehension.
+  Owner's deeper point: one email = one account = ONE role
+  (`profiles.role` is a single column), so the two doors imply a
+  buyer/seller split the data model does not actually have. The trap that
+  follows: a buyer who later wants to sell has no upgrade path at all and
+  would need a second email.
+  Direction when picked up (not scoped yet): collapse to ONE sign-in, ask
+  what someone wants to do only AFTER auth and only when the account has no
+  role yet; and treat selling as a capability an existing account can gain,
+  not a different identity requiring a different address. Note this is a
+  product/UX change, distinct from the plain routing bug found at the same
+  time (five hand-copied ROLE_ROUTES maps that drop `buyer`, so a buyer
+  reaching `/salesman-lite` or `/salesman-premium` is sent to `/dashboard`,
+  which has no role guard to bounce them back) — that bug should be fixed
+  on its own regardless of whether this redesign happens.
+
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
 
 - **ACT-1: Enable TOTP in Supabase dashboard — DEFERRED until revenue (user: paid)** — 2FA (SEC-1) will not work end-to-end until the TOTP factor type is enabled: Supabase → Authentication → Settings → Multi-Factor → enable **TOTP**. Until then, the "Enable 2FA" button in Settings will error on enroll. Owner is deferring this until revenue/Supabase Pro (treats it as a paid feature — note: standard app-based TOTP MFA is typically free on Supabase; the paid MFA add-on is Phone/SMS, which we are avoiding anyway — worth re-checking billing before permanently shelving). Interim idea from owner: keep Gmail/Google link verification and add an email verification code as a lightweight second factor. NOTE (2026-08-05): TOTP is NOT deprecated — Bank Negara's RMiT (28 Nov 2025) bans **SMS OTP** as a standalone factor, not TOTP. TOTP (authenticator-app codes, RFC 6238) is offline/device-local and is one of the regulator's recommended interception-resistant replacements, so it stays the correct choice here. Do NOT enable Supabase's Phone/SMS OTP factor. Passkeys (FIDO2/WebAuthn) are the gold standard but are not a native Supabase MFA factor yet.
