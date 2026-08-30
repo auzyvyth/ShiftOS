@@ -104,6 +104,7 @@ import AiLoadingState from "../components/ai/AiLoadingState";
 import AiQuotaBadge from "../components/ai/AiQuotaBadge";
 import PushToggle from "../components/PushToggle";
 import { AI_FEATURES_ENABLED } from "../utils/aiFeatureFlag";
+import { markStarterTask } from "../utils/starterTasks";
 const ServicesAddonsTab = React.lazy(() => import("../components/salesman/ServicesAddonsTab"));
 const LoanDesk = React.lazy(() => import("../components/loans/LoanDesk"));
 // Every query that loads a lead uses this. The lead drawer renders the linked
@@ -411,6 +412,18 @@ export default function SalesmanPremium() {
  const [notifBannerDismissed, setNotifBannerDismissed] = useState(() =>
  localStorage.getItem('sp_notif_banner_dismissed') === '1'
  );
+
+ // Starter tasks. Session-only hide: the card renders its own finished state
+ // once all three are done, so it does not need a persisted dismissal.
+ const [starterHidden, setStarterHidden] = useState(false);
+
+ // Opening your own mini page is the one starter task no other data can prove
+ // (analytics_events counts buyer views too), so the click records it.
+ const openMyMinipage = async () => {
+ if (profile?.slug) window.open(`/s/${profile.slug}`, "_blank", "noopener,noreferrer");
+ const next = await markStarterTask(userId, "minipage_visited", profile?.starter_tasks);
+ setProfile((p) => (p ? { ...p, starter_tasks: next } : p));
+ };
 
  // settings
  const [settingsForm, setSettingsForm] = useState({
@@ -4601,7 +4614,7 @@ export default function SalesmanPremium() {
  {/* Public-profile extras — Premium's own bio/specializations block, not
  offered to Lite yet. Shown on the public agent page with a Read-more
  toggle and pill tags, same as the linked-salesman panel. */}
- <div>
+ <div id="sp-bio-field">
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Bio</label>
  <textarea value={settingsForm.bio} onChange={(e) => setSettingsForm((p) => ({ ...p, bio: e.target.value }))}
  placeholder="e.g. Specializing in Perodua & Honda, 5 years experience in Klang Valley" rows={4}
@@ -6071,6 +6084,8 @@ export default function SalesmanPremium() {
  handleThisWeekContacted={handleThisWeekContacted} fetchFollowupSuggestions={fetchFollowupSuggestions}
  requestBrowserNotif={requestBrowserNotif} dismissNotifBanner={dismissNotifBanner}
  dismissTour={dismissTour} handleListingCopy={handleListingCopy}
+ onVisitMinipage={openMyMinipage} starterHidden={starterHidden}
+ onStarterDismiss={() => setStarterHidden(true)}
  />
  </Suspense>
  )}
