@@ -168,47 +168,27 @@ not scoped, not prioritized — just parked here until picked up on purpose.
 
 ### SESSION 2026-08-26 — Security follow-ups
 
-- [ ] **SEC-1: rate-limit anon INSERT on `dealer_notifications` and
-  `salesman_notifications` (push-spam vector).** Both tables carry an
-  `anon_trigger_insert` policy that lets a logged-out caller INSERT a
-  notification row, and **an insert into either table IS a push** —
-  `trg_push_on_dealer_notification` / `trg_push_on_salesman_notification` fire
-  `push_to_users()` on every row (see CLAUDE.md "Web push"). There is no rate
-  limit on either policy, so anyone who can guess or read a `dealer_id` /
-  `salesman_id` can spam a rep's phone indefinitely. Found in the 2026-08-26
-  Premium security sweep; reported rather than fixed because the fix touches
-  live push paths.
-  - Why the policies exist: two notification triggers are NOT `SECURITY
-    DEFINER`, so they run as the anon caller and need the policy to write —
-    `notify_new_booking` (on `bookings`) and `notify_dealer_salesman_note`
-    (on `salesman_notes`). Every other producer is already definer.
-  - **Preferred fix:** make those two `SECURITY DEFINER` (matching
-    `notify_new_enquiry`, `notify_salesman_new_booking` etc.), then DROP both
-    `anon_trigger_insert` policies entirely. No legitimate client inserts a
-    notification directly — they are all trigger fanout.
-  - **Fallback if a direct anon insert turns out to be needed:** add a rate
-    guard to the policy's WITH CHECK, mirroring the ones that already exist
-    (`appointments_public_rate_ok`, `leads_public_rate_ok`,
-    `whatsapp_enquiry_rate_ok`, `analytics_rate_limit_ok`).
-  - **Must be tested end-to-end before shipping:** an anon booking through the
-    public storefront, and a public WhatsApp enquiry, both still firing their
-    push. Getting this wrong silently kills booking/enquiry notifications —
-    the trigger functions swallow their own errors (`exception when others` +
-    `raise warning`) precisely so a push failure never blocks the row write,
-    so a broken path will NOT throw, it will just go quiet.
-  - Verify as anon, not by reading the migration back: `set local role anon`
-    inside a `DO` block that raises at the end so the probe rolls itself back.
+- [x] **SEC-1: anon INSERT on `dealer_notifications` / `salesman_notifications`
+  (push-spam vector)** — DONE 2026-08-30 (PR #334). Both `anon_trigger_insert`
+  policies DROPPED. The preferred fix in the original note turned out to be
+  unnecessary: `notify_new_booking` and `notify_dealer_salesman_note` were
+  checked in `pg_proc` and are already `SECURITY DEFINER`, so nothing
+  legitimate was relying on the policies — every producer is trigger fanout.
+  Verified as anon before shipping (`set local role anon` inside a rolled-back
+  `DO` block): the anon booking and public WhatsApp enquiry paths still fire
+  their push, and a direct anon INSERT into either table is now rejected.
 
-- [ ] **SEC-2: salesman analytics RPCs are still cross-readable by any logged-in
-  user.** `get_salesman_minipage_stats(text)`, `get_salesman_minipage_daily(text)`
-  and `get_salesman_channel_breakdown(uuid[], text)` are `SECURITY DEFINER` and
-  scoped only by a slug. Anon EXECUTE was revoked (migrations `20260826j`/`k`),
-  but any authenticated user can still pass another rep's slug and read their
-  views, enquiries and daily traffic. Fix is a caller check inside each
-  function. Not done yet because a linked salesman's slug is not always their
-  own profile's slug — `Salesmanpanel.jsx` passes `profileData.slug || ""` —
-  so the predicate has to allow "my slug OR a slug belonging to my dealer",
-  and Salesmanpanel + Lite + Premium all need re-testing together.
+- [x] **SEC-2: salesman analytics RPCs cross-readable** — DONE 2026-08-30
+  (PR #334). Ownership guards added inside `get_salesman_minipage_stats`,
+  `get_salesman_minipage_daily`, `get_salesman_channel_breakdown` and
+  `get_salesman_slug_analytics`, using the "my slug OR a slug belonging to my
+  dealer" predicate the note called for, so Salesmanpanel's
+  `profileData.slug || ""` still resolves. Also found and closed a worse hole
+  the note did not cover: `get_salesman_slug_analytics` still had anon EXECUTE,
+  so any unauthenticated visitor who knew a public slug could read that rep's
+  per-car views, enquiries and channel breakdown. Revoked from `public` (not
+  just `anon` — the grant was held by PUBLIC, so revoking anon would have
+  no-opped) and verified with `has_function_privilege`.
 
 ---
 
@@ -531,23 +511,17 @@ and "Commission tracking," not deal sheets/handover/customer records by
 name, so nothing sold is currently false. But they were the differentiators
 implied by TODO's own (stale) V3 note, so treat as the real next milestone.
 
-- [ ] **PREM-7 (LOW, not fixed — reclassified, not a bug): Analytics tab's
-  "WA Taps" and "CVR" KPI tiles never show a trend sparkline.**
-  `SalesmanPremium.jsx` hardcodes `const waD = Array(7).fill(0)` (no RPC
-  returns a daily WhatsApp-tap breakdown) and derives `cvrD` from it, so
-  both are always all-zero. Initially flagged this as "fakes a chart" to the
-  owner — on closer read that's not quite right: the `Spark` sparkline
-  component already guards `if (!data || data.every(v => v === 0)) return
-  <div/>` (blank, not a drawn flat line), so nothing false is drawn — the
-  totals above the sparkline (`totalWA`, `cvr`) are real, aggregated
-  correctly from `carStatsMap`. The only user-visible effect is those two
-  tiles permanently lack the little trend squiggle that Views/Enquiries
-  have, even in a week with real activity. Real fix needs a genuine per-day
-  WhatsApp-tap data source (an `analytics_events` fetch bucketed by day —
-  there's a dead, never-called `bucket7(evts, type)` helper sitting right
-  above this code that looks like it was built for exactly this and never
-  wired up). Left alone this session per the owner's "ship what's real,
-  don't build new" scope call — it's a missing nice-to-have, not a bug.
+- [ ] **PREM-7 (LOW): Analytics has no daily WhatsApp-tap series.** Unchanged as
+  a data gap, but the symptom is gone: the Analytics rebuild (2026-08-30,
+  PR #334) REMOVED the WA-taps and CVR sparklines rather than leaving two tiles
+  with a permanent blank gap where a chart should be. `waD = Array(7).fill(0)`
+  is deleted along with them; both are plain numbers now, and the totals were
+  always real. To bring the charts back, give the analytics RPC a genuine
+  per-day WhatsApp-tap breakdown (bucket `analytics_events` by day — the dead
+  `bucket7(evts, type)` helper that looked built for this was removed in the
+  same pass, so it needs writing fresh), then re-add `data=` to those two
+  `<Metric>` calls in `salesmanPremium/AnalyticsTab.jsx`. Nothing else is
+  needed — the Spark component takes any 7-element array.
 
 ---
 
