@@ -319,6 +319,62 @@ export function buildCopyText(l) {
   return lines.join("\n");
 }
 
+// The same listing, as a plain fact sheet for an AI to write from.
+//
+// buildCopyText above is the finished WhatsApp post — dividers, emoji, a CTA.
+// Feeding that to a model wastes tokens on decoration and invites it to copy
+// the layout instead of writing something new. This is the same SOURCE FIELDS,
+// stripped to labelled facts.
+//
+// It exists because the AI caption writer was being handed four things (name,
+// price, mileage, and a comma-joined transmission/colour/fuel/body string)
+// while the human-written copy carried the variant, condition, recon grade,
+// features, specs, the seller's own description and the location. The model
+// was writing about a car it had barely been told about.
+//
+// Empty fields are omitted rather than sent as "unknown" — a blank invites the
+// model to fill it in, which is exactly what must not happen with a car spec.
+export function buildListingFacts(l) {
+  const condLabel =
+    { used: "Used", recon: "Recon", new: "New" }[l.condition] || l.condition || "";
+  const out = [];
+  const add = (k, v) => { if (v !== null && v !== undefined && String(v).trim() !== "") out.push(`${k}: ${v}`); };
+  const list = (raw) =>
+    String(raw || "").split(/[\n,]+/).map((x) => x.trim()).filter(Boolean).join(", ");
+
+  add("Car", [l.year, l.brand, l.model, l.variant].filter(Boolean).join(" "));
+  add("Condition", condLabel);
+  if (l.is_recon) {
+    add("Recon import", l.import_country || "yes");
+    add("Auction grade", l.auction_grade);
+    add("Interior grade", l.interior_grade);
+  }
+  add("Price", l.selling_price ? `RM ${Number(l.selling_price).toLocaleString("en-MY")}` : null);
+  if (l.original_price && l.selling_price && Number(l.original_price) > Number(l.selling_price)) {
+    add("Was priced", `RM ${Number(l.original_price).toLocaleString("en-MY")}`);
+    add("Discount", `RM ${Number(l.original_price - l.selling_price).toLocaleString("en-MY")}`);
+  }
+  add("Mileage", l.mileage ? `${Number(l.mileage).toLocaleString()} km` : null);
+  add("Registered", l.registration_date);
+  add("Engine", l.engine_cc ? `${Number(l.engine_cc).toLocaleString()}cc` : null);
+  add("Horsepower", l.horsepower ? `${l.horsepower} hp` : null);
+  add("Transmission", l.transmission);
+  add("Fuel", l.fuel_type);
+  add("Body type", l.body_type);
+  add("Colour", l.colour);
+  add("Seats", l.seats);
+  add("Previous owners", l.previous_owners);
+  add("Location", [l.city, l.state].filter(Boolean).join(", "));
+  add("Warranty", l.warranty_months ? `${l.warranty_months} months` : null);
+  add("Features", list(l.features));
+  add("Specs", list(l.specs));
+  add("Seller's description", String(l.options || "").trim() || null);
+  if (Array.isArray(l.included_services) && l.included_services.length) {
+    add("Included with purchase", l.included_services.map((s) => s?.name || s).filter(Boolean).join(", "));
+  }
+  return out.join("\n");
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 // Common features buyers actually search for — rendered as tap-to-add chips in
 // step 6 so dealers populate the SEO-critical features field without typing.

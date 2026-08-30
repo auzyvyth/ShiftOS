@@ -15,7 +15,7 @@ import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { freshChannel } from "../lib/realtime";
 import { compressImageFile } from "../utils/compressImage";
 import CarFormFast from "../components/CarFormFast";
-import CarForm from "../components/CarForm";
+import CarForm, { buildCopyText, buildListingFacts } from "../components/CarForm";
 import DealerPendingApproval from "../components/DealerPendingApproval";
 import AvailabilityEditor from "../components/AvailabilityEditor";
 // Lazy — each of these is a self-contained tab/section that shouldn't ship in
@@ -2085,45 +2085,17 @@ export default function SalesmanPremium() {
  setTimeout(() => navigate("/salesman"), 2500);
  };
 
- // Hashtag line for the WA caption — condition first (#used/#recon/#brandnew,
- // whichever this car actually is), then spec tags worth searching by.
- // Strict off the real field values, never a guessed default.
- const carHashtags = (car) => {
- const tags = [];
- const cond = (car.condition || "").toLowerCase();
- if (cond === "used") tags.push("used");
- else if (cond === "recon") tags.push("recon");
- else if (cond === "new") tags.push("brandnew");
- if (car.brand) tags.push(car.brand.replace(/\s+/g, ""));
- if (car.model) tags.push(car.model.replace(/\s+/g, ""));
- if (car.transmission) tags.push(car.transmission.toLowerCase().replace(/\s+/g, ""));
- if (car.fuel_type) tags.push(car.fuel_type.toLowerCase().replace(/\s+/g, ""));
- if (car.body_type) tags.push(car.body_type.toLowerCase().replace(/\s+/g, ""));
- if (car.loan_eligible) tags.push("loanavailable");
- if (car.warranty_months) tags.push("warranty");
- if (car.city) tags.push(car.city.replace(/\s+/g, ""));
- return [...new Set(tags)].filter(Boolean).map(t => `#${t}`).join(" ");
- };
- const CONDITION_LABEL = { used: "Used", recon: "Recon", new: "New" };
 
  const handleListingCopy = (car, type) => {
  const link = `https://xdrive.my/showroom/${car.slug}?ref=${profile?.slug || ""}`;
  let text = link;
  if (type === "wa") {
- const price = Number(car.selling_price || 0);
- const hashtags = carHashtags(car);
- text = [
- ` ${car.year} ${car.brand} ${car.model}${car.variant? " " + car.variant : ""}`,
- `RM ${price.toLocaleString()}`,
- ` ${car.city || car.location || "Malaysia"}`,
- ` ${car.mileage? Number(car.mileage).toLocaleString() + " km" : "—"} · ${car.colour || "—"} · ${car.transmission || "—"}`,
- ``,
- `Condition: ${CONDITION_LABEL[(car.condition || "").toLowerCase()] || car.condition || "Good"}`,
- ``,
- `Berminat? Whatsapp saya sekarang `,
- link,
- ...(hashtags? ["", hashtags] : []),
- ].join("\n");
+ // Same rich formatter Lite and the CarForm final step use (specs, pricing,
+ // features, about, hashtags), with the rep's referral link appended.
+ // Premium used to hand-roll a six-line version here, so the cheaper tier
+ // was posting the better ad: no features, no specs, no seller description,
+ // no discount, and a caption that dropped the emoji it was written around.
+ text = `${buildCopyText(car)}\n👉 ${link}`;
  }
  navigator.clipboard.writeText(text);
  setListingCopied((prev) => ({ ...prev, [car.id]: type }));
@@ -2218,13 +2190,23 @@ export default function SalesmanPremium() {
  if (!quotaOk) { setCaptionQuotaOk(false); return; }
  setCaptionQuotaOk(true);
  setAiCaptionLoading(true);
- const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
- const price = car.selling_price? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : "harga on request";
- const mileage = car.mileage? `${Number(car.mileage).toLocaleString()} km` : "mileage not listed";
- const features = [car.transmission, car.colour, car.fuel_type, car.body_type].filter(Boolean).join(", ") || "standard features";
- const prompt = `You are a Malaysian used car salesman writing a social media caption in Bahasa Malaysia with some English. Tone: casual, excited, trustworthy. Car: ${name}. Price: ${price}. Mileage: ${mileage}. Key features: ${features}. Platform: ${platform}. Write one punchy caption with relevant emojis and a WhatsApp CTA. Max 150 words.`;
+ // Every field the human-written copy uses, not the four this used to send.
+ // buildListingFacts omits blanks on purpose — see the note on it in CarForm.
+ const facts = buildListingFacts(car);
+ const prompt = [
+ `You are a Malaysian used car salesman writing a social media caption in Bahasa Malaysia with some English.`,
+ `Tone: casual, excited, trustworthy. Platform: ${platform}.`,
+ ``,
+ `LISTING FACTS`,
+ facts || `Car: ${[car.year, car.brand, car.model].filter(Boolean).join(" ")}`,
+ ``,
+ `Write one punchy caption with relevant emojis and a WhatsApp CTA. Max 150 words.`,
+ `Use ONLY the facts above. Do not invent or estimate a price, discount, deposit,`,
+ `monthly instalment, interest rate, trade-in value or loan approval, and do not`,
+ `state a spec that is not listed. Anything absent is simply left out.`,
+ ].join("\n");
  try {
- const text = await callClaude(prompt, "You write viral Malaysian car sales captions. Reply with the caption text only, no labels.");
+ const text = await callClaude(prompt, "You write viral Malaysian car sales captions. Reply with the caption text only, no labels. Never state a number or spec that was not given to you.");
  setAiCaptions((p) => ({ ...p, [cacheKey]: text }));
  await supabase.from("ai_caption_logs").insert({ salesman_id: userId, car_id: car.id, platform, caption: text }).then(null, () => {});
  await logAiUsage("caption");
