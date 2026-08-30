@@ -10,13 +10,7 @@ import { supabase } from '../supabaseClient';
 import SavedCarsPanel from './SavedCarsPanel';
 import AnnouncementBar from './AnnouncementBar';
 import useMarketplaceSettings from '../hooks/useMarketplaceSettings';
-
-// Mirror of useRoleRedirect's ROLE_ROUTES — maps a logged-in business user to their panel.
-const ROLE_ROUTES = {
-  superadmin: '/dashboard', dealer: '/dashboard', owner: '/dashboard',
-  manager: '/manager', salesman: '/salesman', accountant: '/accountant',
-  fi_officer: '/fi', admin: '/admin',
-};
+import { routeForRole } from '../hooks/useRoleRedirect';
 
 export default function MarketplaceHeader({ hideAnnouncement = false }) {
   const [scrolled, setScrolled]     = useState(false);
@@ -31,13 +25,11 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
   // salesman/…) → "Dashboard" to their panel. A buyer (session, no business role)
   // → "My Account" (/account). null = not logged in.
   const [authLink, setAuthLink]     = useState(null);
-  const [signinOpen, setSigninOpen] = useState(false);
   // "Get Started" is the header's loudest control. It used to hard-link to
   // /shiftos#pricing (the RM299 dealer plan), so the free Salesman Lite tier —
   // the product we actually market for volume — was priced out at first touch.
   // It now opens the same two-way chooser pattern the Sign In control uses.
   const [startOpen, setStartOpen]   = useState(false);
-  const signinRef = useRef(null);
   const startRef  = useRef(null);
   const rootRef = useRef(null);
   const searchInputRef = useRef(null);
@@ -80,15 +72,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Close the Sign In buyer/seller dropdown on outside click.
-  useEffect(() => {
-    if (!signinOpen) return;
-    const h = (e) => { if (signinRef.current && !signinRef.current.contains(e.target)) setSigninOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [signinOpen]);
-
-  // Same for the Get Started agent/dealer chooser.
+  // The Get Started agent/dealer chooser closes on outside click.
   useEffect(() => {
     if (!startOpen) return;
     const h = (e) => { if (startRef.current && !startRef.current.contains(e.target)) setStartOpen(false); };
@@ -103,8 +87,15 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
       const { data: profile } = await supabase
         .from('profiles').select('role').eq('id', session.user.id).maybeSingle();
       if (!active) return;
-      const route = profile?.role && ROLE_ROUTES[profile.role];
-      setAuthLink(route ? { to: route, label: 'Dashboard' } : { to: '/account', label: 'My Account' });
+      // One shared map decides the destination; only the WORDING differs here.
+      // A buyer's home is /account and reads "My Account"; every business role
+      // gets "Dashboard" to its own panel.
+      const role = profile?.role;
+      const isBuyer = !role || role === 'buyer';
+      setAuthLink({
+        to: routeForRole(role),
+        label: isBuyer ? 'My Account' : 'Dashboard',
+      });
     };
     supabase.auth.getSession().then(({ data }) => resolve(data.session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => resolve(s));
@@ -307,34 +298,12 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
                 <LayoutDashboard size={15} /> {authLink.label}
               </a>
             ) : (
-              <div ref={signinRef} style={{ position: 'relative' }}>
-                <button
-                  className="mh-signin"
-                  onClick={() => setSigninOpen(o => !o)}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}
-                >
-                  Sign In
-                  <ChevronDown size={14} style={{ transform: signinOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
-                </button>
-                {signinOpen && (
-                  <div className="mh-signin-menu">
-                    <a href="/buyer-login" className="mh-signin-item" onClick={() => setSigninOpen(false)}>
-                      <User size={17} style={{ color: '#dc2626', flexShrink: 0 }} />
-                      <span>
-                        <span className="mh-signin-item-t">I'm a Buyer</span>
-                        <span className="mh-signin-item-s">Save cars, alerts &amp; enquiries</span>
-                      </span>
-                    </a>
-                    <a href="/login" className="mh-signin-item" onClick={() => setSigninOpen(false)}>
-                      <Store size={17} style={{ color: '#dc2626', flexShrink: 0 }} />
-                      <span>
-                        <span className="mh-signin-item-t">I'm a Seller / Dealer</span>
-                        <span className="mh-signin-item-s">Access your dashboard</span>
-                      </span>
-                    </a>
-                  </div>
-                )}
-              </div>
+              /* ONE sign-in door. This used to be a dropdown asking "I'm a
+                 Buyer" vs "I'm a Seller / Dealer" before anyone was identified —
+                 but both items ran the same Google OAuth, and an account's role
+                 already decides where it lands, so the question bought nothing
+                 and mis-sorted real people. Sign in first; the role routes you. */
+              <a href="/login" className="mh-signin">Sign In</a>
             )}
             <div className="mh-getstarted-wrap" ref={startRef}>
               <button
@@ -428,14 +397,10 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
               <LayoutDashboard size={16} /> {authLink.label}
             </a>
           ) : (
-            <>
-              <a href="/buyer-login" className="mh-m-signin" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }} onClick={() => setMenuOpen(false)}>
-                <User size={16} /> Sign In as Buyer
-              </a>
-              <a href="/login" className="mh-m-signin" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }} onClick={() => setMenuOpen(false)}>
-                <Store size={16} /> Sign In as Seller / Dealer
-              </a>
-            </>
+            /* One door on mobile too — see the desktop control above. */
+            <a href="/login" className="mh-m-signin" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }} onClick={() => setMenuOpen(false)}>
+              <User size={16} /> Sign In
+            </a>
           )}
         </div>
       </header>

@@ -1,18 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, MessageCircle, Sparkles, Crown, ChevronDown, User, Store, ShieldCheck } from "lucide-react";
+import { Menu, X, MessageCircle, Sparkles, Crown, User, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useSiteProfile } from "../hooks/useSiteProfile";
 import { supabase } from "../supabaseClient";
 import { isSubdomain } from "../hooks/useTenant";
-
-// Business roles → their panel. Anything else (a buyer session) → /account.
-const ROLE_ROUTES = {
-  superadmin: "/dashboard", dealer: "/dashboard", owner: "/dashboard",
-  manager: "/manager", salesman: "/salesman", accountant: "/accountant",
-  fi_officer: "/fi", admin: "/admin",
-};
+import { routeForRole } from "../hooks/useRoleRedirect";
 
 const HDR_CSS = `
 
@@ -333,8 +327,6 @@ export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [authUser, setAuthUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
-  const [loginMenuOpen, setLoginMenuOpen] = useState(false);
-  const loginRef = useRef(null);
   const lastScrollY = useRef(0);
   const location = useLocation();
   const navigate = useNavigate();
@@ -364,14 +356,6 @@ export default function Header() {
     return () => window.removeEventListener("scroll", fn);
   }, []);
 
-  // Close the Sign In buyer/seller dropdown on outside click.
-  useEffect(() => {
-    if (!loginMenuOpen) return;
-    const h = (e) => { if (loginRef.current && !loginRef.current.contains(e.target)) setLoginMenuOpen(false); };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, [loginMenuOpen]);
-
   useEffect(() => {
     const fetchRole = async (uid) => {
       const { data } = await supabase
@@ -400,9 +384,11 @@ export default function Header() {
   }, []);
 
   const isLoggedIn = !!authUser;
-  const businessRoute = userRole && ROLE_ROUTES[userRole];
-  const accountPath = businessRoute || "/account";
-  const accountLabel = businessRoute ? t("nav.dashboard") : "My Account";
+  // Destination comes from the one shared map; only the wording differs — a
+  // buyer's home is /account and reads "My Account".
+  const isBuyerRole = !userRole || userRole === "buyer";
+  const accountPath = routeForRole(userRole);
+  const accountLabel = isBuyerRole ? "My Account" : t("nav.dashboard");
   const toggleLang = () => i18n.changeLanguage(i18n.language.startsWith("en") ? "ms" : "en");
   const isEn = i18n.language.startsWith("en");
   const waHref = waUrl ? waUrl(`Hi ${siteName}, I need help finding a car`) : "#";
@@ -493,34 +479,13 @@ export default function Header() {
           <nav className="hdr-nav">
             {navLinks.map((link) =>
               link.key === "login" ? (
-                <div key={link.key} ref={loginRef} style={{ position: "relative" }}>
-                  <button
-                    className="hdr-link"
-                    onClick={() => setLoginMenuOpen((o) => !o)}
-                    style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 4 }}
-                  >
-                    {link.name}
-                    <ChevronDown size={13} style={{ transform: loginMenuOpen ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
-                  </button>
-                  {loginMenuOpen && (
-                    <div className="hdr-login-menu">
-                      <a href="/buyer-login" className="hdr-login-item" onClick={() => setLoginMenuOpen(false)}>
-                        <User size={16} style={{ color: "#F87171", flexShrink: 0 }} />
-                        <span>
-                          <span className="hdr-login-item-t">I'm a Buyer</span>
-                          <span className="hdr-login-item-s">Save cars, alerts &amp; enquiries</span>
-                        </span>
-                      </a>
-                      <a href="/login" className="hdr-login-item" onClick={() => setLoginMenuOpen(false)}>
-                        <Store size={16} style={{ color: "#F87171", flexShrink: 0 }} />
-                        <span>
-                          <span className="hdr-login-item-t">I'm a Seller / Dealer</span>
-                          <span className="hdr-login-item-s">Access your dashboard</span>
-                        </span>
-                      </a>
-                    </div>
-                  )}
-                </div>
+                /* ONE sign-in door — the buyer/seller dropdown that used to live
+                   here asked people to classify themselves before they were
+                   identified, while both choices ran the same auth and the
+                   account's own role already decides the destination. */
+                <a key={link.key} href="/login" className="hdr-link">
+                  {link.name}
+                </a>
               ) : link.isSpecial ? (
                 <Link key={link.key} to={link.path} className="hdr-dealer">
                   <Crown style={{ width: "10px", height: "10px", flexShrink: 0 }} />
@@ -607,16 +572,11 @@ export default function Header() {
                   transition={{ delay: i * 0.035, ease: "easeOut" }}
                 >
                   {link.key === "login" ? (
-                    <>
-                      <Link to="/buyer-login" onClick={() => setMobileOpen(false)} className="hdr-mlink">
-                        <User style={{ width: "15px", height: "15px", flexShrink: 0 }} />
-                        <span style={{ flex: 1 }}>Sign In as Buyer</span>
-                      </Link>
-                      <Link to="/login" onClick={() => setMobileOpen(false)} className="hdr-mlink">
-                        <Store style={{ width: "15px", height: "15px", flexShrink: 0 }} />
-                        <span style={{ flex: 1 }}>Sign In as Seller / Dealer</span>
-                      </Link>
-                    </>
+                    /* One door on mobile too — see the desktop control above. */
+                    <Link to="/login" onClick={() => setMobileOpen(false)} className="hdr-mlink">
+                      <User style={{ width: "15px", height: "15px", flexShrink: 0 }} />
+                      <span style={{ flex: 1 }}>Sign In</span>
+                    </Link>
                   ) : link.path.includes("#") ? (
                     <button
                       onClick={() => handleNav(link.path)}

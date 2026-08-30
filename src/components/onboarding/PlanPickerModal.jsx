@@ -88,7 +88,10 @@ function PlanCard({ plan, current, onSelect }) {
   );
 }
 
-export default function PlanPickerModal({ currentTier, onClose, salesmanOnly = false }) {
+// `footer` renders inside the card under the plans. /choose-plan uses it to
+// offer "I'm just here to buy a car", because that page is also where a brand
+// new Google sign-in lands before anyone knows whether they are a seller at all.
+export default function PlanPickerModal({ currentTier, onClose, salesmanOnly = false, footer = null }) {
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -135,6 +138,8 @@ export default function PlanPickerModal({ currentTier, onClose, salesmanOnly = f
             Switching between salesman and dealer restarts that product's onboarding.
           </p>
         )}
+
+        {footer}
       </div>
     </div>,
     document.body

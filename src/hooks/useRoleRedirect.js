@@ -1,5 +1,12 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 
+// THE role -> home-surface map. There is exactly one of these; import it, never
+// retype it. Five hand-copied duplicates had drifted (SalesmanLite,
+// SalesmanPremium, Header, MarketplaceHeader, BuyerAuthPage): every copy was
+// missing `buyer` and every copy sent `superadmin` to /dashboard instead of
+// /platform. Two of them defaulted the missing key to '/dashboard', so a buyer
+// who reached /salesman-lite was bounced through the dealer dashboard (whose
+// own guard then sent them on to /account) instead of going there directly.
 export const ROLE_ROUTES = {
   superadmin:  '/platform',
   dealer:      '/dashboard',
@@ -11,6 +18,17 @@ export const ROLE_ROUTES = {
   admin:       '/admin',
   buyer:       '/account',
 };
+
+// Where an unknown/absent role goes. Deliberately the LEAST privileged surface:
+// an unrecognised role is almost always a half-created stub, and guessing
+// "seller" for those is what put a shopper in a dealer dashboard. /account is
+// harmless for everyone — a real seller is in the map above and never lands here.
+export const FALLBACK_ROUTE = '/account';
+
+// The single way to turn a role into a destination.
+export function routeForRole(role) {
+  return ROLE_ROUTES[role] ?? FALLBACK_ROUTE;
+}
 
 /**
  * Returns a redirect function. Call it with the user's actual role after
@@ -35,7 +53,7 @@ export function useRoleRedirect(expectedRole) {
 
   return (currentRole) => {
     if (allowed.includes(currentRole)) return false;
-    const destination = ROLE_ROUTES[currentRole] ?? '/dashboard';
+    const destination = routeForRole(currentRole);
     // Avoid redirect loop — don't navigate if already at the destination
     if (location.pathname === destination) return false;
     navigate(destination, { replace: true });
