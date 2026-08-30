@@ -150,23 +150,26 @@ not scoped, not prioritized — just parked here until picked up on purpose.
 
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
 
-- **ACT-PUSH-1: deploy `send-push` — the fix for the ~1 hour notification delay
-  is written but NOT live.** Edge functions do not ride the Vercel deploy, so
-  `supabase/functions/send-push/index.ts` is only in the repo until someone
-  deploys it (`mcp__Supabase__deploy_edge_function`, or the dashboard).
-  Diagnosis, measured not guessed: the server side is not slow. Chat message
-  written at `06:09:37.602`, `send-push` HTTP 200 back at `06:09:37.795` —
-  193ms, DB trigger to edge function (`net._http_response`). The delay is the
-  push service holding the message. `webpush.sendNotification()` was called with
-  NO options, so no `Urgency` header went out, and the default (`normal`)
-  explicitly permits FCM to sit on a message until the device leaves Doze —
-  which is the up-to-an-hour wait. All 13 rows in `push_subscriptions` are FCM
-  endpoints, so this hit every user. Fix sets `urgency: 'high'` and caps TTL at
-  24h (was the web-push default of four weeks, i.e. a chat ping could arrive
-  days late). Also logs the failing status per endpoint — `{"sent":2,"failed":2}`
-  was previously a black box, and failures ARE happening.
-  Repo and deployed v17 were verified in sync before editing, so a redeploy
-  loses nothing.
+- **ACT-VERIFY-PUSH: confirm on a real phone that notifications now arrive
+  immediately.** `send-push` v18 is deployed (2026-08-30) with `urgency: 'high'`
+  and TTL capped at 24h. The server side was never the problem and was measured
+  at 193ms; the fix is a request to FCM for immediate delivery, so ONLY a real
+  device can confirm it. Send a chat message between two accounts and time it.
+  If it is still slow, the next suspect is the device, not us: Android battery
+  optimisation on the installed PWA, or notification permission granted but the
+  app restricted in the background.
+  Second thing to watch in the same pass: roughly a third of sends were failing
+  (`{"sent":2,"failed":2}` in `net._http_response`) and the old code discarded
+  the reason. v18 logs the status per endpoint, so the Supabase function logs
+  will now say why. 13 subscriptions, all FCM.
+
+- **ACT-DEPENDABOT: 5 vulnerabilities on the default branch (2 high, 3
+  moderate), still unread** — https://github.com/auzyvyth/ShiftOS/security/dependabot
+  Every push prints this warning and no session has opened it. Needs a browser.
+  Note `npm install` currently FAILS in web sessions (403 through the proxy on
+  `cdn.sheetjs.com/xlsx-0.20.3.tgz`, which npm resolves even when installing an
+  unrelated package), so an agent cannot run `npm audit` or test an upgrade —
+  this one likely has to be done locally.
 
 - **ACT-1: Enable TOTP in Supabase dashboard — DEFERRED until revenue (user: paid)** — 2FA (SEC-1) will not work end-to-end until the TOTP factor type is enabled: Supabase → Authentication → Settings → Multi-Factor → enable **TOTP**. Until then, the "Enable 2FA" button in Settings will error on enroll. Owner is deferring this until revenue/Supabase Pro (treats it as a paid feature — note: standard app-based TOTP MFA is typically free on Supabase; the paid MFA add-on is Phone/SMS, which we are avoiding anyway — worth re-checking billing before permanently shelving). Interim idea from owner: keep Gmail/Google link verification and add an email verification code as a lightweight second factor. NOTE (2026-08-05): TOTP is NOT deprecated — Bank Negara's RMiT (28 Nov 2025) bans **SMS OTP** as a standalone factor, not TOTP. TOTP (authenticator-app codes, RFC 6238) is offline/device-local and is one of the regulator's recommended interception-resistant replacements, so it stays the correct choice here. Do NOT enable Supabase's Phone/SMS OTP factor. Passkeys (FIDO2/WebAuthn) are the gold standard but are not a native Supabase MFA factor yet.
 > **ACT-13 DONE — verified end to end 2026-08-29.** Anonymous sign-ins are on and guest
