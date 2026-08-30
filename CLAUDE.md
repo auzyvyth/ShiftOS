@@ -593,6 +593,33 @@ car. Sources are the page's existing `leads`/`customers` state plus `useNudges`
   value, rate or approval), and no auto-send: Message opens WhatsApp with the
   text and the human presses send.
 
+## Performance tab (Salesman Premium) — DIAGNOSIS only, never a call list
+`src/utils/salesPerformance.js` (all the maths, pure + unit-tested via
+`npm run test:perf`) + `src/pages/salesmanPremium/AnalyticsTab.jsx` (UI) +
+`src/hooks/useStageHistory.js` (the funnel's stage history). Two sub-tabs:
+**Selling** (funnel drop-off, close rate + 30d trend, reply speed, loss reasons,
+source quality, ranked coaching insights) and **Listings** (the traffic metrics
+the tab used to be, unchanged).
+- **The line: this page says WHERE you are losing deals across many leads.
+  "This week" on the dashboard says WHO to call today.** Premium already had two
+  call lists (ThisWeek + `useNudges`); a third one here is the duplication the
+  rules above forbid. Salesman Lite's `renderPerformance` nudges are ACTION
+  nudges ("6 stale leads → go to Leads") — do NOT port them here, that is the
+  overlap this split exists to avoid.
+- **The funnel reads stage HISTORY, not `leads.stage`.** A lost deal is charged
+  to the stage it actually died at, via `lead_activities` rows of type
+  `stage_changed` (`to_stage`). Reading only the current stage puts every loss at
+  "New" and blames the wrong step for everything. Guarded by a test.
+- **Weakest step = most PEOPLE lost, not the highest percentage**, and it needs
+  `reached >= 4`. A 100% drop-off on one lead is noise, and acting on it sends
+  the rep to fix a stage they have been to once.
+- **Every insight has a minimum sample size and quotes a real number.** Below the
+  threshold the card says what unlocks it instead of inventing a pattern. No
+  invented money anywhere — nothing here knows a rep's commission rate, so there
+  is no "this is costing you RM x" (same rule as AI drafts).
+- `useStageHistory` only runs when the lazy tab mounts, so no other surface gains
+  a query, and it selects three columns — no buyer name, phone or note.
+
 ## Equity mining / trade-up list (RAPTOR-3) — built, don't rebuild
 Customers tab in `SalesmanPremium.jsx` (`renderCustomers`) has a `Trade-up
 ready` filter. Two triggers, OR'd: owned 3+ years (`purchase_date`) or a car 5+

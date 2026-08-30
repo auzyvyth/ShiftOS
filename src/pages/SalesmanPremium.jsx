@@ -6149,6 +6149,7 @@ export default function SalesmanPremium() {
  carStatsMap={carStatsMap} enquiries={enquiries} thisMonthSales={thisMonthSales}
  commission={commission} soldCount={soldCount} myListings={myListings}
  channelMap={channelMap} commissionDetails={commissionDetails} isMobile={isMobile}
+ leads={leads} onOpenTab={switchTab}
  onAddListing={() => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }}
  />
  </Suspense>

@@ -11,7 +11,8 @@
     "lint": "eslint . --quiet",
     "lint:warn": "eslint .",
     "start-server": "node server/index.js",
-    "test:tour": "node tests/tourPlacement.test.mjs"
+    "test:tour": "node tests/tourPlacement.test.mjs",
+    "test:perf": "node tests/salesPerformance.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
