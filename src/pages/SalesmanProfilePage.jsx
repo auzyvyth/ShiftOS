@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useParams } from 'react-router-dom';
-import { Clock, LayoutDashboard, MapPin, ChevronRight } from 'lucide-react';
+import { Clock, LayoutDashboard, MapPin, ChevronRight, User } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import ReviewsSection from '../components/reviews/ReviewsSection';
-import { ROLE_ROUTES } from '../hooks/useRoleRedirect';
+import { routeForProfile, isSellerRole } from '../hooks/useRoleRedirect';
 import { trackEvent } from '../utils/analytics';
 import { captureRef } from '../utils/refTracking';
 
@@ -43,7 +43,7 @@ export default function SalesmanProfilePage() {
   const [bioExpanded, setBioExpanded] = useState(false);
   const bioRef = useRef(null);
   const [bioOverflows, setBioOverflows] = useState(false);
-  const [viewerDashboardRoute, setViewerDashboardRoute] = useState(null);
+  const [viewerHome, setViewerHome] = useState(null);
   // Fire the mini-page visit exactly once per mount (StrictMode double-invokes).
   const visitTracked = useRef(false);
 
@@ -66,18 +66,29 @@ export default function SalesmanProfilePage() {
     });
   };
 
-  // If the visitor is logged in, surface a quick way back to their own
-  // dashboard — most useful when a salesman previews their own mini page
-  // and would otherwise have no way back without hitting the browser's
-  // back button.
+  // If the visitor is logged in, surface a quick way back to their own home —
+  // most useful when a salesman previews their own mini page and would
+  // otherwise have no way back without hitting the browser's back button.
+  //
+  // This button said "Dashboard" to EVERYONE, buyers included, and a shopper
+  // sitting on a seller's page pressed it, exactly as the wording invited. It
+  // now words itself the way the two headers already do.
+  //
+  // dealer_id and plan are selected because a standalone salesman's home is
+  // /salesman-lite or /salesman-premium, which the role alone cannot say.
   useEffect(() => {
     let cancelled = false;
     supabase.auth.getSession().then(async ({ data }) => {
       const uid = data?.session?.user?.id;
       if (!uid || cancelled) return;
-      const { data: viewer } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle();
+      const { data: viewer } = await supabase
+        .from('profiles').select('role, dealer_id, plan').eq('id', uid).maybeSingle();
       if (cancelled || !viewer?.role) return;
-      setViewerDashboardRoute(ROLE_ROUTES[viewer.role] ?? null);
+      setViewerHome({
+        to: routeForProfile(viewer),
+        label: isSellerRole(viewer.role) ? 'Dashboard' : 'My Account',
+        seller: isSellerRole(viewer.role),
+      });
     });
     return () => { cancelled = true; };
   }, []);
@@ -280,10 +291,10 @@ export default function SalesmanProfilePage() {
           {/* Quick way back for a logged-in visitor (most often the agent
               themselves previewing this page) — jumps to whichever
               dashboard their own role resolves to. */}
-          {viewerDashboardRoute && (
-            <Link to={viewerDashboardRoute}
+          {viewerHome && (
+            <Link to={viewerHome.to}
               style={{ position: 'absolute', top: 12, right: 12, zIndex: 3, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(11,14,21,0.72)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 99, padding: '7px 14px', fontSize: 12, fontWeight: 700, color: '#fff', textDecoration: 'none' }}>
-              <LayoutDashboard size={13} /> Dashboard
+              {viewerHome.seller ? <LayoutDashboard size={13} /> : <User size={13} />} {viewerHome.label}
             </Link>
           )}
 

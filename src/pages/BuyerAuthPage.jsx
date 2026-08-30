@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { markBuyerIntent, markBuyerConsent, ensureBuyerProfile } from "../lib/buyerAuth";
-import { routeForRole } from "../hooks/useRoleRedirect";
+import { routeForProfile } from "../hooks/useRoleRedirect";
 import { Heart, Bell, MessageCircle, Tag, Check, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import LegalModal from "../components/LegalModal";
 
@@ -69,11 +69,12 @@ export default function BuyerAuthPage() {
   const redirectByRole = async (user) => {
     if (!user?.id) return;
     const { data: profile } = await supabase
-      .from("profiles").select("role").eq("id", user.id).maybeSingle();
-    // One shared map. A buyer resolves to /account, which is also the fallback
-    // for a role this page does not expect, so a mis-typed role can never send
-    // a shopper into a seller panel.
-    window.location.href = `${base}${routeForRole(profile?.role)}`;
+      .from("profiles").select("role, dealer_id, plan").eq("id", user.id).maybeSingle();
+    // One shared resolver. A buyer resolves to /account, which is also the
+    // fallback for a role this page does not expect, so a mis-typed role can
+    // never send a shopper into a seller panel. dealer_id/plan are selected
+    // because a standalone salesman's home is Lite or Premium, not /salesman.
+    window.location.href = `${base}${routeForProfile(profile)}`;
   };
 
   const switchMode = (m) => { setMode(m); setError(""); setConfirmSent(false); setShowForgot(false); setShowMagic(false); setMagicSent(false); };

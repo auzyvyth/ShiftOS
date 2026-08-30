@@ -241,6 +241,32 @@ not scoped, not prioritized — just parked here until picked up on purpose.
 
 ### SESSION 2026-08-30 — identity found while designing the plan page
 
+- [x] **ROUTE-1 — DONE 2026-08-30. The "Dashboard" button on a seller's mini
+  page, and where it sent people.** Owner reported the friend was on the
+  PremiumMotors mini page (`/s/premiummotors`, account `auzyvyth+premium@gmail.com`,
+  profile `f92eb826-...`) and a "Dashboard" button appeared, which she pressed.
+  Two real faults behind it, both fixed:
+  (a) `SalesmanProfilePage.jsx` rendered that button for ANY signed-in viewer
+  and always labelled it "Dashboard" — including a buyer, whose destination was
+  `/account`. The two headers already worded this by role ("My Account" for a
+  buyer); the mini page did not. It now uses the same wording and icon.
+  (b) `ROLE_ROUTES.salesman = '/salesman'` cannot be right for every salesman.
+  A STANDALONE rep belongs on `/salesman-lite` or `/salesman-premium`; only a
+  rep with `dealer_id` belongs on `/salesman`. Every "Dashboard" link in the app
+  resolved standalone reps to the linked-salesman panel, and it only looked
+  correct because `Salesmanpanel.jsx:517` catches it and re-navigates — after
+  mounting the wrong panel. New `routeForProfile(profile)` in useRoleRedirect.js
+  states the same rule BEFORE the navigation; `routeForRole(role)` stays for
+  callers that genuinely have no profile. Updated: SalesmanProfilePage, Header,
+  MarketplaceHeader, useBuyerGuard, BuyerAuthPage (each now selects
+  `dealer_id, plan` alongside `role`). SalesmanLite/SalesmanPremium keep
+  `routeForRole` on purpose — their calls are guarded by `role !== 'salesman'`,
+  so the branch is unreachable there.
+  NOT ESTABLISHED: exactly which of these the friend hit. `profiles` has no
+  `updated_at`, so there is no way to tell whether her role was still 'buyer'
+  (button -> /account) or had already flipped to 'salesman' by AUTH-1 (button ->
+  a seller panel) at the moment she pressed it. Both paths are closed now.
+
 - [x] **AUTH-1 — DONE 2026-08-30. A guest session can no longer become a
   seller.** Two halves, both shipped:
   (a) DB: `prevent_profile_privilege_escalation` now rejects any role other than

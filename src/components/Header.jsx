@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useSiteProfile } from "../hooks/useSiteProfile";
 import { supabase } from "../supabaseClient";
 import { isSubdomain } from "../hooks/useTenant";
-import { routeForRole } from "../hooks/useRoleRedirect";
+import { routeForProfile, isSellerRole } from "../hooks/useRoleRedirect";
 
 const HDR_CSS = `
 
@@ -326,7 +326,7 @@ export default function Header() {
   const [hidden, setHidden] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [authUser, setAuthUser] = useState(null);
-  const [userRole, setUserRole] = useState(null);
+  const [viewerProfile, setViewerProfile] = useState(null);
   const lastScrollY = useRef(0);
   const location = useLocation();
   const navigate = useNavigate();
@@ -360,10 +360,12 @@ export default function Header() {
     const fetchRole = async (uid) => {
       const { data } = await supabase
         .from("profiles")
-        .select("role")
+        // dealer_id + plan: a standalone salesman's home is /salesman-lite or
+        // /salesman-premium, and the role on its own cannot tell you which.
+        .select("role, dealer_id, plan")
         .eq("id", uid)
         .maybeSingle();
-      setUserRole(data?.role || null);
+      setViewerProfile(data || null);
     };
     supabase.auth.getSession().then(({ data }) => {
       if (data.session?.user) {
@@ -377,18 +379,17 @@ export default function Header() {
         fetchRole(session.user.id);
       } else {
         setAuthUser(null);
-        setUserRole(null);
+        setViewerProfile(null);
       }
     });
     return () => subscription.unsubscribe();
   }, []);
 
   const isLoggedIn = !!authUser;
-  // Destination comes from the one shared map; only the wording differs — a
-  // buyer's home is /account and reads "My Account".
-  const isBuyerRole = !userRole || userRole === "buyer";
-  const accountPath = routeForRole(userRole);
-  const accountLabel = isBuyerRole ? "My Account" : t("nav.dashboard");
+  // Destination comes from the one shared resolver; only the wording differs —
+  // a buyer's home is /account and reads "My Account".
+  const accountPath = routeForProfile(viewerProfile);
+  const accountLabel = isSellerRole(viewerProfile?.role) ? t("nav.dashboard") : "My Account";
   const toggleLang = () => i18n.changeLanguage(i18n.language.startsWith("en") ? "ms" : "en");
   const isEn = i18n.language.startsWith("en");
   const waHref = waUrl ? waUrl(`Hi ${siteName}, I need help finding a car`) : "#";

@@ -10,7 +10,7 @@ import { supabase } from '../supabaseClient';
 import SavedCarsPanel from './SavedCarsPanel';
 import AnnouncementBar from './AnnouncementBar';
 import useMarketplaceSettings from '../hooks/useMarketplaceSettings';
-import { routeForRole } from '../hooks/useRoleRedirect';
+import { routeForProfile, isSellerRole } from '../hooks/useRoleRedirect';
 
 export default function MarketplaceHeader({ hideAnnouncement = false }) {
   const [scrolled, setScrolled]     = useState(false);
@@ -71,16 +71,16 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
     const resolve = async (session) => {
       if (!session?.user?.id) { if (active) setAuthLink(null); return; }
       const { data: profile } = await supabase
-        .from('profiles').select('role').eq('id', session.user.id).maybeSingle();
+        // dealer_id + plan: a standalone salesman's home is /salesman-lite or
+        // /salesman-premium, and the role on its own cannot tell you which.
+        .from('profiles').select('role, dealer_id, plan').eq('id', session.user.id).maybeSingle();
       if (!active) return;
-      // One shared map decides the destination; only the WORDING differs here.
-      // A buyer's home is /account and reads "My Account"; every business role
-      // gets "Dashboard" to its own panel.
-      const role = profile?.role;
-      const isBuyer = !role || role === 'buyer';
+      // One shared resolver decides the destination; only the WORDING differs
+      // here. A buyer's home is /account and reads "My Account"; every business
+      // role gets "Dashboard" to its own panel.
       setAuthLink({
-        to: routeForRole(role),
-        label: isBuyer ? 'My Account' : 'Dashboard',
+        to: routeForProfile(profile),
+        label: isSellerRole(profile?.role) ? 'Dashboard' : 'My Account',
       });
     };
     supabase.auth.getSession().then(({ data }) => resolve(data.session));

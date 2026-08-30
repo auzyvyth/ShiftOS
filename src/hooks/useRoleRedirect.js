@@ -25,9 +25,41 @@ export const ROLE_ROUTES = {
 // harmless for everyone — a real seller is in the map above and never lands here.
 export const FALLBACK_ROUTE = '/account';
 
-// The single way to turn a role into a destination.
+// Turn a role into a destination. Correct for every role EXCEPT `salesman` —
+// see routeForProfile. Use this only where the profile genuinely isn't loaded.
 export function routeForRole(role) {
   return ROLE_ROUTES[role] ?? FALLBACK_ROUTE;
+}
+
+/**
+ * Where this ACCOUNT's home is. Prefer this over routeForRole anywhere the
+ * profile is in hand.
+ *
+ * `salesman` is the one role a role name cannot answer on its own, because
+ * three different panels serve it:
+ *   dealer_id set            -> /salesman          (works under a dealer)
+ *   standalone, salesman_full-> /salesman-premium
+ *   standalone, otherwise    -> /salesman-lite
+ * ROLE_ROUTES.salesman is '/salesman', so every "Dashboard" link sent a
+ * STANDALONE rep to the linked-salesman panel. Salesmanpanel.jsx:517 catches it
+ * and re-navigates, so it self-corrected — but only after mounting the wrong
+ * panel, and only because that one guard exists. This is the same rule as
+ * Salesmanpanel's, stated once, before the navigation instead of after it.
+ */
+export function routeForProfile(profile) {
+  if (!profile?.role) return FALLBACK_ROUTE;
+  if (profile.role === 'salesman' && !profile.dealer_id) {
+    return profile.plan === 'salesman_full' ? '/salesman-premium' : '/salesman-lite';
+  }
+  return routeForRole(profile.role);
+}
+
+// A seller's home is a dashboard; a buyer's is their account. Every surface that
+// renders this link was wording it independently, and the mini page called it
+// "Dashboard" for everyone — so a shopper on a seller's page saw a button
+// labelled Dashboard and, reasonably, pressed it.
+export function isSellerRole(role) {
+  return Boolean(role) && role !== 'buyer';
 }
 
 /**
@@ -51,9 +83,14 @@ export function useRoleRedirect(expectedRole) {
 
   const allowed = Array.isArray(expectedRole) ? expectedRole : [expectedRole];
 
-  return (currentRole) => {
+  // Accepts either a bare role string (the original call shape) or the whole
+  // profile row. Pass the profile where you have it — it is the only way the
+  // standalone-salesman panels resolve correctly.
+  return (current) => {
+    const profile = typeof current === 'string' || !current ? null : current;
+    const currentRole = profile ? profile.role : current;
     if (allowed.includes(currentRole)) return false;
-    const destination = routeForRole(currentRole);
+    const destination = profile ? routeForProfile(profile) : routeForRole(currentRole);
     // Avoid redirect loop — don't navigate if already at the destination
     if (location.pathname === destination) return false;
     navigate(destination, { replace: true });
