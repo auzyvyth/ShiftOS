@@ -150,6 +150,17 @@ not scoped, not prioritized — just parked here until picked up on purpose.
 
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
 
+- **ACT-TRIAL-RESET: the Premium test account is deliberately left expired.**
+  `auzyvyth+premium@gmail.com` (profile `f92eb826-e99e-4d43-bc26-8b5a1540b717`)
+  had `trial_ends_at` backdated to 2026-08-28 on purpose, to test the
+  expired-trial paywall screen (`SalesmanPremium.jsx:891` ->
+  `DealerPendingApproval variant="expired"`). It is TEST STATE, not a real
+  lapsed customer — do not "fix" it by marking the account paid, and do not
+  read it as evidence that trials are expiring early. Put it back with:
+  `update profiles set trial_ends_at = now() + interval '29 days'
+   where id = 'f92eb826-e99e-4d43-bc26-8b5a1540b717';`
+  Remove this item once the trial is restored.
+
 - **ACT-VERIFY-PUSH: confirm on a real phone that notifications now arrive
   immediately.** `send-push` v18 is deployed (2026-08-30) with `urgency: 'high'`
   and TTL capped at 24h. The server side was never the problem and was measured
