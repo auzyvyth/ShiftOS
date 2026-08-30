@@ -117,6 +117,7 @@ import ChannelBreakdown from "../components/ChannelBreakdown";
 import ShareMenu from "../components/ShareMenu";
 import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha } from "../theme/tokens";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
+import { redactLeadsForCache, clearPanelDataCache } from "../utils/panelCache";
 // Style tokens, formatters, and small shared components (SOFT/CARD/STAGE_COLOR/
 // SubTabs/PrevMonthModal/etc.) live here so DashboardTab/ListingsTab/AnalyticsTab
 // (and the shell below) import the same definitions instead of duplicating them.
@@ -1204,7 +1205,10 @@ export default function SalesmanPremium() {
  const rows = lds || [];
  setLeads(rows);
  setLeadsLoading(false);
- writeCache(`sp_leads_${uid}`, rows);
+ // Redact before the write: LEAD_SELECT is `*`, so `rows` carries buyer_ic
+ // and buyer_address. In-memory state keeps the full rows; only the copy
+ // that lands on disk is stripped.
+ writeCache(`sp_leads_${uid}`, redactLeadsForCache(rows));
 
  // Which of these leads already carry a paid add-on — feeds the
  // pipeline card badge. Scoped to the leads we just fetched rather
@@ -1334,6 +1338,8 @@ export default function SalesmanPremium() {
 
  const handleLogout = async () => {
  await supabase.auth.signOut();
+ // Signing out must not leave this rep's buyer list cached on the device.
+ clearPanelDataCache();
  window.location.href = "https://xdrive.my/login";
  };
 
