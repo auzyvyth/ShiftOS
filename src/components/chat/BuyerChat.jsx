@@ -199,7 +199,10 @@ export default function BuyerChat({
           end where the keyboard begins, and `vh` never shrinks for a keyboard.
           The subtraction covers this sheet's own header plus breathing room. */}
       <ChatThread threadId={threadId} role="buyer" theme="dark"
-        height={Math.max(260, Math.min(560, vv.height - 120))} showPrivacyNote />
+        height={Math.max(260, Math.min(560, vv.height - 120))} showPrivacyNote
+        // Height already comes off the visual viewport and the panel around it
+        // is pinned to the same box, so the composer clears the keyboard here.
+        viewportPinned />
     </Suspense>
   );
 
