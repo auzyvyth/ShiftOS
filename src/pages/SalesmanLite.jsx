@@ -32,6 +32,8 @@ import SuspendedBanner from "../components/SuspendedBanner";
 import SellerInbox from "../components/chat/SellerInbox";
 import ChatSheet from "../components/chat/ChatSheet";
 import NotificationPanel from "../components/notifications/NotificationPanel";
+import StarterTasks from "../components/onboarding/StarterTasks";
+import { markStarterTask } from "../utils/starterTasks";
 import { useChatThreads } from "../hooks/useChat";
 import {
   LogOut,
@@ -1027,6 +1029,11 @@ export default function SalesmanLite() {
     city: "",
     state: "",
     location: "",
+    // The bio buyers read on the mini page. Lite scored the seller on having
+    // one but gave them nowhere to write it, and scored the wrong column
+    // (about_text, the dealer-storefront "About us") — the mini page and
+    // Premium both read `bio`. One field, one column, both panels.
+    bio: "",
     instagram: "",
     tiktok: "",
     facebook: "",
@@ -1109,6 +1116,20 @@ export default function SalesmanLite() {
 
   // tour
   const [tourStep, setTourStep] = useState(null);
+  // Session-only: hiding the finished starter card should not need a DB write,
+  // and it comes back on the next visit only while there is still work in it
+  // (the card renders its own "you're set up" state once all three are done).
+  const [starterHidden, setStarterHidden] = useState(false);
+
+  // Opening your own mini page is the one starter task nothing else can prove,
+  // so the click that does it is what records it. Used by the starter card AND
+  // by the mini-page link in the hero — either one counts, because both are the
+  // seller looking at their own storefront.
+  const openMyMinipage = async () => {
+    if (profile?.slug) window.open(`/s/${profile.slug}`, "_blank", "noopener,noreferrer");
+    const next = await markStarterTask(userId, "minipage_visited", profile?.starter_tasks);
+    setProfile((p) => (p ? { ...p, starter_tasks: next } : p));
+  };
   const [tourTarget, setTourTarget] = useState(null);
 
   // listing status change
@@ -1222,6 +1243,13 @@ export default function SalesmanLite() {
   const writeCache = (key, data) => {
     try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch (e) { console.error("writeCache:", e); }
   };
+  // Buyer IC and home address are identity documents, not UI-necessary for the
+  // stale-while-refetching preview this cache exists for — strip them before
+  // they sit in localStorage, which has no expiry of its own (the 30-min TTL
+  // above only stops the app from TRUSTING a stale read, it never deletes the
+  // entry). Live in-memory state (setLeads) still gets the real values.
+  const redactLeadsForCache = (rows) =>
+    (rows || []).map(({ buyer_ic, buyer_address, ...rest }) => rest);
   const precacheImages = (listings) => {
     if (!("caches" in window)) return;
     const urls = listings.flatMap((c) => (Array.isArray(c.images) ? c.images.slice(0, 2) : [])).filter(Boolean);
@@ -1271,6 +1299,7 @@ export default function SalesmanLite() {
         city: profile.city || "",
         state: profile.state || "",
         location: profile.location || "",
+        bio: profile.bio || "",
         instagram: profile.instagram || "",
         tiktok: profile.tiktok || "",
         facebook: profile.facebook || "",
@@ -1314,7 +1343,7 @@ export default function SalesmanLite() {
 
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("id, email, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, location, ic_hash, ic_last4, ic_verified_at, ic_deadline, created_at, account_status, approval_status, rejection_reason, is_verified, kyc_submitted_at, deleted_at, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
+        .select("id, email, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, city, state, location, bio, starter_tasks, ic_hash, ic_last4, ic_verified_at, ic_deadline, created_at, account_status, approval_status, rejection_reason, is_verified, kyc_submitted_at, deleted_at, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
         .eq("id", uid)
         .maybeSingle();
 
@@ -1543,7 +1572,7 @@ export default function SalesmanLite() {
           const fetchedLeads = lds || [];
           setLeads(fetchedLeads);
           setLeadsLoading(false);
-          writeCache(`slite_leads_${uid}`, fetchedLeads);
+          writeCache(`slite_leads_${uid}`, redactLeadsForCache(fetchedLeads));
 
           // Which of these leads already have a paid add-on attached — feeds
           // the pipeline card badge (see leadIdsWithAddons).
@@ -2838,7 +2867,11 @@ export default function SalesmanLite() {
       { pts: 25, ok: !!(avatarUrl), label: "Add a profile photo", field: "avatar" },
       { pts: 25, ok: !!(profile?.whatsapp_number), label: "Add your WhatsApp number", field: "whatsapp_number" },
       { pts: 20, ok: !!(profile?.full_name), label: "Add your name", field: "full_name" },
-      { pts: 15, ok: !!(profile?.about_text), label: "Write a short bio", field: "about_text" },
+      // `bio`, not `about_text`: about_text is the dealer-storefront "About us"
+      // block, which a standalone Lite seller has no editor for — so this check
+      // could never be satisfied from inside Lite. The mini page and Premium
+      // both read `bio`, and Settings now writes it.
+      { pts: 15, ok: !!String(profile?.bio || "").trim(), label: "Write a short bio", field: "bio" },
       { pts: 15, ok: !!(profile?.instagram || profile?.tiktok), label: "Link Instagram or TikTok", field: "instagram" },
     ];
     const earned = checks.reduce((s, c) => s + (c.ok ? c.pts : 0), 0);
@@ -2867,17 +2900,6 @@ export default function SalesmanLite() {
     const cvrColor = (cvr) => cvr >= 10 ? C.success : cvr >= 5 ? C.warn : C.danger;
     const perfCarName = (car) => [car.year, car.brand, car.model].filter(Boolean).join(" ");
     const isNewUser = myListings.length === 0 && leads.length === 0;
-
-    const STEP_CIRCLE = (done) => {
-      const hue = done ? C.success : C.accent;
-      return {
-        width: 28, height: 28, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: T.size.base, fontWeight: T.weight.bold,
-        background: withAlpha(hue, 0.14),
-        border: `1px solid ${withAlpha(hue, 0.24)}`,
-        color: done ? C.success : C.danger,
-      };
-    };
 
     // Pipeline-stage accent hues — used to colour-code the Follow-up rows so you
     // can see at a glance where each cold lead sits in the funnel.
@@ -3051,9 +3073,27 @@ export default function SalesmanLite() {
             )}
           </div>
           {/* Live snapshot merged into the hero — compact 30-day stats + the
-              shareable mini-page link. Portfolio value removed (not actionable). */}
-          {available.length > 0 && (
-            <div style={{ position: "relative", marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+              shareable mini-page link. Portfolio value removed (not actionable).
+              Always rendered: this block used to be gated on having a live
+              listing, so a brand-new agent — the one person who most needs the
+              nudge — saw no mini-page link and no prompt at all. With zero
+              listings the stats row (all zeroes, meaningless) is replaced by the
+              ask; the mini-page link stays either way, because it is their
+              storefront and they should know it exists from day one. */}
+          <div style={{ position: "relative", marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+            {available.length === 0 ? (
+              /* No CTA here on purpose: the starter-tasks card below owns the
+                 "add a listing" ask and tracks it. Two red buttons asking for
+                 the same thing on one screen is the duplication this replaced. */
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>
+                  {t("salesmanLite.dash.noListingsTitle")}
+                </p>
+                <p style={{ margin: "3px 0 0", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.5 }}>
+                  {t("salesmanLite.dash.noListingsBody")}
+                </p>
+              </div>
+            ) : (
               <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 18 : 28, flexWrap: "wrap" }}>
                 {[
                   { label: t("salesmanLite.dash.buyerViews"), value: totalViews || 0, color: C.text },
@@ -3071,7 +3111,8 @@ export default function SalesmanLite() {
                   {t("salesmanLite.dash.days30")}
                 </span>
               </div>
-              {profile?.slug && (
+            )}
+            {profile?.slug && (
                 <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
                   <button
                     onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success(t("salesmanLite.toast.storeLinkCopied")); }}
@@ -3085,6 +3126,10 @@ export default function SalesmanLite() {
                     href={`/s/${profile.slug}`}
                     target="_blank"
                     rel="noopener noreferrer"
+                    // Same click, same meaning as the starter task's "Open my
+                    // page" — record it here too, or a seller who used this link
+                    // is still nagged to do the thing they just did.
+                    onClick={(e) => { e.preventDefault(); openMyMinipage(); }}
                     title={t("salesmanLite.dash.openMinipageTitle")}
                     style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 180px", minWidth: 0, fontSize: T.size.sm, padding: "9px 12px", borderRadius: R.md, background: withAlpha(C.info, 0.07), border: `1px solid ${withAlpha(C.info, 0.2)}`, color: C.infoText, textDecoration: "none", fontWeight: T.weight.semibold, fontFamily: "inherit" }}
                   >
@@ -3136,8 +3181,7 @@ export default function SalesmanLite() {
                   />
                 </div>
               )}
-            </div>
-          )}
+          </div>
         </div>
 
         {/* Chat & Add-ons moved out of the footer/sidebar nav — they don't need a
@@ -3524,35 +3568,26 @@ export default function SalesmanLite() {
            commission-earned figure already shown in the Monthly Goal panel
            above. Revenue/avg-per-deal live in the Performance tab. */}
 
-        {/* ── Onboarding ── */}
-        {isNewUser && !profile?.onboarding_tour_done && (
-          <div style={{ ...CARD, border: `1px solid ${withAlpha(C.accent, 0.15)}` }}>
-            <div style={CARD_HEADER}><span>{t("salesmanLite.dash.getStarted")}</span></div>
-            <div style={{ padding: 18 }}>
-              <p style={{ margin: "0 0 16px", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>{t("salesmanLite.checklist.intro")}</p>
-              {[
-                { num: 1, done: myListings.length > 0, title: t("salesmanLite.checklist.step1Title"), sub: t("salesmanLite.checklist.step1Sub"), ctaLabel: t("salesmanLite.checklist.step1Cta"), ctaAction: () => { switchTab("listings"); setTimeout(openAddListing, 100); }, locked: false },
-                { num: 2, done: myListings.length > 0, title: t("salesmanLite.checklist.step2Title"), sub: t("salesmanLite.checklist.step2Sub"), ctaLabel: t("salesmanLite.checklist.step2Cta"), ctaAction: () => switchTab("listings"), locked: myListings.length === 0 },
-                { num: 3, done: leads.length > 0, title: t("salesmanLite.checklist.step3Title"), sub: t("salesmanLite.checklist.step3Sub"), ctaLabel: t("salesmanLite.checklist.step3Cta"), ctaAction: () => switchTab("leads"), locked: myListings.length === 0 },
-              ].map((step, idx) => (
-                <div key={step.num}>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: idx > 0 ? "14px 0 0" : "0" }}>
-                    <div style={STEP_CIRCLE(step.done)}>{step.done ? "✓" : step.num}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>{step.title}</p>
-                      <p style={{ margin: "2px 0 0", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.5 }}>{step.sub}</p>
-                    </div>
-                    {step.locked
-                      ? <span style={{ fontSize: T.size.xs, color: C.textDim, flexShrink: 0, paddingTop: 3 }}>{t("salesmanLite.dash.step1First")}</span>
-                      : <button onClick={step.ctaAction} style={{ ...SOFT(C.accent), color: C.danger, fontSize: T.size.sm, padding: "5px 12px", borderRadius: R.sm, cursor: "pointer", flexShrink: 0, fontFamily: "inherit" }}>{step.ctaLabel}</button>
-                    }
-                  </div>
-                  {idx < 2 && <div style={{ height: 1, background: C.line, margin: "14px 0 0" }} />}
-                </div>
-              ))}
-              <button onClick={dismissTour} style={{ marginTop: 16, background: "none", border: "none", color: C.textDim, fontSize: T.size.xs, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>{t("salesmanLite.dash.dismiss")}</button>
-            </div>
-          </div>
+        {/* ── Starter tasks ──
+            Replaces a "Get Started" checklist that could never be completed:
+            it was gated on `isNewUser && !onboarding_tour_done`, where isNewUser
+            meant no listings AND no leads — so doing step 1 unmounted the card,
+            and the tour (which runs on first landing) set the flag that hid it
+            anyway. Shared with Premium now; see StarterTasks for the details. */}
+        {!starterHidden && (
+          <StarterTasks
+            profile={profile}
+            listingCount={myListings.length}
+            t={t}
+            palette={{ surface: C.surface, border: C.border, line: C.line, text: C.text, textMuted: C.textMuted, textDim: C.textDim, accent: C.accent, onAccent: C.onAccent, success: C.success }}
+            onAddListing={() => { switchTab("listings"); setTimeout(openAddListing, 100); }}
+            onVisitMinipage={openMyMinipage}
+            onEditBio={() => {
+              switchTab("settings");
+              setTimeout(() => document.getElementById("lite-bio-field")?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+            }}
+            onDismiss={() => setStarterHidden(true)}
+          />
         )}
         </div>
 
@@ -6512,6 +6547,7 @@ export default function SalesmanLite() {
           city: settingsForm.city || null,
           state: settingsForm.state || null,
           location: settingsForm.location || null,
+          bio: settingsForm.bio.trim() || null,
           instagram: settingsForm.instagram || null,
           tiktok: settingsForm.tiktok || null,
           facebook: settingsForm.facebook || null,
@@ -6538,6 +6574,7 @@ export default function SalesmanLite() {
         city: settingsForm.city || null,
         state: settingsForm.state || null,
         location: settingsForm.location || null,
+        bio: settingsForm.bio.trim() || null,
         instagram: settingsForm.instagram || null,
         tiktok: settingsForm.tiktok || null,
         facebook: settingsForm.facebook || null,
@@ -6787,6 +6824,25 @@ export default function SalesmanLite() {
               <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.address")}</label>
               <input value={settingsForm.location} onChange={(e) => setSettingsForm((p) => ({ ...p, location: e.target.value }))} placeholder={t("salesmanLite.settings.addressPlaceholder")} style={inputStyle} />
               <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.settings.addressHint")}</p>
+            </div>
+            {/* Bio — the one thing on the mini page that is about the PERSON.
+                Lite scored the seller on having one but shipped no field to
+                write it in, so the score could never reach 100. */}
+            <div id="lite-bio-field" style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>
+                {t("salesmanLite.settings.bio", { defaultValue: "Bio" })}
+              </label>
+              <textarea
+                value={settingsForm.bio}
+                onChange={(e) => setSettingsForm((p) => ({ ...p, bio: e.target.value }))}
+                rows={3}
+                maxLength={500}
+                placeholder={t("salesmanLite.settings.bioPlaceholder", { defaultValue: "e.g. 6 years selling used cars around Klang Valley. Honest pricing, full service records on every unit." })}
+                style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
+              />
+              <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>
+                {t("salesmanLite.settings.bioHint", { defaultValue: "Shown on your public mini page. Buyers message the agent they trust." })}
+              </p>
             </div>
             <div>
               <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.icNumber")} <span style={{ color: "#4b5563" }}>{t("salesmanLite.settings.icPrivate")}</span></label>

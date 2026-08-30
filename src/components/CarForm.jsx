@@ -319,6 +319,62 @@ export function buildCopyText(l) {
   return lines.join("\n");
 }
 
+// The same listing, as a plain fact sheet for an AI to write from.
+//
+// buildCopyText above is the finished WhatsApp post — dividers, emoji, a CTA.
+// Feeding that to a model wastes tokens on decoration and invites it to copy
+// the layout instead of writing something new. This is the same SOURCE FIELDS,
+// stripped to labelled facts.
+//
+// It exists because the AI caption writer was being handed four things (name,
+// price, mileage, and a comma-joined transmission/colour/fuel/body string)
+// while the human-written copy carried the variant, condition, recon grade,
+// features, specs, the seller's own description and the location. The model
+// was writing about a car it had barely been told about.
+//
+// Empty fields are omitted rather than sent as "unknown" — a blank invites the
+// model to fill it in, which is exactly what must not happen with a car spec.
+export function buildListingFacts(l) {
+  const condLabel =
+    { used: "Used", recon: "Recon", new: "New" }[l.condition] || l.condition || "";
+  const out = [];
+  const add = (k, v) => { if (v !== null && v !== undefined && String(v).trim() !== "") out.push(`${k}: ${v}`); };
+  const list = (raw) =>
+    String(raw || "").split(/[\n,]+/).map((x) => x.trim()).filter(Boolean).join(", ");
+
+  add("Car", [l.year, l.brand, l.model, l.variant].filter(Boolean).join(" "));
+  add("Condition", condLabel);
+  if (l.is_recon) {
+    add("Recon import", l.import_country || "yes");
+    add("Auction grade", l.auction_grade);
+    add("Interior grade", l.interior_grade);
+  }
+  add("Price", l.selling_price ? `RM ${Number(l.selling_price).toLocaleString("en-MY")}` : null);
+  if (l.original_price && l.selling_price && Number(l.original_price) > Number(l.selling_price)) {
+    add("Was priced", `RM ${Number(l.original_price).toLocaleString("en-MY")}`);
+    add("Discount", `RM ${Number(l.original_price - l.selling_price).toLocaleString("en-MY")}`);
+  }
+  add("Mileage", l.mileage ? `${Number(l.mileage).toLocaleString()} km` : null);
+  add("Registered", l.registration_date);
+  add("Engine", l.engine_cc ? `${Number(l.engine_cc).toLocaleString()}cc` : null);
+  add("Horsepower", l.horsepower ? `${l.horsepower} hp` : null);
+  add("Transmission", l.transmission);
+  add("Fuel", l.fuel_type);
+  add("Body type", l.body_type);
+  add("Colour", l.colour);
+  add("Seats", l.seats);
+  add("Previous owners", l.previous_owners);
+  add("Location", [l.city, l.state].filter(Boolean).join(", "));
+  add("Warranty", l.warranty_months ? `${l.warranty_months} months` : null);
+  add("Features", list(l.features));
+  add("Specs", list(l.specs));
+  add("Seller's description", String(l.options || "").trim() || null);
+  if (Array.isArray(l.included_services) && l.included_services.length) {
+    add("Included with purchase", l.included_services.map((s) => s?.name || s).filter(Boolean).join(", "));
+  }
+  return out.join("\n");
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 // Common features buyers actually search for — rendered as tap-to-add chips in
 // step 6 so dealers populate the SEO-critical features field without typing.
@@ -826,26 +882,64 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   // slotType — the upload came from one of the named trust-document slots, so
   // the file REPLACES whatever sits in that slot rather than appending a second
   // copy. Without it the file appends using the free-form type picker.
+  const ALLOWED_DOC_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+  const MAX_DOC_BYTES = 10 * 1024 * 1024;
+
   const handleDocumentFile = async (e, slotType) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!ALLOWED_DOC_TYPES.includes(file.type)) {
+      toast.error("Only PDF, JPG, PNG or WEBP files are allowed");
+      e.target.value = "";
+      return;
+    }
     if (slotType) setUploadingSlot(slotType);
     else setDocUploading(true);
     try {
-      const path = `docs/${Date.now()}-${(file.name || "document").replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      // Compress photographed documents before the size check, so a 12MB phone
+      // snap of a geran uploads instead of being rejected. Bigger and higher
+      // quality than listing photos (1800/0.9 vs 1200/0.82) because these have
+      // to stay READABLE — a compressed-to-mush geran is worthless. PDFs pass
+      // through untouched: compressing one needs a real PDF library, and a
+      // document-scan PDF is almost always well under the cap anyway.
+      const upload = file.type === "application/pdf"
+        ? file
+        : await compressImage(file, 1800, 0.9);
+      if (upload.size > MAX_DOC_BYTES) {
+        toast.error(
+          file.type === "application/pdf"
+            ? "PDF is too large — max 10MB"
+            : "Image is still over 10MB after compression — try a smaller one",
+        );
+        setUploadingSlot(null);
+        setDocUploading(false);
+        e.target.value = "";
+        return;
+      }
+      // Owner-scoped + random, same as photo uploads (uploadOne, above) — the
+      // storage RLS delete policy matches on foldername[1] = auth.uid(), and a
+      // flat docs/ path with no owner folder can never satisfy it, so a
+      // replaced/removed document was orphaned in storage forever.
+      const rand = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
+      const folder = profile?.id ? `${profile.id}/` : "";
+      const path = `${folder}docs/${Date.now()}-${rand}-${(upload.name || "document").replace(/[^a-zA-Z0-9._-]/g, "_")}`;
       const { error } = await supabase.storage
         .from("car-images")
-        .upload(path, file);
+        .upload(path, upload, { contentType: upload.type });
       if (error) throw error;
       const url = supabase.storage.from("car-images").getPublicUrl(path)
         .data.publicUrl;
       const type = slotType || docTypeInput;
       setForm((f) => {
         const docs = [...(f.car_documents || [])];
-        const entry = { type, name: file.name, url };
+        const entry = { type, name: upload.name, url, path };
         const at = slotType ? docs.findIndex((d) => d.type === slotType) : -1;
+        const prev = at >= 0 ? docs[at] : null;
         if (at >= 0) docs[at] = entry;
         else docs.push(entry);
+        // The slot's old file is now replaced — its storage object would
+        // otherwise sit orphaned forever, same problem removeDocument fixes.
+        if (prev?.path) supabase.storage.from("car-images").remove([prev.path]).catch(() => {});
         // Attaching the geran clears any "can't provide it" reason — the
         // document is the stronger answer and the two must never both be set.
         return {
@@ -863,10 +957,14 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   };
 
   const removeDocument = (i) => {
+    const doc = (form.car_documents || [])[i];
     setForm((f) => ({
       ...f,
       car_documents: (f.car_documents || []).filter((_, j) => j !== i),
     }));
+    // Old entries (uploaded before the owner-scoped path fix) have no `path`
+    // to clean up — nothing to do for those beyond dropping the array entry.
+    if (doc?.path) supabase.storage.from("car-images").remove([doc.path]).catch(() => {});
   };
 
   // ── Trust documents ──────────────────────────────────────────────────────
@@ -1267,9 +1365,15 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     e.target.value = "";
   };
 
+  // `draftId` state isn't visible to a second overlapping call until the
+  // insert resolves and re-renders — two file batches added in quick
+  // succession both read draftId as null and both insert a draft row. The
+  // ref is set synchronously, so the second call sees it immediately.
+  const creatingDraftRef = useRef(false);
   const createDraftIfNeeded = async (firstUrl) => {
-    if (draftId) return;
+    if (draftId || creatingDraftRef.current) return;
     if (!dealerId) return;
+    creatingDraftRef.current = true;
     try {
       const { data, error } = await supabase
         .from("car_listings")

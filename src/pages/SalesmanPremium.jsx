@@ -15,7 +15,7 @@ import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { freshChannel } from "../lib/realtime";
 import { compressImageFile } from "../utils/compressImage";
 import CarFormFast from "../components/CarFormFast";
-import CarForm from "../components/CarForm";
+import CarForm, { buildCopyText, buildListingFacts } from "../components/CarForm";
 import DealerPendingApproval from "../components/DealerPendingApproval";
 import AvailabilityEditor from "../components/AvailabilityEditor";
 // Lazy — each of these is a self-contained tab/section that shouldn't ship in
@@ -103,6 +103,8 @@ import UpgradeBanner from "../components/ai/UpgradeBanner";
 import AiLoadingState from "../components/ai/AiLoadingState";
 import AiQuotaBadge from "../components/ai/AiQuotaBadge";
 import PushToggle from "../components/PushToggle";
+import { AI_FEATURES_ENABLED } from "../utils/aiFeatureFlag";
+import { markStarterTask } from "../utils/starterTasks";
 const ServicesAddonsTab = React.lazy(() => import("../components/salesman/ServicesAddonsTab"));
 const LoanDesk = React.lazy(() => import("../components/loans/LoanDesk"));
 // Every query that loads a lead uses this. The lead drawer renders the linked
@@ -411,6 +413,18 @@ export default function SalesmanPremium() {
  localStorage.getItem('sp_notif_banner_dismissed') === '1'
  );
 
+ // Starter tasks. Session-only hide: the card renders its own finished state
+ // once all three are done, so it does not need a persisted dismissal.
+ const [starterHidden, setStarterHidden] = useState(false);
+
+ // Opening your own mini page is the one starter task no other data can prove
+ // (analytics_events counts buyer views too), so the click records it.
+ const openMyMinipage = async () => {
+ if (profile?.slug) window.open(`/s/${profile.slug}`, "_blank", "noopener,noreferrer");
+ const next = await markStarterTask(userId, "minipage_visited", profile?.starter_tasks);
+ setProfile((p) => (p ? { ...p, starter_tasks: next } : p));
+ };
+
  // settings
  const [settingsForm, setSettingsForm] = useState({
  full_name: "",
@@ -686,6 +700,38 @@ export default function SalesmanPremium() {
  setCustomers(data || []);
  setCustomersLoading(false);
  }, [profile]);
+
+ // Everything the Analytics tab says about sales. This used to be an anonymous
+ // .then() buried in the bootstrap effect, so it ran once and never again:
+ // marking a car sold updated the Dashboard (refreshCommissionData) while
+ // Analytics kept reporting 0 sold / RM 0 commission until a full page reload.
+ // Same page, two commission states, one of them refreshed — that is the split
+ // brain the win path is supposed to have exactly one of.
+ //
+ // Keyed on assigned_to because that is the closer: the won-trigger stamps it
+ // with COALESCE(assigned_to, closer), so it answers "cars *I* sold" rather
+ // than "cars my dealership sold". For a solo seller the two are the same id.
+ // `overrideUid` exists because bootstrap calls this in the same pass that
+ // does setUserId(uid) — the state update has not landed in this closure yet,
+ // so reading userId here would be null and the fetch would silently no-op.
+ const refreshSales = useCallback(async (overrideUid = null) => {
+ const sid = overrideUid || userId;
+ if (!sid) return;
+ const { data, error: cErr } = await supabase
+ .from("car_listings").select("commission_amount, brand, model, year, sold_at")
+ .eq("assigned_to", sid).eq("status", "sold");
+ if (cErr) { console.error("refreshSales:", cErr); toast.error("Could not load your commission"); return; }
+ const rows = data || [];
+ setSoldCount(rows.length);
+ setCommission(rows.reduce((sum, r) => sum + (Number(r.commission_amount) || 0), 0));
+ setCommissionDetails(
+ rows.filter((r) => r.commission_amount)
+ .sort((a, b) => new Date(b.sold_at) - new Date(a.sold_at))
+ .slice(0, 5),
+ );
+ const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+ setThisMonthSales(rows.filter((r) => r.sold_at && r.sold_at >= monthStart).length);
+ }, [userId]);
 
  // Arriving from the handover board's "View customer record" — bring that row
  // into view once the Customers tab has rendered it.
@@ -1018,20 +1064,9 @@ export default function SalesmanPremium() {
  }
  }
 
- // premium — commission + sold count
- supabase.from("car_listings").select("commission_amount, brand, model, year, sold_at")
- .eq("assigned_to", uid).eq("status", "sold")
- .then(({ data, error }) => {
- if (error) { console.error("fetchCommission:", error); toast.error("Could not load your commission"); }
- const rows = data || [];
- setSoldCount(rows.length);
- setCommission(rows.reduce((sum, r) => sum + (Number(r.commission_amount) || 0), 0));
- setCommissionDetails(
- rows.filter(r => r.commission_amount).sort((a, b) => new Date(b.sold_at) - new Date(a.sold_at)).slice(0, 5)
- );
- const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
- setThisMonthSales(rows.filter(r => r.sold_at && r.sold_at >= monthStart).length);
- });
+ // premium — commission + sold count (Analytics tab). One implementation,
+ // refreshSales(), so the win path can pull it forward too.
+ refreshSales(uid);
 
  // premium — loan applications
  supabase.from("loan_applications").select("*").eq("salesman_id", uid)
@@ -1960,6 +1995,9 @@ export default function SalesmanPremium() {
  });
  handover.refresh();
  refreshCustomers();
+ // Analytics reads its own sold/commission state; without this it stays at
+ // 0 sold / RM 0 while the Dashboard already shows the win.
+ refreshSales();
 
  const car = lead.car_listings;
  const carLabel = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
@@ -2047,45 +2085,17 @@ export default function SalesmanPremium() {
  setTimeout(() => navigate("/salesman"), 2500);
  };
 
- // Hashtag line for the WA caption — condition first (#used/#recon/#brandnew,
- // whichever this car actually is), then spec tags worth searching by.
- // Strict off the real field values, never a guessed default.
- const carHashtags = (car) => {
- const tags = [];
- const cond = (car.condition || "").toLowerCase();
- if (cond === "used") tags.push("used");
- else if (cond === "recon") tags.push("recon");
- else if (cond === "new") tags.push("brandnew");
- if (car.brand) tags.push(car.brand.replace(/\s+/g, ""));
- if (car.model) tags.push(car.model.replace(/\s+/g, ""));
- if (car.transmission) tags.push(car.transmission.toLowerCase().replace(/\s+/g, ""));
- if (car.fuel_type) tags.push(car.fuel_type.toLowerCase().replace(/\s+/g, ""));
- if (car.body_type) tags.push(car.body_type.toLowerCase().replace(/\s+/g, ""));
- if (car.loan_eligible) tags.push("loanavailable");
- if (car.warranty_months) tags.push("warranty");
- if (car.city) tags.push(car.city.replace(/\s+/g, ""));
- return [...new Set(tags)].filter(Boolean).map(t => `#${t}`).join(" ");
- };
- const CONDITION_LABEL = { used: "Used", recon: "Recon", new: "New" };
 
  const handleListingCopy = (car, type) => {
  const link = `https://xdrive.my/showroom/${car.slug}?ref=${profile?.slug || ""}`;
  let text = link;
  if (type === "wa") {
- const price = Number(car.selling_price || 0);
- const hashtags = carHashtags(car);
- text = [
- ` ${car.year} ${car.brand} ${car.model}${car.variant? " " + car.variant : ""}`,
- `RM ${price.toLocaleString()}`,
- ` ${car.city || car.location || "Malaysia"}`,
- ` ${car.mileage? Number(car.mileage).toLocaleString() + " km" : "—"} · ${car.colour || "—"} · ${car.transmission || "—"}`,
- ``,
- `Condition: ${CONDITION_LABEL[(car.condition || "").toLowerCase()] || car.condition || "Good"}`,
- ``,
- `Berminat? Whatsapp saya sekarang `,
- link,
- ...(hashtags? ["", hashtags] : []),
- ].join("\n");
+ // Same rich formatter Lite and the CarForm final step use (specs, pricing,
+ // features, about, hashtags), with the rep's referral link appended.
+ // Premium used to hand-roll a six-line version here, so the cheaper tier
+ // was posting the better ad: no features, no specs, no seller description,
+ // no discount, and a caption that dropped the emoji it was written around.
+ text = `${buildCopyText(car)}\n👉 ${link}`;
  }
  navigator.clipboard.writeText(text);
  setListingCopied((prev) => ({ ...prev, [car.id]: type }));
@@ -2180,13 +2190,23 @@ export default function SalesmanPremium() {
  if (!quotaOk) { setCaptionQuotaOk(false); return; }
  setCaptionQuotaOk(true);
  setAiCaptionLoading(true);
- const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
- const price = car.selling_price? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : "harga on request";
- const mileage = car.mileage? `${Number(car.mileage).toLocaleString()} km` : "mileage not listed";
- const features = [car.transmission, car.colour, car.fuel_type, car.body_type].filter(Boolean).join(", ") || "standard features";
- const prompt = `You are a Malaysian used car salesman writing a social media caption in Bahasa Malaysia with some English. Tone: casual, excited, trustworthy. Car: ${name}. Price: ${price}. Mileage: ${mileage}. Key features: ${features}. Platform: ${platform}. Write one punchy caption with relevant emojis and a WhatsApp CTA. Max 150 words.`;
+ // Every field the human-written copy uses, not the four this used to send.
+ // buildListingFacts omits blanks on purpose — see the note on it in CarForm.
+ const facts = buildListingFacts(car);
+ const prompt = [
+ `You are a Malaysian used car salesman writing a social media caption in Bahasa Malaysia with some English.`,
+ `Tone: casual, excited, trustworthy. Platform: ${platform}.`,
+ ``,
+ `LISTING FACTS`,
+ facts || `Car: ${[car.year, car.brand, car.model].filter(Boolean).join(" ")}`,
+ ``,
+ `Write one punchy caption with relevant emojis and a WhatsApp CTA. Max 150 words.`,
+ `Use ONLY the facts above. Do not invent or estimate a price, discount, deposit,`,
+ `monthly instalment, interest rate, trade-in value or loan approval, and do not`,
+ `state a spec that is not listed. Anything absent is simply left out.`,
+ ].join("\n");
  try {
- const text = await callClaude(prompt, "You write viral Malaysian car sales captions. Reply with the caption text only, no labels.");
+ const text = await callClaude(prompt, "You write viral Malaysian car sales captions. Reply with the caption text only, no labels. Never state a number or spec that was not given to you.");
  setAiCaptions((p) => ({ ...p, [cacheKey]: text }));
  await supabase.from("ai_caption_logs").insert({ salesman_id: userId, car_id: car.id, platform, caption: text }).then(null, () => {});
  await logAiUsage("caption");
@@ -4600,7 +4620,7 @@ export default function SalesmanPremium() {
  {/* Public-profile extras — Premium's own bio/specializations block, not
  offered to Lite yet. Shown on the public agent page with a Read-more
  toggle and pill tags, same as the linked-salesman panel. */}
- <div>
+ <div id="sp-bio-field">
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Bio</label>
  <textarea value={settingsForm.bio} onChange={(e) => setSettingsForm((p) => ({ ...p, bio: e.target.value }))}
  placeholder="e.g. Specializing in Perodua & Honda, 5 years experience in Klang Valley" rows={4}
@@ -5305,6 +5325,7 @@ export default function SalesmanPremium() {
  controller={handover}
  openDealId={handoverDealParam}
  onViewCustomer={(lead) => openCustomerForLead(lead, "handover")}
+ onExpiryWritten={refreshCustomers}
  />
  </Suspense>
  </div>
@@ -6070,6 +6091,8 @@ export default function SalesmanPremium() {
  handleThisWeekContacted={handleThisWeekContacted} fetchFollowupSuggestions={fetchFollowupSuggestions}
  requestBrowserNotif={requestBrowserNotif} dismissNotifBanner={dismissNotifBanner}
  dismissTour={dismissTour} handleListingCopy={handleListingCopy}
+ onVisitMinipage={openMyMinipage} starterHidden={starterHidden}
+ onStarterDismiss={() => setStarterHidden(true)}
  />
  </Suspense>
  )}
@@ -6132,6 +6155,7 @@ export default function SalesmanPremium() {
  carStatsMap={carStatsMap} enquiries={enquiries} thisMonthSales={thisMonthSales}
  commission={commission} soldCount={soldCount} myListings={myListings}
  channelMap={channelMap} commissionDetails={commissionDetails} isMobile={isMobile}
+ onAddListing={() => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }}
  />
  </Suspense>
  )}
@@ -6212,11 +6236,11 @@ export default function SalesmanPremium() {
  },
  {
  key: "ai",
- label: (<><Sparkles size={13} style={{ flexShrink: 0 }} />AI Caption</>),
+ label: (<><Sparkles size={13} style={{ flexShrink: 0 }} />AI Caption{AI_FEATURES_ENABLED ? "" : " (soon)"}</>),
  color: "#c084fc",
  bg: "rgba(168,85,247,0.08)",
  border: "rgba(168,85,247,0.25)",
- onClick: () => { generateAiCaptions(selectedCar); setSelectedCar(null); },
+ onClick: () => { if (AI_FEATURES_ENABLED) generateAiCaptions(selectedCar); setAiCaptionCar(selectedCar); setSelectedCar(null); },
  },
  {
  key: "broadcast",
@@ -6701,7 +6725,7 @@ export default function SalesmanPremium() {
  </p>
  </div>
  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
- {isPremium && (
+ {AI_FEATURES_ENABLED && isPremium && (
  <AiQuotaBadge userId={userId} feature="caption" />
  )}
  <button
@@ -6713,7 +6737,11 @@ export default function SalesmanPremium() {
  </div>
  </div>
 
- {!isPremium? (
+ {!AI_FEATURES_ENABLED ? (
+ <p style={{ fontSize: 12.5, color: "#9ca3af", lineHeight: 1.6, margin: "0 0 4px" }}>
+ AI Caption Writer is coming soon.
+ </p>
+ ) : !isPremium? (
  <UpgradeBanner feature="AI Caption Writer" />
  ) : (
  <>

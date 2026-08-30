@@ -11,6 +11,7 @@ import ShareMenu from "../../components/ShareMenu";
 import ChannelBreakdown from "../../components/ChannelBreakdown";
 import ThisWeek from "../../components/crm/ThisWeek";
 import UpgradeBanner from "../../components/ai/UpgradeBanner";
+import StarterTasks from "../../components/onboarding/StarterTasks";
 import AiLoadingState from "../../components/ai/AiLoadingState";
 import {
  CARD_HEADER, EYEBROW, STAT, SOFT, ROW_LINE, LEAD_STAGES, PrevMonthModal,
@@ -30,7 +31,7 @@ export default function DashboardTab({
  setShowAddForm, setAiFollowups, setInboxSubTab,
  saveGoal, triggerGlow, switchTab, pingWA, handleThisWeekContacted,
  fetchFollowupSuggestions, requestBrowserNotif, dismissNotifBanner, dismissTour,
- handleListingCopy,
+ handleListingCopy, onVisitMinipage, starterHidden, onStarterDismiss,
 }) {
  const activeLeads = leads.filter(
  (l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won" && l.stage !== "won",
@@ -346,8 +347,24 @@ export default function DashboardTab({
  </button>
  )}
  </div>
- {available.length > 0 && (
+ {/* Always rendered. Gating this on having a live listing hid the
+ mini-page link from the one seller who most needs to find it — a
+ brand-new account. With no listings the all-zero stat strip is
+ replaced by the ask; the link itself shows either way. */}
  <div style={{ position: "relative", marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+ {available.length === 0 ? (
+ /* No CTA here on purpose — the starter-tasks card below owns the
+ "add a listing" ask and tracks whether it is done. */
+ <div style={{ minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: T.size.lg, fontWeight: T.weight.semibold, color: C.text }}>
+ List your stocks to get results
+ </p>
+ <p style={{ margin: "3px 0 0", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.5 }}>
+ Your mini page is live and ready to share — it just needs cars on it.
+ </p>
+ </div>
+ ) : (
+ <>
  {/* One row, always — four columns on a 375px phone and on desktop
  alike. It used to be a flex row with flexWrap, so on mobile the
  tiles broke into a ragged 2+2 and the strip read as a separate
@@ -415,6 +432,8 @@ export default function DashboardTab({
  </div>
  </div>
  )}
+ </>
+ )}
  {profile?.slug && (
  <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
  <button
@@ -429,6 +448,9 @@ export default function DashboardTab({
  href={`/s/${profile.slug}`}
  target="_blank"
  rel="noopener noreferrer"
+ // Counts as the "visit your mini page" starter task — same click,
+ // same meaning as the card's own button.
+ onClick={(e) => { if (onVisitMinipage) { e.preventDefault(); onVisitMinipage(); } }}
  title="Open your mini-page in a new tab"
  style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 180px", minWidth: 0, fontSize: T.size.sm, padding: "9px 12px", borderRadius: R.md, background: withAlpha(C.info, 0.07), border: `1px solid ${withAlpha(C.info, 0.2)}`, color: C.infoText, textDecoration: "none", fontWeight: T.weight.semibold, fontFamily: "inherit" }}
  >
@@ -470,7 +492,6 @@ export default function DashboardTab({
  </div>
  )}
  </div>
- )}
 
  </div>
 
@@ -492,6 +513,24 @@ export default function DashboardTab({
  </div>
  <ChevronRight size={16} color={C.textDim} style={{ flexShrink: 0 }} />
  </button>
+
+ {/* Starter tasks — same component Lite uses. Premium never had a
+ setup checklist at all, so a new Premium seller got the tour and
+ then nothing telling them what to actually do first. */}
+ {!starterHidden && (
+ <StarterTasks
+ profile={profile}
+ listingCount={myListings.length}
+ palette={{ surface: C.surface, border: C.border, line: C.line, text: C.text, textMuted: C.textMuted, textDim: C.textDim, accent: C.accent, onAccent: C.onAccent, success: C.success }}
+ onAddListing={() => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }}
+ onVisitMinipage={onVisitMinipage}
+ onEditBio={() => {
+ switchTab("settings");
+ setTimeout(() => document.getElementById("sp-bio-field")?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+ }}
+ onDismiss={onStarterDismiss}
+ />
+ )}
 
  {/* Dashboard body — 2-up grid on desktop, single column on mobile */}
  <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: 16, alignItems: "start" }}>

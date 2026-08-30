@@ -25,9 +25,18 @@ function StatusIcon({ status }) {
 // Renders the post-sale handover checklist for a won deal. Light-themed to match
 // the dashboard shell. Marking a step done is a single tap on the round button;
 // the row expands (tap anywhere on the title) for notes / due date / cost.
-export default function PostSaleChecklist({ lead, compact = false, dark = false, onTasksChange = null }) {
+export default function PostSaleChecklist({ lead, compact = false, dark = false, onTasksChange = null, onExpiryWritten = null }) {
   const { tasks, loading, progress, updateTask } = usePostSaleTasks(lead);
   const [expanded, setExpanded] = useState(null);
+
+  // Writing an expiry changes the CUSTOMER row too (trg_sync_customer_expiry
+  // fans result_date out to customers.insurance_expiry / road_tax_expiry). The
+  // Customers tab loads its rows once at page bootstrap, so without this it
+  // kept showing "Insurance —" for a policy that was already in the database.
+  const writeExpiry = async (id, patch) => {
+    await updateTask(id, patch);
+    if (onExpiryWritten) onExpiryWritten();
+  };
 
   // Report the live steps up to whoever owns the board. Ticking a step used to
   // move the bar in here while the card above it kept showing the old
@@ -73,7 +82,30 @@ export default function PostSaleChecklist({ lead, compact = false, dark = false,
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 {/* One-tap complete: pending/in-progress -> done, done -> pending */}
                 <button
-                  onClick={() => updateTask(t.id, { status: isDone ? 'pending' : 'done' })}
+                  onClick={() => {
+                    const status = isDone ? 'pending' : 'done';
+                    const patch = { status };
+                    // The +12m date shown below a completed expiry step was
+                    // PREFILL ONLY: it rendered from `plusMonths(completed_at)`
+                    // but result_date stayed NULL unless the rep opened the
+                    // picker and changed it. So the rep saw "30/08/2027",
+                    // believed it was recorded, and nothing was.
+                    //
+                    // Downstream that lost the road tax date outright. The
+                    // won-trigger carries the SELLER's old road_tax_expiry over
+                    // from car_listings, and sync_customer_expiry_from_task only
+                    // overwrites an existing date when result_date is set — so
+                    // with it NULL the customer kept the previous owner's expiry,
+                    // which is precisely the date this step just replaced.
+                    //
+                    // Completing the step IS the renewal, so persist the date at
+                    // that moment. The rep can still correct it in the picker.
+                    if (status === 'done' && meta.expiryLabel && !t.result_date) {
+                      patch.result_date = plusMonths(null, 12);
+                    }
+                    if (meta.expiryLabel) writeExpiry(t.id, patch);
+                    else updateTask(t.id, patch);
+                  }}
                   title={isDone ? 'Tap to reopen this step' : 'Tap to mark done'}
                   style={{ flexShrink: 0, width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: sc.color, background: sc.bg, border: `1.5px solid ${sc.color}66` }}
                 >
@@ -117,7 +149,7 @@ export default function PostSaleChecklist({ lead, compact = false, dark = false,
                   <input
                     type="date"
                     value={t.result_date || plusMonths(t.completed_at, 12)}
-                    onChange={(e) => updateTask(t.id, { result_date: e.target.value || null })}
+                    onChange={(e) => writeExpiry(t.id, { result_date: e.target.value || null })}
                     title="Prefilled 12 months ahead. Correct it if the real policy differs — the customer's renewal reminder runs off this date."
                     style={{ fontSize: 11.5, padding: '5px 7px', borderRadius: 6, background: th.inputBg, border: `1px solid ${th.inputBorder}`, color: th.text }}
                   />

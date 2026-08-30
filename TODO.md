@@ -55,6 +55,44 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   data. Not scoped — Meta Business verification is a real gate, not just
   a code change — needs its own design pass before it's a dev task.
 
+- **IDEA-3: Dashboard AI copilot — one chatbot that knows the user's own
+  data, for questions and small actions** — owner's framing (2026-08-29):
+  a chatbot in the dashboard that "knows every data the user's got" so it
+  can handle small things, instead of scattered one-off AI buttons. BLOCKED
+  on AI tokens not being loaded yet (same root cause that just forced the
+  three existing AI features — chat draft/ask, OutreachHub AI draft, AI
+  Caption Writer — into "coming soon", see `src/utils/aiFeatureFlag.js`),
+  and on cost/scope design before it's a dev task. Recommendation when this
+  gets picked up: do NOT build a general chatbot with the whole DB dumped
+  into its context — expensive per call, goes stale, and is a multi-tenancy
+  risk if it ever reasons past what one dealer_id is allowed to see. Scope
+  it instead as a natural-language front end over metrics ShiftOS ALREADY
+  computes server-side and scopes correctly (`gm_pnl_snapshot`,
+  `get_salesman_analytics`, the "This week" call list, `gm_salesman_scores`)
+  — the AI calls those as tools, never queries raw tables itself, so it
+  can't invent a number (same no-hallucinated-price/revenue rule as every
+  other AI feature) and can't cross a tenant boundary. Start read-only
+  ("how's my pipeline this week", "who have I been ignoring", "what's my
+  GP this month") — no write actions in v1; a write path is a separate,
+  much bigger trust design (undo, confirmation, audit trail) that
+  shouldn't block shipping the Q&A layer. Reuse the existing
+  `salesman_ai_quota_ok()` daily-cap pattern rather than inventing new
+  metering, since at RM35/month the whole Premium tier price has to cover
+  the Claude API cost per user.
+  Second half of the ask (2026-08-29): it should also be a creative partner,
+  not just a Q&A layer — listing copywriting and ad copy that's actually
+  better than what a seller would write themselves. This one's a different
+  shape from the metrics Q&A above: it needs the CAR's own data (brand,
+  model, year, mileage, price, condition, included services), not the
+  dealer's business metrics, so it's closer to the existing AI Caption
+  Writer (`SalesmanPremium.jsx:2173`, currently "coming soon") than to
+  `gm_pnl_snapshot` — likely the same feature, generalized: caption writer
+  today only serves one preset shape (WA/TikTok/IG/FB caption); "creative
+  partner" implies also full listing descriptions, and maybe critiquing an
+  existing listing's photos/copy and suggesting what's weak about it. Scope
+  later alongside the metrics copilot — same funding blocker, same
+  per-listing quota pattern as `feature="caption"` already uses.
+
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
 
 - **ACT-1: Enable TOTP in Supabase dashboard — DEFERRED until revenue (user: paid)** — 2FA (SEC-1) will not work end-to-end until the TOTP factor type is enabled: Supabase → Authentication → Settings → Multi-Factor → enable **TOTP**. Until then, the "Enable 2FA" button in Settings will error on enroll. Owner is deferring this until revenue/Supabase Pro (treats it as a paid feature — note: standard app-based TOTP MFA is typically free on Supabase; the paid MFA add-on is Phone/SMS, which we are avoiding anyway — worth re-checking billing before permanently shelving). Interim idea from owner: keep Gmail/Google link verification and add an email verification code as a lightweight second factor. NOTE (2026-08-05): TOTP is NOT deprecated — Bank Negara's RMiT (28 Nov 2025) bans **SMS OTP** as a standalone factor, not TOTP. TOTP (authenticator-app codes, RFC 6238) is offline/device-local and is one of the regulator's recommended interception-resistant replacements, so it stays the correct choice here. Do NOT enable Supabase's Phone/SMS OTP factor. Passkeys (FIDO2/WebAuthn) are the gold standard but are not a native Supabase MFA factor yet.

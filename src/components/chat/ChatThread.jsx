@@ -3,6 +3,8 @@ import { Check, CheckCheck, Send, AlertCircle, Eye, ShieldAlert, Sparkles, X, Lo
 import { useChatThread, tickState } from '../../hooks/useChat';
 import BuyerPushPrompt from './BuyerPushPrompt';
 import { supabase } from '../../supabaseClient';
+import useVisualViewport from '../../hooks/useVisualViewport';
+import { AI_FEATURES_ENABLED } from '../../utils/aiFeatureFlag';
 
 // One conversation. Shared by the buyer widget (dark, on the marketplace) and
 // the seller inbox (light, in the panel), so ticks, masking and the send box
@@ -99,6 +101,20 @@ export default function ChatThread({
   const [aiAnswer, setAiAnswer] = useState(null);
   const [askText, setAskText] = useState('');
   const listRef = useRef(null);
+  const inputRef = useRef(null);
+  const { height: vvHeight } = useVisualViewport();
+
+  // This thread sits in the normal page flow (BuyerInbox on /account/messages,
+  // the dealer/salesman inbox tabs) — not a fixed-position sheet like ChatSheet
+  // — but the same bug reaches it: the browser's native scroll-into-view on
+  // focus targets the LAYOUT viewport, which doesn't shrink for the keyboard,
+  // so the composer can still end up rendered underneath it. Re-scroll the
+  // input using the real visible height whenever the keyboard opens or closes.
+  useEffect(() => {
+    if (document.activeElement === inputRef.current) {
+      inputRef.current.scrollIntoView({ block: 'end', behavior: 'smooth' });
+    }
+  }, [vvHeight]);
 
   // The AI never sees a raw phone number: chat-assist fetches the transcript
   // itself from the redacted `chat_messages_ai` view. We send only a thread id.
@@ -194,7 +210,7 @@ export default function ChatThread({
       {/* Lite has the same chat, without the AI. The locked strip sits in the
           exact slot the AI bar occupies on Premium so the upgrade shows what is
           missing where it would have been, instead of a banner bolted on top. */}
-      {!aiAssist && aiUpgrade && (
+      {AI_FEATURES_ENABLED && !aiAssist && aiUpgrade && (
         <div style={{ display:'flex', alignItems:'center', gap:9, flexWrap:'wrap', borderTop:`1px solid ${t.border}`, background:t.panel, padding:'9px 12px', flexShrink:0 }}>
           <Lock size={12} style={{ color:t.sub, flexShrink:0 }} />
           <p style={{ margin:0, flex:'1 1 150px', minWidth:0, fontSize:11.5, lineHeight:1.5, color:t.sub }}>
@@ -207,7 +223,19 @@ export default function ChatThread({
         </div>
       )}
 
-      {aiAssist && (
+      {/* No Anthropic API credits loaded yet — every AI call would just fail.
+          Show the same slot as a plain "coming soon" note instead of a live
+          bar or an upgrade pitch for a feature that doesn't work yet. */}
+      {!AI_FEATURES_ENABLED && aiAssist && (
+        <div style={{ display:'flex', alignItems:'center', gap:9, borderTop:`1px solid ${t.border}`, background:t.panel, padding:'9px 12px', flexShrink:0 }}>
+          <Sparkles size={12} style={{ color:t.sub, flexShrink:0 }} />
+          <p style={{ margin:0, fontSize:11.5, lineHeight:1.5, color:t.sub }}>
+            AI drafting &amp; buyer Q&amp;A — coming soon.
+          </p>
+        </div>
+      )}
+
+      {AI_FEATURES_ENABLED && aiAssist && (
         <div style={{ borderTop:`1px solid ${t.border}`, background:t.panel, padding:'9px 10px', flexShrink:0 }}>
           {aiAnswer && (
             <div style={{ display:'flex', gap:8, background:'rgba(124,58,237,0.07)', border:'1px solid rgba(124,58,237,0.20)', borderRadius:9, padding:'10px 12px', marginBottom:8 }}>
@@ -244,7 +272,8 @@ export default function ChatThread({
       )}
 
       <form onSubmit={submit} style={{ display:'flex', gap:8, padding:10, borderTop:`1px solid ${t.border}`, background:t.panel, flexShrink:0 }}>
-        <input value={draft} onChange={e => setDraft(e.target.value)} placeholder="Type a message"
+        <input ref={inputRef} value={draft} onChange={e => setDraft(e.target.value)} placeholder="Type a message"
+          onFocus={() => inputRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })}
           maxLength={4000} aria-label="Message"
           style={{ flex:1, minWidth:0, boxSizing:'border-box', padding:'11px 14px', borderRadius:10, border:`1px solid ${t.border}`, background:t.inputBg, color:t.text, fontSize:14, fontFamily:"system-ui,sans-serif", outline:'none' }} />
         <button type="submit" disabled={!draft.trim() || sending} aria-label="Send"

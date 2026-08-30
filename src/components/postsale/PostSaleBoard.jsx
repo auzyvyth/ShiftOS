@@ -26,6 +26,7 @@ export default function PostSaleBoard({
   controller = null,
   openDealId = null,
   onViewCustomer = null,
+  onExpiryWritten = null,
 }) {
   // Hooks can't be conditional: always call it, but starve it of a dealerId
   // when the page already handed us a controller so it never double-fetches.
@@ -169,7 +170,7 @@ export default function PostSaleBoard({
             {isOpen && (
               <div style={{ padding: '0 14px 14px', borderTop: `1px solid ${t.divider}` }}>
                 <div style={{ paddingTop: 12 }}>
-                  <PostSaleChecklist lead={d} dark={dark} onTasksChange={(tasks) => setTasksForLead(d.id, tasks)} />
+                  <PostSaleChecklist lead={d} dark={dark} onTasksChange={(tasks) => setTasksForLead(d.id, tasks)} onExpiryWritten={onExpiryWritten} />
                 </div>
                 {onViewCustomer && (
                   <button
