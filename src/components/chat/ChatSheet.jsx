@@ -123,6 +123,9 @@ export default function ChatSheet({
               role="seller"
               theme={theme}
               height="100%"
+              // This sheet's container is already sized to the visual viewport,
+              // so the composer is above the keyboard by construction.
+              viewportPinned
               aiAssist={aiAssist}
               aiUpgrade={aiUpgrade}
               upgradeHref={upgradeHref}

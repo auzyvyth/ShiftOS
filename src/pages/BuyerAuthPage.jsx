@@ -2,21 +2,18 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { markBuyerIntent, markBuyerConsent, ensureBuyerProfile } from "../lib/buyerAuth";
+import { routeForProfile } from "../hooks/useRoleRedirect";
 import { Heart, Bell, MessageCircle, Tag, Check, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import LegalModal from "../components/LegalModal";
 
 const CONSENT_ERR =
   "Please confirm you're 18+ and agree to the Terms of Service and Privacy Policy to continue.";
 
-// Dedicated buyer login / sign-up. Sellers & staff use /login (universal seller
-// login) + /onboarding. This page is the marketplace shopper's front door: it
-// creates / signs into a role='buyer' profile and always lands them on /account.
-
-const ROLE_ROUTES = {
-  superadmin: "/dashboard", dealer: "/dashboard", owner: "/dashboard",
-  manager: "/manager", salesman: "/salesman", accountant: "/accountant",
-  fi_officer: "/fi", admin: "/admin",
-};
+// Buyer SIGN-UP surface: it carries the PDPA consent tick and the shopper
+// benefits, and it creates a role='buyer' profile. It is no longer offered as a
+// separate sign-in door — the header now sends everyone to /login, which routes
+// by role — but the route stays live because /account's guard and the buyer
+// signup CTAs still link here, and because signup is where consent is recorded.
 
 const BENEFITS = [
   { Icon: Heart,         title: "Save & compare cars",  desc: "Build a shortlist and pick up where you left off on any device." },
@@ -72,9 +69,12 @@ export default function BuyerAuthPage() {
   const redirectByRole = async (user) => {
     if (!user?.id) return;
     const { data: profile } = await supabase
-      .from("profiles").select("role").eq("id", user.id).maybeSingle();
-    const route = (profile?.role && ROLE_ROUTES[profile.role]) || "/account";
-    window.location.href = `${base}${route}`;
+      .from("profiles").select("role, dealer_id, plan").eq("id", user.id).maybeSingle();
+    // One shared resolver. A buyer resolves to /account, which is also the
+    // fallback for a role this page does not expect, so a mis-typed role can
+    // never send a shopper into a seller panel. dealer_id/plan are selected
+    // because a standalone salesman's home is Lite or Premium, not /salesman.
+    window.location.href = `${base}${routeForProfile(profile)}`;
   };
 
   const switchMode = (m) => { setMode(m); setError(""); setConfirmSent(false); setShowForgot(false); setShowMagic(false); setMagicSent(false); };

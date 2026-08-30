@@ -6,6 +6,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
+import { routeForRole } from "../hooks/useRoleRedirect";
 import useHandover from "../hooks/useHandover";
 import { useHideOnScroll } from "../hooks/useHideOnScroll";
 import { placeTourCard } from "../utils/tourPlacement";
@@ -847,18 +848,11 @@ export default function SalesmanPremium() {
  }
 
  const role = profileData.role;
- const ROLE_ROUTES = {
- superadmin: "/dashboard",
- dealer: "/dashboard",
- owner: "/dashboard",
- manager: "/manager",
- accountant: "/accountant",
- fi_officer: "/fi",
- admin: "/admin",
- };
 
+ // Non-salesman goes to THEIR home surface, from the one shared map. The local
+ // copy this replaces had no `buyer` key and defaulted to "/dashboard".
  if (role!== "salesman") {
- navigate(ROLE_ROUTES[role]?? "/dashboard", { replace: true });
+ navigate(routeForRole(role), { replace: true });
  return;
  }
 

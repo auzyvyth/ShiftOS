@@ -93,7 +93,80 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   later alongside the metrics copilot — same funding blocker, same
   per-listing quota pattern as `feature="caption"` already uses.
 
+- **IDEA-4: One account, one door — stop making people classify themselves
+  at sign-in** — owner's framing (2026-08-30), triggered by a real new user:
+  a friend was told to "log in as a buyer" and reported ending up in the Lite
+  dashboard. Her row is a correct buyer (`role='buyer'`, no listings, no
+  leads, nothing written), so no data was wrong — the confusion is the
+  product's. Today sign-in asks people to pick a door BEFORE they are
+  identified: the header dropdown offers `/buyer-login` and `/login`
+  ("Access your dashboard"), and the main marketplace nav has a link
+  literally labelled "Salesman Lite" (`MarketplaceHeader.jsx:290` →
+  `/for-salesmen`). Nobody arriving thinks "I am a buyer account" — they
+  think "that is my Google account" — and both doors run the same Google
+  OAuth anyway, so the choice buys nothing and costs comprehension.
+  Owner's deeper point: one email = one account = ONE role
+  (`profiles.role` is a single column), so the two doors imply a
+  buyer/seller split the data model does not actually have. The trap that
+  follows: a buyer who later wants to sell has no upgrade path at all and
+  would need a second email.
+  Direction when picked up (not scoped yet): collapse to ONE sign-in, ask
+  what someone wants to do only AFTER auth and only when the account has no
+  role yet; and treat selling as a capability an existing account can gain,
+  not a different identity requiring a different address. Note this is a
+  product/UX change, distinct from the plain routing bug found at the same
+  time (five hand-copied ROLE_ROUTES maps that drop `buyer`, so a buyer
+  reaching `/salesman-lite` or `/salesman-premium` is sent to `/dashboard`,
+  which has no role guard to bounce them back) — that bug should be fixed
+  on its own regardless of whether this redesign happens.
+
+- **IDEA-5 — BUILT 2026-08-30 (`/plans`, `src/pages/PlansPage.jsx`). One plan
+  page for every seller tier, and deliberately NO buyer card on it** — owner's framing (2026-08-30), following the one-door sign-in
+  work: a single "create an account" surface listing Salesman Lite (free),
+  Salesman Premium (RM35), and the dealer tiers (RM299/599/1199/2999), replacing
+  the scattered entry points (`/for-salesmen`, `/shiftos#pricing`, the Get
+  Started dropdown, `/choose-plan`). Owner's open question was whether buyers
+  should also pick a "buyer plan" there.
+  Recommendation on that question: no. A plan is something you pay for or that
+  caps what you can do, and buyers have neither a price nor a cap, so a "Buyer —
+  Free" card next to Dealer Pro reframes browsing as a product tier and revives
+  the same "which one am I?" question the merged sign-in door just removed. It
+  also leaks the seller funnel: every visitor gets a legitimate reason to click
+  the cheapest card and leave. Buyers should reach an account only through the
+  thing they were already doing (save a car, message a seller), never a tier
+  choice — the saved-cars hook already does the right shape here
+  (`useSavedCars.js:10/17` works logged out in localStorage, then migrates the
+  rows on sign-in at `:21-30`).
+  Prerequisite, not optional: AUTH-1 below. This page is the surface that would
+  turn the anonymous-session-becomes-a-seller hole into a routine occurrence.
+  SHIPPED as described, buyer card excluded. `/signup`, `/register` and
+  `/onboarding` now redirect here instead of straight into Salesman Lite signup
+  (App.jsx), `/choose-plan` renders the same page, and the header's two-way
+  "Get Started" dropdown collapsed into one link to it. Prices and caps are
+  derived from `PLAN_CONFIG` via `src/utils/plans.js` rather than retyped, so
+  what we show and what the caps enforce cannot drift. AUTH-1 was closed first,
+  as required. Dealer Group (RM2999) is intentionally not listed — it has no
+  onboarding route.
+
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
+
+- **ACT-PUSH-1: deploy `send-push` — the fix for the ~1 hour notification delay
+  is written but NOT live.** Edge functions do not ride the Vercel deploy, so
+  `supabase/functions/send-push/index.ts` is only in the repo until someone
+  deploys it (`mcp__Supabase__deploy_edge_function`, or the dashboard).
+  Diagnosis, measured not guessed: the server side is not slow. Chat message
+  written at `06:09:37.602`, `send-push` HTTP 200 back at `06:09:37.795` —
+  193ms, DB trigger to edge function (`net._http_response`). The delay is the
+  push service holding the message. `webpush.sendNotification()` was called with
+  NO options, so no `Urgency` header went out, and the default (`normal`)
+  explicitly permits FCM to sit on a message until the device leaves Doze —
+  which is the up-to-an-hour wait. All 13 rows in `push_subscriptions` are FCM
+  endpoints, so this hit every user. Fix sets `urgency: 'high'` and caps TTL at
+  24h (was the web-push default of four weeks, i.e. a chat ping could arrive
+  days late). Also logs the failing status per endpoint — `{"sent":2,"failed":2}`
+  was previously a black box, and failures ARE happening.
+  Repo and deployed v17 were verified in sync before editing, so a redeploy
+  loses nothing.
 
 - **ACT-1: Enable TOTP in Supabase dashboard — DEFERRED until revenue (user: paid)** — 2FA (SEC-1) will not work end-to-end until the TOTP factor type is enabled: Supabase → Authentication → Settings → Multi-Factor → enable **TOTP**. Until then, the "Enable 2FA" button in Settings will error on enroll. Owner is deferring this until revenue/Supabase Pro (treats it as a paid feature — note: standard app-based TOTP MFA is typically free on Supabase; the paid MFA add-on is Phone/SMS, which we are avoiding anyway — worth re-checking billing before permanently shelving). Interim idea from owner: keep Gmail/Google link verification and add an email verification code as a lightweight second factor. NOTE (2026-08-05): TOTP is NOT deprecated — Bank Negara's RMiT (28 Nov 2025) bans **SMS OTP** as a standalone factor, not TOTP. TOTP (authenticator-app codes, RFC 6238) is offline/device-local and is one of the regulator's recommended interception-resistant replacements, so it stays the correct choice here. Do NOT enable Supabase's Phone/SMS OTP factor. Passkeys (FIDO2/WebAuthn) are the gold standard but are not a native Supabase MFA factor yet.
 > **ACT-13 DONE — verified end to end 2026-08-29.** Anonymous sign-ins are on and guest
@@ -163,6 +236,79 @@ not scoped, not prioritized — just parked here until picked up on purpose.
 > Reminder protocol: while ACT-2, ACT-4, ACT-9 or ACT-10 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. **ACT-8 was found ALREADY COMPLETE and removed 2026-08-15** — `package.json` AND `package-lock.json` both resolve `xlsx` to `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, and `vercel.json` CSP already whitelists `cdn.sheetjs.com` in connect-src; it had been sitting in this list as a blocked user-action for weeks after the fact. **ACT-12 verified RESOLVED 2026-08-24** — see entry above; drop from this nag list. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then.) LESSON: verify an ACT item against the code before re-surfacing it — a stale nag costs a session's attention every time.
 
 ## Dev tasks
+
+---
+
+### SESSION 2026-08-30 — identity found while designing the plan page
+
+- [x] **ROUTE-1 — DONE 2026-08-30. The "Dashboard" button on a seller's mini
+  page, and where it sent people.** Owner reported the friend was on the
+  PremiumMotors mini page (`/s/premiummotors`, account `auzyvyth+premium@gmail.com`,
+  profile `f92eb826-...`) and a "Dashboard" button appeared, which she pressed.
+  Two real faults behind it, both fixed:
+  (a) `SalesmanProfilePage.jsx` rendered that button for ANY signed-in viewer
+  and always labelled it "Dashboard" — including a buyer, whose destination was
+  `/account`. The two headers already worded this by role ("My Account" for a
+  buyer); the mini page did not. It now uses the same wording and icon.
+  (b) `ROLE_ROUTES.salesman = '/salesman'` cannot be right for every salesman.
+  A STANDALONE rep belongs on `/salesman-lite` or `/salesman-premium`; only a
+  rep with `dealer_id` belongs on `/salesman`. Every "Dashboard" link in the app
+  resolved standalone reps to the linked-salesman panel, and it only looked
+  correct because `Salesmanpanel.jsx:517` catches it and re-navigates — after
+  mounting the wrong panel. New `routeForProfile(profile)` in useRoleRedirect.js
+  states the same rule BEFORE the navigation; `routeForRole(role)` stays for
+  callers that genuinely have no profile. Updated: SalesmanProfilePage, Header,
+  MarketplaceHeader, useBuyerGuard, BuyerAuthPage (each now selects
+  `dealer_id, plan` alongside `role`). SalesmanLite/SalesmanPremium keep
+  `routeForRole` on purpose — their calls are guarded by `role !== 'salesman'`,
+  so the branch is unreachable there.
+  NOT ESTABLISHED: exactly which of these the friend hit. `profiles` has no
+  `updated_at`, so there is no way to tell whether her role was still 'buyer'
+  (button -> /account) or had already flipped to 'salesman' by AUTH-1 (button ->
+  a seller panel) at the moment she pressed it. Both paths are closed now.
+
+- [x] **AUTH-1 — DONE 2026-08-30. A guest session can no longer become a
+  seller.** Two halves, both shipped:
+  (a) DB: `prevent_profile_privilege_escalation` now rejects any role other than
+  `buyer` when `auth.users.is_anonymous` is true
+  (`supabase/migrations/20260830d_guest_accounts_cannot_become_sellers.sql`,
+  applied). Verified with a rolled-back `set_config('request.jwt.claims', ...)`
+  probe: the guest account was BLOCKED, an email-backed buyer becoming a
+  salesman still ALLOWED. It is in the trigger, not just the pages, so it holds
+  whichever client does the write.
+  (b) Frontend: `SalesmanOnboarding.jsx` and `DealerOnboarding.jsx` no longer
+  adopt whatever session exists — an anonymous one is signed out and the signup
+  form explains why (`guestNotice`). Without this the DB guard would surface as
+  a raw error halfway through the form.
+  Upgrading still works: linking an email flips `is_anonymous` to false and the
+  same write then succeeds.
+
+  CLEANUP DONE 2026-08-30 (owner's call): profile
+  `c8cd260e-c308-4020-a234-d9f98906e64c` ("SITI ZAHIRAH") was the one account
+  already created this way. Reverted to `role='buyer'` with `plan`, `slug`,
+  `dealership` cleared and `onboarding_complete=false`, which removes the dead
+  storefront and frees the `sitizahirah` slug. It had 0 listings and 0 leads, so
+  nothing was lost. Left `is_active=true` on purpose — she is a legitimate
+  buyer with 2 live chat threads, and deactivating would have broken those for
+  no gain; the storefront dies with the role and slug, not with the flag.
+  Verified after: 0 anonymous accounts hold a non-buyer role, her 2 threads
+  intact, slug free.
+
+- [x] **CHAT-1 — DONE 2026-08-30. Seller-to-seller chat no longer files a
+  retail lead.** `chat_after_message` now reads the buyer side's role and skips
+  lead creation unless it is `buyer`
+  (`supabase/migrations/20260830e_seller_to_seller_chat_is_not_a_retail_lead.sql`,
+  applied). The conversation and the notification are untouched — only the
+  pipeline row is skipped. Guest buyers are `role='buyer'`, so they still create
+  leads exactly as before.
+  `start_chat_thread` is deliberately left permissive: dealer-to-dealer trade is
+  real, and blocking the thread was never the goal.
+
+  CORRECTION to how this was first reported: the two threads with a seller on
+  the buyer side were BOTH the same account (the AUTH-1 guest, `SITI ZAHIRAH`),
+  and both leads were created while it was still `role='buyer'` — the role
+  flipped afterwards. So those two leads are genuine guest-buyer leads and were
+  NOT deleted. This was the hole being real, not two dealers actually chatting.
 
 ---
 

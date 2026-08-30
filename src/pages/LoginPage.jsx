@@ -779,31 +779,41 @@ export default function LoginPage() {
               <span className="lr-brand-name">SHIFTOS</span>
             </div>
 
+            {/* This is now the ONE sign-in door for buyers and sellers alike, so
+                the panel can no longer be a dealer sales pitch — a shopper who
+                reads "Dealer Management Platform" above a login box concludes
+                they are on the wrong page and leaves. It says what the single
+                account actually is instead. */}
             <div className="lr-hero">
-              <p className="lr-hero-eyebrow">Dealer Management Platform</p>
+              <p className="lr-hero-eyebrow">One XDrive account</p>
               <h1 className="lr-hero-title">
-                The OS for<br />
-                Malaysian<br />
-                <span>Car Dealers</span>
+                Buy a car.<br />
+                Sell cars.<br />
+                <span>Same sign in.</span>
               </h1>
               <p className="lr-hero-sub">
-                Pipeline, HP financing, F&I, team management and revenue analytics — built for how Malaysian used car dealerships actually operate.
+                Your saved cars, alerts and enquiries — or your full dealership pipeline, financing and team. Sign in once and we take you to the right place.
               </p>
             </div>
 
             <div>
+              {/* Was "6 Role Dashboards / 15+ Panel Banks / RM1k Starting per
+                  month" — all seller figures, and the RM1k was stale besides
+                  (dealer plans start at RM299). A buyer reading a monthly price
+                  over a sign-in box reasonably assumes they are about to be
+                  charged for browsing. */}
               <div className="lr-stats">
                 <div>
-                  <div className="lr-stat-num">6</div>
-                  <div className="lr-stat-label">Role Dashboards</div>
+                  <div className="lr-stat-num">Free</div>
+                  <div className="lr-stat-label">For car buyers</div>
                 </div>
                 <div>
-                  <div className="lr-stat-num">15+</div>
-                  <div className="lr-stat-label">Panel Banks</div>
+                  <div className="lr-stat-num">Free</div>
+                  <div className="lr-stat-label">Salesman Lite</div>
                 </div>
                 <div>
-                  <div className="lr-stat-num">RM1k</div>
-                  <div className="lr-stat-label">Starting / mo</div>
+                  <div className="lr-stat-num">RM299</div>
+                  <div className="lr-stat-label">Dealer plans from</div>
                 </div>
               </div>
               <div className="lr-left-footer" style={{ marginTop: 32 }}>
@@ -1014,9 +1024,18 @@ export default function LoginPage() {
             )}
           </form>
 
-          <div className="lr-create-row">
-            <span className="lr-create-text">Don't have an account?</span>
-            <a href="/onboarding" className="lr-create-link">Create for free →</a>
+          {/* The buyer/seller question belongs HERE and only here. Signing in
+              never needs it — the account's role already knows the answer — but
+              signing UP is a real product choice, so this is the one place it is
+              worth asking. It used to be a single "Create for free" pointing at
+              /onboarding, which App.jsx redirects straight to
+              /salesman-onboarding/lite: someone who only wanted to save a few
+              cars was put into the salesman signup wizard. */}
+          <div className="lr-create-row" style={{ flexWrap: 'wrap', rowGap: 6 }}>
+            <span className="lr-create-text">New here?</span>
+            <a href="/buyer-login" className="lr-create-link">Sign up to buy →</a>
+            <span className="lr-create-text" aria-hidden>·</span>
+            <a href="/for-salesmen" className="lr-create-link">Sign up to sell →</a>
           </div>
         </div>
       </div>

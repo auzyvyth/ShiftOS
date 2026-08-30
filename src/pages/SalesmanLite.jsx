@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
+import { routeForRole } from "../hooks/useRoleRedirect";
 import { normalizePhone } from "../lib/phone";
 import { freshChannel } from "../lib/realtime";
 import { cdnImg } from "../utils/img";
@@ -1370,18 +1371,13 @@ export default function SalesmanLite() {
       }
 
       const role = profileData.role;
-      const ROLE_ROUTES = {
-        superadmin: "/dashboard",
-        dealer: "/dashboard",
-        owner: "/dashboard",
-        manager: "/manager",
-        accountant: "/accountant",
-        fi_officer: "/fi",
-        admin: "/admin",
-      };
 
+      // Send a non-salesman to THEIR home surface, from the one shared map.
+      // This used to be a local copy that had no `buyer` key and defaulted to
+      // "/dashboard", so a shopper who reached this page was handed the dealer
+      // dashboard instead of /account.
       if (role !== "salesman") {
-        navigate(ROLE_ROUTES[role] ?? "/dashboard", { replace: true });
+        navigate(routeForRole(role), { replace: true });
         return;
       }
 

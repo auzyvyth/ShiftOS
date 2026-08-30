@@ -77,9 +77,13 @@ export default function AuthCallbackPage() {
         } else if (savedPlan === 'starter' || savedPlan === 'growth' || savedPlan === 'pro') {
           navigate(`/dealer-onboarding/${savedPlan}`);
         } else {
-          // Unknown context → default to salesman-lite (the most common signup),
-          // never the dealer flow.
-          navigate('/onboarding');
+          // Unknown context — a plain "Continue with Google" on the merged
+          // sign-in door, with nothing saying what this person came to do. Ask
+          // instead of guessing: /choose-plan offers the salesman plans AND an
+          // "I'm just here to buy a car" exit. This used to go to /onboarding,
+          // which App.jsx redirects to /salesman-onboarding/lite — so a shopper
+          // was silently walked into the salesman signup wizard.
+          navigate('/choose-plan');
         }
         return;
       }

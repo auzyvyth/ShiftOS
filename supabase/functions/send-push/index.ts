@@ -103,7 +103,7 @@ serve(async (req) => {
       selfUserId = user.id;
     }
 
-    const { user_ids, title, body, url, tag } = await req.json();
+    const { user_ids, title, body, url, tag, ttl } = await req.json();
 
     // A logged-in caller may only push to themselves, whatever they asked for.
     const targetIds: string[] = isServerCaller
@@ -136,10 +136,32 @@ serve(async (req) => {
     });
     const staleIds: string[] = [];
 
+    // DELIVERY SPEED. Without options, web-push sends no Urgency header, and the
+    // push services treat that as `normal` — which explicitly permits them to sit
+    // on the message until the device next wakes. On Android that is the Doze
+    // maintenance window, so a chat message landed on the phone up to an hour
+    // after it was sent while every server-side hop took under 300ms. Every
+    // subscription we hold is FCM, so this affected all of them.
+    //
+    // `high` asks for immediate delivery, which is correct for everything this
+    // function sends: someone is waiting on the other end of a chat, an enquiry
+    // or a booking. It is NOT `very-low`/`low`, which are for pure background
+    // sync, and we always show a notification.
+    //
+    // TTL caps how long the push service keeps retrying a phone that is off.
+    // The web-push default is four weeks — a chat ping arriving three days late
+    // is worse than one that never arrives, so cap it at a day. Callers can pass
+    // a shorter one; anything absent or nonsensical falls back to the default.
+    const ttlRaw = Number(ttl);
+    const sendOpts = {
+      urgency: "high",
+      TTL: Number.isFinite(ttlRaw) && ttlRaw > 0 ? Math.min(Math.floor(ttlRaw), 86400) : 86400,
+    };
+
     const results = await Promise.allSettled(
       subs.map(async (row) => {
         try {
-          await webpush.sendNotification(row.subscription, payload);
+          await webpush.sendNotification(row.subscription, payload, sendOpts);
         } catch (err: unknown) {
           // 410 Gone / 404 = the browser dropped this subscription for good.
           // Deleting it keeps the table from filling with undeliverable rows.
@@ -147,6 +169,10 @@ serve(async (req) => {
             ? (err as { statusCode: number }).statusCode
             : 0;
           if (code === 410 || code === 404) staleIds.push(row.id);
+          // A bare `failed: 2` in the response told us nothing about WHY, and the
+          // caller is a DB trigger that discards the body anyway. Log the status
+          // so a delivery problem is diagnosable from the function logs.
+          console.error(`send-push: endpoint failed (status ${code || "unknown"})`, String(err));
           throw err;
         }
       }),

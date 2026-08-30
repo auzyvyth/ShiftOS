@@ -61,7 +61,7 @@ const DealerSlugRedirect = lazy(() => import("./pages/DealerSlugRedirect"));
 const SalesmanProfilePage= lazy(() => import("./pages/SalesmanProfilePage"));
 const AuthConfirmPage    = lazy(() => import("./pages/AuthConfirmPage"));
 const AuthCallbackPage   = lazy(() => import("./pages/AuthCallbackPage"));
-const ChoosePlanPage     = lazy(() => import("./pages/ChoosePlanPage"));
+const PlansPage          = lazy(() => import("./pages/PlansPage"));
 const ResetPasswordPage  = lazy(() => import("./pages/ResetPasswordPage"));
 const SalesmanSetup      = lazy(() => import("./pages/SalesmanSetup"));
 const ImportStockPage    = lazy(() => import("./pages/ImportStockPage"));
@@ -173,9 +173,13 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/buyer-login" element={<BuyerAuthPage />} />
           <Route path="/buyer-signup" element={<BuyerAuthPage />} />
-          <Route path="/signup"             element={<Navigate to="/salesman-onboarding/lite"    replace />} />
-          <Route path="/register"           element={<Navigate to="/salesman-onboarding/lite"    replace />} />
-          <Route path="/onboarding"         element={<Navigate to="/salesman-onboarding/lite"    replace />} />
+          {/* "Create an account" now ASKS. These three all used to land straight
+              in Salesman Lite signup, so the default outcome of tapping create-
+              an-account was silently becoming a seller — which is how a buyer
+              ended up in the Lite dashboard. /plans is the one place to pick. */}
+          <Route path="/signup"             element={<Navigate to="/plans"                       replace />} />
+          <Route path="/register"           element={<Navigate to="/plans"                       replace />} />
+          <Route path="/onboarding"         element={<Navigate to="/plans"                       replace />} />
           <Route path="/onboarding/lite"    element={<Navigate to="/salesman-onboarding/lite"    replace />} />
           <Route path="/onboarding/premium" element={<Navigate to="/salesman-onboarding/premium" replace />} />
           <Route path="/onboarding/dealer"  element={<Navigate to="/dealer-onboarding/starter"   replace />} />
@@ -184,7 +188,11 @@ function App() {
           <Route path="/salesman-onboarding/:tier" element={<SalesmanOnboarding />} />
           <Route path="/dealer-onboarding" element={<DealerOnboarding />} />
           <Route path="/dealer-onboarding/:tier" element={<DealerOnboarding />} />
-          <Route path="/choose-plan" element={<ChoosePlanPage />} />
+          <Route path="/plans" element={<PlansPage />} />
+          {/* Same page. /choose-plan is where a Google sign-in that carried no
+              plan lands; PlansPage notices the session and makes its exit line
+              rewrite the seller stub to a real buyer instead of just browsing. */}
+          <Route path="/choose-plan" element={<PlansPage />} />
           <Route path="/auth/confirm" element={<AuthConfirmPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/auth/reset" element={<ResetPasswordPage />} />
