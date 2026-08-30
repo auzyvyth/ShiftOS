@@ -174,13 +174,31 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   the reason. v18 logs the status per endpoint, so the Supabase function logs
   will now say why. 13 subscriptions, all FCM.
 
-- **ACT-DEPENDABOT: 5 vulnerabilities on the default branch (2 high, 3
-  moderate), still unread** — https://github.com/auzyvyth/ShiftOS/security/dependabot
-  Every push prints this warning and no session has opened it. Needs a browser.
-  Note `npm install` currently FAILS in web sessions (403 through the proxy on
-  `cdn.sheetjs.com/xlsx-0.20.3.tgz`, which npm resolves even when installing an
-  unrelated package), so an agent cannot run `npm audit` or test an upgrade —
-  this one likely has to be done locally.
+> **ACT-DEPENDABOT DONE — all 5 alerts cleared 2026-08-30.** `npm audit` now reports
+> 0 vulnerabilities. Two bumps in `package.json`: `pdfjs-dist` ^5.7.284 -> ^6.3.289
+> (the only production-reachable one — arbitrary JS execution from a malicious PDF,
+> GHSA-hq66-cqwq-w95j, live at `src/pages/ImportStockPage.jsx:4` where dealers upload
+> supplier PDFs) and `vite` ^5.4.21 -> ^7.3.6 (clears the other 4: two vite path
+> traversals, a Windows NTLM leak, and the transitive esbuild dev-server advisory —
+> all dev-server only, none shipped to production).
+> **Vite 7, not 8, on purpose.** `@vitejs/plugin-react@5.1.4` peer-supports vite only
+> up to `^7.0.0`, and vite 8 drops its `esbuild` dependency for rolldown. Vite 7 clears
+> every advisory (they all cap at `<=6.4.2`) with no plugin majors. `.nvmrc` is 20.19.1
+> which satisfies vite 7's `^20.19.0` engine, so no Node bump was needed.
+> The `cdn.sheetjs.com` 403 is a hard org egress policy denial, still unfixable from a
+> web session — but it turned out NOT to block this work: `npm audit` talks only to the
+> registry, and `npm install --package-lock-only` reuses the existing `xlsx` lock entry
+> instead of refetching the tarball. That is the workaround for any future dep bump here.
+> To actually build/test, `xlsx` was pointed at a throwaway local stub for the install
+> only; `package.json` and the lock's `xlsx` entry were restored byte-identical before
+> committing (verified — the lock diff does not touch xlsx).
+> Verified: production build clean, eslint clean, 21 perf + 10 tour tests pass, and a
+> runtime smoke test confirmed pdf.js v6 still honours every API `ImportStockPage` uses
+> (getDocument/numPages/getPage/getTextContent/getAnnotations, `transform` row
+> reconstruction and Drive link-annotation extraction).
+> NOT verified from here: the import-stock flow in a real browser. Worth one manual pass
+> with a real dealer PDF and an xlsx before trusting it, since the xlsx half of that page
+> could not be exercised at all with the stub in place.
 
 - **ACT-1: Enable TOTP in Supabase dashboard — DEFERRED until revenue (user: paid)** — 2FA (SEC-1) will not work end-to-end until the TOTP factor type is enabled: Supabase → Authentication → Settings → Multi-Factor → enable **TOTP**. Until then, the "Enable 2FA" button in Settings will error on enroll. Owner is deferring this until revenue/Supabase Pro (treats it as a paid feature — note: standard app-based TOTP MFA is typically free on Supabase; the paid MFA add-on is Phone/SMS, which we are avoiding anyway — worth re-checking billing before permanently shelving). Interim idea from owner: keep Gmail/Google link verification and add an email verification code as a lightweight second factor. NOTE (2026-08-05): TOTP is NOT deprecated — Bank Negara's RMiT (28 Nov 2025) bans **SMS OTP** as a standalone factor, not TOTP. TOTP (authenticator-app codes, RFC 6238) is offline/device-local and is one of the regulator's recommended interception-resistant replacements, so it stays the correct choice here. Do NOT enable Supabase's Phone/SMS OTP factor. Passkeys (FIDO2/WebAuthn) are the gold standard but are not a native Supabase MFA factor yet.
 > **ACT-13 DONE — verified end to end 2026-08-29.** Anonymous sign-ins are on and guest
