@@ -356,7 +356,10 @@
       "missedAppt": "Temujanji terlepas",
       "viewAllFollowUps": "+{{count}} lagi dalam pipeline",
       "step1First": "Langkah 1 dulu",
-      "dismiss": "Tutup"
+      "dismiss": "Tutup",
+      "noListingsTitle": "Senaraikan stok anda untuk dapat hasil",
+      "noListingsBody": "Halaman mini anda sudah aktif dan sedia dikongsi — cuma perlukan kereta. Tambah listing pertama supaya pembeli boleh mula jumpa anda.",
+      "noListingsCta": "Tambah listing"
     },
     "goal": {
       "setTarget": "Tetapkan sasaran komisen untuk {{month}}:",

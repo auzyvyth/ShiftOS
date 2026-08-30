@@ -361,7 +361,10 @@
       "missedAppt": "Missed appointment",
       "viewAllFollowUps": "+{{count}} more in pipeline",
       "step1First": "Step 1 first",
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "noListingsTitle": "List your stocks to get results",
+      "noListingsBody": "Your mini page is live and ready to share — it just needs cars on it. Add your first listing so buyers can start finding you.",
+      "noListingsCta": "Add a listing"
     },
     "goal": {
       "setTarget": "Set your commission target for {{month}}:",

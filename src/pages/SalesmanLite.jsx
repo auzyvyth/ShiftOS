@@ -3058,9 +3058,32 @@ export default function SalesmanLite() {
             )}
           </div>
           {/* Live snapshot merged into the hero — compact 30-day stats + the
-              shareable mini-page link. Portfolio value removed (not actionable). */}
-          {available.length > 0 && (
-            <div style={{ position: "relative", marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+              shareable mini-page link. Portfolio value removed (not actionable).
+              Always rendered: this block used to be gated on having a live
+              listing, so a brand-new agent — the one person who most needs the
+              nudge — saw no mini-page link and no prompt at all. With zero
+              listings the stats row (all zeroes, meaningless) is replaced by the
+              ask; the mini-page link stays either way, because it is their
+              storefront and they should know it exists from day one. */}
+          <div style={{ position: "relative", marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+            {available.length === 0 ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>
+                    {t("salesmanLite.dash.noListingsTitle")}
+                  </p>
+                  <p style={{ margin: "3px 0 0", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.5 }}>
+                    {t("salesmanLite.dash.noListingsBody")}
+                  </p>
+                </div>
+                <button
+                  onClick={() => { switchTab("listings"); setTimeout(openAddListing, 100); }}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, padding: "9px 16px", borderRadius: R.md, background: C.accent, border: "none", color: C.onAccent, cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  <Plus size={14} /> {t("salesmanLite.dash.noListingsCta")}
+                </button>
+              </div>
+            ) : (
               <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 18 : 28, flexWrap: "wrap" }}>
                 {[
                   { label: t("salesmanLite.dash.buyerViews"), value: totalViews || 0, color: C.text },
@@ -3078,7 +3101,8 @@ export default function SalesmanLite() {
                   {t("salesmanLite.dash.days30")}
                 </span>
               </div>
-              {profile?.slug && (
+            )}
+            {profile?.slug && (
                 <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
                   <button
                     onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success(t("salesmanLite.toast.storeLinkCopied")); }}
@@ -3143,8 +3167,7 @@ export default function SalesmanLite() {
                   />
                 </div>
               )}
-            </div>
-          )}
+          </div>
         </div>
 
         {/* Chat & Add-ons moved out of the footer/sidebar nav — they don't need a
