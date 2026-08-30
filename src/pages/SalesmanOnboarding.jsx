@@ -212,6 +212,9 @@ export default function SalesmanOnboarding() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
   const [userId, setUserId] = useState(null);
+  // AUTH-1: set when we drop a guest (anonymous) session on the way in, so the
+  // signup form can say why they are being asked to create an account.
+  const [guestNotice, setGuestNotice] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreePdpa, setAgreePdpa] = useState(false);
@@ -255,6 +258,24 @@ export default function SalesmanOnboarding() {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
+
+      // AUTH-1. A guest buyer browsing the marketplace holds an ANONYMOUS
+      // session (that is how in-app chat works without an account). Adopting it
+      // here is what converted one of those guests into a salesman account with
+      // no email address -- a live storefront nobody can ever sign back into,
+      // because there is no address to send a password reset to. The DB now
+      // refuses that write (prevent_profile_privilege_escalation), so adopting
+      // the session would only fail later with a raw error mid-form.
+      //
+      // Drop the guest session instead and let them create a real account. This
+      // does end their guest chats, which is the honest trade: a seller account
+      // has to be something they can log back into.
+      if (session.user?.is_anonymous) {
+        await supabase.auth.signOut();
+        setGuestNotice(true);
+        return;
+      }
+
       setUserId(session.user.id);
       setUserEmail(session.user.email || '');
 
@@ -731,6 +752,12 @@ export default function SalesmanOnboarding() {
                   onChange={e => upd('confirmPassword')(e.target.value)} autoComplete="new-password" />
                 {form.confirmPassword.length > 0 && !pwMatch && (
                   <div className="eo-hint" style={{ color: '#f87171', marginTop: 6 }}>Passwords don't match</div>
+                )}
+                {guestNotice && (
+                  <div className="eo-hint" style={{ marginTop: 12, lineHeight: 1.5, color: 'rgba(255,255,255,0.55)' }}>
+                    You were browsing as a guest. Selling needs a real account with
+                    an email and password, so you can sign back in later.
+                  </div>
                 )}
                 {err && <div className="eo-error">{err}</div>}
                 <button className="eo-btn" onClick={signUp} disabled={loading || !form.email || !pwValid || !pwMatch}>
