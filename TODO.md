@@ -253,6 +253,66 @@ not scoped, not prioritized — just parked here until picked up on purpose.
 
 ---
 
+### SESSION 2026-08-31 — pre-launch security sweep (Salesman Lite + marketplace)
+
+Six fixes shipped this session (see commit "Security sweep: close the paid-tier
+bypass..."). Every finding was proven live against the production database as
+the role that would exploit it, probe rolled back. What is LEFT:
+
+- [ ] **SWEEP-1 — the public page still names the seller's paperwork; decide if
+  that is the line you want.** The scans are no longer published (the view hands
+  out `document_types`, not URLs), so a buyer sees "Geran / Registration Card
+  ✓ Available" and a line telling them to ask the seller. Two things worth a
+  decision before real traffic: `vin_number`, `vin` and `plate_number` are still
+  fully public on every listing (Mudah and Carlist do not publish a full VIN —
+  it enables plate/VIN cloning), and there is now no way for a serious buyer to
+  see the geran at all. If you want a middle ground, the shape is "reveal to a
+  buyer who has started a chat thread", not "publish to everyone".
+
+- [ ] **SWEEP-2 — drop the legacy columns from `public_car_listings` once this
+  is on prod.** `car_documents` (now stripped to `[{type}]`) and
+  `included_services_cost` (now `null::numeric`) are kept only so the CURRENTLY
+  DEPLOYED CarDetailPage keeps resolving its select. Once this branch is live,
+  delete both from the view — the frontend already reads `document_types`.
+
+- [ ] **SWEEP-3 — two comments in the app state the opposite of the truth about
+  the public views.** `useCTAContext.js:48` and `useTenant.js:141` both say
+  `public_dealer_profiles` "is security_invoker and anon RLS returns no rows".
+  It is SECURITY DEFINER and anon reads it fine — that wrong belief is why the
+  email/phone leak sat there. Both call sites already use the RPC, so only the
+  comments are wrong; fix the words so the next person is not misled.
+
+- [ ] **SWEEP-4 — `Footer.jsx:8 SUPERADMIN_ID` is not a superadmin.** It is
+  `1e7bf24e-...`, `role='dealer'`. Migration 20260831d had to special-case that
+  id in the view to keep the footer's contact block working. Rename the constant
+  to what it is (the platform contact row) or move the platform's support email
+  and phone into config, and drop the id from the view.
+
+- [ ] **SWEEP-5 — one listing cap, stated twice.** The RLS helper
+  `salesman_under_listing_limit()` hardcodes 30 for Lite; `enforce_listing_cap`
+  and `enforce_listing_cap_on_publish` read `plan_config.listing_cap`. Same
+  number, two sources — change the plan config and the RLS gate silently
+  disagrees. Point the helper at `plan_config` too.
+
+- [ ] **SWEEP-6 — `create_lead_from_whatsapp` exists twice.** Two overloads with
+  the same name and different argument ORDER
+  (`(dealer,car,name,phone,ref,state)` and `(dealer,name,phone,state,car,ref)`).
+  PostgREST resolves by argument names so it works today, but this is exactly
+  the drift that made inbound attribution vanish twice. Confirm which one every
+  caller hits, then drop the other.
+
+- [ ] **SWEEP-7 — `push_swap_endpoint` accepts any https host.** The service
+  worker has no Supabase session, so the OLD endpoint string is deliberately the
+  credential (documented in `public/push-sw.js:76`) — that part is a reasonable
+  design. What is loose is the NEW endpoint: it only has to match
+  `^https://host/`, so anyone holding an endpoint could repoint that device's
+  pushes anywhere. Restrict the new endpoint to the known push services
+  (`fcm.googleapis.com`, `*.push.apple.com`, `*.notify.windows.com`,
+  `*.push.services.mozilla.com`). Low severity — endpoints are high-entropy and
+  `push_subscriptions` is not readable — but it is a one-line predicate.
+
+---
+
 ### SESSION 2026-08-30 — identity found while designing the plan page
 
 - [x] **ROUTE-1 — DONE 2026-08-30. The "Dashboard" button on a seller's mini
