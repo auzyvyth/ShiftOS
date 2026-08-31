@@ -541,6 +541,22 @@ Buyers message sellers inside ShiftOS (not WhatsApp). Built 2026-08-23.
   thread lookup takes the newest (`order last_message_at desc, limit 1`);
   `.maybeSingle()` throws PGRST116 the moment a buyer chats about two cars, and
   the failure looks like "this buyer has no conversation".
+- **The chat tab in Lite and Premium is FULL HEIGHT** (`SellerInbox
+  fullHeight`), not a 540px island in a tall empty column. The height is
+  MEASURED (`getBoundingClientRect().top` -> `window.innerHeight`), not
+  hardcoded, because Lite and Premium have different chrome; the page passes its
+  own `bottomInset` (Lite `isMobile ? 80 : 24`, Premium 24). Uses
+  `window.innerHeight`, NOT `visualViewport.height` — the latter shrinks for the
+  keyboard and would collapse the panel mid-message.
+- **The thread header has a pipeline-stage button** (`SellerInbox` stagePill ->
+  `ChatThread headerBelow`). Chat is the one inbound channel where the seller is
+  answering someone whose pipeline card they cannot see. It expands INSIDE the
+  thread rather than as a popover: ChatThread's root is `overflow:hidden` so an
+  absolutely positioned panel is clipped, and portalling something this small
+  only buys overlay bugs. `leads` RLS returns only rows where `salesman_id =
+  auth.uid()`, so a lead sitting unassigned in the dealer pool reads back null —
+  that is "not yours to see", NOT "no lead", and the two are separated on
+  `lead_id`. Never tell a rep a real buyer isn't in the pipeline.
 - **Answering a chat lead goes through `src/components/chat/ChatSheet.jsx`, one
   portalled conversation opened over whatever surface you are on.** Do NOT add a
   per-surface "go to the Inbox" link: `SellerInbox` is an embedded TAB in
@@ -573,6 +589,56 @@ Buyers message sellers inside ShiftOS (not WhatsApp). Built 2026-08-23.
   and closes the sheet before it runs (overlay rule 3); it opens the enquiry
   modal, and the real `wa.me` deep link still fires synchronously inside
   `handleEnquirySubmit`, so nothing here is exposed to a popup blocker.
+
+### Buyer email capture + unread-reply email (CHAT-EMAIL, 2026-08-31)
+Most buyers here are guests (anonymous sign-in), so a seller's reply reached
+nobody once the tab closed — push needs a granted permission on a live device.
+The fix is an EMAIL ADDRESS, not an account: we need somewhere to send to, and
+we never fuse two identities.
+- Ask lives in `src/components/chat/BuyerEmailPrompt.jsx`, rendered by
+  `ChatThread` in the same slot and on the same trigger as `BuyerPushPrompt` —
+  AFTER the buyer's first message, never on chat open. ONE ask at a time: email
+  first, push only once an address exists (`buyerHasEmail` in ChatThread).
+- **`updateUser({ email })`, never `signInWithOtp`.** updateUser upgrades the
+  anonymous user IN PLACE and keeps the same `auth.uid()`, so the thread,
+  messages, lead, push subscription and saved cars all carry over with nothing
+  to migrate. `signInWithOtp` (what `BuyerAuthPage.jsx:86` uses) signs into a
+  DIFFERENT user and strands the conversation.
+- Verification is a **6-digit code typed into the sheet** (`verifyOtp`, type
+  `email_change`). A confirm link opens a new tab and the conversation is gone.
+  Needs the Supabase email-change template to emit `{{ .Token }}`.
+- **An address that already has an account is DECLINED, not merged.**
+  Re-pointing a conversation onto another account because someone typed its
+  address in that tab is an account-takeover shape and irreversible. The guest
+  thread keeps working; they are told to sign in normally.
+- **Everything downstream is one trigger:** `sync_identity_from_auth_user` on
+  `auth.users` AFTER UPDATE fills `profiles.email`, relabels ALL that buyer's
+  `chat_threads` (buyer_label is a snapshot `start_chat_thread` writes once) and
+  renames + fills the email on the pipeline lead. `on_auth_user_created` is
+  INSERT-only, which is why none of this happened before. Do NOT re-do any of it
+  client-side. It swallows its own errors — it runs inside the auth transaction
+  and a relabel must never fail someone's verification.
+- Seller side needs no work: `useChat.js:150` already subscribes to `event:'*'`
+  on `chat_threads`, so Lite, Premium and the dealer ChatSheet repaint live.
+- Lead de-dup matches VERIFIED email as well as phone (`chat_after_message`).
+  Unverified would let someone type a stranger's address and merge into that
+  stranger's customer record.
+- Send: `supabase/functions/notify-chat-unread` (cron jobid 13, every 30 min).
+  Quotes `body_ai` NEVER `body`; carries an unsubscribe link checked by
+  `email_unsubscribe(p_token)`, a SECURITY DEFINER function taking the token as
+  an ARGUMENT. `chat_threads.buyer_email_notified_at` dedups, and a new seller
+  reply clears it so the window reopens.
+- **Cron auth: use `cron_key_matches(p_key)`.** The key pg_cron sends is not the
+  service-role key, and the `CRON_SECRET` edge secret the other cron functions
+  guard on is NOT SET on this project — so their `if (CRON_SECRET)` check lets
+  anything through. Do not copy that pattern.
+
+### Deleting an anonymous user deletes the conversation (latent, do not trip it)
+`chat_threads.buyer_id -> auth.users ON DELETE CASCADE`, and `chat_messages`
+cascades off the thread. Supabase's own guidance is to purge anonymous users
+periodically; doing that here would delete live chats and make the seller's
+inbox row vanish. No such cron exists today. Before any anon-cleanup job is
+added, that FK must become ON DELETE SET NULL with the thread keeping its label.
 
 ## "This week" call list — the retention loop (don't scatter it again)
 `src/utils/thisWeek.js` (ranking) + `src/components/crm/ThisWeek.jsx` (UI), on

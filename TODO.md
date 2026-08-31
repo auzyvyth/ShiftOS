@@ -199,6 +199,46 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   as required. Dealer Group (RM2999) is intentionally not listed — it has no
   onboarding route.
 
+## CHAT-EMAIL — BUILT 2026-08-31 (see CLAUDE.md for the rules)
+
+Shipped on `claude/buyer-notification-emails-n0yv8d`. Backend is LIVE on the
+production Supabase project; the frontend is only on the branch.
+
+Live already: `sync_identity_from_auth_user` (auth.users AFTER UPDATE),
+`chat_after_message` email de-dup, `email_unsubscribe`, `cron_key_matches`,
+`profiles.notify_email_opt_out` / `notify_unsub_token`,
+`chat_threads.buyer_email_notified_at`, edge function `notify-chat-unread` v2,
+cron jobid 13 (*/30). Existing unread threads were stamped as already-notified
+so the first run cannot email anyone about days-old replies.
+
+**BLOCKED ON TWO SUPABASE DASHBOARD SETTINGS — the capture flow cannot work
+until these are done:**
+1. Auth -> Email Templates -> "Change Email Address": the body must include
+   `{{ .Token }}` (the 6-digit code). While it only carries a link, a buyer has
+   no code to type — the prompt falls back to the cross-tab listener, which only
+   works if they open the link in the same browser.
+2. Auth -> Attack Protection -> turn on CAPTCHA (Turnstile). This is the guard
+   against guest-account spam; per-user rate limits are defeated by rotating
+   anonymous sign-ins, which cost a spammer nothing.
+
+**Still open, deliberately not built:**
+- **The collision case has no email channel.** A buyer whose address already has
+  an account is declined (no merge, on purpose) and therefore gets no unread
+  emails on that thread. The safe way to cover it is a one-time claim token
+  minted in the anon session and redeemed after a real sign-in
+  (`claim_guest_threads(token)`) — proof of both sides, no takeover surface.
+  Only worth building if that case turns out to be common.
+- **Per-dealer volume caps on threads/messages** in the shape of the existing
+  40-chat-leads/hour guard. Per-uid caps do not hold against account rotation.
+- **ACT-VERIFY-CHAT-EMAIL.** The send path is verified end to end for auth and
+  query (cron key 200, wrong key 401, `{"sent":0}` with the backlog suppressed)
+  but no email has actually been delivered yet — nothing qualified. Reply to a
+  buyer thread, wait 30 min, confirm the email arrives and the unsubscribe link
+  works.
+- Never run `npm run build` expecting it to pass in a web session: this sandbox
+  cannot `npm install` (the proxy blocks `cdn.sheetjs.com`, an `xlsx`
+  dependency). Staging is the first real build.
+
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
 
 - **ACT-TRIAL-RESET: the Premium test account is deliberately left expired.**
