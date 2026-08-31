@@ -5,6 +5,14 @@
 
 @layer base {
   :root {
+    /* The public marketplace's body typeface, in ONE place. Header, footer,
+       showroom, articles, plans and the grids were all on Outfit while
+       CarDetailPage — the page buyers actually land on from Google — was on
+       system-ui, so walking from the marketplace into a car changed the
+       typeface. system-ui stays as the fallback, so text still paints
+       instantly on a cold load while Outfit swaps in (font-display: swap).
+       Flip this one value back to system-ui to revert the whole page. */
+    --xd-font-body: 'Outfit', system-ui, sans-serif;
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;

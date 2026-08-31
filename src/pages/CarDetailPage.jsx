@@ -614,7 +614,7 @@ const inputStyle = (focused, th) => ({
   padding: "10px 14px",
   color: th?.text ?? "white",
   fontSize: "13px",
-  fontFamily: "system-ui, sans-serif",
+  fontFamily: "var(--xd-font-body)",
   outline: "none",
   marginBottom: "8px",
   boxSizing: "border-box",
@@ -663,7 +663,7 @@ const FieldError = ({ id, msg, th }) =>
   msg ? (
     <p id={id} role="alert" style={{
       margin: "-4px 0 8px", fontSize: 11.5, lineHeight: 1.4,
-      color: th?.errText ?? "#f87171", fontFamily: "system-ui, sans-serif",
+      color: th?.errText ?? "#f87171", fontFamily: "var(--xd-font-body)",
     }}>{msg}</p>
   ) : null;
 
@@ -880,7 +880,7 @@ function SellerStrip({ cars, title, th }) {
           const name  = [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
           const price = c.selling_price ? "RM " + Number(c.selling_price).toLocaleString("en-MY") : "P.O.R";
           return (
-            <button key={c.id} onClick={() => go(c)} style={{ flexShrink: 0, width: 152, scrollSnapAlign: "start", textAlign: "left", background: th.card, border: `1px solid ${th.border}`, borderRadius: 12, overflow: "hidden", cursor: "pointer", padding: 0, fontFamily: "system-ui, sans-serif" }}>
+            <button key={c.id} onClick={() => go(c)} style={{ flexShrink: 0, width: 152, scrollSnapAlign: "start", textAlign: "left", background: th.card, border: `1px solid ${th.border}`, borderRadius: 12, overflow: "hidden", cursor: "pointer", padding: 0, fontFamily: "var(--xd-font-body)" }}>
               <div style={{ position: "relative", aspectRatio: "4 / 3", background: th.card2 }}>
                 {img && <img src={img} alt={name} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
                 {c.is_recon && (
@@ -1711,7 +1711,7 @@ export default function CarDetailPage() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          fontFamily: "system-ui,sans-serif",
+          fontFamily: "var(--xd-font-body)",
         }}
       >
         <p style={{ fontSize: 15, color: th.textMuted, marginBottom: 20 }}>
@@ -1932,7 +1932,7 @@ export default function CarDetailPage() {
         @keyframes cdp-pulse     { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
         @keyframes cdp-shimmerIn { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: scaleX(1); } }
 
-        .cdp-root { background: #060c14; min-height: 100vh; font-family: system-ui, sans-serif; color: #e2e8f0; }
+        .cdp-root { background: #060c14; min-height: 100vh; font-family: var(--xd-font-body); color: #e2e8f0; }
 
         /* ── header ── */
         /* Transparent-over-hero until scrolled past it, so the hero photo
@@ -2084,8 +2084,8 @@ export default function CarDetailPage() {
         .cdp-lb-zoom-bar { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 40px; padding: 8px 16px; }
         .cdp-lb-zoom-btn { background: none; border: none; color: rgba(255,255,255,0.8); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 2px; transition: color 0.15s; }
         .cdp-lb-zoom-btn:hover { color: white; }
-        .cdp-lb-zoom-label { font-size: 12px; color: rgba(255,255,255,0.6); font-family: system-ui, sans-serif; min-width: 40px; text-align: center; }
-        .cdp-lb-counter { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); font-size: 12px; color: rgba(255,255,255,0.5); font-family: system-ui, sans-serif; }
+        .cdp-lb-zoom-label { font-size: 12px; color: rgba(255,255,255,0.6); font-family: var(--xd-font-body); min-width: 40px; text-align: center; }
+        .cdp-lb-counter { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); font-size: 12px; color: rgba(255,255,255,0.5); font-family: var(--xd-font-body); }
         .cdp-lb-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.08); border: none; color: white; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; z-index: 2; }
         .cdp-lb-arrow:hover { background: rgba(255,255,255,0.18); }
         .cdp-lb-arrow-l { left: 20px; }
@@ -2104,7 +2104,7 @@ export default function CarDetailPage() {
             border-top: 1px solid rgba(255,255,255,0.07); padding: 12px 16px; gap: 8px;
           }
           .cdp-mobile-bar-contact { flex: 0 0 auto; width: 116px; }
-          .cdp-mobile-bar-book { flex: 1; border-radius: 10px; font-size: 13px; font-weight: 700; font-family: system-ui, sans-serif; cursor: pointer; background: #dc2626; color: white; padding: 12px 0; border: none; border-top: 2px solid #b91c1c; box-shadow: 0 2px 12px rgba(220,38,38,0.3); }
+          .cdp-mobile-bar-book { flex: 1; border-radius: 10px; font-size: 13px; font-weight: 700; font-family: var(--xd-font-body); cursor: pointer; background: #dc2626; color: white; padding: 12px 0; border: none; border-top: 2px solid #b91c1c; box-shadow: 0 2px 12px rgba(220,38,38,0.3); }
         }
         @media (max-width: 480px) { .cdp-arrow { display: none; } }
       `}</style>
@@ -2216,7 +2216,7 @@ export default function CarDetailPage() {
                       fontSize: 11,
                       fontWeight: 600,
                       color: "rgba(255,255,255,0.9)",
-                      fontFamily: "system-ui,sans-serif",
+                      fontFamily: "var(--xd-font-body)",
                       letterSpacing: "0.03em",
                       pointerEvents: "none",
                     }}
@@ -2281,7 +2281,7 @@ export default function CarDetailPage() {
                   fontSize: 12,
                   fontWeight: 600,
                   cursor: "pointer",
-                  fontFamily: "system-ui,sans-serif",
+                  fontFamily: "var(--xd-font-body)",
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
@@ -2444,7 +2444,7 @@ export default function CarDetailPage() {
             }}
           />
           <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'45%', background:'linear-gradient(to top, rgba(6,8,15,0.8), transparent)', pointerEvents:'none', zIndex:3 }} />
-          <div style={{ position:'absolute', bottom:14, left:14, zIndex:5, background:'rgba(6,8,15,0.7)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:20, padding:'4px 12px', fontSize:11, color:'rgba(255,255,255,0.8)', fontFamily:"system-ui,sans-serif", fontWeight:500 }}>
+          <div style={{ position:'absolute', bottom:14, left:14, zIndex:5, background:'rgba(6,8,15,0.7)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:20, padding:'4px 12px', fontSize:11, color:'rgba(255,255,255,0.8)', fontFamily:"var(--xd-font-body)", fontWeight:500 }}>
             {activeIdx + 1} / {imgCount}
           </div>
           {imgCount > 1 && (() => {
@@ -2618,7 +2618,7 @@ export default function CarDetailPage() {
             {!isOwnListing && (
             <button
               onClick={handleBookingClick}
-              style={{ width:'100%', background:'#dc2626', color:'white', border:'none', borderTop:'2px solid #b91c1c', borderRadius:10, padding:'14px', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:"system-ui,sans-serif", boxShadow:'0 4px 20px rgba(220,38,38,0.25)', marginBottom:8, letterSpacing:'0.02em' }}>
+              style={{ width:'100%', background:'#dc2626', color:'white', border:'none', borderTop:'2px solid #b91c1c', borderRadius:10, padding:'14px', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:"var(--xd-font-body)", boxShadow:'0 4px 20px rgba(220,38,38,0.25)', marginBottom:8, letterSpacing:'0.02em' }}>
               Book a Viewing
             </button>
             )}
@@ -2639,12 +2639,12 @@ export default function CarDetailPage() {
             {/* Tertiary actions — quiet text links, not more buttons */}
             <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:18, marginTop:14, flexWrap:'wrap' }}>
               <button onClick={() => setCalcOpen(true)}
-                style={{ background:'none', border:'none', padding:'0 0 2px', display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:600, color: th.textSec, cursor:'pointer', fontFamily:"system-ui,sans-serif", borderBottom:'1px solid rgba(220,38,38,0.35)' }}>
+                style={{ background:'none', border:'none', padding:'0 0 2px', display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:600, color: th.textSec, cursor:'pointer', fontFamily:"var(--xd-font-body)", borderBottom:'1px solid rgba(220,38,38,0.35)' }}>
                 <Calculator size={13} style={{ color:'#dc2626' }} /> Financing calculator
               </button>
               {sellerPageUrl && !isSubdomain() && (
                 <a href={sellerPageUrl} target="_blank" rel="noopener noreferrer"
-                  style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:600, color: th.textSec, textDecoration:'none', fontFamily:"system-ui,sans-serif", borderBottom:`1px solid ${th.border}`, paddingBottom:2 }}>
+                  style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:600, color: th.textSec, textDecoration:'none', fontFamily:"var(--xd-font-body)", borderBottom:`1px solid ${th.border}`, paddingBottom:2 }}>
                   <ExternalLink size={13} /> {sellerPageLabel}
                 </a>
               )}
@@ -2708,7 +2708,7 @@ export default function CarDetailPage() {
                 <div style={{ display:'flex', gap:0, marginBottom:24, borderBottom:`1px solid ${th.border}` }}>
                   {tabs.map(t => (
                     <button key={t.key} onClick={() => setDetailTab(t.key)}
-                      style={{ background: detailTab===t.key ? 'rgba(220,38,38,0.04)' : 'none', border:'none', borderBottom:`2px solid ${detailTab===t.key ? '#dc2626' : 'transparent'}`, color: detailTab===t.key ? th.text : th.textMuted, padding:'10px 24px 12px', marginBottom:-1, fontSize:'13px', fontWeight: detailTab===t.key ? 600 : 400, cursor:'pointer', fontFamily:"system-ui,sans-serif", transition:'all .2s', letterSpacing:'0.05em' }}>
+                      style={{ background: detailTab===t.key ? 'rgba(220,38,38,0.04)' : 'none', border:'none', borderBottom:`2px solid ${detailTab===t.key ? '#dc2626' : 'transparent'}`, color: detailTab===t.key ? th.text : th.textMuted, padding:'10px 24px 12px', marginBottom:-1, fontSize:'13px', fontWeight: detailTab===t.key ? 600 : 400, cursor:'pointer', fontFamily:"var(--xd-font-body)", transition:'all .2s', letterSpacing:'0.05em' }}>
                       {t.label}
                     </button>
                   ))}
@@ -3375,7 +3375,7 @@ export default function CarDetailPage() {
                           fontSize: "13px",
                           fontWeight: detailTab === t.key ? 600 : 400,
                           cursor: "pointer",
-                          fontFamily: "system-ui,sans-serif",
+                          fontFamily: "var(--xd-font-body)",
                           transition: "all .2s",
                           letterSpacing: "0.05em",
                         }}
@@ -4012,7 +4012,7 @@ export default function CarDetailPage() {
             {!isOwnListing && (
             <button
               onClick={handleBookingClick}
-              style={{ width: '100%', background: '#dc2626', color: 'white', border: 'none', borderTop: '2px solid #b91c1c', borderRadius: 10, padding: 14, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "system-ui,sans-serif", letterSpacing: '0.02em', boxShadow: '0 4px 24px rgba(220,38,38,0.25)', transition: 'transform .15s, box-shadow .2s' }}>
+              style={{ width: '100%', background: '#dc2626', color: 'white', border: 'none', borderTop: '2px solid #b91c1c', borderRadius: 10, padding: 14, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "var(--xd-font-body)", letterSpacing: '0.02em', boxShadow: '0 4px 24px rgba(220,38,38,0.25)', transition: 'transform .15s, box-shadow .2s' }}>
               Book a Viewing
             </button>
             )}
@@ -4030,12 +4030,12 @@ export default function CarDetailPage() {
             {/* Tertiary actions — quiet text links, not more buttons */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, marginTop: 14 }}>
               <button onClick={() => setCalcOpen(true)}
-                style={{ background: 'none', border: 'none', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: th.textSec, cursor: 'pointer', fontFamily: "system-ui,sans-serif", borderBottom: '1px solid rgba(220,38,38,0.35)', paddingBottom: 2 }}>
+                style={{ background: 'none', border: 'none', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: th.textSec, cursor: 'pointer', fontFamily: "var(--xd-font-body)", borderBottom: '1px solid rgba(220,38,38,0.35)', paddingBottom: 2 }}>
                 <Calculator size={13} style={{ color: '#dc2626' }} /> Financing calculator
               </button>
               {sellerPageUrl && !isSubdomain() && (
                 <a href={sellerPageUrl} target="_blank" rel="noopener noreferrer"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: th.textSec, textDecoration: 'none', fontFamily: "system-ui,sans-serif", borderBottom: `1px solid ${th.border}`, paddingBottom: 2 }}>
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: th.textSec, textDecoration: 'none', fontFamily: "var(--xd-font-body)", borderBottom: `1px solid ${th.border}`, paddingBottom: 2 }}>
                   <ExternalLink size={13} /> {sellerPageLabel}
                 </a>
               )}
@@ -4073,7 +4073,7 @@ export default function CarDetailPage() {
         {/* ── calculator modal ── */}
         {calcOpen && (
           <div onClick={e => { if (e.target === e.currentTarget) setCalcOpen(false); }}
-            style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "system-ui,sans-serif" }}>
+            style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "var(--xd-font-body)" }}>
             <div style={{ width: '100%', maxWidth: 860, background: th.card, border: `1px solid ${th.border}`, borderRadius: 20, overflow: 'hidden' }}>
               <div style={{ padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
@@ -4131,7 +4131,7 @@ export default function CarDetailPage() {
               <button className="cdp-lb-zoom-btn" onClick={() => setLbZoom(z => Math.min(5, z + 0.25))} aria-label="Zoom in"><ZoomIn size={16} /></button>
               <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.15)', margin: '0 2px' }} />
               <button className="cdp-lb-zoom-btn" onClick={() => { setLbZoom(1); setLbPan({ x: 0, y: 0 }); }}
-                style={{ fontSize: 11, fontFamily: "system-ui,sans-serif", color: 'rgba(255,255,255,0.5)', letterSpacing: '0.05em' }}>Reset</button>
+                style={{ fontSize: 11, fontFamily: "var(--xd-font-body)", color: 'rgba(255,255,255,0.5)', letterSpacing: '0.05em' }}>Reset</button>
             </div>
           </div>
         )}
@@ -4142,7 +4142,7 @@ export default function CarDetailPage() {
       <div className="cdp-mobile-bar">
         <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'0 4px', flexShrink:0 }}>
           <HeartButton listingId={car?.id} size={20} style={isXdrive ? { color: 'rgba(0,0,0,0.5)' } : undefined} />
-          <span style={{ fontSize:9, color: isXdrive ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)', fontFamily:"system-ui,sans-serif" }}>Save</span>
+          <span style={{ fontSize:9, color: isXdrive ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)', fontFamily:"var(--xd-font-body)" }}>Save</span>
         </div>
         {/* Compare moved up beside the calculator in the title strip so it isn't
             missed; kept out of this bar to avoid duplicating it. */}
@@ -4170,19 +4170,19 @@ export default function CarDetailPage() {
             <div style={{ height:3, background:'linear-gradient(to right,#fbbf24,#f59e0b)', borderRadius:'20px 20px 0 0', margin:'-28px -28px 24px' }} />
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
               <div>
-                <p style={{ fontSize:10, letterSpacing:'0.18em', textTransform:'uppercase', color:'#fbbf24', fontWeight:700, margin:'0 0 4px', fontFamily:"system-ui,sans-serif" }}>Status Update</p>
+                <p style={{ fontSize:10, letterSpacing:'0.18em', textTransform:'uppercase', color:'#fbbf24', fontWeight:700, margin:'0 0 4px', fontFamily:"var(--xd-font-body)" }}>Status Update</p>
                 <h2 style={{ fontSize:'1.8rem', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.06em', color: th.text, margin:0, lineHeight:1 }}>Car Reserved</h2>
               </div>
               <button onClick={() => setShowReservedPopup(false)} style={{ background:'none', border:'none', cursor:'pointer', color: th.textMuted, padding:4 }}>
                 <X size={20} />
               </button>
             </div>
-            <p style={{ fontSize:14, color: th.textSec, lineHeight:1.6, margin:'0 0 24px', fontFamily:"system-ui,sans-serif" }}>
+            <p style={{ fontSize:14, color: th.textSec, lineHeight:1.6, margin:'0 0 24px', fontFamily:"var(--xd-font-body)" }}>
               This car is currently reserved. WhatsApp the seller for confirmation or to find out when it becomes available.
             </p>
             <button
               onClick={() => { setShowReservedPopup(false); handleWhatsApp(); }}
-              style={{ width:'100%', background:'#16a34a', color:'#fff', border:'none', borderRadius:10, padding:'14px', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:"system-ui,sans-serif", letterSpacing:'0.02em' }}
+              style={{ width:'100%', background:'#16a34a', color:'#fff', border:'none', borderRadius:10, padding:'14px', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:"var(--xd-font-body)", letterSpacing:'0.02em' }}
             >
               WhatsApp Seller
             </button>
@@ -4282,9 +4282,9 @@ export default function CarDetailPage() {
               {/* header */}
               <div style={{ padding:'24px 28px 0', display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
                 <div>
-                  <p style={{ fontSize:10, letterSpacing:'0.18em', textTransform:'uppercase', color:'#dc2626', fontWeight:700, margin:0, fontFamily:"system-ui,sans-serif" }}>Schedule a Visit</p>
+                  <p style={{ fontSize:10, letterSpacing:'0.18em', textTransform:'uppercase', color:'#dc2626', fontWeight:700, margin:0, fontFamily:"var(--xd-font-body)" }}>Schedule a Visit</p>
                   <h2 style={{ fontSize:'2.1rem', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.06em', color:th.text, margin:'4px 0 3px', lineHeight:1 }}>Book a Viewing</h2>
-                  <p style={{ fontSize:12, color:th.textMuted, margin:0, fontFamily:"system-ui,sans-serif" }}>{car?.year} {car?.brand} {car?.model}</p>
+                  <p style={{ fontSize:12, color:th.textMuted, margin:0, fontFamily:"var(--xd-font-body)" }}>{car?.year} {car?.brand} {car?.model}</p>
                 </div>
                 <button
                   onClick={() => setShowBookingModal(false)}
@@ -4299,12 +4299,12 @@ export default function CarDetailPage() {
                   <div style={{ width:60, height:60, borderRadius:'50%', background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.2)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
                     <Check size={26} color="#4ade80" strokeWidth={2.5} />
                   </div>
-                  <h3 style={{ fontSize:18, fontWeight:700, color:th.text, margin:'0 0 8px', fontFamily:"system-ui,sans-serif" }}>Viewing Requested</h3>
-                  <p style={{ fontSize:13, color:th.textMuted, margin:'0 0 4px', fontFamily:"system-ui,sans-serif" }}>Your slot is held, pending the seller's confirmation.</p>
-                  <p style={{ fontSize:13, color:th.textMuted, margin:'0 0 32px', fontFamily:"system-ui,sans-serif" }}>They'll confirm on WhatsApp shortly — please keep the time free.</p>
+                  <h3 style={{ fontSize:18, fontWeight:700, color:th.text, margin:'0 0 8px', fontFamily:"var(--xd-font-body)" }}>Viewing Requested</h3>
+                  <p style={{ fontSize:13, color:th.textMuted, margin:'0 0 4px', fontFamily:"var(--xd-font-body)" }}>Your slot is held, pending the seller's confirmation.</p>
+                  <p style={{ fontSize:13, color:th.textMuted, margin:'0 0 32px', fontFamily:"var(--xd-font-body)" }}>They'll confirm on WhatsApp shortly — please keep the time free.</p>
                   <button
                     onClick={() => setShowBookingModal(false)}
-                    style={{ background:'#dc2626', color:'white', border:'none', borderRadius:10, padding:'12px 36px', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:"system-ui,sans-serif", letterSpacing:'0.02em' }}
+                    style={{ background:'#dc2626', color:'white', border:'none', borderRadius:10, padding:'12px 36px', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:"var(--xd-font-body)", letterSpacing:'0.02em' }}
                   >
                     Done
                   </button>
@@ -4383,7 +4383,7 @@ export default function CarDetailPage() {
                       <div style={{ width:18, height:18, borderRadius:4, border: bookingConsent.appear ? '2px solid #dc2626' : `2px solid ${bookErrors.consent ? th.errText : th.inputBorder}`, background: bookingConsent.appear ? '#dc2626' : 'transparent', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', marginTop:1, transition:'all 0.15s' }}>
                         {bookingConsent.appear && <Check size={11} color="white" strokeWidth={3} />}
                       </div>
-                      <span style={{ fontSize:12, color:th.textSec, fontFamily:"system-ui,sans-serif", lineHeight:1.5 }}>
+                      <span style={{ fontSize:12, color:th.textSec, fontFamily:"var(--xd-font-body)", lineHeight:1.5 }}>
                         This is a real commitment — I will show up for this viewing at the time I picked
                       </span>
                     </label>
@@ -4394,7 +4394,7 @@ export default function CarDetailPage() {
                       <div style={{ width:18, height:18, borderRadius:4, border: bookingConsent.whatsapp ? '2px solid #dc2626' : `2px solid ${bookErrors.consent ? th.errText : th.inputBorder}`, background: bookingConsent.whatsapp ? '#dc2626' : 'transparent', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', marginTop:1, transition:'all 0.15s' }}>
                         {bookingConsent.whatsapp && <Check size={11} color="white" strokeWidth={3} />}
                       </div>
-                      <span style={{ fontSize:12, color:th.textSec, fontFamily:"system-ui,sans-serif", lineHeight:1.5 }}>
+                      <span style={{ fontSize:12, color:th.textSec, fontFamily:"var(--xd-font-body)", lineHeight:1.5 }}>
                         I agree to receive a WhatsApp confirmation message
                       </span>
                     </label>
@@ -4424,7 +4424,7 @@ export default function CarDetailPage() {
                       fontSize:14,
                       cursor: submitting ? 'not-allowed' : 'pointer',
                       opacity: submitting ? 0.6 : 1,
-                      fontFamily:"system-ui,sans-serif",
+                      fontFamily:"var(--xd-font-body)",
                       letterSpacing:'0.02em',
                       transition:'all 0.2s',
                       boxShadow:'0 4px 20px rgba(220,38,38,0.25)',

@@ -138,7 +138,9 @@ export default function MarketplaceFooter() {
               {/* Price must track plan_config / src/utils/planConfig.js — the
                   cheapest dealer tier (dealer_starter). Do not hardcode a
                   number that isn't in that table. */}
-              <p className="text-gray-600 text-[11px] text-center">From RM 299/mo · No setup fee</p>
+              {/* gray-400 on the dark band (7.9:1). This was gray-600 — a grey
+                  picked for the white grid below — at 2.66:1, on a PRICE. */}
+              <p className="text-gray-400 text-[11px] text-center">From RM {PLAN_CONFIG.dealer_starter.price}/mo · No setup fee</p>
             </div>
           </div>
         </div>
@@ -173,7 +175,10 @@ export default function MarketplaceFooter() {
           <div className="text-2xl font-black text-gray-900 tracking-tight mb-1" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '0.04em' }}>
             <span className="text-red-600">X</span>DRIVE
           </div>
-          <p className="text-gray-400 text-[13px] leading-relaxed mb-5">
+          {/* gray-500 (4.83:1). gray-400 on white is 2.54:1 — a dark-surface
+              grey used on the white grid. Same swap on the column headings and
+              the tier prices below. */}
+          <p className="text-gray-500 text-[13px] leading-relaxed mb-5">
             {settings.brand_tagline}
           </p>
 
@@ -185,7 +190,7 @@ export default function MarketplaceFooter() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={label}
-                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-400 flex items-center justify-center transition-colors"
+                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-500 flex items-center justify-center transition-colors"
               >
                 <Icon size={14} />
               </a>
@@ -196,7 +201,7 @@ export default function MarketplaceFooter() {
         {/* Nav columns */}
         {NAV.map(({ heading, links }) => (
           <div key={heading}>
-            <p className="text-[10px] font-bold uppercase tracking-[0.13em] text-gray-400 mb-4">{heading}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.13em] text-gray-500 mb-4">{heading}</p>
             <ul className="space-y-2.5">
               {links.map(({ label, to, href, action }) => (
                 <li key={label}>
@@ -209,7 +214,14 @@ export default function MarketplaceFooter() {
                       {label}
                     </button>
                   ) : (
-                    <a href={href} className="text-[13px] text-gray-500 hover:text-red-600 transition-colors">
+                    /* These are wa.me / mailto — off-site. They opened in the
+                       same tab, dropping the visitor out of the marketplace,
+                       and carried no rel. */
+                    <a
+                      href={href}
+                      {...(href.startsWith('mailto:') ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
+                      className="text-[13px] text-gray-500 hover:text-red-600 transition-colors"
+                    >
                       {label}
                     </a>
                   )}
@@ -221,7 +233,7 @@ export default function MarketplaceFooter() {
 
         {/* Pricing — one expandable dropdown per tier */}
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.13em] text-gray-400 mb-4">Pricing</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.13em] text-gray-500 mb-4">Pricing</p>
           <ul className="space-y-1">
             {FOOTER_TIERS.map(({ key, href }) => {
               const cfg = PLAN_CONFIG[key];
@@ -238,10 +250,10 @@ export default function MarketplaceFooter() {
                       {cfg.label}
                     </span>
                     <span className="flex items-center gap-1 flex-shrink-0">
-                      <span className="text-[11px] font-bold text-gray-400">
+                      <span className="text-[11px] font-bold text-gray-600">
                         {cfg.price ? `RM${cfg.price}` : 'Free'}
                       </span>
-                      <ChevronDown size={13} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+                      <ChevronDown size={13} className={`text-gray-500 transition-transform ${open ? 'rotate-180' : ''}`} />
                     </span>
                   </button>
                   {open && (
@@ -262,8 +274,8 @@ export default function MarketplaceFooter() {
       {/* ── Bottom bar ───────────────────────────────────────────────── */}
       <div className="border-t border-gray-100 bg-gray-950">
         <div className="max-w-6xl mx-auto px-5 py-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="text-gray-600 text-[11px]">{copyright}</p>
-          <Link to="/shiftos" className="flex items-center gap-1.5 text-[11px] text-gray-600 hover:text-gray-400 transition-colors" style={{ textDecoration: 'none' }}>
+          <p className="text-gray-400 text-[11px]">{copyright}</p>
+          <Link to="/shiftos" className="flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-gray-200 transition-colors" style={{ textDecoration: 'none' }}>
             <span>Powered by</span>
             <span className="text-white font-bold tracking-wide">ShiftOS</span>
             <Zap size={10} className="text-red-500" />
