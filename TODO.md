@@ -199,37 +199,102 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   as required. Dealer Group (RM2999) is intentionally not listed — it has no
   onboarding route.
 
-- **IDEA-6: Email the buyer when a seller's chat reply goes unread (TikTok-style
-  "‹seller› sent you a message")** — owner's framing (2026-08-31): if a signed-in
-  buyer doesn't come back and read a reply within some window, email them so the
-  conversation isn't lost. Fills the one gap push can't: push only reaches a
-  buyer who granted permission on a device they still have open; email reaches
-  the buyer who closed the tab days ago.
-  What already exists, so this is mostly wiring, not new infrastructure: Resend
-  is live and sending (`supabase/functions/notify-price-alerts/index.ts:159-170`,
-  from `XDrive Alerts <alerts@xdrive.my>`); the trigger data is already stored
-  (`chat_threads.buyer_unread` + `chat_messages.read_at`, migration
-  `20260823b_inapp_chat_spine.sql:64,83`, maintained by the message trigger in
-  `20260830e:43`); and the pg_cron + digest + `last_notified_at` dedup pattern
-  is already proven by the price-alert job.
-  THE BLOCKER, and the reason this can't just be built as asked: most buyers
-  have no email address on file. Guest chat uses Supabase anonymous sign-in, so
-  8 of 13 live chat threads have `buyer_is_anon = true` and only 7 of 13 buyer
-  profiles have an email at all (checked against the live DB 2026-08-31). As
-  specified — signed buyers only — it would reach under half of them, and it
-  misses the exact buyer it's meant for: the guest who closed the tab and has
-  no push subscription either.
-  Suggested shape if picked up: capture the email where the buyer is already
-  standing, the way `price_alerts.email` does (a column on the row, filled at
-  the moment of intent) — the natural moment is the first buyer message, the
-  same beat `BuyerPushPrompt` already owns. Then the cron reads unread threads
-  and emails whoever has an address, anonymous or not, so build the capture
-  step FIRST or the send has almost no audience.
-  Two hard constraints to carry into the build: the email must quote `body_ai`,
-  never `body` (the AI/redaction rule applies to anything leaving the app), and
-  it needs a real unsubscribe link — there is no email-preferences surface
-  anywhere in the app today, and an unread-nag with no opt-out is what gets
-  `alerts@xdrive.my` marked as spam, which would also kill the price alerts.
+## CHAT-EMAIL: verified email on a guest chat + unread-reply notification
+
+Decided 2026-08-31 (moved out of Ideas — was IDEA-6). Goal: a buyer who chats
+and leaves gets an email when the seller replies, TikTok-style ("X sent you a
+message"). Today 8 of 13 live threads have an anonymous buyer and only 7 of 13
+buyer profiles have an email at all, so push alone reaches under half of them.
+
+**The reframe that makes this safe: the EMAIL ADDRESS is the deliverable, not
+the account.** We need somewhere to send a notification. We never need to fuse
+two identities. Everything below follows from that.
+
+Build order — the capture step FIRST, the send second, or the send has almost
+no audience.
+
+### 1. Ask for the email after the buyer's FIRST message (not on open)
+Same slot `src/components/chat/BuyerPushPrompt.jsx` already owns, and it should
+be one prompt with push, not two nags a minute apart. Asking on open is a
+signup wall in front of the thing they came to do and risks losing the message
+itself — which costs a lead to save an email. Declining leaves them a guest and
+the chat keeps working exactly as it does now.
+
+### 2. Verify it with a 6-DIGIT CODE typed into the sheet, never a link
+A confirm link opens a NEW TAB on `/auth/callback` and the chat sheet is gone —
+that is where "seamless" dies. Supabase's email-change template can emit
+`{{ .Token }}` instead of a link and `verifyOtp({ type: 'email_change' })`
+checks it; the template change is a dashboard setting, confirm it before
+building the UI. Unverified addresses must never be stored or emailed: someone
+typing a stranger's address is both an abuse vector and what gets
+`alerts@xdrive.my` marked as spam (which would take the price alerts down too).
+
+### 3. Identity transition — same uid where possible, NEVER a merge
+- Use `supabase.auth.updateUser({ email })` / `linkIdentity`, which upgrades
+  the anonymous user IN PLACE and keeps the same `auth.uid()`. Messages,
+  thread, lead, push subscription and saved cars all carry over with zero
+  migration. Do NOT reuse `signInWithOtp` (`src/pages/BuyerAuthPage.jsx:86`) —
+  it signs into a DIFFERENT user and strands the whole conversation.
+- Email already registered -> `updateUser` fails. Do NOT auto-merge. Re-pointing
+  a conversation onto another account because someone clicked sign-in in that
+  tab is an account-takeover primitive and irreversible. Tell them plainly,
+  offer a normal sign-in for "all your chats in one place", keep the guest
+  thread as-is, and send the notification anyway using the stored address.
+
+### 4. Propagate the new identity (the "smooth transition" half)
+- `profiles.email` will NOT update by itself. The only trigger on `auth.users`
+  is `on_auth_user_created`, INSERT-only (verified in `pg_trigger`). An upgrade
+  is an UPDATE, so add an AFTER UPDATE trigger syncing email + full_name into
+  `profiles`.
+- `chat_threads.buyer_label` is a SNAPSHOT written once by `start_chat_thread`
+  and only refreshed when the buyer reopens. Update `buyer_label` +
+  `buyer_is_anon=false` on ALL of that buyer's threads (max seen live: 4).
+- Backfill `leads.buyer_name` / `buyer_email` — the lead was created with the
+  guest label and a null email (`20260830e:104`). Skip this and the rep sees
+  "Guest 4F2A" forever in the pipeline, This Week and every count. This part is
+  worth more than the email nag itself.
+- SELLER SIDE IS THEN FREE: `useChat.js:150` subscribes to `event:'*'` on
+  `chat_threads` and reloads, so Lite, Premium and the dealer `ChatSheet` all
+  repaint live and the guest badge at `SellerInbox.jsx:79` flips itself. No
+  per-panel work — as long as the thread row is actually updated.
+
+### 5. Lead de-dup on email as well as phone
+`chat_after_message` dedups on phone only (`20260830e:78`), and email sign-in
+gives no phone — so a buyer who already WhatsApp'd becomes two rows for one
+human. Dedup on VERIFIED email only; an unverified one merges a spammer into a
+real customer's record.
+
+### 6. Guest-account spam — per-uid caps do NOT hold
+The 20 msg/min cap (`20260823b:106`) counts per `auth.uid()`, and a spammer
+gets a fresh uid for free from the browser (`useChat.js:175`). Rotation defeats
+it. Layers that actually hold, in order of value:
+  a. CAPTCHA (Turnstile) on anonymous sign-in — Supabase Attack Protection.
+     This is the account-creation layer, where the abuse starts.
+  b. Confirm Supabase's per-IP anon sign-in rate limit is on. Do not rebuild it.
+  c. Step 1's prompt IS the friction: first message free, a second thread or
+     continuing past N messages asks for the email.
+  d. Per-DEALER volume caps in the same shape as the existing 40-chat-leads/hour
+     guard — those don't care how many accounts a spammer makes.
+DO NOT enforce on IP. Malaysian carriers use CGNAT, so thousands of real buyers
+share one address (showroom wifi too); it blocks genuine buyers first and the
+spammer switches network. IP is for spotting abuse, not blocking it.
+
+### 7. The send
+Cron + Resend, same shape as `notify-price-alerts` (that job already owns the
+digest + `last_notified_at` dedup pattern). Reads unread threads
+(`chat_threads.buyer_unread`, `chat_messages.read_at`). Two hard rules: quote
+`body_ai` and NEVER `body`, and ship a real unsubscribe link — there is no
+email-preferences surface anywhere in the app today.
+
+### FOUND WHILE SCOPING — unrelated latent bug, fix before it bites
+`chat_threads.buyer_id -> auth.users ON DELETE CASCADE`, and
+`chat_messages.thread_id -> chat_threads ON DELETE CASCADE`. Deleting an
+anonymous user therefore DELETES THE WHOLE CONVERSATION and the seller's inbox
+row silently disappears. Supabase's own guidance is to purge anonymous users
+periodically. No such cron exists today (checked `cron.job`: jobids 3,4,5,6,7,
+8,9,10,12 — none touch `auth.users`), so this is latent, not live. Before any
+anon-cleanup job is ever added, that FK must become ON DELETE SET NULL with the
+thread keeping its label.
 
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
 
