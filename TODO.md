@@ -1,5 +1,56 @@
 # ShiftOS — Pending Tasks
 
+> **BRANCH IN FLIGHT — `claude/dependabot-alerts-triage-ztsglx` (2026-08-30).**
+> Next session continues on THIS branch, not a fresh one. It carries two commits
+> that are on `staging` and NOT yet on `main`: `fabc7fe` (Dependabot: pdfjs-dist
+> 5->6, vite 5->7) and `a3d90d3` (security sweep of Premium/Lite). Neither has
+> been merged to production. Start with `git fetch origin && git status` and
+> confirm the branch is still ahead of `origin/main` before doing anything else.
+
+## SEC sweep of Salesman Premium + Lite — 2026-08-30
+
+Three findings fixed and pushed; the server half is already LIVE.
+
+- **SEC-TG (fixed + DEPLOYED, v15).** `send-telegram` verified the caller's JWT
+  but never checked the caller had any relationship to the `dealer_id` in the
+  body, then used it to look up a bot token with the service-role key. Any
+  authenticated user — including an anonymous guest buyer, since anonymous
+  sign-in is on for chat — could send arbitrary Telegram messages through
+  ANOTHER dealer's bot, and harvest the bot's `@username` off the `not_started`
+  path by enumerating ids. Now derives the dealer scope from the caller's own
+  profile instead of validating the supplied one, so no version of the call can
+  get it wrong; a mismatched body `dealer_id` returns 403.
+  Deployed as **v15**, `verify_jwt` still false (it does its own auth). Repo and
+  deployed are byte-identical again — the drift trap is closed for this one.
+- **SEC-CACHE (fixed, not yet on prod).** Premium wrote raw lead rows to
+  localStorage and `LEAD_SELECT` is `*`, so buyer IC numbers and home addresses
+  sat in plaintext on disk. Lite had redacted since forever — the helper was a
+  local `const` in Lite, which is exactly why Premium never got it. Now one copy
+  in `src/utils/panelCache.js`, imported by both.
+- **SEC-LOGOUT (fixed, not yet on prod).** Neither panel cleared its cached
+  listings/leads/enquiries/appointments on sign-out, so a shared phone kept the
+  last rep's pipeline. `clearPanelDataCache()` runs on both logouts and on
+  account deletion; non-PII prefs (goal, tour) deliberately survive.
+
+**Still open from the sweep — next session should pick these up:**
+- **SEC-AI-NOTES.** `SalesmanPremium.jsx:1234` sends raw lead `notes` and
+  `buyer_name` to the AI for scoring. `phone` is already reduced to
+  `"present"`/`"missing"`, so someone was thinking about this — `notes` is the
+  remaining gap and is free text a rep typed, which can hold a phone or an IC.
+  Suggested fix: run notes through the same redaction idea as `redact_for_ai`
+  before they leave the browser.
+- **SEC-AI-QUOTA.** That same call omits `feature: "lead_score"`, so it bills the
+  `general` bucket even though `ai-proxy` defines a `lead_score` key. One-line
+  fix, accounting only, not security.
+
+**Checked and found SOUND — do not re-audit these without a reason:** all four
+`get_salesman_*` analytics RPCs embed an ownership predicate; `leads` RLS
+requires `salesman_id = auth.uid()` with a matching WITH CHECK (so the id-only
+lead updates in both panels are NOT exploitable — missing belt-and-braces, not a
+hole); `ai-proxy` pins model/max_tokens server-side and enforces a shared daily
+quota; `set_my_ic` hashes with a per-user salt and nulls the plaintext. No XSS
+sinks, no raw `chat_messages` read, no secrets in either bundle.
+
 ## 💡 Ideas (unrefined — capture only, not scheduled)
 
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
