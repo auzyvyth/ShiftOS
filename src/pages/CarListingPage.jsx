@@ -16,6 +16,14 @@ import { chassisSearch } from '../utils/chassisCodes';
 import { useMarketplaceTracking } from '../hooks/useMarketplaceTracking';
 import useTenant, { isSubdomain, getSubdomain, getStorefrontUrl } from '../hooks/useTenant';
 import { PRICE_STEPS } from '../components/PriceDrumPicker';
+import {
+  BRAND_OPTIONS as BRAND_OPTS, BODY_TYPES, TRANSMISSIONS, FINANCING_TYPES,
+  MILEAGE_OPTIONS as MILEAGE_OPTS, CONDITION_OPTIONS as CONDITION_OPTS,
+  FUEL_TYPES, COLOURS, YEARS,
+  sanitizeBrand, sanitizeBodyType, sanitizeTransmission, sanitizeFinancing,
+  sanitizeState, sanitizeYear, sanitizeQ, sanitizeCondition, sanitizeMileageMax,
+  sanitizeFuelType, sanitizeColour, sanitizeSellerType, sanitizeStr,
+} from '../config/marketplaceConfig';
 import { CAR_DATA } from '../data/carData';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import PriceAlertButton from '../components/PriceAlertButton';
@@ -26,20 +34,14 @@ import { storefront as SF } from '../theme/tokens';
 /* ── Constants ──────────────────────────────────────────────────── */
 const PER_PAGE = 15;
 
-const BRANDS = [
-  'Perodua','Proton','Honda','Toyota','Nissan','Mazda','Mitsubishi','Suzuki',
-  'Subaru','Daihatsu','Hyundai','Kia','BMW','Mercedes-Benz','Mercedes',
-  'Volkswagen','Audi','Porsche','Lexus','Volvo','Tesla','Ford','MG','BYD',
-  'MINI','Chery','Haval','Geely','Jaguar','Land Rover','Ferrari','Lamborghini','Bentley',
-];
-const BRAND_OPTS  = ['Perodua','Proton','Honda','Toyota','Mazda','BMW','Mercedes-Benz','Hyundai','Nissan','Mitsubishi','Kia','Volvo','Lexus','Subaru','Volkswagen','Audi','Suzuki','Daihatsu'];
-const BODY_TYPES  = ['Sedan','SUV','MPV','Hatchback','Coupe','Pickup'];
-const TRANSMISSIONS = ['Auto','Manual'];
-const FINANCING_TYPES = [
-  { value:'loan',          label:'Loan'          },
-  { value:'cash',          label:'Cash Only'     },
-  { value:'sambung_bayar', label:'Sambung Bayar' },
-];
+/* Brands, body types, transmissions, financing, mileage bands, conditions,
+   fuel types, colours, the year range and every sanitiser are IMPORTED from
+   src/config/marketplaceConfig.js — the same whitelists MarketplacePage uses.
+   This file used to carry its own byte-identical copy of all nine lists, so
+   adding a brand in one place silently made that brand unfilterable on
+   /showroom. Only the things that genuinely differ from the marketplace grid
+   stay local: this page's own sort options, CAR_FIELDS (it selects
+   market_avg_price and skips the sambung columns) and the seller pills. */
 const SORT_OPTIONS = [
   { label:'Newest First',       short:'Newest',   value:'newest'      },
   { label:'Price: Low to High', short:'Price ↑',  value:'price_asc'   },
@@ -48,43 +50,32 @@ const SORT_OPTIONS = [
   { label:'Year: Oldest',       short:'Year ↑',   value:'year_asc'    },
   { label:'Lowest Mileage',     short:'Mileage',  value:'mileage_asc' },
 ];
-const MILEAGE_OPTS = [
-  { label:'Under 20,000 km',  value:'20000'  },
-  { label:'Under 50,000 km',  value:'50000'  },
-  { label:'Under 80,000 km',  value:'80000'  },
-  { label:'Under 150,000 km', value:'150000' },
-];
-const CONDITION_OPTS = [
-  { value:'used',  label:'Used'           },
-  { value:'new',   label:'New'            },
-  { value:'recon', label:'Recon / Import' },
-];
-const FUEL_TYPES  = ['Petrol','Diesel','Electric','Hybrid','Mild Hybrid'];
-const COLOURS     = ['White','Black','Silver','Grey','Red','Blue','Brown','Green','Orange','Yellow','Gold','Maroon'];
 const SELLER_TYPES = [{ value:'dealer', label:'Dealer' },{ value:'agent', label:'Agent' }];
-const CUR_YEAR    = new Date().getFullYear();
-const YEARS       = Array.from({ length: CUR_YEAR - 1989 }, (_, i) => CUR_YEAR - i);
 
 const CAR_FIELDS  = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,engine_cc,condition,previous_owners,auction_grade,interior_grade,is_recon,financing_type,images,status,created_at,market_avg_price,seller_role';
 const DEALER_JOIN = 'dealer:profiles!dealer_id(dealership,site_name,subdomain,whatsapp_number,site_logo_url,brand_color,role)';
 
-/* ── Sanitisers ─────────────────────────────────────────────────── */
+/* ── Sanitisers ─────────────────────────────────────────────────────
+   Thin aliases onto the shared ones so the ~40 `san.x(...)` call sites below
+   stay as they are. `price` and `page` are the only real locals: price depends
+   on PRICE_STEPS (which lives in PriceDrumPicker, not the config), and only
+   this grid is paginated. */
 const san = {
-  brand:     v => BRANDS.includes(v) ? v : null,
-  bodyType:  v => BODY_TYPES.includes(v) ? v : null,
-  tx:        v => TRANSMISSIONS.includes(v) ? v : null,
-  financing: v => FINANCING_TYPES.map(f=>f.value).includes(v) ? v : null,
-  state:     v => MY_STATES.includes(v) ? v : null,
+  brand:     sanitizeBrand,
+  bodyType:  sanitizeBodyType,
+  tx:        sanitizeTransmission,
+  financing: sanitizeFinancing,
+  state:     sanitizeState,
   price:     v => { const n=parseInt(v,10); return PRICE_STEPS.some(s=>s.value===String(n)) ? n : null; },
   page:      v => { const n=parseInt(v,10); return Number.isFinite(n)&&n>=1 ? n : 1; },
-  year:      v => { const n=parseInt(v,10); return Number.isFinite(n)&&n>=1990&&n<=CUR_YEAR ? n : null; },
-  q:         v => (!v||typeof v!=='string') ? '' : v.replace(/[%_\\]/g,'').slice(0,60).trim(),
-  condition: v => CONDITION_OPTS.map(c=>c.value).includes(v) ? v : null,
-  mileage:   v => { const n=parseInt(v,10); return [20000,50000,80000,150000].includes(n) ? n : null; },
-  fuelType:  v => FUEL_TYPES.includes(v) ? v : null,
-  colour:    v => COLOURS.includes(v) ? v : null,
-  seller:    v => ['dealer','agent'].includes(v) ? v : null,
-  str:       v => (!v||typeof v!=='string') ? '' : v.replace(/[%_\\]/g,'').slice(0,80).trim(),
+  year:      sanitizeYear,
+  q:         sanitizeQ,
+  condition: sanitizeCondition,
+  mileage:   sanitizeMileageMax,
+  fuelType:  sanitizeFuelType,
+  colour:    sanitizeColour,
+  seller:    sanitizeSellerType,
+  str:       sanitizeStr,
 };
 
 /* ── Price range popover (click → floating min/max picker) ──────── */

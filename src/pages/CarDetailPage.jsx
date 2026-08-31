@@ -63,6 +63,7 @@ import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { estimateRoadTax } from "../utils/roadTax";
 import SellerFeedback from "../components/feedback/SellerFeedback";
 import BuyerChat from "../components/chat/BuyerChat";
+import MarketplaceFooter from "../components/MarketplaceFooter";
 import { cdnImg, cdnSrcSet } from "../utils/img";
 import { toast } from "sonner";
 
@@ -2097,7 +2098,8 @@ export default function CarDetailPage() {
 
         /* ── mobile bar (≤900px) ── */
         @media (max-width: 900px) {
-          .cdp-root { padding-bottom: 74px; }
+          .cdp-root { padding-bottom: 0; }
+          .cdp-footer-slot { padding-bottom: 74px; }
           .cdp-mobile-bar {
             display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 90;
             background: rgba(6,12,20,0.98); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
@@ -4136,6 +4138,16 @@ export default function CarDetailPage() {
           </div>
         )}
 
+      </div>
+
+      {/* The car page is the one a buyer lands on from Google and it had no
+          footer at all — no way back into the marketplace, no internal links
+          out of the highest-value page on the site. MarketplaceFooter renders
+          null on a dealer subdomain, so storefront car pages are unchanged.
+          cdp-root's own 74px bottom padding does not cover anything after it,
+          so the footer needs its own clearance for the fixed mobile bar. */}
+      <div className="cdp-footer-slot">
+        <MarketplaceFooter />
       </div>
 
       {/* ── mobile sticky bar ── */}
