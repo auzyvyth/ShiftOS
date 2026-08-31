@@ -19,6 +19,7 @@ import BodyTypeCarousel from '../components/marketplace/BodyTypeCarousel';
 import HeroCarRow from '../components/marketplace/HeroCarRow';
 import AdvancedSearchModal from '../components/marketplace/AdvancedSearchModal';
 import SkeletonCard from '../components/ui/SkeletonCard';
+import useMarketplaceStats from '../hooks/useMarketplaceStats';
 import {
   BRANDS, BODY_TYPES, TRANSMISSIONS, FINANCING_TYPES, MY_STATES, SORT_OPTIONS,
   YEARS, MILEAGE_OPTIONS, CONDITION_OPTIONS, FUEL_TYPES, COLOURS,
@@ -120,8 +121,9 @@ export default function MarketplacePage() {
   const carouselFetched = useRef(false);
   const heroSearchBarRef = useRef(null);
 
-  /* Stats (fetched once) */
-  const [stats, setStats] = useState({ listings: null, dealers: null, hotDeals: null });
+  /* Stats (fetched once, shared with the header and footer through a module
+     cache, so the three of them run ONE get_marketplace_stats between them). */
+  const { stats } = useMarketplaceStats();
 
   /* ── Analytics: fire store_visit once per session ── */
   useEffect(() => {
@@ -129,20 +131,6 @@ export default function MarketplacePage() {
     if (sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, '1');
     trackEvent(supabase, 'store_visit', { dealer_id: null, metadata: { source: 'organic' } });
-  }, []);
-
-  /* ── Fetch marketplace stats — single RPC instead of 3 queries (one of
-     which downloaded up to 2000 rows just to count distinct dealers) ── */
-  useEffect(() => {
-    async function fetchStats() {
-      const { data } = await supabase.rpc('get_marketplace_stats').maybeSingle();
-      setStats({
-        listings: data?.listings ?? 0,
-        dealers: data?.dealers ?? 0,
-        hotDeals: data?.hot_deals ?? 0,
-      });
-    }
-    fetchStats();
   }, []);
 
   /* ── Hero rows: "All Cars"/"Hot Deals" + "MPV" — fetched eagerly on mount
@@ -169,25 +157,22 @@ export default function MarketplacePage() {
       .then(({ data }) => setRow2Pool(data || []));
   }, []);
 
-  /* Row 1 upgrades to "Hot Deals" the moment any exist. Gated on the actual
-     fetched/filtered rows (not just stats.hotDeals > 0) so the title can
-     never flip over to "Hot Deals" while showing an empty row, if the RPC
-     count and this query ever disagree. There's no dedicated hot-deal
-     system yet — this reuses the same discount-based definition as
-     HomePage.jsx's isHotDeal()/CarCard's hasDiscount (>= 3% off). */
+  /* Row 1 upgrades to "Hot Deals" the moment any exist. Still gated on the
+     actual fetched rows (not just stats.hotDeals > 0) so the title can never
+     flip to "Hot Deals" over an empty row. The >= 3% discount rule now lives
+     in the is_hot_deal column (migration 20260831h) instead of being
+     re-implemented here — the client only sorts. */
   useEffect(() => {
     if (!(stats.hotDeals > 0)) return;
     supabase.from('public_car_listings')
       .select(HERO_ROW_FIELDS)
       .in('status', ['available', 'reserved'])
-      .not('original_price', 'is', null)
-      .gt('original_price', 0)
+      .eq('is_hot_deal', true)
       .order('created_at', { ascending: false })
       .limit(30)
       .then(({ data }) => {
         const discountPct = (c) => (c.original_price - c.selling_price) / c.original_price;
         const hot = (data || [])
-          .filter(c => c.original_price > 0 && c.selling_price > 0 && c.selling_price <= c.original_price * 0.97)
           .sort((a, b) => discountPct(b) - discountPct(a))
           .slice(0, 12);
         if (hot.length > 0) {
@@ -285,7 +270,11 @@ export default function MarketplacePage() {
       if (yearFrom)     query = query.gte('year', yearFrom);
       if (yearTo)       query = query.lte('year', yearTo);
       if (mileageMax)   query = query.lte('mileage', mileageMax);
-      if (hotDeals)     query = query.not('original_price', 'is', null).gt('original_price', 0);
+      // is_hot_deal is a column on public_car_listings (migration 20260831h) --
+      // the ONE definition, shared with the hero row below and with
+      // get_marketplace_stats. It used to be `original_price > 0` here, which
+      // called every car with a recorded list price a deal.
+      if (hotDeals)     query = query.eq('is_hot_deal', true);
       if (condition)    query = query.eq('condition', condition);
       if (transmission) {
         const txVal = transmission === 'Auto' ? ['Auto','Automatic','AT'] : ['Manual','MT'];
@@ -685,20 +674,9 @@ export default function MarketplacePage() {
         @keyframes mp-pulse-ring  { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.3;transform:scale(0.6)} }
 
         /* ── Utility ── */
-        .mp-brand-scroll::-webkit-scrollbar { display:none }
-        .mp-brand-pill:hover  { opacity:.85; transform:translateY(-1px) }
-
-        /* Brand grid */
-        .mp-brand-grid {
-          display: flex;
-          gap: 10px;
-          justify-content: center;
-          flex-wrap: wrap;
-          padding: 8px 0;
-        }
-        @media (max-width: 640px) {
-          .mp-brand-grid { gap: 8px; }
-        }
+        /* .mp-brand-grid / .mp-brand-pill / .mp-brand-scroll lived here for a
+           brand strip that no longer renders; nothing carried those classes.
+           Removed with the footer's dead /showroom#brands link. */
         .mp-reset-btn:hover   { color:#111827 !important; border-color:rgba(0,0,0,.25) !important }
         .mp-chip-x:hover      { opacity:.7 }
         .mp-select:focus      { border-color:rgba(220,38,38,.5) !important; box-shadow:0 0 0 3px rgba(220,38,38,.12) }
@@ -909,6 +887,7 @@ export default function MarketplacePage() {
         onClose={() => setAdvancedOpen(false)}
         heroQ={heroQ}
         heroBudget={heroBudget}
+        currentParams={searchParams}
         onApply={(p) => navigate(`/showroom${p.toString() ? '?' + p : ''}`)}
       />
 

@@ -10,17 +10,30 @@ import { supabase } from '../supabaseClient';
 import SavedCarsPanel from './SavedCarsPanel';
 import AnnouncementBar from './AnnouncementBar';
 import useMarketplaceSettings from '../hooks/useMarketplaceSettings';
+import useMarketplaceStats from '../hooks/useMarketplaceStats';
 import { routeForProfile, isSellerRole } from '../hooks/useRoleRedirect';
 
 export default function MarketplaceHeader({ hideAnnouncement = false }) {
   const [scrolled, setScrolled]     = useState(false);
   const [menuOpen, setMenuOpen]     = useState(false);
   const [mSection, setMSection]     = useState(null);   // mobile accordion open section
+  // Which desktop mega panel is pinned open. The panels used to open on hover
+  // ONLY, so between 980px (where the mobile sheet stops) and a mouse they were
+  // unreachable — a tablet in landscape got the desktop nav with no hover, and
+  // keyboard users could never open them at all. Hover still works; this adds
+  // click and focus.
+  const [megaOpen, setMegaOpen]     = useState(null);
   const [savedOpen, setSavedOpen]   = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ]                   = useState('');
   const { savedIds }                = useSavedCars();
   const { settings }                = useMarketplaceSettings();
+  // Hot Deals is only a nav entry when there is something behind it. The hero
+  // shelf on the marketplace has always been gated this way; the header and
+  // footer were not, so with an empty shelf every "Hot Deals" tap in the site
+  // chrome landed on "No cars match your filters".
+  const { stats }                   = useMarketplaceStats();
+  const hasHotDeals                 = stats.hotDeals > 0;
   // Auth-aware header link. Signed-out → "Sign In". A business user (dealer/
   // salesman/…) → "Dashboard" to their panel. A buyer (session, no business role)
   // → "My Account" (/account). null = not logged in.
@@ -54,9 +67,12 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
   // Mobile sheet only: Browse folds in Hot Deals + Compare so they're not
   // separate top-level rows competing with the CTAs for space. Desktop keeps
   // its own top-nav links for these — different constraint, more room.
+  // `to`, never `href`: the sheet renders any href item as
+  // <a target="_blank" rel="noopener noreferrer"> (that branch exists for the
+  // wa.me partner link), so "Hot Deals" was opening xdrive.my in a SECOND TAB.
   const BROWSE_MOBILE = [
     ...BROWSE,
-    { href: '/?hot_deals=true', Icon: Flame,      label: 'Hot Deals' },
+    ...(hasHotDeals ? [{ to: '/showroom?hot_deals=true', Icon: Flame, label: 'Hot Deals' }] : []),
     { to: '/compare',           Icon: GitCompare, label: 'Compare Cars' },
   ];
 
@@ -94,11 +110,18 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
   }, []);
 
   useEffect(() => {
-    if (!menuOpen && !searchOpen) return;
-    const h = e => { if (rootRef.current && !rootRef.current.contains(e.target)) { setMenuOpen(false); setSearchOpen(false); } };
+    if (!menuOpen && !searchOpen && !megaOpen) return;
+    const h = e => { if (rootRef.current && !rootRef.current.contains(e.target)) { setMenuOpen(false); setSearchOpen(false); setMegaOpen(null); } };
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
-  }, [menuOpen, searchOpen]);
+  }, [menuOpen, searchOpen, megaOpen]);
+
+  useEffect(() => {
+    if (!megaOpen) return;
+    const onKey = e => { if (e.key === 'Escape') setMegaOpen(null); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [megaOpen]);
 
   useEffect(() => { if (searchOpen) searchInputRef.current?.focus(); }, [searchOpen]);
 
@@ -119,7 +142,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
     setSearchOpen(false); setMenuOpen(false);
   };
 
-  const ItemRow = ({ Icon, label, desc, to, href }) => {
+  const ItemRow = ({ Icon, label, desc, to, href, onNavigate }) => {
     const inner = (
       <>
         <span className="mh-row-ico"><Icon size={19} /></span>
@@ -131,30 +154,39 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
       </>
     );
     return href
-      ? <a href={href} target="_blank" rel="noopener noreferrer" className="mh-row">{inner}</a>
-      : <Link to={to} className="mh-row">{inner}</Link>;
+      ? <a href={href} target="_blank" rel="noopener noreferrer" className="mh-row" onClick={onNavigate}>{inner}</a>
+      : <Link to={to} className="mh-row" onClick={onNavigate}>{inner}</Link>;
   };
 
-  const MegaNav = ({ id, label, items, accent, align = 'left' }) => (
-    <div className="mh-nav-item">
-      <button className="mh-nav-trigger" aria-haspopup="true">{label} <ChevronDown size={14} className="mh-chev" /></button>
-      <div className={`mh-menu${align === 'right' ? ' mh-menu-r' : ''}`}>
-        <div className="mh-mega">
-          <div className="mh-mega-grid">
-            {items.map(it => <ItemRow key={it.label} {...it} />)}
-          </div>
-          {accent && (
-            <div className="mh-mega-promo">
-              <p className="mh-promo-eyebrow">{accent.eyebrow}</p>
-              <p className="mh-promo-title">{accent.title}</p>
-              <p className="mh-promo-sub">{accent.sub}</p>
-              <Link to={accent.to} className="mh-promo-cta">{accent.cta} <ArrowUpRight size={14} /></Link>
+  const MegaNav = ({ id, label, items, accent, align = 'left' }) => {
+    const open = megaOpen === id;
+    const close = () => setMegaOpen(null);
+    return (
+      <div className={`mh-nav-item${open ? ' mh-open' : ''}`}>
+        <button
+          className="mh-nav-trigger"
+          aria-haspopup="true"
+          aria-expanded={open}
+          onClick={() => setMegaOpen(o => (o === id ? null : id))}
+        >{label} <ChevronDown size={14} className="mh-chev" /></button>
+        <div className={`mh-menu${align === 'right' ? ' mh-menu-r' : ''}`}>
+          <div className="mh-mega">
+            <div className="mh-mega-grid">
+              {items.map(it => <ItemRow key={it.label} {...it} onNavigate={close} />)}
             </div>
-          )}
+            {accent && (
+              <div className="mh-mega-promo">
+                <p className="mh-promo-eyebrow">{accent.eyebrow}</p>
+                <p className="mh-promo-title">{accent.title}</p>
+                <p className="mh-promo-sub">{accent.sub}</p>
+                <Link to={accent.to} className="mh-promo-cta" onClick={close}>{accent.cta} <ArrowUpRight size={14} /></Link>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <>
@@ -173,17 +205,22 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
         .mh-nav { display:flex; align-items:center; gap:2px; }
         .mh-nav-item { position:relative; }
         .mh-nav-link, .mh-nav-trigger { display:flex; align-items:center; gap:6px; color:#3f4654; font-size:14px; font-weight:600; text-decoration:none; padding:9px 13px; border-radius:10px; background:none; border:none; cursor:pointer; font-family:inherit; white-space:nowrap; transition:background .14s,color .14s; }
-        .mh-nav-link:hover, .mh-nav-trigger:hover, .mh-nav-item:hover .mh-nav-trigger { background:#F5F3EE; color:#0f1115; }
+        .mh-nav-link:hover, .mh-nav-trigger:hover, .mh-nav-item:hover .mh-nav-trigger, .mh-nav-item.mh-open .mh-nav-trigger { background:#F5F3EE; color:#0f1115; }
         .mh-nav-link.hot { color:#ea580c; }
         .mh-nav-link.hot:hover, .mh-nav-link.hot.active { background:#fff7ed; color:#c2410c; }
         .mh-chev { transition:transform .2s; }
-        .mh-nav-item:hover .mh-chev { transform:rotate(180deg); }
+        .mh-nav-item:hover .mh-chev, .mh-nav-item.mh-open .mh-chev { transform:rotate(180deg); }
 
         /* mega */
         .mh-menu { position:absolute; top:100%; left:0; padding-top:13px; display:none; z-index:200; }
         /* Right-side triggers open leftward so the panel can't run off-screen */
         .mh-menu-r { left:auto; right:0; }
-        .mh-nav-item:hover .mh-menu { display:block; }
+        /* Three ways in, not one: hover (mouse), .mh-open (tap/click — the only
+           way on a hoverless tablet above the 980px mobile breakpoint), and
+           focus-within (keyboard tabbing). */
+        .mh-nav-item:hover .mh-menu,
+        .mh-nav-item:focus-within .mh-menu,
+        .mh-nav-item.mh-open .mh-menu { display:block; }
         .mh-mega { background:#fff; border:1px solid #ECEAE3; border-radius:20px; box-shadow:0 26px 70px rgba(15,23,42,.2); padding:14px; display:flex; gap:12px; animation:mhFade .17s ease; }
         @keyframes mhFade { from{opacity:0;transform:translateY(-7px);} to{opacity:1;transform:none;} }
         .mh-mega-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px; width:520px; }
@@ -261,7 +298,11 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
           {/* LEFT — links + mega dropdowns */}
           <nav className="mh-nav">
             <MegaNav id="browse" label="Browse Cars" items={BROWSE} accent={{ eyebrow:'XDrive', title:'10,000+ cars, one place', sub:'New, used and recon from trusted dealers across Malaysia.', to:'/showroom', cta:'Browse all' }} />
-            <a href="/?hot_deals=true" className={`mh-nav-link hot${isHotDeals ? ' active' : ''}`}><Flame size={15} /> Hot Deals</a>
+            {hasHotDeals && (
+              /* <Link>, not <a href>: an <a> to an in-app route reloads the
+                 whole SPA. */
+              <Link to="/showroom?hot_deals=true" className={`mh-nav-link hot${isHotDeals ? ' active' : ''}`}><Flame size={15} /> Hot Deals</Link>
+            )}
             <Link to="/compare" className="mh-nav-link"><GitCompare size={15} /> Compare</Link>
             <Link to="/for-salesmen" className="mh-nav-link">Salesman Lite</Link>
             <MegaNav id="dealers" label="For Dealers" align="right" items={DEALERS} accent={{ eyebrow:'ShiftOS DMS', title:'Run your dealership', sub:'Listings, leads CRM, F&I and revenue analytics in one system.', to:'/shiftos', cta:'Start free trial' }} />

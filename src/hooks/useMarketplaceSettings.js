@@ -50,7 +50,14 @@ export default function useMarketplaceSettings() {
         .eq('id', SINGLETON_ID)
         .maybeSingle()
         .then(({ data }) => {
-          _cache = data || MARKETPLACE_FALLBACK;
+          // Merge PER FIELD, not all-or-nothing. `data || FALLBACK` only caught
+          // a missing row: with the row present but one column null, the null
+          // won and the footer rendered `https://wa.me/null` for support, or an
+          // empty tagline. Any null/empty column falls back on its own.
+          _cache = { ...MARKETPLACE_FALLBACK };
+          for (const [k, v] of Object.entries(data || {})) {
+            if (v !== null && v !== undefined && v !== '') _cache[k] = v;
+          }
           return _cache;
         });
     }

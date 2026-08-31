@@ -75,7 +75,10 @@ Project ID: lemdkdizdlcirhbzqlos
 ## Design system
 - Background: #080C14 / bg-gray-950
 - Accent: red-600 / #dc2626
-- Font: system-ui (body — native OS font, no webfont), Bebas Neue (display)
+- Font: `var(--xd-font-body)` (src/index.css) = Outfit, falling back to system-ui.
+  Bebas Neue for display/headings. Do NOT hardcode `system-ui, sans-serif` on a
+  public surface — CarDetailPage did, and it was the only marketplace page not
+  in Outfit, so walking from the marketplace into a car changed the typeface.
 - Cards: bg-gray-900, border-gray-800
 - Public marketplace surfaces: read `DESIGN.md` (tokens, scales, grid, anti-slop rules) before any public-facing UI change.
 
@@ -85,7 +88,14 @@ Project ID: lemdkdizdlcirhbzqlos
 - Prefer one clear primary action visible; hide the long tail behind a kebab/overflow menu.
 
 ## Key files
-- src/pages/HomePage.jsx — public XDrive marketplace
+- src/pages/MarketplacePage.jsx — THE public XDrive marketplace (`/` on xdrive.my).
+  App.jsx RootRoute picks it synchronously by hostname.
+- src/pages/HomePage.jsx — the DEALER SUBDOMAIN storefront (`/` on <sub>.xdrive.my).
+  It is not the marketplace; it uses Header/Footer, not MarketplaceHeader/Footer.
+- src/pages/CarListingPage.jsx — the browse grid: `/showroom` (marketplace) and
+  `/cars` (subdomain). Its filter whitelists + sanitisers are IMPORTED from
+  src/config/marketplaceConfig.js — never re-declare them here, they were
+  duplicated once and the copies are what drift.
 - src/pages/CarDetailPage.jsx — single car listing page (has "What's Included" services strip)
 - src/pages/SalesmanPanel.jsx — salesman role dashboard (file: Salesmanpanel.jsx)
 - src/pages/DashboardPage.jsx — owner/admin dashboard (see nav tabs below)
@@ -260,6 +270,28 @@ service_visits (dealer_id, package_id, customer_id, visited_on, notes, logged_by
 Keys: protection, tint, window_tint, warranty, insurance, road_tax, service, accessories, workshop, other
 Usage: import { getCategoryCfg } from '../utils/serviceCategories'
 Each entry: { icon: LucideComponent, color: hex, twColor: tailwind-class, label: string }
+
+## Marketplace — one definition per question
+- **"Hot deal" is `public_car_listings.is_hot_deal`** (selling_price <= 97% of
+  original_price, migration 20260831h). The grids, the hero shelf and
+  `get_marketplace_stats()` all read that one column. It is a COLUMN because
+  PostgREST cannot compare two columns in a filter — which is exactly why the
+  grids had drifted to a looser `original_price > 0` test that called every car
+  with a recorded list price a deal. Do not re-implement the threshold client-side.
+- **Any nav entry point for a filtered view must be gated on that view having
+  rows.** `useMarketplaceStats()` (module-cached, shared by MarketplaceHeader,
+  MarketplaceFooter and MarketplacePage — one RPC between the three) exists for
+  this. An always-visible "Hot Deals" link over an empty filter is a dead end,
+  and it shipped that way.
+- **A marketplace card's seller type reads `seller_role` on the view, never the
+  `dealer:profiles!dealer_id` embed.** Anon cannot read `profiles`, so that
+  embed is null for every logged-out buyer; a filter on it silently matches
+  everything. Rule: role 'salesman' = "Agent", everything else = "Dealer" —
+  same rule in the query, the chip and ShowroomCard's badge.
+- The marketplace header/footer live on a LIGHT surface. `body` is `#080C14`,
+  so a translucent background in the site chrome composites over near-black —
+  which is how the announcement bar ended up a dark band above a white header.
+  Paint an explicit light colour, and don't reuse a grey across both surfaces.
 
 ## Multi-tenancy
 All queries scoped by dealer_id via RLS + frontend .eq('dealer_id', dealerId)
