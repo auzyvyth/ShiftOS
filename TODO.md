@@ -199,6 +199,38 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   as required. Dealer Group (RM2999) is intentionally not listed — it has no
   onboarding route.
 
+- **IDEA-6: Email the buyer when a seller's chat reply goes unread (TikTok-style
+  "‹seller› sent you a message")** — owner's framing (2026-08-31): if a signed-in
+  buyer doesn't come back and read a reply within some window, email them so the
+  conversation isn't lost. Fills the one gap push can't: push only reaches a
+  buyer who granted permission on a device they still have open; email reaches
+  the buyer who closed the tab days ago.
+  What already exists, so this is mostly wiring, not new infrastructure: Resend
+  is live and sending (`supabase/functions/notify-price-alerts/index.ts:159-170`,
+  from `XDrive Alerts <alerts@xdrive.my>`); the trigger data is already stored
+  (`chat_threads.buyer_unread` + `chat_messages.read_at`, migration
+  `20260823b_inapp_chat_spine.sql:64,83`, maintained by the message trigger in
+  `20260830e:43`); and the pg_cron + digest + `last_notified_at` dedup pattern
+  is already proven by the price-alert job.
+  THE BLOCKER, and the reason this can't just be built as asked: most buyers
+  have no email address on file. Guest chat uses Supabase anonymous sign-in, so
+  8 of 13 live chat threads have `buyer_is_anon = true` and only 7 of 13 buyer
+  profiles have an email at all (checked against the live DB 2026-08-31). As
+  specified — signed buyers only — it would reach under half of them, and it
+  misses the exact buyer it's meant for: the guest who closed the tab and has
+  no push subscription either.
+  Suggested shape if picked up: capture the email where the buyer is already
+  standing, the way `price_alerts.email` does (a column on the row, filled at
+  the moment of intent) — the natural moment is the first buyer message, the
+  same beat `BuyerPushPrompt` already owns. Then the cron reads unread threads
+  and emails whoever has an address, anonymous or not, so build the capture
+  step FIRST or the send has almost no audience.
+  Two hard constraints to carry into the build: the email must quote `body_ai`,
+  never `body` (the AI/redaction rule applies to anything leaving the app), and
+  it needs a real unsubscribe link — there is no email-preferences surface
+  anywhere in the app today, and an unread-nag with no opt-out is what gets
+  `alerts@xdrive.my` marked as spam, which would also kill the price alerts.
+
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
 
 - **ACT-TRIAL-RESET: the Premium test account is deliberately left expired.**
