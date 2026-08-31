@@ -89,6 +89,11 @@ function Bubble({ msg, mine, t }) {
 
 export default function ChatThread({
   threadId, role, theme = 'light', headerName, headerSub, headerRight = null,
+  // Rendered directly under the header, inside the thread's own border. For a
+  // strip a header button toggles (the pipeline stage) — an absolutely
+  // positioned popover would be clipped by this component's overflow:hidden,
+  // and portalling a popup this small is more machinery than it is worth.
+  headerBelow = null,
   showPrivacyNote = false, height = 460, aiAssist = false, bare = false,
   // /choose-plan is the real salesman plan picker. NOT '/upgrade' — that path
   // has no route and falls through to NotFoundPage.
@@ -275,6 +280,8 @@ export default function ChatThread({
           {headerRight}
         </div>
       )}
+
+      {headerBelow}
 
       {showPrivacyNote && (
         <div style={{ display:'flex', gap:8, padding:'9px 14px', background:'rgba(217,119,6,0.10)', borderBottom:`1px solid ${t.border}`, flexShrink:0 }}>

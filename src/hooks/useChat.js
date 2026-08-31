@@ -129,7 +129,7 @@ export function useChatThreads({ salesmanId = null, dealerId = null }) {
     if (!salesmanId && !dealerId) { setThreads([]); setLoading(false); return; }
     let q = supabase
       .from('chat_threads')
-      .select('id, listing_id, buyer_label, buyer_is_anon, buyer_id, status, created_at, last_message_at, last_sender_role, seller_unread, lead_id, listing:listing_id(brand, model, year, selling_price, images)')
+      .select('id, listing_id, buyer_label, buyer_is_anon, buyer_id, status, created_at, last_message_at, last_sender_role, seller_unread, lead_id, listing:listing_id(brand, model, year, selling_price, images), lead:lead_id(id, stage)')
       .order('last_message_at', { ascending: false, nullsFirst: false })
       .limit(200);
     q = salesmanId ? q.eq('salesman_id', salesmanId) : q.eq('dealer_id', dealerId);

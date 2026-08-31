@@ -199,102 +199,45 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   as required. Dealer Group (RM2999) is intentionally not listed — it has no
   onboarding route.
 
-## CHAT-EMAIL: verified email on a guest chat + unread-reply notification
+## CHAT-EMAIL — BUILT 2026-08-31 (see CLAUDE.md for the rules)
 
-Decided 2026-08-31 (moved out of Ideas — was IDEA-6). Goal: a buyer who chats
-and leaves gets an email when the seller replies, TikTok-style ("X sent you a
-message"). Today 8 of 13 live threads have an anonymous buyer and only 7 of 13
-buyer profiles have an email at all, so push alone reaches under half of them.
+Shipped on `claude/buyer-notification-emails-n0yv8d`. Backend is LIVE on the
+production Supabase project; the frontend is only on the branch.
 
-**The reframe that makes this safe: the EMAIL ADDRESS is the deliverable, not
-the account.** We need somewhere to send a notification. We never need to fuse
-two identities. Everything below follows from that.
+Live already: `sync_identity_from_auth_user` (auth.users AFTER UPDATE),
+`chat_after_message` email de-dup, `email_unsubscribe`, `cron_key_matches`,
+`profiles.notify_email_opt_out` / `notify_unsub_token`,
+`chat_threads.buyer_email_notified_at`, edge function `notify-chat-unread` v2,
+cron jobid 13 (*/30). Existing unread threads were stamped as already-notified
+so the first run cannot email anyone about days-old replies.
 
-Build order — the capture step FIRST, the send second, or the send has almost
-no audience.
+**BLOCKED ON TWO SUPABASE DASHBOARD SETTINGS — the capture flow cannot work
+until these are done:**
+1. Auth -> Email Templates -> "Change Email Address": the body must include
+   `{{ .Token }}` (the 6-digit code). While it only carries a link, a buyer has
+   no code to type — the prompt falls back to the cross-tab listener, which only
+   works if they open the link in the same browser.
+2. Auth -> Attack Protection -> turn on CAPTCHA (Turnstile). This is the guard
+   against guest-account spam; per-user rate limits are defeated by rotating
+   anonymous sign-ins, which cost a spammer nothing.
 
-### 1. Ask for the email after the buyer's FIRST message (not on open)
-Same slot `src/components/chat/BuyerPushPrompt.jsx` already owns, and it should
-be one prompt with push, not two nags a minute apart. Asking on open is a
-signup wall in front of the thing they came to do and risks losing the message
-itself — which costs a lead to save an email. Declining leaves them a guest and
-the chat keeps working exactly as it does now.
-
-### 2. Verify it with a 6-DIGIT CODE typed into the sheet, never a link
-A confirm link opens a NEW TAB on `/auth/callback` and the chat sheet is gone —
-that is where "seamless" dies. Supabase's email-change template can emit
-`{{ .Token }}` instead of a link and `verifyOtp({ type: 'email_change' })`
-checks it; the template change is a dashboard setting, confirm it before
-building the UI. Unverified addresses must never be stored or emailed: someone
-typing a stranger's address is both an abuse vector and what gets
-`alerts@xdrive.my` marked as spam (which would take the price alerts down too).
-
-### 3. Identity transition — same uid where possible, NEVER a merge
-- Use `supabase.auth.updateUser({ email })` / `linkIdentity`, which upgrades
-  the anonymous user IN PLACE and keeps the same `auth.uid()`. Messages,
-  thread, lead, push subscription and saved cars all carry over with zero
-  migration. Do NOT reuse `signInWithOtp` (`src/pages/BuyerAuthPage.jsx:86`) —
-  it signs into a DIFFERENT user and strands the whole conversation.
-- Email already registered -> `updateUser` fails. Do NOT auto-merge. Re-pointing
-  a conversation onto another account because someone clicked sign-in in that
-  tab is an account-takeover primitive and irreversible. Tell them plainly,
-  offer a normal sign-in for "all your chats in one place", keep the guest
-  thread as-is, and send the notification anyway using the stored address.
-
-### 4. Propagate the new identity (the "smooth transition" half)
-- `profiles.email` will NOT update by itself. The only trigger on `auth.users`
-  is `on_auth_user_created`, INSERT-only (verified in `pg_trigger`). An upgrade
-  is an UPDATE, so add an AFTER UPDATE trigger syncing email + full_name into
-  `profiles`.
-- `chat_threads.buyer_label` is a SNAPSHOT written once by `start_chat_thread`
-  and only refreshed when the buyer reopens. Update `buyer_label` +
-  `buyer_is_anon=false` on ALL of that buyer's threads (max seen live: 4).
-- Backfill `leads.buyer_name` / `buyer_email` — the lead was created with the
-  guest label and a null email (`20260830e:104`). Skip this and the rep sees
-  "Guest 4F2A" forever in the pipeline, This Week and every count. This part is
-  worth more than the email nag itself.
-- SELLER SIDE IS THEN FREE: `useChat.js:150` subscribes to `event:'*'` on
-  `chat_threads` and reloads, so Lite, Premium and the dealer `ChatSheet` all
-  repaint live and the guest badge at `SellerInbox.jsx:79` flips itself. No
-  per-panel work — as long as the thread row is actually updated.
-
-### 5. Lead de-dup on email as well as phone
-`chat_after_message` dedups on phone only (`20260830e:78`), and email sign-in
-gives no phone — so a buyer who already WhatsApp'd becomes two rows for one
-human. Dedup on VERIFIED email only; an unverified one merges a spammer into a
-real customer's record.
-
-### 6. Guest-account spam — per-uid caps do NOT hold
-The 20 msg/min cap (`20260823b:106`) counts per `auth.uid()`, and a spammer
-gets a fresh uid for free from the browser (`useChat.js:175`). Rotation defeats
-it. Layers that actually hold, in order of value:
-  a. CAPTCHA (Turnstile) on anonymous sign-in — Supabase Attack Protection.
-     This is the account-creation layer, where the abuse starts.
-  b. Confirm Supabase's per-IP anon sign-in rate limit is on. Do not rebuild it.
-  c. Step 1's prompt IS the friction: first message free, a second thread or
-     continuing past N messages asks for the email.
-  d. Per-DEALER volume caps in the same shape as the existing 40-chat-leads/hour
-     guard — those don't care how many accounts a spammer makes.
-DO NOT enforce on IP. Malaysian carriers use CGNAT, so thousands of real buyers
-share one address (showroom wifi too); it blocks genuine buyers first and the
-spammer switches network. IP is for spotting abuse, not blocking it.
-
-### 7. The send
-Cron + Resend, same shape as `notify-price-alerts` (that job already owns the
-digest + `last_notified_at` dedup pattern). Reads unread threads
-(`chat_threads.buyer_unread`, `chat_messages.read_at`). Two hard rules: quote
-`body_ai` and NEVER `body`, and ship a real unsubscribe link — there is no
-email-preferences surface anywhere in the app today.
-
-### FOUND WHILE SCOPING — unrelated latent bug, fix before it bites
-`chat_threads.buyer_id -> auth.users ON DELETE CASCADE`, and
-`chat_messages.thread_id -> chat_threads ON DELETE CASCADE`. Deleting an
-anonymous user therefore DELETES THE WHOLE CONVERSATION and the seller's inbox
-row silently disappears. Supabase's own guidance is to purge anonymous users
-periodically. No such cron exists today (checked `cron.job`: jobids 3,4,5,6,7,
-8,9,10,12 — none touch `auth.users`), so this is latent, not live. Before any
-anon-cleanup job is ever added, that FK must become ON DELETE SET NULL with the
-thread keeping its label.
+**Still open, deliberately not built:**
+- **The collision case has no email channel.** A buyer whose address already has
+  an account is declined (no merge, on purpose) and therefore gets no unread
+  emails on that thread. The safe way to cover it is a one-time claim token
+  minted in the anon session and redeemed after a real sign-in
+  (`claim_guest_threads(token)`) — proof of both sides, no takeover surface.
+  Only worth building if that case turns out to be common.
+- **Per-dealer volume caps on threads/messages** in the shape of the existing
+  40-chat-leads/hour guard. Per-uid caps do not hold against account rotation.
+- **ACT-VERIFY-CHAT-EMAIL.** The send path is verified end to end for auth and
+  query (cron key 200, wrong key 401, `{"sent":0}` with the backlog suppressed)
+  but no email has actually been delivered yet — nothing qualified. Reply to a
+  buyer thread, wait 30 min, confirm the email arrives and the unsubscribe link
+  works.
+- Never run `npm run build` expecting it to pass in a web session: this sandbox
+  cannot `npm install` (the proxy blocks `cdn.sheetjs.com`, an `xlsx`
+  dependency). Staging is the first real build.
 
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
 

@@ -8523,6 +8523,8 @@ export default function SalesmanLite() {
               theme="dark"
               aiAssist={false}
               aiUpgrade
+              fullHeight
+              bottomInset={isMobile ? 80 : 24}
             />
           ))}
           {activeTab === "services" && (

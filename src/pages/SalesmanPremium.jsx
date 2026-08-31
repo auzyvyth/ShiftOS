@@ -6201,7 +6201,7 @@ export default function SalesmanPremium() {
  palette, so without theme="dark" the whole chat tab rendered white
  on a #080a12 page. Same component, same props Lite passes, minus
  the upgrade strip (Premium has the AI bar for real). */}
- <SellerInbox salesmanId={userId} theme="dark" aiAssist={isPremium} aiUpgrade={!isPremium} />
+ <SellerInbox salesmanId={userId} theme="dark" aiAssist={isPremium} aiUpgrade={!isPremium} fullHeight bottomInset={24} />
  </Suspense>
  )}
  {activeTab === "sold" && renderSold()}
