@@ -1,11 +1,17 @@
 # ShiftOS — Pending Tasks
 
-> **BRANCH IN FLIGHT — `claude/dependabot-alerts-triage-ztsglx` (2026-08-30).**
-> Next session continues on THIS branch, not a fresh one. It carries two commits
-> that are on `staging` and NOT yet on `main`: `fabc7fe` (Dependabot: pdfjs-dist
-> 5->6, vite 5->7) and `a3d90d3` (security sweep of Premium/Lite). Neither has
-> been merged to production. Start with `git fetch origin && git status` and
-> confirm the branch is still ahead of `origin/main` before doing anything else.
+> **NO BRANCH IN FLIGHT — start fresh off `origin/main` (2026-08-31).**
+> The previous note here said to continue on `claude/dependabot-alerts-triage-ztsglx`
+> because it carried `fabc7fe` (Dependabot: pdfjs-dist 5->6, vite 5->7) and
+> `a3d90d3` (security sweep of Premium/Lite) that were not yet on `main`. Both
+> shipped since, in PRs #341/#342, and `main` is at `8589137`.
+>
+> That branch still LOOKS three commits ahead of `main` by hash — squash-merge
+> drift, exactly the trap in CLAUDE.md. Checked by CONTENT instead: `main` has
+> `pdfjs-dist ^6.3.289`, `vite ^7.3.6` and `src/utils/panelCache.js`, so all of
+> it is live. `git diff origin/main <that branch>` is 2898 deletions — the
+> branch is BEHIND `main`, not ahead. Do not build on it and do not merge it;
+> it would revert the last three PRs. Branch off `origin/main`.
 
 ## SEC sweep of Salesman Premium + Lite — 2026-08-30
 
