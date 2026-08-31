@@ -534,12 +534,23 @@ export default function CarListingPage() {
       if (yearFrom)     query = query.gte('year', yearFrom);
       if (yearTo)       query = query.lte('year', yearTo);
       if (mileageMax)   query = query.lte('mileage', mileageMax);
-      if (hotDeals)     query = query.not('original_price','is',null).gt('original_price',0);
+      // One definition, shared with the marketplace grid, the hero row and
+      // get_marketplace_stats — see migration 20260831h.
+      if (hotDeals)     query = query.eq('is_hot_deal', true);
       if (condition)    query = query.eq('condition', condition);
       if (transmission) query = query.in('transmission', transmission==='Auto' ? ['Auto','Automatic','AT'] : ['Manual','MT']);
       if (fuelType)     query = query.eq('fuel_type', fuelType);
       if (colour)       query = query.ilike('colour', `%${colour}%`);
-      if (isMarketplace && sellerType) query = query.filter('profiles!dealer_id.role','eq', sellerType==='agent'?'salesman':'dealer');
+      // seller_role is a real column on public_car_listings. This used to filter
+      // the EMBEDDED profile (`profiles!dealer_id.role`), which could not work:
+      // the embed is aliased `dealer:` in DEALER_JOIN, anon cannot read profiles
+      // at all (so the embed is null for every logged-out buyer), and a
+      // non-inner embedded filter does not restrict top-level rows anyway — so
+      // picking Dealer or Agent either errored or quietly returned everything.
+      // Mirror the marketplace grid exactly: role 'salesman' reads as "Agent",
+      // everything else as "Dealer", the same rule ShowroomCard's badge uses.
+      if (isMarketplace && sellerType === 'agent')       query = query.eq('seller_role', 'salesman');
+      else if (isMarketplace && sellerType === 'dealer') query = query.neq('seller_role', 'salesman');
 
       if (sort==='price_asc')    query = query.order('selling_price', { ascending:true });
       else if (sort==='price_desc')  query = query.order('selling_price', { ascending:false });

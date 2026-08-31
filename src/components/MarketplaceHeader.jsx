@@ -10,6 +10,7 @@ import { supabase } from '../supabaseClient';
 import SavedCarsPanel from './SavedCarsPanel';
 import AnnouncementBar from './AnnouncementBar';
 import useMarketplaceSettings from '../hooks/useMarketplaceSettings';
+import useMarketplaceStats from '../hooks/useMarketplaceStats';
 import { routeForProfile, isSellerRole } from '../hooks/useRoleRedirect';
 
 export default function MarketplaceHeader({ hideAnnouncement = false }) {
@@ -21,6 +22,12 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
   const [q, setQ]                   = useState('');
   const { savedIds }                = useSavedCars();
   const { settings }                = useMarketplaceSettings();
+  // Hot Deals is only a nav entry when there is something behind it. The hero
+  // shelf on the marketplace has always been gated this way; the header and
+  // footer were not, so with an empty shelf every "Hot Deals" tap in the site
+  // chrome landed on "No cars match your filters".
+  const { stats }                   = useMarketplaceStats();
+  const hasHotDeals                 = stats.hotDeals > 0;
   // Auth-aware header link. Signed-out → "Sign In". A business user (dealer/
   // salesman/…) → "Dashboard" to their panel. A buyer (session, no business role)
   // → "My Account" (/account). null = not logged in.
@@ -54,9 +61,12 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
   // Mobile sheet only: Browse folds in Hot Deals + Compare so they're not
   // separate top-level rows competing with the CTAs for space. Desktop keeps
   // its own top-nav links for these — different constraint, more room.
+  // `to`, never `href`: the sheet renders any href item as
+  // <a target="_blank" rel="noopener noreferrer"> (that branch exists for the
+  // wa.me partner link), so "Hot Deals" was opening xdrive.my in a SECOND TAB.
   const BROWSE_MOBILE = [
     ...BROWSE,
-    { href: '/?hot_deals=true', Icon: Flame,      label: 'Hot Deals' },
+    ...(hasHotDeals ? [{ to: '/showroom?hot_deals=true', Icon: Flame, label: 'Hot Deals' }] : []),
     { to: '/compare',           Icon: GitCompare, label: 'Compare Cars' },
   ];
 
@@ -261,7 +271,11 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
           {/* LEFT — links + mega dropdowns */}
           <nav className="mh-nav">
             <MegaNav id="browse" label="Browse Cars" items={BROWSE} accent={{ eyebrow:'XDrive', title:'10,000+ cars, one place', sub:'New, used and recon from trusted dealers across Malaysia.', to:'/showroom', cta:'Browse all' }} />
-            <a href="/?hot_deals=true" className={`mh-nav-link hot${isHotDeals ? ' active' : ''}`}><Flame size={15} /> Hot Deals</a>
+            {hasHotDeals && (
+              /* <Link>, not <a href>: an <a> to an in-app route reloads the
+                 whole SPA. */
+              <Link to="/showroom?hot_deals=true" className={`mh-nav-link hot${isHotDeals ? ' active' : ''}`}><Flame size={15} /> Hot Deals</Link>
+            )}
             <Link to="/compare" className="mh-nav-link"><GitCompare size={15} /> Compare</Link>
             <Link to="/for-salesmen" className="mh-nav-link">Salesman Lite</Link>
             <MegaNav id="dealers" label="For Dealers" align="right" items={DEALERS} accent={{ eyebrow:'ShiftOS DMS', title:'Run your dealership', sub:'Listings, leads CRM, F&I and revenue analytics in one system.', to:'/shiftos', cta:'Start free trial' }} />

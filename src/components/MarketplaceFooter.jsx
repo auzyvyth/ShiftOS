@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { MessageCircle, Instagram, Facebook, Mail, Shield, Zap, BookOpen, Car, Users, BarChart3, ArrowUpRight, ChevronDown } from 'lucide-react';
 import { isSubdomain } from '../hooks/useTenant';
 import useMarketplaceSettings from '../hooks/useMarketplaceSettings';
+import useMarketplaceStats from '../hooks/useMarketplaceStats';
 import { PLAN_CONFIG } from '../utils/planConfig';
 import { openConsentSettings } from '../utils/consent';
 
@@ -30,6 +31,8 @@ const tierCaps = (k) => {
 
 export default function MarketplaceFooter() {
   const { settings, copyright } = useMarketplaceSettings();
+  // Same gate as the header: no deals, no "Hot Deals" link. See useMarketplaceStats.
+  const { stats } = useMarketplaceStats();
   const [openTier, setOpenTier] = useState(null);
 
   if (isSubdomain()) return null;
@@ -39,8 +42,11 @@ export default function MarketplaceFooter() {
       heading: 'For Buyers',
       links: [
         { label: 'Browse All Cars',    to: '/showroom' },
-        { label: 'Search by Brand',    to: '/showroom#brands' },
-        { label: 'Hot Deals',          to: '/showroom?hot_deals=true' },
+        // "Search by Brand" pointed at /showroom#brands. There is no #brands
+        // element anywhere — the brand strip it was written for was removed —
+        // so it dropped the buyer at the top of /showroom and did nothing.
+        // Removed rather than re-pointed at /showroom, which is the row above.
+        ...(stats.hotDeals > 0 ? [{ label: 'Hot Deals', to: '/showroom?hot_deals=true' }] : []),
         { label: 'Compare Cars',       to: '/compare' },
         { label: 'Saved Listings',     to: '/saved' },
         { label: 'Finance Calculator', to: '/calculator' },
