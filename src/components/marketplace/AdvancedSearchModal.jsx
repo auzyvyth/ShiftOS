@@ -1,8 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Search } from 'lucide-react';
 import { BRANDS, BODY_TYPES, TRANSMISSIONS, FINANCING_TYPES, MY_STATES, YEARS, MILEAGE_OPTIONS, CONDITION_OPTIONS } from '../../config/marketplaceConfig';
 
-export default function AdvancedSearchModal({ open, onClose, heroQ, heroBudget, onApply }) {
+// The URL params this modal owns. Everything else in the URL (colour,
+// fuel_type, seller_type, sort, hot_deals, page) belongs to other controls and
+// is carried through untouched — "More filters" narrows a search, it does not
+// start a new one. It used to build a fresh URLSearchParams from its own
+// fields alone, so applying it silently dropped every filter set elsewhere.
+const OWN_KEYS = [
+  'brand', 'body_type', 'condition', 'state', 'year_from', 'year_to',
+  'mileage_max', 'transmission', 'financing', 'model', 'variant',
+];
+
+export default function AdvancedSearchModal({ open, onClose, heroQ, heroBudget, onApply, currentParams }) {
   const [advBrand,        setAdvBrand]        = useState('');
   const [advBodyType,     setAdvBodyType]     = useState('');
   const [advCondition,    setAdvCondition]    = useState('');
@@ -15,6 +26,35 @@ export default function AdvancedSearchModal({ open, onClose, heroQ, heroBudget, 
   const [advModel,        setAdvModel]        = useState('');
   const [advVariant,      setAdvVariant]      = useState('');
 
+  // Open showing what is already applied, not a blank form — otherwise the
+  // panel says "no filters" while the grid behind it is filtered.
+  useEffect(() => {
+    if (!open) return;
+    const g = (k) => currentParams?.get(k) || '';
+    setAdvBrand(g('brand'));               setAdvBodyType(g('body_type'));
+    setAdvCondition(g('condition'));       setAdvState(g('state'));
+    setAdvYearFrom(g('year_from'));        setAdvYearTo(g('year_to'));
+    setAdvMileageMax(g('mileage_max'));    setAdvTransmission(g('transmission'));
+    setAdvFinancing(g('financing'));       setAdvModel(g('model'));
+    setAdvVariant(g('variant'));
+  }, [open, currentParams]);
+
+  // Overlay rule 2: lock the page behind the sheet. Without this the
+  // marketplace scrolled away underneath it on mobile.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   const clearAll = () => {
@@ -24,9 +64,17 @@ export default function AdvancedSearchModal({ open, onClose, heroQ, heroBudget, 
   };
 
   const handleApply = () => {
-    const p = new URLSearchParams();
-    if (heroQ)           p.set('q', heroQ);
-    if (heroBudget)      p.set('max_price', heroBudget);
+    // Start from what is already applied; replace only the keys this panel owns
+    // (clearing one here must clear it in the URL, so delete first, then set).
+    const p = new URLSearchParams(currentParams || undefined);
+    OWN_KEYS.forEach(k => p.delete(k));
+    p.delete('page');
+    // The hero box and budget select are not synced from the URL, so an empty
+    // one means "unchanged", not "cleared".
+    const q      = heroQ      || p.get('q')         || '';
+    const budget = heroBudget || p.get('max_price') || '';
+    q      ? p.set('q', q)               : p.delete('q');
+    budget ? p.set('max_price', budget)  : p.delete('max_price');
     if (advBrand)        p.set('brand', advBrand);
     if (advBodyType)     p.set('body_type', advBodyType);
     if (advCondition)    p.set('condition', advCondition);
@@ -42,7 +90,9 @@ export default function AdvancedSearchModal({ open, onClose, heroQ, heroBudget, 
     onApply(p);
   };
 
-  return (
+  // Overlay rule 1: portal to document.body, so no parent stacking context
+  // (the hero section sets isolation:isolate) can clip the sheet or its blur.
+  return createPortal(
     <>
       <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)' }}/>
       <div className="mp-adv-modal" style={{ position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', zIndex:201, width:'min(500px,92vw)', maxHeight:'min(580px,85vh)', overflowY:'auto', background:'#0c0f16', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'20px', fontFamily:"'Outfit',sans-serif", boxShadow:'0 24px 80px rgba(0,0,0,0.7)' }}>
@@ -144,6 +194,7 @@ export default function AdvancedSearchModal({ open, onClose, heroQ, heroBudget, 
           </button>
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   );
 }

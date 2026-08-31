@@ -887,6 +887,7 @@ export default function MarketplacePage() {
         onClose={() => setAdvancedOpen(false)}
         heroQ={heroQ}
         heroBudget={heroBudget}
+        currentParams={searchParams}
         onApply={(p) => navigate(`/showroom${p.toString() ? '?' + p : ''}`)}
       />
 
