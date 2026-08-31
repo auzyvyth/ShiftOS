@@ -24,14 +24,35 @@ import { usePushNotifications, isIOS, isStandalone } from '../../hooks/usePushNo
 // chat and typed nothing has not asked for anything yet, and a permission prompt
 // there is the kind users reflexively block — and a denied permission is a dead
 // end no later prompt can recover.
+//
+// NEVER RENDER NOTHING WHEN THE ANSWER IS "YOU CAN'T YET". This component used
+// to return null on iOS-outside-a-PWA and on a denied permission. Both are the
+// two states where the buyer is MOST likely to be wondering why the seller's
+// replies never reach them, and silence is what made buyer push look broken on
+// a fresh phone while it worked fine on the tester's own. Say the reason in one
+// line instead; there is nothing to tap in either case, so no button.
 
 const DISMISS_KEY = 'xd_buyer_push_dismissed';
+// A dismissal used to be permanent. One reflexive tap and that buyer could never
+// be asked again on that device, on any listing, forever — for a prompt whose
+// whole job is to arrive at the one moment it matters. Ask again in a week.
+const DISMISS_DAYS = 7;
+
+function dismissedRecently() {
+  try {
+    const raw = localStorage.getItem(DISMISS_KEY);
+    if (!raw) return false;
+    // Legacy value from before this was a timestamp: treat as dismissed now, so
+    // an existing buyer gets one more week of quiet rather than an instant re-ask.
+    const at = raw === '1' ? Date.now() : Number(raw);
+    if (!Number.isFinite(at)) return false;
+    return Date.now() - at < DISMISS_DAYS * 24 * 60 * 60 * 1000;
+  } catch { return false; }
+}
 
 export default function BuyerPushPrompt({ t }) {
   const [userId, setUserId] = useState(null);
-  const [dismissed, setDismissed] = useState(() => {
-    try { return localStorage.getItem(DISMISS_KEY) === '1'; } catch { return false; }
-  });
+  const [dismissed, setDismissed] = useState(dismissedRecently);
   const [justEnabled, setJustEnabled] = useState(false);
   const [note, setNote] = useState(null);
 
@@ -50,7 +71,7 @@ export default function BuyerPushPrompt({ t }) {
 
   const close = () => {
     setDismissed(true);
-    try { localStorage.setItem(DISMISS_KEY, '1'); } catch { /* private mode — ask again next visit */ }
+    try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* private mode — ask again next visit */ }
   };
 
   const handleEnable = async () => {
@@ -62,40 +83,65 @@ export default function BuyerPushPrompt({ t }) {
       : 'Could not turn notifications on. You will still see the reply here.');
   };
 
+  const row = (children) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap', borderTop: `1px solid ${t.border}`, background: t.panel, padding: '9px 12px', flexShrink: 0 }}>
+      {children}
+    </div>
+  );
+
   if (justEnabled) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderTop: `1px solid ${t.border}`, background: t.panel, padding: '9px 12px', flexShrink: 0 }}>
-        <Bell size={13} style={{ color: '#16a34a', flexShrink: 0 }} />
-        <p style={{ margin: 0, fontSize: 11.5, lineHeight: 1.5, color: t.sub }}>
-          Done. We will notify you when the seller replies, even with this page closed.
-        </p>
-      </div>
-    );
+    return row(<>
+      <Bell size={13} style={{ color: '#16a34a', flexShrink: 0 }} />
+      <p style={{ margin: 0, fontSize: 11.5, lineHeight: 1.5, color: t.sub }}>
+        Done. We will notify you when the seller replies, even with this page closed.
+      </p>
+    </>);
   }
 
-  // iOS refuses web push outside an installed PWA, so the button could never
-  // succeed there — show nothing rather than a dead end. InstallPrompt already
-  // handles the add-to-home-screen case.
-  const iosBlocked = isIOS() && !isStandalone();
-  if (dismissed || !userId || !supported || !configured || subscribed
-      || permission === 'denied' || iosBlocked) return null;
+  if (dismissed || !userId || !supported || !configured || subscribed) return null;
 
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap', borderTop: `1px solid ${t.border}`, background: t.panel, padding: '9px 12px', flexShrink: 0 }}>
+  // iOS refuses web push outside an installed PWA, so the button could never
+  // succeed there. Say why rather than showing a dead button — or nothing.
+  if (isIOS() && !isStandalone()) {
+    return row(<>
       <Bell size={13} style={{ color: t.sub, flexShrink: 0 }} />
       <p style={{ margin: 0, flex: '1 1 150px', minWidth: 0, fontSize: 11.5, lineHeight: 1.5, color: t.sub }}>
-        {note || 'Get notified when the seller replies — no need to keep this open.'}
+        To get alerts when the seller replies, add this site to your home screen first — Share, then Add to Home Screen.
       </p>
-      {!note && (
-        <button type="button" onClick={handleEnable} disabled={busy}
-          style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 8, background: '#dc2626', border: 'none', color: '#fff', fontSize: 11.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', fontFamily: 'system-ui,sans-serif' }}>
-          {busy ? 'Turning on…' : 'Turn on'}
-        </button>
-      )}
-      <button type="button" onClick={close} aria-label="Not now"
-        style={{ flexShrink: 0, background: 'none', border: 'none', color: t.sub, cursor: 'pointer', padding: 2, display: 'flex' }}>
-        <X size={13} />
+      <DismissBtn t={t} onClick={close} />
+    </>);
+  }
+
+  if (permission === 'denied') {
+    return row(<>
+      <Bell size={13} style={{ color: t.sub, flexShrink: 0 }} />
+      <p style={{ margin: 0, flex: '1 1 150px', minWidth: 0, fontSize: 11.5, lineHeight: 1.5, color: t.sub }}>
+        Notifications are blocked for this site in your browser settings, so replies will only show up here.
+      </p>
+      <DismissBtn t={t} onClick={close} />
+    </>);
+  }
+
+  return row(<>
+    <Bell size={13} style={{ color: t.sub, flexShrink: 0 }} />
+    <p style={{ margin: 0, flex: '1 1 150px', minWidth: 0, fontSize: 11.5, lineHeight: 1.5, color: t.sub }}>
+      {note || 'Get notified when the seller replies — no need to keep this open.'}
+    </p>
+    {!note && (
+      <button type="button" onClick={handleEnable} disabled={busy}
+        style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 8, background: '#dc2626', border: 'none', color: '#fff', fontSize: 11.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', fontFamily: 'system-ui,sans-serif' }}>
+        {busy ? 'Turning on…' : 'Turn on'}
       </button>
-    </div>
+    )}
+    <DismissBtn t={t} onClick={close} />
+  </>);
+}
+
+function DismissBtn({ t, onClick }) {
+  return (
+    <button type="button" onClick={onClick} aria-label="Not now"
+      style={{ flexShrink: 0, background: 'none', border: 'none', color: t.sub, cursor: 'pointer', padding: 2, display: 'flex' }}>
+      <X size={13} />
+    </button>
   );
 }
