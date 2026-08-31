@@ -16,7 +16,7 @@ export function useProfile() {
       if (!session) { setLoading(false); return; }
       const { data } = await supabase
         .from('profiles')
-        .select('id, role, dealer_id, dealership, site_name, full_name, avatar_url, slug, subdomain, whatsapp_number, brand_color, site_logo_url, subscription_status, state, city, plan')
+        .select('id, role, dealer_id, dealership, site_name, full_name, avatar_url, slug, subdomain, whatsapp_number, brand_color, site_logo_url, subscription_status, state, city, plan, is_active, plan_expires_at, payment_status')
         .eq('id', session.user.id)
         .maybeSingle();
       setProfile(data || null);

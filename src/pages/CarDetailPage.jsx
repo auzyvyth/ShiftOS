@@ -30,7 +30,6 @@ import {
   Phone,
   ExternalLink,
   Camera,
-  Download,
   Share2,
   Link as LinkIcon,
   TrendingDown,
@@ -247,7 +246,7 @@ const WarrantyBanner = ({ car, isXdrive }) => {
   // "Drive with peace of mind" told the buyer nothing. The only warranty facts on
   // record are the month count and whether a certificate was uploaded, so say that
   // and point at the question worth asking instead of inventing reassurance.
-  const hasCert = (car.car_documents || []).some((d) => d.type === 'warranty');
+  const hasCert = (car.document_types || []).includes('warranty');
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '11px 14px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.28)', borderRadius: 10 }}>
       <ShieldCheck size={18} style={{ color: head, flexShrink: 0 }} />
@@ -288,9 +287,6 @@ const ReconTrust = ({ car, isXdrive }) => {
   );
 };
 
-
-const isImageUrl = (url) =>
-  /\.(jpg|jpeg|png|webp|gif|avif|svg)(\?|$)/i.test(url || "");
 
 function daysAgo(dateStr) {
   if (!dateStr) return null;
@@ -634,7 +630,7 @@ const HERO_SIZES  = '(max-width: 900px) 100vw, 62vw';
 /* Card fields for the "more from this seller" / "you might also like" rails.
    body_type and dealer_id feed the similar-cars matching and scoring. */
 const SIM_FIELDS =
-  "id, slug, year, brand, model, variant, body_type, dealer_id, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, car_documents";
+  "id, slug, year, brand, model, variant, body_type, dealer_id, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, document_types";
 
 /* ─── skeleton ─── */
 function Skeleton() {
@@ -1149,7 +1145,7 @@ export default function CarDetailPage() {
       // for agent-vs-dealer below — without it in the select, carData.seller_role is
       // always undefined and the get_salesman_by_id lookup never fires, so a Salesman
       // Lite listing silently falls through to a nameless "Seller" with no mini-page link.
-      const PUBLIC_FIELDS = "id,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,plate_number,video_url,salesman_slug,car_documents,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,included_services_cost,vin,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating,cylinders,market_avg_price,market_sample_count,puspakom_b5_date,puspakom_b7_date,seller_role,payment_type,sambung_monthly,sambung_months_left,sambung_balance,sambung_deposit,sambung_bank,docs_verified,geran_status,condition_declared_at";
+      const PUBLIC_FIELDS = "id,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,plate_number,video_url,salesman_slug,document_types,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,vin,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating,cylinders,market_avg_price,market_sample_count,puspakom_b5_date,puspakom_b7_date,seller_role,payment_type,sambung_monthly,sambung_months_left,sambung_balance,sambung_deposit,sambung_bank,docs_verified,geran_status,condition_declared_at";
       let { data: carData, error } = await supabase
         .from("public_car_listings")
         .select(PUBLIC_FIELDS)
@@ -1169,6 +1165,15 @@ export default function CarDetailPage() {
         setLoading(false);
         return;
       }
+
+      // The public view publishes document_types (which kinds of paperwork are
+      // on file) and NOT car_documents (the URLs). Those URLs point into the
+      // public car-images bucket and the files are the geran, the loan
+      // clearance letter and the like — the registered owner's name, IC,
+      // address and loan balance. The buyer-facing point of the Car History
+      // rows is "this car has a geran on file", so shape the types back into
+      // the {type} records those rows already read, with no url on them.
+      carData.car_documents = (carData.document_types || []).map((type) => ({ type }));
 
       // Fire analytics immediately — no need to block page load on it
       const refSlug = getRef();
@@ -2627,9 +2632,12 @@ export default function CarDetailPage() {
                         );
                       })}
                     </div>
-                    {car.included_services_cost > 0 && (
-                      <p style={{ fontSize:11, color: th.textMuted, marginTop:12 }}>Total value included at no extra cost: <span style={{ color:'#dc2626', fontWeight:700 }}>RM {Number(car.included_services_cost).toLocaleString()}</span></p>
-                    )}
+                    {/* The RM figure that used to sit here was
+                        included_services_cost — the DEALER'S COST for these
+                        add-ons (fetchPnl subtracts it from front gross), shown
+                        to buyers as "total value". It is the wrong number for a
+                        buyer (cost, not retail) and it published the dealer's
+                        margin, so the services are listed without a price. */}
                   </div>
                 )}
                 {detailTab === 'specs' && (
@@ -2729,7 +2737,6 @@ export default function CarDetailPage() {
                 if (!available) return null;
                 const rk = `m-${key}`;
                 const isOpen = openDocKey === rk;
-                const asImage = isImageUrl(doc?.url);
                 return (
                   <div key={key} style={{ background: th.card, border:`1px solid ${isOpen && available ? okBorder : th.border}`, borderRadius:9, overflow:'hidden', transition:'border-color 0.2s' }}>
                     <div onClick={() => available && toggleDoc(rk)}
@@ -2747,20 +2754,9 @@ export default function CarDetailPage() {
                     </div>
                     {isOpen && available && (
                       <div style={{ borderTop:`1px solid ${okBorder}40`, padding:'12px 14px', background:`${okColor}08` }}>
-                        {doc ? (asImage ? (
-                          <>
-                            <img src={doc.url} alt={doc.name || label} style={{ width:'100%', maxHeight:220, objectFit:'contain', borderRadius:7, marginBottom:10, display:'block' }} />
-                            <a href={doc.url} target="_blank" rel="noopener noreferrer"
-                              style={{ display:'inline-flex', alignItems:'center', gap:5, background:okBg, border:`1px solid ${okBorder}`, borderRadius:7, padding:'6px 12px', fontSize:11, color:okColor, textDecoration:'none', fontWeight:600 }}>
-                              <Download size={11} /> Download
-                            </a>
-                          </>
-                        ) : (
-                          <a href={doc.url} target="_blank" rel="noopener noreferrer"
-                            style={{ display:'inline-flex', alignItems:'center', gap:6, background:okBg, border:`1px solid ${okBorder}`, borderRadius:7, padding:'8px 14px', fontSize:12, color:okColor, textDecoration:'none', fontWeight:600 }}>
-                            <Download size={13} /> {doc.name || label}
-                          </a>
-                        )) : geranNote ? (
+                        {doc ? (
+                          <p style={{ fontSize:12, color:okColor, margin:0, lineHeight:1.55 }}>On file with the seller. Ask them to walk you through it — the document itself is not published, because it carries the registered owner's name and IC.</p>
+                        ) : geranNote ? (
                           <p style={{ fontSize:12, color:okColor, margin:0 }}>{geranNote}</p>
                         ) : (
                           <PuspakomDates b5={b5} b7={b7} color={okColor} />
@@ -2775,7 +2771,6 @@ export default function CarDetailPage() {
                 const cfg = CDP_DOC_TYPES[doc.type] || CDP_DOC_TYPES.other;
                 const rk = `m-extra-${i}`;
                 const isOpen = openDocKey === rk;
-                const asImage = isImageUrl(doc.url);
                 return (
                   <div key={rk} style={{ background: th.card, border:`1px solid ${isOpen ? cfg.color+'40' : th.border}`, borderRadius:9, overflow:'hidden', transition:'border-color 0.2s' }}>
                     <div onClick={() => toggleDoc(rk)} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', cursor:'pointer' }}>
@@ -2787,20 +2782,7 @@ export default function CarDetailPage() {
                     </div>
                     {isOpen && (
                       <div style={{ borderTop:`1px solid ${cfg.color}30`, padding:'12px 14px', background:`${cfg.color}08` }}>
-                        {asImage ? (
-                          <>
-                            <img src={doc.url} alt={doc.name || cfg.label} style={{ width:'100%', maxHeight:220, objectFit:'contain', borderRadius:7, marginBottom:10, display:'block' }} />
-                            <a href={doc.url} target="_blank" rel="noopener noreferrer"
-                              style={{ display:'inline-flex', alignItems:'center', gap:5, background:`${cfg.color}15`, border:`1px solid ${cfg.color}30`, borderRadius:7, padding:'6px 12px', fontSize:11, color:cfg.color, textDecoration:'none', fontWeight:600 }}>
-                              <Download size={11} /> Download
-                            </a>
-                          </>
-                        ) : (
-                          <a href={doc.url} target="_blank" rel="noopener noreferrer"
-                            style={{ display:'inline-flex', alignItems:'center', gap:6, background:`${cfg.color}15`, border:`1px solid ${cfg.color}30`, borderRadius:7, padding:'8px 14px', fontSize:12, color:cfg.color, textDecoration:'none', fontWeight:600 }}>
-                            <Download size={13} /> {doc.name || cfg.label}
-                          </a>
-                        )}
+                        <p style={{ fontSize:12, color:cfg.color, margin:0, lineHeight:1.55 }}>On file with the seller. Ask them to walk you through it — the document itself is not published, because it carries the registered owner's name and IC.</p>
                       </div>
                     )}
                   </div>
@@ -3333,14 +3315,6 @@ export default function CarDetailPage() {
                           );
                         })}
                       </div>
-                      {car.included_services_cost > 0 && (
-                        <p style={{ fontSize: 11, color: th.textMuted, marginTop: 12 }}>
-                          Total value included at no extra cost:{" "}
-                          <span style={{ color: "#dc2626", fontWeight: 700 }}>
-                            RM {Number(car.included_services_cost).toLocaleString()}
-                          </span>
-                        </p>
-                      )}
                     </div>
                   )}
 
@@ -3588,7 +3562,6 @@ export default function CarDetailPage() {
                   if (!available) return null;
                   const rk = `d-${key}`;
                   const isOpen = openDocKey === rk;
-                  const asImage = doc && isImageUrl(doc.url);
                   return (
                     <div key={key} style={{ background: th.card, border: `1px solid ${isOpen && available ? okBorder : 'rgba(255,255,255,0.05)'}`, borderRadius: 10, overflow: 'hidden', transition: 'border-color 0.2s' }}>
                       <div onClick={() => available && toggleDoc(rk)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: available ? 'pointer' : 'default' }}>
@@ -3608,18 +3581,9 @@ export default function CarDetailPage() {
                       </div>
                       {isOpen && available && (
                         <div style={{ borderTop: `1px solid ${okBorder}40`, padding: '14px 16px', background: `${okColor}08` }}>
-                          {doc ? (asImage ? (
-                            <>
-                              <img src={doc.url} alt={doc.name || label} style={{ width: '100%', maxHeight: 260, objectFit: 'contain', borderRadius: 8, marginBottom: 12 }} />
-                              <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: okColor, textDecoration: 'none', background: `${okColor}15`, border: `1px solid ${okBorder}`, borderRadius: 6, padding: '5px 12px' }}>
-                                <Download size={12} /> Download
-                              </a>
-                            </>
-                          ) : (
-                            <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: okColor, textDecoration: 'none', background: `${okColor}15`, border: `1px solid ${okBorder}`, borderRadius: 6, padding: '5px 12px' }}>
-                              <Download size={14} /> {doc.name || label}
-                            </a>
-                          )) : geranNote ? (
+                          {doc ? (
+                            <p style={{ fontSize:12, color:okColor, margin:0, lineHeight:1.55 }}>On file with the seller. Ask them to walk you through it — the document itself is not published, because it carries the registered owner's name and IC.</p>
+                          ) : geranNote ? (
                             <p style={{ fontSize: 12, color: okColor, margin: 0 }}>{geranNote}</p>
                           ) : (
                             <PuspakomDates b5={b5} b7={b7} color={okColor} />
@@ -3633,7 +3597,6 @@ export default function CarDetailPage() {
                   const cfg = CDP_DOC_TYPES[doc.type] || CDP_DOC_TYPES.other;
                   const rk = `d-extra-${i}`;
                   const isOpen = openDocKey === rk;
-                  const asImage = isImageUrl(doc.url);
                   return (
                     <div key={rk} style={{ background: th.card, border: `1px solid ${isOpen ? `${cfg.color}50` : 'rgba(255,255,255,0.05)'}`, borderRadius: 10, overflow: 'hidden', transition: 'border-color 0.2s' }}>
                       <div onClick={() => toggleDoc(rk)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer' }}>
@@ -3647,19 +3610,8 @@ export default function CarDetailPage() {
                         </div>
                       </div>
                       {isOpen && (
-                        <div style={{ borderTop: `1px solid ${cfg.color}30`, padding: '14px 16px', background: `${cfg.color}08` }}>
-                          {asImage ? (
-                            <>
-                              <img src={doc.url} alt={doc.name || cfg.label} style={{ width: '100%', maxHeight: 260, objectFit: 'contain', borderRadius: 8, marginBottom: 12 }} />
-                              <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: cfg.color, textDecoration: 'none', background: `${cfg.color}15`, border: `1px solid ${cfg.color}30`, borderRadius: 6, padding: '5px 12px' }}>
-                                <Download size={12} /> Download
-                              </a>
-                            </>
-                          ) : (
-                            <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: cfg.color, textDecoration: 'none', background: `${cfg.color}15`, border: `1px solid ${cfg.color}30`, borderRadius: 6, padding: '5px 12px' }}>
-                              <Download size={14} /> {doc.name || cfg.label}
-                            </a>
-                          )}
+                        <div style={{ borderTop: `1px solid ${cfg.color}30`, padding: '12px 16px', background: `${cfg.color}08` }}>
+                          <p style={{ fontSize:12, color:cfg.color, margin:0, lineHeight:1.55 }}>On file with the seller. Ask them to walk you through it — the document itself is not published, because it carries the registered owner's name and IC.</p>
                         </div>
                       )}
                     </div>

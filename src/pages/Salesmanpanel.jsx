@@ -88,6 +88,7 @@ import UpgradeBanner from "../components/ai/UpgradeBanner";
 import AiLoadingState from "../components/ai/AiLoadingState";
 import AiQuotaBadge from "../components/ai/AiQuotaBadge";
 import PushToggle from "../components/PushToggle";
+import { isPremiumSalesman } from "../utils/salesmanPlan";
 
 // ShiftOS Studio — full-screen marketing-content editor (camera overlay +
 // branded templates). Lazy so the panel's initial bundle stays lean.
@@ -428,7 +429,7 @@ export default function SalesmanPanel() {
  const [settingsError, setSettingsError] = useState(null);
  const [tagInput, setTagInput] = useState('');
 
- const isPremium = profile?.plan === 'salesman_full';
+ const isPremium = isPremiumSalesman(profile);
 
  // stale leads — per-stage follow-up ping timing (FOLLOW_UP_HOURS), excludes
  // won/lost/closed. Flagged when the manual reminder is overdue OR there's been
@@ -515,7 +516,7 @@ export default function SalesmanPanel() {
  // Premium if salesman_full, otherwise Lite. Keeps the two from overlapping so
  // one account never sees both surfaces.
  if (!profileData.dealer_id) {
- navigate(profileData.plan === 'salesman_full' ? '/salesman-premium' : '/salesman-lite', { replace: true });
+ navigate(isPremiumSalesman(profileData) ? '/salesman-premium' : '/salesman-lite', { replace: true });
  return;
  }
 

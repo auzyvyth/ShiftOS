@@ -1,5 +1,56 @@
 # ShiftOS — Pending Tasks
 
+> **BRANCH IN FLIGHT — `claude/dependabot-alerts-triage-ztsglx` (2026-08-30).**
+> Next session continues on THIS branch, not a fresh one. It carries two commits
+> that are on `staging` and NOT yet on `main`: `fabc7fe` (Dependabot: pdfjs-dist
+> 5->6, vite 5->7) and `a3d90d3` (security sweep of Premium/Lite). Neither has
+> been merged to production. Start with `git fetch origin && git status` and
+> confirm the branch is still ahead of `origin/main` before doing anything else.
+
+## SEC sweep of Salesman Premium + Lite — 2026-08-30
+
+Three findings fixed and pushed; the server half is already LIVE.
+
+- **SEC-TG (fixed + DEPLOYED, v15).** `send-telegram` verified the caller's JWT
+  but never checked the caller had any relationship to the `dealer_id` in the
+  body, then used it to look up a bot token with the service-role key. Any
+  authenticated user — including an anonymous guest buyer, since anonymous
+  sign-in is on for chat — could send arbitrary Telegram messages through
+  ANOTHER dealer's bot, and harvest the bot's `@username` off the `not_started`
+  path by enumerating ids. Now derives the dealer scope from the caller's own
+  profile instead of validating the supplied one, so no version of the call can
+  get it wrong; a mismatched body `dealer_id` returns 403.
+  Deployed as **v15**, `verify_jwt` still false (it does its own auth). Repo and
+  deployed are byte-identical again — the drift trap is closed for this one.
+- **SEC-CACHE (fixed, not yet on prod).** Premium wrote raw lead rows to
+  localStorage and `LEAD_SELECT` is `*`, so buyer IC numbers and home addresses
+  sat in plaintext on disk. Lite had redacted since forever — the helper was a
+  local `const` in Lite, which is exactly why Premium never got it. Now one copy
+  in `src/utils/panelCache.js`, imported by both.
+- **SEC-LOGOUT (fixed, not yet on prod).** Neither panel cleared its cached
+  listings/leads/enquiries/appointments on sign-out, so a shared phone kept the
+  last rep's pipeline. `clearPanelDataCache()` runs on both logouts and on
+  account deletion; non-PII prefs (goal, tour) deliberately survive.
+
+**Still open from the sweep — next session should pick these up:**
+- **SEC-AI-NOTES.** `SalesmanPremium.jsx:1234` sends raw lead `notes` and
+  `buyer_name` to the AI for scoring. `phone` is already reduced to
+  `"present"`/`"missing"`, so someone was thinking about this — `notes` is the
+  remaining gap and is free text a rep typed, which can hold a phone or an IC.
+  Suggested fix: run notes through the same redaction idea as `redact_for_ai`
+  before they leave the browser.
+- **SEC-AI-QUOTA.** That same call omits `feature: "lead_score"`, so it bills the
+  `general` bucket even though `ai-proxy` defines a `lead_score` key. One-line
+  fix, accounting only, not security.
+
+**Checked and found SOUND — do not re-audit these without a reason:** all four
+`get_salesman_*` analytics RPCs embed an ownership predicate; `leads` RLS
+requires `salesman_id = auth.uid()` with a matching WITH CHECK (so the id-only
+lead updates in both panels are NOT exploitable — missing belt-and-braces, not a
+hole); `ai-proxy` pins model/max_tokens server-side and enforces a shared daily
+quota; `set_my_ic` hashes with a per-user salt and nulls the plaintext. No XSS
+sinks, no raw `chat_messages` read, no secrets in either bundle.
+
 ## 💡 Ideas (unrefined — capture only, not scheduled)
 
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
@@ -174,13 +225,31 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   the reason. v18 logs the status per endpoint, so the Supabase function logs
   will now say why. 13 subscriptions, all FCM.
 
-- **ACT-DEPENDABOT: 5 vulnerabilities on the default branch (2 high, 3
-  moderate), still unread** — https://github.com/auzyvyth/ShiftOS/security/dependabot
-  Every push prints this warning and no session has opened it. Needs a browser.
-  Note `npm install` currently FAILS in web sessions (403 through the proxy on
-  `cdn.sheetjs.com/xlsx-0.20.3.tgz`, which npm resolves even when installing an
-  unrelated package), so an agent cannot run `npm audit` or test an upgrade —
-  this one likely has to be done locally.
+> **ACT-DEPENDABOT DONE — all 5 alerts cleared 2026-08-30.** `npm audit` now reports
+> 0 vulnerabilities. Two bumps in `package.json`: `pdfjs-dist` ^5.7.284 -> ^6.3.289
+> (the only production-reachable one — arbitrary JS execution from a malicious PDF,
+> GHSA-hq66-cqwq-w95j, live at `src/pages/ImportStockPage.jsx:4` where dealers upload
+> supplier PDFs) and `vite` ^5.4.21 -> ^7.3.6 (clears the other 4: two vite path
+> traversals, a Windows NTLM leak, and the transitive esbuild dev-server advisory —
+> all dev-server only, none shipped to production).
+> **Vite 7, not 8, on purpose.** `@vitejs/plugin-react@5.1.4` peer-supports vite only
+> up to `^7.0.0`, and vite 8 drops its `esbuild` dependency for rolldown. Vite 7 clears
+> every advisory (they all cap at `<=6.4.2`) with no plugin majors. `.nvmrc` is 20.19.1
+> which satisfies vite 7's `^20.19.0` engine, so no Node bump was needed.
+> The `cdn.sheetjs.com` 403 is a hard org egress policy denial, still unfixable from a
+> web session — but it turned out NOT to block this work: `npm audit` talks only to the
+> registry, and `npm install --package-lock-only` reuses the existing `xlsx` lock entry
+> instead of refetching the tarball. That is the workaround for any future dep bump here.
+> To actually build/test, `xlsx` was pointed at a throwaway local stub for the install
+> only; `package.json` and the lock's `xlsx` entry were restored byte-identical before
+> committing (verified — the lock diff does not touch xlsx).
+> Verified: production build clean, eslint clean, 21 perf + 10 tour tests pass, and a
+> runtime smoke test confirmed pdf.js v6 still honours every API `ImportStockPage` uses
+> (getDocument/numPages/getPage/getTextContent/getAnnotations, `transform` row
+> reconstruction and Drive link-annotation extraction).
+> NOT verified from here: the import-stock flow in a real browser. Worth one manual pass
+> with a real dealer PDF and an xlsx before trusting it, since the xlsx half of that page
+> could not be exercised at all with the stub in place.
 
 - **ACT-1: Enable TOTP in Supabase dashboard — DEFERRED until revenue (user: paid)** — 2FA (SEC-1) will not work end-to-end until the TOTP factor type is enabled: Supabase → Authentication → Settings → Multi-Factor → enable **TOTP**. Until then, the "Enable 2FA" button in Settings will error on enroll. Owner is deferring this until revenue/Supabase Pro (treats it as a paid feature — note: standard app-based TOTP MFA is typically free on Supabase; the paid MFA add-on is Phone/SMS, which we are avoiding anyway — worth re-checking billing before permanently shelving). Interim idea from owner: keep Gmail/Google link verification and add an email verification code as a lightweight second factor. NOTE (2026-08-05): TOTP is NOT deprecated — Bank Negara's RMiT (28 Nov 2025) bans **SMS OTP** as a standalone factor, not TOTP. TOTP (authenticator-app codes, RFC 6238) is offline/device-local and is one of the regulator's recommended interception-resistant replacements, so it stays the correct choice here. Do NOT enable Supabase's Phone/SMS OTP factor. Passkeys (FIDO2/WebAuthn) are the gold standard but are not a native Supabase MFA factor yet.
 > **ACT-13 DONE — verified end to end 2026-08-29.** Anonymous sign-ins are on and guest
@@ -250,6 +319,66 @@ not scoped, not prioritized — just parked here until picked up on purpose.
 > Reminder protocol: while ACT-2, ACT-4, ACT-9 or ACT-10 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. **ACT-8 was found ALREADY COMPLETE and removed 2026-08-15** — `package.json` AND `package-lock.json` both resolve `xlsx` to `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, and `vercel.json` CSP already whitelists `cdn.sheetjs.com` in connect-src; it had been sitting in this list as a blocked user-action for weeks after the fact. **ACT-12 verified RESOLVED 2026-08-24** — see entry above; drop from this nag list. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then.) LESSON: verify an ACT item against the code before re-surfacing it — a stale nag costs a session's attention every time.
 
 ## Dev tasks
+
+---
+
+### SESSION 2026-08-31 — pre-launch security sweep (Salesman Lite + marketplace)
+
+Six fixes shipped this session (see commit "Security sweep: close the paid-tier
+bypass..."). Every finding was proven live against the production database as
+the role that would exploit it, probe rolled back. What is LEFT:
+
+- [ ] **SWEEP-1 — the public page still names the seller's paperwork; decide if
+  that is the line you want.** The scans are no longer published (the view hands
+  out `document_types`, not URLs), so a buyer sees "Geran / Registration Card
+  ✓ Available" and a line telling them to ask the seller. Two things worth a
+  decision before real traffic: `vin_number`, `vin` and `plate_number` are still
+  fully public on every listing (Mudah and Carlist do not publish a full VIN —
+  it enables plate/VIN cloning), and there is now no way for a serious buyer to
+  see the geran at all. If you want a middle ground, the shape is "reveal to a
+  buyer who has started a chat thread", not "publish to everyone".
+
+- [ ] **SWEEP-2 — drop the legacy columns from `public_car_listings` once this
+  is on prod.** `car_documents` (now stripped to `[{type}]`) and
+  `included_services_cost` (now `null::numeric`) are kept only so the CURRENTLY
+  DEPLOYED CarDetailPage keeps resolving its select. Once this branch is live,
+  delete both from the view — the frontend already reads `document_types`.
+
+- [ ] **SWEEP-3 — two comments in the app state the opposite of the truth about
+  the public views.** `useCTAContext.js:48` and `useTenant.js:141` both say
+  `public_dealer_profiles` "is security_invoker and anon RLS returns no rows".
+  It is SECURITY DEFINER and anon reads it fine — that wrong belief is why the
+  email/phone leak sat there. Both call sites already use the RPC, so only the
+  comments are wrong; fix the words so the next person is not misled.
+
+- [ ] **SWEEP-4 — `Footer.jsx:8 SUPERADMIN_ID` is not a superadmin.** It is
+  `1e7bf24e-...`, `role='dealer'`. Migration 20260831d had to special-case that
+  id in the view to keep the footer's contact block working. Rename the constant
+  to what it is (the platform contact row) or move the platform's support email
+  and phone into config, and drop the id from the view.
+
+- [ ] **SWEEP-5 — one listing cap, stated twice.** The RLS helper
+  `salesman_under_listing_limit()` hardcodes 30 for Lite; `enforce_listing_cap`
+  and `enforce_listing_cap_on_publish` read `plan_config.listing_cap`. Same
+  number, two sources — change the plan config and the RLS gate silently
+  disagrees. Point the helper at `plan_config` too.
+
+- [ ] **SWEEP-6 — `create_lead_from_whatsapp` exists twice.** Two overloads with
+  the same name and different argument ORDER
+  (`(dealer,car,name,phone,ref,state)` and `(dealer,name,phone,state,car,ref)`).
+  PostgREST resolves by argument names so it works today, but this is exactly
+  the drift that made inbound attribution vanish twice. Confirm which one every
+  caller hits, then drop the other.
+
+- [ ] **SWEEP-7 — `push_swap_endpoint` accepts any https host.** The service
+  worker has no Supabase session, so the OLD endpoint string is deliberately the
+  credential (documented in `public/push-sw.js:76`) — that part is a reasonable
+  design. What is loose is the NEW endpoint: it only has to match
+  `^https://host/`, so anyone holding an endpoint could repoint that device's
+  pushes anywhere. Restrict the new endpoint to the known push services
+  (`fcm.googleapis.com`, `*.push.apple.com`, `*.notify.windows.com`,
+  `*.push.services.mozilla.com`). Low severity — endpoints are high-entropy and
+  `push_subscriptions` is not readable — but it is a one-line predicate.
 
 ---
 

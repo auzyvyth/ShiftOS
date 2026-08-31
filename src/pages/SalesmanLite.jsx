@@ -13,6 +13,7 @@ import { cdnImg } from "../utils/img";
 import { compressImageFile } from "../utils/compressImage";
 import CarForm, { buildCopyText } from "../components/CarForm";
 import CarDetailPopup from "../components/CarDetailPopup";
+import { hydrateLeadInto } from "../utils/leadHydrate";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import {
   panel as C,
@@ -98,7 +99,13 @@ import {
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
+import { redactLeadsForCache, clearPanelDataCache } from "../utils/panelCache";
 import AvailabilityEditor from "../components/AvailabilityEditor";
+
+// The pipeline card renders lead.car_listings, so every path that puts a lead
+// into state has to carry this join — not just the bootstrap fetch.
+const LEAD_SELECT =
+  "*, car_listings(brand, model, year, variant, selling_price, images, vin_number, mileage, transmission, fuel_type, plate_number, slug)";
 
 // Price visual weight — a RM45k car and a RM2.4M car shouldn't read at the
 // same size/color; scale the price figure up for higher tiers so the card
@@ -1249,8 +1256,8 @@ export default function SalesmanLite() {
   // they sit in localStorage, which has no expiry of its own (the 30-min TTL
   // above only stops the app from TRUSTING a stale read, it never deletes the
   // entry). Live in-memory state (setLeads) still gets the real values.
-  const redactLeadsForCache = (rows) =>
-    (rows || []).map(({ buyer_ic, buyer_address, ...rest }) => rest);
+  // redactLeadsForCache now lives in ../utils/panelCache — Premium needs the
+  // same rule and the local copy here is exactly why it never got it.
   const precacheImages = (listings) => {
     if (!("caches" in window)) return;
     const urls = listings.flatMap((c) => (Array.isArray(c.images) ? c.images.slice(0, 2) : [])).filter(Boolean);
@@ -1559,7 +1566,7 @@ export default function SalesmanLite() {
       // fetch leads
       supabase
         .from("leads")
-        .select("*, car_listings(brand, model, year, variant, selling_price, images, vin_number, mileage, transmission, fuel_type, plate_number, slug)")
+        .select(LEAD_SELECT)
         .eq("salesman_id", uid)
         .or("is_deleted.eq.false,is_deleted.is.null")
         .order("updated_at", { ascending: false })
@@ -1634,7 +1641,7 @@ export default function SalesmanLite() {
                     lead_source: "enquiry",
                     is_deleted: false,
                   })
-                  .select()
+                  .select(LEAD_SELECT)
                   .single();
                 if (insertLeadErr) console.error("insertLeadFromEnquiry:", insertLeadErr);
                 if (data) newLeads.push(data);
@@ -1657,18 +1664,22 @@ export default function SalesmanLite() {
             toast(t("salesmanLite.toast.newEnquiry"), { description: row.buyer_name || t("salesmanLite.toast.someoneEnquired") });
             if (!row.buyer_phone && !row.listing_id) return;
             const phone = normalizePhone(row.buyer_phone);
-            if (phone) {
-              const { data: dupLead } = await supabase.from("leads").select("id").eq("salesman_id", uid).eq("phone", phone).limit(1);
-              if (!dupLead || !dupLead.length) {
-                const { data: newLead, error: rtInsertErr } = await supabase.from("leads").insert({
-                  salesman_id: uid, dealer_id: null,
-                  buyer_name: row.buyer_name || null, phone,
-                  notes: row.buyer_message || null, car_listing_id: row.listing_id || null,
-                  stage: "new", lead_source: "enquiry", is_deleted: false,
-                }).select().single();
-                if (rtInsertErr) console.error("realtimeInsertLead:", rtInsertErr);
-                if (newLead) setLeads((p) => [newLead, ...p]);
-              }
+            // The lead itself is the DB trigger's job, NOT this handler's. The
+            // AFTER INSERT trigger enquiry_to_lead on whatsapp_enquiries has
+            // already created it (and resolved the rep through
+            // resolve_lead_salesman, the one resolver) by the time this echo
+            // arrives. This used to insert a second one whenever it lost the
+            // race, with dealer_id hardcoded null and salesman_id set inline —
+            // re-implementing attribution the exact way CLAUDE.md forbids. When
+            // it WON the race it found the trigger's row, added nothing to
+            // state, and the lead only appeared after a refresh.
+            if (row.lead_id) {
+              await hydrateLeadInto(setLeads, row.lead_id, LEAD_SELECT);
+            } else if (phone) {
+              const { data: made } = await supabase.from("leads")
+                .select("id").eq("salesman_id", uid).eq("phone", phone)
+                .order("created_at", { ascending: false }).limit(1);
+              if (made?.length) await hydrateLeadInto(setLeads, made[0].id, LEAD_SELECT);
             }
             const { error: rtConvertErr } = await supabase.from("whatsapp_enquiries").update({ status: "converted" }).eq("id", row.id);
             if (rtConvertErr) console.error("realtimeConvertEnquiry:", rtConvertErr);
@@ -1690,7 +1701,15 @@ export default function SalesmanLite() {
                 // car_listings; the raw echo row has no join, so adding it again
                 // rendered the same lead twice — once with a car, once without.
                 // If we already hold it, merge (keep the richer joined fields).
-                if (payload.eventType === "INSERT") setLeads((p) => p.some((l) => l.id === payload.new.id) ? p.map((l) => l.id === payload.new.id ? { ...payload.new, ...l } : l) : [payload.new, ...p]);
+                if (payload.eventType === "INSERT") {
+                  // Show it immediately (raw row, no car on it yet)...
+                  setLeads((p) => p.some((l) => l.id === payload.new.id) ? p.map((l) => l.id === payload.new.id ? { ...payload.new, ...l } : l) : [payload.new, ...p]);
+                  // ...then fill in the car. Realtime only ever sends the flat
+                  // table row, so without this every lead created server-side
+                  // (WhatsApp tap, enquiry, chat) sat in the pipeline with no
+                  // car attached until the next full page load.
+                  hydrateLeadInto(setLeads, payload.new.id, LEAD_SELECT);
+                }
                 if (payload.eventType === "UPDATE") setLeads((p) => p.map((l) => l.id === payload.new.id ? { ...l, ...payload.new } : l));
                 if (payload.eventType === "DELETE") setLeads((p) => p.filter((l) => l.id !== payload.old.id));
               },
@@ -1970,6 +1989,8 @@ export default function SalesmanLite() {
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) console.error("signOut:", error);
+    // Signing out must not leave this rep's buyer list cached on the device.
+    clearPanelDataCache();
     navigate("/login");
   };
 
@@ -1990,6 +2011,8 @@ export default function SalesmanLite() {
         return;
       }
       await supabase.auth.signOut({ scope: "global" });
+      // Deleting the account must not leave the buyer list behind on the device.
+      clearPanelDataCache();
       navigate("/login");
     } catch (e) {
       console.error("delete-account:", e);
@@ -2464,13 +2487,13 @@ export default function SalesmanLite() {
     let existing = null;
     if (apt.lead_id) {
       const { data: linked } = await supabase
-        .from("leads").select("id, stage").eq("id", apt.lead_id).maybeSingle();
+        .from("leads").select("id, stage, car_listing_id").eq("id", apt.lead_id).maybeSingle();
       if (linked) existing = linked;
     }
     if (!existing) {
       if (!phone) return;
       const { data: existingRows, error: lookErr } = await supabase
-        .from("leads").select("id, stage, buyer_name").eq("salesman_id", userId).eq("phone", phone)
+        .from("leads").select("id, stage, buyer_name, car_listing_id").eq("salesman_id", userId).eq("phone", phone)
         .order("created_at", { ascending: false });
       if (lookErr) console.error("autoUpsertLeadFromAppt lookup:", lookErr);
       // Only adopt an existing lead when it unambiguously belongs to THIS
@@ -2492,6 +2515,10 @@ export default function SalesmanLite() {
     const viewIdx = LEAD_STAGES.indexOf("viewing_booked");
     if (existing) {
       const curIdx = LEAD_STAGES.indexOf(existing.stage);
+      // A booking always comes from one listing, so a lead adopted by a booking
+      // should carry that car. Fill-when-blank only: a lead that already names a
+      // car keeps it, so re-booking never silently repoints an existing deal.
+      const attachCar = !existing.car_listing_id && apt.car_listing_id ? apt.car_listing_id : null;
       // Advance a lead that's behind the booking stage into it. ALSO revive a
       // dead (lost) lead — the buyer just booked a fresh viewing, so it belongs
       // back in "Booked". A won lead is left alone (don't un-close a sale). This
@@ -2500,7 +2527,8 @@ export default function SalesmanLite() {
       const revive = existing.stage === "lost" || existing.stage === "closed_lost";
       if (curIdx < viewIdx || revive) {
         const { error: updErr } = await supabase.from("leads")
-          .update({ stage: "viewing_booked", updated_at: new Date().toISOString() })
+          .update({ stage: "viewing_booked", updated_at: new Date().toISOString(),
+                    ...(attachCar ? { car_listing_id: attachCar } : {}) })
           .eq("id", existing.id);
         if (updErr) {
           console.error("autoUpsertLeadFromAppt advance:", updErr);
@@ -2510,8 +2538,10 @@ export default function SalesmanLite() {
         // The lead may not be in local state (a revived/terminal lead can be
         // filtered out of the board) — refetch it so it shows immediately.
         setLeads((p) => p.some((l) => l.id === existing.id)
-          ? p.map((l) => l.id === existing.id ? { ...l, stage: "viewing_booked" } : l)
+          ? p.map((l) => l.id === existing.id ? { ...l, stage: "viewing_booked", ...(attachCar ? { car_listing_id: attachCar } : {}) } : l)
           : p);
+        // Re-read with the join so the newly attached car actually renders.
+        if (attachCar) await hydrateLeadInto(setLeads, existing.id, LEAD_SELECT);
         if (!leads.some((l) => l.id === existing.id)) {
           const { data: full } = await supabase.from("leads")
             .select("*, car_listings(id, brand, model, year, variant, selling_price, images, slug)")

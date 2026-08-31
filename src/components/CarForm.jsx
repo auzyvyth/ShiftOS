@@ -42,6 +42,7 @@ import { CAR_DATA } from "../data/carData";
 import { getListingGaps } from "../utils/listingCompleteness";
 import { TRUST_DOCS, TRUST_DOC_KEYS, GERAN_REASONS, getTrustTier } from "../utils/trustDocs";
 import { decodeVin, isLikelyVin } from "../utils/vinDecode";
+import { isPremiumSalesman } from "../utils/salesmanPlan";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 const initialListing = {
@@ -774,7 +775,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   // Salesman Lite (the decode doesn't work reliably and Lite is the free tier).
   // Dealers go through AddCarForm's intake first, so they keep their decode there.
   const isSalesman = profile?.role === "salesman";
-  const isPremiumSalesman = isSalesman && profile?.plan === "salesman_full";
+  const isPremiumPlan = isSalesman && isPremiumSalesman(profile);
 
   // In create mode, pre-fill state/city (and any other defaults) from the caller.
   // In edit mode, initialListing is unused — the pre-fill effect below populates from `listing`.
@@ -2228,7 +2229,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               <p className="text-xs text-red-600 mt-1 font-semibold">This plate is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
             )}
           </Field>
-          <Field label="VIN Number" hint={isPremiumSalesman ? "17-char VIN — tap Decode to auto-fill specs" : "Vehicle Identification Number"}>
+          <Field label="VIN Number" hint={isPremiumPlan ? "17-char VIN — tap Decode to auto-fill specs" : "Vehicle Identification Number"}>
             <div className="flex gap-2">
               <input
                 name="vin_number"
@@ -2239,7 +2240,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 className={`${inputCls} flex-1`}
                 style={{ textTransform: "uppercase" }}
               />
-              {isPremiumSalesman && (
+              {isPremiumPlan && (
                 <button
                   type="button"
                   onClick={handleDecodeVin}

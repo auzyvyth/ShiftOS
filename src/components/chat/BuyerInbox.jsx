@@ -3,6 +3,7 @@ import { MessageSquare, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-rea
 import { Link } from 'react-router-dom';
 import { useBuyerThreads } from '../../hooks/useChat';
 import ChatThread from './ChatThread';
+import BuyerPushPrompt from './BuyerPushPrompt';
 
 // Buyer-side inbox, on /account.
 //
@@ -239,6 +240,14 @@ export default function BuyerInbox() {
           <ThreadRow t={t} onOpen={(x) => setOpenId(x.thread_id)} />
         </React.Fragment>
       ))}
+      {/* The second entry point. Inside a thread the prompt only appears once
+          the buyer has typed, which is right there but leaves a buyer who
+          already has conversations — and no subscription — with nowhere to turn
+          them on. Having threads at all means they have already messaged
+          someone, so the "not yet asked for anything" reasoning does not apply
+          here. Same component, so there is one implementation of every browser
+          trap, not two. */}
+      <BuyerPushPrompt t={{ border: HAIRLINE, panel: SOFT, sub: MUTED }} />
     </div>
   );
 }

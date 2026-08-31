@@ -43,15 +43,43 @@ serve(async (req) => {
     if (authErr || !user) return new Response("unauthorized", { status: 401, headers: cors });
 
     const { dealer_id, channel_id, message } = await req.json();
-    if (!dealer_id || !channel_id || !message) {
+    if (!channel_id || !message) {
       return new Response(JSON.stringify({ ok: false, error: "missing fields" }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    // Resolve the caller's OWN dealer scope server-side. The body's dealer_id is
+    // not trusted to pick whose bot token gets used: this endpoint verified the
+    // JWT but never checked that the caller had anything to do with the
+    // dealer_id they named, so any authenticated user — including an anonymous
+    // guest buyer, since anonymous sign-in is enabled — could name any dealer
+    // and send Telegram messages through THAT dealer's bot token, and harvest
+    // the bot's @username off the not_started path. Deriving the id instead of
+    // validating it means there is no version of this call that can get it
+    // wrong. Mirrors getDealerIdFromProfile / ai-proxy's resolveDealerId.
+    const { data: caller, error: callerErr } = await supabase
+      .from("profiles")
+      .select("id, role, dealer_id")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (callerErr || !caller) {
+      return new Response(JSON.stringify({ ok: false, error: "forbidden" }), { status: 403, headers: { ...cors, "Content-Type": "application/json" } });
+    }
+    const callerDealerId = ["dealer", "owner", "superadmin"].includes(caller.role)
+      ? caller.id
+      : (caller.dealer_id || caller.id);
+
+    // Existing callers all pass their own resolved dealer id, so a mismatch is
+    // either a bug or an attempt to borrow someone else's bot — say so loudly
+    // rather than quietly falling back to the caller's own token.
+    if (dealer_id && dealer_id !== callerDealerId) {
+      return new Response(JSON.stringify({ ok: false, error: "forbidden" }), { status: 403, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     // Fetch the dealer's own bot token server-side — never sent to the browser.
     const { data: profile } = await supabase
       .from("profiles")
       .select("telegram_bot_token")
-      .eq("id", dealer_id)
+      .eq("id", callerDealerId)
       .maybeSingle();
 
     // Solo salesmen (Salesman Lite/Premium) resolve dealer_id to their OWN profile,

@@ -117,6 +117,9 @@ import ChannelBreakdown from "../components/ChannelBreakdown";
 import ShareMenu from "../components/ShareMenu";
 import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha } from "../theme/tokens";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
+import { hydrateLeadInto } from "../utils/leadHydrate";
+import { isPremiumSalesman } from "../utils/salesmanPlan";
+import { redactLeadsForCache, clearPanelDataCache } from "../utils/panelCache";
 // Style tokens, formatters, and small shared components (SOFT/CARD/STAGE_COLOR/
 // SubTabs/PrevMonthModal/etc.) live here so DashboardTab/ListingsTab/AnalyticsTab
 // (and the shell below) import the same definitions instead of duplicating them.
@@ -186,7 +189,7 @@ export default function SalesmanPremium() {
  const [loading, setLoading] = useState(true);
  const [pendingPay, setPendingPay] = useState(false);
  const [trialExpired, setTrialExpired] = useState(false);
- const isPremium = profile?.plan === 'salesman_full';
+ const isPremium = isPremiumSalesman(profile);
  // Unread buyer-chat count for the nav badge. Its own hook instance, separate
  // from the one inside SellerInbox (each gets a distinct realtime channel).
  const { threads: chatThreads, totalUnread: chatUnread } = useChatThreads({ salesmanId: userId });
@@ -872,7 +875,7 @@ export default function SalesmanPremium() {
  navigate("/salesman", { replace: true });
  return;
  }
- if (profileData.plan !== 'salesman_full') {
+ if (!isPremiumSalesman(profileData)) {
  navigate("/salesman-lite", { replace: true });
  return;
  }
@@ -988,8 +991,14 @@ export default function SalesmanPremium() {
  filter: `salesman_id=eq.${uid}`,
  },
  (payload) => {
- if (payload.eventType === "INSERT")
- setLeads((p) => (p.some((l) => l.id === payload.new.id)? p : [payload.new, ...p]));
+ if (payload.eventType === "INSERT") {
+                    // Raw table row first so the card appears instantly, then
+                    // re-read with the car join — realtime never sends it, so
+                    // every server-created lead (WhatsApp tap, enquiry, chat)
+                    // used to sit here with no car until a full page reload.
+                    setLeads((p) => (p.some((l) => l.id === payload.new.id) ? p : [payload.new, ...p]));
+                    hydrateLeadInto(setLeads, payload.new.id, LEAD_SELECT);
+                  }
  if (payload.eventType === "UPDATE")
  setLeads((p) =>
  p.map((l) =>
@@ -1204,7 +1213,10 @@ export default function SalesmanPremium() {
  const rows = lds || [];
  setLeads(rows);
  setLeadsLoading(false);
- writeCache(`sp_leads_${uid}`, rows);
+ // Redact before the write: LEAD_SELECT is `*`, so `rows` carries buyer_ic
+ // and buyer_address. In-memory state keeps the full rows; only the copy
+ // that lands on disk is stripped.
+ writeCache(`sp_leads_${uid}`, redactLeadsForCache(rows));
 
  // Which of these leads already carry a paid add-on — feeds the
  // pipeline card badge. Scoped to the leads we just fetched rather
@@ -1334,6 +1346,8 @@ export default function SalesmanPremium() {
 
  const handleLogout = async () => {
  await supabase.auth.signOut();
+ // Signing out must not leave this rep's buyer list cached on the device.
+ clearPanelDataCache();
  window.location.href = "https://xdrive.my/login";
  };
 
@@ -1742,13 +1756,13 @@ export default function SalesmanPremium() {
  let existing = null;
  if (apt.lead_id) {
  const { data: linked } = await supabase
- .from("leads").select("id, stage").eq("id", apt.lead_id).maybeSingle();
+ .from("leads").select("id, stage, car_listing_id").eq("id", apt.lead_id).maybeSingle();
  if (linked) existing = linked;
  }
  if (!existing) {
  if (!phone) return;
  const { data: existingRows, error: lookErr } = await supabase
- .from("leads").select("id, stage, buyer_name").eq("salesman_id", userId).eq("phone", phone)
+ .from("leads").select("id, stage, buyer_name, car_listing_id").eq("salesman_id", userId).eq("phone", phone)
  .order("created_at", { ascending: false });
  if (lookErr) console.error("autoUpsertLeadFromAppt lookup:", lookErr);
  const nameKey = (apt.buyer_name || "").trim().toLowerCase();
@@ -1764,17 +1778,23 @@ export default function SalesmanPremium() {
  const viewIdx = LEAD_STAGES.indexOf("viewing_booked");
  if (existing) {
  const curIdx = LEAD_STAGES.indexOf(existing.stage);
+      // A booking always comes from one listing, so a lead adopted by a booking
+      // should carry that car. Fill-when-blank only: a lead that already names a
+      // car keeps it, so re-booking never silently repoints an existing deal.
+      const attachCar = !existing.car_listing_id && apt.car_listing_id ? apt.car_listing_id : null;
  // Advance a lead sitting behind the booking stage. ALSO revive a lost lead
  // — the buyer just booked a fresh viewing. A won lead is left alone.
  const revive = existing.stage === "lost" || existing.stage === "closed_lost";
  if (curIdx < viewIdx || revive) {
  const { error: updErr } = await supabase.from("leads")
- .update({ stage: "viewing_booked", updated_at: new Date().toISOString() })
+ .update({ stage: "viewing_booked", updated_at: new Date().toISOString(), ...(attachCar ? { car_listing_id: attachCar } : {}) })
  .eq("id", existing.id);
  if (updErr) { console.error("autoUpsertLeadFromAppt advance:", updErr); toast.error("Could not move the lead"); return; }
  setLeads((p) => p.some((l) => l.id === existing.id)
- ? p.map((l) => l.id === existing.id? { ...l, stage: "viewing_booked" } : l)
+ ? p.map((l) => l.id === existing.id ? { ...l, stage: "viewing_booked", ...(attachCar ? { car_listing_id: attachCar } : {}) } : l)
  : p);
+        // Re-read with the join so the newly attached car actually renders.
+        if (attachCar) await hydrateLeadInto(setLeads, existing.id, LEAD_SELECT);
  // A revived/terminal lead may be filtered out of local state — refetch.
  if (!leads.some((l) => l.id === existing.id)) {
  const { data: full } = await supabase.from("leads")

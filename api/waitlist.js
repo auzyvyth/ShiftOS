@@ -29,17 +29,23 @@ export default async function handler(req, res) {
     process.env.VITE_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY,
   );
 
-  // Return existing signup if phone already registered
-  const { data: existing, error: selectErr } = await supabase
-    .from('waitlist_signups')
-    .select('position, referral_code')
-    .eq('phone', phoneClean)
-    .maybeSingle();
+  // Return existing signup if phone already registered.
+  //
+  // This runs as the ANON role and waitlist_signups has no anon SELECT policy
+  // (the table holds names and phone numbers, and one would expose the whole
+  // list). A plain .from().select() therefore returned null every time, so a
+  // returning person got a NEW row and a NEW queue position on every submit.
+  // waitlist_lookup is a SECURITY DEFINER RPC that answers for one phone and
+  // returns only the two fields echoed back below.
+  const { data: lookup, error: selectErr } = await supabase
+    .rpc('waitlist_lookup', { p_phone: phoneClean });
 
   if (selectErr) {
-    console.error('[api/waitlist] select error', selectErr.message);
+    console.error('[api/waitlist] lookup error', selectErr.message);
     return res.status(500).json({ error: selectErr.message });
   }
+
+  const existing = Array.isArray(lookup) ? lookup[0] : lookup;
 
   if (existing) {
     return res.status(200).json({
@@ -67,26 +73,15 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: insertErr.message });
   }
 
-  // Grant founding member to referrer on their first successful referral
+  // Grant founding member to the referrer on their first successful referral.
+  // Same reason as above: the old read-then-update ran as anon, the read always
+  // came back null, and so nobody had ever been granted the badge. The RPC takes
+  // the referral CODE (not an id), checks the code has actually been used, and
+  // is a no-op otherwise — so it cannot be aimed at an arbitrary row.
   if (refCode) {
-    const { data: referrer } = await supabase
-      .from('waitlist_signups')
-      .select('id, founding_member')
-      .eq('referral_code', refCode)
-      .maybeSingle();
-
-    if (referrer && !referrer.founding_member) {
-      const { count } = await supabase
-        .from('waitlist_signups')
-        .select('id', { count: 'exact', head: true })
-        .eq('referred_by', refCode);
-      if (count >= 1) {
-        await supabase
-          .from('waitlist_signups')
-          .update({ founding_member: true })
-          .eq('id', referrer.id);
-      }
-    }
+    const { error: refErr } = await supabase
+      .rpc('waitlist_credit_referrer', { p_ref_code: refCode });
+    if (refErr) console.error('[api/waitlist] referral credit', refErr.message);
   }
 
   return res.status(200).json({
