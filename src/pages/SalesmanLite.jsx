@@ -99,6 +99,7 @@ import {
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
+import { redactLeadsForCache, clearPanelDataCache } from "../utils/panelCache";
 import AvailabilityEditor from "../components/AvailabilityEditor";
 
 // The pipeline card renders lead.car_listings, so every path that puts a lead
@@ -1255,8 +1256,8 @@ export default function SalesmanLite() {
   // they sit in localStorage, which has no expiry of its own (the 30-min TTL
   // above only stops the app from TRUSTING a stale read, it never deletes the
   // entry). Live in-memory state (setLeads) still gets the real values.
-  const redactLeadsForCache = (rows) =>
-    (rows || []).map(({ buyer_ic, buyer_address, ...rest }) => rest);
+  // redactLeadsForCache now lives in ../utils/panelCache — Premium needs the
+  // same rule and the local copy here is exactly why it never got it.
   const precacheImages = (listings) => {
     if (!("caches" in window)) return;
     const urls = listings.flatMap((c) => (Array.isArray(c.images) ? c.images.slice(0, 2) : [])).filter(Boolean);
@@ -1988,6 +1989,8 @@ export default function SalesmanLite() {
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) console.error("signOut:", error);
+    // Signing out must not leave this rep's buyer list cached on the device.
+    clearPanelDataCache();
     navigate("/login");
   };
 
@@ -2008,6 +2011,8 @@ export default function SalesmanLite() {
         return;
       }
       await supabase.auth.signOut({ scope: "global" });
+      // Deleting the account must not leave the buyer list behind on the device.
+      clearPanelDataCache();
       navigate("/login");
     } catch (e) {
       console.error("delete-account:", e);
