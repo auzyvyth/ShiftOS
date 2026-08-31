@@ -2,6 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Check, CheckCheck, Send, AlertCircle, Eye, ShieldAlert, Sparkles, X, Lock } from 'lucide-react';
 import { useChatThread, tickState } from '../../hooks/useChat';
 import BuyerPushPrompt from './BuyerPushPrompt';
+import BuyerEmailPrompt from './BuyerEmailPrompt';
 import { supabase } from '../../supabaseClient';
 import useVisualViewport from '../../hooks/useVisualViewport';
 import { AI_FEATURES_ENABLED } from '../../utils/aiFeatureFlag';
@@ -110,6 +111,11 @@ export default function ChatThread({
   const vv = useVisualViewport();
   const [kbFocused, setKbFocused] = useState(false);
   const [composerH, setComposerH] = useState(0);
+  // null until BuyerEmailPrompt has looked the buyer up. ONE ask at a time:
+  // email first (it reaches a buyer who closed the tab, which push cannot),
+  // then push once we already have an address. Two prompts stacked in the same
+  // strip is the nag nobody reads.
+  const [buyerHasEmail, setBuyerHasEmail] = useState(null);
 
   // Keyboard handling, the way every real chat app does it: the composer sits
   // ON TOP of the keyboard and nothing else moves.
@@ -351,13 +357,16 @@ export default function ChatThread({
         </div>
       )}
 
-      {/* The buyer's half of notifications. Only after they have actually sent
+      {/* The buyer's half of notifications — an address first, then the device.
+          Only after they have actually sent
           something — the moment they start waiting on a reply is the moment the
           ask makes sense, and a permission prompt fired on open is the kind
           people reflexively block. Sits in the slot the seller's AI bar
           occupies, so neither side gains a layout of its own. */}
       {role === 'buyer' && messages.some(m => m.sender_role === 'buyer') && (
-        <BuyerPushPrompt t={t} />
+        buyerHasEmail === false || buyerHasEmail === null
+          ? <BuyerEmailPrompt t={t} onResolved={setBuyerHasEmail} />
+          : <BuyerPushPrompt t={t} />
       )}
 
       {/* Holds the composer's slot open while it is fixed, so the message list

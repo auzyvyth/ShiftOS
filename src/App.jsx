@@ -63,6 +63,7 @@ const AuthConfirmPage    = lazy(() => import("./pages/AuthConfirmPage"));
 const AuthCallbackPage   = lazy(() => import("./pages/AuthCallbackPage"));
 const PlansPage          = lazy(() => import("./pages/PlansPage"));
 const ResetPasswordPage  = lazy(() => import("./pages/ResetPasswordPage"));
+const UnsubscribePage    = lazy(() => import("./pages/UnsubscribePage"));
 const SalesmanSetup      = lazy(() => import("./pages/SalesmanSetup"));
 const ImportStockPage    = lazy(() => import("./pages/ImportStockPage"));
 const ComparePage        = lazy(() => import("./pages/ComparePage"));
@@ -197,6 +198,9 @@ function App() {
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/auth/reset" element={<ResetPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          {/* Linked from every notification email. Public on purpose: an
+              unsubscribe that demands a sign-in becomes a spam report. */}
+          <Route path="/unsubscribe" element={<UnsubscribePage />} />
           <Route path="/salesman-setup" element={<SalesmanSetup />} />
 
           {/* Protected — XDrive */}
