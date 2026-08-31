@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
+import { isPremiumSalesman } from '../utils/salesmanPlan';
 
 // THE role -> home-surface map. There is exactly one of these; import it, never
 // retype it. Five hand-copied duplicates had drifted (SalesmanLite,
@@ -38,7 +39,7 @@ export function routeForRole(role) {
  * `salesman` is the one role a role name cannot answer on its own, because
  * three different panels serve it:
  *   dealer_id set            -> /salesman          (works under a dealer)
- *   standalone, salesman_full-> /salesman-premium
+ *   standalone, PAID full    -> /salesman-premium
  *   standalone, otherwise    -> /salesman-lite
  * ROLE_ROUTES.salesman is '/salesman', so every "Dashboard" link sent a
  * STANDALONE rep to the linked-salesman panel. Salesmanpanel.jsx:517 catches it
@@ -49,7 +50,7 @@ export function routeForRole(role) {
 export function routeForProfile(profile) {
   if (!profile?.role) return FALLBACK_ROUTE;
   if (profile.role === 'salesman' && !profile.dealer_id) {
-    return profile.plan === 'salesman_full' ? '/salesman-premium' : '/salesman-lite';
+    return isPremiumSalesman(profile) ? '/salesman-premium' : '/salesman-lite';
   }
   return routeForRole(profile.role);
 }

@@ -117,6 +117,7 @@ import ChannelBreakdown from "../components/ChannelBreakdown";
 import ShareMenu from "../components/ShareMenu";
 import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha } from "../theme/tokens";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
+import { isPremiumSalesman } from "../utils/salesmanPlan";
 // Style tokens, formatters, and small shared components (SOFT/CARD/STAGE_COLOR/
 // SubTabs/PrevMonthModal/etc.) live here so DashboardTab/ListingsTab/AnalyticsTab
 // (and the shell below) import the same definitions instead of duplicating them.
@@ -186,7 +187,7 @@ export default function SalesmanPremium() {
  const [loading, setLoading] = useState(true);
  const [pendingPay, setPendingPay] = useState(false);
  const [trialExpired, setTrialExpired] = useState(false);
- const isPremium = profile?.plan === 'salesman_full';
+ const isPremium = isPremiumSalesman(profile);
  // Unread buyer-chat count for the nav badge. Its own hook instance, separate
  // from the one inside SellerInbox (each gets a distinct realtime channel).
  const { threads: chatThreads, totalUnread: chatUnread } = useChatThreads({ salesmanId: userId });
@@ -872,7 +873,7 @@ export default function SalesmanPremium() {
  navigate("/salesman", { replace: true });
  return;
  }
- if (profileData.plan !== 'salesman_full') {
+ if (!isPremiumSalesman(profileData)) {
  navigate("/salesman-lite", { replace: true });
  return;
  }
