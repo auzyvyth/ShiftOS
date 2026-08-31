@@ -621,6 +621,52 @@ const inputStyle = (focused, th) => ({
   transition: "border-color 0.2s",
 });
 
+/* Booking form validation — ONE set of rules, so the inline message a buyer
+   reads and the reason the submit is blocked can never disagree.
+   Before this the form gated on a `bookReady` boolean that greyed the button
+   out and said nothing about WHY, and the phone field ships prefilled with
+   "+60" — which satisfies the browser's `required` check, so a buyer who
+   typed no number submitted, api/booking.js answered 400 "Invalid phone
+   number", and the client threw that reason away and showed a flat
+   "Booking failed. Please try again."
+   Phone bounds (9-15 digits) MUST stay in sync with api/booking.js. */
+const validateBooking = (form, consent) => {
+  const errors = {};
+  if (!form.name?.trim()) errors.name = "Enter your name so the seller knows who to expect.";
+
+  const digits = String(form.phone || "").replace(/\D/g, "");
+  // "+60" is the prefix we prefill, not a number the buyer typed.
+  if (!digits || digits === "60") {
+    errors.phone = "Enter your phone number — the seller confirms on WhatsApp.";
+  } else if (digits.length < 9 || digits.length > 15) {
+    errors.phone = "That number doesn't look right. Check the digits.";
+  }
+
+  if (!form.date || !form.time) errors.slot = "Pick a date and a time for your viewing.";
+  if (!form.timeline) errors.timeline = "Let the seller know when you're looking to buy.";
+  if (!consent.appear || !consent.whatsapp) {
+    errors.consent = "Tick both boxes to confirm the viewing.";
+  }
+  return errors;
+};
+
+/* Which field an error should send the buyer to, in the order they appear. */
+const BOOK_ERROR_ANCHORS = [
+  ["name",     "cdp-bk-name"],
+  ["phone",    "cdp-bk-phone"],
+  ["slot",     "cdp-bk-slot"],
+  ["timeline", "cdp-bk-timeline"],
+  ["consent",  "cdp-bk-consent"],
+];
+
+const FieldError = ({ id, msg, th }) =>
+  msg ? (
+    <p id={id} role="alert" style={{
+      margin: "-4px 0 8px", fontSize: 11.5, lineHeight: 1.4,
+      color: th?.errText ?? "#f87171", fontFamily: "system-ui, sans-serif",
+    }}>{msg}</p>
+  ) : null;
+
 /* Hero photo sizing. A single fixed width made a 390px phone download a
    1280-1600px image; the srcset lets the browser pick. The primary cell is
    ~62% of the viewport on desktop and full-bleed below 900px. */
@@ -870,6 +916,7 @@ export default function CarDetailPage() {
     borderSec: 'rgba(15,23,42,0.05)',
     inputBg:   '#ffffff',
     inputBorder:'rgba(15,23,42,0.12)',
+    errText:   '#b91c1c',
     shimmer:   'linear-gradient(90deg,#e7eaef 25%,#f1f3f6 50%,#e7eaef 75%)',
   } : {
     pageBg:    '#060c14',
@@ -882,6 +929,7 @@ export default function CarDetailPage() {
     borderSec: 'rgba(255,255,255,0.04)',
     inputBg:   'rgba(255,255,255,0.05)',
     inputBorder:'rgba(255,255,255,0.12)',
+    errText:   '#f87171',
     shimmer:   'linear-gradient(90deg,#0a1220 25%,#111e30 50%,#0a1220 75%)',
   };
 
@@ -972,6 +1020,12 @@ export default function CarDetailPage() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showReservedPopup, setShowReservedPopup] = useState(false);
   const [bookingConsent, setBookingConsent] = useState({ appear: true, whatsapp: true });
+  // Per-field booking errors, keyed the same as validateBooking's output.
+  const [bookErrors, setBookErrors] = useState({});
+  // Clears one field's error as soon as the buyer edits it, so the message
+  // disappears when it stops being true instead of sitting there until resubmit.
+  const clearBookError = (key) =>
+    setBookErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
   const [legalDoc, setLegalDoc] = useState(null);
   const bookingRef = useRef(null);
 
@@ -1446,6 +1500,7 @@ export default function CarDetailPage() {
     }));
     setBooked(false);
     setBookingConsent({ appear: true, whatsapp: true });
+    setBookErrors({});
     setShowBookingModal(true);
   }
 
@@ -1545,6 +1600,22 @@ export default function CarDetailPage() {
   async function handleBook(e) {
     e.preventDefault();
     if (submitting) return;
+
+    // Say what is missing instead of letting the request go and reporting a
+    // flat failure. The submit button stays enabled precisely so this runs —
+    // a greyed-out button that never explains itself is the same dead end.
+    const errors = validateBooking(form, bookingConsent);
+    if (Object.keys(errors).length) {
+      setBookErrors(errors);
+      const first = BOOK_ERROR_ANCHORS.find(([key]) => errors[key]);
+      if (first) {
+        const el = document.getElementById(first[1]);
+        el?.scrollIntoView({ block: "center", behavior: "smooth" });
+        if (typeof el?.focus === "function") el.focus({ preventScroll: true });
+      }
+      return;
+    }
+    setBookErrors({});
     setSubmitting(true);
     const [h, m] = form.time.split(":");
     const dt = new Date(`${form.date}T${h.padStart(2, "0")}:${m}:00`);
@@ -1570,18 +1641,40 @@ export default function CarDetailPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        if (res.status === 429) {
-          alert("Too many bookings. Please wait a moment and try again.");
-        } else {
-          console.error("[handleBook]", data.error);
-          alert("Booking failed. Please try again.");
-        }
         setSubmitting(false);
+        if (res.status === 429) {
+          toast.error("Too many bookings. Please wait a moment and try again.");
+          return;
+        }
+        // A 400 always names the field it rejected — show it ON that field
+        // rather than collapsing every reason into "Booking failed".
+        const reason = String(data.error || "");
+        if (res.status === 400 && reason === "Invalid phone number") {
+          setBookErrors({ phone: "That number doesn't look right. Check the digits." });
+          document.getElementById("cdp-bk-phone")?.focus();
+          return;
+        }
+        if (res.status === 400 && reason === "Invalid appointment date") {
+          setBookErrors({ slot: "That slot has passed. Pick another date and time." });
+          document.getElementById("cdp-bk-slot")?.scrollIntoView({ block: "center", behavior: "smooth" });
+          return;
+        }
+        if (res.status === 400 && reason === "Missing required fields") {
+          setBookErrors(validateBooking(form, bookingConsent));
+          toast.error("Some details are missing. Check the highlighted fields.");
+          return;
+        }
+        if (res.status === 404) {
+          toast.error("This listing is no longer available.");
+          return;
+        }
+        console.error("[handleBook]", reason);
+        toast.error("Couldn't send your booking. Please try again.");
         return;
       }
     } catch (err) {
       console.error("[handleBook] fetch error:", err);
-      alert("Booking failed. Please try again.");
+      toast.error("Couldn't reach the seller right now. Check your connection and try again.");
       setSubmitting(false);
       return;
     }
@@ -1738,9 +1831,14 @@ export default function CarDetailPage() {
   const enquiryClick = repEnquiryTarget ? () => handleWhatsApp(repEnquiryTarget) : handleWhatsApp;
   const enquiryLabel = repFirstName ? `WhatsApp ${repFirstName}` : 'WhatsApp';
   const listedDays = daysAgo(car.created_at);
-  // A booking is submittable only once a real slot is chosen and both consent
-  // boxes are ticked — the commitment gate.
-  const bookReady = bookingConsent.appear && bookingConsent.whatsapp && !!form.date && !!form.time;
+  // The commitment gate (real slot + both consent boxes) is enforced by
+  // validateBooking on submit, NOT by disabling the button — a disabled button
+  // cannot tell the buyer which box it is waiting on.
+  const bkStyle = (key, focusKey, extra) => ({
+    ...inputStyle(focusedField === focusKey, th),
+    ...(extra || {}),
+    ...(bookErrors[key] ? { borderColor: th.errText } : {}),
+  });
   const imgCount = images.length;
   const prevIdx = (activeIdx - 1 + imgCount) % imgCount;
   const nextIdx = (activeIdx + 1) % imgCount;
@@ -4212,36 +4310,56 @@ export default function CarDetailPage() {
                   </button>
                 </div>
               ) : (
-                <form onSubmit={handleBook} style={{ padding:'20px 28px 32px' }}>
+                <form onSubmit={handleBook} noValidate style={{ padding:'20px 28px 32px' }}>
+                  {/* noValidate: the browser's own bubble cannot catch the "+60"
+                      prefix sitting in an untouched phone field, and it fires
+                      before handleBook, so two validators would disagree. */}
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:0 }}>
-                    <input type="text" placeholder="Your name" aria-label="Your name" required value={form.name}
-                      onChange={e => setForm(f => ({...f, name: e.target.value}))}
-                      onFocus={() => setFocused('bk_name')} onBlur={() => setFocused(null)}
-                      style={inputStyle(focusedField === 'bk_name', th)} />
-                    <input type="tel" placeholder="Phone number" aria-label="Phone number" required value={form.phone}
-                      onChange={e => setForm(f => ({...f, phone: e.target.value}))}
-                      onFocus={() => setFocused('bk_phone')} onBlur={() => setFocused(null)}
-                      style={inputStyle(focusedField === 'bk_phone', th)} />
+                    <div style={{ minWidth:0 }}>
+                      <input id="cdp-bk-name" type="text" placeholder="Your name" aria-label="Your name" required
+                        aria-invalid={!!bookErrors.name}
+                        aria-describedby={bookErrors.name ? 'cdp-bk-name-err' : undefined}
+                        value={form.name}
+                        onChange={e => { setForm(f => ({...f, name: e.target.value})); clearBookError('name'); }}
+                        onFocus={() => setFocused('bk_name')} onBlur={() => setFocused(null)}
+                        style={bkStyle('name', 'bk_name')} />
+                      <FieldError id="cdp-bk-name-err" msg={bookErrors.name} th={th} />
+                    </div>
+                    <div style={{ minWidth:0 }}>
+                      <input id="cdp-bk-phone" type="tel" inputMode="tel" placeholder="Phone number" aria-label="Phone number" required
+                        aria-invalid={!!bookErrors.phone}
+                        aria-describedby={bookErrors.phone ? 'cdp-bk-phone-err' : undefined}
+                        value={form.phone}
+                        onChange={e => { setForm(f => ({...f, phone: e.target.value})); clearBookError('phone'); }}
+                        onFocus={() => setFocused('bk_phone')} onBlur={() => setFocused(null)}
+                        style={bkStyle('phone', 'bk_phone')} />
+                      <FieldError id="cdp-bk-phone-err" msg={bookErrors.phone} th={th} />
+                    </div>
                   </div>
-                  <div style={{ margin:'4px 0 8px' }}>
+                  <div id="cdp-bk-slot" style={{ margin:'4px 0 8px' }}>
                     <BookingCalendar
                       carId={car.id}
                       refSlug={getRef() || null}
                       th={th}
                       isXdrive={isXdrive}
                       value={{ date: form.date, time: form.time }}
-                      onChange={({ date, time }) => setForm(f => ({ ...f, date, time }))}
+                      onChange={({ date, time }) => { setForm(f => ({ ...f, date, time })); clearBookError('slot'); }}
                     />
+                    <FieldError id="cdp-bk-slot-err" msg={bookErrors.slot} th={th} />
                   </div>
-                  <select aria-label="When are you looking to buy?" required value={form.timeline}
-                    onChange={e => setForm(f => ({...f, timeline: e.target.value}))}
+                  <select id="cdp-bk-timeline" aria-label="When are you looking to buy?" required
+                    aria-invalid={!!bookErrors.timeline}
+                    aria-describedby={bookErrors.timeline ? 'cdp-bk-timeline-err' : undefined}
+                    value={form.timeline}
+                    onChange={e => { setForm(f => ({...f, timeline: e.target.value})); clearBookError('timeline'); }}
                     onFocus={() => setFocused('bk_timeline')} onBlur={() => setFocused(null)}
-                    style={{ ...inputStyle(focusedField === 'bk_timeline', th), cursor:'pointer', width:'100%' }}>
+                    style={bkStyle('timeline', 'bk_timeline', { cursor:'pointer', width:'100%' })}>
                     <option value="" style={{ background: th.card }}>When are you looking to buy?</option>
                     {BUYING_INTENT.map(o => (
                       <option key={o.v} value={o.v} style={{ background: th.card }}>{o.l}</option>
                     ))}
                   </select>
+                  <FieldError id="cdp-bk-timeline-err" msg={bookErrors.timeline} th={th} />
                   <select aria-label="Your state" value={form.state}
                     onChange={e => setForm(f => ({...f, state: e.target.value}))}
                     onFocus={() => setFocused('bk_state')} onBlur={() => setFocused(null)}
@@ -4257,12 +4375,12 @@ export default function CarDetailPage() {
                     style={{ ...inputStyle(focusedField === 'bk_notes', th), resize:'none', width:'100%' }} />
 
                   {/* consent */}
-                  <div style={{ borderTop:`1px solid ${th.border}`, paddingTop:16, marginTop:4, marginBottom:16 }}>
+                  <div id="cdp-bk-consent" style={{ borderTop:`1px solid ${th.border}`, paddingTop:16, marginTop:4, marginBottom:16 }}>
                     <label
-                      onClick={() => setBookingConsent(c => ({...c, appear: !c.appear}))}
+                      onClick={() => { setBookingConsent(c => ({...c, appear: !c.appear})); clearBookError('consent'); }}
                       style={{ display:'flex', alignItems:'flex-start', gap:10, cursor:'pointer', marginBottom:12, userSelect:'none' }}
                     >
-                      <div style={{ width:18, height:18, borderRadius:4, border: bookingConsent.appear ? '2px solid #dc2626' : `2px solid ${th.inputBorder}`, background: bookingConsent.appear ? '#dc2626' : 'transparent', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', marginTop:1, transition:'all 0.15s' }}>
+                      <div style={{ width:18, height:18, borderRadius:4, border: bookingConsent.appear ? '2px solid #dc2626' : `2px solid ${bookErrors.consent ? th.errText : th.inputBorder}`, background: bookingConsent.appear ? '#dc2626' : 'transparent', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', marginTop:1, transition:'all 0.15s' }}>
                         {bookingConsent.appear && <Check size={11} color="white" strokeWidth={3} />}
                       </div>
                       <span style={{ fontSize:12, color:th.textSec, fontFamily:"system-ui,sans-serif", lineHeight:1.5 }}>
@@ -4270,40 +4388,46 @@ export default function CarDetailPage() {
                       </span>
                     </label>
                     <label
-                      onClick={() => setBookingConsent(c => ({...c, whatsapp: !c.whatsapp}))}
+                      onClick={() => { setBookingConsent(c => ({...c, whatsapp: !c.whatsapp})); clearBookError('consent'); }}
                       style={{ display:'flex', alignItems:'flex-start', gap:10, cursor:'pointer', userSelect:'none' }}
                     >
-                      <div style={{ width:18, height:18, borderRadius:4, border: bookingConsent.whatsapp ? '2px solid #dc2626' : `2px solid ${th.inputBorder}`, background: bookingConsent.whatsapp ? '#dc2626' : 'transparent', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', marginTop:1, transition:'all 0.15s' }}>
+                      <div style={{ width:18, height:18, borderRadius:4, border: bookingConsent.whatsapp ? '2px solid #dc2626' : `2px solid ${bookErrors.consent ? th.errText : th.inputBorder}`, background: bookingConsent.whatsapp ? '#dc2626' : 'transparent', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', marginTop:1, transition:'all 0.15s' }}>
                         {bookingConsent.whatsapp && <Check size={11} color="white" strokeWidth={3} />}
                       </div>
                       <span style={{ fontSize:12, color:th.textSec, fontFamily:"system-ui,sans-serif", lineHeight:1.5 }}>
                         I agree to receive a WhatsApp confirmation message
                       </span>
                     </label>
+                    <div style={{ marginTop: bookErrors.consent ? 10 : 0 }}>
+                      <FieldError id="cdp-bk-consent-err" msg={bookErrors.consent} th={th} />
+                    </div>
                   </div>
 
                   <p style={{ fontSize:11, color:th.textMuted, lineHeight:1.5, marginBottom:10 }}>
                     By continuing, you agree to our <button type="button" onClick={() => setLegalDoc('privacy')} style={{ background: 'none', border: 'none', padding: 0, color: '#dc2626', textDecoration: 'underline', cursor: 'pointer', font: 'inherit' }}>Privacy Policy</button> and to being contacted about your booking.
                   </p>
 
+                  {/* Enabled unless a request is already in flight: tapping it is
+                      how the buyer finds out what is still missing. */}
                   <button
                     type="submit"
-                    disabled={submitting || !bookReady}
+                    disabled={submitting}
                     style={{
                       width:'100%',
-                      background: !bookReady ? (isXdrive ? '#e5e7eb' : 'rgba(255,255,255,0.06)') : '#dc2626',
-                      color: !bookReady ? th.textMuted : 'white',
+                      background:'#dc2626',
+                      color:'white',
                       border:'none',
-                      borderTop: !bookReady ? 'none' : '2px solid #b91c1c',
+                      borderTop:'2px solid #b91c1c',
                       borderRadius:10,
                       padding:'14px',
                       fontWeight:700,
                       fontSize:14,
-                      cursor: (submitting || !bookReady) ? 'not-allowed' : 'pointer',
+                      cursor: submitting ? 'not-allowed' : 'pointer',
+                      opacity: submitting ? 0.6 : 1,
                       fontFamily:"system-ui,sans-serif",
                       letterSpacing:'0.02em',
                       transition:'all 0.2s',
-                      boxShadow: !bookReady ? 'none' : '0 4px 20px rgba(220,38,38,0.25)',
+                      boxShadow:'0 4px 20px rgba(220,38,38,0.25)',
                     }}
                   >
                     {submitting ? 'Requesting…' : (!form.date || !form.time) ? 'Pick a date & time' : 'Request This Viewing'}
