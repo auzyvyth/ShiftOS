@@ -19,6 +19,7 @@ import ActivityLogTab from "../components/platform/ActivityLogTab";
 import SessionsTab from "../components/platform/SessionsTab";
 import PostureTab from "../components/platform/PostureTab";
 import AlertsTab from "../components/platform/AlertsTab";
+import ListingReviewModal, { listingFlags, relTime } from "../components/platform/ListingReviewModal";
 
 function MktSection({ label, hint, children }) {
   return (
@@ -266,16 +267,15 @@ export default function AdminPage() {
   const [pendingUsersCount, setPendingUsersCount] = useState(0);
   const [pendingSignupCount, setPendingSignupCount] = useState(0);
   const [pendingKycCount, setPendingKycCount] = useState(0);
-  const [rejectingId, setRejectingId] = useState(null);
-  const [rejectReason, setRejectReason] = useState("");
+  // Which listing's Review sheet is open. Held as an ID, not the row object, so
+  // the sheet re-renders off the live pendingListings entry after a docs-verified
+  // or note write instead of showing a stale snapshot.
+  const [reviewListingId, setReviewListingId] = useState(null);
   const [approvalActioning, setApprovalActioning] = useState(null);
   const [selectedListingIds, setSelectedListingIds] = useState(() => new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkRejectOpen, setBulkRejectOpen] = useState(false);
   const [bulkRejectReason, setBulkRejectReason] = useState("");
-  const [noteEditId, setNoteEditId] = useState(null);
-  const [noteVal, setNoteVal] = useState("");
-  const [noteSaving, setNoteSaving] = useState(false);
   const [blastModal, setBlastModal] = useState(false);
   const [blastMsg, setBlastMsg] = useState("Hi! ShiftOS Lite is launching soon — free car listings, your own profile page, and lead tracking. You're on the early list. Stay tuned!");
   const [blastCopied, setBlastCopied] = useState(null); // "numbers" | "msg" | null
@@ -500,11 +500,22 @@ export default function AdminPage() {
     // Load pending approval listings (salesman-lite standalone accounts)
     const { data: pending } = await supabase
       .from("car_listings")
+      // COMPLETE select, not a summary one: the Review sheet shows every field a
+      // reviewer has to check, and a partial select is how a detail drawer ends
+      // up quietly rendering blanks (CLAUDE.md overlay rule 4). Deliberately
+      // absent: profiles.ic_number (stored hashed) and the seller's cost
+      // columns -- neither is any part of an approval decision.
       .select(`id, year, brand, model, variant, mileage, colour, condition, auction_grade, interior_grade,
-        is_recon, import_country, plate_number, vin_number, vin, selling_price, original_price, previous_price,
-        payment_type, images, status, created_at, rejection_reason, admin_notes, dealer_id, city, state,
-        car_documents, docs_verified,
-        profiles!car_listings_dealer_id_fkey(full_name, slug, dealership, phone, whatsapp_number, ic_verified_at, created_at, listing_count_cache, city, state)`)
+        is_recon, import_country, auction_house, local_reg_date, chassis_status, plate_number, vin_number, vin,
+        engine_number, registration_date, previous_owners, road_tax_expiry, warranty_months, deposit_amount,
+        transmission, fuel_type, body_type, engine_cc, horsepower, cylinders, doors, seats, fuel_consumption,
+        selling_price, original_price, previous_price, payment_type, loan_eligible, financing_type,
+        sambung_monthly, sambung_months_left, sambung_balance, sambung_deposit, sambung_bank,
+        description, features, options, specs, video_url, damage_map, condition_declared_at,
+        included_services, included_services_cost,
+        images, status, created_at, rejection_reason, admin_notes, dealer_id, city, state, slug,
+        car_documents, docs_verified, docs_verified_at, geran_status,
+        profiles!car_listings_dealer_id_fkey(full_name, slug, dealership, email, phone, whatsapp_number, ic_verified_at, is_verified, approval_status, plan, role, created_at, listing_count_cache, city, state)`)
       .eq("status", "pending_approval")
       .order("created_at", { ascending: true });
 
@@ -571,6 +582,46 @@ export default function AdminPage() {
       setPendingKycCount(kycOnly.length);
       setPendingUsersCount(signupIds.size + kycOnly.length);
     });
+  }
+
+  // ── Listing decisions ────────────────────────────────────────────────────
+  // One implementation each, called by the Review sheet. The queue row has no
+  // decision buttons of its own: a decision made from the row is a decision made
+  // without opening the geran, which is exactly what this rework removes. The
+  // bulk toolbar still approves/rejects in batch for the confident sweep.
+  async function approveListing(listing, { alsoVerifySeller } = {}) {
+    setApprovalActioning(listing.id);
+    const calls = [supabase.rpc("approve_listing", { p_listing_id: listing.id })];
+    if (alsoVerifySeller) calls.push(supabase.rpc("decide_user_approval", { p_user_id: listing.dealer_id, p_approve: true }));
+    const results = await Promise.all(calls);
+    const err = results.find(r => r.error)?.error;
+    if (err) { alert("Error: " + err.message); }
+    else {
+      setPendingListings(p => p.filter(l => l.id !== listing.id));
+      setReviewListingId(null);
+      // decide_user_approval only touches profiles -- the embedded
+      // UserApprovalsTab (Sellers/ID-checks queue) and the Home tab's queue
+      // badges have their own state and never learn the seller was just
+      // approved unless told to refetch.
+      if (alsoVerifySeller) setReviewRefreshKey(k => k + 1);
+    }
+    setApprovalActioning(null);
+  }
+
+  async function rejectListing(listing, reason) {
+    if (!reason) return;
+    setApprovalActioning(listing.id);
+    const { error } = await supabase.rpc("reject_listing", { p_listing_id: listing.id, p_reason: reason });
+    if (error) { alert("Error: " + error.message); }
+    else { setPendingListings(p => p.filter(l => l.id !== listing.id)); setReviewListingId(null); }
+    setApprovalActioning(null);
+  }
+
+  async function saveListingNote(listing, note) {
+    const { error } = await supabase.rpc("set_listing_admin_note", { p_listing_id: listing.id, p_note: note });
+    if (error) { alert("Error: " + error.message); return false; }
+    setPendingListings(p => p.map(l => l.id === listing.id ? { ...l, admin_notes: note.trim() || null } : l));
+    return true;
   }
 
   // Mark a listing's uploaded documents as reviewed by the platform. Superadmin
@@ -723,7 +774,9 @@ export default function AdminPage() {
       setActiveTab("accounts");
       setFocusAccount(r.id);
     } else if (r.kind === "listing") {
+      // Land on the car the search actually matched, not just its queue.
       openReview("listings");
+      setReviewListingId(r.id);
     } else {
       setActiveSection("people");
       setActiveTab("waitlist");
@@ -933,8 +986,7 @@ export default function AdminPage() {
           .adm-actions { flex-direction: column; align-items: stretch !important; }
           .adm-stat4 { grid-template-columns: repeat(2, 1fr) !important; }
           .adm-approval { flex-wrap: wrap; }
-          .adm-approval-actions { width: 100%; }
-          .adm-approval-actions button { flex: 1; }
+          .adm-approval > button { width: 100%; }
           .adm-home-queues { grid-template-columns: 1fr !important; }
           .adm-home-health { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
         }
@@ -1281,243 +1333,80 @@ export default function AdminPage() {
                   {pendingListings.map(listing => {
                     const salesman = listing.profiles;
                     const imgs = listing.images || [];
+                    const docCount = Array.isArray(listing.car_documents) ? listing.car_documents.length : 0;
                     const carName = [listing.year, listing.brand, listing.model, listing.variant].filter(Boolean).join(" ");
                     const price = listing.selling_price ? `RM ${Number(listing.selling_price).toLocaleString("en-MY")}` : "—";
-                    const origPrice = listing.original_price || listing.previous_price || null;
-                    const discountPct = origPrice && origPrice > listing.selling_price
-                      ? Math.round(((origPrice - listing.selling_price) / origPrice) * 100) : 0;
-                    const accountAgeHrs = salesman?.created_at ? (Date.now() - new Date(salesman.created_at)) / 3600000 : null;
-                    const submittedAgo = (() => {
-                      const s = Math.floor((Date.now() - new Date(listing.created_at)) / 1000);
-                      if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-                      if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-                      return `${Math.floor(s / 86400)}d ago`;
-                    })();
-                    const isActioning = approvalActioning === listing.id || approvalActioning === listing.id + ":seller";
-                    const isActioningSeller = approvalActioning === listing.id + ":seller";
-                    const isRejecting = rejectingId === listing.id;
-
-                    const flags = [
-                      imgs.length === 0 && { label: "No images", sev: "high" },
-                      accountAgeHrs !== null && accountAgeHrs < 24 && { label: "New account (<24h)", sev: "high" },
-                      listing._duplicatePlate && { label: "Duplicate plate", sev: "high" },
-                      (salesman?.listing_count_cache || 0) >= 28 && { label: "Near listing cap", sev: "med" },
-                      !salesman?.ic_verified_at && { label: "No IC submitted", sev: "med" },
-                      discountPct > 20 && { label: `Big discount (${discountPct}%)`, sev: "med" },
-                      (listing._rejectionCount || 0) > 0 && { label: `${listing._rejectionCount} prior rejection${listing._rejectionCount > 1 ? "s" : ""}`, sev: "med" },
-                      (listing._sharedPhoneAccounts || 0) > 1 && { label: `Phone on ${listing._sharedPhoneAccounts} accounts`, sev: "high" },
-                    ].filter(Boolean);
+                    const flags = listingFlags(listing);
+                    const selected = selectedListingIds.has(listing.id);
 
                     return (
-                      <div key={listing.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "16px 18px" }}>
+                      <div
+                        key={listing.id}
+                        onClick={() => setReviewListingId(listing.id)}
+                        style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "14px 16px", cursor: "pointer" }}
+                      >
                         {flags.length > 0 && (
-                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
                             {flags.map((f, i) => (
                               <span key={i} style={{ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 5,
                                 background: f.sev === "high" ? "rgba(239,68,68,0.12)" : "rgba(251,191,36,0.1)",
                                 border: f.sev === "high" ? "1px solid rgba(239,68,68,0.3)" : "1px solid rgba(251,191,36,0.25)",
                                 color: f.sev === "high" ? "#f87171" : "#fbbf24" }}>
-                                {f.sev === "high" ? "🔴" : "🟡"} {f.label}
+                                {f.label}
                               </span>
                             ))}
                           </div>
                         )}
-                        <div className="adm-approval" style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                          {/* Select */}
+                        <div className="adm-approval" style={{ display: "flex", gap: 14, alignItems: "center" }}>
+                          {/* Select — for the bulk toolbar only */}
                           <input
                             type="checkbox"
-                            checked={selectedListingIds.has(listing.id)}
+                            aria-label={`Select ${carName}`}
+                            checked={selected}
+                            onClick={e => e.stopPropagation()}
                             onChange={e => setSelectedListingIds(prev => {
                               const next = new Set(prev);
                               if (e.target.checked) next.add(listing.id); else next.delete(listing.id);
                               return next;
                             })}
-                            style={{ marginTop: 4, flexShrink: 0, cursor: "pointer" }}
+                            style={{ flexShrink: 0, cursor: "pointer" }}
                           />
-                          {/* Thumbnails */}
+                          {/* Thumbnail */}
                           {imgs.length > 0 ? (
-                            <div style={{ display: "flex", gap: 4, flexShrink: 0, maxWidth: 168, overflowX: "auto" }}>
-                              {imgs.slice(0, 4).map((src, i) => (
-                                <img key={i} src={src} alt={carName} style={{ width: 40, height: 60, objectFit: "cover", borderRadius: 6, flexShrink: 0, border: "1px solid rgba(255,255,255,0.06)" }} />
-                              ))}
-                              {imgs.length > 4 && (
-                                <div style={{ width: 40, height: 60, borderRadius: 6, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#6b7280" }}>
-                                  +{imgs.length - 4}
-                                </div>
-                              )}
-                            </div>
+                            <img src={imgs[0]} alt="" style={{ width: 66, height: 50, objectFit: "cover", borderRadius: 7, flexShrink: 0, border: "1px solid rgba(255,255,255,0.06)" }} />
                           ) : (
-                            <div style={{ width: 80, height: 60, borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                              <span style={{ fontSize: 20 }}>🚗</span>
+                            <div style={{ width: 66, height: 50, borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#4b5563" }}>
+                              no photo
                             </div>
                           )}
 
-                          {/* Info */}
+                          {/* Summary — enough to recognise the car, not enough to decide on */}
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{carName || "—"}</p>
-                            <p style={{ margin: "0 0 4px", fontSize: 12, color: "#dc2626", fontWeight: 600 }}>
+                            <p style={{ margin: "0 0 3px", fontSize: 12, color: "#dc2626", fontWeight: 600 }}>
                               {price}
-                              {origPrice ? <span style={{ color: "#4b5563", fontWeight: 500, textDecoration: "line-through", marginLeft: 6 }}>RM {Number(origPrice).toLocaleString("en-MY")}</span> : null}
-                              {listing.payment_type && <span style={{ color: "#6b7280", fontWeight: 500, marginLeft: 8, fontSize: 11 }}>· {listing.payment_type}</span>}
-                            </p>
-                            <p style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}>
-                              {[listing.mileage && `${Number(listing.mileage).toLocaleString()} km`, listing.colour, listing.condition,
-                                listing.is_recon && [listing.auction_grade, listing.interior_grade].filter(Boolean).join("/"),
-                                listing.is_recon && listing.import_country,
-                                [listing.city, listing.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ") || "—"}
-                            </p>
-                            <p style={{ margin: "0 0 4px", fontSize: 10, color: "#4b5563", fontFamily: "monospace" }}>
-                              {listing.plate_number && `Plate: ${listing.plate_number}`}
-                              {(listing.vin_number || listing.vin) && `  ·  VIN: ${listing.vin_number || listing.vin}`}
+                              {listing.plate_number && <span style={{ color: "#4b5563", fontWeight: 500, marginLeft: 8, fontFamily: "monospace", fontSize: 11 }}>{listing.plate_number}</span>}
                             </p>
                             <p style={{ margin: 0, fontSize: 11, color: "#6b7280" }}>
                               by <span style={{ color: "#9ca3af", fontWeight: 600 }}>{salesman?.full_name || "—"}</span>
                               {salesman?.slug && <span style={{ color: "#4b5563" }}> · @{salesman.slug}</span>}
-                              {(salesman?.phone || salesman?.whatsapp_number) && <span style={{ color: "#4b5563" }}> · {salesman.phone || salesman.whatsapp_number}</span>}
-                              <span style={{ color: "#374151" }}> · submitted {submittedAgo}</span>
+                              <span style={{ color: "#374151" }}> · {relTime(listing.created_at)}</span>
                             </p>
-                            <p style={{ margin: "4px 0 0", fontSize: 10, color: "#374151" }}>
-                              IC {salesman?.ic_verified_at ? "✓ submitted" : "✗ not submitted"}
-                              {" · "}{listing._liveListingCount || 0} live now
-                              {" · "}{salesman?.listing_count_cache ?? 0} listings total
-                              {" · "}{listing._rejectionCount || 0} rejection{(listing._rejectionCount || 0) === 1 ? "" : "s"}
-                              {accountAgeHrs !== null && <> · account {accountAgeHrs < 24 ? `${Math.round(accountAgeHrs)}h` : `${Math.round(accountAgeHrs / 24)}d`} old</>}
+                            <p style={{ margin: "3px 0 0", fontSize: 10.5, color: "#4b5563" }}>
+                              {imgs.length} photo{imgs.length === 1 ? "" : "s"}
+                              {" · "}{docCount} document{docCount === 1 ? "" : "s"}
+                              {listing.docs_verified && <span style={{ color: "#4ade80" }}> · docs verified</span>}
+                              {listing.admin_notes && <span style={{ color: "#64748b" }}> · has note</span>}
                             </p>
-                            <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                              <span style={{ fontSize: 10, color: "#6b7280" }}>
-                                {Array.isArray(listing.car_documents) && listing.car_documents.length > 0
-                                  ? `${listing.car_documents.length} document${listing.car_documents.length === 1 ? "" : "s"} attached`
-                                  : "No documents attached"}
-                              </span>
-                              <label style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10, color: listing.docs_verified ? "#4ade80" : "#6b7280", cursor: "pointer", fontWeight: 600 }}>
-                                <input type="checkbox" checked={!!listing.docs_verified} onChange={() => toggleListingDocsVerified(listing)} style={{ accentColor: "#22c55e", cursor: "pointer" }} />
-                                {listing.docs_verified ? "Documents verified" : "Mark documents verified"}
-                              </label>
-                            </div>
                           </div>
 
-                          {/* Action buttons */}
-                          {!isRejecting && (
-                            <div className="adm-approval-actions" style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                              <button
-                                disabled={isActioning}
-                                onClick={async () => {
-                                  setApprovalActioning(listing.id);
-                                  const { error } = await supabase.rpc("approve_listing", { p_listing_id: listing.id });
-                                  if (error) { alert("Error: " + error.message); }
-                                  else { setPendingListings(p => p.filter(l => l.id !== listing.id)); }
-                                  setApprovalActioning(null);
-                                }}
-                                style={{ fontSize: 12, fontWeight: 700, padding: "7px 16px", borderRadius: 8, background: isActioning ? "rgba(34,197,94,0.06)" : "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", color: "#4ade80", cursor: isActioning ? "not-allowed" : "pointer", opacity: isActioning ? 0.6 : 1 }}
-                              >
-                                {isActioning && !isActioningSeller ? "…" : "✓ Approve"}
-                              </button>
-                              <button
-                                disabled={isActioning}
-                                title="Approve this listing and mark the seller as verified"
-                                onClick={async () => {
-                                  setApprovalActioning(listing.id + ":seller");
-                                  const [{ error: listingErr }, { error: sellerErr }] = await Promise.all([
-                                    supabase.rpc("approve_listing", { p_listing_id: listing.id }),
-                                    supabase.rpc("decide_user_approval", { p_user_id: listing.dealer_id, p_approve: true }),
-                                  ]);
-                                  if (listingErr || sellerErr) { alert("Error: " + (listingErr?.message || sellerErr?.message)); }
-                                  else {
-                                    setPendingListings(p => p.filter(l => l.id !== listing.id));
-                                    // decide_user_approval only touches profiles — the embedded
-                                    // UserApprovalsTab (Sellers/ID-checks queue) and the Home tab's
-                                    // queue badges have their own state and never learn the seller
-                                    // was just approved unless told to refetch.
-                                    setReviewRefreshKey(k => k + 1);
-                                  }
-                                  setApprovalActioning(null);
-                                }}
-                                style={{ fontSize: 12, fontWeight: 700, padding: "7px 16px", borderRadius: 8, background: isActioning ? "rgba(96,165,250,0.06)" : "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd", cursor: isActioning ? "not-allowed" : "pointer", opacity: isActioning ? 0.6 : 1 }}
-                              >
-                                {isActioningSeller ? "…" : "✓ Approve car + seller"}
-                              </button>
-                              <button
-                                onClick={() => { setRejectingId(listing.id); setRejectReason(""); }}
-                                style={{ fontSize: 12, fontWeight: 600, padding: "7px 14px", borderRadius: 8, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", cursor: "pointer" }}
-                              >
-                                ✕ Reject
-                              </button>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Inline reject reason input */}
-                        {isRejecting && (
-                          <div style={{ marginTop: 12, padding: "12px 14px", background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.18)", borderRadius: 8 }}>
-                            <p style={{ margin: "0 0 8px", fontSize: 12, color: "#f87171", fontWeight: 600 }}>Reason for rejection (shown to salesman)</p>
-                            <textarea
-                              value={rejectReason}
-                              onChange={e => setRejectReason(e.target.value)}
-                              placeholder="e.g. Price seems too high, missing photos, suspected duplicate listing…"
-                              rows={2}
-                              style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", resize: "vertical", fontFamily: "system-ui, sans-serif", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
-                            />
-                            <div style={{ display: "flex", gap: 8 }}>
-                              <button
-                                onClick={() => { setRejectingId(null); setRejectReason(""); }}
-                                style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                disabled={!rejectReason.trim() || isActioning}
-                                onClick={async () => {
-                                  if (!rejectReason.trim()) return;
-                                  setApprovalActioning(listing.id);
-                                  const { error } = await supabase.rpc("reject_listing", { p_listing_id: listing.id, p_reason: rejectReason.trim() });
-                                  if (error) { alert("Error: " + error.message); }
-                                  else { setPendingListings(p => p.filter(l => l.id !== listing.id)); setRejectingId(null); setRejectReason(""); }
-                                  setApprovalActioning(null);
-                                }}
-                                style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 700, background: rejectReason.trim() ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.04)", border: rejectReason.trim() ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(255,255,255,0.08)", color: rejectReason.trim() ? "#f87171" : "#374151", cursor: rejectReason.trim() ? "pointer" : "not-allowed", fontFamily: "inherit", opacity: isActioning ? 0.6 : 1 }}
-                              >
-                                {isActioning ? "Rejecting…" : "Confirm Reject"}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Internal admin notes (never shown to the salesman) */}
-                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-                          {noteEditId === listing.id ? (
-                            <div>
-                              <textarea
-                                value={noteVal}
-                                onChange={e => setNoteVal(e.target.value)}
-                                placeholder="Internal note — only superadmins see this"
-                                rows={2}
-                                style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 12, padding: "8px 10px", resize: "vertical", fontFamily: "system-ui, sans-serif", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
-                              />
-                              <div style={{ display: "flex", gap: 8 }}>
-                                <button onClick={() => { setNoteEditId(null); setNoteVal(""); }} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-                                <button
-                                  disabled={noteSaving}
-                                  onClick={async () => {
-                                    setNoteSaving(true);
-                                    const { error } = await supabase.rpc("set_listing_admin_note", { p_listing_id: listing.id, p_note: noteVal });
-                                    if (!error) setPendingListings(p => p.map(l => l.id === listing.id ? { ...l, admin_notes: noteVal.trim() || null } : l));
-                                    setNoteSaving(false); setNoteEditId(null); setNoteVal("");
-                                  }}
-                                  style={{ flex: 2, padding: "6px 0", borderRadius: 7, fontSize: 12, fontWeight: 700, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd", cursor: "pointer", fontFamily: "inherit", opacity: noteSaving ? 0.6 : 1 }}
-                                >{noteSaving ? "Saving…" : "Save note"}</button>
-                              </div>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => { setNoteEditId(listing.id); setNoteVal(listing.admin_notes || ""); }}
-                              style={{ display: "flex", alignItems: "flex-start", gap: 7, width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
-                            >
-                              <span style={{ fontSize: 11, color: "#475569", fontWeight: 600, flexShrink: 0, marginTop: 1 }}>🗒 Note:</span>
-                              <span style={{ fontSize: 11, color: listing.admin_notes ? "#cbd5e1" : "#475569", fontStyle: listing.admin_notes ? "normal" : "italic" }}>
-                                {listing.admin_notes || "add internal note"}
-                              </span>
-                            </button>
-                          )}
+                          {/* One action. The decisions live in the sheet, next to the evidence. */}
+                          <button
+                            onClick={e => { e.stopPropagation(); setReviewListingId(listing.id); }}
+                            style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 700, padding: "9px 18px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.14)", color: "#e5e7eb", cursor: "pointer", fontFamily: "inherit" }}
+                          >
+                            Review
+                          </button>
                         </div>
                       </div>
                     );
@@ -1880,6 +1769,18 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
+
+      {/* Full-evidence review sheet. Rendered from the live pendingListings row
+          so a docs-verified tick or a saved note is reflected immediately. */}
+      <ListingReviewModal
+        listing={pendingListings.find(l => l.id === reviewListingId) || null}
+        busy={approvalActioning === reviewListingId}
+        onClose={() => setReviewListingId(null)}
+        onApprove={approveListing}
+        onReject={rejectListing}
+        onToggleDocsVerified={toggleListingDocsVerified}
+        onSaveNote={saveListingNote}
+      />
     </>
   );
 }

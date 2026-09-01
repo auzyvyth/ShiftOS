@@ -4,7 +4,7 @@ import {
   Car, ChevronLeft, ChevronRight, Copy, Droplets, FileText, Gauge, Hash,
   MapPin, Palette, PlayCircle, Settings, X, ZoomIn,
 } from "lucide-react";
-import { DOC_TYPES } from "./CarForm";
+import { DOC_TYPES } from "../utils/docTypes";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import { calcMonthly } from "../utils/financing";
 import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../theme/tokens";

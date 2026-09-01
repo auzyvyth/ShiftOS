@@ -41,6 +41,7 @@ import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { CAR_DATA } from "../data/carData";
 import { getListingGaps } from "../utils/listingCompleteness";
 import { TRUST_DOCS, TRUST_DOC_KEYS, GERAN_REASONS, getTrustTier } from "../utils/trustDocs";
+import { DOC_TYPES } from "../utils/docTypes";
 import { decodeVin, isLikelyVin } from "../utils/vinDecode";
 import { isPremiumSalesman } from "../utils/salesmanPlan";
 
@@ -184,17 +185,6 @@ function SortableSection({ id, section, complete, collapsed, onToggle, children 
   );
 }
 
-export const DOC_TYPES = [
-  { key: "registration_card", label: "Geran / Registration Card", color: "#0ea5e9" },
-  { key: "puspakom", label: "Puspakom Inspection", color: "#22c55e" },
-  { key: "service_history", label: "Service History", color: "#60a5fa" },
-  { key: "insurance", label: "Insurance Certificate", color: "#a78bfa" },
-  { key: "ownership", label: "Ownership / VOC", color: "#fbbf24" },
-  { key: "warranty", label: "Warranty Certificate", color: "#34d399" },
-  { key: "import_ap", label: "Import / AP Permit", color: "#fb923c" },
-  { key: "loan_clearance", label: "Loan Clearance Letter", color: "#94a3b8" },
-  { key: "other", label: "Other Document", color: "#6b7280" },
-];
 
 // The four named trust documents get their own upload slots, so the free-form
 // picker only offers what's left. Keeps one document per named slot and stops
