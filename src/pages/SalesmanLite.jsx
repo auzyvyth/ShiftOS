@@ -96,6 +96,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   Store,
+  Download,
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
@@ -106,6 +107,21 @@ import AvailabilityEditor from "../components/AvailabilityEditor";
 // into state has to carry this join — not just the bootstrap fetch.
 const LEAD_SELECT =
   "*, car_listings(brand, model, year, variant, selling_price, images, vin_number, mileage, transmission, fuel_type, plate_number, slug)";
+
+// Lazy-load JSZip from CDN once, only when a salesman actually downloads photos.
+let _jszipPromise = null;
+function loadJSZip() {
+  if (window.JSZip) return Promise.resolve(window.JSZip);
+  if (_jszipPromise) return _jszipPromise;
+  _jszipPromise = new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+    s.onload = () => res(window.JSZip);
+    s.onerror = rej;
+    document.body.appendChild(s);
+  });
+  return _jszipPromise;
+}
 
 // Price visual weight — a RM45k car and a RM2.4M car shouldn't read at the
 // same size/color; scale the price figure up for higher tiers so the card
@@ -1189,6 +1205,51 @@ export default function SalesmanLite() {
     writeCache(`slite_listings_${userId}`, myListings.filter((c) => c.id !== carId));
     setConfirmDeleteId(null);
     toast.success(t("salesmanLite.toast.listingDeleted"));
+  };
+
+  const downloadListingImages = async (car) => {
+    const imgs = Array.isArray(car.images) ? car.images.filter(Boolean) : [];
+    if (imgs.length === 0) { toast.error("No images on this listing"); return; }
+    const base = [car.year, car.brand, car.model].filter(Boolean).join("-").replace(/\s+/g, "-") || "car";
+    if (imgs.length === 1) {
+      try {
+        const resp = await fetch(imgs[0]);
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const ext = ((blob.type.split("/")[1] || "jpg").replace("jpeg", "jpg")).split("+")[0];
+        a.href = url; a.download = `${base}.${ext}`;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+        toast.success("Saved photo");
+      } catch { toast.error("Couldn't download image"); }
+      return;
+    }
+    const tId = toast.loading(`Zipping ${imgs.length} photos…`);
+    try {
+      const JSZip = await loadJSZip();
+      const zip = new JSZip();
+      let ok = 0;
+      await Promise.all(imgs.map(async (src, i) => {
+        try {
+          const resp = await fetch(src);
+          const blob = await resp.blob();
+          const ext = ((blob.type.split("/")[1] || "jpg").replace("jpeg", "jpg")).split("+")[0];
+          zip.file(`${base}-${i + 1}.${ext}`, blob);
+          ok++;
+        } catch { /* skip a failed image */ }
+      }));
+      if (ok === 0) { toast.error("Couldn't download images", { id: tId }); return; }
+      const out = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(out);
+      const a = document.createElement("a");
+      a.href = url; a.download = `${base}-photos.zip`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(`Saved ${ok} photo${ok > 1 ? "s" : ""} as zip`, { id: tId });
+    } catch {
+      toast.error("Couldn't build zip", { id: tId });
+    }
   };
 
   // quick brief
@@ -4748,6 +4809,13 @@ export default function SalesmanLite() {
                                 <div style={{ height: 1, background: C.line, margin: "2px 0" }} />
                               </>
                             )}
+                            {Array.isArray(car.images) && car.images.length > 0 && (
+                              <button onClick={() => { downloadListingImages(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
+                                <Download size={12} />
+                                Download photos
+                              </button>
+                            )}
+                            <div style={{ height: 1, background: C.line, margin: "2px 0" }} />
                             {confirmDeleteId === car.id ? (
                               <div style={{ padding: "8px 14px", display: "flex", gap: 6 }}>
                                 <button onClick={() => handleDeleteListing(car.id)} style={{ flex: 1, fontSize: T.size.sm, padding: "5px 0", borderRadius: R.sm, background: withAlpha(C.danger, 0.2), border: `1px solid ${withAlpha(C.danger, 0.4)}`, color: C.dangerText, cursor: "pointer", fontWeight: T.weight.bold }}>Delete</button>

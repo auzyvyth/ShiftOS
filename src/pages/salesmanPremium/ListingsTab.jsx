@@ -2,13 +2,73 @@ import React from "react";
 import { supabase } from "../../supabaseClient";
 import { toast } from "sonner";
 import {
- BarChart2, Camera, Car, Check, ChevronDown, Clock, Copy, Flame, Link as LinkIcon,
+ BarChart2, Camera, Car, Check, ChevronDown, Clock, Copy, Download, Flame, Link as LinkIcon,
  Megaphone, Pencil, Plus, Sparkles, Store, Trash2, X,
 } from "lucide-react";
 import CarFormFast from "../../components/CarFormFast";
 import CarForm from "../../components/CarForm";
 import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
 import { priceStyle, SOFT } from "./shared";
+
+// Lazy-load JSZip from CDN once, only when a salesman actually downloads photos.
+let _jszipPromise = null;
+function loadJSZip() {
+ if (window.JSZip) return Promise.resolve(window.JSZip);
+ if (_jszipPromise) return _jszipPromise;
+ _jszipPromise = new Promise((res, rej) => {
+ const s = document.createElement("script");
+ s.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+ s.onload = () => res(window.JSZip);
+ s.onerror = rej;
+ document.body.appendChild(s);
+ });
+ return _jszipPromise;
+}
+
+const downloadListingImages = async (car) => {
+ const imgs = Array.isArray(car.images) ? car.images.filter(Boolean) : [];
+ if (imgs.length === 0) { toast.error("No images on this listing"); return; }
+ const base = [car.year, car.brand, car.model].filter(Boolean).join("-").replace(/\s+/g, "-") || "car";
+ if (imgs.length === 1) {
+ try {
+ const resp = await fetch(imgs[0]);
+ const blob = await resp.blob();
+ const url = URL.createObjectURL(blob);
+ const a = document.createElement("a");
+ const ext = ((blob.type.split("/")[1] || "jpg").replace("jpeg", "jpg")).split("+")[0];
+ a.href = url; a.download = `${base}.${ext}`;
+ document.body.appendChild(a); a.click(); a.remove();
+ URL.revokeObjectURL(url);
+ toast.success("Saved photo");
+ } catch { toast.error("Couldn't download image"); }
+ return;
+ }
+ const tId = toast.loading(`Zipping ${imgs.length} photos…`);
+ try {
+ const JSZip = await loadJSZip();
+ const zip = new JSZip();
+ let ok = 0;
+ await Promise.all(imgs.map(async (src, i) => {
+ try {
+ const resp = await fetch(src);
+ const blob = await resp.blob();
+ const ext = ((blob.type.split("/")[1] || "jpg").replace("jpeg", "jpg")).split("+")[0];
+ zip.file(`${base}-${i + 1}.${ext}`, blob);
+ ok++;
+ } catch { /* skip a failed image */ }
+ }));
+ if (ok === 0) { toast.error("Couldn't download images", { id: tId }); return; }
+ const out = await zip.generateAsync({ type: "blob" });
+ const url = URL.createObjectURL(out);
+ const a = document.createElement("a");
+ a.href = url; a.download = `${base}-photos.zip`;
+ document.body.appendChild(a); a.click(); a.remove();
+ URL.revokeObjectURL(url);
+ toast.success(`Saved ${ok} photo${ok > 1 ? "s" : ""} as zip`, { id: tId });
+ } catch {
+ toast.error("Couldn't build zip", { id: tId });
+ }
+};
 
 // Listings tab — split out of SalesmanPremium.jsx (was `renderListings`) so it
 // lazy-loads instead of shipping in the initial bundle. The car-detail popup
@@ -584,6 +644,14 @@ export default function ListingsTab({
  </button>
  <button onClick={() => { generateAiCaptions(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
  <Sparkles size={12} /> AI Caption
+ </button>
+ <div style={{ height: 1, background: C.line, margin: "2px 0" }} />
+ </>
+ )}
+ {Array.isArray(car.images) && car.images.length > 0 && (
+ <>
+ <button onClick={() => { downloadListingImages(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
+ <Download size={12} /> Download photos
  </button>
  <div style={{ height: 1, background: C.line, margin: "2px 0" }} />
  </>
