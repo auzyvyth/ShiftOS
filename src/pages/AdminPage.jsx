@@ -19,6 +19,7 @@ import ActivityLogTab from "../components/platform/ActivityLogTab";
 import SessionsTab from "../components/platform/SessionsTab";
 import PostureTab from "../components/platform/PostureTab";
 import AlertsTab from "../components/platform/AlertsTab";
+import ReportsTab from "../components/platform/ReportsTab";
 import ListingReviewModal, { listingFlags, relTime } from "../components/platform/ListingReviewModal";
 
 function MktSection({ label, hint, children }) {
@@ -265,6 +266,9 @@ export default function AdminPage() {
   const [waitlistSearch, setWaitlistSearch] = useState("");
   const [pendingListings, setPendingListings] = useState([]);
   const [pendingUsersCount, setPendingUsersCount] = useState(0);
+  // Open listing-report count, for the Reports tab badge. Kept here (not in
+  // ReportsTab) so the badge is live before the tab is ever opened.
+  const [openReportCount, setOpenReportCount] = useState(0);
   const [pendingSignupCount, setPendingSignupCount] = useState(0);
   const [pendingKycCount, setPendingKycCount] = useState(0);
   // Which listing's Review sheet is open. Held as an ID, not the row object, so
@@ -582,6 +586,16 @@ export default function AdminPage() {
       setPendingKycCount(kycOnly.length);
       setPendingUsersCount(signupIds.size + kycOnly.length);
     });
+
+    // Open listing reports, for the Reports badge.
+    supabase
+      .from("listing_reports")
+      .select("id", { count: "exact", head: true })
+      .in("status", ["open", "reviewing"])
+      .then(({ count, error }) => {
+        if (error) { console.warn("[listing_reports count]", error.message); return; }
+        setOpenReportCount(count || 0);
+      });
   }
 
   // ── Listing decisions ────────────────────────────────────────────────────
@@ -682,6 +696,10 @@ export default function AdminPage() {
     { id: "work", label: "Work", sub: "Your queue", badge: reviewCount, tabs: [
       { id: "home",   label: "Home" },
       { id: "review", label: "Review", badge: reviewCount },
+      // Buyer-submitted listing reports. A queue you clear, so it sits with
+      // Review rather than under Safety — but it is a separate queue because a
+      // report is a claim about a LIVE listing, not an item awaiting approval.
+      { id: "reports", label: "Reports", badge: openReportCount },
     ] },
     { id: "people", label: "People", sub: "Accounts · waitlist", tabs: [
       { id: "accounts", label: `Accounts (${accounts.length})` },
@@ -1174,6 +1192,8 @@ export default function AdminPage() {
             <ErrorsTab />
           ) : activeTab === "alerts" ? (
             <AlertsTab userId={meId} />
+          ) : activeTab === "reports" ? (
+            <ReportsTab />
           ) : activeTab === "home" ? (
             /* ── HOME ── the console opens on the work, not a directory (P3) */
             <HomeTab />

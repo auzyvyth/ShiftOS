@@ -41,6 +41,7 @@ import {
   Building2,
 } from "lucide-react";
 import HeartButton from "../components/HeartButton";
+import ReportListingButton from "../components/ReportListingButton";
 import { useCompare } from "../hooks/useCompare";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import { getChassisCode } from "../utils/chassisCodes";
@@ -4071,6 +4072,14 @@ export default function CarDetailPage() {
             })()}
           </div>{/* end sidebar */}
         </div>{/* end body wrap */}
+
+        {/* ── report listing ── deliberately last and low-contrast: a report must
+            never compete with Enquire, and a grid-level entry point invites
+            drive-by flagging. Sits inside cdp-root (above MarketplaceFooter) and
+            renders once for both the mobile and desktop layouts. */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 20px 28px', borderTop: `1px solid ${th.borderSec}` }}>
+          <ReportListingButton listingId={car?.id} th={th} />
+        </div>
 
         {/* ── calculator modal ── */}
         {calcOpen && (
