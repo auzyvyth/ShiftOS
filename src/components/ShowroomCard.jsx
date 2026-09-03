@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Car, Users, ArrowLeftRight, MessageCircle, Heart } from 'lucide-react';
 import { toast } from 'sonner';
 import GradeBadge from './GradeBadge';
@@ -172,6 +172,16 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
     ? { background: 'rgba(5,150,105,0.09)', color: '#059669', border: '1px solid rgba(5,150,105,0.22)' }
     : c.usedPill;
 
+  // The card is a clickable div for mouse users, but a div cannot be tabbed to
+  // or announced, so the whole marketplace used to be unreachable by keyboard
+  // and screen reader. The title below is a real <Link>, which is the
+  // accessible (and crawlable) path into the car. Both routes run this same
+  // function so tracking cannot drift between them.
+  const carHref = (dark ? '/cars/' : '/showroom/') + (car.slug || car.id);
+  const trackCardClick = () => {
+    trackEvent(supabase, 'card_click', { car_id: car.id, car_name: `${year} ${brand} ${model}`, dealer_id: car.dealer_id || null, metadata: { source: 'showroom_card' } });
+  };
+
   return (
     <div
       ref={cardRef}
@@ -179,8 +189,8 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
       onClick={() => {
         if (suppressClick.current) { suppressClick.current = false; return; }
         if (isSold || !(car.slug || car.id)) return;
-        trackEvent(supabase, 'card_click', { car_id: car.id, car_name: `${year} ${brand} ${model}`, dealer_id: car.dealer_id || null, metadata: { source: 'showroom_card' } });
-        navigate((dark ? '/cars/' : '/showroom/') + (car.slug || car.id));
+        trackCardClick();
+        navigate(carHref);
       }}
       style={{ display: 'flex', flexDirection: 'row', background: c.cardBg, border: isHot ? '1px solid rgba(220,38,38,0.3)' : `1px solid ${c.cardBorder}`, borderRadius: '12px', overflow: 'hidden', cursor: isSold ? 'default' : 'pointer', fontFamily: "'Outfit',sans-serif", minHeight: '190px', minWidth: 0 }}
     >
@@ -278,7 +288,23 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
 
         {/* Row 2: car name */}
         <h3 style={{ color: c.title, fontSize: '14px', fontWeight: '700', margin: '0 0 4px', lineHeight: '1.25', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-          {[brand, model, variant].filter(Boolean).join(' ')}
+          {isSold || !(car.slug || car.id) ? (
+            [brand, model, variant].filter(Boolean).join(' ')
+          ) : (
+            /* The keyboard/screen-reader entry point into this card. aria-label
+               carries year + price because the visible text is only the model
+               name, and "Honda Civic" alone tells a blind buyer nothing about
+               which of the twelve Civics this is. stopPropagation keeps the
+               parent div's handler from firing a second navigation + event. */
+            <Link
+              to={carHref}
+              onClick={e => { e.stopPropagation(); trackCardClick(); }}
+              aria-label={`${[year, brand, model, variant].filter(Boolean).join(' ')}, ${price ? 'RM ' + price.toLocaleString('en-MY') : 'price on request'}`}
+              style={{ color: 'inherit', textDecoration: 'none' }}
+            >
+              {[brand, model, variant].filter(Boolean).join(' ')}
+            </Link>
+          )}
         </h3>
 
         {/* Row 3: specs */}
@@ -341,6 +367,8 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
             <button
               onClick={e => { e.stopPropagation(); toggleSave(car.id); }}
               title={isSaved(car.id) ? 'Remove from saved' : 'Save this car'}
+              aria-label={`${isSaved(car.id) ? 'Remove from saved' : 'Save'} ${[year, brand, model].filter(Boolean).join(' ')}`}
+              aria-pressed={isSaved(car.id)}
               style={{ width: '36px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', border: isSaved(car.id) ? '1px solid rgba(220,38,38,0.35)' : `1px solid ${c.saveBorder}`, background: isSaved(car.id) ? 'rgba(220,38,38,0.08)' : c.saveBg, cursor: 'pointer', transition: 'all 0.15s', color: isSaved(car.id) ? '#dc2626' : c.saveIcon }}
             >
               <Heart size={14} fill={isSaved(car.id) ? '#dc2626' : 'none'} stroke="currentColor" strokeWidth={2} />

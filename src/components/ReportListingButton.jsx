@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Flag, X, Check, AlertCircle } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { markBuyerIntent } from '../lib/buyerAuth';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 
 /**
  * "Report this listing" — buyer-facing moderation entry for the public marketplace.
@@ -68,6 +69,8 @@ export default function ReportListingButton({ listingId, th, variant = 'link' })
     setOpen(false);
     setReason(''); setNote(''); setError(''); setDone(false);
   };
+
+  const dialog = useDialogA11y(open, close, 'Report this listing');
 
   const signIn = async () => {
     sessionStorage.setItem('post_auth_return', window.location.href);
@@ -146,9 +149,12 @@ export default function ReportListingButton({ listingId, th, variant = 'link' })
           }}
         >
           <div
+            ref={dialog.ref}
+            {...dialog.dialogProps}
             onClick={e => e.stopPropagation()}
             style={{
               width: '100%', maxWidth: 400, maxHeight: '85vh', overflowY: 'auto',
+              outline: 'none',
               background: th?.card || '#0a1220',
               border: `1px solid ${th?.border || 'rgba(255,255,255,0.07)'}`,
               borderRadius: 14, padding: 20,

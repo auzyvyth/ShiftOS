@@ -287,7 +287,23 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
           .mh-bar { height:64px; }
         }
         @media (max-width:420px) { .mh-search-go { padding:0 16px; } }
+
+        /* Off-screen until focused, then a normal visible button. Not
+           display:none — that would remove it from the tab order entirely,
+           which defeats the point. */
+        .mh-skip {
+          position:absolute; left:-9999px; top:0; z-index:200;
+          background:#dc2626; color:#fff; padding:10px 16px; border-radius:0 0 8px 0;
+          font-size:13px; font-weight:700; text-decoration:none;
+        }
+        .mh-skip:focus { left:0; outline:2px solid #fff; outline-offset:-4px; }
       `}</style>
+
+      {/* Skip link — the first thing a keyboard/screen-reader user reaches.
+          Without it they tab through the whole nav (logo, every mega-menu link,
+          search, account) on every page before reaching a single car. Visually
+          hidden until focused. */}
+      <a href="#main-content" className="mh-skip">Skip to main content</a>
 
       <header className={`mh-root${scrolled ? ' scrolled' : ''}`} ref={rootRef}>
         <div className="mh-bar">

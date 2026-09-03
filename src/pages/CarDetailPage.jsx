@@ -2138,7 +2138,11 @@ export default function CarDetailPage() {
         .cdp-mobile-bar { background: rgba(246,247,249,0.9) !important; border-top-color: rgba(15,23,42,0.07) !important; }
       `}</style>}
 
-      <div className="cdp-root">
+      {/* role="main" rather than a real <main>: this div carries the page's
+          layout CSS, so swapping the tag would mean re-homing cdp-root's rules.
+          Same landmark to a screen reader, and it gives the header's skip link
+          a target on the highest-traffic buyer page. */}
+      <div className="cdp-root" id="main-content" role="main" tabIndex={-1}>
         {/* ── header ── */}
         <header className={`cdp-header${showTitle ? " cdp-header-scrolled" : ""}`}>
           <button className="cdp-hdr-icon cdp-back-btn" onClick={handleBack} aria-label="Back">

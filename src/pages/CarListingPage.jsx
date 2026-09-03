@@ -721,7 +721,7 @@ export default function CarListingPage() {
         </div>
       </div>
 
-      <main style={{ background:T.pageBg, minHeight:'100vh', fontFamily:"'Outfit',sans-serif", paddingTop: dark ? '84px' : 0 }}>
+      <main id="main-content" tabIndex={-1} style={{ background:T.pageBg, minHeight:'100vh', fontFamily:"'Outfit',sans-serif", paddingTop: dark ? '84px' : 0 }}>
 
         {/* ── Top bar ── On the subdomain the header is a floating fixed pill that
              hides on scroll, so the bar is in-flow (scrolls away, never follows /

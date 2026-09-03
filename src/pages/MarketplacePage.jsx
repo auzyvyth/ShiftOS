@@ -891,7 +891,7 @@ export default function MarketplacePage() {
         onApply={(p) => navigate(`/showroom${p.toString() ? '?' + p : ''}`)}
       />
 
-      <main style={S.page}>
+      <main id="main-content" tabIndex={-1} style={S.page}>
         {/* ── Hero ── */}
         <section className="mp-hero-section" style={{ background:'#08090f', position:'relative', isolation:'isolate' }}>
 
