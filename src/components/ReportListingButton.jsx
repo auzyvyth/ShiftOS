@@ -19,6 +19,11 @@ import { markBuyerIntent } from '../lib/buyerAuth';
  *   listingId string  — car_listings.id
  *   th        object  — page theme tokens (CarDetailPage runs light on xdrive.my
  *                       and dark on dealer subdomains, so colours come from here)
+ *   variant   'icon' | 'link' — 'icon' is an icon-only circle that sits ON the
+ *                       photo. It does NOT use `th`: it overlays an arbitrary
+ *                       image, so it carries its own dark scrim + white icon in
+ *                       both themes, matching the photo-counter pill already on
+ *                       the mosaic. 'link' is the text version.
  */
 
 const REASONS = [
@@ -37,7 +42,7 @@ const ERRORS = {
   listing_not_found:'This listing is no longer available.',
 };
 
-export default function ReportListingButton({ listingId, th }) {
+export default function ReportListingButton({ listingId, th, variant = 'link' }) {
   const [open, setOpen]       = useState(false);
   const [session, setSession] = useState(null);
   const [reason, setReason]   = useState('');
@@ -94,18 +99,41 @@ export default function ReportListingButton({ listingId, th }) {
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          background: 'none', border: 'none', padding: '8px 4px',
-          color: th?.textMuted || '#64748b', fontSize: 12, fontWeight: 500,
-          cursor: 'pointer', fontFamily: 'var(--xd-font-body)',
-        }}
-      >
-        <Flag size={12} />
-        Report this listing
-      </button>
+      {/* stopPropagation matters: the icon variant sits inside the mosaic cell,
+          whose own onClick opens the lightbox. Without it, reporting a listing
+          would open the photo viewer instead. */}
+      {variant === 'icon' ? (
+        <button
+          onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+          aria-label="Report this listing"
+          title="Report this listing"
+          style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            width: 32, height: 32, borderRadius: '50%', padding: 0,
+            background: 'rgba(6,8,15,0.62)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255,255,255,0.14)',
+            color: 'rgba(255,255,255,0.85)',
+            cursor: 'pointer', transition: 'all 0.2s',
+          }}
+        >
+          <Flag size={13} />
+        </button>
+      ) : (
+        <button
+          onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            background: 'none', border: 'none', padding: '8px 4px',
+            color: th?.textMuted || '#64748b', fontSize: 12, fontWeight: 500,
+            cursor: 'pointer', fontFamily: 'var(--xd-font-body)',
+          }}
+        >
+          <Flag size={12} />
+          Report this listing
+        </button>
+      )}
 
       {open && createPortal(
         <div

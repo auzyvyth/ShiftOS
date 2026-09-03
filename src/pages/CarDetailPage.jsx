@@ -2228,6 +2228,11 @@ export default function CarDetailPage() {
                   </div>
                 </>
               )}
+              {/* Report — top right is the one free corner here (counter sits
+                  top-left, arrows mid-edges, dots bottom-centre). */}
+              <div style={{ position: 'absolute', top: 14, right: 14, zIndex: 5 }}>
+                <ReportListingButton listingId={car?.id} variant="icon" />
+              </div>
             </div>
 
             {/* Cell 2 — top right */}
@@ -2447,6 +2452,11 @@ export default function CarDetailPage() {
             }}
           />
           <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'45%', background:'linear-gradient(to top, rgba(6,8,15,0.8), transparent)', pointerEvents:'none', zIndex:3 }} />
+          {/* Report — top right; the counter sits bottom-left on mobile and the
+              dots bottom-centre, so this corner is the free one here too. */}
+          <div style={{ position:'absolute', top:14, right:14, zIndex:5 }}>
+            <ReportListingButton listingId={car?.id} variant="icon" />
+          </div>
           <div style={{ position:'absolute', bottom:14, left:14, zIndex:5, background:'rgba(6,8,15,0.7)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:20, padding:'4px 12px', fontSize:11, color:'rgba(255,255,255,0.8)', fontFamily:"var(--xd-font-body)", fontWeight:500 }}>
             {activeIdx + 1} / {imgCount}
           </div>
@@ -4072,14 +4082,6 @@ export default function CarDetailPage() {
             })()}
           </div>{/* end sidebar */}
         </div>{/* end body wrap */}
-
-        {/* ── report listing ── deliberately last and low-contrast: a report must
-            never compete with Enquire, and a grid-level entry point invites
-            drive-by flagging. Sits inside cdp-root (above MarketplaceFooter) and
-            renders once for both the mobile and desktop layouts. */}
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 20px 28px', borderTop: `1px solid ${th.borderSec}` }}>
-          <ReportListingButton listingId={car?.id} th={th} />
-        </div>
 
         {/* ── calculator modal ── */}
         {calcOpen && (
