@@ -15,9 +15,20 @@ import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../them
 // Link / WA Caption / AI Caption / Broadcast etc.) since those differ by
 // plan; everything else — gallery, fields, tabs — is identical.
 
+// A plain comma/newline split also cuts a thousands-separator number in half
+// — "28,595 km" typed into the features box became two tags, "28" and "595
+// km". Numbers are masked out before splitting and restored after.
 const parseTags = (str) => {
   if (!str) return [];
-  return str.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
+  const numbers = [];
+  const masked = String(str).replace(/\d{1,3}(?:,\d{3})+/g, (m) => {
+    numbers.push(m);
+    return `@@N${numbers.length - 1}@@`;
+  });
+  return masked
+    .split(/[\n,]+/)
+    .map((s) => s.replace(/@@N(\d+)@@/g, (_, i) => numbers[Number(i)]).trim())
+    .filter(Boolean);
 };
 
 const copyText = (text, label) => {
@@ -61,7 +72,6 @@ export default function CarDetailPopup({
   const enqs = stats.enquiries || 0;
   const cvr = views > 0 ? ((enqs / views) * 100).toFixed(1) : null;
   const features = parseTags(car.features);
-  const options = parseTags(car.options);
   const docs = Array.isArray(car.car_documents) ? car.car_documents : [];
 
   const rtExpiry = car.road_tax_expiry ? new Date(car.road_tax_expiry) : null;
@@ -339,13 +349,11 @@ export default function CarDetailPopup({
               )}
 
               {carDetailTab === "options" && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {options.length === 0 ? (
+                <div>
+                  {!car.options || !car.options.trim() ? (
                     <p style={{ fontSize: T.size.base, color: C.textMuted }}>No options listed.</p>
                   ) : (
-                    options.map((o, i) => (
-                      <span key={i} style={{ fontSize: T.size.sm, color: C.textSec, background: C.fill, border: `1px solid ${C.border}`, borderRadius: 4, padding: "4px 10px" }}>{o}</span>
-                    ))
+                    <p style={{ fontSize: T.size.base, color: C.textSec, lineHeight: 1.5, margin: 0 }}>{car.options}</p>
                   )}
                 </div>
               )}
