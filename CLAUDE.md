@@ -353,6 +353,26 @@ histories "diverge" even though the content is identical — `git log branch..ma
 - Always update public_car_listings VIEW after adding columns to car_listings
 - Supabase branch (isolated staging DB) available at ~$9.70/month — ask user before enabling
 
+### CREATE OR REPLACE FUNCTION does NOT replace a function whose params you reordered
+It matches on the ARGUMENT TYPE LIST. Change the order of the parameters (or their
+types, or add one) and you have not replaced anything — you now have TWO functions
+with the same name. If both end up with the same parameter NAMES, every named call
+dies with `ERROR 42725: function ... is not unique`, because neither PostgREST nor
+Postgres can choose. This took down WhatsApp lead capture: `20260829` rewrote
+`create_lead_from_whatsapp` with the args in a new order, the old overload stayed,
+and `api/whatsapp-lead.js` (which calls it by name) silently stopped recording
+leads. Nothing errors visibly — the caller logs and moves on.
+- After rewriting any DB function, list its overloads before you walk away:
+  `select oid::regprocedure from pg_proc where proname = '<name>';`
+  More than one row is a bug unless you deliberately want an overload.
+- Reordering params means `drop function <name>(<old type list>)` in the SAME
+  migration. Renaming a param has the same trap (`CREATE OR REPLACE` refuses
+  outright there, which is the friendlier failure).
+- Same rule for VIEWS, different failure: `CREATE OR REPLACE VIEW` can only APPEND
+  columns, and only with identical names/types/order for the existing ones. To
+  remove or reorder a column you must DROP + CREATE — which drops every grant, so
+  re-assert them explicitly (see the share-token rules about never copying grants).
+
 ## Edge functions — THE REPO IS NOT THE SOURCE OF TRUTH (read before touching one)
 Plain version: what is running on Supabase is often NOT what is in `supabase/functions/`.
 Some functions were built straight in the Supabase dashboard and never committed; others

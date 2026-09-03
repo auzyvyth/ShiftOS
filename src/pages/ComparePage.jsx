@@ -19,7 +19,7 @@ const SELECT_COLS = [
   'selling_price','original_price','mileage','transmission',
   'fuel_type','body_type','engine_cc','colour','condition',
   'state','city','is_recon','auction_grade','interior_grade',
-  'import_country','chassis_status','car_documents','warranty_months',
+  'import_country','chassis_status','document_types','warranty_months',
   'loan_eligible','previous_owners','created_at','images','status',
   'market_avg_price','fuel_consumption',
 ].join(', ');
@@ -37,7 +37,7 @@ function completeness(car) {
     !!car.colour, !!car.body_type, !!car.condition, car.previous_owners != null,
     (car.warranty_months || 0) > 0, !!car.state, !!car.variant,
     Array.isArray(car.images) && car.images.length >= 3,
-    Array.isArray(car.car_documents) && car.car_documents.length > 0,
+    Array.isArray(car.document_types) && car.document_types.length > 0,
   ].filter(Boolean).length;
 }
 
@@ -672,7 +672,7 @@ export default function ComparePage() {
                     );
                   },
                 },
-                { sec: 'Trust & Value', label: 'Documents', get: c => Array.isArray(c.car_documents) ? c.car_documents.length : 0, fmt: cnt => cnt > 0 ? `${cnt} doc${cnt !== 1 ? 's' : ''}` : 'None', dir: 'high' },
+                { sec: 'Trust & Value', label: 'Documents', get: c => Array.isArray(c.document_types) ? c.document_types.length : 0, fmt: cnt => cnt > 0 ? `${cnt} doc${cnt !== 1 ? 's' : ''}` : 'None', dir: 'high' },
                 { sec: 'Trust & Value', label: 'Warranty', get: c => c.warranty_months || 0, fmt: v => v > 0 ? `${v} mo` : 'None', dir: 'high' },
                 { sec: 'Trust & Value', label: 'Loan Eligible', get: c => c.loan_eligible === false ? 'No' : 'Yes', hl: loanHL },
                 { sec: 'Trust & Value', label: 'Days Listed', get: c => ageDays(c.created_at), fmt: v => v != null ? `${v}d` : '—', dir: 'low' },

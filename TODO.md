@@ -334,17 +334,6 @@ until these are done:**
 
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
 
-- **ACT-TRIAL-RESET: the Premium test account is deliberately left expired.**
-  `auzyvyth+premium@gmail.com` (profile `f92eb826-e99e-4d43-bc26-8b5a1540b717`)
-  had `trial_ends_at` backdated to 2026-08-28 on purpose, to test the
-  expired-trial paywall screen (`SalesmanPremium.jsx:891` ->
-  `DealerPendingApproval variant="expired"`). It is TEST STATE, not a real
-  lapsed customer — do not "fix" it by marking the account paid, and do not
-  read it as evidence that trials are expiring early. Put it back with:
-  `update profiles set trial_ends_at = now() + interval '29 days'
-   where id = 'f92eb826-e99e-4d43-bc26-8b5a1540b717';`
-  Remove this item once the trial is restored.
-
 - **ACT-VERIFY-PUSH: confirm on a real phone that notifications now arrive
   immediately.** `send-push` v18 is deployed (2026-08-30) with `urgency: 'high'`
   and TTL capped at 24h. The server side was never the problem and was measured
@@ -465,17 +454,37 @@ the role that would exploit it, probe rolled back. What is LEFT:
   that is the line you want.** The scans are no longer published (the view hands
   out `document_types`, not URLs), so a buyer sees "Geran / Registration Card
   ✓ Available" and a line telling them to ask the seller. Two things worth a
-  decision before real traffic: `vin_number`, `vin` and `plate_number` are still
-  fully public on every listing (Mudah and Carlist do not publish a full VIN —
-  it enables plate/VIN cloning), and there is now no way for a serious buyer to
-  see the geran at all. If you want a middle ground, the shape is "reveal to a
-  buyer who has started a chat thread", not "publish to everyone".
+  decision before real traffic.
+  PARTLY ADDRESSED 2026-09-03 (owner's call): `plate_number` and the unused
+  `vin` column were dropped from CarDetailPage's select, so neither ships in the
+  page payload any more — both were fetched and never rendered. The remaining
+  identifier, `vin_number`, is deliberately still shown, but relabelled from
+  "VIN / Chassis" to "Chassis No." because that is what Malaysian sellers
+  actually record there (a geran carries a chassis number, not a 17-character
+  VIN). Note the columns are still ON the view — this only stops the car page
+  requesting them.
+  STILL OPEN: whether to publish the chassis number to everyone at all, and the
+  fact that there is now no way for a serious buyer to see the geran. If you
+  want a middle ground, the shape is "reveal to a buyer who has started a chat
+  thread", not "publish to everyone".
 
-- [ ] **SWEEP-2 — drop the legacy columns from `public_car_listings` once this
-  is on prod.** `car_documents` (now stripped to `[{type}]`) and
-  `included_services_cost` (now `null::numeric`) are kept only so the CURRENTLY
-  DEPLOYED CarDetailPage keeps resolving its select. Once this branch is live,
-  delete both from the view — the frontend already reads `document_types`.
+- [ ] **SWEEP-2 — DB half still gated on a deploy. Frontend half is done.**
+  `ComparePage` was the last reader of `car_documents` off the view
+  (`SELECT_COLS:22`, `completeness():40`, the Documents row `:675`) and now uses
+  `document_types` like CarDetailPage already did. That fix is on this branch and
+  NOT on prod, so the columns must stay until it ships: prod's ComparePage still
+  names `car_documents` in its select, and PostgREST 400s on an unknown column —
+  dropping it now would empty the live /compare page.
+  `included_services_cost` is already unused by every public-view consumer
+  (verified against `origin/main`) and could go today, but both columns are one
+  DROP + CREATE of a 66-row anon-facing view, so do them in a single migration
+  rather than paying that risk twice for a column that is a hardcoded NULL.
+  AFTER this branch is live on prod, recreate `public_car_listings` without
+  `car_documents` and `included_services_cost` (keep `document_types`,
+  `seller_sold_count` and everything else), then re-assert grants explicitly —
+  `revoke all ... from anon, authenticated, public;` then
+  `grant select ... to anon, authenticated;` — and re-check `service_role`.
+  Nothing else depends on the view (checked `pg_depend`), so the drop is clean.
 
 - [ ] **SWEEP-3 — two comments in the app state the opposite of the truth about
   the public views.** `useCTAContext.js:48` and `useTenant.js:141` both say
@@ -484,24 +493,54 @@ the role that would exploit it, probe rolled back. What is LEFT:
   email/phone leak sat there. Both call sites already use the RPC, so only the
   comments are wrong; fix the words so the next person is not misled.
 
-- [ ] **SWEEP-4 — `Footer.jsx:8 SUPERADMIN_ID` is not a superadmin.** It is
-  `1e7bf24e-...`, `role='dealer'`. Migration 20260831d had to special-case that
-  id in the view to keep the footer's contact block working. Rename the constant
-  to what it is (the platform contact row) or move the platform's support email
-  and phone into config, and drop the id from the view.
+- [x] **SWEEP-4 — DONE 2026-09-03. The constant did not need renaming; the code
+  it fed was dead.** `Footer.jsx` hard-stops on `!isSubdomain()`, so the
+  "superadmin fallback for the main domain" could never render on the main
+  domain, and on a subdomain the tenant profile always won. The only way that
+  branch could paint was a subdomain whose tenant had not resolved — printing
+  ONE dealer's contact details on a DIFFERENT dealer's storefront. Removed the
+  fallback fetch, `SUPERADMIN_ID`, and the now-unused `useState`/`useEffect`/
+  `supabase` imports, then dropped the hardcoded id from
+  `public_dealer_profiles` (migration `sweep4_drop_hardcoded_contact_id_from_dealer_profiles`)
+  so email/phone are once again superadmin-only. Verified as anon: 0 rows
+  publishing an email or phone, down from 1. Grants unchanged (CREATE OR REPLACE,
+  same column list). The marketplace uses `MarketplaceFooter` and never touched
+  this path. Note `1e7bf24e-...` is still hardcoded in two unrelated places —
+  `HeroCarousel.jsx:709` (env-var default) and `DashboardPage.jsx:3945` (an
+  `isOwner` check) — both out of scope here.
 
-- [ ] **SWEEP-5 — one listing cap, stated twice.** The RLS helper
-  `salesman_under_listing_limit()` hardcodes 30 for Lite; `enforce_listing_cap`
-  and `enforce_listing_cap_on_publish` read `plan_config.listing_cap`. Same
-  number, two sources — change the plan config and the RLS gate silently
-  disagrees. Point the helper at `plan_config` too.
+- [x] **SWEEP-5 — DONE 2026-09-03.** `salesman_under_listing_limit()` now reads
+  `plan_config.listing_cap` (migration `sweep5_listing_cap_reads_plan_config`),
+  so the RLS gate and the two triggers cannot drift apart. It closed two
+  disagreements, not one: Lite (helper said 30, config says 10) and Premium
+  (helper said unlimited via `is_salesman_premium()`, config says 30). Neither
+  changes what anyone can do today — the triggers were already the binding
+  constraint and the busiest salesman has 6 active listings against a cap of 10.
+  The status filter now also excludes `unpublished`, matching the triggers'
+  "private stock, not public listings" rule; the helper had been counting
+  unpublished cars toward the cap. NULL cap (or no `plan_config` row) still
+  means unlimited, as in the triggers. Proven with a rolled-back probe: under
+  cap true, at cap false, NULL cap true.
 
-- [ ] **SWEEP-6 — `create_lead_from_whatsapp` exists twice.** Two overloads with
-  the same name and different argument ORDER
-  (`(dealer,car,name,phone,ref,state)` and `(dealer,name,phone,state,car,ref)`).
-  PostgREST resolves by argument names so it works today, but this is exactly
-  the drift that made inbound attribution vanish twice. Confirm which one every
-  caller hits, then drop the other.
+- [x] **SWEEP-6 — DONE 2026-09-03, and it was NOT cosmetic: WhatsApp lead
+  capture was broken.** The note above assumed "PostgREST resolves by argument
+  names so it works today". It did not. Both overloads carried the SAME SIX
+  PARAMETER NAMES with the same types, only in a different order, so a named
+  call cannot pick one: proven live with
+  `ERROR 42725: function create_lead_from_whatsapp(...) is not unique`.
+  `api/whatsapp-lead.js:49` calls it by name with all six args, so every
+  WhatsApp tap that reached it failed to record a lead. Last `lead_source =
+  'whatsapp'` row is 2026-08-17, while enquiry and chat leads kept arriving
+  through 08-31.
+  Root cause worth remembering: `20260829_chat_creates_pipeline_lead.sql`
+  rewrote the function with the parameters REORDERED. `CREATE OR REPLACE
+  FUNCTION` matches on the argument type list, so a reordered signature does not
+  replace the old function, it creates a second one beside it. Dropped the old
+  `(uuid, uuid, text, text, text, text)` overload — the one comparing a raw
+  regexp-stripped phone against the normalized column, i.e. the de-dup bug
+  CLAUDE.md already records. Verified with a rolled-back probe: the exact call
+  `api/whatsapp-lead.js` makes now resolves and stores the phone as
+  `60123456789`.
 
 - [ ] **SWEEP-7 — `push_swap_endpoint` accepts any https host.** The service
   worker has no Supabase session, so the OLD endpoint string is deliberately the
