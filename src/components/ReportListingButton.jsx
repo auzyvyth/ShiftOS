@@ -20,11 +20,16 @@ import { useDialogA11y } from '../hooks/useDialogA11y';
  *   listingId string  — car_listings.id
  *   th        object  — page theme tokens (CarDetailPage runs light on xdrive.my
  *                       and dark on dealer subdomains, so colours come from here)
- *   variant   'icon' | 'link' — 'icon' is an icon-only circle that sits ON the
- *                       photo. It does NOT use `th`: it overlays an arbitrary
- *                       image, so it carries its own dark scrim + white icon in
- *                       both themes, matching the photo-counter pill already on
- *                       the mosaic. 'link' is the text version.
+ *   variant   'icon' | 'link' — 'icon' is a small unlabelled flag that sits
+ *                       inline beside the price/monthly estimate. It takes its
+ *                       colour from `th` because it sits on the page surface,
+ *                       which is light on xdrive.my and dark on a dealer
+ *                       subdomain. 'link' is the text version.
+ *
+ * It used to be overlaid on the car photo (top-right). That collided with the
+ * sticky header's own Heart/Compare/Share actions, which paint over that exact
+ * corner, and .cdp-mosaic-cell is overflow:hidden so it clipped. Do not put it
+ * back on the image.
  */
 
 const REASONS = [
@@ -102,9 +107,9 @@ export default function ReportListingButton({ listingId, th, variant = 'link' })
 
   return (
     <>
-      {/* stopPropagation matters: the icon variant sits inside the mosaic cell,
-          whose own onClick opens the lightbox. Without it, reporting a listing
-          would open the photo viewer instead. */}
+      {/* stopPropagation is kept regardless of placement: several ancestors on
+          the car page carry their own onClick, and a report must never trigger
+          one of them instead. */}
       {variant === 'icon' ? (
         <button
           onClick={(e) => { e.stopPropagation(); setOpen(true); }}
@@ -112,13 +117,10 @@ export default function ReportListingButton({ listingId, th, variant = 'link' })
           title="Report this listing"
           style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            width: 32, height: 32, borderRadius: '50%', padding: 0,
-            background: 'rgba(6,8,15,0.62)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            border: '1px solid rgba(255,255,255,0.14)',
-            color: 'rgba(255,255,255,0.85)',
-            cursor: 'pointer', transition: 'all 0.2s',
+            width: 26, height: 26, borderRadius: '50%', padding: 0,
+            background: 'transparent', border: 'none',
+            color: th?.textMuted || '#64748b',
+            cursor: 'pointer', transition: 'color 0.15s', flexShrink: 0,
           }}
         >
           <Flag size={13} />

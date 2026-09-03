@@ -2232,11 +2232,6 @@ export default function CarDetailPage() {
                   </div>
                 </>
               )}
-              {/* Report — top right is the one free corner here (counter sits
-                  top-left, arrows mid-edges, dots bottom-centre). */}
-              <div style={{ position: 'absolute', top: 14, right: 14, zIndex: 5 }}>
-                <ReportListingButton listingId={car?.id} variant="icon" />
-              </div>
             </div>
 
             {/* Cell 2 — top right */}
@@ -2456,11 +2451,6 @@ export default function CarDetailPage() {
             }}
           />
           <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'45%', background:'linear-gradient(to top, rgba(6,8,15,0.8), transparent)', pointerEvents:'none', zIndex:3 }} />
-          {/* Report — top right; the counter sits bottom-left on mobile and the
-              dots bottom-centre, so this corner is the free one here too. */}
-          <div style={{ position:'absolute', top:14, right:14, zIndex:5 }}>
-            <ReportListingButton listingId={car?.id} variant="icon" />
-          </div>
           <div style={{ position:'absolute', bottom:14, left:14, zIndex:5, background:'rgba(6,8,15,0.7)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:20, padding:'4px 12px', fontSize:11, color:'rgba(255,255,255,0.8)', fontFamily:"var(--xd-font-body)", fontWeight:500 }}>
             {activeIdx + 1} / {imgCount}
           </div>
@@ -2567,7 +2557,18 @@ export default function CarDetailPage() {
             ) : car.selling_price > HIGH_VALUE_THRESHOLD ? (
               <span style={{ fontSize:12, color: th.textSec }}>Financing available on request</span>
             ) : null}
+            {/* Report sits at the end of the price row, pushed right. */}
+            <span style={{ marginLeft:'auto', alignSelf:'center' }}>
+              <ReportListingButton listingId={car?.id} th={th} variant="icon" />
+            </span>
           </div>
+          )}
+          {/* Sambung cars render their own price block, so the report control
+              needs its own row there or those listings could not be reported. */}
+          {isSambungCar(car) && (
+            <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:4 }}>
+              <ReportListingButton listingId={car?.id} th={th} variant="icon" />
+            </div>
           )}
           {!isSambungCar(car) && <MarketPriceTag car={car} isXdrive={isXdrive} th={th} />}
           {!isSambungCar(car) && isHot && (
@@ -3997,15 +3998,27 @@ export default function CarDetailPage() {
                 )}
               </div>
               {isSambungCar(car) ? (
-                <SambungPriceBlock car={car} th={th} big="clamp(2.4rem,3.5vw,3rem)" />
+                <>
+                  <SambungPriceBlock car={car} th={th} big="clamp(2.4rem,3.5vw,3rem)" />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+                    <ReportListingButton listingId={car?.id} th={th} variant="icon" />
+                  </div>
+                </>
               ) : (
                 <>
                   <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(2.4rem,3.5vw,3rem)', color: th.text, lineHeight: 1 }}>{fmtPrice(car.selling_price)}</p>
-                  {calcMonthly(car.selling_price) ? (
-                    <p style={{ fontSize: 12, color: th.textMuted, marginTop: 4 }}>~RM {fmt(calcMonthly(car.selling_price))}/mo</p>
-                  ) : car.selling_price > HIGH_VALUE_THRESHOLD ? (
-                    <p style={{ fontSize: 12, color: th.textMuted, marginTop: 4 }}>Financing available on request</p>
-                  ) : null}
+                  {/* Monthly estimate and the report control share one row, so
+                      the flag sits beside the figure rather than on the photo. */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                    {calcMonthly(car.selling_price) ? (
+                      <p style={{ fontSize: 12, color: th.textMuted, margin: 0 }}>~RM {fmt(calcMonthly(car.selling_price))}/mo</p>
+                    ) : car.selling_price > HIGH_VALUE_THRESHOLD ? (
+                      <p style={{ fontSize: 12, color: th.textMuted, margin: 0 }}>Financing available on request</p>
+                    ) : null}
+                    <span style={{ marginLeft: 'auto' }}>
+                      <ReportListingButton listingId={car?.id} th={th} variant="icon" />
+                    </span>
+                  </div>
                   {isHot && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
                       <span style={{ fontSize: 13, color: th.textMuted, textDecoration: 'line-through' }}>{fmtPrice(car.original_price)}</span>
