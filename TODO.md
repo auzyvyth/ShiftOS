@@ -1,17 +1,69 @@
 # ShiftOS — Pending Tasks
 
-> **NO BRANCH IN FLIGHT — start fresh off `origin/main` (2026-08-31).**
-> The previous note here said to continue on `claude/dependabot-alerts-triage-ztsglx`
-> because it carried `fabc7fe` (Dependabot: pdfjs-dist 5->6, vite 5->7) and
-> `a3d90d3` (security sweep of Premium/Lite) that were not yet on `main`. Both
-> shipped since, in PRs #341/#342, and `main` is at `8589137`.
+> **NO BRANCH IN FLIGHT — branch off `origin/main` (2026-09-03).**
+> `main` is at `24486e8` and IS what production serves. Safe to branch from.
 >
-> That branch still LOOKS three commits ahead of `main` by hash — squash-merge
-> drift, exactly the trap in CLAUDE.md. Checked by CONTENT instead: `main` has
-> `pdfjs-dist ^6.3.289`, `vite ^7.3.6` and `src/utils/panelCache.js`, so all of
-> it is live. `git diff origin/main <that branch>` is 2898 deletions — the
-> branch is BEHIND `main`, not ahead. Do not build on it and do not merge it;
-> it would revert the last three PRs. Branch off `origin/main`.
+> **`main` was a month stale until today — know why, so it does not recur.**
+> Production was being served by `a5e58b4`, a commit on
+> `claude/listings-approval-popup-ck4403` (PR #347) that was **promoted to
+> production inside the Vercel dashboard and never merged to `main`**. Meanwhile
+> `origin/main` sat at `aadff43` from 2026-08-03. A session branched off
+> `origin/main`, built against a month-old tree, and its push would have
+> reverted the whole platform-console rewrite (-1352 lines) had it merged.
+>
+> `main` has since been force-updated to the live tree. Before that, `main`'s 50
+> "unique" commits were verified BY CONTENT to already exist in `a5e58b4` under
+> different hashes (xlsx CDN pin, #205 srcset, #206 IC hashing, #207 warranty
+> field, #209 Salesman Premium) — squash drift, not lost work. The only files
+> `main` had that prod lacked were `CarCardMarket.jsx`, `BrandStrip.jsx` and the
+> shadcn toast trio: zero references in the live tree (toast was replaced by
+> `sonner`), so superseded, not dropped. Old `main` is preserved at
+> `backup/main-pre-reconcile-20260903` (`aadff43`) — delete once comfortable.
+>
+> **Rule that prevents a repeat: promoting a branch preview to production in
+> Vercel does NOT update `main`.** Ship via `main` (Vercel's production branch)
+> so the repo stays the source of truth. If you ever promote from the dashboard
+> again, push that commit to `main` in the same sitting.
+> And before building: confirm what prod actually serves (Vercel deployment
+> with `target: production`), not just that `git status` says clean.
+
+## Listing reports + buyer accessibility — 2026-09-03 (SHIPPED, follow-ups open)
+
+All of the below is LIVE on prod (`24486e8`). Follow-ups only.
+
+- [ ] **A11Y-2: roll `useDialogA11y` out to the rest of the buyer overlays.**
+  `src/hooks/useDialogA11y.js` (role=dialog + aria-modal, focus in/restore, Tab
+  trap, Escape) is written and applied to `ReportListingButton` ONLY.
+  `ContactGate`, `BuyerChat`/`ChatSheet` and the CarDetailPage photo lightbox
+  still have none — a screen reader keeps reading the page behind them and Tab
+  walks out. There are ~76 portalled overlays in total; do the buyer-facing
+  ones, do NOT hand-roll per-overlay copies.
+- [ ] **A11Y-3: dealer/salesman panels are unusable with a screen reader.**
+  ~709 form controls, 3 real `<label htmlFor>`. Bulk in `DashboardPage.jsx`
+  (152), `Salesmanpanel.jsx` (57), `LeadDrawer.jsx` (40), `CarForm.jsx` (36).
+  Deliberately deferred — owner's call that a blind car seller is rare, buyers
+  first. Note the codebase's image `alt` coverage is already 100% (116/116);
+  an early audit claiming otherwise was a bad grep (single-line match on
+  multi-line JSX tags) — do not redo that work.
+- [ ] **A11Y-4: verify with a real screen reader.** Everything shipped is
+  structurally correct but was never run through VoiceOver/NVDA. Check: skip
+  link appears on first Tab, grid cards announce year+model+price, report sheet
+  traps focus and Escape returns focus to the flag.
+- [ ] **REPORT-2: is the report flag too quiet?** It moved off the photo (the
+  sticky header's Heart/Compare/Share paint over that corner and
+  `.cdp-mosaic-cell` is `overflow:hidden`, so it was clipped and buried) to the
+  end of the price row beside `~RM x/mo`. It is now a bare `th.textMuted` flag
+  at 26px. May be too faint to find on the light xdrive.my card.
+- [ ] **OPS-1: `dealer_risk_snapshot` (designed, not built).** The admin console
+  already has Errors/Activity/Posture/Alerts tabs, so signals are surfaced — but
+  each queue is an island and the fraud signals in `AdminPage.jsx` (duplicate
+  plate, shared phone across accounts, rejection count) are computed ad hoc on
+  every page load, only for `pending_approval` listings, and thrown away.
+  Proposal: nightly edge function writes one row per dealer
+  (`dealer_id, computed_at, score, signals jsonb, top_reasons[]`) from data
+  already collected, and calls `notify_ops()` only on a threshold cross.
+  Must stay ADVISORY — it ranks the queue, it never auto-penalises, same rule
+  as reports.
 
 ## SEC sweep of Salesman Premium + Lite — 2026-08-30
 
