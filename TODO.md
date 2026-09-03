@@ -27,6 +27,41 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## Marketplace seller trust signals — 2026-09-03 (verified + sold count shipped)
+
+`ShowroomCard` now shows the seller's sold count and an identity-verified tick,
+both off `public_car_listings` (`seller_sold_count` added via
+`seller_public_stats`; `dealer_is_verified` already existed and was unused).
+Rationale: XDrive owns the CRM *and* the marketplace, so it can show seller
+behaviour a pure marketplace cannot observe. That is the one differentiator
+Mudah/Carlist cannot copy without building a CRM.
+
+- [ ] **TRUST-1: nothing is verified yet, so the tick renders on zero cards.**
+  `select count(*) from profiles where is_verified` = 0. The plumbing is live
+  and correct; it lights up the moment KYC approvals start flowing through the
+  platform console Review queue. Until someone is approved, the marketplace
+  shows no verification at all. Start approving, or the badge is decoration.
+
+- [ ] **TRUST-2: reply speed is NOT shipped, on purpose — the metric is wrong.**
+  The obvious third signal ("replies in ~15 min") was built up to the point of
+  checking the data and then dropped. `leads.first_response_at` is stamped by
+  trigger `set_first_response_at` on any STAGE CHANGE off 'new', so it measures
+  CRM hygiene, not replies: one seller's median "reply" is 69,275 minutes (48
+  days — someone dragging a stale card), and a rep who answers on WhatsApp but
+  never touches the stage scores nothing. Best seller answers 28% of leads
+  inside an hour; no honest threshold gives anyone the badge. In-app chat is too
+  thin to substitute (13 threads, 62 seller messages). To make it real, stamp a
+  reply time from an ACTUAL outbound reply (`chat_messages` seller message, or
+  the WhatsApp tap) rather than the stage change — then revisit. Do not publish
+  a buyer-facing speed claim off the stage-change proxy.
+
+- [ ] **TRUST-3: `SalesmanProfilePage` still counts sold cars its own way.**
+  `:144-145` runs two client-side counts (`dealer_id` + `assigned_to`);
+  `seller_public_stats` now defines the same number in one place and the card
+  reads it. Point the mini page at the view so the two cannot drift — the card
+  saying 12 and the agent's page saying 11 is the exact class of split-brain
+  CLAUDE.md keeps warning about.
+
 ## Listing reports + buyer accessibility — 2026-09-03 (SHIPPED, follow-ups open)
 
 All of the below is LIVE on prod (`24486e8`). Follow-ups only.
