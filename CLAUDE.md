@@ -372,6 +372,16 @@ leads. Nothing errors visibly — the caller logs and moves on.
   columns, and only with identical names/types/order for the existing ones. To
   remove or reorder a column you must DROP + CREATE — which drops every grant, so
   re-assert them explicitly (see the share-token rules about never copying grants).
+- **Before dropping a view, search `pg_proc` too, not just `pg_depend`.** A
+  function declared `RETURNS SETOF <view>` holds a hard dependency on the view's
+  ROW TYPE, and the usual `pg_depend`-on-`pg_rewrite` query finds only dependent
+  VIEWS — it returns zero rows and the DROP still fails. `get_salesman_featured_
+  listings(uuid)` is one of these on `public_car_listings`. Drop and recreate the
+  function around the view in the SAME migration and re-assert its EXECUTE grants;
+  a body of `select v.*` follows the new column set with no edit.
+- Because a DROP + CREATE of an anon-facing view is the expensive, risky half,
+  batch every column you intend to remove into ONE migration. Do not pay that
+  cost once per column.
 
 ## Edge functions — THE REPO IS NOT THE SOURCE OF TRUTH (read before touching one)
 Plain version: what is running on Supabase is often NOT what is in `supabase/functions/`.
@@ -607,6 +617,21 @@ scheduled send as an exception — schedule the REMINDER, not the send.
 Any AI message prompt must also forbid inventing a price, discount, deposit,
 instalment, trade-in value, loan rate or financing approval; if a number is
 needed, the draft asks the buyer to confirm with the salesman.
+
+### An AI call that answers per-row MUST be capped to fit its max_tokens
+`ai-proxy` pins `max_tokens` PER FEATURE server-side (`FEATURES`, index.ts:14) —
+`lead_score` 512, `wa_reply` 1024, `sales_manager`/`crm_assist` 1000. A prompt
+that sends N rows and asks for N answers grows with the user's data and silently
+blows that budget: the reply truncates mid-JSON, `JSON.parse` throws, and these
+call sites all `catch { /* silent */ }`, so the feature renders NOTHING and no
+error is ever logged. Lead scoring shipped this way and was dead for the only two
+reps with enough leads to need it (82 leads -> ~3,700 tokens against 1,024).
+- Cap the batch, and echo a short INDEX rather than a 36-char uuid per row.
+- Do not ask for prose you do not render. Lead scoring returned a `reason`
+  sentence per lead that was stored on every score and displayed nowhere.
+- Budget it: rows x per-row tokens must fit the feature's cap with room to spare.
+- Always pass `feature:` — an unknown or missing key falls back to `general`,
+  which bills the wrong bucket AND silently changes the token budget.
 
 ## In-app buyer chat — the AI must never read a raw number
 Buyers message sellers inside ShiftOS (not WhatsApp). Built 2026-08-23.
