@@ -1366,14 +1366,16 @@ function SettingsTab({ profile, onProfileUpdate }) {
       setErrors((p) => ({ ...p, telegram: "Fill in bot token and channel ID first." }));
       return;
     }
-    // Save token first if a new one was typed, so the edge function can read it
-    if (tgToken.trim()) {
-      await saveSection("telegram", {
-        ...(tgToken.trim() ? { telegram_bot_token: tgToken.trim() } : {}),
-        telegram_channel_id: tgChannel.trim(),
-        telegram_auto_post: tgAutoPost,
-      });
-    }
+    // Save before testing. The token has to be saved so the edge function can read
+    // it — and the CHANNEL ID has to be saved too, because send-telegram now only
+    // delivers to a destination already stored on a profile the caller owns. This
+    // used to be skipped whenever the token field was left blank (the normal case
+    // for a dealer editing only the channel), which would now fail the test.
+    await saveSection("telegram", {
+      ...(tgToken.trim() ? { telegram_bot_token: tgToken.trim() } : {}),
+      telegram_channel_id: tgChannel.trim(),
+      telegram_auto_post: tgAutoPost,
+    });
     setTgTesting(true);
     setTgTestResult(null);
     setErrors((p) => ({ ...p, telegram: "" }));

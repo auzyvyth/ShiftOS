@@ -103,6 +103,151 @@ All of the below is LIVE on prod (`24486e8`). Follow-ups only.
   Must stay ADVISORY — it ranks the queue, it never auto-penalises, same rule
   as reports.
 
+## Idle logout stopped stealing links + daily traffic numbers — 2026-09-04
+
+### The compare link that went to a login page (real user, fixed)
+A test user was away ~3 days, tapped a shared
+`xdrive.my/compare?a=…&b=…` link and landed on a bare login page with the link
+gone. Cause: `useIdleLogout` ended with
+`window.location.href = '/login?timeout=1'`, fired from WHATEVER page the app
+happened to mount on — and `/compare` is a PUBLIC route that renders perfectly
+well signed out. `LoginPage` never read `?timeout=1` either, so there was no
+explanation waiting at the other end.
+- Signing out is now silent and **never navigates**. The reason is parked in
+  `src/utils/authNotice.js` and read once by `LoginPage`, which says "You hadn't
+  used ShiftOS for N days, so we signed you out to keep your account safe."
+  `?timeout=1` is still honoured for tabs/bookmarks from before the change.
+- The ONE exception is `pathNeedsSession()` — a page that cannot render without
+  a session reloads so its own guard runs. Public pages are left alone.
+- `SalesmanPremium` had no `SIGNED_OUT` listener (Lite has always had one), so
+  an idle sign-out with the tab open left the panel mounted on a dead session:
+  stale pipeline on screen, every write silently rejected. It has one now.
+
+- **IDLE-1 — DONE. `IDLE_MS` is 30 days, and the number is not arbitrary.**
+  24h was never a decision anyone made out loud. 30 days is NIST SP 800-63B's
+  reauthentication reference for AAL1, which is precisely what ShiftOS is:
+  password/Google sign-in, no MFA, no money moving through the app. Checked
+  against live sessions when it changed: at 7 days, 3 of 22 would have been cut
+  on the spot; at 30 days, none.
+  **Also confirmed: `not_after` is NULL on all 22 live `auth.sessions` rows**,
+  so Supabase has NO session time-box or inactivity timeout of its own — the
+  client-side timer is the entire logout policy. Do not assume a server-side
+  backstop exists.
+
+- [ ] **IDLE-2: the actual big-league pattern is device visibility, not a
+  shorter timer.** Google/Meta/Spotify never time out a session at all; they can
+  afford that because you can see your signed-in devices, kill them from
+  anywhere, and get told when a new one appears. We copied the convenient half
+  (a long session) and none of the safety half, so IDLE_MS stays a backstop
+  until these land. The plumbing already exists for both:
+  - **Signed-in devices + "Sign out everywhere"** in Settings, both panels.
+    `auth.sessions` carries `user_agent`, `ip`, `created_at`, `refreshed_at`.
+    Needs a SECURITY DEFINER RPC to list (device + last-used only — NEVER the
+    token, and truncate the IP) and one to revoke every session but the current.
+    One live user currently holds **7 sessions** and has no way to see it.
+  - **New-device sign-in push.** A `salesman_notifications` row IS a push
+    (`trg_push_on_salesman_notification`), so this needs no edge function: fire
+    on a session whose `user_agent` is new for that user. This single alert does
+    more for a stolen account than any timeout value — it reaches the rep in
+    seconds instead of waiting out a timer.
+  Once both ship, IDLE_MS can go effectively permanent and we are running the
+  big-league model rather than an imitation of it.
+
+### Daily traffic numbers on the Premium dashboard
+Owner's call, and the right one: no new section. The existing traffic strip and
+My Performance rows keep their 30-day totals and gain a small green `+N` for
+today beside each.
+- **The reason this needed a migration at all:** `get_salesman_analytics`
+  (d0..d6) and `get_salesman_minipage_daily` bucketed by ROLLING 24-HOUR
+  WINDOWS anchored on `now()`, while the dashboard chart already labelled the
+  last bucket "Today". At 9am, "Today" was counting from 9am YESTERDAY. Measured
+  live on the busiest seller at the time of the fix: the honest KL-today figure
+  was 2, the rolling window said 5. Migration `20260904f` rebuckets both by
+  Malaysian calendar day (`Asia/Kuala_Lumpur`), signatures unchanged.
+- Because d6 now genuinely IS today, the badges read a bucket the dashboard
+  ALREADY loads — **no new RPC, no new query on the page**, and the chart and
+  the badge cannot disagree because they are the same array.
+- Badges show only when the number is above zero. A `+0` on every tile every
+  morning teaches people to stop reading the row.
+- Lite reads `get_salesman_analytics` too, so its chart was silently corrected
+  by the same migration with no client change.
+
+## SEC sweep #2 of Salesman Premium + Lite — 2026-09-04
+
+Second pass over both panels. Four fixed and pushed; the DB and edge halves are
+already LIVE (migration `20260904e`, send-telegram **v16**).
+
+- **SEC-TG-RELAY (fixed + DEPLOYED, v16). The August fix scoped the BOT but not
+  the DESTINATION, so this was still an open relay on the platform bot.**
+  `send-telegram` took `channel_id` straight from the request body and never
+  checked it belonged to the caller. Any account with no bot token of its own
+  falls back to the platform bot (`TELEGRAM_BOT_TOKEN`) — which includes every
+  solo salesman AND every anonymous guest buyer the chat flow creates. So any
+  logged-in user could send arbitrary text to any Telegram chat id and have it
+  arrive from the official XDrive bot: phishing our own sellers, from our own
+  brand, with no rate limit. Now the destination must be one of the ids the
+  caller already saved on a profile they own (`telegram_chat_id`, their own or
+  their dealer's `telegram_channel_id`), else 403 `unknown_destination`; and
+  `role='buyer'` is rejected outright. `DashboardPage.jsx:1369` had to change
+  with it — it only persisted the channel id when a new BOT TOKEN was typed, so
+  a dealer editing just the channel would now fail the test.
+- **SEC-SENTRY-URL (fixed, not yet on prod).** PostgREST puts every filter in
+  the query string, so `.eq("phone", phone)` (SalesmanPremium 1785/1941,
+  SalesmanLite 1687/1741/2557/2745) produced `/rest/v1/leads?phone=60123456789`
+  — a real buyer's number, in a URL Sentry records as an http breadcrumb and
+  attaches to every error event it sends. `sendDefaultPii:false` and the replay
+  masking do NOT cover breadcrumb URLs. `src/instrument.js` now scrubs PII query
+  VALUES (phone/email/ic/name/address) out of breadcrumbs and span descriptions,
+  keeping the key so the URL is still readable when debugging.
+- **SEC-AI-NOTES (fixed, not yet on prod) — was open from the August sweep.**
+  `notes` is free text a rep typed during a call and routinely holds a phone or
+  an IC; it went to the AI in the clear, on all four prompts. New
+  `src/utils/redactForAI.js` mirrors the DB's `redact_for_ai` (email, IC, any
+  9+-digit run — a price like "45,000 - 50,000" survives, "0123456789" does
+  not). `buyer_name` is dropped from lead scoring and from the follow-up
+  suggestion; it is kept ONLY in the WhatsApp draft prompt, which has to greet
+  the buyer by name.
+- **SEC-RESTORE (fixed + migration LIVE). A dead button that also broke the
+  PDPA purge.** SalesmanLite's "Reactivate" wrote `account_status`/`is_active`
+  directly; `prevent_profile_privilege_escalation` reverts both, so the update
+  "succeeded" with no error and the user stayed locked out — but `deleted_at`
+  was NOT guarded and DID get cleared, and `purge-deleted-accounts` selects
+  `deleted_at < cutoff`, which a NULL never matches. The account could then be
+  neither restored nor purged: locked out forever, data kept forever. Now
+  `restore_my_account()` checks the 30-day window server-side and opens a
+  one-statement escape hatch (`app.allow_self_restore`, the same shape as
+  `use_dealer_invite`'s `app.allow_tenant_move`). `deleted_at`, `suspended_at`
+  and `suspension_reason` are all guarded now — a suspended seller could
+  previously erase the reason shown to them in `SuspendedBanner`. Live check
+  found 0 stranded rows, so nobody had pressed it yet.
+- **SEC-INVITE-ORACLE (fixed, migration LIVE).** `redeem_invite(text)` was
+  EXECUTE-able by `anon` — an unauthenticated oracle turning a guessed code into
+  a dealer id, with no rate limit. Revoked from `public` AND `anon` (a revoke
+  from anon alone no-ops when the grant is held by PUBLIC; a revoke from public
+  alone misses Supabase's explicit default-privilege grant to anon — this one
+  needed both). Zero invite rows existed, so there was no live exposure.
+
+**Still open — next session:**
+- **SEC-INVITE-ENTROPY.** `dealer_invites.code` generation was never reviewed;
+  there are no rows to sample. Before the first invite is issued, confirm the
+  code is long and random enough that the (now authenticated-only) redeem path
+  cannot be brute-forced, and consider a per-caller attempt limit.
+- **SEC-SUSPEND-GATE.** `SuspendedBanner` is an overlay, not a gate — the panel
+  underneath has already mounted and fetched. It only ever exposes the
+  suspended user's OWN data, so this is a product-integrity issue rather than a
+  leak, but a suspended seller can still drive the app from the console.
+
+**Checked and found SOUND this pass — do not re-audit without a reason:** every
+realtime subscription in both panels is filtered to `salesman_id`/`dealer_id`
+`=eq.<uid>`; no `dangerouslySetInnerHTML`, no `console.log`, `rel="noopener
+noreferrer"` on every `target="_blank"`; profile saves use an explicit column
+whitelist (no mass assignment); a linked salesman cannot UPDATE a dealer's
+`car_listings` (no policy grants it), so the commission_amount writes are not
+exploitable; the Lite -> Premium self-upgrade is already closed by
+`isPremiumSalesman` (`src/utils/salesmanPlan.js`) requiring a column the user
+cannot write; `panelCache.js` redaction and logout purge are correct; Sentry
+session replay is fully masked.
+
 ## SEC sweep of Salesman Premium + Lite — 2026-08-30
 
 Three findings fixed and pushed; the server half is already LIVE.

@@ -748,6 +748,7 @@
       "reactivate": "Aktifkan semula akaun saya",
       "reactivating": "Mengaktifkan semula...",
       "reactivateFailed": "Tidak dapat mengaktifkan semula. Sila cuba lagi.",
+      "reactivateExpired": "Tempoh pemulihan 30 hari telah tamat. Hubungi sokongan untuk memulihkan akaun ini.",
       "signOut": "Log keluar",
       "reactivateSuccess": "Selamat kembali — akaun anda aktif semula."
     },

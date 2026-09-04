@@ -120,6 +120,7 @@ import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { hydrateLeadInto } from "../utils/leadHydrate";
 import { isPremiumSalesman } from "../utils/salesmanPlan";
 import { redactLeadsForCache, clearPanelDataCache } from "../utils/panelCache";
+import { redactForAI } from "../utils/redactForAI";
 // Style tokens, formatters, and small shared components (SOFT/CARD/STAGE_COLOR/
 // SubTabs/PrevMonthModal/etc.) live here so DashboardTab/ListingsTab/AnalyticsTab
 // (and the shell below) import the same definitions instead of duplicating them.
@@ -1251,9 +1252,15 @@ export default function SalesmanPremium() {
  const batch = [...rows]
  .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0))
  .slice(0, 40);
+ // Nothing that identifies the buyer leaves the browser. `phone` was already
+ // reduced to present/missing, but `buyer_name` went out in the clear and
+ // `notes` is free text a rep typed during a call — it routinely holds a
+ // number or an IC. The name is dropped outright (scoring reads stage,
+ // recency, notes and phone presence; a name adds nothing but tokens) and the
+ // notes go through the same masking the chat side does server-side.
  const payload = batch.map((l, i) => ({
- i, buyer_name: l.buyer_name, stage: l.stage,
- notes: l.notes, updated_at: l.updated_at,
+ i, stage: l.stage,
+ notes: redactForAI(l.notes), updated_at: l.updated_at,
  phone: l.phone? "present" : "missing",
  }));
  const prompt = `You are a sales AI. Score each lead as "hot", "warm", or "cold" based on stage, recency, notes, and phone presence.\nLeads: ${JSON.stringify(payload)}\nReturn ONLY a JSON array, one entry per lead, echoing the lead's "i": [{"i":0,"score":"hot"|"warm"|"cold"}]`;
@@ -1322,8 +1329,18 @@ export default function SalesmanPremium() {
  writeCache(`sp_enquiries_${uid}`, enqs || []);
  });
  });
+ // Leave the panel the moment the session ends, however it ended. Premium had
+ // no such listener (Lite has always had one), so an idle sign-out while this
+ // tab sat open left the whole panel mounted against a dead session: stale
+ // pipeline on screen and every write silently rejected, with nothing to tell
+ // the rep their session was gone.
+ const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event) => {
+ if (event === "SIGNED_OUT") navigate("/login");
+ });
+
  return () => {
  cancelled = true;
+ authSub.unsubscribe();
  if (channelRef.current) {
  supabase.removeChannel(channelRef.current);
  channelRef.current = null;
@@ -2273,7 +2290,7 @@ export default function SalesmanPremium() {
  setWaReplyLoading((p) => ({ ...p, [lead.id]: true }));
  const car = lead.car_listings;
  const carName = car? `${car.brand} ${car.model}` : "the car";
- const prompt = `You are a Malaysian used car salesman. A buyer named ${lead.buyer_name || "kawan"} enquired about ${carName}. Their stage is ${lead.stage || "new"}. Last note: ${lead.notes || "no notes"}. AI score: ${leadScores[lead.id]?.score || "unknown"}. Write a short, friendly WhatsApp reply in casual Bahasa Malaysia + English mix. Max 3 sentences. Include the car name. End with a soft next step.`;
+ const prompt = `You are a Malaysian used car salesman. A buyer named ${lead.buyer_name || "kawan"} enquired about ${carName}. Their stage is ${lead.stage || "new"}. Last note: ${redactForAI(lead.notes) || "no notes"}. AI score: ${leadScores[lead.id]?.score || "unknown"}. Write a short, friendly WhatsApp reply in casual Bahasa Malaysia + English mix. Max 3 sentences. Include the car name. End with a soft next step.`;
  try {
  const text = await callClaude(prompt, "You are a friendly Malaysian car salesman. Reply with the WhatsApp message text only.");
  setAiWaReplies((p) => ({ ...p, [lead.id]: text }));
@@ -2293,7 +2310,7 @@ export default function SalesmanPremium() {
  setLeadScores((p) => ({ ...p, [lead.id]: { ...p[lead.id], loading: true } }));
  const daysOld = lead.created_at? Math.floor((Date.now() - new Date(lead.created_at)) / 86400000) : 0;
  const lastActivity = lead.updated_at? Math.floor((Date.now() - new Date(lead.updated_at)) / 86400000) : daysOld;
- const prompt = `Score this car sales lead. Respond ONLY with JSON:\n{"score":"hot"|"warm"|"cold","reason":"string max 15 words"}\nLead data:\n- Stage: ${lead.stage}\n- Days since created: ${daysOld}\n- Follow-up set: ${lead.follow_up_at? "yes" : "no"}\n- Last activity: ${lastActivity} days ago\n- Enquiry message: ${lead.notes || "none"}\n- Employment: ${lead.employment_type || "unknown"}\n- Income bracket: ${lead.income_bracket || "unknown"}\nHot = likely to buy within 2 weeks. Warm = interested but needs nurturing. Cold = low engagement or stale.`;
+ const prompt = `Score this car sales lead. Respond ONLY with JSON:\n{"score":"hot"|"warm"|"cold","reason":"string max 15 words"}\nLead data:\n- Stage: ${lead.stage}\n- Days since created: ${daysOld}\n- Follow-up set: ${lead.follow_up_at? "yes" : "no"}\n- Last activity: ${lastActivity} days ago\n- Enquiry message: ${redactForAI(lead.notes) || "none"}\n- Employment: ${lead.employment_type || "unknown"}\n- Income bracket: ${lead.income_bracket || "unknown"}\nHot = likely to buy within 2 weeks. Warm = interested but needs nurturing. Cold = low engagement or stale.`;
  try {
  const raw = await callClaude(prompt, "You are a lead scoring AI. Respond with JSON only, no markdown.");
  const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
@@ -2326,7 +2343,7 @@ export default function SalesmanPremium() {
  const results = await Promise.all(
  topLeads.map(async (lead) => {
  const daysSince = lead.updated_at? Math.floor((Date.now() - new Date(lead.updated_at)) / 86400000) : 0;
- const prompt = `Suggest one follow-up action for this car sales lead.\nRespond ONLY with JSON:\n{"type":"call"|"whatsapp"|"visit"|"offer"|"close","suggestion":"string max 20 words in BM/English mix"}\nLead: ${lead.buyer_name || "Lead"}, stage: ${lead.stage}, score: ${lead.ai_score || "unknown"}, days since last contact: ${daysSince}, last outcome: ${lead.last_call_outcome || "none"}`;
+ const prompt = `Suggest one follow-up action for this car sales lead.\nRespond ONLY with JSON:\n{"type":"call"|"whatsapp"|"visit"|"offer"|"close","suggestion":"string max 20 words in BM/English mix"}\nLead stage: ${lead.stage}, score: ${lead.ai_score || "unknown"}, days since last contact: ${daysSince}, last outcome: ${lead.last_call_outcome || "none"}`;
  try {
  const raw = await callClaude(prompt, "You are a sales coach. Respond with JSON only.");
  const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());

@@ -2082,18 +2082,26 @@ export default function SalesmanLite() {
     }
   };
 
-  // Self-service restore within the grace window: clear the deletion flags on the
-  // caller's own row, then hard-reload so every downstream fetch re-runs clean.
+  // Self-service restore within the grace window, via restore_my_account().
+  //
+  // This used to write account_status/is_active/deleted_at straight to the row.
+  // prevent_profile_privilege_escalation reverts the first two for anyone who
+  // is not a superadmin, so the update "succeeded" with no error and the user
+  // stayed locked out -- but deleted_at DID get cleared, and
+  // purge-deleted-accounts selects `deleted_at < cutoff`, which a NULL never
+  // matches. The account could then be neither restored nor purged. The RPC
+  // checks the 30-day window server-side and is the only sanctioned path.
   const handleReactivate = async () => {
     if (!userId) return;
     setReactivating(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ account_status: "active", is_active: true, deleted_at: null })
-      .eq("id", userId);
+    const { error } = await supabase.rpc("restore_my_account");
     if (error) {
       console.error("reactivate:", error);
-      toast.error(t("salesmanLite.deletedGate.reactivateFailed"));
+      toast.error(
+        error.message?.includes("restore_window_expired")
+          ? t("salesmanLite.deletedGate.reactivateExpired")
+          : t("salesmanLite.deletedGate.reactivateFailed"),
+      );
       setReactivating(false);
       return;
     }
