@@ -2894,9 +2894,14 @@ export default function SalesmanPremium() {
  {isMobile? (
  <>
  {/* Mobile: pill filter row */}
- <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", padding: "2px 0 10px", marginBottom: 12 }}>
+ {/* Same material and the same per-stage hue as the desktop rail. The
+     selected pill used to be RED whatever stage it was, so mobile said
+     nothing about which stage you were in while desktop colour-coded all
+     seven -- one pipeline, two colour languages. */}
+ <div style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none", padding: "2px 0 12px", marginBottom: 14 }}>
  {activeStages.map((stage) => {
  const sc = STAGE_COLOR[stage] || {};
+ const solid = sc.solid || "#6b7280";
  const count = searchedLeads.filter((l) => l.stage === stage).length;
  const isActive = activeLeadStage === stage;
  return (
@@ -2907,28 +2912,40 @@ export default function SalesmanPremium() {
  flexShrink: 0,
  display: "flex",
  alignItems: "center",
- gap: 5,
- padding: "5px 12px",
+ gap: 7,
+ padding: "8px 13px",
  borderRadius: 99,
- fontSize: 11,
- fontWeight: isActive? 600 : 400,
+ fontSize: 11.5,
+ fontWeight: isActive? 700 : 500,
  cursor: "pointer",
- background: isActive? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.04)",
- border: isActive? "1px solid rgba(220,38,38,0.3)" : "1px solid rgba(255,255,255,0.08)",
- color: isActive? "#f87171" : "#4b5563",
+ fontFamily: "inherit",
+ background: isActive
+ ? `linear-gradient(135deg, ${solid}2e 0%, ${solid}12 45%, rgba(255,255,255,0) 100%), linear-gradient(135deg, #272f3e 0%, #1a2029 60%, #12161f 100%)`
+ : "linear-gradient(135deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.012) 100%)",
+ border: `1px solid ${isActive ? `${solid}5c` : "rgba(255,255,255,0.055)"}`,
+ boxShadow: isActive
+ ? "inset 0 1px 0 rgba(255,255,255,0.07), 0 4px 14px rgba(0,0,0,0.35)"
+ : "none",
+ color: isActive? "#f1f5f9" : "#94a3b8",
  textTransform: "capitalize",
  whiteSpace: "nowrap",
+ transition: "background 0.16s, border-color 0.16s",
  }}
  >
+ <span style={{
+  width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: solid,
+  boxShadow: isActive ? `0 0 0 3px ${solid}26` : "none",
+ }} />
  {stage.replace(/_/g, " ")}
  <span style={{
  fontSize: 10,
  fontWeight: 700,
- color: isActive? (sc.tx || "#f87171") : "#374151",
- background: isActive? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.06)",
+ color: isActive? (sc.tx || "#e5e7eb") : "#64748b",
+ background: isActive? `${solid}24` : "rgba(255,255,255,0.05)",
+ border: `1px solid ${isActive ? `${solid}45` : "transparent"}`,
  borderRadius: 99,
  padding: "0px 6px",
- lineHeight: 1.6,
+ lineHeight: 1.7,
  }}>
  {count}
  </span>
@@ -2944,8 +2961,15 @@ export default function SalesmanPremium() {
  .sort((a, b) => (heatMap.get(b.id)?.score?? 0) - (heatMap.get(a.id)?.score?? 0));
  if (stageLeads.length === 0) {
  return (
- <div style={{ height: 60, borderRadius: 10, border: "1px dashed rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
- <span style={{ fontSize: 11, color: "#374151" }}>Empty</span>
+ <div style={{
+  height: 96, borderRadius: 12,
+  background: "linear-gradient(158deg, #191e28 0%, #131720 50%, #0e1219 100%)",
+  border: "1px solid rgba(255,255,255,0.055)",
+  display: "flex", alignItems: "center", justifyContent: "center",
+ }}>
+ <span style={{ fontSize: 11.5, color: "#4b5563", textTransform: "capitalize" }}>
+ Nothing in {activeLeadStage.replace(/_/g, " ")} yet
+ </span>
  </div>
  );
  }
@@ -2966,7 +2990,7 @@ export default function SalesmanPremium() {
     the grid shows only the stage you picked, scrolling vertically like the
     rest of the page. Stage selection is the same activeLeadStage state
     mobile already used, so the two layouts cannot disagree. */
- <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+ <div style={{ display: "flex", gap: 22, alignItems: "stretch" }}>
 
  {/* Stage rail -- one panel, same material as the mini page's stat block:
      a dark slate gradient running darker along the diagonal, hairline
@@ -2974,10 +2998,11 @@ export default function SalesmanPremium() {
      faint wash on the selected row, never a solid colour bar. */}
  <div
   style={{
-   width: 218,
+   width: 226,
    flexShrink: 0,
-   borderRadius: 14,
-   padding: 8,
+   alignSelf: "flex-start",
+   borderRadius: 16,
+   padding: 12,
    background: "linear-gradient(158deg, #1b202b 0%, #141822 48%, #0e1219 100%)",
    border: "1px solid rgba(255,255,255,0.07)",
    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 10px 30px rgba(0,0,0,0.32)",
@@ -2985,7 +3010,7 @@ export default function SalesmanPremium() {
  >
  {/* Panel header — the pipeline's own total, so the rail leads with a
      number the way the mini page's stat block does. */}
- <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8, padding: "6px 8px 10px", borderBottom: "1px solid rgba(255,255,255,0.055)", marginBottom: 8 }}>
+ <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8, padding: "4px 6px 14px", borderBottom: "1px solid rgba(255,255,255,0.055)", marginBottom: 12 }}>
   <div style={{ minWidth: 0 }}>
    <p style={{ margin: 0, fontSize: 9, color: "#475569", textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 700 }}>Pipeline</p>
    <p style={{ margin: "4px 0 0", fontSize: 11, color: "#64748b" }}>Pick a stage</p>
@@ -2995,7 +3020,7 @@ export default function SalesmanPremium() {
   </p>
  </div>
 
- <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+ <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
  {activeStages.map((stage) => {
  const sc = STAGE_COLOR[stage] || {};
  const solid = sc.solid || "#6b7280";
@@ -3008,10 +3033,12 @@ export default function SalesmanPremium() {
  style={{
  display: "flex",
  alignItems: "center",
- gap: 9,
+ gap: 10,
  width: "100%",
- padding: "9px 10px",
- borderRadius: 9,
+ // Deliberately loose: the rail is read at a glance, and seven rows
+ // packed tight is the "basic list" look it started as.
+ padding: "14px 12px",
+ borderRadius: 11,
  cursor: "pointer",
  textAlign: "left",
  fontFamily: "inherit",
@@ -3057,6 +3084,19 @@ export default function SalesmanPremium() {
  })}
  </div>
  </div>
+
+ {/* Hairline between the rail and the board. Fades out top and bottom so
+     it reads as a seam rather than a drawn box edge; the row above is
+     alignItems:"stretch" purely so this has a height to fill. */}
+ <div
+  aria-hidden="true"
+  style={{
+   width: 1,
+   flexShrink: 0,
+   alignSelf: "stretch",
+   background: "linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.13) 12%, rgba(255,255,255,0.13) 88%, rgba(255,255,255,0) 100%)",
+  }}
+ />
 
  {/* Cards for the selected stage */}
  {(() => {
