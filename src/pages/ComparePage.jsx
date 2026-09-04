@@ -203,7 +203,20 @@ export default function ComparePage() {
   // Hysteresis: collapse the strip only once scrolled well past where it sticks
   // (~82px), and re-expand only near the top. A single threshold at the sticky
   // boundary made collapsing shift the layout back across it → expand → collapse
-  // in an infinite flicker. The dead zone (110–220) breaks that feedback loop.
+  // in an infinite flicker.
+  //
+  // The dead zone alone does NOT break that loop, and this page shipped
+  // flickering because of it. Collapsing the strip removes ~200-500px of
+  // height from the flow, and Chrome's SCROLL ANCHORING then rewinds
+  // window.scrollY by that much to keep the content under the cursor still.
+  // That drop is far larger than the 110px dead zone, so it lands back below
+  // the re-expand threshold, the strip reopens, anchoring pushes scrollY
+  // forward again, and it oscillates on the spot for as long as you leave it
+  // there. Measured in Chromium: 32 state flips from a single scroll to y=240.
+  // The cure is `overflowAnchor: 'none'` on the page wrapper below (32 flips
+  // -> 1), because the trigger has to stop reacting to a scroll position that
+  // the collapse itself is moving. Do not remove it thinking it is cosmetic;
+  // widening the dead zone here cannot substitute for it.
   useEffect(() => {
     let ticking = false;
     const evaluate = () => {
@@ -395,7 +408,11 @@ export default function ComparePage() {
 
       <HeaderC />
 
-      <div style={{ minHeight: '100vh', background: pageBg, fontFamily: "system-ui,sans-serif", paddingTop: 72, paddingBottom: 64, ...cpVars }}>
+      {/* overflowAnchor:'none' is what stops the strip flickering between its
+          expanded and collapsed forms, and it is not cosmetic -- see the
+          `scrolled` effect above for the mechanism. Scoped to this wrapper
+          rather than <html> so the rest of the app keeps scroll anchoring. */}
+      <div style={{ minHeight: '100vh', background: pageBg, fontFamily: "system-ui,sans-serif", paddingTop: 72, paddingBottom: 64, overflowAnchor: 'none', ...cpVars }}>
 
         {/* ── Page title ── */}
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '14px 16px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>

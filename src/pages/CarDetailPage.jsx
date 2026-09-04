@@ -519,6 +519,34 @@ function hasDealerIdentity(dealer) {
     dealer.business_hours || dealer.phone || dealer.stat_years > 0);
 }
 
+// The line under the seller's name. The mobile card and the desktop sidebar
+// carried two identical copies of this, and in BOTH the agent branch was the
+// bare string 'Independent Agent' with no verified case -- so a verified agent's
+// car page could never show a badge no matter what the data said, which is the
+// half of "verified doesn't appear on CarDetailPage" that lives in the UI. (The
+// other half was in the DB: get_salesman_by_id derived is_verified from a
+// plaintext ic_number that the secure hashed IC path leaves null.) One
+// component now, so the two layouts cannot drift apart again.
+function SellerTypeLine({ isAgent, salesmanProfile, dealer, th, isXdrive, anchorId }) {
+  const tick = <ShieldCheck size={12} strokeWidth={2.5} style={{ color: isXdrive ? '#2563eb' : '#60a5fa' }} />;
+
+  if (isAgent) {
+    return salesmanProfile?.is_verified
+      ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{tick} Verified Agent</span>
+      : <>Independent Agent</>;
+  }
+  if (!dealer) return <>Seller</>;
+  // The badge used to be a dead end — a shield with no referent. When there
+  // are real details below it, it links to them.
+  if (!hasDealerIdentity(dealer)) return <>Dealer</>;
+  return (
+    <a href={`#${anchorId}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'inherit', textDecoration: 'none', borderBottom: `1px dotted ${th.textMuted}` }}>
+      {dealer.is_verified && tick}
+      {dealer.is_verified ? 'Verified Dealer' : 'Dealer'} · details
+    </a>
+  );
+}
+
 function DealerIdentity({ dealer, dealerName, th, isXdrive, anchorId }) {
   if (!hasDealerIdentity(dealer)) return null;
 
@@ -2689,16 +2717,7 @@ export default function CarDetailPage() {
                     <p style={{ fontSize:13, color: th.text, fontWeight:600, marginBottom:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{displayName}</p>
                     <SellerRating summary={reviewSummary} floor={REVIEW_FLOOR} anchorId="reviews-m" th={th} />
                     <p style={{ fontSize:11, color: th.textSec }}>
-                      {isAgent ? 'Independent Agent' : dealer ? (
-                        /* The badge used to be a dead end — a shield with no referent.
-                           When there are real details below it, it links to them. */
-                        hasDealerIdentity(dealer) ? (
-                          <a href="#dealer-identity-m" style={{ display:'inline-flex', alignItems:'center', gap:4, color: 'inherit', textDecoration:'none', borderBottom:`1px dotted ${th.textMuted}` }}>
-                            {dealer.is_verified && <ShieldCheck size={12} strokeWidth={2.5} style={{ color: isXdrive ? '#2563eb' : '#60a5fa' }} />}
-                            {dealer.is_verified ? 'Verified Dealer' : 'Dealer'} · details
-                          </a>
-                        ) : 'Dealer'
-                      ) : 'Seller'}
+                      <SellerTypeLine isAgent={isAgent} salesmanProfile={salesmanProfile} dealer={dealer} th={th} isXdrive={isXdrive} anchorId="dealer-identity-m" />
                     </p>
                   </div>
                   <div style={{ textAlign:'right' }}>
@@ -3970,14 +3989,7 @@ export default function CarDetailPage() {
                     <p style={{ fontSize: 13, color: th.text, fontWeight: 600, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</p>
                     <SellerRating summary={reviewSummary} floor={REVIEW_FLOOR} anchorId="reviews-d" th={th} />
                     <p style={{ fontSize: 11, color: th.textSec }}>
-                      {isAgent ? 'Independent Agent' : dealer ? (
-                        hasDealerIdentity(dealer) ? (
-                          <a href="#dealer-identity-d" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'inherit', textDecoration: 'none', borderBottom: `1px dotted ${th.textMuted}` }}>
-                            {dealer.is_verified && <ShieldCheck size={12} strokeWidth={2.5} style={{ color: isXdrive ? '#2563eb' : '#60a5fa' }} />}
-                            {dealer.is_verified ? 'Verified Dealer' : 'Dealer'} · details
-                          </a>
-                        ) : 'Dealer'
-                      ) : 'Seller'}
+                      <SellerTypeLine isAgent={isAgent} salesmanProfile={salesmanProfile} dealer={dealer} th={th} isXdrive={isXdrive} anchorId="dealer-identity-d" />
                     </p>
                   </div>
                   {listedDays !== null && (
