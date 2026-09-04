@@ -69,7 +69,13 @@ export default function DashboardTab({
  const waTaps = s.enquiries || 0;
  const enqCount = enquiries.filter((e) => e.listing_id === car.id).length;
  const cvr = views > 0 ? (waTaps / views) * 100 : null;
- return { car, views, waTaps, enqCount, cvr };
+ // Index 6 of each 7-day series is TODAY (Malaysian calendar day) since
+ // migration 20260904f — which car moved today, not just which is best
+ // over 30 days. A car with one view today and none for a week reads very
+ // differently from the same car with a flat 30-day total.
+ const viewsToday = Number(s.daily?.[6]) || 0;
+ const waToday = Number(s.waDaily?.[6]) || 0;
+ return { car, views, waTaps, enqCount, cvr, viewsToday, waToday };
  });
  const totalViews = Object.values(carStatsMap).reduce((s, v) => s + (v.views || 0), 0);
  const totalWATaps = Object.values(carStatsMap).reduce((s, v) => s + (v.enquiries || 0), 0);
@@ -207,12 +213,21 @@ export default function DashboardTab({
  const available = myListings.filter(c => c.status === "available");
  // The four headline numbers above the traffic chart. The three that have a
  // wave carry its colour as a dot; Live Listings is a count, not a series.
+ // The four headline numbers are 30-day totals; `today` is the same metric for
+ // TODAY ONLY, rendered beside it as a green +N. That is the whole daily view —
+ // no second block of numbers competing with these, and nothing new fetched:
+ // index 6 of each 7-day series IS today now that get_salesman_analytics and
+ // get_salesman_minipage_daily bucket by Malaysian calendar days rather than a
+ // rolling 24 hours (migration 20260904f). Before that fix a "+N today" badge
+ // would have been counting from this time yesterday. Live Listings is a count,
+ // not a time series, so it has no daily figure and shows no badge.
  const TRAFFIC_STATS = [
- { label: "Views", value: totalViews || 0, Icon: Eye, hue: C.info },
- { label: "Page Visits", value: minipageStats.visits || 0, Icon: LinkIcon, hue: "#a78bfa" },
- { label: "WA Taps", value: totalWATaps || 0, Icon: MessageCircle, hue: C.success },
- { label: "Live Listings", value: available.length, Icon: Car, hue: null },
+ { label: "Views", value: totalViews || 0, today: viewsTrend[6] || 0, Icon: Eye, hue: C.info },
+ { label: "Page Visits", value: minipageStats.visits || 0, today: visitsTrend[6] || 0, Icon: LinkIcon, hue: "#a78bfa" },
+ { label: "WA Taps", value: totalWATaps || 0, today: waTrend[6] || 0, Icon: MessageCircle, hue: C.success },
+ { label: "Live Listings", value: available.length, today: null, Icon: Car, hue: null },
  ];
+ const todayTotal = (viewsTrend[6] || 0) + (visitsTrend[6] || 0) + (waTrend[6] || 0);
  const daysLeft = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate();
  const pct = goal.target > 0 ? Math.min((soldThisMonth / goal.target) * 100, 100) : 0;
  const goalHue = pct >= 100 ? C.success : pct >= 60 ? C.info : C.danger;
@@ -370,19 +385,33 @@ export default function DashboardTab({
  tiles broke into a ragged 2+2 and the strip read as a separate
  (broken) card instead of one line of numbers. */}
  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
- {TRAFFIC_STATS.map(({ label, value, Icon, hue }, i) => (
+ {TRAFFIC_STATS.map(({ label, value, today, Icon, hue }, i) => (
  <div key={label} style={{ display: "flex", flexDirection: "column", gap: 5, minWidth: 0, paddingLeft: i > 0 ? (isMobile ? 10 : 18) : 0, paddingRight: isMobile ? 6 : 12, borderLeft: i > 0 ? `1px solid ${C.line}` : "none" }}>
  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: R.sm, background: hue ? withAlpha(hue, 0.12) : C.fillStrong, color: hue || C.textMuted }}>
  <Icon size={11} strokeWidth={2.2} />
  </span>
+ <span style={{ display: "flex", alignItems: "baseline", gap: 5, minWidth: 0 }}>
  <span style={{ ...STAT, fontSize: isMobile ? T.size.stat : T.size.statLg, color: C.text, lineHeight: 1.1 }}>{value.toLocaleString("en-MY")}</span>
+ {/* Only when something actually happened today. A "+0" on every tile
+ every morning trains people to stop reading the row. */}
+ {today > 0 && (
+ <span title={`${today} today`} style={{ fontSize: T.size.xs, fontWeight: T.weight.semibold, color: C.successText, lineHeight: 1, whiteSpace: "nowrap" }}>
+ +{today}
+ </span>
+ )}
+ </span>
  <span style={{ ...EYEBROW, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
  </div>
  ))}
  </div>
+ {/* Say what the two numbers mean, once, instead of labelling every tile
+ twice. Silent on a quiet day rather than announcing a zero. */}
  <span style={{ ...EYEBROW, display: "inline-flex", alignItems: "center", gap: 5, marginTop: 12, fontWeight: T.weight.normal }}>
  <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.success }} />
  30 days
+ {todayTotal > 0 && (
+ <span style={{ color: C.successText, fontWeight: T.weight.semibold }}>· green = today</span>
+ )}
  </span>
 
  {/* ONE traffic chart, three waves. Views used to be the only series with
@@ -650,19 +679,24 @@ export default function DashboardTab({
  </div>
  <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", borderBottom: `1px solid ${C.line}` }}>
  {[
- { label: "Views", value: totalViews || 0 },
- { label: "WA Taps", value: totalWATaps || 0 },
- { label: "CVR", value: overallCVR !== null ? `${overallCVR}%` : "—" },
- ].map(({ label, value }, i, arr) => (
+ { label: "Views", value: totalViews || 0, today: viewsTrend[6] || 0 },
+ { label: "WA Taps", value: totalWATaps || 0, today: waTrend[6] || 0 },
+ { label: "CVR", value: overallCVR !== null ? `${overallCVR}%` : "—", today: 0 },
+ ].map(({ label, value, today }, i, arr) => (
  <div key={label} style={{ padding: "16px 18px", borderRight: i < arr.length - 1 ? `1px solid ${C.line}` : "none" }}>
  <p style={{ ...EYEBROW, margin: "0 0 4px" }}>{label}</p>
- <p style={{ ...STAT, margin: 0, fontSize: T.size.stat }}>{value}</p>
+ <p style={{ ...STAT, margin: 0, fontSize: T.size.stat, display: "flex", alignItems: "baseline", gap: 5 }}>
+ {value}
+ {today > 0 && (
+ <span title={`${today} today`} style={{ fontSize: T.size.xs, fontWeight: T.weight.semibold, color: C.successText }}>+{today}</span>
+ )}
+ </p>
  </div>
  ))}
  </div>
  {listingStats.length > 0 && (
  <div>
- {[...listingStats].sort((a, b) => (b.cvr ?? -1) - (a.cvr ?? -1)).map(({ car, views, waTaps, cvr }, idx, arr) => {
+ {[...listingStats].sort((a, b) => (b.cvr ?? -1) - (a.cvr ?? -1)).map(({ car, views, waTaps, cvr, viewsToday, waToday }, idx, arr) => {
  const isHot = views > 20 && cvr >= 10;
  const isWarm = !isHot && views > 5 && cvr >= 5;
  const img = car.images?.[0];
@@ -677,7 +711,12 @@ export default function DashboardTab({
  )}
  <div style={{ flex: 1, minWidth: 0 }}>
  <p style={{ margin: "0 0 2px", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{perfCarName(car)}</p>
- <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted }}>{views} view{views !== 1 ? "s" : ""} · {waTaps} WA tap{waTaps !== 1 ? "s" : ""}</p>
+ <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted }}>
+ {views} view{views !== 1 ? "s" : ""}
+ {viewsToday > 0 && <span style={{ color: C.successText, fontWeight: T.weight.semibold }}> +{viewsToday}</span>}
+ {" · "}{waTaps} WA tap{waTaps !== 1 ? "s" : ""}
+ {waToday > 0 && <span style={{ color: C.successText, fontWeight: T.weight.semibold }}> +{waToday}</span>}
+ </p>
  </div>
  <div style={{ textAlign: "right", flexShrink: 0 }}>
  <p style={{ margin: "0 0 3px", fontSize: T.size.base, fontWeight: T.weight.bold, color: cvr !== null ? cvrColor(cvr) : C.textDim }}>

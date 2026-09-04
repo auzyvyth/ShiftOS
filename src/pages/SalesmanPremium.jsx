@@ -1329,8 +1329,18 @@ export default function SalesmanPremium() {
  writeCache(`sp_enquiries_${uid}`, enqs || []);
  });
  });
+ // Leave the panel the moment the session ends, however it ended. Premium had
+ // no such listener (Lite has always had one), so an idle sign-out while this
+ // tab sat open left the whole panel mounted against a dead session: stale
+ // pipeline on screen and every write silently rejected, with nothing to tell
+ // the rep their session was gone.
+ const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event) => {
+ if (event === "SIGNED_OUT") navigate("/login");
+ });
+
  return () => {
  cancelled = true;
+ authSub.unsubscribe();
  if (channelRef.current) {
  supabase.removeChannel(channelRef.current);
  channelRef.current = null;

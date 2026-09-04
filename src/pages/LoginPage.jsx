@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { readLogoutNotice, clearLogoutNotice, daysSince } from "../utils/authNotice";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Clock } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { handoffSuffix } from "../lib/authHandoff";
 import { markBuyerIntent } from "../lib/buyerAuth";
@@ -67,6 +68,17 @@ export default function LoginPage() {
   const [unconfirmed, setUnconfirmed] = useState(
     searchParams.get("unconfirmed") === "1",
   );
+  // Why the person is looking at a login screen they did not ask for. The idle
+  // logout parks this instead of redirecting; ?timeout=1 is the old contract,
+  // kept so a bookmark or an in-flight tab from before this change still
+  // explains itself rather than showing a bare form.
+  const [logoutNotice] = useState(() =>
+    readLogoutNotice() || (searchParams.get("timeout") === "1" ? { reason: "idle" } : null),
+  );
+  const idleDays = logoutNotice?.idleSince ? daysSince(logoutNotice.idleSince) : null;
+  // Consume it once. The copy captured in state above renders this visit; the
+  // stored notice goes, so a second trip to /login is a plain login page.
+  useEffect(() => { if (logoutNotice) clearLogoutNotice(); }, [logoutNotice]);
   const [focused, setFocused] = useState("");
   const [mounted, setMounted] = useState(false);
   const [error, setError] = useState("");
@@ -722,6 +734,9 @@ export default function LoginPage() {
         .lr-eye:hover { color: rgba(255,255,255,0.5); }
 
         .lr-error { background: rgba(220,38,38,0.07); border: 1px solid rgba(220,38,38,0.22); border-radius: 8px; padding: 10px 14px; color: #f87171; font-size: 12px; line-height: 1.5; margin-bottom: 14px; }
+        /* Not an error — the account is fine, we closed the session on purpose.
+           Neutral/informational, so it does not read as a failed login. */
+        .lr-notice { display: flex; gap: 9px; align-items: flex-start; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09); border-radius: 8px; padding: 11px 14px; color: rgba(255,255,255,0.62); font-size: 12px; line-height: 1.55; margin-bottom: 20px; }
 
         .lr-magic { background: rgba(251,191,36,0.05); border: 1px solid rgba(251,191,36,0.15); border-radius: 8px; padding: 14px; margin-bottom: 14px; }
         .lr-magic-title { font-size: 12px; color: rgba(251,191,36,0.9); font-weight: 600; margin-bottom: 4px; }
@@ -835,6 +850,18 @@ export default function LoginPage() {
             <h2 className="lr-form-title">SIGN IN</h2>
             <p className="lr-form-sub">Sign in to your account</p>
           </div>
+
+          {logoutNotice?.reason === "idle" && (
+            <div className="lr-notice">
+              <Clock size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+              <span>
+                {idleDays
+                  ? `You hadn't used ShiftOS for ${idleDays} day${idleDays === 1 ? "" : "s"}, so we signed you out to keep your account safe.`
+                  : "You'd been away a while, so we signed you out to keep your account safe."}
+                {" "}Sign in to pick up where you left off.
+              </span>
+            </div>
+          )}
 
           {/* Google — first, most prominent */}
           <button

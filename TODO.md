@@ -103,6 +103,51 @@ All of the below is LIVE on prod (`24486e8`). Follow-ups only.
   Must stay ADVISORY — it ranks the queue, it never auto-penalises, same rule
   as reports.
 
+## Idle logout stopped stealing links + daily traffic numbers — 2026-09-04
+
+### The compare link that went to a login page (real user, fixed)
+A test user was away ~3 days, tapped a shared
+`xdrive.my/compare?a=…&b=…` link and landed on a bare login page with the link
+gone. Cause: `useIdleLogout` ended with
+`window.location.href = '/login?timeout=1'`, fired from WHATEVER page the app
+happened to mount on — and `/compare` is a PUBLIC route that renders perfectly
+well signed out. `LoginPage` never read `?timeout=1` either, so there was no
+explanation waiting at the other end.
+- Signing out is now silent and **never navigates**. The reason is parked in
+  `src/utils/authNotice.js` and read once by `LoginPage`, which says "You hadn't
+  used ShiftOS for N days, so we signed you out to keep your account safe."
+  `?timeout=1` is still honoured for tabs/bookmarks from before the change.
+- The ONE exception is `pathNeedsSession()` — a page that cannot render without
+  a session reloads so its own guard runs. Public pages are left alone.
+- `SalesmanPremium` had no `SIGNED_OUT` listener (Lite has always had one), so
+  an idle sign-out with the tab open left the panel mounted on a dead session:
+  stale pipeline on screen, every write silently rejected. It has one now.
+
+- [ ] **IDLE-1: is 24h the right window?** `IDLE_MS` is 24 hours, which for a
+  phone-first sales tool means a rep who does not open it over a weekend is
+  logged out on Monday. The UX around it is fixed; the DURATION was never
+  discussed. Worth raising with the owner — 7 days would still be a real
+  security control and would stop most of the friction.
+
+### Daily traffic numbers on the Premium dashboard
+Owner's call, and the right one: no new section. The existing traffic strip and
+My Performance rows keep their 30-day totals and gain a small green `+N` for
+today beside each.
+- **The reason this needed a migration at all:** `get_salesman_analytics`
+  (d0..d6) and `get_salesman_minipage_daily` bucketed by ROLLING 24-HOUR
+  WINDOWS anchored on `now()`, while the dashboard chart already labelled the
+  last bucket "Today". At 9am, "Today" was counting from 9am YESTERDAY. Measured
+  live on the busiest seller at the time of the fix: the honest KL-today figure
+  was 2, the rolling window said 5. Migration `20260904f` rebuckets both by
+  Malaysian calendar day (`Asia/Kuala_Lumpur`), signatures unchanged.
+- Because d6 now genuinely IS today, the badges read a bucket the dashboard
+  ALREADY loads — **no new RPC, no new query on the page**, and the chart and
+  the badge cannot disagree because they are the same array.
+- Badges show only when the number is above zero. A `+0` on every tile every
+  morning teaches people to stop reading the row.
+- Lite reads `get_salesman_analytics` too, so its chart was silently corrected
+  by the same migration with no client change.
+
 ## SEC sweep #2 of Salesman Premium + Lite — 2026-09-04
 
 Second pass over both panels. Four fixed and pushed; the DB and edge halves are
