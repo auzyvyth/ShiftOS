@@ -138,56 +138,69 @@ export const LEAD_STAGES = [
  "closed_lost",
 ];
 
+// bg/border/tx are the low-alpha tint used for pills. `solid` is the same
+// hue at full strength, for surfaces that FILL with the stage colour (the
+// leads pipeline rail) -- the 12%-alpha bg goes muddy used that way.
 export const STAGE_COLOR = {
  new: {
  bg: "rgba(96,165,250,0.12)",
  border: "rgba(96,165,250,0.3)",
  tx: "#93c5fd",
+ solid: "#3b82f6",
  },
  contacted: {
  bg: "rgba(251,191,36,0.12)",
  border: "rgba(251,191,36,0.3)",
  tx: "#fbbf24",
+ solid: "#f59e0b",
  },
  viewing_booked: {
  bg: "rgba(167,139,250,0.12)",
  border: "rgba(167,139,250,0.3)",
  tx: "#c084fc",
+ solid: "#8b5cf6",
  },
  test_drive: {
  bg: "rgba(52,211,153,0.12)",
  border: "rgba(52,211,153,0.3)",
  tx: "#34d399",
+ solid: "#10b981",
  },
  negotiating: {
  bg: "rgba(251,146,60,0.12)",
  border: "rgba(251,146,60,0.3)",
  tx: "#fb923c",
+ solid: "#f97316",
  },
  deposit_taken: {
  bg: "rgba(34,197,94,0.12)",
  border: "rgba(34,197,94,0.3)",
  tx: "#4ade80",
+ solid: "#22c55e",
  },
  won: {
  bg: "rgba(34,197,94,0.18)",
  border: "rgba(34,197,94,0.4)",
  tx: "#4ade80",
+ solid: "#16a34a",
  },
  lost: {
  bg: "rgba(107,114,128,0.12)",
  border: "rgba(107,114,128,0.3)",
  tx: "#9ca3af",
+ solid: "#6b7280",
  },
  closed_won: {
  bg: "rgba(34,197,94,0.18)",
  border: "rgba(34,197,94,0.4)",
  tx: "#4ade80",
+ solid: "#16a34a",
  },
  closed_lost: {
  bg: "rgba(107,114,128,0.12)",
  border: "rgba(107,114,128,0.3)",
  tx: "#9ca3af",
+ solid: "#6b7280",
  },
 };
 

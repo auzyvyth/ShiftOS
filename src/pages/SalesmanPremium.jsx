@@ -406,7 +406,7 @@ export default function SalesmanPremium() {
  const [linkCarQuery, setLinkCarQuery] = useState("");
  const [batchWALeads, setBatchWALeads] = useState(null);
  const [batchWAIdx, setBatchWAIdx] = useState(0);
- const [mobileLeadStage, setMobileLeadStage] = useState("new");
+ const [activeLeadStage, setActiveLeadStage] = useState("new");
  const [playbookLeadId, setPlaybookLeadId] = useState(null);
  const [copiedScriptLine, setCopiedScriptLine] = useState(null);
  // browser notification banner (Follow-up Needed card) — ported from Lite
@@ -2898,11 +2898,11 @@ export default function SalesmanPremium() {
  {activeStages.map((stage) => {
  const sc = STAGE_COLOR[stage] || {};
  const count = searchedLeads.filter((l) => l.stage === stage).length;
- const isActive = mobileLeadStage === stage;
+ const isActive = activeLeadStage === stage;
  return (
  <button
  key={stage}
- onClick={() => setMobileLeadStage(stage)}
+ onClick={() => setActiveLeadStage(stage)}
  style={{
  flexShrink: 0,
  display: "flex",
@@ -2940,7 +2940,7 @@ export default function SalesmanPremium() {
  {/* Mobile: vertical card list for selected stage */}
  {(() => {
  const stageLeads = searchedLeads
- .filter((l) => l.stage === mobileLeadStage)
+ .filter((l) => l.stage === activeLeadStage)
  .sort((a, b) => (heatMap.get(b.id)?.score?? 0) - (heatMap.get(a.id)?.score?? 0));
  if (stageLeads.length === 0) {
  return (
@@ -2957,44 +2957,107 @@ export default function SalesmanPremium() {
  })()}
  </>
  ) : (
- /* Desktop: horizontal kanban scroll */
- <div
- style={{
- display: "flex",
- gap: 12,
- overflowX: "auto",
- paddingBottom: 8,
- }}
- >
+ /* Desktop: a VERTICAL stage rail plus a two-column card grid.
+    This was a horizontal kanban: seven columns side by side inside an
+    overflowX:auto strip, so on any normal screen the later stages -- the
+    ones that are actually worth money, negotiating and deposit -- sat off
+    the right edge behind a sideways scroll nobody does. The whole pipeline
+    is legible at once now: the rail names every stage with its count, and
+    the grid shows only the stage you picked, scrolling vertically like the
+    rest of the page. Stage selection is the same activeLeadStage state
+    mobile already used, so the two layouts cannot disagree. */
+ <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+
+ {/* Stage rail */}
+ <div style={{ width: 210, flexShrink: 0, display: "flex", flexDirection: "column", gap: 6 }}>
  {activeStages.map((stage) => {
  const sc = STAGE_COLOR[stage] || {};
- const stageLeads = searchedLeads
- .filter((l) => l.stage === stage)
- .sort((a, b) => (heatMap.get(b.id)?.score?? 0) - (heatMap.get(a.id)?.score?? 0));
+ const solid = sc.solid || "#6b7280";
+ const count = searchedLeads.filter((l) => l.stage === stage).length;
+ const isActive = activeLeadStage === stage;
  return (
- <div
+ <button
  key={stage}
- style={{ minWidth: stageLeads.length === 0? 80 : 200, flexShrink: 0 }}
+ onClick={() => setActiveLeadStage(stage)}
+ style={{
+ display: "flex",
+ alignItems: "center",
+ gap: 9,
+ width: "100%",
+ padding: "9px 12px",
+ borderRadius: 10,
+ cursor: "pointer",
+ textAlign: "left",
+ fontFamily: "inherit",
+ // Only the SELECTED row is saturated -- seven filled colour bars at
+ // once is the sticker-sheet look, and it also stops the rail saying
+ // which stage you are looking at.
+ background: isActive
+ ? `linear-gradient(135deg, ${solid} 0%, ${solid}d9 60%, ${solid}a6 100%)`
+ : "rgba(255,255,255,0.03)",
+ border: `1px solid ${isActive ? "transparent" : "rgba(255,255,255,0.07)"}`,
+ boxShadow: isActive ? `0 6px 18px ${solid}33` : "none",
+ transition: "background 0.15s, border-color 0.15s",
+ }}
  >
- <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
- <span style={{ fontSize: 11, fontWeight: 600, color: sc.tx || "#9ca3af", textTransform: "capitalize" }}>
+ <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: isActive ? "rgba(255,255,255,0.9)" : solid }} />
+ <span style={{
+ flex: 1, minWidth: 0, fontSize: 12,
+ fontWeight: isActive ? 700 : 500,
+ color: isActive ? "#fff" : "#9ca3af",
+ textTransform: "capitalize", whiteSpace: "nowrap",
+ overflow: "hidden", textOverflow: "ellipsis",
+ }}>
  {stage.replace(/_/g, " ")}
  </span>
- <span style={{ fontSize: 10, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, borderRadius: 99, padding: "1px 6px" }}>
- {stageLeads.length}
+ <span style={{
+ flexShrink: 0, fontSize: 11, fontWeight: 700, lineHeight: 1.6,
+ borderRadius: 99, padding: "0 7px",
+ background: isActive ? "rgba(0,0,0,0.22)" : "rgba(255,255,255,0.06)",
+ color: isActive ? "#fff" : "#6b7280",
+ }}>
+ {count}
  </span>
- </div>
- <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
- {stageLeads.length === 0 && (
- <div style={{ height: 60, borderRadius: 10, border: "1px dashed rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
- <span style={{ fontSize: 11, color: "#374151" }}>Empty</span>
- </div>
- )}
- {stageLeads.map((lead) => renderLeadCard(lead))}
- </div>
- </div>
+ </button>
  );
  })}
+ </div>
+
+ {/* Cards for the selected stage */}
+ {(() => {
+ const stageLeads = searchedLeads
+ .filter((l) => l.stage === activeLeadStage)
+ .sort((a, b) => (heatMap.get(b.id)?.score?? 0) - (heatMap.get(a.id)?.score?? 0));
+ return (
+ <div style={{ flex: 1, minWidth: 0 }}>
+ {stageLeads.length === 0 ? (
+ <div style={{ height: 120, borderRadius: 12, border: "1px dashed rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+ <span style={{ fontSize: 12, color: "#374151" }}>
+ Nothing in {activeLeadStage.replace(/_/g, " ")} yet
+ </span>
+ </div>
+ ) : (
+ <div
+ style={{
+ display: "grid",
+ gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+ gap: 10,
+ alignItems: "start",
+ // The grid scrolls, not the page, so the rail stays put while you
+ // work through a stage. minHeight keeps a one-card stage from
+ // collapsing to a sliver next to the rail.
+ maxHeight: "calc(100vh - 300px)",
+ minHeight: 260,
+ overflowY: "auto",
+ paddingRight: 4,
+ }}
+ >
+ {stageLeads.map((lead) => renderLeadCard(lead))}
+ </div>
+ )}
+ </div>
+ );
+ })()}
  </div>
  )}
 
@@ -4526,7 +4589,7 @@ export default function SalesmanPremium() {
  const initials = (profile?.full_name || profile?.slug || "S")[0].toUpperCase();
 
  return (
- <div style={{ maxWidth: 480 }}>
+ <div style={{ maxWidth: 480, margin: "0 auto" }}>
  <p style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Profile Settings</p>
 
  {/* Push alerts on this device. Own id, not a dealer id — push_subscriptions
@@ -4772,7 +4835,7 @@ export default function SalesmanPremium() {
  // RENDER MERGE 
 
  const renderMerge = () => (
- <div style={{ maxWidth: 480 }}>
+ <div style={{ maxWidth: 480, margin: "0 auto" }}>
  <p
  style={{
  margin: "0 0 6px",
@@ -5365,7 +5428,7 @@ export default function SalesmanPremium() {
  // separate tabs reachable only from a pair of unlabelled Dashboard tiles, so
  // salesmen never found either. Same two-pill pattern as Inbox and Listings.
  const renderSold = () => (
- <div style={{ maxWidth: 640 }}>
+ <div style={{ maxWidth: 640, margin: "0 auto" }}>
  {renderTabBack()}
  <p style={{ margin: "0 0 4px", fontSize: 19, fontWeight: 700, color: C.text }}>Sold</p>
  <p style={{ margin: "0 0 14px", fontSize: 12, color: C.textMuted }}>After the deal is won: the handover checklist, then the buyer.</p>
@@ -6091,10 +6154,21 @@ export default function SalesmanPremium() {
  </div>
 
  {/* Page content */}
+ {/* One centred column for EVERY tab. The content used to start hard against
+     the sidebar and run to whatever width its own wrapper allowed, so a
+     narrow tab (Sold at 640, Loans at 720, Settings at 480) sat pinned to
+     the left edge with a lake of empty space to its right — it read as
+     part of the sidebar rather than as the page. The cap lives here, once,
+     so no tab has to remember to centre itself; the narrow wrappers below
+     add their own `margin: 0 auto` to centre inside it. */}
  <div
  style={{
  padding: isMobile? "16px 12px" : 24,
  flex: 1,
+ minWidth: 0,
+ width: "100%",
+ maxWidth: 1180,
+ margin: "0 auto",
  // No longer clearing a fixed bottom nav bar (removed — nav is the
  // renderMobileNav() drawer now), so mobile no longer needs the extra
  // 80px reserve; same bottom padding as desktop.
@@ -6113,7 +6187,7 @@ export default function SalesmanPremium() {
  handoverActive={handover.activeCount} handoverNext={soldNextStep}
  browserNotifPerm={browserNotifPerm} notifBannerDismissed={notifBannerDismissed}
  isPremium={isPremium} isMobile={isMobile}
- setActiveTab={setActiveTab} setMobileLeadStage={setMobileLeadStage} setGoalDraft={setGoalDraft}
+ setActiveTab={setActiveTab} setActiveLeadStage={setActiveLeadStage} setGoalDraft={setGoalDraft}
  setGoalEditing={setGoalEditing} setShowPrevMonth={setShowPrevMonth} setShowAddForm={setShowAddForm}
  setAiFollowups={setAiFollowups} setInboxSubTab={setInboxSubTab}
  saveGoal={saveGoal} triggerGlow={triggerGlow} switchTab={switchTab} pingWA={pingWA}

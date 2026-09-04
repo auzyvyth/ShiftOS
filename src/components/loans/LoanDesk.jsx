@@ -1031,7 +1031,7 @@ export default function LoanDesk({ userId, dealerId, leads = [], applications = 
   const open = applications.filter((a) => !["Approved", "Declined"].includes(a.status || rollUp(a.banks))).length;
 
   return (
-    <div style={{ maxWidth: 720 }}>
+    <div style={{ maxWidth: 720, margin: "0 auto" }}>
       {/* Defined once here, not inside a view: the share button's spinner lives
           in ApplicationCard, which renders while NewApplication is unmounted. */}
       <style>{`@keyframes ldspin{to{transform:rotate(360deg)}}`}</style>
