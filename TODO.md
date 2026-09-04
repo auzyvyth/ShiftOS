@@ -1,10 +1,24 @@
 # ShiftOS — Pending Tasks
 
-> **NO BRANCH IN FLIGHT — branch off `origin/main` (2026-09-03, later session).**
-> `main` is at `b7d1028` (PR #352, squash-merged) and IS what production serves.
+> **NO BRANCH IN FLIGHT — branch off `origin/main` (2026-09-04).**
+> `main` is at `e15649e` (PR #354, squash-merged) and IS what production serves.
 > Safe to branch from. Local `main` was reset to it in the same sitting.
 >
-> **`main` was a month stale until today — know why, so it does not recur.**
+> **Two things about #354 the next session should know.**
+> 1. The DB half of everything in it was applied to the LIVE Supabase project
+>    before the frontend merged, which left prod's bundle briefly upserting onto
+>    a conflict target (`user_id,endpoint`) that no longer existed — push
+>    enable/heal was broken on prod for that window. Unavoidable in that order
+>    (a UNIQUE(endpoint) against the old client would have been worse), but the
+>    lesson stands: when a migration changes a constraint the client writes
+>    against, the frontend must follow the same day.
+> 2. **The staging preview was NEVER confirmed** — Vercel's hobby plan builds one
+>    at a time and the branch deploy sat in BUILDING for ~37 minutes. It did
+>    reach READY in the end, but the merge happened before that, on the owner's
+>    explicit instruction, with the staging-review gate skipped. Nothing in #354
+>    has been exercised in a real browser or on a real device.
+>
+> **`main` went a month stale on 2026-09-03 — know why, so it does not recur.**
 > Production was being served by `a5e58b4`, a commit on
 > `claude/listings-approval-popup-ck4403` (PR #347) that was **promoted to
 > production inside the Vercel dashboard and never merged to `main`**. Meanwhile
@@ -344,6 +358,22 @@ until these are done:**
   dependency). Staging is the first real build.
 
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
+
+- **ACT-VERIFY-CHAT-UI: nothing in PR #354 has been seen in a browser.** The
+  staging preview never came up before the merge (see the header). Check on a
+  real phone, all three surfaces:
+  1. Open a conversation in the Lite/Premium chat tab, on `/account/messages`,
+     and from a car page's Contact button. Each should go FULL SCREEN with a
+     back arrow — no list beside it, no card border.
+  2. Tap the composer. Only the text box should rise with the keyboard; the
+     header must stay put and the whole box must NOT scroll upward. That was
+     the reported bug and the fix is `useVisualViewport`, which behaves
+     differently on iOS Safari vs Android Chrome — test both if you can.
+  3. The notification prompt should reappear after you dismiss it and reopen
+     the thread (it is deliberately no longer remembered), and stop for good
+     once notifications are actually on.
+  4. Turn notifications on from `/account` as a buyer, sign out, and confirm
+     the device row disappears (`select count(*) from push_subscriptions`).
 
 - **ACT-VERIFY-PUSH: confirm on a real phone that notifications now arrive
   immediately.** `send-push` v18 is deployed (2026-08-30) with `urgency: 'high'`
