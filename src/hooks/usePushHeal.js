@@ -18,6 +18,13 @@ import { supabase } from '../supabaseClient';
  *
  * No-ops for logged-out visitors (the whole public marketplace) and for anyone
  * who has not granted permission — healPushSubscription() never prompts.
+ *
+ * It also UNREGISTERS the device on sign-out. That is here, on the auth event,
+ * rather than at the ~19 places that call supabase.auth.signOut(): the event
+ * fires whoever triggered it, including code added later. Without it a shared
+ * or resold phone kept receiving the previous account's notifications forever —
+ * push_subscriptions rows were never cleaned up by anything except a 410 from
+ * the push service.
  */
 export function usePushHeal() {
   // onAuthStateChange also fires on every token refresh. Heal is idempotent but
@@ -41,8 +48,19 @@ export function usePushHeal() {
     };
 
     supabase.auth.getSession().then(({ data }) => run(data?.session?.user?.id));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.user?.id) { healed.current = null; return; }
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session?.user?.id) {
+        healed.current = null;
+        // Only a real sign-out. onAuthStateChange also reports a null session
+        // for INITIAL_SESSION on every logged-out marketplace page load, and
+        // dropping a device row there would be nonsense.
+        if (event === 'SIGNED_OUT') {
+          import('./usePushNotifications')
+            .then(({ forgetPushDevice }) => forgetPushDevice())
+            .catch(() => { /* never blocks sign-out */ });
+        }
+        return;
+      }
       run(session.user.id);
     });
 

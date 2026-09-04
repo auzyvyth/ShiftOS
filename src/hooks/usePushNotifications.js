@@ -101,19 +101,46 @@ async function clearSwConfig() {
 // Store the device against the account. Returns true only when the row is
 // actually written — a subscription the server never stored can never be pushed
 // to, so reporting success on a failed write would be a lie the user pays for.
+// Goes through push_register_device rather than a client upsert, because a
+// device has to be able to change hands. push_subscriptions is now UNIQUE on
+// ENDPOINT (one physical browser, one account), and the RLS policy is
+// `auth.uid() = user_id` for every command — so the UPDATE half of an upsert is
+// checked against the row that is ALREADY there. User B upserting onto a phone
+// user A once used is rejected outright, and B could never turn notifications
+// on. The RPC drops the stale row and claims the endpoint in one statement,
+// still writing user_id from auth.uid() and never from anything the caller says.
 async function saveSubscription(userId, sub, client = supabase) {
-  const { error } = await client.from('push_subscriptions').upsert({
-    user_id: userId,
-    endpoint: sub.endpoint,
-    subscription: sub.toJSON(),
-  }, { onConflict: 'user_id,endpoint' });
+  const { data, error } = await client.rpc('push_register_device', {
+    p_subscription: sub.toJSON(),
+  });
 
-  if (error) {
-    console.error('usePushNotifications save:', error);
+  if (error || data !== true) {
+    console.error('usePushNotifications save:', error || 'push_register_device declined');
     return false;
   }
   await writeSwConfig(sub.endpoint);
   return true;
+}
+
+// Drops this browser's row at sign-out. Called with no session left, which is
+// why it cannot be a plain delete: auth.uid() is null by then and RLS would
+// reject it. The endpoint is the credential and only this browser holds it.
+//
+// The browser's own pushManager subscription is deliberately LEFT ALONE. It
+// costs nothing while no row points at it, and it means the next person to sign
+// in on this device is re-registered silently by healPushSubscription instead of
+// having to mint a fresh endpoint.
+export async function forgetPushDevice(client = supabase) {
+  if (!pushSupported()) return false;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) return false;
+    const { data } = await client.rpc('push_forget_device', { p_endpoint: sub.endpoint });
+    return data === true;
+  } catch {
+    return false;
+  }
 }
 
 /*

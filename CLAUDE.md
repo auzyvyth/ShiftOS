@@ -443,6 +443,50 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
   `/salesman-premium`, `/salesman`, or `/dashboard` per role) unless the caller passes
   an explicit URL. Both trigger functions swallow errors (`exception when others` +
   `raise warning`) so a push failure never blocks the notification row write.
+- **ONE DEVICE, ONE IDENTITY: `push_subscriptions` is UNIQUE on `endpoint`.**
+  It was UNIQUE (user_id, endpoint), so one phone could be registered under
+  several accounts at once and nothing ever removed the stale rows — the only
+  cleanup in the system was send-push deleting on a 410. Live when this was
+  found: 13 rows across 9 devices, 3 of them carrying more than one identity
+  (one held a salesman, a buyer AND the superadmin), and one browser carrying
+  two different anonymous guests a day apart. Whoever registers last owns the
+  device.
+  - Registering goes through **`push_register_device(p_subscription)`**, never a
+    client upsert. RLS is `auth.uid() = user_id` for every command, so the
+    UPDATE half of an upsert is checked against the row ALREADY there — user B
+    upserting onto a phone user A once used is rejected outright, and B could
+    never turn notifications on at all. The RPC drops the stale row and claims
+    the endpoint atomically, writing `user_id` from `auth.uid()` and never from
+    anything the caller passes.
+  - Signing out calls **`push_forget_device(p_endpoint)`**, from the
+    `SIGNED_OUT` branch of `usePushHeal` (App.jsx) — NOT from the ~19
+    `supabase.auth.signOut()` call sites. It has to be a SECURITY DEFINER
+    function taking the endpoint as an ARGUMENT because by then there is no
+    session: `auth.uid()` is null and an RLS delete cannot work. The endpoint is
+    the credential, and only that browser holds it. Guard the `INITIAL_SESSION`
+    event — it also reports a null session, on every logged-out marketplace page
+    load.
+  - `push_subscriptions(user_id)` has its own index. The old composite unique
+    was doubling as the index for send-push's `.in("user_id", ...)`, the one
+    query this table exists for; dropping it without a replacement turns every
+    push into a seq scan.
+- **`push_home_path` routes `role='buyer'` to `/account/messages`.** It used to
+  fall through to `else '/dashboard'` — the dealer dashboard, which a buyer
+  cannot use. Chat was unaffected (`chat_after_message` passes its URL
+  explicitly); anything relying on the default was not.
+- **The buyer's own on/off switch is `PushToggle` on `/account`.** Before that a
+  buyer could switch notifications on from inside a conversation and then had
+  nowhere to see the state or turn them back off — the toggle was mounted on
+  every seller panel and no buyer surface. The Bell higher up that page is email
+  price alerts, a different thing.
+- **Platform console > Buyers shows the state** — `push_device_count` /
+  `push_last_at` / `chat_unread` from `get_buyer_accounts`, device rows and
+  thread state from `get_buyer_detail`, and a "Can't be reached" filter (unread
+  reply + no device). Both RPCs are SECURITY DEFINER because
+  `push_subscriptions` is owner-only RLS: a superadmin `.from()` returns an
+  EMPTY ARRAY WITH NO ERROR and the panel would read "push off" for everyone
+  while looking correct. Neither RPC returns an endpoint, subscription keys, or
+  a message body.
 - **VAPID keys are permanent. NEVER regenerate them.** Every push subscription is
   cryptographically bound to the public key it was created with. Swap the key and every
   existing subscription dies silently — no error the user ever sees, they just stop
