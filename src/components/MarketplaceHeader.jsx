@@ -202,8 +202,17 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
         .mh-logo-my { font-size:9.5px; font-weight:800; color:#C4A265; letter-spacing:.12em; margin-left:3px; }
 
         /* left nav */
-        .mh-nav { display:flex; align-items:center; gap:2px; }
-        .mh-nav-item { position:relative; }
+        /* The mega panel anchors to this row, NOT to the trigger that opens it
+           (hence position:static on .mh-nav-item below). The panel is ~744px
+           wide, and a trigger sitting mid-nav has nowhere near that much room
+           to hang one off its own edge: "For Dealers" is the 4th item, so
+           right-anchoring it to itself put the panel's left edge at -75px and
+           the first column of links was cut off by the viewport at every
+           desktop width up to ~1500px. Anchored to the nav row, left-aligned
+           menus open from the row's left edge and right-aligned ones from its
+           right edge, both of which are on-screen by construction. */
+        .mh-nav { display:flex; align-items:center; gap:2px; position:relative; }
+        .mh-nav-item { position:static; }
         .mh-nav-link, .mh-nav-trigger { display:flex; align-items:center; gap:6px; color:#3f4654; font-size:14px; font-weight:600; text-decoration:none; padding:9px 13px; border-radius:10px; background:none; border:none; cursor:pointer; font-family:inherit; white-space:nowrap; transition:background .14s,color .14s; }
         .mh-nav-link:hover, .mh-nav-trigger:hover, .mh-nav-item:hover .mh-nav-trigger, .mh-nav-item.mh-open .mh-nav-trigger { background:#F5F3EE; color:#0f1115; }
         .mh-nav-link.hot { color:#ea580c; }
@@ -213,7 +222,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
 
         /* mega */
         .mh-menu { position:absolute; top:100%; left:0; padding-top:13px; display:none; z-index:200; }
-        /* Right-side triggers open leftward so the panel can't run off-screen */
+        /* Right-hand triggers open from the nav row's right edge */
         .mh-menu-r { left:auto; right:0; }
         /* Three ways in, not one: hover (mouse), .mh-open (tap/click — the only
            way on a hoverless tablet above the 980px mobile breakpoint), and
