@@ -75,6 +75,45 @@ serve(async (req) => {
       return new Response(JSON.stringify({ ok: false, error: "forbidden" }), { status: 403, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
+    // Only sellers send from here. A buyer — and every anonymous guest created by
+    // the in-app chat flow — has a valid JWT and a profile row, which was enough
+    // to reach the platform-bot fallback below.
+    if (!caller.role || caller.role === "buyer") {
+      return new Response(JSON.stringify({ ok: false, error: "forbidden" }), { status: 403, headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    // The DESTINATION has to belong to the caller too, not just the bot token.
+    // Scoping the token alone left this an open relay: any account without a bot
+    // token of its own falls through to the platform bot below, so a caller could
+    // name any chat_id and have arbitrary text delivered from the official XDrive
+    // bot — phishing our own sellers from our own brand. A destination is legal
+    // only if it is one of the two ids the caller has already saved on a profile
+    // they own: their personal chat (reminders) or their dealership's channel
+    // (auto-posts). Every caller saves the id before it tests it, so this is the
+    // same set the UI already writes.
+    const { data: destRow } = await supabase
+      .from("profiles")
+      .select("telegram_chat_id, telegram_channel_id")
+      .eq("id", user.id)
+      .maybeSingle();
+    const { data: dealerDest } = callerDealerId === user.id
+      ? { data: null }
+      : await supabase
+          .from("profiles")
+          .select("telegram_channel_id")
+          .eq("id", callerDealerId)
+          .maybeSingle();
+    const allowedDestinations = [
+      destRow?.telegram_chat_id,
+      destRow?.telegram_channel_id,
+      dealerDest?.telegram_channel_id,
+    ]
+      .map((v) => (v || "").trim())
+      .filter(Boolean);
+    if (!allowedDestinations.includes(String(channel_id).trim())) {
+      return new Response(JSON.stringify({ ok: false, error: "unknown_destination" }), { status: 403, headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
     // Fetch the dealer's own bot token server-side — never sent to the browser.
     const { data: profile } = await supabase
       .from("profiles")

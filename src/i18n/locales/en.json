@@ -758,6 +758,7 @@
       "reactivate": "Reactivate my account",
       "reactivating": "Reactivating...",
       "reactivateFailed": "Could not reactivate. Please try again.",
+      "reactivateExpired": "The 30-day restore window has passed. Contact support to recover this account.",
       "signOut": "Sign out",
       "reactivateSuccess": "Welcome back — your account is active again."
     },
