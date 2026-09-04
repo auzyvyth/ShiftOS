@@ -1,11 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import { useSiteProfile } from "../hooks/useSiteProfile";
-import { supabase } from "../supabaseClient";
 import { isSubdomain } from "../hooks/useTenant";
-
-// Superadmin profile is the fallback for xdrive.my main domain
-const SUPERADMIN_ID = "1e7bf24e-5b71-4c64-8d03-b60db5e59316";
 
 // App version — injected from package.json at build time (see vite.config.js).
 // Falls back to "dev" when running outside a Vite build (e.g. tests).
@@ -108,25 +104,18 @@ const FOOTER_CSS = `
 const Footer = () => {
   const currentYear = new Date().getFullYear();
   const { siteName, siteInitial, profile: tenantProfile } = useSiteProfile();
-  const [fallbackProfile, setFallbackProfile] = useState(null);
-
-  useEffect(() => {
-    if (tenantProfile !== null) return;
-    supabase
-      .from("public_dealer_profiles")
-      .select(
-        "id, dealership, site_name, site_logo_url, about_text, location, email, phone, whatsapp_number, social_facebook, social_instagram, social_tiktok, city, state"
-      )
-      .eq("id", SUPERADMIN_ID)
-      .maybeSingle()
-      .then(({ data }) => setFallbackProfile(data || null));
-  }, [tenantProfile]);
 
   // Hard-stop on main domain — subdomain dealer footer must never render on xdrive.my
   if (!isSubdomain()) return null;
 
-  // Use tenant profile when on subdomain, superadmin fallback on main domain
-  const profile = tenantProfile || fallbackProfile;
+  // This footer is subdomain-only, so the tenant IS the profile. It used to fall
+  // back to one hardcoded id when the tenant was null, described as the "main
+  // domain fallback" — but the hard-stop above means the main domain never gets
+  // here, so that fetch only ever fired while a subdomain was still resolving,
+  // and the only way it could render was to print ONE dealer's contact details
+  // on a DIFFERENT dealer's storefront. The marketplace has its own
+  // MarketplaceFooter and never used this path.
+  const profile = tenantProfile;
 
   const dealershipName = profile?.dealership || profile?.site_name || siteName;
   const locationStr    = [profile?.city, profile?.state, profile?.location].filter(Boolean).join(", ");

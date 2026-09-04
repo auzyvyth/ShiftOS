@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Car, Users, ArrowLeftRight, MessageCircle, Heart } from 'lucide-react';
+import { Car, Users, ArrowLeftRight, MessageCircle, Heart, BadgeCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import GradeBadge from './GradeBadge';
 import { buildWaUrl } from '../hooks/useCTAContext';
@@ -99,6 +99,15 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
   const discountPct  = hasDiscount ? Math.round(((origPrice - price) / origPrice) * 100) : null;
   const isHot        = hasDiscount && discountPct >= 3;
   const photoCount   = Array.isArray(car.images) ? car.images.length : 0;
+  // Seller trust signals. Both come from public_car_listings (anon-safe) — the
+  // profiles embed is RLS-blocked for logged-out buyers, so it cannot be used
+  // here. dealer_is_verified is false for everyone until KYC approvals start
+  // flowing, so the tick simply does not render yet.
+  const isVerified   = car.dealer_is_verified === true;
+  // Below 3 a sold count reads as "new seller", which is worse than saying
+  // nothing — so it stays hidden rather than advertising a weak number.
+  const soldCount    = Number(car.seller_sold_count) || 0;
+  const showSold     = soldCount >= 3;
   const slides     = Array.isArray(car.images) ? car.images.filter(Boolean).slice(0, 8) : [];
   const hasGallery = !isSold && slides.length > 1;
   const safeIdx    = imgIdx < slides.length ? imgIdx : 0;
@@ -246,10 +255,15 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
             // made every card fall back to "Dealer".
             const role = car.seller_role || car.dealer?.role;
             const isAgent = role === 'salesman';
+            const chipColor = isAgent ? '#fb923c' : '#60a5fa';
             return (
               <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: isAgent ? 'rgba(251,146,60,0.18)' : 'rgba(59,130,246,0.18)', border: `1px solid ${isAgent ? 'rgba(251,146,60,0.4)' : 'rgba(59,130,246,0.4)'}`, borderRadius: '6px', padding: '2px 7px', backdropFilter: 'blur(6px)' }}>
-                <Users size={8} color={isAgent ? '#fb923c' : '#60a5fa'} />
-                <span style={{ fontSize: '9px', fontWeight: '700', color: isAgent ? '#fb923c' : '#60a5fa' }}>{isAgent ? 'Agent' : 'Dealer'}</span>
+                <Users size={8} color={chipColor} />
+                <span style={{ fontSize: '9px', fontWeight: '700', color: chipColor }}>{isAgent ? 'Agent' : 'Dealer'}</span>
+                {/* Identity-verified tick. Drawn in the chip's own colour rather
+                    than a second accent — this row already carries the photo
+                    count and the discount pill. */}
+                {isVerified && <BadgeCheck size={9} color={chipColor} aria-label="Identity verified" />}
               </div>
             );
           })()}
@@ -311,6 +325,16 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
         <p className="sc-spec-line" style={{ fontSize: '11px', color: c.spec, margin: '0 0 6px', lineHeight: '1.5', whiteSpace: 'normal', wordBreak: 'break-word', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
           {specParts.join('  •  ')}
         </p>
+
+        {/* Row 3b: seller track record. Muted text, not another coloured pill —
+            the card already carries condition, year, discount and the seller
+            chip, and a fifth accent is what turns this into a sticker sheet. */}
+        {showSold && (
+          <p style={{ fontSize: '10px', color: c.spec, margin: '0 0 6px', lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <BadgeCheck size={11} style={{ flexShrink: 0, opacity: 0.75 }} />
+            <span>{soldCount} cars sold</span>
+          </p>
+        )}
 
         {/* Row 4: compare + grade */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '6px 0 4px', flexWrap: 'wrap' }}>

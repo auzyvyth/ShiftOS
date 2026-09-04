@@ -191,6 +191,24 @@ function SortableSection({ id, section, complete, collapsed, onToggle, children 
 // a dealer filing the geran under "Other".
 const OTHER_DOC_TYPES = DOC_TYPES.filter((d) => !TRUST_DOC_KEYS.includes(d.key));
 
+// Splits a free-text "specs"/"features" field into list items on commas and
+// newlines. A plain /[\n,]+/ split also cuts thousands-separator commas in
+// half — "Mileage: 28,595 km" pasted into the specs box became two bullets,
+// "28" and "595 km". Numbers are masked out before splitting and restored
+// after, so "28,595" survives as one item.
+function splitList(raw) {
+  const str = String(raw || "");
+  const numbers = [];
+  const masked = str.replace(/\d{1,3}(?:,\d{3})+/g, (m) => {
+    numbers.push(m);
+    return `@@N${numbers.length - 1}@@`;
+  });
+  return masked
+    .split(/[\n,]+/)
+    .map((x) => x.replace(/@@N(\d+)@@/g, (_, i) => numbers[Number(i)]).trim())
+    .filter(Boolean);
+}
+
 // ─── Copy formatter (also exported for DashboardPage use) ────────────────────
 export function buildCopyText(l) {
   const condLabel =
@@ -214,10 +232,7 @@ export function buildCopyText(l) {
   const brand = (l.brand || "").toLowerCase().replace(/\s+/g, "");
   const model = (l.model || "").toLowerCase().replace(/\s+/g, "");
   const isHighValue = Number(l.selling_price) > HIGH_VALUE_THRESHOLD;
-  const featureTags = (l.features || "")
-    .split(/[\n,]+/)
-    .map((f) => f.trim())
-    .filter(Boolean)
+  const featureTags = splitList(l.features)
     .map((f) => `#${f.toLowerCase().replace(/[^a-z0-9]+/g, "")}`)
     .filter((f) => f.length > 1);
   const tags = [`#${brand}`, `#${model}`, ...featureTags].filter(Boolean).join(" ");
@@ -269,11 +284,7 @@ export function buildCopyText(l) {
   if (l.features && l.features.trim()) {
     lines.push(`✨ FEATURES`);
     lines.push(`━━━━━━━━━━━━━━━━━━━━`);
-    const featureList = l.features
-      .split(/[\n,]+/)
-      .map((f) => f.trim())
-      .filter(Boolean);
-    featureList.forEach((f) => lines.push(`   • ${f}`));
+    splitList(l.features).forEach((f) => lines.push(`   • ${f}`));
     lines.push("");
   }
 
@@ -281,11 +292,7 @@ export function buildCopyText(l) {
   if (l.specs && l.specs.trim()) {
     lines.push(`🔩 SPECS`);
     lines.push(`━━━━━━━━━━━━━━━━━━━━`);
-    const specList = l.specs
-      .split(/[\n,]+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    specList.forEach((s) => lines.push(`   • ${s}`));
+    splitList(l.specs).forEach((s) => lines.push(`   • ${s}`));
     lines.push("");
   }
 
@@ -330,8 +337,7 @@ export function buildListingFacts(l) {
     { used: "Used", recon: "Recon", new: "New" }[l.condition] || l.condition || "";
   const out = [];
   const add = (k, v) => { if (v !== null && v !== undefined && String(v).trim() !== "") out.push(`${k}: ${v}`); };
-  const list = (raw) =>
-    String(raw || "").split(/[\n,]+/).map((x) => x.trim()).filter(Boolean).join(", ");
+  const list = (raw) => splitList(raw).join(", ");
 
   add("Car", [l.year, l.brand, l.model, l.variant].filter(Boolean).join(" "));
   add("Condition", condLabel);
