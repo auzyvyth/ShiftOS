@@ -1,7 +1,8 @@
 # ShiftOS — Pending Tasks
 
-> **NO BRANCH IN FLIGHT — branch off `origin/main` (2026-09-03).**
-> `main` is at `24486e8` and IS what production serves. Safe to branch from.
+> **NO BRANCH IN FLIGHT — branch off `origin/main` (2026-09-03, later session).**
+> `main` is at `b7d1028` (PR #352, squash-merged) and IS what production serves.
+> Safe to branch from. Local `main` was reset to it in the same sitting.
 >
 > **`main` was a month stale until today — know why, so it does not recur.**
 > Production was being served by `a5e58b4`, a commit on
@@ -468,13 +469,17 @@ the role that would exploit it, probe rolled back. What is LEFT:
   want a middle ground, the shape is "reveal to a buyer who has started a chat
   thread", not "publish to everyone".
 
-- [ ] **SWEEP-2 — DB half still gated on a deploy. Frontend half is done.**
+- [ ] **SWEEP-2 — DB half is now UNBLOCKED (frontend shipped in #352 / `b7d1028`).
+  Do not run it the same minute — see the cached-bundle note at the end.**
   `ComparePage` was the last reader of `car_documents` off the view
   (`SELECT_COLS:22`, `completeness():40`, the Documents row `:675`) and now uses
-  `document_types` like CarDetailPage already did. That fix is on this branch and
-  NOT on prod, so the columns must stay until it ships: prod's ComparePage still
-  names `car_documents` in its select, and PostgREST 400s on an unknown column —
-  dropping it now would empty the live /compare page.
+  `document_types` like CarDetailPage already did. That fix IS on prod as of
+  `b7d1028`, so the blocker described here is cleared — but a browser still
+  running the PREVIOUS JS bundle keeps asking for `car_documents`, and PostgREST
+  400s on an unknown column, which empties /compare for that visitor. Give the
+  old bundles time to age out (a day is plenty) before dropping, and re-confirm
+  no select names the column: `grep -rn "car_documents" src/` should only match
+  dealer-side reads of `car_listings`, never `public_car_listings`.
   `included_services_cost` is already unused by every public-view consumer
   (verified against `origin/main`) and could go today, but both columns are one
   DROP + CREATE of a 66-row anon-facing view, so do them in a single migration
