@@ -45,6 +45,7 @@ import ReportListingButton from "../components/ReportListingButton";
 import { useCompare } from "../hooks/useCompare";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import { getChassisCode } from "../utils/chassisCodes";
+import { maskVin } from "../utils/maskVin";
 import DamageMap from "../components/DamageMap";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { supabase } from "../supabaseClient";
@@ -2760,7 +2761,7 @@ export default function CarDetailPage() {
                   <div>
                     {[
                       { key:'Registration Date', val: car.registration_date || car.local_reg_date || '—' },
-                      { key:'Chassis No.',       val: car.vin_number || '—' },
+                      { key:'Chassis No.',       val: maskVin(car.vin_number) || '—' },
                       { key:'Condition',         val: car.condition || '—' },
                       { key:'Chassis Status',    val: <span style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:6, height:6, borderRadius:'50%', flexShrink:0, background: car.chassis_status==='clean'?'#22c55e':car.chassis_status==='repaired'?'#eab308':car.chassis_status==='written_off'?'#dc2626':th.textMuted }} />{car.chassis_status||'—'}</span> },
                       { key:'Location',          val: [car.city, car.state].filter(Boolean).join(', ') || '—' },
@@ -3442,7 +3443,7 @@ export default function CarDetailPage() {
                           val:
                             car.registration_date || car.local_reg_date || "—",
                         },
-                        { key: "Chassis No.", val: car.vin_number || "—" },
+                        { key: "Chassis No.", val: maskVin(car.vin_number) || "—" },
                         { key: "Condition", val: car.condition || "—" },
                         {
                           key: "Chassis Status",
