@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { MessageSquare, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useBuyerThreads } from '../../hooks/useChat';
 import ChatThread from './ChatThread';
-import BuyerPushPrompt from './BuyerPushPrompt';
+import PushPromptStrip from './PushPromptStrip';
+import useVisualViewport from '../../hooks/useVisualViewport';
 
 // Buyer-side inbox, on /account.
 //
@@ -26,6 +28,11 @@ const ACCENT    = '#dc2626';
 // A message list stretched to 1100px puts the name hard left and the timestamp
 // hard right with nothing between. Cap it so it reads like a conversation.
 const MAXW      = 640;
+// The full-screen conversation is wider than the list card — it has the whole
+// viewport — but a message column stretched across a desktop monitor puts the
+// bubbles a foot apart. Same cap on the header, the car strip and the thread so
+// all three sit on one axis.
+const THREAD_MAXW = 760;
 
 // The preview comes from body_ai, the redacted copy, so a phone number never
 // renders in a list row. Its placeholders read as literal text though
@@ -167,7 +174,15 @@ function ThreadRow({ t, onOpen }) {
 export default function BuyerInbox() {
   const { threads, loading } = useBuyerThreads();
   const [openId, setOpenId] = useState(null);
+  const vv = useVisualViewport();
   const open = threads.find(t => t.thread_id === openId) || null;
+
+  // Overlay rule 2 — the page behind the conversation must not scroll.
+  useEffect(() => {
+    if (!openId) return undefined;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, [openId]);
 
   if (loading) {
     return (
@@ -194,41 +209,57 @@ export default function BuyerInbox() {
     );
   }
 
-  // One column on every width. Tapping a conversation replaces the list, the
-  // way a phone messaging app works — no split pane to reflow at 375px.
+  // Tapping a conversation replaces the list with the conversation, full-bleed
+  // over the whole viewport — a phone messaging app, not a thread in a card.
+  //
+  // The layer is pinned to the VISUAL viewport, so when the keyboard opens its
+  // bottom edge lands on top of the keyboard: the composer follows it up, the
+  // header stays put and the message list just gets shorter. Sized in vh (or in
+  // a fixed 480px box, which is what this was) the browser has nowhere to put a
+  // focused composer but up, and shoves the whole conversation off the top.
   if (open) {
     const spec = [fmtPrice(open.car_price), fmtEngine(open.car_engine_cc), open.car_state || open.car_city].filter(Boolean).join(' · ');
-    return (
-      <div style={{ background: SURFACE, border: `1px solid ${HAIRLINE}`, borderRadius: 24, overflow: 'hidden', maxWidth: MAXW }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '12px 14px', borderBottom: `1px solid ${HAIRLINE}` }}>
-          <button onClick={() => setOpenId(null)} aria-label="Back to all messages"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', background: SOFT, border: 'none', cursor: 'pointer', flexShrink: 0, color: '#5F5C56' }}>
-            <ChevronLeft size={18} />
-          </button>
-          <SellerAvatar name={open.seller_name} src={open.seller_avatar} size={38} ring={SURFACE} />
-          {/* Just the seller here — the car strip directly below already names
-              the car, and saying it twice is noise. */}
-          <p style={{ flex: 1, minWidth: 0, margin: 0, fontSize: 14.5, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {open.seller_name}
-          </p>
+    return createPortal(
+      <div style={{ position: 'fixed', top: vv.offsetTop, left: 0, right: 0, height: vv.height, zIndex: 11000, background: SURFACE, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flexShrink: 0, borderBottom: `1px solid ${HAIRLINE}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '12px 14px', maxWidth: THREAD_MAXW, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+            <button onClick={() => setOpenId(null)} aria-label="Back to all messages"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '50%', background: SOFT, border: 'none', cursor: 'pointer', flexShrink: 0, color: '#5F5C56' }}>
+              <ChevronLeft size={18} />
+            </button>
+            <SellerAvatar name={open.seller_name} src={open.seller_avatar} size={38} ring={SURFACE} />
+            {/* Just the seller here — the car strip directly below already names
+                the car, and saying it twice is noise. */}
+            <p style={{ flex: 1, minWidth: 0, margin: 0, fontSize: 14.5, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {open.seller_name}
+            </p>
+          </div>
         </div>
 
         {/* The car, restated above the thread — a buyer talking to three sellers
             needs to know which car this conversation is about. */}
-        <Link to={open.car_slug ? `/cars/${open.car_slug}` : '/showroom'}
-          style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', textDecoration: 'none', background: SOFT }}>
-          {open.car_image
-            ? <img src={open.car_image} alt="" style={{ width: 46, height: 46, borderRadius: 15, objectFit: 'cover', flexShrink: 0 }} />
-            : <div style={{ width: 46, height: 46, borderRadius: 15, background: '#E7E3DB', flexShrink: 0 }} />}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{carTitle(open)}</p>
-            {spec && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: MUTED, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{spec}</p>}
-          </div>
-          <ChevronRight size={16} color="#C9C4BA" style={{ flexShrink: 0 }} />
-        </Link>
+        <div style={{ flexShrink: 0, background: SOFT }}>
+          <Link to={open.car_slug ? `/cars/${open.car_slug}` : '/showroom'}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', textDecoration: 'none', maxWidth: THREAD_MAXW, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+            {open.car_image
+              ? <img src={open.car_image} alt="" style={{ width: 46, height: 46, borderRadius: 15, objectFit: 'cover', flexShrink: 0 }} />
+              : <div style={{ width: 46, height: 46, borderRadius: 15, background: '#E7E3DB', flexShrink: 0 }} />}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{carTitle(open)}</p>
+              {spec && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: MUTED, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{spec}</p>}
+            </div>
+            <ChevronRight size={16} color="#C9C4BA" style={{ flexShrink: 0 }} />
+          </Link>
+        </div>
 
-        <ChatThread threadId={open.thread_id} role="buyer" theme="light" height={480} bare />
-      </div>
+        {/* Already inside a container sized to the visual viewport, so the
+            composer clears the keyboard without pinning itself a second time. */}
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <ChatThread threadId={open.thread_id} role="buyer" theme="light" height="100%" bare
+            viewportPinned contentMaxWidth={THREAD_MAXW} />
+        </div>
+      </div>,
+      document.body,
     );
   }
 
@@ -247,7 +278,7 @@ export default function BuyerInbox() {
           someone, so the "not yet asked for anything" reasoning does not apply
           here. Same component, so there is one implementation of every browser
           trap, not two. */}
-      <BuyerPushPrompt t={{ border: HAIRLINE, panel: SOFT, sub: MUTED }} />
+      <PushPromptStrip t={{ border: HAIRLINE, panel: SOFT, sub: MUTED }} audience="buyer" />
     </div>
   );
 }

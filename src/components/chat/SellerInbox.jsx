@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { MessageSquare, ArrowLeft, UserCircle2, BadgeCheck, ChevronDown, GitBranch } from 'lucide-react';
 import { useChatThreads } from '../../hooks/useChat';
 import ChatThread, { THEMES } from './ChatThread';
+import PushPromptStrip from './PushPromptStrip';
+import useVisualViewport from '../../hooks/useVisualViewport';
 import { STAGE_ORDER, STAGE_CONFIG, canonicalStage } from '../../lib/leadsHelpers';
 
 // Seller-side inbox. `theme` picks the palette so the same component sits on a
@@ -14,6 +17,21 @@ import { STAGE_ORDER, STAGE_CONFIG, canonicalStage } from '../../lib/leadsHelper
 // A guest buyer shows as "Guest 4F2A" — deliberately anonymous until they
 // choose to register. A registered buyer shows their own name with a verified
 // mark, which is the difference the seller can actually act on.
+//
+// TWO SCREENS, NEVER A SPLIT PANE. Opening a conversation replaces the list
+// with the conversation, full-bleed over the whole viewport — the way every
+// messaging app people actually use behaves. It used to be a 320px list beside
+// a thread, both boxed with their own border and a gap between, inside a tab
+// that already had a header and a nav: a chat squeezed into a card inside a
+// page. And because that card was sized off window.innerHeight (which does NOT
+// shrink for the on-screen keyboard) the browser had nowhere to put a focused
+// composer but up, so the whole box visibly flew upward the moment anyone
+// tapped the message field.
+//
+// The full-screen layer is pinned to the VISUAL viewport instead, so when the
+// keyboard opens the layer's bottom edge lands on top of it: the composer moves
+// up with the keyboard, the header stays exactly where it is, and the message
+// list simply gets shorter. Nothing scrolls, nothing jumps.
 
 const fmtAgo = (iso) => {
   if (!iso) return '';
@@ -47,6 +65,7 @@ export default function SellerInbox({
   const [showStage, setShowStage] = useState(false);
   const fillRef = useRef(null);
   const [fillH, setFillH] = useState(null);
+  const vv = useVisualViewport();
 
   // Measure rather than hardcode an offset: the distance from this panel's top
   // to the bottom of the window is the height it should fill, and that differs
@@ -80,6 +99,15 @@ export default function SellerInbox({
   // A different conversation is a different lead — never inherit the last one's
   // open stage strip.
   useEffect(() => { setShowStage(false); }, [openId]);
+
+  // Overlay rule 2 — the page behind a full-screen conversation must not scroll.
+  // Declared up here with the other hooks, above the loading/empty early
+  // returns, or the hook order changes between renders.
+  useEffect(() => {
+    if (!openId) return undefined;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, [openId]);
 
   const t = THEMES[theme] || THEMES.light;
   // Row hover/active tint and separators, derived so both palettes stay legible.
@@ -149,6 +177,12 @@ export default function SellerInbox({
           );
         })}
       </div>
+      {/* The seller's half of notifications. It used to live only in Settings,
+          which is the one screen a rep never opens — so a seller with the app
+          shut heard nothing when a buyer messaged, and had no way to find out
+          that was even a setting. Here it sits on the screen the messages
+          arrive on, and it stays until push is actually on. */}
+      <PushPromptStrip t={t} audience="seller" />
     </div>
   );
 
@@ -224,51 +258,43 @@ export default function SellerInbox({
     </div>
   );
 
+  // Pinned to the VISUAL viewport (top/height from useVisualViewport), never to
+  // vh/innerHeight: those are the layout viewport and stay full-height behind
+  // the keyboard. See the note at the top of this file.
+  const conversation = open && createPortal(
+    <div style={{ position:'fixed', top: vv.offsetTop, left:0, right:0, height: vv.height, zIndex:10500, background:t.bg, display:'flex', flexDirection:'column' }}>
+      <ChatThread
+        threadId={open.id}
+        role="seller"
+        theme={theme}
+        height="100%"
+        bare
+        // Already inside a container sized to the visual viewport, so the
+        // composer clears the keyboard without pinning itself a second time.
+        viewportPinned
+        contentMaxWidth={780}
+        aiAssist={aiAssist}
+        aiUpgrade={aiUpgrade}
+        upgradeHref={upgradeHref}
+        headerName={open.buyer_label}
+        headerSub={carOf(open)}
+        headerBelow={stageStrip}
+        headerRight={stagePill}
+        headerLeft={
+          <button onClick={() => setOpenId(null)} aria-label="Back to all messages"
+            style={{ display:'flex', alignItems:'center', justifyContent:'center', width:32, height:32, borderRadius:9, background:'none', border:`1px solid ${t.border}`, color:t.sub, cursor:'pointer', flexShrink:0 }}>
+            <ArrowLeft size={16} />
+          </button>
+        }
+      />
+    </div>,
+    document.body,
+  );
+
   return (
     <div ref={fillRef} style={fullHeight && fillH ? { height: fillH } : undefined}>
-      <style>{`
-        .chat-inbox{display:grid;grid-template-columns:320px 1fr;gap:14px;align-items:start}
-        .chat-inbox.ci-fill{align-items:stretch;height:100%}
-        .chat-inbox .ci-thread{display:block;min-height:0}
-        .chat-inbox.ci-fill .ci-list,.chat-inbox.ci-fill .ci-thread{min-height:0;height:100%}
-        @media(max-width:820px){
-          .chat-inbox{grid-template-columns:1fr}
-          .chat-inbox.has-open .ci-list{display:none}
-          .chat-inbox:not(.has-open) .ci-thread{display:none}
-        }
-      `}</style>
-      <div className={`chat-inbox${open ? ' has-open' : ''}${fullHeight ? ' ci-fill' : ''}`}>
-        <div className="ci-list">{list}</div>
-        <div className="ci-thread">
-          {open ? (
-            <ChatThread
-              threadId={open.id}
-              role="seller"
-              theme={theme}
-              height={fullHeight ? '100%' : 540}
-              aiAssist={aiAssist}
-              aiUpgrade={aiUpgrade}
-              upgradeHref={upgradeHref}
-              headerName={open.buyer_label}
-              headerSub={carOf(open)}
-              headerBelow={stageStrip}
-              headerRight={
-                <div style={{ display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
-                  {stagePill}
-                  <button onClick={() => setOpenId(null)} aria-label="Back to all messages"
-                    style={{ display:'flex', alignItems:'center', gap:5, background:'none', border:`1px solid ${t.border}`, borderRadius:8, padding:'5px 10px', fontSize:11.5, color:t.sub, cursor:'pointer', fontFamily:"system-ui,sans-serif" }}>
-                    <ArrowLeft size={12} /> All
-                  </button>
-                </div>
-              }
-            />
-          ) : (
-            <div style={{ background:t.bg, border:`1px solid ${t.border}`, borderRadius:14, padding:'60px 20px', textAlign:'center', color:t.sub, fontSize:13, height: fullHeight ? '100%' : undefined, display:'flex', alignItems:'center', justifyContent:'center' }}>
-              Pick a conversation to reply.
-            </div>
-          )}
-        </div>
-      </div>
+      {list}
+      {conversation}
     </div>
   );
 }

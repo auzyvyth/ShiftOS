@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Check, CheckCheck, Send, AlertCircle, Eye, ShieldAlert, Sparkles, X, Lock } from 'lucide-react';
 import { useChatThread, tickState } from '../../hooks/useChat';
-import BuyerPushPrompt from './BuyerPushPrompt';
+import PushPromptStrip from './PushPromptStrip';
 import BuyerEmailPrompt from './BuyerEmailPrompt';
 import { supabase } from '../../supabaseClient';
 import useVisualViewport from '../../hooks/useVisualViewport';
@@ -89,6 +89,10 @@ function Bubble({ msg, mine, t }) {
 
 export default function ChatThread({
   threadId, role, theme = 'light', headerName, headerSub, headerRight = null,
+  // Leading slot in the header — the back control on a full-screen surface.
+  // Left, where every messaging app puts it, not bundled in with the actions on
+  // the right.
+  headerLeft = null,
   // Rendered directly under the header, inside the thread's own border. For a
   // strip a header button toggles (the pipeline stage) — an absolutely
   // positioned popover would be clipped by this component's overflow:hidden,
@@ -99,9 +103,15 @@ export default function ChatThread({
   // has no route and falls through to NotFoundPage.
   aiUpgrade = false, upgradeHref = '/choose-plan',
   // Set by a parent whose own fixed container is already sized to the visual
-  // viewport (ChatSheet, BuyerChat) — their composer is above the keyboard by
-  // construction, so this component must not pin it a second time.
+  // viewport (ChatSheet, BuyerChat, the full-screen inbox layer) — their
+  // composer is above the keyboard by construction, so this component must not
+  // pin it a second time.
   viewportPinned = false,
+  // Full-screen surfaces stretch this component edge to edge, which throws the
+  // sender's name hard left and the timestamp hard right with a metre of
+  // nothing between. Cap the CONTENT (not the scroller, or the scrollbar leaves
+  // the edge) and centre it, the way every full-width chat reads.
+  contentMaxWidth = null,
 }) {
   const t = THEMES[theme] || THEMES.light;
   const { messages, loading, sending, send, markRead } = useChatThread(threadId, role);
@@ -252,6 +262,13 @@ export default function ChatThread({
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages.length]);
 
+  // One centring rule, applied to the header, the message column and the
+  // composer so the three stay on the same axis. Null on the boxed surfaces,
+  // which are already narrow.
+  const centre = contentMaxWidth
+    ? { maxWidth: contentMaxWidth, marginLeft: 'auto', marginRight: 'auto', width: '100%', boxSizing: 'border-box' }
+    : null;
+
   const submit = async (e) => {
     e?.preventDefault();
     const text = draft;
@@ -272,12 +289,15 @@ export default function ChatThread({
     // inside a container that already draws them (the buyer inbox card).
     <div style={{ display:'flex', flexDirection:'column', height, background:t.bg, border: bare ? 'none' : `1px solid ${t.border}`, borderRadius: bare ? 0 : 14, overflow:'hidden', fontFamily:"system-ui,sans-serif" }}>
       {headerName && (
-        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 14px', borderBottom:`1px solid ${t.border}`, background:t.panel, flexShrink:0 }}>
-          <div style={{ flex:1, minWidth:0 }}>
-            <p style={{ margin:0, fontSize:13.5, fontWeight:700, color:t.text, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{headerName}</p>
-            {headerSub && <p style={{ margin:0, fontSize:11.5, color:t.sub, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{headerSub}</p>}
+        <div style={{ padding:'11px 14px', borderBottom:`1px solid ${t.border}`, background:t.panel, flexShrink:0 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, ...centre }}>
+            {headerLeft}
+            <div style={{ flex:1, minWidth:0 }}>
+              <p style={{ margin:0, fontSize:13.5, fontWeight:700, color:t.text, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{headerName}</p>
+              {headerSub && <p style={{ margin:0, fontSize:11.5, color:t.sub, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{headerSub}</p>}
+            </div>
+            {headerRight}
           </div>
-          {headerRight}
         </div>
       )}
 
@@ -294,6 +314,7 @@ export default function ChatThread({
       )}
 
       <div ref={listRef} style={{ flex:1, overflowY:'auto', padding:'14px', minHeight:0 }}>
+        <div style={centre || undefined}>
         {loading ? (
           <p style={{ fontSize:12.5, color:t.sub, textAlign:'center', marginTop:24 }}>Loading…</p>
         ) : messages.length === 0 ? (
@@ -303,6 +324,7 @@ export default function ChatThread({
         ) : messages.map(m => (
           <Bubble key={m.id} msg={m} mine={m.sender_role === role} t={t} />
         ))}
+        </div>
       </div>
 
       {notice && (
@@ -373,7 +395,7 @@ export default function ChatThread({
       {role === 'buyer' && messages.some(m => m.sender_role === 'buyer') && (
         buyerHasEmail === false || buyerHasEmail === null
           ? <BuyerEmailPrompt t={t} onResolved={setBuyerHasEmail} />
-          : <BuyerPushPrompt t={t} />
+          : <PushPromptStrip t={t} audience="buyer" />
       )}
 
       {/* Holds the composer's slot open while it is fixed, so the message list
@@ -389,7 +411,7 @@ export default function ChatThread({
           which do create a containing block) pass viewportPinned and never pin. */}
       <form onSubmit={submit} ref={formRef}
         style={{
-          display:'flex', gap:8, alignItems:'flex-end', padding:10, borderTop:`1px solid ${t.border}`,
+          padding:10, borderTop:`1px solid ${t.border}`,
           background:t.panel, flexShrink:0, boxSizing:'border-box',
           ...(pinned ? {
             position:'fixed', left:0, right:0,
@@ -399,6 +421,7 @@ export default function ChatThread({
             zIndex:60,
           } : null),
         }}>
+        <div style={{ display:'flex', gap:8, alignItems:'flex-end', ...centre }}>
         <textarea ref={inputRef} value={draft} onChange={e => setDraft(e.target.value)} placeholder="Type a message"
           onFocus={focusComposer} onBlur={() => setKbFocused(false)} onKeyDown={onComposerKeyDown}
           rows={1} maxLength={4000} aria-label="Message"
@@ -411,6 +434,7 @@ export default function ChatThread({
           style={{ flexShrink:0, width:44, height:44, borderRadius:10, border:'none', background: draft.trim() ? '#dc2626' : t.theirs, color: draft.trim() ? '#fff' : t.sub, cursor: draft.trim() ? 'pointer' : 'default', display:'flex', alignItems:'center', justifyContent:'center' }}>
           <Send size={17} />
         </button>
+        </div>
       </form>
     </div>
   );

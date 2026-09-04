@@ -449,7 +449,7 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
   getting notifications and cannot be migrated. If a key must change, every user has to
   re-subscribe from scratch. There is also no such thing as running two keys side by side.
 - **BUYERS get push too, and the ask lives in the conversation** —
-  `src/components/chat/BuyerPushPrompt.jsx`, rendered by `ChatThread` for
+  `src/components/chat/PushPromptStrip.jsx`, rendered by `ChatThread` for
   `role='buyer'` after the buyer has sent their FIRST message (so it covers both
   BuyerChat on the car page and BuyerInbox on /account/messages, one
   implementation). A seller's reply already pushed the buyer
@@ -461,6 +461,16 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
   both sides share `usePushNotifications`, which owns every browser trap, and a
   permission prompt before the buyer has typed anything gets reflexively blocked
   — a denied permission is a dead end no later prompt can recover.
+- **The push prompt is PERSISTENT, and SELLERS get it too.** `PushPromptStrip`
+  takes `audience='buyer' | 'seller'`; the seller copy renders above the thread
+  list in `SellerInbox`, because `PushToggle` lives in Settings and Settings is
+  the one screen a rep never opens — so a seller with the app shut heard nothing
+  when a buyer messaged and had no way to learn that was even a setting.
+  Dismissal is COMPONENT STATE ONLY — it is deliberately not written to
+  localStorage (it was, first forever, then for a week). One reflexive tap
+  otherwise silenced the single prompt whose whole job is to arrive at the
+  moment it matters, and the person then sat in a chat that could never reach
+  them. The strip stops rendering for good only when `subscribed` is true.
 - iOS only allows web push for a PWA installed to the home screen (16.4+). PWA-1 shipped
   the install prompt, so that prerequisite is met — `src/components/InstallPrompt.jsx`.
 - The local `Notification.permission` code in Salesman Lite
@@ -593,13 +603,29 @@ Buyers message sellers inside ShiftOS (not WhatsApp). Built 2026-08-23.
   thread lookup takes the newest (`order last_message_at desc, limit 1`);
   `.maybeSingle()` throws PGRST116 the moment a buyer chats about two cars, and
   the failure looks like "this buyer has no conversation".
-- **The chat tab in Lite and Premium is FULL HEIGHT** (`SellerInbox
-  fullHeight`), not a 540px island in a tall empty column. The height is
-  MEASURED (`getBoundingClientRect().top` -> `window.innerHeight`), not
-  hardcoded, because Lite and Premium have different chrome; the page passes its
-  own `bottomInset` (Lite `isMobile ? 80 : 24`, Premium 24). Uses
-  `window.innerHeight`, NOT `visualViewport.height` — the latter shrinks for the
-  keyboard and would collapse the panel mid-message.
+- **A conversation is a SCREEN, never a pane in a card. Two screens, and the
+  open one is full-bleed.** `SellerInbox` renders the thread list; tapping a row
+  portals `ChatThread` into a fixed layer over the whole viewport (back arrow
+  returns). Same shape in `BuyerInbox` and in `BuyerChat`'s sheet. Do NOT put
+  the 320px-list-beside-thread split pane back, and do NOT wrap a conversation
+  in a bordered card inside a tab that already has a header and a nav.
+- **The full-screen layer is sized off `useVisualViewport`, never `vh` /
+  `window.innerHeight`.** `top: vv.offsetTop; height: vv.height` — so when the
+  keyboard opens the layer's bottom edge lands ON the keyboard: the composer
+  follows it up, the header does not move, and the message list just gets
+  shorter. The old chat tab was sized off `window.innerHeight` (the LAYOUT
+  viewport, which does not shrink for a keyboard), so the browser's only way to
+  reach a focused composer was to scroll — and the whole chat box flew upward.
+  Any surface that pins its own container this way passes `viewportPinned` to
+  `ChatThread` so the composer does not pin itself a second time.
+  `SellerInbox` still MEASURES the list panel's height off `window.innerHeight`
+  (`getBoundingClientRect().top`, minus the page's own `bottomInset` — Lite
+  `isMobile ? 80 : 24`, Premium 24). That is correct for the LIST, which must
+  not collapse when a keyboard opens somewhere else.
+- **Full-bleed does not mean full-width text**: `ChatThread contentMaxWidth`
+  caps and centres the header, message column and composer (780 seller / 760
+  buyer) so bubbles don't sit a foot apart on a monitor. It caps the CONTENT,
+  not the scroller — capping the scroller moves the scrollbar off the edge.
 - **The thread header has a pipeline-stage button** (`SellerInbox` stagePill ->
   `ChatThread headerBelow`). Chat is the one inbound channel where the seller is
   answering someone whose pipeline card they cannot see. It expands INSIDE the
@@ -648,7 +674,7 @@ nobody once the tab closed — push needs a granted permission on a live device.
 The fix is an EMAIL ADDRESS, not an account: we need somewhere to send to, and
 we never fuse two identities.
 - Ask lives in `src/components/chat/BuyerEmailPrompt.jsx`, rendered by
-  `ChatThread` in the same slot and on the same trigger as `BuyerPushPrompt` —
+  `ChatThread` in the same slot and on the same trigger as `PushPromptStrip` —
   AFTER the buyer's first message, never on chat open. ONE ask at a time: email
   first, push only once an address exists (`buyerHasEmail` in ChatThread).
 - **`updateUser({ email })`, never `signInWithOtp`.** updateUser upgrades the

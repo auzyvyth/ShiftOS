@@ -106,8 +106,19 @@ export default function ChatSheet({
       {/* Pinned to the VISUAL viewport (top/height from useVisualViewport)
           rather than `inset:0`, so when the keyboard opens this box shrinks to
           the space above it and the sheet inside it never goes underneath. */}
-      <div style={{ position: 'fixed', top: vv.offsetTop, left: 0, right: 0, height: vv.height, zIndex: 2001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 14, pointerEvents: 'none' }}>
-        <div style={{ width: '100%', maxWidth: 520, height: 'min(640px, 100%)', pointerEvents: 'auto', fontFamily: 'system-ui, sans-serif' }}>
+      {/* Full-bleed on a phone, a centred card on a desktop. A 520px card with
+          14px of margin around it is a chat squeezed into a box on a 375px
+          screen — the same "little chat section" the inbox had. */}
+      <style>{`
+        .cs-wrap{padding:0}
+        .cs-card{max-width:none;height:100%;border-radius:0}
+        @media(min-width:640px){
+          .cs-wrap{padding:14px}
+          .cs-card{max-width:520px;height:min(640px,100%)}
+        }
+      `}</style>
+      <div className="cs-wrap" style={{ position: 'fixed', top: vv.offsetTop, left: 0, right: 0, height: vv.height, zIndex: 2001, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', boxSizing: 'border-box' }}>
+        <div className="cs-card" style={{ width: '100%', pointerEvents: 'auto', fontFamily: 'system-ui, sans-serif' }}>
           {state === 'loading' && message('Opening the conversation…', 'One moment.')}
           {state === 'none' && message(
             'No in-app conversation',
