@@ -123,11 +123,35 @@ explanation waiting at the other end.
   an idle sign-out with the tab open left the panel mounted on a dead session:
   stale pipeline on screen, every write silently rejected. It has one now.
 
-- [ ] **IDLE-1: is 24h the right window?** `IDLE_MS` is 24 hours, which for a
-  phone-first sales tool means a rep who does not open it over a weekend is
-  logged out on Monday. The UX around it is fixed; the DURATION was never
-  discussed. Worth raising with the owner — 7 days would still be a real
-  security control and would stop most of the friction.
+- **IDLE-1 — DONE. `IDLE_MS` is 30 days, and the number is not arbitrary.**
+  24h was never a decision anyone made out loud. 30 days is NIST SP 800-63B's
+  reauthentication reference for AAL1, which is precisely what ShiftOS is:
+  password/Google sign-in, no MFA, no money moving through the app. Checked
+  against live sessions when it changed: at 7 days, 3 of 22 would have been cut
+  on the spot; at 30 days, none.
+  **Also confirmed: `not_after` is NULL on all 22 live `auth.sessions` rows**,
+  so Supabase has NO session time-box or inactivity timeout of its own — the
+  client-side timer is the entire logout policy. Do not assume a server-side
+  backstop exists.
+
+- [ ] **IDLE-2: the actual big-league pattern is device visibility, not a
+  shorter timer.** Google/Meta/Spotify never time out a session at all; they can
+  afford that because you can see your signed-in devices, kill them from
+  anywhere, and get told when a new one appears. We copied the convenient half
+  (a long session) and none of the safety half, so IDLE_MS stays a backstop
+  until these land. The plumbing already exists for both:
+  - **Signed-in devices + "Sign out everywhere"** in Settings, both panels.
+    `auth.sessions` carries `user_agent`, `ip`, `created_at`, `refreshed_at`.
+    Needs a SECURITY DEFINER RPC to list (device + last-used only — NEVER the
+    token, and truncate the IP) and one to revoke every session but the current.
+    One live user currently holds **7 sessions** and has no way to see it.
+  - **New-device sign-in push.** A `salesman_notifications` row IS a push
+    (`trg_push_on_salesman_notification`), so this needs no edge function: fire
+    on a session whose `user_agent` is new for that user. This single alert does
+    more for a stolen account than any timeout value — it reaches the rep in
+    seconds instead of waiting out a timer.
+  Once both ship, IDLE_MS can go effectively permanent and we are running the
+  big-league model rather than an imitation of it.
 
 ### Daily traffic numbers on the Premium dashboard
 Owner's call, and the right one: no new section. The existing traffic strip and
