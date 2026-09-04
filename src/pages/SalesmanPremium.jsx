@@ -2968,8 +2968,34 @@ export default function SalesmanPremium() {
     mobile already used, so the two layouts cannot disagree. */
  <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
 
- {/* Stage rail */}
- <div style={{ width: 210, flexShrink: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+ {/* Stage rail -- one panel, same material as the mini page's stat block:
+     a dark slate gradient running darker along the diagonal, hairline
+     border, no saturated fills. The stage hue is a dot, a hairline and a
+     faint wash on the selected row, never a solid colour bar. */}
+ <div
+  style={{
+   width: 218,
+   flexShrink: 0,
+   borderRadius: 14,
+   padding: 8,
+   background: "linear-gradient(158deg, #1b202b 0%, #141822 48%, #0e1219 100%)",
+   border: "1px solid rgba(255,255,255,0.07)",
+   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 10px 30px rgba(0,0,0,0.32)",
+  }}
+ >
+ {/* Panel header — the pipeline's own total, so the rail leads with a
+     number the way the mini page's stat block does. */}
+ <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8, padding: "6px 8px 10px", borderBottom: "1px solid rgba(255,255,255,0.055)", marginBottom: 8 }}>
+  <div style={{ minWidth: 0 }}>
+   <p style={{ margin: 0, fontSize: 9, color: "#475569", textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 700 }}>Pipeline</p>
+   <p style={{ margin: "4px 0 0", fontSize: 11, color: "#64748b" }}>Pick a stage</p>
+  </div>
+  <p style={{ margin: 0, fontSize: 19, fontWeight: 800, color: "#f1f5f9", lineHeight: 1, letterSpacing: "-0.01em" }}>
+   {activeStages.reduce((n, st) => n + searchedLeads.filter((l) => l.stage === st).length, 0)}
+  </p>
+ </div>
+
+ <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
  {activeStages.map((stage) => {
  const sc = STAGE_COLOR[stage] || {};
  const solid = sc.solid || "#6b7280";
@@ -2984,43 +3010,52 @@ export default function SalesmanPremium() {
  alignItems: "center",
  gap: 9,
  width: "100%",
- padding: "9px 12px",
- borderRadius: 10,
+ padding: "9px 10px",
+ borderRadius: 9,
  cursor: "pointer",
  textAlign: "left",
  fontFamily: "inherit",
- // Only the SELECTED row is saturated -- seven filled colour bars at
- // once is the sticker-sheet look, and it also stops the rail saying
- // which stage you are looking at.
+ // Two stacked gradients on the selected row: the stage hue as a
+ // WASH (18% -> 7% -> nothing) over a lighter slate. Filling the row
+ // with the hue itself read as a colour-coded status bar rather than
+ // as a selection, and seven of them stacked is a sticker sheet.
  background: isActive
- ? `linear-gradient(135deg, ${solid} 0%, ${solid}d9 60%, ${solid}a6 100%)`
- : "rgba(255,255,255,0.03)",
- border: `1px solid ${isActive ? "transparent" : "rgba(255,255,255,0.07)"}`,
- boxShadow: isActive ? `0 6px 18px ${solid}33` : "none",
- transition: "background 0.15s, border-color 0.15s",
+ ? `linear-gradient(135deg, ${solid}2e 0%, ${solid}12 38%, rgba(255,255,255,0) 100%), linear-gradient(135deg, #272f3e 0%, #1a2029 55%, #12161f 100%)`
+ : "linear-gradient(135deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.012) 100%)",
+ border: `1px solid ${isActive ? `${solid}5c` : "rgba(255,255,255,0.055)"}`,
+ boxShadow: isActive
+ ? "inset 0 1px 0 rgba(255,255,255,0.07), 0 4px 14px rgba(0,0,0,0.35)"
+ : "none",
+ transition: "background 0.16s, border-color 0.16s",
  }}
  >
- <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: isActive ? "rgba(255,255,255,0.9)" : solid }} />
+ <span style={{
+  width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: solid,
+  boxShadow: isActive ? `0 0 0 3px ${solid}26` : "none",
+ }} />
  <span style={{
  flex: 1, minWidth: 0, fontSize: 12,
  fontWeight: isActive ? 700 : 500,
- color: isActive ? "#fff" : "#9ca3af",
+ color: isActive ? "#f1f5f9" : "#94a3b8",
  textTransform: "capitalize", whiteSpace: "nowrap",
  overflow: "hidden", textOverflow: "ellipsis",
+ letterSpacing: isActive ? "0.005em" : 0,
  }}>
  {stage.replace(/_/g, " ")}
  </span>
  <span style={{
- flexShrink: 0, fontSize: 11, fontWeight: 700, lineHeight: 1.6,
+ flexShrink: 0, fontSize: 11, fontWeight: 700, lineHeight: 1.7,
  borderRadius: 99, padding: "0 7px",
- background: isActive ? "rgba(0,0,0,0.22)" : "rgba(255,255,255,0.06)",
- color: isActive ? "#fff" : "#6b7280",
+ background: isActive ? `${solid}24` : "rgba(255,255,255,0.05)",
+ border: `1px solid ${isActive ? `${solid}45` : "transparent"}`,
+ color: isActive ? (sc.tx || "#e5e7eb") : "#64748b",
  }}>
  {count}
  </span>
  </button>
  );
  })}
+ </div>
  </div>
 
  {/* Cards for the selected stage */}
@@ -3031,8 +3066,13 @@ export default function SalesmanPremium() {
  return (
  <div style={{ flex: 1, minWidth: 0 }}>
  {stageLeads.length === 0 ? (
- <div style={{ height: 120, borderRadius: 12, border: "1px dashed rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
- <span style={{ fontSize: 12, color: "#374151" }}>
+ <div style={{
+  minHeight: 260, borderRadius: 14,
+  background: "linear-gradient(158deg, #191e28 0%, #131720 50%, #0e1219 100%)",
+  border: "1px solid rgba(255,255,255,0.055)",
+  display: "flex", alignItems: "center", justifyContent: "center",
+ }}>
+ <span style={{ fontSize: 12, color: "#4b5563", textTransform: "capitalize" }}>
  Nothing in {activeLeadStage.replace(/_/g, " ")} yet
  </span>
  </div>
