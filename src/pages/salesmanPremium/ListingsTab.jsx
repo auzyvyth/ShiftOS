@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import CarFormFast from "../../components/CarFormFast";
 import CarForm from "../../components/CarForm";
+import VerifyBadgePrompt from "../../components/kyc/VerifyBadgePrompt";
 import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
 import { priceStyle, SOFT, ListingFormModal } from "./shared";
 
@@ -81,7 +82,7 @@ export default function ListingsTab({
  setStatusMenuCarId, setActionMenuCarId, setConfirmDeleteId, setCvrHover, setEditListing,
  setSelectedCar, setCarDetailImgIdx, setCarDetailTab,
  listingScore, updateListingStatus, handleDeleteListing, handleListingCopy, openBroadcast,
- generateAiCaptions, refreshCommissionData,
+ generateAiCaptions, refreshCommissionData, onVerifyId,
 }) {
  const enriched = myListings.map((car) => {
  const stats = carStatsMap[car.id]?? {};
@@ -131,6 +132,10 @@ export default function ListingsTab({
 
  return (
  <div>
+ {/* The badge is unearnable if nobody finds the upload step, and Settings is
+     the screen a rep never opens. */}
+ <VerifyBadgePrompt profile={profile} onStart={onVerifyId} />
+
  {/* Header row with Add button */}
  <div
  style={{

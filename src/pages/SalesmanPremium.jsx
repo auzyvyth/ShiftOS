@@ -16,6 +16,7 @@ import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { freshChannel } from "../lib/realtime";
 import { compressImageFile } from "../utils/compressImage";
 import CarFormFast from "../components/CarFormFast";
+import VerifyIdentity from "../components/kyc/VerifyIdentity";
 import CarForm, { buildCopyText, buildListingFacts } from "../components/CarForm";
 import DealerPendingApproval from "../components/DealerPendingApproval";
 import AvailabilityEditor from "../components/AvailabilityEditor";
@@ -4567,6 +4568,17 @@ export default function SalesmanPremium() {
  <div style={{ maxWidth: 480 }}>
  <p style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Profile Settings</p>
 
+ {/* Identity verification — earns the public Verified badge. First because it
+     is the one thing here that changes how buyers see every listing. Premium
+     had no upload step at all before this, so the badge was unearnable. */}
+ <div style={{ marginBottom: 24 }}>
+ <VerifyIdentity
+ profile={profile}
+ userId={profile?.id}
+ onSubmitted={() => setProfile((p) => ({ ...p, kyc_submitted_at: new Date().toISOString() }))}
+ />
+ </div>
+
  {/* Push alerts on this device. Own id, not a dealer id — push_subscriptions
      RLS is auth.uid() = user_id. */}
  <div style={{ marginBottom: 24 }}>
@@ -6192,6 +6204,7 @@ export default function SalesmanPremium() {
       listingScore={listingScore} updateListingStatus={updateListingStatus}
       handleDeleteListing={handleDeleteListing} handleListingCopy={handleListingCopy}
       openBroadcast={openBroadcast} generateAiCaptions={generateAiCaptions}
+      onVerifyId={() => switchTab("settings")}
       refreshCommissionData={refreshCommissionData}
      />
     </Suspense>
