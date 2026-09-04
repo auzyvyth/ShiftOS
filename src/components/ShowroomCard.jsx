@@ -214,6 +214,17 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
         {image ? (
           <>
             {(!imgLoaded || !inView) && <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg,#e5e7eb 25%,#d1d5db 50%,#e5e7eb 75%)', backgroundSize: '200% 100%', animation: 'sc-shimmer 1.5s infinite' }} />}
+            {/* The photo is positioned ABSOLUTELY so it can never drive the
+                card's height. As an ordinary in-flow child it carried
+                height:100%, but this column's own height is auto (it only gets
+                a height by stretching to the flex line), so the percentage
+                resolved to auto and the image laid out at its NATURAL aspect:
+                210px wide by whatever that made it tall. Landscape photos came
+                out ~140px and stayed under the 190px minHeight, so nothing
+                looked wrong -- but a portrait photo (a phone screenshot of
+                another listing, an auction sheet) came out ~470px and stretched
+                the whole row. Out of flow, the column is sized by the content
+                column and objectFit:contain letterboxes the photo inside it. */}
             {inView && (
               <img
                 key={safeIdx}
@@ -228,12 +239,12 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
                   } else { setImgError(true); }
                 }}
                 onLoad={() => setImgLoaded(true)}
-                style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s', filter: isSold ? 'grayscale(60%)' : 'none' }}
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s', filter: isSold ? 'grayscale(60%)' : 'none' }}
               />
             )}
           </>
         ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Car size={28} color="#9ca3af" />
           </div>
         )}
@@ -256,14 +267,21 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
             const role = car.seller_role || car.dealer?.role;
             const isAgent = role === 'salesman';
             const chipColor = isAgent ? '#fb923c' : '#60a5fa';
+            const rgb = isAgent ? '251,146,60' : '59,130,246';
+            // Verified says so in WORDS. It shipped as a 9px tick tucked in
+            // beside the role label and was invisible at that size — a trust
+            // signal nobody can read is not a trust signal. It stays inside
+            // this one chip, in the chip's own hue, rather than becoming a
+            // fourth saturated pill on a row that already carries the photo
+            // count and the discount badge; the verified chip just sits at a
+            // stronger alpha so it reads first.
+            const RoleIcon = isVerified ? BadgeCheck : Users;
             return (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: isAgent ? 'rgba(251,146,60,0.18)' : 'rgba(59,130,246,0.18)', border: `1px solid ${isAgent ? 'rgba(251,146,60,0.4)' : 'rgba(59,130,246,0.4)'}`, borderRadius: '6px', padding: '2px 7px', backdropFilter: 'blur(6px)' }}>
-                <Users size={8} color={chipColor} />
-                <span style={{ fontSize: '9px', fontWeight: '700', color: chipColor }}>{isAgent ? 'Agent' : 'Dealer'}</span>
-                {/* Identity-verified tick. Drawn in the chip's own colour rather
-                    than a second accent — this row already carries the photo
-                    count and the discount pill. */}
-                {isVerified && <BadgeCheck size={9} color={chipColor} aria-label="Identity verified" />}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: `rgba(${rgb},${isVerified ? 0.3 : 0.18})`, border: `1px solid rgba(${rgb},${isVerified ? 0.6 : 0.4})`, borderRadius: '6px', padding: '2px 7px', backdropFilter: 'blur(6px)' }}>
+                <RoleIcon size={isVerified ? 10 : 8} color={chipColor} strokeWidth={isVerified ? 2.6 : 2} style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: '9px', fontWeight: '700', color: chipColor, whiteSpace: 'nowrap' }}>
+                  {isVerified ? 'Verified ' : ''}{isAgent ? 'Agent' : 'Dealer'}
+                </span>
               </div>
             );
           })()}

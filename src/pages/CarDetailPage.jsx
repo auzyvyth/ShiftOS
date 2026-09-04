@@ -677,8 +677,12 @@ const HERO_SIZES  = '(max-width: 900px) 100vw, 62vw';
 
 /* Card fields for the "more from this seller" / "you might also like" rails.
    body_type and dealer_id feed the similar-cars matching and scoring. */
+// dealer_is_verified is here because CarCard renders the VERIFIED chip off it.
+// Leave it out and the badge silently disappears on this one surface -- the
+// field is simply undefined, nothing errors, and "Cars like this" is where a
+// buyer is comparing sellers hardest.
 const SIM_FIELDS =
-  "id, slug, year, brand, model, variant, body_type, dealer_id, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, document_types";
+  "id, slug, year, brand, model, variant, body_type, dealer_id, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, document_types, dealer_is_verified";
 
 /* ─── skeleton ─── */
 function Skeleton() {
