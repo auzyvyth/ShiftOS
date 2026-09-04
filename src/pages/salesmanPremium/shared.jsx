@@ -36,6 +36,76 @@ export const STAT = { fontWeight: T.weight.bold, color: C.text, letterSpacing: T
 // The Monthly Goal card only ever shows THIS calendar month; this modal is
 // one tap away for history instead of the figure just disappearing at a
 // month boundary. Ported verbatim from Salesman Lite.
+// One shell for every listing form on Salesman Premium — Fast list, Full form
+// and Edit. All three used to render differently: Fast and Full were inline
+// SECTIONS pushed above the listing grid (so the page behind stayed live and a
+// stray tap or scroll interrupted a half-filled form), and Edit was a
+// hand-rolled fixed overlay that was neither portalled nor body-locked. This
+// is the single implementation — do not fork a fourth.
+//
+// Overlay rules: portalled to document.body (rule 1) and body scroll locked
+// while open (rule 2). Deliberately NO backdrop-click / Escape close — these
+// wrap a multi-step form and one stray tap should not bin what was typed; the
+// x button is the only way out. Same reason it does not register
+// useModalHistory (rule 5).
+export function ListingFormModal({ open, onClose, title, subtitle, isMobile, children }) {
+ useEffect(() => {
+ if (!open) return;
+ document.body.style.overflow = "hidden";
+ return () => { document.body.style.overflow = ""; };
+ }, [open]);
+
+ if (!open) return null;
+
+ return createPortal(
+ <div
+ className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
+ style={{ background: "rgba(0,0,0,0.82)" }}
+ >
+ <div
+ style={{
+ background: "#0d1117",
+ border: "1px solid rgba(255,255,255,0.1)",
+ borderRadius: isMobile ? "16px 16px 0 0" : 16,
+ width: "100%",
+ maxWidth: 672,
+ maxHeight: "92vh",
+ display: "flex",
+ flexDirection: "column",
+ }}
+ >
+ <div
+ style={{
+ display: "flex",
+ alignItems: "center",
+ justifyContent: "space-between",
+ gap: 12,
+ padding: "16px 20px",
+ borderBottom: "1px solid rgba(255,255,255,0.07)",
+ flexShrink: 0,
+ }}
+ >
+ <div style={{ minWidth: 0 }}>
+ <p style={{ margin: 0, fontWeight: 600, color: "#f1f5f9", fontSize: 15 }}>{title}</p>
+ {subtitle && (
+ <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}>{subtitle}</p>
+ )}
+ </div>
+ <button
+ onClick={onClose}
+ aria-label="Close"
+ style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", padding: 4, display: "flex", flexShrink: 0 }}
+ >
+ <X size={20} />
+ </button>
+ </div>
+ <div style={{ overflowY: "auto", flex: 1, padding: 20 }}>{children}</div>
+ </div>
+ </div>,
+ document.body,
+ );
+}
+
 export function PrevMonthModal({ open, onClose, monthLabel, commission, count, trendPct, trendLabel }) {
  useEffect(() => {
  if (!open) return;

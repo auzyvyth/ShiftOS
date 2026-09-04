@@ -7,8 +7,9 @@ import {
 } from "lucide-react";
 import CarFormFast from "../../components/CarFormFast";
 import CarForm from "../../components/CarForm";
+import VerifyBadgePrompt from "../../components/kyc/VerifyBadgePrompt";
 import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
-import { priceStyle, SOFT } from "./shared";
+import { priceStyle, SOFT, ListingFormModal } from "./shared";
 
 // Lazy-load JSZip from CDN once, only when a salesman actually downloads photos.
 let _jszipPromise = null;
@@ -81,7 +82,7 @@ export default function ListingsTab({
  setStatusMenuCarId, setActionMenuCarId, setConfirmDeleteId, setCvrHover, setEditListing,
  setSelectedCar, setCarDetailImgIdx, setCarDetailTab,
  listingScore, updateListingStatus, handleDeleteListing, handleListingCopy, openBroadcast,
- generateAiCaptions, refreshCommissionData,
+ generateAiCaptions, refreshCommissionData, onVerifyId,
 }) {
  const enriched = myListings.map((car) => {
  const stats = carStatsMap[car.id]?? {};
@@ -131,6 +132,10 @@ export default function ListingsTab({
 
  return (
  <div>
+ {/* The badge is unearnable if nobody finds the upload step, and Settings is
+     the screen a rep never opens. */}
+ <VerifyBadgePrompt profile={profile} onStart={onVerifyId} />
+
  {/* Header row with Add button */}
  <div
  style={{
@@ -151,23 +156,27 @@ export default function ListingsTab({
  </p>
  <div style={{ display: "flex", gap: 7 }}>
  <button
- onClick={() => { setShowFastForm(v =>!v); setShowAddForm(false); }}
- style={{ display: "flex", alignItems: "center", gap: 5, background: showFastForm? "rgba(220,38,38,0.15)" : "#dc2626", border: showFastForm? "1px solid rgba(220,38,38,0.4)" : "none", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 700, padding: "7px 12px", cursor: "pointer" }}
+ onClick={() => { setShowFastForm(true); setShowAddForm(false); }}
+ style={{ display: "flex", alignItems: "center", gap: 5, background: "#dc2626", border: "none", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 700, padding: "7px 12px", cursor: "pointer" }}
  >
- {showFastForm? "Cancel" : "Fast"}
+ Fast
  </button>
  <button
- onClick={() => { setShowAddForm(v =>!v); setShowFastForm(false); }}
- style={{ display: "flex", alignItems: "center", gap: 5, background: showAddForm? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#e5e7eb", fontSize: 12, fontWeight: 600, padding: "7px 12px", cursor: "pointer" }}
+ onClick={() => { setShowAddForm(true); setShowFastForm(false); }}
+ style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#e5e7eb", fontSize: 12, fontWeight: 600, padding: "7px 12px", cursor: "pointer" }}
  >
- <Plus size={13} /> {showAddForm? "Cancel" : "Full Form"}
+ <Plus size={13} /> Full Form
  </button>
  </div>
  </div>
 
- {showFastForm && (
- <div style={{ marginBottom: 24, background: "#0d1117", border: "1px solid rgba(220,38,38,0.15)", borderRadius: 12, padding: 16 }}>
- <p style={{ margin: "0 0 14px", fontSize: 12, fontWeight: 700, color: "#fca5a5" }}>Fast List — 2 steps, live in 30 seconds</p>
+ <ListingFormModal
+ open={showFastForm}
+ onClose={() => setShowFastForm(false)}
+ title="Fast List"
+ subtitle="2 steps, live in 30 seconds"
+ isMobile={isMobile}
+ >
  <CarFormFast
  onCreate={(car) => {
  setMyListings((p) => [car, ...p]);
@@ -175,18 +184,14 @@ export default function ListingsTab({
  toast.success("Listed! Add more details anytime.");
  }}
  />
- </div>
- )}
+ </ListingFormModal>
 
- {showAddForm && (
- <div
- style={{
- marginBottom: 24,
- background: "#0d1117",
- border: "1px solid rgba(255,255,255,0.07)",
- borderRadius: 12,
- padding: 16,
- }}
+ <ListingFormModal
+ open={showAddForm}
+ onClose={() => setShowAddForm(false)}
+ title="New Listing"
+ subtitle="Full form — every spec, photo and price field"
+ isMobile={isMobile}
  >
  <CarForm
  onCreate={(car) => {
@@ -195,11 +200,10 @@ export default function ListingsTab({
  toast.success("Listing published!");
  }}
  />
- </div>
- )}
+ </ListingFormModal>
 
  {/* Store exposure bar */}
- {!showAddForm &&!showFastForm && profile?.slug && myListings.filter(c => c.status === "available").length > 0 && (
+ {profile?.slug && myListings.filter(c => c.status === "available").length > 0 && (
  <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 12px", padding: "7px 12px", borderRadius: R.md, background: withAlpha(C.success, 0.04), border: `1px solid ${withAlpha(C.success, 0.13)}` }}>
  <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.success, flexShrink: 0 }} />
  <span style={{ fontSize: T.size.xs, color: C.textMuted, flex: 1 }}>
@@ -215,7 +219,7 @@ export default function ListingsTab({
  )}
 
  {/* Listing quality banner */}
- {!showAddForm &&!showFastForm && myListings.filter(c => c.status === "available").length > 0 && (() => {
+ {myListings.filter(c => c.status === "available").length > 0 && (() => {
  const scores = myListings.filter(c => c.status === "available").map(c => listingScore(c).pct);
  const avg = Math.round(scores.reduce((s, p) => s + p, 0) / scores.length);
  if (avg >= 80) return null;
@@ -227,7 +231,7 @@ export default function ListingsTab({
  );
  })()}
 
- {myListings.length > 0 &&!showAddForm &&!(showFastForm) && (
+ {myListings.length > 0 && (
  <>
  {/* Status tabs */}
  <div style={{ borderBottom: `1px solid ${C.border}`, marginBottom: 0 }}>
@@ -282,7 +286,7 @@ export default function ListingsTab({
  </>
  )}
 
- {myListings.length === 0 &&!showAddForm? (
+ {myListings.length === 0? (
  <div
  style={{
  display: "flex",

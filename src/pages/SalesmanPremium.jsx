@@ -16,6 +16,7 @@ import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { freshChannel } from "../lib/realtime";
 import { compressImageFile } from "../utils/compressImage";
 import CarFormFast from "../components/CarFormFast";
+import VerifyIdentity from "../components/kyc/VerifyIdentity";
 import CarForm, { buildCopyText, buildListingFacts } from "../components/CarForm";
 import DealerPendingApproval from "../components/DealerPendingApproval";
 import AvailabilityEditor from "../components/AvailabilityEditor";
@@ -128,6 +129,7 @@ import {
  priceStyle, SOFT, CARD, CARD_HEADER, ROW_LINE, EYEBROW, STAT, PrevMonthModal,
  timeAgo, preciseAgo, preciseUntil, timeLabels, STAGE_NEUTRAL, STATUS_LABEL,
  LEAD_STAGES, STAGE_COLOR, STAGE_WEIGHT, getHeatScore, LOST_REASONS, SubTabs,
+ ListingFormModal,
 } from "./salesmanPremium/shared";
 
 // Shared fallback for every lazy-loaded tab/section below — keeps the loading
@@ -4566,6 +4568,17 @@ export default function SalesmanPremium() {
  <div style={{ maxWidth: 480 }}>
  <p style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Profile Settings</p>
 
+ {/* Identity verification — earns the public Verified badge. First because it
+     is the one thing here that changes how buyers see every listing. Premium
+     had no upload step at all before this, so the badge was unearnable. */}
+ <div style={{ marginBottom: 24 }}>
+ <VerifyIdentity
+ profile={profile}
+ userId={profile?.id}
+ onSubmitted={() => setProfile((p) => ({ ...p, kyc_submitted_at: new Date().toISOString() }))}
+ />
+ </div>
+
  {/* Push alerts on this device. Own id, not a dealer id — push_subscriptions
      RLS is auth.uid() = user_id. */}
  <div style={{ marginBottom: 24 }}>
@@ -6191,6 +6204,7 @@ export default function SalesmanPremium() {
       listingScore={listingScore} updateListingStatus={updateListingStatus}
       handleDeleteListing={handleDeleteListing} handleListingCopy={handleListingCopy}
       openBroadcast={openBroadcast} generateAiCaptions={generateAiCaptions}
+      onVerifyId={() => switchTab("settings")}
       refreshCommissionData={refreshCommissionData}
      />
     </Suspense>
@@ -6949,64 +6963,13 @@ export default function SalesmanPremium() {
  </div>
  )}
 
- {editListing && (
- <div
- className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
- style={{ background: "rgba(0,0,0,0.82)" }}
+ <ListingFormModal
+ open={!!editListing}
+ onClose={() => setEditListing(null)}
+ title="Edit Listing"
+ subtitle={editListing ? `${editListing.brand} ${editListing.model} ${editListing.variant || ""}`.trim() : ""}
+ isMobile={isMobile}
  >
- <div
- style={{
- background: "#0d1117",
- border: "1px solid rgba(255,255,255,0.1)",
- borderRadius: isMobile? "16px 16px 0 0" : 16,
- width: "100%",
- maxWidth: 672,
- maxHeight: "92vh",
- display: "flex",
- flexDirection: "column",
- }}
- >
- <div
- style={{
- display: "flex",
- alignItems: "center",
- justifyContent: "space-between",
- padding: "16px 20px",
- borderBottom: "1px solid rgba(255,255,255,0.07)",
- flexShrink: 0,
- }}
- >
- <div>
- <p
- style={{
- margin: 0,
- fontWeight: 600,
- color: "#f1f5f9",
- fontSize: 15,
- }}
- >Edit Listing
- </p>
- <p
- style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}
- >
- {editListing.brand} {editListing.model}{" "}
- {editListing.variant || ""}
- </p>
- </div>
- <button
- onClick={() => setEditListing(null)}
- style={{
- background: "none",
- border: "none",
- cursor: "pointer",
- color: "#6b7280",
- padding: 4,
- }}
- >
- <X size={20} />
- </button>
- </div>
- <div style={{ overflowY: "auto", flex: 1, padding: 20 }}>
  <CarForm
  listing={editListing}
  onUpdate={(updated) => {
@@ -7017,10 +6980,7 @@ export default function SalesmanPremium() {
  }}
  onCreate={() => {}}
  />
- </div>
- </div>
- </div>
- )}
+ </ListingFormModal>
 
  {/* One in-app conversation, over whatever tab you are on. Rendered at page
      level (not inside renderLeads) so the pipeline card, the lead panel and

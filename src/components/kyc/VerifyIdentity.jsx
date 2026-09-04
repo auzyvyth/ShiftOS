@@ -56,7 +56,36 @@ const compress = (file, maxWidth = 1600, quality = 0.85) =>
     img.src = url;
   });
 
-export default function VerifyIdentity({ profile, userId, onSubmitted }) {
+// Two surfaces, one component. Salesman Lite/Premium are dark; the DEALER
+// dashboard is light (white cards, #111827 text) — rendering the dark card
+// there would be the "light text on a light card" bug the theme rules ban.
+const PALETTE = {
+  dark: {
+    card: "#111827", border: "rgba(255,255,255,0.07)",
+    text: "#f1f5f9", sub: "#9ca3af", faint: "#6b7280", slotText: "#e5e7eb",
+    slotBg: "rgba(255,255,255,0.03)", slotBorder: "rgba(255,255,255,0.1)",
+    thumbBg: "rgba(255,255,255,0.05)",
+    okBorder: "rgba(34,197,94,0.25)", okIcon: "#4ade80",
+    waitBorder: "rgba(234,179,8,0.25)", waitIcon: "#facc15",
+    askIcon: "#60a5fa",
+    errBg: "rgba(220,38,38,0.08)", errBorder: "rgba(220,38,38,0.2)",
+    errIcon: "#f87171", errText: "#fca5a5",
+  },
+  light: {
+    card: "#ffffff", border: "#e5e7eb",
+    text: "#111827", sub: "#6b7280", faint: "#9ca3af", slotText: "#111827",
+    slotBg: "#f9fafb", slotBorder: "#e5e7eb",
+    thumbBg: "#f3f4f6",
+    okBorder: "rgba(22,163,74,0.35)", okIcon: "#16a34a",
+    waitBorder: "rgba(202,138,4,0.35)", waitIcon: "#ca8a04",
+    askIcon: "#2563eb",
+    errBg: "rgba(220,38,38,0.06)", errBorder: "rgba(220,38,38,0.25)",
+    errIcon: "#dc2626", errText: "#b91c1c",
+  },
+};
+
+export default function VerifyIdentity({ profile, userId, onSubmitted, theme = "dark" }) {
+  const P = PALETTE[theme] || PALETTE.dark;
   const [files, setFiles] = useState({});      // key -> File
   const [previews, setPreviews] = useState({}); // key -> objectURL
   const [busy, setBusy] = useState(false);
@@ -128,22 +157,22 @@ export default function VerifyIdentity({ profile, userId, onSubmitted }) {
   };
 
   const card = {
-    background: "#111827",
-    border: "1px solid rgba(255,255,255,0.07)",
+    background: P.card,
+    border: `1px solid ${P.border}`,
     borderRadius: 12,
     padding: 16,
   };
 
   if (verified) {
     return (
-      <div style={{ ...card, borderColor: "rgba(34,197,94,0.25)" }}>
+      <div style={{ ...card, borderColor: P.okBorder }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <ShieldCheck size={18} style={{ color: "#4ade80", flexShrink: 0 }} />
+          <ShieldCheck size={18} style={{ color: P.okIcon, flexShrink: 0 }} />
           <div style={{ minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: P.text }}>
               Identity verified
             </p>
-            <p style={{ margin: "3px 0 0", fontSize: 12, color: "#9ca3af", lineHeight: 1.5 }}>
+            <p style={{ margin: "3px 0 0", fontSize: 12, color: P.sub, lineHeight: 1.5 }}>
               Your listings carry the Verified badge on the marketplace.
             </p>
           </div>
@@ -154,14 +183,14 @@ export default function VerifyIdentity({ profile, userId, onSubmitted }) {
 
   if (pending) {
     return (
-      <div style={{ ...card, borderColor: "rgba(234,179,8,0.25)" }}>
+      <div style={{ ...card, borderColor: P.waitBorder }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Clock size={18} style={{ color: "#facc15", flexShrink: 0 }} />
+          <Clock size={18} style={{ color: P.waitIcon, flexShrink: 0 }} />
           <div style={{ minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: P.text }}>
               ID under review
             </p>
-            <p style={{ margin: "3px 0 0", fontSize: 12, color: "#9ca3af", lineHeight: 1.5 }}>
+            <p style={{ margin: "3px 0 0", fontSize: 12, color: P.sub, lineHeight: 1.5 }}>
               We'll add your Verified badge once it's checked. You can keep listing in the meantime.
             </p>
           </div>
@@ -173,20 +202,20 @@ export default function VerifyIdentity({ profile, userId, onSubmitted }) {
   return (
     <div style={card}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-        <ShieldCheck size={18} style={{ color: "#60a5fa", flexShrink: 0 }} />
-        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>
+        <ShieldCheck size={18} style={{ color: P.askIcon, flexShrink: 0 }} />
+        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: P.text }}>
           Get the Verified badge
         </p>
       </div>
-      <p style={{ margin: "0 0 14px", fontSize: 12, color: "#9ca3af", lineHeight: 1.6 }}>
+      <p style={{ margin: "0 0 14px", fontSize: 12, color: P.sub, lineHeight: 1.6 }}>
         Verified sellers show a badge on every listing, and buyers are far more willing to
         message a seller whose identity has been checked. Optional — your listings work either way.
       </p>
 
       {profile?.rejection_reason && (
-        <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 14, padding: "9px 11px", borderRadius: 8, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)" }}>
-          <AlertCircle size={14} style={{ color: "#f87171", flexShrink: 0, marginTop: 1 }} />
-          <p style={{ margin: 0, fontSize: 12, color: "#fca5a5", lineHeight: 1.5 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 14, padding: "9px 11px", borderRadius: 8, background: P.errBg, border: `1px solid ${P.errBorder}` }}>
+          <AlertCircle size={14} style={{ color: P.errIcon, flexShrink: 0, marginTop: 1 }} />
+          <p style={{ margin: 0, fontSize: 12, color: P.errText, lineHeight: 1.5 }}>
             Last submission wasn't accepted: {profile.rejection_reason}
           </p>
         </div>
@@ -207,8 +236,8 @@ export default function VerifyIdentity({ profile, userId, onSubmitted }) {
               onClick={() => inputs.current[key]?.click()}
               style={{
                 width: "100%", display: "flex", alignItems: "center", gap: 11,
-                background: "rgba(255,255,255,0.03)",
-                border: `1px solid ${files[key] ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.1)"}`,
+                background: P.slotBg,
+                border: `1px solid ${files[key] ? P.okBorder : P.slotBorder}`,
                 borderRadius: 9, padding: "10px 12px", cursor: "pointer", textAlign: "left",
                 fontFamily: "inherit",
               }}
@@ -220,22 +249,22 @@ export default function VerifyIdentity({ profile, userId, onSubmitted }) {
                   style={{ width: 40, height: 30, objectFit: "cover", borderRadius: 5, flexShrink: 0 }}
                 />
               ) : (
-                <div style={{ width: 40, height: 30, borderRadius: 5, background: "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <Upload size={13} style={{ color: "#6b7280" }} />
+                <div style={{ width: 40, height: 30, borderRadius: 5, background: P.thumbBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Upload size={13} style={{ color: P.faint }} />
                 </div>
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: P.slotText }}>
                   {label}
                   {key === "selfie" && profile?.plan !== "salesman_full" && (
-                    <span style={{ color: "#6b7280", fontWeight: 500 }}> · optional</span>
+                    <span style={{ color: P.faint, fontWeight: 500 }}> · optional</span>
                   )}
                 </p>
-                <p style={{ margin: "2px 0 0", fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <p style={{ margin: "2px 0 0", fontSize: 11, color: P.faint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {hint}
                 </p>
               </div>
-              {files[key] && <Check size={15} style={{ color: "#4ade80", flexShrink: 0 }} />}
+              {files[key] && <Check size={15} style={{ color: P.okIcon, flexShrink: 0 }} />}
             </button>
           </div>
         ))}
@@ -253,7 +282,7 @@ export default function VerifyIdentity({ profile, userId, onSubmitted }) {
       >
         {busy ? "Submitting…" : "Submit for verification"}
       </button>
-      <p style={{ margin: "9px 0 0", fontSize: 11, color: "#6b7280", lineHeight: 1.5 }}>
+      <p style={{ margin: "9px 0 0", fontSize: 11, color: P.faint, lineHeight: 1.5 }}>
         Stored privately and deleted the moment your review is decided. Never shown to buyers.
       </p>
     </div>

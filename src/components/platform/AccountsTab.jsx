@@ -559,7 +559,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
             <Field label="Business type" value={open.business_type} />
             <Field label="SSM" value={open.ssm_number} mono />
             <Field label="IC" value={open.ic_last4 ? `•••• ${open.ic_last4}` : null} mono />
-            <Field label="IC verified" value={open.ic_verified_at ? fmtDate(open.ic_verified_at) : null} />
+            <Field label="IC on file" value={open.ic_verified_at ? fmtDate(open.ic_verified_at) : null} />
             <Field label="ID submitted" value={open.kyc_submitted_at ? fmtDate(open.kyc_submitted_at) : null} />
             <Field label="Verified on" value={open.verified_at ? fmtDate(open.verified_at) : null} />
             <Field label="Joined" value={fmtDate(open.created_at)} />

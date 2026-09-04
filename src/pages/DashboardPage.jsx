@@ -75,6 +75,8 @@ function SubTabBar({ tabs, active, onChange }) {
 const CarForm          = React.lazy(() => import("../components/CarForm"));
 const AddCarForm       = React.lazy(() => import("../components/AddCarForm"));
 const CarFormFast      = React.lazy(() => import("../components/CarFormFast"));
+import VerifyIdentity from "../components/kyc/VerifyIdentity";
+import VerifyBadgePrompt from "../components/kyc/VerifyBadgePrompt";
 const FinancingCalculator = React.lazy(() => import("../components/FinancingCalculator"));
 const LeadsPage        = React.lazy(() => import("./LeadsPage"));
 const CRMPanel         = React.lazy(() => import("./CRMPanel"));
@@ -177,6 +179,7 @@ import {
   ClipboardCheck,
   Mail,
   Film,
+  ShieldCheck,
 } from "lucide-react";
 
 const SERVER_URL = "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1";
@@ -994,7 +997,7 @@ function WaTemplatesEditor({ dealerId, actor }) {
 }
 
 // ─── SettingsTab ──────────────────────────────────────────────────────────────
-function SettingsTab({ profile, onProfileUpdate }) {
+function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
   const [saving, setSaving] = useState({});
   const [saved, setSaved] = useState({});
   const [errors, setErrors] = useState({});
@@ -1575,16 +1578,30 @@ function SettingsTab({ profile, onProfileUpdate }) {
       { key: 'whatsapp', icon: MessageCircle, label: 'WhatsApp', desc: 'Message templates' },
     ]},
     { group: 'Account', items: [
+      { key: 'verify', icon: ShieldCheck, label: 'Verified Badge', desc: 'Submit your ID to earn the badge' },
       { key: 'security', icon: KeyRound, label: 'Security', desc: 'Password & 2-factor auth' },
       { key: 'team', icon: Lock, label: 'Team', desc: 'Staff access & roles' },
       { key: 'plan', icon: CreditCard, label: 'Plan & Billing', desc: 'Current plan & usage' },
     ]},
   ];
 
+  // The Verify-ID prompt on the listings tab deep-links straight to that
+  // section — landing on 'Dealership' and making them hunt is how the step got
+  // missed in the first place.
+  useEffect(() => { if (jumpTo) setSettingsNav(jumpTo); }, [jumpTo]);
+
   const effectiveNav = settingsNav || 'identity';
 
   const sectionContent = (
     <div className="space-y-4 max-w-2xl">
+      {effectiveNav === 'verify' && (
+        <VerifyIdentity
+          profile={profile}
+          userId={profile?.id}
+          theme="light"
+          onSubmitted={() => onProfileUpdate?.({ ...profile, kyc_submitted_at: new Date().toISOString() })}
+        />
+      )}
       {effectiveNav === 'availability' && (
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '20px 24px' }}>
           <AvailabilityEditor ownerId={profile?.id} dealerId={profile?.id} />
@@ -9813,6 +9830,9 @@ export default function DashboardPage() {
   };
   const handleProfileUpdate = (updated) => setProfile(updated);
 
+  // Which Settings section the Verify-ID prompt should land on.
+  const [settingsJump, setSettingsJump] = useState(null);
+
   const handleMarkSold = async () => {
     if (!markSoldListing) return;
     setMarkSoldLoading(true);
@@ -10707,6 +10727,15 @@ export default function DashboardPage() {
           {/* ── Listings Tab ── */}
           {activeTab === "listings" && (
             <>
+              {/* The badge is worth nothing if nobody finds the upload step, and
+                  Settings is the screen a dealer never opens. Jumps straight to
+                  the Verified Badge section. */}
+              <VerifyBadgePrompt
+                profile={profile}
+                theme="light"
+                onStart={() => { setSettingsJump("verify"); handleTabChange("settings"); }}
+              />
+
               {/* Stock P&L stats (migrated from the Stock tab header) — shown first
                   since revenue/value figures matter more at a glance than raw counts */}
               <StockStatsStrip dealerId={getDealerIdFromProfile(profile)} />
@@ -11367,6 +11396,7 @@ export default function DashboardPage() {
             <SettingsTab
               profile={profile}
               onProfileUpdate={handleProfileUpdate}
+              jumpTo={settingsJump}
             />
           )}
           {activeTab === "crm" && (
