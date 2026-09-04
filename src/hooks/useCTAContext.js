@@ -44,10 +44,16 @@ export function useCTAContext() {
         sessionStorage.removeItem(REF_SESSION_KEY);
       }
 
-      // Priority 2: subdomain dealer. Use the SECURITY DEFINER RPC, not the
-      // public_dealer_profiles view — the view is security_invoker and anon
-      // RLS returns no rows, so the CTA whatsapp_number would come back empty
-      // for logged-out storefront visitors.
+      // Priority 2: subdomain dealer. Use the RPC, not the
+      // public_dealer_profiles view.
+      //
+      // This comment used to claim the view "is security_invoker and anon RLS
+      // returns no rows". Both halves are false, and believing them is why a
+      // contact leak sat on that view unnoticed: it has no security_invoker
+      // reloption, so it runs as its OWNER and bypasses profiles RLS entirely,
+      // and anon holds SELECT on it. Verified as anon: 2 rows readable.
+      // The RPC is still the right call here — it is the narrow, intentional
+      // lookup — but not for the reason previously written.
       if (subdomain) {
         // No .maybeSingle(): against a RETURNS TABLE function it sends the
         // object Accept header, which makes PostgREST answer 406 on the (common)

@@ -130,7 +130,7 @@ export default function SalesmanProfilePage() {
         });
       }
 
-      const [ownedRes, assignedRes, featuredRes, soldOwnedRes, soldAssignedRes] = await Promise.all([
+      const [ownedRes, assignedRes, featuredRes, soldStatsRes] = await Promise.all([
         supabase.from('public_car_listings')
           .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id')
           .eq('dealer_id', p.id).in('status', ['available', 'reserved']).order('created_at', { ascending: false }),
@@ -141,8 +141,14 @@ export default function SalesmanProfilePage() {
         // owned by the dealer, assigned_to null) — the two queries above miss
         // those, so pull them via a SECURITY DEFINER RPC.
         supabase.rpc('get_salesman_featured_listings', { p_salesman_id: p.id }),
-        supabase.from('public_car_listings').select('id', { count: 'exact', head: true }).eq('dealer_id', p.id).eq('status', 'sold'),
-        supabase.from('public_car_listings').select('id', { count: 'exact', head: true }).eq('assigned_to', p.id).eq('status', 'sold'),
+        // Sold count comes from seller_public_stats — the SAME source the
+        // marketplace card reads as public_car_listings.seller_sold_count.
+        // This used to be two counts (dealer_id + assigned_to) added together,
+        // which double-counted every car where the seller is BOTH owner and
+        // assignee (14 of 26 sold cars live), so the mini page claimed roughly
+        // twice what the card showed for the same seller. The view does a
+        // count(DISTINCT listing_id) over the union, so it cannot double-count.
+        supabase.from('seller_public_stats').select('sold_count').eq('seller_id', p.id).maybeSingle(),
       ]);
       if (cancelled) return;
 
@@ -161,7 +167,7 @@ export default function SalesmanProfilePage() {
         return true;
       });
 
-      setSoldCount((soldOwnedRes.count || 0) + (soldAssignedRes.count || 0));
+      setSoldCount(Number(soldStatsRes.data?.sold_count) || 0);
       setListings(lst);
       setLoading(false);
     }

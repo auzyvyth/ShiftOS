@@ -372,6 +372,16 @@ leads. Nothing errors visibly — the caller logs and moves on.
   columns, and only with identical names/types/order for the existing ones. To
   remove or reorder a column you must DROP + CREATE — which drops every grant, so
   re-assert them explicitly (see the share-token rules about never copying grants).
+- **Before dropping a view, search `pg_proc` too, not just `pg_depend`.** A
+  function declared `RETURNS SETOF <view>` holds a hard dependency on the view's
+  ROW TYPE, and the usual `pg_depend`-on-`pg_rewrite` query finds only dependent
+  VIEWS — it returns zero rows and the DROP still fails. `get_salesman_featured_
+  listings(uuid)` is one of these on `public_car_listings`. Drop and recreate the
+  function around the view in the SAME migration and re-assert its EXECUTE grants;
+  a body of `select v.*` follows the new column set with no edit.
+- Because a DROP + CREATE of an anon-facing view is the expensive, risky half,
+  batch every column you intend to remove into ONE migration. Do not pay that
+  cost once per column.
 
 ## Edge functions — THE REPO IS NOT THE SOURCE OF TRUTH (read before touching one)
 Plain version: what is running on Supabase is often NOT what is in `supabase/functions/`.
@@ -443,13 +453,57 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
   `/salesman-premium`, `/salesman`, or `/dashboard` per role) unless the caller passes
   an explicit URL. Both trigger functions swallow errors (`exception when others` +
   `raise warning`) so a push failure never blocks the notification row write.
+- **ONE DEVICE, ONE IDENTITY: `push_subscriptions` is UNIQUE on `endpoint`.**
+  It was UNIQUE (user_id, endpoint), so one phone could be registered under
+  several accounts at once and nothing ever removed the stale rows — the only
+  cleanup in the system was send-push deleting on a 410. Live when this was
+  found: 13 rows across 9 devices, 3 of them carrying more than one identity
+  (one held a salesman, a buyer AND the superadmin), and one browser carrying
+  two different anonymous guests a day apart. Whoever registers last owns the
+  device.
+  - Registering goes through **`push_register_device(p_subscription)`**, never a
+    client upsert. RLS is `auth.uid() = user_id` for every command, so the
+    UPDATE half of an upsert is checked against the row ALREADY there — user B
+    upserting onto a phone user A once used is rejected outright, and B could
+    never turn notifications on at all. The RPC drops the stale row and claims
+    the endpoint atomically, writing `user_id` from `auth.uid()` and never from
+    anything the caller passes.
+  - Signing out calls **`push_forget_device(p_endpoint)`**, from the
+    `SIGNED_OUT` branch of `usePushHeal` (App.jsx) — NOT from the ~19
+    `supabase.auth.signOut()` call sites. It has to be a SECURITY DEFINER
+    function taking the endpoint as an ARGUMENT because by then there is no
+    session: `auth.uid()` is null and an RLS delete cannot work. The endpoint is
+    the credential, and only that browser holds it. Guard the `INITIAL_SESSION`
+    event — it also reports a null session, on every logged-out marketplace page
+    load.
+  - `push_subscriptions(user_id)` has its own index. The old composite unique
+    was doubling as the index for send-push's `.in("user_id", ...)`, the one
+    query this table exists for; dropping it without a replacement turns every
+    push into a seq scan.
+- **`push_home_path` routes `role='buyer'` to `/account/messages`.** It used to
+  fall through to `else '/dashboard'` — the dealer dashboard, which a buyer
+  cannot use. Chat was unaffected (`chat_after_message` passes its URL
+  explicitly); anything relying on the default was not.
+- **The buyer's own on/off switch is `PushToggle` on `/account`.** Before that a
+  buyer could switch notifications on from inside a conversation and then had
+  nowhere to see the state or turn them back off — the toggle was mounted on
+  every seller panel and no buyer surface. The Bell higher up that page is email
+  price alerts, a different thing.
+- **Platform console > Buyers shows the state** — `push_device_count` /
+  `push_last_at` / `chat_unread` from `get_buyer_accounts`, device rows and
+  thread state from `get_buyer_detail`, and a "Can't be reached" filter (unread
+  reply + no device). Both RPCs are SECURITY DEFINER because
+  `push_subscriptions` is owner-only RLS: a superadmin `.from()` returns an
+  EMPTY ARRAY WITH NO ERROR and the panel would read "push off" for everyone
+  while looking correct. Neither RPC returns an endpoint, subscription keys, or
+  a message body.
 - **VAPID keys are permanent. NEVER regenerate them.** Every push subscription is
   cryptographically bound to the public key it was created with. Swap the key and every
   existing subscription dies silently — no error the user ever sees, they just stop
   getting notifications and cannot be migrated. If a key must change, every user has to
   re-subscribe from scratch. There is also no such thing as running two keys side by side.
 - **BUYERS get push too, and the ask lives in the conversation** —
-  `src/components/chat/BuyerPushPrompt.jsx`, rendered by `ChatThread` for
+  `src/components/chat/PushPromptStrip.jsx`, rendered by `ChatThread` for
   `role='buyer'` after the buyer has sent their FIRST message (so it covers both
   BuyerChat on the car page and BuyerInbox on /account/messages, one
   implementation). A seller's reply already pushed the buyer
@@ -461,6 +515,16 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
   both sides share `usePushNotifications`, which owns every browser trap, and a
   permission prompt before the buyer has typed anything gets reflexively blocked
   — a denied permission is a dead end no later prompt can recover.
+- **The push prompt is PERSISTENT, and SELLERS get it too.** `PushPromptStrip`
+  takes `audience='buyer' | 'seller'`; the seller copy renders above the thread
+  list in `SellerInbox`, because `PushToggle` lives in Settings and Settings is
+  the one screen a rep never opens — so a seller with the app shut heard nothing
+  when a buyer messaged and had no way to learn that was even a setting.
+  Dismissal is COMPONENT STATE ONLY — it is deliberately not written to
+  localStorage (it was, first forever, then for a week). One reflexive tap
+  otherwise silenced the single prompt whose whole job is to arrive at the
+  moment it matters, and the person then sat in a chat that could never reach
+  them. The strip stops rendering for good only when `subscribed` is true.
 - iOS only allows web push for a PWA installed to the home screen (16.4+). PWA-1 shipped
   the install prompt, so that prerequisite is met — `src/components/InstallPrompt.jsx`.
 - The local `Notification.permission` code in Salesman Lite
@@ -554,6 +618,21 @@ Any AI message prompt must also forbid inventing a price, discount, deposit,
 instalment, trade-in value, loan rate or financing approval; if a number is
 needed, the draft asks the buyer to confirm with the salesman.
 
+### An AI call that answers per-row MUST be capped to fit its max_tokens
+`ai-proxy` pins `max_tokens` PER FEATURE server-side (`FEATURES`, index.ts:14) —
+`lead_score` 512, `wa_reply` 1024, `sales_manager`/`crm_assist` 1000. A prompt
+that sends N rows and asks for N answers grows with the user's data and silently
+blows that budget: the reply truncates mid-JSON, `JSON.parse` throws, and these
+call sites all `catch { /* silent */ }`, so the feature renders NOTHING and no
+error is ever logged. Lead scoring shipped this way and was dead for the only two
+reps with enough leads to need it (82 leads -> ~3,700 tokens against 1,024).
+- Cap the batch, and echo a short INDEX rather than a 36-char uuid per row.
+- Do not ask for prose you do not render. Lead scoring returned a `reason`
+  sentence per lead that was stored on every score and displayed nowhere.
+- Budget it: rows x per-row tokens must fit the feature's cap with room to spare.
+- Always pass `feature:` — an unknown or missing key falls back to `general`,
+  which bills the wrong bucket AND silently changes the token budget.
+
 ## In-app buyer chat — the AI must never read a raw number
 Buyers message sellers inside ShiftOS (not WhatsApp). Built 2026-08-23.
 - Tables: `chat_threads` (one per listing+buyer, unique index), `chat_messages`
@@ -593,13 +672,29 @@ Buyers message sellers inside ShiftOS (not WhatsApp). Built 2026-08-23.
   thread lookup takes the newest (`order last_message_at desc, limit 1`);
   `.maybeSingle()` throws PGRST116 the moment a buyer chats about two cars, and
   the failure looks like "this buyer has no conversation".
-- **The chat tab in Lite and Premium is FULL HEIGHT** (`SellerInbox
-  fullHeight`), not a 540px island in a tall empty column. The height is
-  MEASURED (`getBoundingClientRect().top` -> `window.innerHeight`), not
-  hardcoded, because Lite and Premium have different chrome; the page passes its
-  own `bottomInset` (Lite `isMobile ? 80 : 24`, Premium 24). Uses
-  `window.innerHeight`, NOT `visualViewport.height` — the latter shrinks for the
-  keyboard and would collapse the panel mid-message.
+- **A conversation is a SCREEN, never a pane in a card. Two screens, and the
+  open one is full-bleed.** `SellerInbox` renders the thread list; tapping a row
+  portals `ChatThread` into a fixed layer over the whole viewport (back arrow
+  returns). Same shape in `BuyerInbox` and in `BuyerChat`'s sheet. Do NOT put
+  the 320px-list-beside-thread split pane back, and do NOT wrap a conversation
+  in a bordered card inside a tab that already has a header and a nav.
+- **The full-screen layer is sized off `useVisualViewport`, never `vh` /
+  `window.innerHeight`.** `top: vv.offsetTop; height: vv.height` — so when the
+  keyboard opens the layer's bottom edge lands ON the keyboard: the composer
+  follows it up, the header does not move, and the message list just gets
+  shorter. The old chat tab was sized off `window.innerHeight` (the LAYOUT
+  viewport, which does not shrink for a keyboard), so the browser's only way to
+  reach a focused composer was to scroll — and the whole chat box flew upward.
+  Any surface that pins its own container this way passes `viewportPinned` to
+  `ChatThread` so the composer does not pin itself a second time.
+  `SellerInbox` still MEASURES the list panel's height off `window.innerHeight`
+  (`getBoundingClientRect().top`, minus the page's own `bottomInset` — Lite
+  `isMobile ? 80 : 24`, Premium 24). That is correct for the LIST, which must
+  not collapse when a keyboard opens somewhere else.
+- **Full-bleed does not mean full-width text**: `ChatThread contentMaxWidth`
+  caps and centres the header, message column and composer (780 seller / 760
+  buyer) so bubbles don't sit a foot apart on a monitor. It caps the CONTENT,
+  not the scroller — capping the scroller moves the scrollbar off the edge.
 - **The thread header has a pipeline-stage button** (`SellerInbox` stagePill ->
   `ChatThread headerBelow`). Chat is the one inbound channel where the seller is
   answering someone whose pipeline card they cannot see. It expands INSIDE the
@@ -648,7 +743,7 @@ nobody once the tab closed — push needs a granted permission on a live device.
 The fix is an EMAIL ADDRESS, not an account: we need somewhere to send to, and
 we never fuse two identities.
 - Ask lives in `src/components/chat/BuyerEmailPrompt.jsx`, rendered by
-  `ChatThread` in the same slot and on the same trigger as `BuyerPushPrompt` —
+  `ChatThread` in the same slot and on the same trigger as `PushPromptStrip` —
   AFTER the buyer's first message, never on chat open. ONE ask at a time: email
   first, push only once an address exists (`buyerHasEmail` in ChatThread).
 - **`updateUser({ email })`, never `signInWithOtp`.** updateUser upgrades the

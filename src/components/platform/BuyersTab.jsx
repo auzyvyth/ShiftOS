@@ -8,10 +8,20 @@ import InfoHint from "../ui/InfoHint";
 // reads, for two reasons:
 //   1. signup date / provider / last login / 2FA / ban state live in auth.users,
 //      which the anon key cannot select at all.
-//   2. saved_cars, price_alerts, reviews and listing_comments are owner-only RLS.
-//      A superadmin selecting them from the client gets an EMPTY ARRAY WITH NO
-//      ERROR — the panel would show "0 saved" for every buyer and look correct.
+//   2. saved_cars, price_alerts, reviews, listing_comments AND push_subscriptions
+//      are owner-only RLS. A superadmin selecting them from the client gets an
+//      EMPTY ARRAY WITH NO ERROR — the panel would show "0 saved" and "push off"
+//      for every buyer and look entirely correct.
 // If you ever "optimise" this into plain .from() calls, both break silently.
+//
+// The RPCs never return a push endpoint or its keys, only that a device exists,
+// when it registered and roughly what it is. That subscription JSON is the
+// credential for pushing to someone's phone — same rule as share tokens:
+// whatever can read the row must not be able to replay it.
+//
+// "Can't be reached" is the number that matters here: notifications off is
+// harmless on its own, and only becomes a problem when a seller is sitting
+// there waiting for the buyer to see a reply.
 
 function num(n) { return Number(n || 0).toLocaleString("en-MY"); }
 
@@ -36,6 +46,12 @@ function daysSince(str) {
 function money(n) {
   if (n == null) return null;
   return "RM " + Number(n).toLocaleString("en-MY");
+}
+
+// A seller has replied and is waiting, and the buyer has no device that can be
+// notified — so the conversation is going nowhere and nobody can tell.
+function unreachable(b) {
+  return Number(b.chat_unread) > 0 && Number(b.push_device_count) === 0;
 }
 
 // A buyer needs attention if the account is in a bad or unusual state.
@@ -100,6 +116,7 @@ const FILTERS = [
   { id: "dormant", label: "Dormant" },
   { id: "engaged", label: "Engaged" },
   { id: "flagged", label: "Flagged" },
+  { id: "unreachable", label: "Can't be reached" },
 ];
 
 export default function BuyersTab() {
@@ -165,6 +182,7 @@ export default function BuyersTab() {
     if (filter === "dormant") r = r.filter(b => daysSince(b.last_sign_in_at) > 30);
     if (filter === "engaged") r = r.filter(b => Number(b.saved_count) + Number(b.alert_count) + Number(b.review_count) > 0);
     if (filter === "flagged") r = r.filter(b => flagsFor(b).length > 0);
+    if (filter === "unreachable") r = r.filter(unreachable);
     if (search.trim()) {
       const q = search.toLowerCase();
       r = r.filter(b => [b.full_name, b.email, b.phone].some(v => v && String(v).toLowerCase().includes(q)));
@@ -180,6 +198,8 @@ export default function BuyersTab() {
       google: rows.filter(b => b.provider === "google").length,
       engaged: rows.filter(b => Number(b.saved_count) + Number(b.alert_count) > 0).length,
       inPipeline: rows.filter(b => Number(b.lead_count) > 0).length,
+      pushOn: rows.filter(b => Number(b.push_device_count) > 0).length,
+      unreachable: rows.filter(unreachable).length,
       flagged: rows.filter(b => flagsFor(b).length > 0).length,
     };
   }, [rows]);
@@ -211,6 +231,8 @@ export default function BuyersTab() {
             <Card label="Signed up w/ Google" value={num(stats.google)} accent="#93c5fd" />
             <Card label="Saved or alerted" value={num(stats.engaged)} accent="#c084fc" />
             <Card label="Matched to a lead" value={num(stats.inPipeline)} accent={stats.inPipeline > 0 ? "#4ade80" : "#f0f0f0"} />
+            <Card label="Notifications on" value={num(stats.pushOn)} />
+            <Card label="Can't be reached" value={num(stats.unreachable)} accent={stats.unreachable > 0 ? "#facc15" : "#f0f0f0"} />
             <Card label="Needs attention" value={num(stats.flagged)} accent={stats.flagged > 0 ? "#facc15" : "#f0f0f0"} />
           </div>
 
@@ -262,6 +284,7 @@ export default function BuyersTab() {
                           <span style={{ fontSize: 13, color: "#e5e7eb", fontWeight: 600 }}>{b.full_name || "No name"}</span>
                           <Pill label={b.provider === "google" ? "GOOGLE" : "EMAIL"} tone={b.provider === "google" ? "blue" : "grey"} />
                           {Number(b.lead_count) > 0 && <Pill label={`${b.lead_count} LEAD${b.lead_count > 1 ? "S" : ""}`} tone="green" />}
+                          {unreachable(b) && <Pill label="CAN'T BE REACHED" tone="amber" />}
                           {flags.map(f => <Pill key={f.label} label={f.label} tone={f.tone} />)}
                         </div>
                         <p style={{ margin: 0, fontSize: 11, color: "#6b7280", wordBreak: "break-word" }}>
@@ -269,6 +292,7 @@ export default function BuyersTab() {
                           <span style={{ color: "#475569" }}> · joined {fmtDate(b.signed_up_at)}</span>
                           <span style={{ color: "#475569" }}> · seen {timeAgo(b.last_sign_in_at)}</span>
                           {engagement && <span style={{ color: "#93c5fd" }}> · {engagement}</span>}
+                          <span style={{ color: "#475569" }}> · {Number(b.push_device_count) > 0 ? "push on" : "push off"}</span>
                         </p>
                       </div>
                       <span style={{ color: "#475569", fontSize: 13, flexShrink: 0 }}>{open ? "▲" : "▼"}</span>
@@ -341,6 +365,49 @@ export default function BuyersTab() {
                                   <p style={{ fontSize: 12, color: "#4b5563", marginTop: 12 }}>Signed up but never saved, alerted or reviewed anything.</p>
                                 )}
                               </>
+                            )}
+                          </Block>
+
+                          <Block title="Notifications">
+                            <Detail
+                              label="Push notifications"
+                              value={Number(b.push_device_count) > 0
+                                ? `On — ${b.push_device_count} device${Number(b.push_device_count) > 1 ? "s" : ""}`
+                                : "Off — no device registered"} />
+                            {detailLoading === b.id && <p style={{ fontSize: 12, color: "#4b5563", marginTop: 12 }}>Loading…</p>}
+                            {d?.push_devices?.length > 0 && (
+                              <div style={{ marginTop: 12 }}>
+                                <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>Devices</p>
+                                {d.push_devices.map(pd => (
+                                  <p key={pd.registered_at} style={{ margin: "0 0 3px", fontSize: 12, color: "#cbd5e1" }}>
+                                    {pd.service}
+                                    <span style={{ color: "#6b7280" }}> — since {fmtDate(pd.registered_at)}</span>
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                            {d && (
+                              d.chats?.length > 0 ? (
+                                <div style={{ marginTop: 12 }}>
+                                  <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>Conversations</p>
+                                  {d.chats.map(c => (
+                                    <p key={c.thread_id} style={{ margin: "0 0 3px", fontSize: 12, color: "#cbd5e1" }}>
+                                      {c.car || "a car"}
+                                      <span style={{ color: "#6b7280" }}> — {c.seller_name || "unknown seller"}, {timeAgo(c.last_message_at)}</span>
+                                      {Number(c.buyer_unread) > 0 && (
+                                        <span style={{ color: "#facc15" }}> · {c.buyer_unread} unread</span>
+                                      )}
+                                    </p>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p style={{ fontSize: 12, color: "#4b5563", marginTop: 12 }}>No in-app conversations.</p>
+                              )
+                            )}
+                            {unreachable(b) && (
+                              <p style={{ fontSize: 12, color: "#facc15", marginTop: 12, lineHeight: 1.5 }}>
+                                A seller has replied and this buyer has no device that can be notified. The unread-chat email still goes out every 30 minutes.
+                              </p>
                             )}
                           </Block>
 

@@ -56,12 +56,14 @@ Mudah/Carlist cannot copy without building a CRM.
   the WhatsApp tap) rather than the stage change — then revisit. Do not publish
   a buyer-facing speed claim off the stage-change proxy.
 
-- [ ] **TRUST-3: `SalesmanProfilePage` still counts sold cars its own way.**
-  `:144-145` runs two client-side counts (`dealer_id` + `assigned_to`);
-  `seller_public_stats` now defines the same number in one place and the card
-  reads it. Point the mini page at the view so the two cannot drift — the card
-  saying 12 and the agent's page saying 11 is the exact class of split-brain
-  CLAUDE.md keeps warning about.
+- [x] **TRUST-3 — DONE 2026-09-04, and it was a live bug, not just drift.**
+  The two client-side counts were ADDED together (`soldOwned + soldAssigned`),
+  so every car where the seller is both owner and assignee counted twice —
+  **14 of 26 sold cars live**. The mini page was claiming roughly double what
+  the marketplace card showed for the same seller. `SalesmanProfilePage` now
+  reads `seller_public_stats.sold_count`, the same source
+  `public_car_listings.seller_sold_count` is built from, and that view does a
+  `count(DISTINCT listing_id)` over the union so it cannot double-count.
 
 ## Listing reports + buyer accessibility — 2026-09-03 (SHIPPED, follow-ups open)
 
@@ -133,9 +135,17 @@ Three findings fixed and pushed; the server half is already LIVE.
   remaining gap and is free text a rep typed, which can hold a phone or an IC.
   Suggested fix: run notes through the same redaction idea as `redact_for_ai`
   before they leave the browser.
-- **SEC-AI-QUOTA.** That same call omits `feature: "lead_score"`, so it bills the
-  `general` bucket even though `ai-proxy` defines a `lead_score` key. One-line
-  fix, accounting only, not security.
+- **SEC-AI-QUOTA — DONE 2026-09-04. It was NOT accounting-only, and the
+  one-line fix as written would have made things worse.** Adding
+  `feature: "lead_score"` moves the call from `general` (max_tokens 1024) to
+  `lead_score` (512). The request was already over budget: every lead went in
+  uncapped, each answer echoed a 36-char uuid plus a sentence of `reason`, and
+  the busiest rep has 82 leads — roughly 3,700 tokens of reply. The response
+  truncated, `JSON.parse` threw, and `catch { /* silent */ }` swallowed it, so
+  **AI lead scoring silently rendered nothing for the only two reps with enough
+  leads to need it.** Fixed together: score the 40 most recently touched leads,
+  answer by index instead of uuid, and drop `reason` (it was stored on every
+  score and rendered nowhere). Now roughly 400 tokens against 512.
 
 **Checked and found SOUND — do not re-audit these without a reason:** all four
 `get_salesman_*` analytics RPCs embed an ownership predicate; `leads` RLS
@@ -469,34 +479,48 @@ the role that would exploit it, probe rolled back. What is LEFT:
   want a middle ground, the shape is "reveal to a buyer who has started a chat
   thread", not "publish to everyone".
 
-- [ ] **SWEEP-2 — DB half is now UNBLOCKED (frontend shipped in #352 / `b7d1028`).
-  Do not run it the same minute — see the cached-bundle note at the end.**
-  `ComparePage` was the last reader of `car_documents` off the view
-  (`SELECT_COLS:22`, `completeness():40`, the Documents row `:675`) and now uses
-  `document_types` like CarDetailPage already did. That fix IS on prod as of
-  `b7d1028`, so the blocker described here is cleared — but a browser still
-  running the PREVIOUS JS bundle keeps asking for `car_documents`, and PostgREST
-  400s on an unknown column, which empties /compare for that visitor. Give the
-  old bundles time to age out (a day is plenty) before dropping, and re-confirm
-  no select names the column: `grep -rn "car_documents" src/` should only match
-  dealer-side reads of `car_listings`, never `public_car_listings`.
-  `included_services_cost` is already unused by every public-view consumer
-  (verified against `origin/main`) and could go today, but both columns are one
-  DROP + CREATE of a 66-row anon-facing view, so do them in a single migration
-  rather than paying that risk twice for a column that is a hardcoded NULL.
-  AFTER this branch is live on prod, recreate `public_car_listings` without
-  `car_documents` and `included_services_cost` (keep `document_types`,
-  `seller_sold_count` and everything else), then re-assert grants explicitly —
-  `revoke all ... from anon, authenticated, public;` then
-  `grant select ... to anon, authenticated;` — and re-check `service_role`.
-  Nothing else depends on the view (checked `pg_depend`), so the drop is clean.
+- [x] **SWEEP-2 — DONE 2026-09-04.** `public_car_listings` recreated without
+  `car_documents` and `included_services_cost`, and — since a DROP + CREATE of
+  the one anon-facing view is the expensive half and this file already says not
+  to pay it twice — without `plate_number` and `vin` as well. All four had ZERO
+  consumers: checked every `.from('public_car_listings')` call in `src/`, every
+  `api/` handler, every edge function, `pg_depend` for dependent views, and
+  `pg_proc` for functions returning its row type. Migration
+  `20260904c_sweep2_trim_public_car_listings.sql`.
+  `plate_number` and `vin` are the leftovers SWEEP-1 noted were "still ON the
+  view" — the registration plate and a dead duplicate of `vin_number`, both
+  published to anon and read by nobody. `vin_number` (shown as "Chassis No.")
+  is untouched; whether to publish IT is still SWEEP-1's open decision.
+  Trap hit and worth remembering: `get_salesman_featured_listings(uuid)`
+  RETURNS SETOF this view, so it holds a hard dependency on the row type and
+  Postgres refused the DROP. `pg_depend` on rewrite rules only finds dependent
+  VIEWS — it does not find functions. The function was dropped and recreated
+  around the view (its body is `SELECT pcl.*`, so it followed the new column
+  set unedited) and its grants re-asserted explicitly.
+  Grants were NOT copied off the old objects. The view now has SELECT only for
+  anon/authenticated/service_role; the INSERT/UPDATE/DELETE/TRUNCATE
+  service_role used to carry could never have functioned (the view is not
+  auto-updatable) and were deliberately not restored. Verified as anon after
+  the fact: 66 rows readable, unchanged; `seller_sold_count` present; the
+  featured-listings RPC still returns rows as anon; all four columns gone.
 
-- [ ] **SWEEP-3 — two comments in the app state the opposite of the truth about
-  the public views.** `useCTAContext.js:48` and `useTenant.js:141` both say
-  `public_dealer_profiles` "is security_invoker and anon RLS returns no rows".
-  It is SECURITY DEFINER and anon reads it fine — that wrong belief is why the
-  email/phone leak sat there. Both call sites already use the RPC, so only the
-  comments are wrong; fix the words so the next person is not misled.
+- [x] **SWEEP-2b — found while doing the above.** `seller_public_stats` carried
+  INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER for **anon** and
+  authenticated — Supabase's blanket default-privileges grant, not anyone's
+  decision. None could function (aggregate view, not auto-updatable), but they
+  read as intent on an anon-facing object. Now SELECT only; anon SELECT stays on
+  purpose, it is a public trust signal.
+  Migration `20260904d_seller_public_stats_read_only_grants.sql`.
+
+- [x] **SWEEP-3 — DONE 2026-09-04.** Both comments (`useCTAContext.js:48`,
+  `useTenant.js:141`) claimed `public_dealer_profiles` "is security_invoker and
+  anon RLS returns no rows". Both halves are false and now say so explicitly,
+  along with why the RPC is still the right call (it is narrow, not because the
+  view is closed). Re-verified before rewriting: the view has no
+  `security_invoker` reloption, so it runs as its owner and never consults
+  `profiles` RLS, and anon holds SELECT. Probed as anon: **2 rows readable, 0
+  with an email, 2 with a whatsapp_number** — so SWEEP-4's fix still holds and
+  the remaining public field is the storefront CTA number, which is intended.
 
 - [x] **SWEEP-4 — DONE 2026-09-03. The constant did not need renaming; the code
   it fed was dead.** `Footer.jsx` hard-stops on `!isSubdomain()`, so the
@@ -547,7 +571,14 @@ the role that would exploit it, probe rolled back. What is LEFT:
   `api/whatsapp-lead.js` makes now resolves and stores the phone as
   `60123456789`.
 
-- [ ] **SWEEP-7 — `push_swap_endpoint` accepts any https host.** The service
+- [x] **SWEEP-7 — ALREADY DONE (closed with the push work, verified 2026-09-04).**
+  `push_swap_endpoint` now calls `push_endpoint_allowed(v_new)` instead of the
+  old `^https://host/` shape check. Probed live: `fcm.googleapis.com` and
+  `web.push.apple.com` pass; `evil.example.com`, the lookalike
+  `fcm.googleapis.com.evil.com` and plain `http://` are all rejected.
+  Original note kept below for context.
+
+  ~~`push_swap_endpoint` accepts any https host.~~ The service
   worker has no Supabase session, so the OLD endpoint string is deliberately the
   credential (documented in `public/push-sw.js:76`) — that part is a reasonable
   design. What is loose is the NEW endpoint: it only has to match

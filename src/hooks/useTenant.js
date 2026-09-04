@@ -138,9 +138,15 @@ export default function useTenant() {
         return;
       }
 
-      // RPC (SECURITY DEFINER) — public_dealer_profiles is security_invoker and
-      // subject to profiles RLS, which has no anon-read policy for dealer rows.
-      // Anonymous storefront visitors must go through this narrow lookup instead.
+      // RPC (SECURITY DEFINER) — deliberately narrow, one dealer by subdomain.
+      //
+      // NOT because "public_dealer_profiles is security_invoker and subject to
+      // profiles RLS", which is what this comment used to say and is wrong in
+      // both halves: the view carries no security_invoker reloption, so it runs
+      // as its owner and never consults profiles RLS, and anon holds SELECT on
+      // it (verified as anon: 2 rows readable). That mistaken belief is how a
+      // contact-detail leak survived on the view. Use the RPC because it
+      // returns one dealer and only the fields a storefront needs.
       // Look up the dealer for this subdomain, retrying on transient RPC
       // failures. A backgrounded mobile tab re-mounts and fires this while the
       // network is still waking up — a FAILED request must never overwrite a

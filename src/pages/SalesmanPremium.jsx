@@ -1237,18 +1237,38 @@ export default function SalesmanPremium() {
  if (rows.length > 0) {
  setScoreLoading(true);
  try {
- const payload = rows.map((l) => ({
- id: l.id, buyer_name: l.buyer_name, stage: l.stage,
+ // The reply has to fit ai-proxy's server-pinned max_tokens for this
+ // feature (lead_score = 512). It did NOT: every lead went in uncapped,
+ // each answer echoed a 36-char uuid plus a sentence of "reason", and the
+ // busiest rep has 82 leads -> roughly 3,700 tokens of reply against a
+ // 1,024 budget. The response truncated, JSON.parse threw, and the catch
+ // below swallows it, so scoring silently rendered nothing for the only
+ // two reps who have enough leads to need it.
+ // Three changes keep it inside the budget: score the 40 most recently
+ // touched leads (a stale lead's score is not what anyone opens this for),
+ // answer by INDEX instead of uuid, and drop "reason" — it was stored on
+ // every score and never rendered anywhere.
+ const batch = [...rows]
+ .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0))
+ .slice(0, 40);
+ const payload = batch.map((l, i) => ({
+ i, buyer_name: l.buyer_name, stage: l.stage,
  notes: l.notes, updated_at: l.updated_at,
  phone: l.phone? "present" : "missing",
  }));
- const prompt = `You are a sales AI. Score each lead as "hot", "warm", or "cold" based on stage, recency, notes, and phone presence.\nLeads: ${JSON.stringify(payload)}\nReturn ONLY a JSON array: [{"id":"...","score":"hot"|"warm"|"cold","reason":"one short sentence"}]`;
- const { data: aiData } = await supabase.functions.invoke("ai-proxy", { body: { prompt } });
+ const prompt = `You are a sales AI. Score each lead as "hot", "warm", or "cold" based on stage, recency, notes, and phone presence.\nLeads: ${JSON.stringify(payload)}\nReturn ONLY a JSON array, one entry per lead, echoing the lead's "i": [{"i":0,"score":"hot"|"warm"|"cold"}]`;
+ // feature:"lead_score" bills the right bucket. Without it ai-proxy fell
+ // back to the "general" key, so lead scoring was charged to the wrong
+ // line in the per-feature usage breakdown.
+ const { data: aiData } = await supabase.functions.invoke("ai-proxy", { body: { prompt, feature: "lead_score" } });
  const raw = aiData?.reply?? aiData?.content?? aiData?.text?? aiData?.message?? "";
  const parsed = JSON.parse(typeof raw === "string"? raw : JSON.stringify(raw));
  if (Array.isArray(parsed)) {
  const map = {};
- parsed.forEach((r) => { if (r.id) map[r.id] = { score: r.score, reason: r.reason }; });
+ parsed.forEach((r) => {
+ const lead = batch[r?.i];
+ if (lead?.id && r.score) map[lead.id] = { score: r.score };
+ });
  setLeadScores(map);
  }
  } catch { /* silent */ }

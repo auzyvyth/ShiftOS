@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Bell, ArrowLeft, ArrowRight, LogOut, Store, Check, X, Clock, PackageCheck, User, MessageSquare, ChevronRight } from 'lucide-react';
+import { Heart, Bell, BellRing, ArrowLeft, ArrowRight, LogOut, Store, Check, X, Clock, PackageCheck, User, MessageSquare, ChevronRight } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useSavedCars, useSavedCarsDetails } from '../hooks/useSavedCars';
 import { useBuyerGuard } from '../hooks/useBuyerGuard';
@@ -8,6 +8,7 @@ import { useBuyerThreads } from '../hooks/useChat';
 import { useCTAContext } from '../hooks/useCTAContext';
 import { useCompare, MAX as COMPARE_MAX } from '../hooks/useCompare';
 import ShowroomCard from '../components/ShowroomCard';
+import PushToggle from '../components/PushToggle';
 import { POST_SALE_STEPS, STATUS_CONFIG } from '../utils/postSaleSteps';
 
 const STEP_LABEL = Object.fromEntries(POST_SALE_STEPS.map((s) => [s.key, s.label]));
@@ -314,6 +315,24 @@ export default function AccountPage() {
               })}
             </div>
           )}
+        </section>
+
+        {/* Push notifications. A buyer could switch these on from inside a
+            conversation and then had nowhere at all to see the state or turn
+            them back off — PushToggle was mounted on every seller panel and on
+            no buyer surface, and the Bell above it is email price alerts, which
+            is a different thing entirely. Same component as the seller panels,
+            so there is one implementation of every browser trap (iOS install
+            requirement, denied permission, browser/database drift). */}
+        <section style={{ marginBottom: 40 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+            <BellRing size={18} color="#dc2626" />
+            <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#111827' }}>Notifications</h2>
+          </div>
+          <PushToggle
+            userId={session?.user?.id}
+            theme="light"
+            description="Get an alert on this device the moment a seller replies to you, even with XDrive closed." />
         </section>
 
         {/* Become a seller — Salesman Lite. Demoted to the bottom: a buyer who

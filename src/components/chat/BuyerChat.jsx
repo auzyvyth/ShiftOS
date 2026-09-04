@@ -195,14 +195,17 @@ export default function BuyerChat({
         <Loader2 size={20} style={{ color: 'rgba(255,255,255,0.4)', animation: 'bcspin 1s linear infinite' }} />
       </div>
     }>
-      {/* Explicit px height off the VISUAL viewport, not `vh`: the thread has to
-          end where the keyboard begins, and `vh` never shrinks for a keyboard.
-          The subtraction covers this sheet's own header plus breathing room. */}
-      <ChatThread threadId={threadId} role="buyer" theme="dark"
-        height={Math.max(260, Math.min(560, vv.height - 120))} showPrivacyNote
-        // Height already comes off the visual viewport and the panel around it
-        // is pinned to the same box, so the composer clears the keyboard here.
-        viewportPinned />
+      {/* Fills the sheet, which fills the visual viewport — so the conversation
+          is the screen, and the composer sits on the keyboard rather than in a
+          560px box floating above it. It used to be capped at 560px against a
+          taller phone, which is the "little chat section" this replaces. */}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+        <ChatThread threadId={threadId} role="buyer" theme="dark"
+          height="100%" bare showPrivacyNote contentMaxWidth={760}
+          // The panel around this is pinned to the visual viewport, so the
+          // composer clears the keyboard without pinning itself again.
+          viewportPinned />
+      </div>
     </Suspense>
   );
 
@@ -215,8 +218,8 @@ export default function BuyerChat({
     // the keyboard instead of behind it.
     <div onClick={close}
       style={{ position:'fixed', top: vv.offsetTop, left:0, right:0, height: vv.height, zIndex:11000, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(3px)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
-      <div onClick={e => e.stopPropagation()} className="bc-sheet"
-        style={{ background:'#0f1420', border:'1px solid rgba(255,255,255,0.10)', width:'100%', maxWidth:460, display:'flex', flexDirection:'column', fontFamily:"system-ui,sans-serif" }}>
+      <div onClick={e => e.stopPropagation()} className={`bc-sheet${onChooser ? '' : ' bc-full'}`}
+        style={{ background:'#0f1420', border: onChooser ? '1px solid rgba(255,255,255,0.10)' : 'none', width:'100%', maxWidth: onChooser ? 460 : 780, display:'flex', flexDirection:'column', fontFamily:"system-ui,sans-serif" }}>
 
         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 16px', borderBottom:'1px solid rgba(255,255,255,0.10)' }}>
           {!onChooser && (
@@ -237,14 +240,23 @@ export default function BuyerChat({
           </button>
         </div>
 
-        {onChooser ? chooser : chatGate}
+        {onChooser ? chooser : (
+          <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', overflowY: threadId && accepted ? 'hidden' : 'auto' }}>
+            {chatGate}
+          </div>
+        )}
       </div>
       <style>{`
         /* 100% = the visual viewport box set on the parent, so the sheet can
            never extend under the keyboard. Was 88vh, which could not shrink. */
         .bc-sheet{border-radius:18px 18px 0 0;max-height:100%;overflow-y:auto}
+        /* The conversation is the screen, not a card on it: no scroll of its
+           own (the message list does that), and full height so the composer
+           lands on the keyboard. */
+        .bc-full{height:100%;overflow:hidden;border-radius:0;border:none}
         @media(min-width:640px){
           .bc-sheet{border-radius:16px;margin-bottom:5vh;max-height:calc(100% - 5vh)}
+          .bc-full{height:100%;margin-bottom:0;border-radius:0}
         }
       `}</style>
     </div>
