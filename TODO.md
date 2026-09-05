@@ -1,8 +1,10 @@
 # ShiftOS — Pending Tasks
 
-> **NO BRANCH IN FLIGHT — branch off `origin/main` (2026-09-03, later session).**
-> `main` is at `b7d1028` (PR #352, squash-merged) and IS what production serves.
-> Safe to branch from. Local `main` was reset to it in the same sitting.
+> **BRANCH IN FLIGHT: `claude/market-demand-handoff-tc7cyl` (2026-09-05).**
+> `origin/main` is at `2f6c0c3` (PR #358, squash-merged) and IS what production
+> serves. The branch is a clean fast-forward from it — verified, no squash drift
+> — and carries the car-spec collection pipeline, the chassis-decode spec fill
+> and this refresh cron's migration file. NOT on staging and NOT on prod yet.
 >
 > **`main` was a month stale until today — know why, so it does not recur.**
 > Production was being served by `a5e58b4`, a commit on
@@ -28,12 +30,49 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## JPJ registration data now refreshes itself — 2026-09-05
+
+The Market Demand tab shipped reading four year-files that had been loaded BY
+HAND on 2026-09-05 and that nothing was ever going to touch again. There is no
+symptom when this goes stale: the numbers still render, they are just older
+every month. Migration `20260905p`, cron jobids 14 and 15.
+
+- **Two jobs, not one, because pg_net is asynchronous.** `net.http_get` returns a
+  request id and the body lands in `net._http_response` later, so a fetch and its
+  parse cannot share a transaction. `reg_refresh_start()` enqueues (Mon 02:00
+  UTC), `reg_refresh_finish()` drains (02:20). A response that has not arrived
+  yet is left pending rather than failed, for 30 minutes.
+- **Weekly, not monthly.** data.gov.my republishes the whole year-file when it
+  revises anything, so a weekly pull picks up corrections and not only the new
+  month. One 28MB fetch (2026's file today; it grows all year).
+- **Which years: the current one, plus the previous one during Jan-Mar.** That
+  window covers both late revisions to the closed year and the 1 Jan rollover,
+  when the new year's file may not exist yet.
+- **The truncation guard is the important part.** `reg_load_response` DELETEs the
+  whole year before inserting, so a half-received body would silently wipe most
+  of it and leave a table that still looks plausible. A year-file only ever
+  grows, so a body under 90% of the last good load's `total_bytes` is refused and
+  logged `ok=false`. Proven live inside a rolled-back probe: a 1KB body returned
+  "failed: body smaller than last good load" and left all 9,087 2026 rows intact.
+- Full round trip run live before scheduling: 52,571 rows and 3,048,094
+  registrations unchanged, 2026 rewritten cleanly, `ok=true`. Re-running is a
+  no-op, which is what makes a weekly job safe.
+- `reg_refresh_queue` has RLS on and deliberately NO policy — only the SECURITY
+  DEFINER job touches it. All three functions are revoked from `public`, `anon`
+  and `authenticated`; verified with `has_function_privilege`, not by reading the
+  migration back.
+- [ ] **JPJ-1: nothing alerts if the refresh fails.** A failed week writes
+  `reg_ingest_log.ok = false` and stops there. `notify_ops()` already exists and
+  is the one ops-alert entry point — call it from `reg_refresh_finish()` on a
+  failure so a silently stale tab cannot last a month.
+
 ## AI proxy was never metered, and would 403 the moment credits are funded — 2026-09-05
 
-> **DEPLOY REQUIRED: `ai-proxy` and `chat-assist` are FIXED IN THE REPO AND NOT
-> DEPLOYED.** The DB half (`20260905m`) is already live. Deploy both functions
-> with the next release or the repo/deployed gap this file keeps warning about
-> gets one entry wider.
+> **DEPLOYED 2026-09-05** — `ai-proxy` v21 and `chat-assist` v2. Both were
+> diffed against the deployed versions first (the repo was a strict superset:
+> nothing existed only on Supabase), and each kept its own `verify_jwt`
+> (ai-proxy false, chat-assist true). The DB half (`20260905m`) was already
+> live. The repo/deployed gap for these two is now closed.
 
 Found while triaging the SECURITY DEFINER grants. `ai-proxy` builds its client
 as `createClient(url, anonKey)` and then passes the caller's token only to
@@ -69,9 +108,11 @@ against the live DB inside a rolled-back DO block:
   ai-proxy's `resolveDealerId` exactly, which is what `get_my_dealer_id()`
   already computes; verified compatible with `chat-assist`, which resolves the
   dealer identically.
-- [ ] **AI-4: verify end to end when credits are funded.** Deploy both functions,
-  flip `AI_FEATURES_ENABLED`, then check `ai_request_log` grows by one row per
-  request and that the 401st request in a day is refused. Until a row lands in
+- [ ] **AI-4: verify end to end when credits are funded.** The deploy half is
+  done (see above); what is left is to flip `AI_FEATURES_ENABLED`, then check
+  `ai_request_log` grows by one row per request and that the 401st request in a
+  day is refused. `ai_request_log` was still at 0 rows on 2026-09-05, which is
+  expected while the flag is off — it is not proof the fix works. Until a row lands in
   that table, the quota is unproven — that is the lesson ACT-13 already taught
   (a config recorded as done is not done until data proves it fired).
 
