@@ -192,15 +192,15 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
     <>
       {!hideAnnouncement && <AnnouncementBar />}
       <style>{`
-        /* CHARCOAL bar, #2B323D. Near-black (#0f1115) was too heavy as a full
-           width band over a light page — it read as a void rather than as chrome.
-           #0f1115 stays as INK: the headline, the mega-menu link titles, the
-           wordmark. The surface is a grey.
-           The marketplace hero's search CONTROLS are painted this same hex
-           deliberately: the dark elements have to read as one system with light
-           bands between them, not as unrelated dark stripes. Change one, change
-           the other. */
-        .mh-root { position:sticky; top:0; z-index:100; background:#2B323D; border-bottom:1px solid rgba(255,255,255,.08); transition:box-shadow .25s,border-color .25s; font-family:'Outfit',sans-serif; }
+        /* NEAR-BLACK bar, #0f1115 — the same value this file already uses as ink
+           for the logo wordmark and the mega-menu link titles, so the bar is the
+           brand black rather than an invented colour.
+           Charcoal #2B323D was tried in between and rejected: on a light page a
+           grey bar reads as washed rather than as deliberate chrome. It is now
+           the ONLY dark surface on the marketplace — the hero below it is light
+           end to end — so it no longer has to colour-match anything beneath it,
+           which is what forced the softer grey. */
+        .mh-root { position:sticky; top:0; z-index:100; background:#0f1115; border-bottom:1px solid rgba(255,255,255,.08); transition:box-shadow .25s,border-color .25s; font-family:'Outfit',sans-serif; }
         .mh-root.scrolled { box-shadow:0 10px 30px rgba(0,0,0,.4); border-bottom-color:rgba(255,255,255,.14); }
         .mh-bar { max-width:1400px; margin:0 auto; padding:0 clamp(16px,3.5vw,44px); height:70px; display:flex; align-items:center; gap:clamp(14px,2.4vw,30px); }
 
@@ -223,7 +223,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
         .mh-nav-item { position:static; }
         .mh-nav-link, .mh-nav-trigger { display:flex; align-items:center; gap:6px; color:rgba(255,255,255,.72); font-size:14px; font-weight:600; text-decoration:none; padding:9px 13px; border-radius:10px; background:none; border:none; cursor:pointer; font-family:inherit; white-space:nowrap; transition:background .14s,color .14s; }
         .mh-nav-link:hover, .mh-nav-trigger:hover, .mh-nav-item:hover .mh-nav-trigger, .mh-nav-item.mh-open .mh-nav-trigger { background:rgba(255,255,255,.08); color:#ffffff; }
-        /* orange-600 was picked for white; it fails on the charcoal bar. */
+        /* orange-600 was picked for white; it fails on the near-black bar. */
         .mh-nav-link.hot { color:#fb923c; }
         .mh-nav-link.hot:hover, .mh-nav-link.hot.active { background:rgba(251,146,60,.14); color:#fdba74; }
         .mh-chev { transition:transform .2s; }
@@ -250,7 +250,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
         .mh-row-ds { display:block; color:#6b7280; font-size:12px; font-weight:500; margin-top:3px; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .mh-row-arrow { color:#cbd0d6; margin-left:auto; flex-shrink:0; opacity:0; transform:translate(-4px,4px); transition:opacity .14s,transform .14s; }
         .mh-row:hover .mh-row-arrow { opacity:1; transform:none; color:#dc2626; }
-        .mh-mega-promo { width:182px; flex-shrink:0; border-radius:16px; padding:15px; background:linear-gradient(150deg,#333A45,#2B323D); display:flex; flex-direction:column; }
+        .mh-mega-promo { width:182px; flex-shrink:0; border-radius:16px; padding:15px; background:linear-gradient(150deg,#15171c,#0f1115); display:flex; flex-direction:column; }
         .mh-promo-eyebrow { font-size:9.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#f87171; margin:0 0 7px; }
         .mh-promo-title { font-size:15.5px; font-weight:800; color:#fff; line-height:1.24; margin:0 0 6px; }
         .mh-promo-sub { font-size:11.5px; color:#9ca3af; line-height:1.45; margin:0 0 auto; }
@@ -294,7 +294,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
            Body scroll is locked while it's open (see effect), so it stays put.
            It is the bar's own colour — a white sheet dropping out of a black bar
            was the loudest palette break on mobile. */
-        .mh-mobile { display:none; flex-direction:column; padding:14px 18px 22px; border-top:1px solid rgba(255,255,255,.08); background:#2B323D; gap:2px; height:calc(100dvh - 64px); overflow-y:auto; -webkit-overflow-scrolling:touch; }
+        .mh-mobile { display:none; flex-direction:column; padding:14px 18px 22px; border-top:1px solid rgba(255,255,255,.08); background:#0f1115; gap:2px; height:calc(100dvh - 64px); overflow-y:auto; -webkit-overflow-scrolling:touch; }
         .mh-m-link, .mh-m-acc { color:rgba(255,255,255,.88); font-size:15px; font-weight:600; text-decoration:none; padding:13px 6px; border-bottom:1px solid rgba(255,255,255,.07); display:flex; align-items:center; gap:10px; justify-content:space-between; background:none; border-left:none; border-right:none; border-top:none; cursor:pointer; width:100%; font-family:inherit; }
         .mh-m-sub { display:flex; flex-direction:column; padding:2px 0 10px 16px; }
         .mh-m-sub a { color:rgba(255,255,255,.6); font-size:13.5px; font-weight:500; text-decoration:none; padding:10px 0; display:flex; align-items:center; gap:9px; }

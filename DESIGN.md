@@ -63,14 +63,18 @@ is a SaaS/gaming convention, not a car one — every marketplace a Malaysian buy
 already uses is light, and listing photos are shot on light backgrounds. So the
 ground, the headline band, the trust strip and the quick-filter chips are light.
 
-Dark on that surface is **charcoal `#2B323D`**, and it belongs to ONE thing:
-the masthead — announcement bar (`#232932`, one step darker) + `MarketplaceHeader`.
-Everything below the masthead is light, the hero's own controls included.
+Dark belongs to ONE thing: the masthead — announcement bar (`#15171c`, one step
+off) + `MarketplaceHeader`, both on **`#0f1115`**. Everything below the masthead
+is light, the hero's own controls included.
 
-**`#0f1115` is INK, not a surface.** It is the headline, the mega-menu link
-titles, the wordmark. It was tried as the bar fill and was too heavy: as a
-full-width band it read as a void rather than as chrome. Grey the surfaces,
-keep the type black.
+`#0f1115` is also the page's INK — the hero headline, the mega-menu link titles,
+the wordmark — so the bar is the brand black rather than an invented colour.
+Charcoal `#2B323D` was tried in between and rejected: on a light page a grey bar
+reads as washed rather than as deliberate chrome. The bar could go back to
+near-black precisely BECAUSE it is now the only dark surface — while the hero
+controls were also dark, the two had to colour-match and near-black was too
+heavy at control scale, which is what forced the grey. One dark object has no
+such constraint.
 
 **Dark was tried in the hero three times and reverted three times** — a filled
 panel behind the search controls, then near-black controls, then charcoal
@@ -88,14 +92,14 @@ The size at which one becomes the other is roughly "bigger than the thing you
 click", so keep dark fills at control scale.
 
 Rules that follow:
-- A new dark element in the fold uses `#2B323D` or it does not get to be dark.
-  The only other values on the dark ramp are `#232932` (announcement cap) and
-  `#333A45` (the mega-menu promo card's gradient top).
+- A new dark element in the fold uses `#0f1115` or it does not get to be dark.
+  `#15171c` is the only other value on the dark ramp (announcement cap, the
+  mega-menu promo card's gradient top).
 - A control keeps the palette of its CONTAINER, not the one it was written in.
   Moving a control between the masthead and the hero means restyling it, and
   that has bitten in both directions.
 - A `<select>` inside the masthead needs explicit `<option>` backgrounds
-  (`#232932`) or the dropdown LIST renders the browser's light default and
+  (`#15171c`) or the dropdown LIST renders the browser's light default and
   flashes white when opened.
 - A text `input` on a dark control needs an explicit `::placeholder` colour for
   the same reason.

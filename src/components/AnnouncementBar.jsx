@@ -25,13 +25,12 @@ export default function AnnouncementBar() {
   // TRANSLUCENT 12%-alpha red that composited over whatever was behind it, under
   // a white header, so it rendered as a black band on top of white. The fix then
   // and the rule now is the same — paint an EXPLICIT OPAQUE colour, and paint it
-  // to match the surface it actually sits on. #232932 is one step DARKER than the
-  // header's charcoal #2B323D, so the very top of the page caps the masthead
-  // without competing with it, and the red hairline stays as the "this is an
-  // announcement" signal.
+  // to match the surface it actually sits on. #15171c is one step off the
+  // header's #0f1115, so the two read as related rather than identical, and the
+  // red hairline stays as the "this is an announcement" signal.
   const bar = (
     <div style={{
-      background: '#232932',
+      background: '#15171c',
       borderBottom: '1px solid rgba(220,38,38,0.35)',
       padding: '9px 48px 9px 20px',
       display: 'flex',
