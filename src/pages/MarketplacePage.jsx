@@ -718,10 +718,14 @@ export default function MarketplacePage() {
         .mp-hero-section {
           display: flex;
           flex-direction: column;
-          /* Vertical ramp, not a flat fill: the fold now runs dark hero ->
-             dark quick-filter strip -> red seam -> light body as ONE surface,
-             and a single hex across that whole height read as a void. */
-          background: linear-gradient(180deg, #0d1117 0%, #0a0c13 42%, #08090f 100%);
+          /* LIGHT. A near-black hero over a light body is a SaaS/gaming
+             convention, not a car-marketplace one — buyers scan dozens of
+             listing photos and every marketplace they already use is light,
+             so the ground is light end to end and the black/red identity
+             lives in the TYPE, not the backdrop. The ramp lands exactly on
+             the page background (#F7F6F2) so the fold and the body below it
+             are one continuous surface with no seam to patch. */
+          background: linear-gradient(180deg, #FFFFFF 0%, #FAF9F6 52%, #F7F6F2 100%);
           position: relative;
           overflow-x: hidden;
         }
@@ -741,8 +745,8 @@ export default function MarketplacePage() {
         .mp-hero-tabs {
           display: flex;
           gap: 4px;
-          background: rgba(255,255,255,.06);
-          border: 1px solid rgba(255,255,255,.08);
+          background: #F2F0EC;
+          border: 1px solid #E7E4DB;
           border-radius: 12px;
           padding: 4px;
           margin-bottom: 16px;
@@ -754,12 +758,12 @@ export default function MarketplacePage() {
         .mp-hero-tabs::-webkit-scrollbar { display: none }
 
         /* Trust strip */
-        .mp-trust-strip { padding: 16px 0; border-top: 1px solid rgba(255,255,255,.07); flex-shrink: 0; position: relative; z-index: 1; }
+        .mp-trust-strip { padding: 16px 0; border-top: 1px solid rgba(0,0,0,.07); flex-shrink: 0; position: relative; z-index: 1; }
         .mp-trust-grid  { max-width: 1360px; margin: 0 auto; padding: 0 clamp(20px,4vw,48px); display: grid; grid-template-columns: 1fr 1fr; row-gap: 14px; }
         /* Mobile: balanced 2x2 with content centered in each cell and a single
            divider down the middle (left-column cells only). */
         .mp-trust-item  { padding: 6px 10px; display: flex; align-items: center; justify-content: center; gap: 10px; }
-        .mp-trust-item:nth-child(odd) { border-right: 1px solid rgba(255,255,255,.08); }
+        .mp-trust-item:nth-child(odd) { border-right: 1px solid rgba(0,0,0,.08); }
 
         /* Hero car rows (replaces the old "Browse by Budget" grid) */
         /* Three sets sit side by side in one transformed group so advancing
@@ -772,13 +776,14 @@ export default function MarketplacePage() {
         .mp-carrow-prev  { position: absolute; top: 0; left: -100%; }
         .mp-carrow-next  { position: absolute; top: 0; left: 100%; }
         .mp-carrow-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
-        /* Tiles are a solid dark card, not a white-alpha wash — the wash sat a
-           different lightness on every band of the hero ramp above. The photo
-           is the only image in the hero, so it gets the height. */
-        .mp-carrow-item { display: block; text-decoration: none; border-radius: 10px; overflow: hidden; background: #0f1219; border: 1px solid rgba(255,255,255,.07); transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
-        .mp-carrow-item:hover { transform: translateY(-3px); border-color: rgba(220,38,38,.45); box-shadow: 0 12px 28px rgba(0,0,0,.45); }
-        .mp-carrow-img { height: 62px; background-size: cover; background-position: center; background-color: #14181f; }
-        .mp-carrow-price { display: block; padding: 7px 9px 8px; font-size: 11px; font-weight: 700; color: #fff; font-family: 'Outfit',sans-serif; border-top: 1px solid rgba(255,255,255,.06); }
+        /* White card on the DESIGN.md resting/hover elevation pair — the same
+           card language as the showroom grid below, so the hero's tiles and the
+           results are recognisably the same object. Car photos are shot on light
+           backgrounds; they sit on white far better than on near-black. */
+        .mp-carrow-item { display: block; text-decoration: none; border-radius: 10px; overflow: hidden; background: #ffffff; border: 1px solid #ECEAE3; box-shadow: 0 1px 3px rgba(15,23,42,.08), 0 1px 2px rgba(15,23,42,.05); transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+        .mp-carrow-item:hover { transform: translateY(-3px); border-color: rgba(220,38,38,.4); box-shadow: 0 12px 32px rgba(15,23,42,.14); }
+        .mp-carrow-img { height: 62px; background-size: cover; background-position: center; background-color: #F0EEE8; }
+        .mp-carrow-price { display: block; padding: 7px 9px 8px; font-size: 11px; font-weight: 700; color: #111827; font-family: 'Outfit',sans-serif; border-top: 1px solid rgba(0,0,0,.06); }
         .mp-carrow-progress { position: absolute; opacity: 0; width: 0; animation-name: mp-carrow-fill; animation-timing-function: linear; animation-fill-mode: forwards; }
         @keyframes mp-carrow-fill { from { width: 0; } to { width: 100%; } }
         @media (prefers-reduced-motion: reduce) {
@@ -813,7 +818,7 @@ export default function MarketplacePage() {
           .mp-trust-grid    { grid-template-columns: repeat(4,1fr); padding: 0 clamp(20px,4vw,48px); row-gap: 0; }
           .mp-trust-item    { padding: 0 28px; }
           /* Desktop: dividers between all four (last cell has none). */
-          .mp-trust-item:nth-child(even):not(:last-child) { border-right: 1px solid rgba(255,255,255,.08); }
+          .mp-trust-item:nth-child(even):not(:last-child) { border-right: 1px solid rgba(0,0,0,.08); }
           .mp-carrow-grid   { gap: 10px; }
           .mp-carrow-img    { height: 96px; }
           .mp-filter-fab    { display: flex; }
@@ -908,12 +913,13 @@ export default function MarketplacePage() {
         <section className="mp-hero-section" style={{ position:'relative', isolation:'isolate' }}>
 
           {/* BG grid — z-index:-1 keeps it behind all content within this stacking
-              context. Masked out toward the bottom so it stops tiling flatly into
-              the quick-filter strip below and hands off to a plain dark ground. */}
-          <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(255,255,255,0.022) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.022) 1px,transparent 1px)', backgroundSize:'80px 80px', pointerEvents:'none', zIndex:-1, WebkitMaskImage:'linear-gradient(180deg,#000 0%,#000 45%,transparent 92%)', maskImage:'linear-gradient(180deg,#000 0%,#000 45%,transparent 92%)' }}/>
-          {/* Red glow — anchored over the headline/search column rather than dead
-              centre, so it lights the thing the eye is meant to land on. */}
-          <div style={{ position:'absolute', top:'-220px', left:'22%', transform:'translateX(-50%)', width:'900px', height:'760px', background:'radial-gradient(ellipse at 50% 30%,rgba(220,38,38,0.13) 0%,transparent 62%)', pointerEvents:'none', zIndex:-1 }}/>
+              context. Masked out toward the bottom so it fades into the flat page
+              ground instead of tiling on into the quick-filter strip.
+              The red radial glow that used to sit here is GONE: on a light ground
+              it is a pink wash, i.e. exactly the pastel-plus-dark palette clash
+              this pass exists to remove, and DESIGN.md bans glow blobs added for
+              vibe. The headline carries the red now. */}
+          <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(0,0,0,0.028) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.028) 1px,transparent 1px)', backgroundSize:'80px 80px', pointerEvents:'none', zIndex:-1, WebkitMaskImage:'linear-gradient(180deg,#000 0%,#000 40%,transparent 88%)', maskImage:'linear-gradient(180deg,#000 0%,#000 40%,transparent 88%)' }}/>
 
           {/* Two-column hero content */}
           <div className="mp-hero-main">
@@ -923,11 +929,11 @@ export default function MarketplacePage() {
               {/* Capped at 72px, not 96px: the display size was pushing the search
                   bar — the page's whole conversion action — under the fold on a
                   normal laptop height. */}
-              <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 10px', lineHeight:'0.92', letterSpacing:'-0.01em', fontSize:'clamp(36px,8.5vw,72px)', color:'#ffffff' }}>
+              <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 10px', lineHeight:'0.92', letterSpacing:'-0.01em', fontSize:'clamp(36px,8.5vw,72px)', color:'#0f1115' }}>
                 FIND YOUR NEXT<br/><span style={{ color:'#dc2626' }}>CAR IN MALAYSIA</span>
               </h1>
 
-              <p style={{ fontSize:'clamp(13px,3.5vw,15px)', color:'rgba(255,255,255,0.6)', margin:'0 0 18px', lineHeight:'1.6', fontFamily:"'Outfit',sans-serif", maxWidth:'420px' }}>
+              <p style={{ fontSize:'clamp(13px,3.5vw,15px)', color:'#4b5563', margin:'0 0 18px', lineHeight:'1.6', fontFamily:"'Outfit',sans-serif", maxWidth:'420px' }}>
                 New &middot; Used &middot; Recon &mdash; Verified Dealers, Full Docs, Zero Phantom Listings.
               </p>
 
@@ -950,7 +956,7 @@ export default function MarketplacePage() {
                       padding:'8px 16px', borderRadius:'9px', fontSize:'12px', fontWeight:'600',
                       fontFamily:"'Outfit',sans-serif", cursor:'pointer', border:'none',
                       background: heroTab === id ? '#dc2626' : 'transparent',
-                      color: heroTab === id ? '#fff' : 'rgba(255,255,255,0.5)',
+                      color: heroTab === id ? '#fff' : '#4b5563',
                       transition:'all 0.2s', whiteSpace:'nowrap',
                     }}
                   >{label}</button>
@@ -960,10 +966,9 @@ export default function MarketplacePage() {
               {/* Search bar — no wrapping <form> (SearchAutocomplete has its own;
                   nested forms broke navigation). Each entry point navigates via runHeroSearch. */}
               <div>
-                <div ref={heroSearchBarRef} className="mp-hero-search" style={{ display:'flex', alignItems:'stretch', gap:'5px', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'14px', padding:'5px', marginBottom:'10px' }}>
+                <div ref={heroSearchBarRef} className="mp-hero-search" style={{ display:'flex', alignItems:'stretch', gap:'5px', background:'#ffffff', border:'1.5px solid #E7E4DB', borderRadius:'14px', padding:'5px', marginBottom:'10px', boxShadow:'0 1px 3px rgba(15,23,42,0.08), 0 1px 2px rgba(15,23,42,0.05)' }}>
                   <div style={{ flex:1, minWidth:0 }}>
                     <SearchAutocomplete
-                      dark
                       value={heroQ}
                       onChange={setHeroQ}
                       placeholder="Make, model or variant…"
@@ -981,24 +986,27 @@ export default function MarketplacePage() {
                 </div>
 
                 <div style={{ display:'flex', gap:'8px', alignItems:'center', flexWrap:'wrap' }}>
-                  <div style={{ position:'relative', display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', overflow:'hidden' }}>
+                  {/* No per-<option> background override any more — those were
+                      hardcoded #0d1117 for the dark hero and would have rendered
+                      a black dropdown list hanging off a white control. */}
+                  <div style={{ position:'relative', display:'flex', alignItems:'center', background:'#ffffff', border:'1px solid #E7E4DB', borderRadius:'10px', overflow:'hidden' }}>
                     <select value={heroBudget} onChange={e=>setHeroBudget(e.target.value)} aria-label="Budget"
-                      style={{ border:'none', outline:'none', padding:'8px 26px 8px 12px', fontSize:'12px', color:heroBudget?'#fff':'rgba(255,255,255,0.36)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
-                      <option value="" style={{ background:'#0d1117' }}>Any budget</option>
-                      {PRICE_STEPS.filter(s=>s.value).map(o => <option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
+                      style={{ border:'none', outline:'none', padding:'8px 26px 8px 12px', fontSize:'12px', color:heroBudget?'#111827':'#9ca3af', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
+                      <option value="">Any budget</option>
+                      {PRICE_STEPS.filter(s=>s.value).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
                   </div>
-                  <div style={{ position:'relative', display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', overflow:'hidden' }}>
+                  <div style={{ position:'relative', display:'flex', alignItems:'center', background:'#ffffff', border:'1px solid #E7E4DB', borderRadius:'10px', overflow:'hidden' }}>
                     <select value={heroState} onChange={e=>setHeroState(e.target.value)} aria-label="State"
-                      style={{ border:'none', outline:'none', padding:'8px 26px 8px 12px', fontSize:'12px', color:heroState?'#fff':'rgba(255,255,255,0.36)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
-                      <option value="" style={{ background:'#0d1117' }}>Any state</option>
-                      {MY_STATES.map(s => <option key={s} value={s} style={{ background:'#0d1117' }}>{s}</option>)}
+                      style={{ border:'none', outline:'none', padding:'8px 26px 8px 12px', fontSize:'12px', color:heroState?'#111827':'#9ca3af', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
+                      <option value="">Any state</option>
+                      {MY_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
                   </div>
                   <button type="button" onClick={() => setAdvancedOpen(true)}
-                    style={{ display:'flex', alignItems:'center', gap:'5px', background:'none', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', padding:'8px 12px', color:'rgba(255,255,255,0.4)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
+                    style={{ display:'flex', alignItems:'center', gap:'5px', background:'#ffffff', border:'1px solid #E7E4DB', borderRadius:'10px', padding:'8px 12px', color:'#4b5563', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
                     <SlidersHorizontal size={11}/> More filters
                   </button>
                 </div>
@@ -1047,12 +1055,12 @@ export default function MarketplacePage() {
                 { icon: Ban,         number:'0', label:'Phantom listings' },
               ].map(({ icon: Icon, number, label }) => (
                 <div key={label} className="mp-trust-item">
-                  <div style={{ width:34, height:34, borderRadius:9, background:'rgba(220,38,38,0.12)', border:'1px solid rgba(220,38,38,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                    <Icon size={16} color="#f87171" />
+                  <div style={{ width:34, height:34, borderRadius:9, background:'#FEF2F2', border:'1px solid rgba(220,38,38,0.16)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <Icon size={16} color="#dc2626" />
                   </div>
                   <div>
-                    <div style={{ fontSize:'clamp(17px,3.4vw,24px)', fontWeight:'500', color:'#ffffff', lineHeight:1, marginBottom:'2px', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.02em' }}>{number}</div>
-                    <div style={{ fontSize:'10px', color:'rgba(255,255,255,0.5)', fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.06em', fontFamily:"'Outfit',sans-serif" }}>{label}</div>
+                    <div style={{ fontSize:'clamp(17px,3.4vw,24px)', fontWeight:'500', color:'#111827', lineHeight:1, marginBottom:'2px', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.02em' }}>{number}</div>
+                    <div style={{ fontSize:'10px', color:'#6b7280', fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.06em', fontFamily:"'Outfit',sans-serif" }}>{label}</div>
                   </div>
                 </div>
               ))}
@@ -1060,12 +1068,11 @@ export default function MarketplacePage() {
           </div>
         </section>
 
-        {/* ── Quick-filter strip — DARK, and deliberately part of the hero block.
-              It used to be beige, so the first screen stacked a pastel bar, a dark
-              hero and a cream strip: three palettes in one fold, and the chips read
-              as bolted on. Same container/gutter token as the hero and trust strip
-              so the left edges line up. ── */}
-        <section style={{ background: '#08090f', padding: '16px 0', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        {/* ── Quick-filter strip — same #F7F6F2 the hero ramp ends on, so it reads
+              as the continuation of the hero rather than a separate beige band
+              bolted under a dark one. Same container/gutter token as the hero and
+              trust strip so every left edge down the fold lines up. ── */}
+        <section style={{ background: '#F7F6F2', padding: '16px 0', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
           <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '0 clamp(20px, 4vw, 48px)' }}>
             <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', paddingBottom: '2px' }}>
               {[
@@ -1086,7 +1093,7 @@ export default function MarketplacePage() {
                 ]},
               ].map(({ groupLabel, pills }) => (
                 <div key={groupLabel} style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                  <span style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Outfit',sans-serif", whiteSpace: 'nowrap' }}>{groupLabel}</span>
+                  <span style={{ fontSize: '10px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Outfit',sans-serif", whiteSpace: 'nowrap' }}>{groupLabel}</span>
                   {pills.map(({ label, paramKey, paramVal }) => {
                     const isActive = searchParams.get(paramKey) === paramVal;
                     return (
@@ -1099,9 +1106,9 @@ export default function MarketplacePage() {
                         style={{
                           padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
                           fontFamily: "'Outfit',sans-serif", cursor: 'pointer', border: 'none', transition: 'all 0.15s',
-                          background: isActive ? 'rgba(220,38,38,0.16)' : 'rgba(255,255,255,0.06)',
-                          color: isActive ? '#fca5a5' : 'rgba(255,255,255,0.72)',
-                          outline: isActive ? '1.5px solid rgba(220,38,38,0.5)' : '1.5px solid rgba(255,255,255,0.07)',
+                          background: isActive ? 'rgba(220,38,38,0.1)' : '#ffffff',
+                          color: isActive ? '#dc2626' : '#374151',
+                          outline: isActive ? '1.5px solid rgba(220,38,38,0.4)' : '1.5px solid #E7E4DB',
                         }}
                       >{label}</button>
                     );
@@ -1112,11 +1119,10 @@ export default function MarketplacePage() {
           </div>
         </section>
 
-        {/* Seam accent — the dark fold (hero + trust strip + quick filters) is the
-            brand statement and the body below is the light browsing surface, per
-            DESIGN.md. The hard cut between them read as two stapled-together
-            templates; one brand-red line ties them without touching either palette. */}
-        <div style={{ height: 3, background: 'linear-gradient(90deg, transparent, #dc2626, transparent)' }} />
+        {/* No seam accent here any more. That red line existed only to soften the
+            hard cut where a near-black hero met the light body — with the fold
+            light end to end there is no cut to patch, and the line would just be
+            decoration that encodes nothing. */}
 
         {/* ── Body Type Carousels — lazy loaded ── */}
         <section ref={carouselSectionRef} style={{ background: '#EDEAE3', padding: '48px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>

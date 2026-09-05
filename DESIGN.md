@@ -22,7 +22,11 @@ invent a new one.
 - **Restrained elevation.** Two shadow levels only (resting + hover). No unique
   shadow per component.
 - **Search-forward, not image-forward.** The hero's job is headline + obvious
-  search/filter. Imagery and effects are secondary.
+  search/filter — and the search input itself must be visible without scrolling.
+  Imagery and effects are secondary; the live inventory tiles are the hero's
+  photography, not a stock car shot behind the headline.
+- **No radial "glow" behind a light hero.** A red glow over a light ground is a
+  pink wash, which is the pastel clash the palette rules exist to prevent.
 
 ## Type
 - **Display / headlines:** `'Bebas Neue', sans-serif` — uppercase, tight
@@ -34,8 +38,10 @@ invent a new one.
   body 13–15px / 400–500; label 13px / 600; price (card) 20px / 800.
 
 ## Color
-Light surfaces (marketplace pages, car detail on xdrive):
+Light surfaces (marketplace pages **including the hero**, car detail on xdrive):
 - Page bg `#F7F6F2`; alt section bg `#F2F0EC` / `#EDEAE3` / `#EDE9E3`
+- Hero ramp `#FFFFFF → #FAF9F6 → #F7F6F2` (lands on the page bg, so the fold and
+  the body below are one surface with no seam to patch)
 - Card `#ffffff`; card-2 `#F0EEE8`
 - Text: primary `#111827`, secondary `#4b5563`, muted `#6b7280`, faint `#9ca3af`
 - Border: `rgba(0,0,0,0.06)` hairline → `rgba(0,0,0,0.12)` input
@@ -43,7 +49,16 @@ Light surfaces (marketplace pages, car detail on xdrive):
   (the light/saturated `#4ade80`/`#93c5fd`/`#fbbf24` are DARK-theme only — they
   read as near-white on light. This bit twice.)
 
-Dark surfaces (hero block, lightbox, dark car detail on subdomains):
+**The marketplace hero is LIGHT, and the fold has ONE palette.** It was a
+near-black block over a light body; that is a SaaS/gaming convention, not a car
+one — every marketplace a Malaysian buyer already uses is light, and listing
+photos are shot on light backgrounds. The identity is carried by the TYPE
+(Bebas Neue, `#0f1115` + `#dc2626` wordmark), never by a dark ground. The
+announcement bar, header, hero, trust strip and quick-filter chips are all one
+light surface, top of page to results. Do not re-darken any of them, and do not
+introduce a fourth palette between them.
+
+Dark surfaces (lightbox, modals over the marketplace, dark car detail on subdomains):
 - Bg `#08090f` / `#0d1117`; text `#ffffff`, secondary `rgba(255,255,255,0.45)`,
   muted `rgba(255,255,255,0.35)`; border `rgba(255,255,255,0.07)`→`0.12`
 
