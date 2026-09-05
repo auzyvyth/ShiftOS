@@ -76,6 +76,18 @@ serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const anonClient = createClient(supabaseUrl, anonKey);
 
+    // Caller-scoped client. createClient(url, anonKey) alone runs every query as
+    // the `anon` role — passing the caller's token to getUser() identifies them
+    // but does NOT attach it to the client. That is why the profiles read below
+    // returned zero rows (profiles has no anon SELECT policy) and every request
+    // died at "profile not found", and why record_ai_request came back
+    // "permission denied for function" so the daily quota was never enforced.
+    // Same shape chat-assist already uses; RLS still applies to every read.
+    const db = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false },
+    });
+
     const { data: { user }, error: authErr } = await anonClient.auth.getUser(
       authHeader.replace("Bearer ", ""),
     );
@@ -83,7 +95,7 @@ serve(async (req) => {
       return jsonResponse({ error: "unauthorized" }, 401, origin);
     }
 
-    const { data: profile, error: profileErr } = await anonClient
+    const { data: profile, error: profileErr } = await db
       .from("profiles")
       .select("id, role, dealer_id, dealership, site_name")
       .eq("id", user.id)
@@ -117,7 +129,7 @@ serve(async (req) => {
     // Shared per-dealer daily quota — every sub-role draws from the same pool.
     // record_ai_request is SECURITY DEFINER: bumps ai_usage and writes the
     // per-role/feature breakdown row in one atomic call, no service-role key needed.
-    const { data: usageCount, error: usageErr } = await anonClient.rpc("record_ai_request", {
+    const { data: usageCount, error: usageErr } = await db.rpc("record_ai_request", {
       p_dealer_id: dealerId,
       p_user_id: user.id,
       p_role: profile.role,
@@ -125,8 +137,11 @@ serve(async (req) => {
       p_model: model,
       p_max_tokens: maxTokens,
     });
+    // The quota is the only thing between a dealer and an unbounded Anthropic
+    // bill, so a failure to record is a refusal, not a warning to log past.
     if (usageErr) {
       console.error("ai-proxy usage error:", usageErr);
+      return jsonResponse({ error: "could not record AI usage" }, 500, origin);
     } else if (typeof usageCount === "number" && usageCount > DAILY_QUOTA) {
       return jsonResponse(
         { error: "daily AI quota reached for this dealership. Try again tomorrow." },

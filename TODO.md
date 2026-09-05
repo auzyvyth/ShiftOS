@@ -28,6 +28,90 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## AI proxy was never metered, and would 403 the moment credits are funded — 2026-09-05
+
+> **DEPLOY REQUIRED: `ai-proxy` and `chat-assist` are FIXED IN THE REPO AND NOT
+> DEPLOYED.** The DB half (`20260905m`) is already live. Deploy both functions
+> with the next release or the repo/deployed gap this file keeps warning about
+> gets one entry wider.
+
+Found while triaging the SECURITY DEFINER grants. `ai-proxy` builds its client
+as `createClient(url, anonKey)` and then passes the caller's token only to
+`auth.getUser(token)` — which identifies the user but does NOT attach the token
+to the client. Every query it makes therefore runs as the `anon` role. Proven
+against the live DB inside a rolled-back DO block:
+
+- The `profiles` read (`.eq('id', user.id).single()`) returns **0 rows** as anon
+  — `profiles` has no anon SELECT policy — so `.single()` errors and the
+  function returns **403 "profile not found"** before it ever reaches Anthropic.
+  Every AI feature would fail this way. It is masked today only because
+  `AI_FEATURES_ENABLED = false` (`src/utils/aiFeatureFlag.js`) while Anthropic
+  credits are unfunded. **Flipping that flag would NOT have turned AI on** — it
+  would have produced a 403 with no obvious cause.
+- `record_ai_request` came back **`42501 permission denied for function`** as
+  anon, and the code only `console.error`'d it and carried on. So the shared
+  400/day per-dealer quota — the one control between a dealer and an unbounded
+  Anthropic bill — has never been enforced, and the usage log has never been
+  written. Evidence: `ai_request_log` has **0 rows, ever**; `ai_usage` has a
+  single row from 2026-05-18, before this code path existed.
+
+- [x] **AI-1: `ai-proxy` now uses a caller-scoped client**, the same shape
+  `chat-assist` already had (`global.headers.Authorization`). RLS still applies
+  to every read; the difference is that the reads run as the user instead of as
+  anon. `anonClient` is kept for `auth.getUser()` only, which is its correct use.
+- [x] **AI-2: a usage-record failure is now a refusal, not a warning.** Both
+  `ai-proxy` and `chat-assist` return 500 "could not record AI usage" instead of
+  proceeding unmetered. Deliberately fail-closed: on a paid API, an unrecorded
+  request is worse than a refused one.
+- [x] **AI-3: `record_ai_request` is scoped to the caller** (`20260905m`). It was
+  callable by any signed-in account for any dealer id, so anyone could burn a
+  competitor's daily pool to zero or poison their usage log. Guard mirrors
+  ai-proxy's `resolveDealerId` exactly, which is what `get_my_dealer_id()`
+  already computes; verified compatible with `chat-assist`, which resolves the
+  dealer identically.
+- [ ] **AI-4: verify end to end when credits are funded.** Deploy both functions,
+  flip `AI_FEATURES_ENABLED`, then check `ai_request_log` grows by one row per
+  request and that the 401st request in a day is refused. Until a row lands in
+  that table, the quota is unproven — that is the lesson ACT-13 already taught
+  (a config recorded as done is not done until data proves it fired).
+
+## Caller-scoping sweep — 2026-09-05 (`authenticated` is not a boundary here)
+
+Migration `20260905m`. Same family as the anon sweep below, one grant level up.
+It matters because **anonymous sign-in gives guest buyers the `authenticated`
+role**, so "authenticated only" protects nothing against the public on this
+project — any visitor who opens a chat can call these.
+
+- [x] **SEC-B1 (MED, was live): `get_plan_usage(p_dealer_id)` returned ANY
+  dealer's commercial position** — plan, price, listing and seat caps, active
+  listings, seat count, HP submissions MTD. No caller check at all. Now scoped
+  to `auth.uid()` / `get_my_dealer_id()` / `is_superadmin()`; the one caller
+  (`DashboardPage.jsx:1100`) already passes its own dealer id. Verified: own
+  scope returns the full object, another dealer's raises `not authorized`.
+- [x] **SEC-B2 (MED, was live): `get_dealer_slug_analytics(p_dealer_id, p_days)`
+  returned ANY dealer's per-salesman link clicks and WhatsApp taps.** The same
+  leak `get_car_analytics` had, one level up. Every caller
+  (`PerformanceTab.jsx:167`, `DashboardPage.jsx:3080` and `:4309`) hands it the
+  same `dealerId` it hands `get_dealer_car_analytics` on the adjacent line, and
+  that function already enforced this exact guard — so the fix was compatible by
+  construction. Verified: own dealer returns rows, another dealer returns none.
+  The `p_days` default is 90 and was preserved; changing it would have silently
+  shortened the dashboard's analytics window.
+- [ ] **SEC-B3 (open, pre-existing, unrelated to the guard): `get_plan_usage`
+  returns NULL for a profile whose `plan` has no `plan_config` row.** The live
+  superadmin-owned dealer account has `plan = 'superadmin'`, which is not a
+  plan, so the INNER JOIN drops the row and the settings card renders nothing.
+  Residue of the C4 tiering split-brain. Either add the row or LEFT JOIN and
+  render the caps as unlimited.
+- [ ] **SEC-B4 (open): the remaining `authenticated` definer surface is not
+  audited.** 169 functions; this pass read the ones that take an argument and
+  do work while checking nothing. Not re-checked: `count_other_dealer_vin_plate`
+  (count-only, but it is a VIN/plate existence oracle across dealers) and
+  `redeem_invite` (the code is the credential, which is the accepted pattern).
+  The buyer-admin pair (`admin_set_buyer_ban`, `admin_revoke_buyer_sessions`) was
+  checked and is correct — both go through `_assert_buyer_action_allowed`, which
+  requires superadmin, refuses self-targeting, and refuses a non-buyer target.
+
 ## Anon SECURITY DEFINER sweep — 2026-09-05 (two real holes closed)
 
 Migration `20260905l_anon_definer_sweep`, applied to the live DB. The Supabase
