@@ -190,6 +190,17 @@ export default function SalesmanProfilePage() {
   const locationState = profile?.state || dealer?.state;
   const locationStr = [locationCity, locationState].filter(Boolean).join(', ');
 
+  // One description for <meta name="description"> and og:description, so a
+  // Google snippet and a WhatsApp link preview never disagree. A bio is written
+  // as a paragraph, so collapse its line breaks and cap it near the length
+  // Google renders; with no bio, say what the page actually offers.
+  const metaDescription = (() => {
+    const written = (profile?.bio || '').replace(/\s+/g, ' ').trim();
+    if (written) return written.length > 155 ? written.slice(0, 152).trimEnd() + '...' : written;
+    const where = locationStr ? ` in ${locationStr}` : '';
+    return `${profile?.full_name || 'Car agent'} has ${listings.length} ${listings.length === 1 ? 'car' : 'cars'} available${where}. Browse the listings and message them on XDrive.`;
+  })();
+
   // The dealership's own address (linked salesmen only) — a full free-text
   // address if the dealer set one, else fall back to city/state.
   const dealerLocationStr = dealer
@@ -226,7 +237,12 @@ export default function SalesmanProfilePage() {
     <>
       <Helmet>
         <title>{profile.full_name} · XDrive</title>
-        <meta name="description" content={profile.about_text || `Browse cars from ${profile.full_name} on XDrive`} />
+        {/* `bio` is the agent's own words about themselves. `about_text` is the
+            DEALER storefront's "About us" (DashboardPage Settings) and used to
+            be read here too, which gave one page two about-paragraphs and gave
+            every standalone agent a generic description, since only the
+            linked-salesman panel can write it. One field. */}
+        <meta name="description" content={metaDescription} />
         {/* This page is the whole Salesman Lite pitch ("your page at
             xdrive.my/s/yourname") and gets shared as a link constantly, so it
             needs a canonical + og:url of its own. Without them every share
@@ -236,7 +252,7 @@ export default function SalesmanProfilePage() {
         <meta property="og:type" content="profile" />
         <meta property="og:site_name" content="XDrive" />
         <meta property="og:title" content={`${profile.full_name} · Car Agent on XDrive`} />
-        <meta property="og:description" content={profile.about_text || `${listings.length} cars available`} />
+        <meta property="og:description" content={metaDescription} />
         {/* Prefer the cover banner (a wide, landscape image) for the link
             preview so a shared mini-page shows the agent's own banner, not a
             square avatar or the generic site image. */}
@@ -401,13 +417,6 @@ export default function SalesmanProfilePage() {
                 </button>
               )}
             </div>
-          )}
-
-          {/* About */}
-          {profile.about_text && (
-            <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.8, marginBottom: 22, maxWidth: 440 }}>
-              {profile.about_text}
-            </p>
           )}
 
           {/* Response Time */}

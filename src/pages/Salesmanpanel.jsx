@@ -420,7 +420,12 @@ export default function SalesmanPanel() {
  // profile settings tab
  const [profileSettings, setProfileSettings] = useState({
  full_name: '', job_title: '', whatsapp_number: '',
- city: '', state: '', location: '', about_text: '',
+ city: '', state: '', location: '',
+ // No about_text here: it is the DEALER storefront's "About us"
+ // (DashboardPage Settings -> Footer). This panel used to offer it as a
+ // second box directly above Bio, both labelled "shown on your public
+ // page", and the mini page rendered both as consecutive paragraphs. Bio
+ // is the agent's one about-field.
  monthly_target: 5,
  bio: '', response_time: '', specializations: [],
  telegram_chat_id: '',
@@ -450,7 +455,6 @@ export default function SalesmanPanel() {
  city: profile.city || '',
  state: profile.state || '',
  location: profile.location || '',
- about_text: profile.about_text || '',
  bio: profile.bio || '',
  response_time: profile.response_time || '',
  specializations: profile.specializations || [],
@@ -7007,7 +7011,6 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  city: profileSettings.city,
  state: profileSettings.state,
  location: profileSettings.location || null,
- about_text: profileSettings.about_text,
  bio: profileSettings.bio || null,
  response_time: profileSettings.response_time || null,
  specializations: specializations.length > 0 ? specializations : null,
@@ -7140,13 +7143,6 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <div style={cardStyle}>
  <p style={sectionLabel}>Public Profile</p>
  <div style={{ display: 'grid', gap: 14 }}>
- <div>
- <label style={labelStyle}>About</label>
- <textarea value={profileSettings.about_text}
- onChange={e => setProfileSettings(p => ({ ...p, about_text: e.target.value }))}
- placeholder="A short description shown on your public page"
- rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
- </div>
  <div>
  <label style={labelStyle}>Bio</label>
  <textarea value={profileSettings.bio}

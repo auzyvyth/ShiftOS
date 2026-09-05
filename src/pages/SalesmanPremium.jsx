@@ -436,6 +436,7 @@ export default function SalesmanPremium() {
  // settings
  const [settingsForm, setSettingsForm] = useState({
  full_name: "",
+ job_title: "",
  whatsapp_number: "",
  telegram_chat_id: "",
  city: "",
@@ -810,6 +811,7 @@ export default function SalesmanPremium() {
  if (profile) {
  setSettingsForm({
  full_name: profile.full_name || "",
+ job_title: profile.job_title || "",
  whatsapp_number: profile.whatsapp_number || "",
  telegram_chat_id: profile.telegram_chat_id || "",
  city: profile.city || "",
@@ -4637,6 +4639,7 @@ export default function SalesmanPremium() {
  // profile, so the pills never appeared on the public mini page.
  const specializations = mergePendingTag(settingsForm.specializations, tagInput);
  const rest = {
+ job_title: settingsForm.job_title.trim() || null,
  city: settingsForm.city || null,
  state: settingsForm.state || null,
  location: settingsForm.location || null,
@@ -4793,6 +4796,11 @@ export default function SalesmanPremium() {
  <div>
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Full Name</label>
  <input value={settingsForm.full_name} onChange={(e) => setSettingsForm((p) => ({ ...p, full_name: e.target.value }))} placeholder="Your full name" style={inputStyle} />
+ </div>
+ <div>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Job Title</label>
+ <input value={settingsForm.job_title} onChange={(e) => setSettingsForm((p) => ({ ...p, job_title: e.target.value }))} placeholder="e.g. Senior Sales Advisor" maxLength={60} style={inputStyle} />
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Shown under your name on your public page. Leave blank to hide.</p>
  </div>
  <div>
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>WhatsApp Number</label>
