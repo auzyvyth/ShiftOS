@@ -1,10 +1,19 @@
 # ShiftOS — Pending Tasks
 
-> **BRANCH IN FLIGHT: `claude/market-demand-handoff-tc7cyl` (2026-09-05).**
-> `origin/main` is at `2f6c0c3` (PR #358, squash-merged) and IS what production
-> serves. The branch is a clean fast-forward from it — verified, no squash drift
-> — and carries the car-spec collection pipeline, the chassis-decode spec fill
-> and this refresh cron's migration file. NOT on staging and NOT on prod yet.
+> **NO BRANCH IN FLIGHT — branch off `origin/main` (2026-09-05, later session).**
+> `main` is at `3ea32fe` (PR #359, squash-merged) and IS what production serves.
+> Safe to branch from. Local `main` was reset to it in the same sitting and
+> content-diffed clean against `origin/main`.
+>
+> **Staging can be identical to prod and still look reviewed — check before you
+> trust it.** PR #359 was asked for on the basis that "staging had been
+> reviewed". Staging was at `ed7069d`, the PRE-SQUASH head of PR #358, whose
+> content was already on `main` under `2f6c0c3`: a content-diff of branch vs
+> staging came back as nothing but deletions of the new work, i.e. staging held
+> exactly what prod held and none of the six new commits. The review had been of
+> the previous cycle. Staging was pushed for real and the deploy confirmed before
+> the PR was opened. `git log` alone would not have caught this — the 11 commits
+> "on staging but not on the branch" looked like unique work and were duplicates.
 >
 > **`main` was a month stale until today — know why, so it does not recur.**
 > Production was being served by `a5e58b4`, a commit on
