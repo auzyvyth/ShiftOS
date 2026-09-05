@@ -27,6 +27,7 @@ Two or three runs a day, six models a run, clears the 67 in about a fortnight.
 | `SCHEMA.md` | The JSON contract. Field-by-field, where each one lands, the enums, the units. Read this if a row gets rejected. |
 | `COWORK_PROMPT.md` | The thing you paste into Cowork. Self-contained — it repeats the schema so the session needs no other context. |
 | `backlog.json` | The 67 uncovered models, ordered by real Malaysian registration volume, with their chassis codes and known generation boundaries already filled in. |
+| `ROUTINE.md` | The same job as a scheduled routine that writes straight to the database, so there is no copy-paste at all. Must be created from the claude.ai Routines UI — a Claude Code session cannot attach the Supabase connector, and without it the run has no database. |
 
 ## Why the backlog is ordered the way it is
 
@@ -91,9 +92,10 @@ create table public.car_specs (
 The `unique (make, model, year_from)` is what makes a re-run harmless: insert
 with `on conflict do nothing` and a model done twice costs nothing.
 
-**This table is not created yet** — the DDL is here so the JSON has a shape to
-land in. Creating it is a migration, and moving the spec lookup onto it is a code
-change with a real trade-off attached:
+**The table is live** (migrations `20260905n` / `20260905o`) and read-only:
+`select` to authenticated, nothing at all to anon, writes only via service role.
+Nothing in the app reads it yet, which is deliberate — moving the spec lookup
+onto it is a code change with a real trade-off attached:
 
 > `carSpecs.js` is deliberately tier 1 of the lookup — a bundled table, zero
 > latency, works offline, no request. A DB table is easy to grow and easy for
