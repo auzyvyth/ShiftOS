@@ -21,8 +21,15 @@ invent a new one.
   for the surface you're on (light vs dark) — see Color.
 - **Restrained elevation.** Two shadow levels only (resting + hover). No unique
   shadow per component.
+- **One search control in the hero, not a rack of them.** The hero holds the
+  input and nothing else; a budget/state/more-filters pill row under it was
+  three controls competing with the one field the hero exists to get someone
+  typing into. Every other filter is applied on `/showroom`, which has the full
+  filter UI. Advanced search stays reachable from the hero as a plain text link
+  — it is the only entry to `AdvancedSearchModal` on this page, so it must never
+  be deleted along with the chrome around it.
 - **Search-forward, not image-forward.** The hero's job is headline + obvious
-  search/filter — and the search input itself must be visible without scrolling.
+  search — and the search input itself must be visible without scrolling.
   Imagery and effects are secondary; the live inventory tiles are the hero's
   photography, not a stock car shot behind the headline.
 - **No radial "glow" behind a light hero.** A red glow over a light ground is a
@@ -56,17 +63,21 @@ is a SaaS/gaming convention, not a car one — every marketplace a Malaysian buy
 already uses is light, and listing photos are shot on light backgrounds. So the
 ground, the headline band, the trust strip and the quick-filter chips are light.
 
-Dark on that surface is **charcoal `#2B323D`**, and it belongs to exactly two
-things:
-1. the masthead — announcement bar (`#232932`, one step darker) + `MarketplaceHeader`
-2. the hero's search **controls** — the tab group, the search bar, and the
-   budget / state / more-filters chips, each painted individually
+Dark on that surface is **charcoal `#2B323D`**, and it belongs to ONE thing:
+the masthead — announcement bar (`#232932`, one step darker) + `MarketplaceHeader`.
+Everything below the masthead is light, the hero's own controls included.
 
 **`#0f1115` is INK, not a surface.** It is the headline, the mega-menu link
-titles, the wordmark. It was tried as the bar and control fill and was too
-heavy: as a full-width band it read as a void rather than as chrome, and at
-control scale it read as holes punched in the page. Grey the surfaces, keep the
-type black.
+titles, the wordmark. It was tried as the bar fill and was too heavy: as a
+full-width band it read as a void rather than as chrome. Grey the surfaces,
+keep the type black.
+
+**Dark was tried in the hero three times and reverted three times** — a filled
+panel behind the search controls, then near-black controls, then charcoal
+controls. Every version turned the hero into a dark band sitting in a light
+page, whatever the hex or the size. Do not try a fourth. The search bar earns
+attention by being the one **inset** field on the surface (`#F4F3EF`, the same
+value as the header's `.mh-search-field`), not by being a dark object.
 
 **Dark the CONTROLS, never a panel behind them.** Wrapping those controls in a
 filled dark card was tried and reverted: at that size a filled rectangle is
@@ -76,20 +87,15 @@ control on a light ground reads as an object; a dark slab reads as a surface.
 The size at which one becomes the other is roughly "bigger than the thing you
 click", so keep dark fills at control scale.
 
-**They share one hex on purpose.** Dark elements separated by light bands only
-work if they read as the same system; give them two different darks and the fold
-becomes a stack of unrelated stripes. So the navbar and the hero controls move
-together — change one, change the other. Rules that follow:
+Rules that follow:
 - A new dark element in the fold uses `#2B323D` or it does not get to be dark.
-  The only other values on the dark ramp are `#232932` (announcement cap,
-  `<option>` lists) and `#333A45` (the mega-menu promo card's gradient top).
-- Anything moving INTO the search console takes the dark control tokens
-  (field `rgba(255,255,255,.06–.07)`, border `rgba(255,255,255,.12–.14)`, text
-  `#fff`, placeholder/muted `rgba(255,255,255,.4)`); anything moving OUT of it
-  takes the light ones. A control keeps the palette of its container, not the
-  one it was written in.
-- A `<select>` on a dark control needs explicit `<option>` backgrounds
-  (`#15171c`) or the dropdown LIST renders the browser's light default and
+  The only other values on the dark ramp are `#232932` (announcement cap) and
+  `#333A45` (the mega-menu promo card's gradient top).
+- A control keeps the palette of its CONTAINER, not the one it was written in.
+  Moving a control between the masthead and the hero means restyling it, and
+  that has bitten in both directions.
+- A `<select>` inside the masthead needs explicit `<option>` backgrounds
+  (`#232932`) or the dropdown LIST renders the browser's light default and
   flashes white when opened.
 - A text `input` on a dark control needs an explicit `::placeholder` colour for
   the same reason.

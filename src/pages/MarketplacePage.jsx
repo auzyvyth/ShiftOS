@@ -21,7 +21,7 @@ import AdvancedSearchModal from '../components/marketplace/AdvancedSearchModal';
 import SkeletonCard from '../components/ui/SkeletonCard';
 import useMarketplaceStats from '../hooks/useMarketplaceStats';
 import {
-  BRANDS, BODY_TYPES, TRANSMISSIONS, FINANCING_TYPES, MY_STATES, SORT_OPTIONS,
+  BRANDS, BODY_TYPES, TRANSMISSIONS, FINANCING_TYPES, SORT_OPTIONS,
   YEARS, MILEAGE_OPTIONS, CONDITION_OPTIONS, FUEL_TYPES, COLOURS,
   CAR_FIELDS, DEALER_JOIN,
   dedupe, sanitizeBrand, sanitizeBodyType, sanitizeTransmission, sanitizeFinancing,
@@ -76,19 +76,17 @@ export default function MarketplacePage() {
   useEffect(() => { setSearchInput(q); }, [q]);
 
   const [heroQ,        setHeroQ]        = useState('');
-  const [heroBudget,   setHeroBudget]   = useState('');
-  const [heroState,    setHeroState]    = useState('');
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [heroTab, setHeroTab] = useState('find');
 
   // Single nav path for every hero-search entry point (Enter, search icon,
-  // Find Cars button) — carries the typed query plus budget/state selects.
+  // Find Cars button). Budget and state used to ride along from two <select>
+  // pills under the bar; those are gone, so the hero carries the query only and
+  // every other filter is applied on /showroom, which has the full filter UI.
   const runHeroSearch = (val) => {
     const p = new URLSearchParams();
     const s = (val || '').trim();
-    if (s)          p.set('q', s);
-    if (heroBudget) p.set('max_price', heroBudget);
-    if (heroState)  p.set('state', heroState);
+    if (s) p.set('q', s);
     navigate(`/showroom${p.toString() ? `?${p}` : ''}`);
   };
 
@@ -742,20 +740,18 @@ export default function MarketplacePage() {
         .mp-hero-right { display: block; width: 100%; margin-top: 24px; }
 
         /* Tabs — scrollable on mobile */
-        /* The search CONTROLS are dark; the surface under them is not. Painting a
-           filled dark card behind them made the hero read as a dark SECTION
-           bolted into a light page — the exact stacked-band problem this pass has
-           been undoing — because a slab that size is perceived as a background,
-           not as a control. So each control carries the dark instead, all on the
-           same charcoal #2B323D as the navbar so they read as one set of objects
-           sitting on the light hero. Near-black was too heavy here — at control
-           scale on a light ground it read as holes punched in the page. Note the
-           headline above still uses #0f1115: that is INK, and ink stays black. */
+        /* The hero's controls are LIGHT. Dark was tried three ways here — a
+           filled panel behind them, then near-black controls, then charcoal
+           controls — and each one turned the hero into a dark band sitting in a
+           light page. The masthead is the page's only dark surface now; below it
+           the hero is one continuous light surface and the search bar earns
+           attention by being the one INSET field on it, not by being a dark
+           object. */
         .mp-hero-tabs {
           display: flex;
           gap: 4px;
-          background: #2B323D;
-          border: 1px solid rgba(255,255,255,.08);
+          background: #F2F0EC;
+          border: 1px solid #E7E4DB;
           border-radius: 12px;
           padding: 4px;
           margin-bottom: 12px;
@@ -912,7 +908,6 @@ export default function MarketplacePage() {
         open={advancedOpen}
         onClose={() => setAdvancedOpen(false)}
         heroQ={heroQ}
-        heroBudget={heroBudget}
         currentParams={searchParams}
         onApply={(p) => navigate(`/showroom${p.toString() ? '?' + p : ''}`)}
       />
@@ -965,7 +960,7 @@ export default function MarketplacePage() {
                       padding:'8px 16px', borderRadius:'9px', fontSize:'12px', fontWeight:'600',
                       fontFamily:"'Outfit',sans-serif", cursor:'pointer', border:'none',
                       background: heroTab === id ? '#dc2626' : 'transparent',
-                      color: heroTab === id ? '#fff' : 'rgba(255,255,255,0.6)',
+                      color: heroTab === id ? '#fff' : '#4b5563',
                       transition:'all 0.2s', whiteSpace:'nowrap',
                     }}
                   >{label}</button>
@@ -975,15 +970,23 @@ export default function MarketplacePage() {
               {/* Search bar — no wrapping <form> (SearchAutocomplete has its own;
                   nested forms broke navigation). Each entry point navigates via runHeroSearch. */}
               <div>
-                <div ref={heroSearchBarRef} className="mp-hero-search" style={{ display:'flex', alignItems:'stretch', gap:'5px', background:'#2B323D', border:'1px solid rgba(255,255,255,0.10)', borderRadius:'14px', padding:'5px', marginBottom:'10px', boxShadow:'0 2px 10px rgba(15,23,42,0.12)' }}>
+                {/* Dimmed white (#F4F3EF on a ground that ramps #FFF -> #F7F6F2),
+                    so the field reads as INSET on the hero rather than as another
+                    white card floating on near-white. Same value as the header's
+                    own .mh-search-field, so the two searches on the page are one
+                    component language.
+                    The autocomplete's shell is flattened via formStyle: left at
+                    its own #ffffff it would render a white pill nested inside the
+                    dimmed bar, which is two boxes where the design wants one. */}
+                <div ref={heroSearchBarRef} className="mp-hero-search" style={{ display:'flex', alignItems:'stretch', gap:'5px', background:'#F4F3EF', border:'1.5px solid #E7E4DB', borderRadius:'14px', padding:'5px', marginBottom:'10px' }}>
                   <div style={{ flex:1, minWidth:0 }}>
                     <SearchAutocomplete
-                      dark
                       value={heroQ}
                       onChange={setHeroQ}
                       placeholder="Make, model or variant…"
                       navigateTo="/showroom"
                       onSubmit={val => runHeroSearch(val)}
+                      formStyle={{ background:'transparent', border:'none' }}
                       inputStyle={{ padding:'11px 14px', fontSize:'14px' }}
                       anchorRef={heroSearchBarRef}
                     />
@@ -995,31 +998,19 @@ export default function MarketplacePage() {
                   ><Search size={14}/> Find Cars</button>
                 </div>
 
-                <div style={{ display:'flex', gap:'8px', alignItems:'center', flexWrap:'wrap' }}>
-                  {/* The per-<option> background is set explicitly: the control is
-                      dark, so an unstyled dropdown LIST renders the browser's
-                      light default and flashes white when opened. */}
-                  <div style={{ position:'relative', display:'flex', alignItems:'center', background:'#2B323D', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', overflow:'hidden' }}>
-                    <select value={heroBudget} onChange={e=>setHeroBudget(e.target.value)} aria-label="Budget"
-                      style={{ border:'none', outline:'none', padding:'8px 26px 8px 12px', fontSize:'12px', color:heroBudget?'#fff':'rgba(255,255,255,0.55)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
-                      <option value="" style={{ background:'#232932', color:'#fff' }}>Any budget</option>
-                      {PRICE_STEPS.filter(s=>s.value).map(o => <option key={o.value} value={o.value} style={{ background:'#232932', color:'#fff' }}>{o.label}</option>)}
-                    </select>
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.38)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
-                  </div>
-                  <div style={{ position:'relative', display:'flex', alignItems:'center', background:'#2B323D', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', overflow:'hidden' }}>
-                    <select value={heroState} onChange={e=>setHeroState(e.target.value)} aria-label="State"
-                      style={{ border:'none', outline:'none', padding:'8px 26px 8px 12px', fontSize:'12px', color:heroState?'#fff':'rgba(255,255,255,0.55)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
-                      <option value="" style={{ background:'#232932', color:'#fff' }}>Any state</option>
-                      {MY_STATES.map(s => <option key={s} value={s} style={{ background:'#232932', color:'#fff' }}>{s}</option>)}
-                    </select>
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.38)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
-                  </div>
-                  <button type="button" onClick={() => setAdvancedOpen(true)}
-                    style={{ display:'flex', alignItems:'center', gap:'5px', background:'#2B323D', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', padding:'8px 12px', color:'rgba(255,255,255,0.72)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
-                    <SlidersHorizontal size={11}/> More filters
-                  </button>
-                </div>
+                {/* The budget / state / "More filters" pill row that used to sit
+                    here is gone — three controls competing with the one input the
+                    hero exists to get someone typing into.
+                    Advanced search is NOT gone with it: that pill was the only
+                    entry to AdvancedSearchModal on this page, so deleting it
+                    outright would have stranded a whole feature. It survives as a
+                    plain text link, which carries no pill chrome and does not
+                    compete with the search bar above it. Budget and state are
+                    applied on /showroom, which has the full filter UI. */}
+                <button type="button" onClick={() => setAdvancedOpen(true)}
+                  style={{ display:'inline-flex', alignItems:'center', gap:'6px', background:'none', border:'none', padding:0, color:'#4b5563', fontSize:'12.5px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", textDecoration:'underline', textUnderlineOffset:'3px' }}>
+                  <SlidersHorizontal size={12}/> More filters
+                </button>
                 {/* No "every listing verified" line here — the subhead above says
                     it and the trust strip below PROVES it with real counts. Three
                     statements of one claim in one viewport is the clutter, and it
