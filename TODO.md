@@ -393,41 +393,34 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   later alongside the metrics copilot — same funding blocker, same
   per-listing quota pattern as `feature="caption"` already uses.
 
-- **IDEA-5: JPJ open-data market intelligence (data.gov.my registrations)**
-  PHASE 0 DONE 2026-09-05, from the live files. No laptop needed — pg_net is
-  installed, so the DB itself fetched them (the Claude web session's proxy
-  blocks data.gov.my; Supabase's network does not).
-  - NO SECRETS. No key, no auth, no registration. Nothing to add to Vercel or
-    Supabase.
-  - Files: `https://storage.data.gov.my/transportation/cars_<year>.csv` and
-    `.parquet`, years 2000-2026. Parquet is ~650 KB/year (7 low-cardinality
-    columns dictionary-encode brilliantly), CSV ~50 MB/year. Range requests
-    work, so it can be sampled without downloading a whole year.
-  - Columns are exactly: date_reg, type, maker, model, colour, fuel, state.
-  - **NEW REGISTRATIONS ONLY, not ownership transfers.** A 10-chunk sample
-    across all of 2024 contained zero Kancil/Wira/Kelisa/Viva — every model
-    was one on sale that year. So this is not the used market directly.
-  - **BUT recon imports appear as first registrations**, which is the part
-    that matters here: Harrier, Vellfire, FJ Cruiser, Tank and Sequoia are all
-    in 2024 and none is sold new in Malaysia. Recon is exactly this platform's
-    segment, so the colour/volume signal for JDM imports IS in this data.
-    Not yet measured: what share of a given model's rows are recon.
-  - `maker`/`model` are CLEAN catalogue-style strings ("Perodua"/"Myvi",
-    "Chery"/"Omoda 5", "Toyota"/"Corolla Cross"), NOT messy manufacturer
-    trim strings. The mapping burden is far smaller than assumed — the messy
-    side is our own car_listings.model, which is what src/utils/modelKey.js
-    now resolves.
-  - `colour` is lowercase English (white, black, silver, grey, red, brown).
-    Maps straight onto COLOURS (src/config/marketplaceConfig.js:48).
-  - `type` is Malay: motokar, jip, motokar_pelbagai_utiliti. `state` includes
-    "Rakan Niaga" (dealer stock, no real state) — a large share, exclude it
-    from anything state-level.
-  - Rows are sorted by date_reg and grouped by model within a date.
-  Still to do: the two rollups (reg_colour_month, reg_model_month), the
-  monthly ingestion, then the "Market Demand" tab in the dealer dashboard's
-  INVENTORY group (not Reports — that group already holds five reports, and
-  those are the dealer's own numbers whereas this is the market's).
-  (Captured 2026-09-05.)
+- **IDEA-6 - BUILT 2026-09-05: JPJ market demand (data.gov.my registrations)**
+  Shipped as the **Market Demand** tab in the dealer dashboard's INVENTORY
+  group (`src/components/MarketDemandTab.jsx`, wired in DashboardPage.jsx).
+  Renumbered from IDEA-5, which was already taken by the /plans work.
+  - **NO SECRETS anywhere.** data.gov.my needs no key, no auth, no
+    registration. Nothing added to Vercel or Supabase env vars.
+  - Ingestion is `pg_net` from the database itself - Supabase's network can
+    reach data.gov.my even though the Claude web sandbox cannot. The whole
+    50 MB CSV lands in ONE request, so no chunking. Two steps, two separate
+    transactions (pg_net is async). Procedure: `tools/jpj/README.md`.
+  - One rollup table `reg_car_month` (month, maker, maker_canon, model,
+    model_key, colour, fuel, body_type, n) - deliberately ONE table, not the
+    two originally planned, so no two rollups can disagree. `model_key` is a
+    GENERATED column mirroring keyOf() in src/utils/modelKey.js.
+  - Loaded 2023-2026(Jul): 3.05M registrations -> 52,571 rollup rows, zero
+    malformed rows. Refresh monthly; data.gov.my runs ~1 month in arrears.
+  - **NEW REGISTRATIONS ONLY, not ownership transfers** - but recon imports
+    get a first plate, so they ARE here: Alphard 57k, Harrier 18.6k, Vellfire
+    14.2k, Lexus RX 12.2k over 4 years. That is this platform's segment.
+  - Still open: what share of a given model's rows are recon vs CBU. Needs a
+    different signal - the source has no recon flag.
+  - Known data gap, surfaced honestly in the UI: JPJ does not break out
+    performance variants (a BMW M4 is counted inside "4 Series"), so those
+    models get a "not tracked separately" note rather than a zero.
+  - `state` includes "Rakan Niaga" (dealer stock, no real state) and it is a
+    large share - excluded from everything; there is no state view yet.
+  - NOT built, and deliberately: no price/valuation anywhere on this page.
+    The source has no price column, so any figure would be invented.
 
 - **IDEA-4: One account, one door — stop making people classify themselves
   at sign-in** — owner's framing (2026-08-30), triggered by a real new user:
