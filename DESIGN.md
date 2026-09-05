@@ -56,15 +56,22 @@ is a SaaS/gaming convention, not a car one — every marketplace a Malaysian buy
 already uses is light, and listing photos are shot on light backgrounds. So the
 ground, the headline band, the trust strip and the quick-filter chips are light.
 
-Exactly two things on that surface are dark, and they are **both `#0f1115`**:
+Dark on that surface is **`#0f1115`**, and it belongs to exactly two things:
 1. the masthead — announcement bar (`#15171c`, one step off) + `MarketplaceHeader`
-2. the hero's **search console** — `.mp-search-panel`, holding the tabs, the
-   search bar and the budget/state/more-filters row
+2. the hero's search **controls** — the tab group, the search bar, and the
+   budget / state / more-filters chips, each painted individually
 
-**They share one hex on purpose.** Two dark elements separated by a light
-headline band only work if they read as the same system; give them two different
-darks and the fold becomes the stacked-palette mess this file exists to prevent.
-Rules that follow:
+**Dark the CONTROLS, never a panel behind them.** Wrapping those controls in a
+filled dark card was tried and reverted: at that size a filled rectangle is
+perceived as a background, so the hero read as a dark SECTION bolted into a
+light page — the stacked-band problem this file exists to prevent. A dark
+control on a light ground reads as an object; a dark slab reads as a surface.
+The size at which one becomes the other is roughly "bigger than the thing you
+click", so keep dark fills at control scale.
+
+**They share one hex on purpose.** Dark elements separated by light bands only
+work if they read as the same system; give them two different darks and the fold
+becomes a stack of unrelated stripes. Rules that follow:
 - A new dark element in the fold uses `#0f1115` or it does not get to be dark.
 - Anything moving INTO the search console takes the dark control tokens
   (field `rgba(255,255,255,.06–.07)`, border `rgba(255,255,255,.12–.14)`, text

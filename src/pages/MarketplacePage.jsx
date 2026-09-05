@@ -742,23 +742,17 @@ export default function MarketplacePage() {
         .mp-hero-right { display: block; width: 100%; margin-top: 24px; }
 
         /* Tabs — scrollable on mobile */
-        /* The search console: tabs + search bar + budget/state/more-filters, one
-           DARK panel on the light hero. It is painted #0f1115 — the same hex as
-           the navbar, deliberately — so the two dark elements on the page read as
-           one system with a light headline band between them rather than as two
-           unrelated dark stripes, which is the stacked-palette failure this whole
-           pass has been undoing. */
-        .mp-search-panel {
-          background: #0f1115;
-          border: 1px solid rgba(255,255,255,.08);
-          border-radius: 18px;
-          padding: 14px;
-          box-shadow: 0 18px 44px rgba(15,23,42,.18);
-        }
+        /* The search CONTROLS are dark; the surface under them is not. Painting a
+           filled dark card behind them made the hero read as a dark SECTION
+           bolted into a light page — the exact stacked-band problem this pass has
+           been undoing — because a slab that size is perceived as a background,
+           not as a control. So each control carries the dark instead, all on the
+           same #0f1115 as the navbar so they read as one set of objects sitting
+           on the light hero. */
         .mp-hero-tabs {
           display: flex;
           gap: 4px;
-          background: rgba(255,255,255,.06);
+          background: #0f1115;
           border: 1px solid rgba(255,255,255,.08);
           border-radius: 12px;
           padding: 4px;
@@ -956,7 +950,6 @@ export default function MarketplacePage() {
                   "No cars match your filters" — an advertised dead end on the
                   first screen. Tabs carry explicit ids rather than map indexes
                   so hiding one can't shift another's active state. */}
-              <div className="mp-search-panel">
               <div className="mp-hero-tabs">
                 {[
                   { id:'find', label:'Find a Car', action:() => setHeroTab('find') },
@@ -980,7 +973,7 @@ export default function MarketplacePage() {
               {/* Search bar — no wrapping <form> (SearchAutocomplete has its own;
                   nested forms broke navigation). Each entry point navigates via runHeroSearch. */}
               <div>
-                <div ref={heroSearchBarRef} className="mp-hero-search" style={{ display:'flex', alignItems:'stretch', gap:'5px', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.14)', borderRadius:'14px', padding:'5px', marginBottom:'10px' }}>
+                <div ref={heroSearchBarRef} className="mp-hero-search" style={{ display:'flex', alignItems:'stretch', gap:'5px', background:'#0f1115', border:'1px solid rgba(255,255,255,0.10)', borderRadius:'14px', padding:'5px', marginBottom:'10px', boxShadow:'0 2px 10px rgba(15,23,42,0.12)' }}>
                   <div style={{ flex:1, minWidth:0 }}>
                     <SearchAutocomplete
                       dark
@@ -1004,24 +997,24 @@ export default function MarketplacePage() {
                   {/* The per-<option> background is set explicitly: the control is
                       dark, so an unstyled dropdown LIST renders the browser's
                       light default and flashes white when opened. */}
-                  <div style={{ position:'relative', display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', overflow:'hidden' }}>
+                  <div style={{ position:'relative', display:'flex', alignItems:'center', background:'#0f1115', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', overflow:'hidden' }}>
                     <select value={heroBudget} onChange={e=>setHeroBudget(e.target.value)} aria-label="Budget"
-                      style={{ border:'none', outline:'none', padding:'8px 26px 8px 12px', fontSize:'12px', color:heroBudget?'#fff':'rgba(255,255,255,0.42)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
+                      style={{ border:'none', outline:'none', padding:'8px 26px 8px 12px', fontSize:'12px', color:heroBudget?'#fff':'rgba(255,255,255,0.55)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
                       <option value="" style={{ background:'#15171c', color:'#fff' }}>Any budget</option>
                       {PRICE_STEPS.filter(s=>s.value).map(o => <option key={o.value} value={o.value} style={{ background:'#15171c', color:'#fff' }}>{o.label}</option>)}
                     </select>
                     <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.38)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
                   </div>
-                  <div style={{ position:'relative', display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', overflow:'hidden' }}>
+                  <div style={{ position:'relative', display:'flex', alignItems:'center', background:'#0f1115', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', overflow:'hidden' }}>
                     <select value={heroState} onChange={e=>setHeroState(e.target.value)} aria-label="State"
-                      style={{ border:'none', outline:'none', padding:'8px 26px 8px 12px', fontSize:'12px', color:heroState?'#fff':'rgba(255,255,255,0.42)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
+                      style={{ border:'none', outline:'none', padding:'8px 26px 8px 12px', fontSize:'12px', color:heroState?'#fff':'rgba(255,255,255,0.55)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
                       <option value="" style={{ background:'#15171c', color:'#fff' }}>Any state</option>
                       {MY_STATES.map(s => <option key={s} value={s} style={{ background:'#15171c', color:'#fff' }}>{s}</option>)}
                     </select>
                     <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.38)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
                   </div>
                   <button type="button" onClick={() => setAdvancedOpen(true)}
-                    style={{ display:'flex', alignItems:'center', gap:'5px', background:'none', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', padding:'8px 12px', color:'rgba(255,255,255,0.55)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
+                    style={{ display:'flex', alignItems:'center', gap:'5px', background:'#0f1115', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', padding:'8px 12px', color:'rgba(255,255,255,0.65)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
                     <SlidersHorizontal size={11}/> More filters
                   </button>
                 </div>
@@ -1030,7 +1023,6 @@ export default function MarketplacePage() {
                     statements of one claim in one viewport is the clutter, and it
                     was also what pushed the proof off the fold. */}
               </div>
-              </div>{/* /.mp-search-panel */}
             </div>
 
             {/* RIGHT: live inventory rows — proof of real, moving stock reads as
