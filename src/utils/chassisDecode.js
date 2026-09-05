@@ -401,6 +401,28 @@ function titleCase(s) {
 }
 
 /** "2015 onwards" / "2013-2020" / "" — for the message under the field. */
+// A chassis code can name a variant whose mechanicals are NOT the base model's,
+// while carSpecs holds ONE row per generation, for the volume variant. FL5 is a
+// Civic Type R (2.0T) against a 1.5T Civic row; AYH30 is the hybrid Alphard
+// against a petrol 2.5 row. Filling from the base row would put a confidently
+// wrong cc and bhp on a listing, which is worse than the blank it replaces —
+// a blank is visibly a blank. Badge-twins (Vellfire, Noah, Aruz) share
+// mechanicals, so this reads the alt TEXT rather than merely its presence.
+export function specVariantDiffers(hit) {
+  return /type\s*r|hybrid|nismo|\bsti\b|\d{3}h\b/i.test(hit?.alt || '');
+}
+
+// Which year to ask carSpecs about. The MIDDLE of the generation, never its
+// first year: the two tables draw their boundaries a year or two apart (Japan
+// gets a generation before Malaysia does), so probing at `from` lands on the
+// previous generation's last row — FE1 (from 2021) matched the 2016-2021 Civic
+// instead of the 2022+ one. A range's middle cannot collide with either
+// neighbour. An open-ended generation has no middle, so take a short step in.
+export function specProbeYear(hit) {
+  if (!hit?.from) return null;
+  return hit.to ? Math.round((hit.from + hit.to) / 2) : hit.from + 2;
+}
+
 export function generationYears(hit) {
   if (!hit || !hit.from) return '';
   return hit.to ? `${hit.from}-${hit.to}` : `${hit.from} onwards`;

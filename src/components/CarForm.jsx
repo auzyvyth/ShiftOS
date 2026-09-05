@@ -43,7 +43,7 @@ import { getListingGaps } from "../utils/listingCompleteness";
 import { TRUST_DOCS, TRUST_DOC_KEYS, GERAN_REASONS, getTrustTier } from "../utils/trustDocs";
 import { DOC_TYPES } from "../utils/docTypes";
 import { decodeVin, isLikelyVin } from "../utils/vinDecode";
-import { decodeChassis, isChassisCode, isMalaysianVin, generationYears } from "../utils/chassisDecode";
+import { decodeChassis, isChassisCode, isMalaysianVin, generationYears, specVariantDiffers, specProbeYear } from "../utils/chassisDecode";
 import { isPremiumSalesman } from "../utils/salesmanPlan";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -1236,6 +1236,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     let ident = null;  // { brand, model, year } — identity only
     let extra = null;  // NHTSA spec extras, which are VIN-specific
     let lead = "";
+    let specGap = false;      // decoded fine, but carSpecs has no row for this model
+    let specVariant = null;   // decoded a variant whose specs differ from the base row
 
     const chassis = isLikelyVin(raw) ? null : decodeChassis(raw);
     if (chassis) {
@@ -1290,6 +1292,38 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       put("cylinders", extra.cylinders, `${extra.cylinders}-cyl`);
       put("doors", extra.doors, `${extra.doors} doors`);
       put("seats", extra.seats, `${extra.seats} seats`);
+    } else if (chassis) {
+      // The chassis path had no spec route at all, so a recon decode set a brand
+      // and a model and stopped. Two things closed it off: the block above is
+      // gated on `extra`, which only the NHTSA branch ever sets, and the spec
+      // autofill effect bails on a blank year — which this path leaves blank on
+      // purpose, because a chassis code names a GENERATION and cannot tell you a
+      // build year.
+      //
+      // It does not need one. carSpecs rows are keyed on generation ranges
+      // (yearFrom..yearTo), so the generation's own start year selects the right
+      // row. Nothing is written to form.year — we are reading the generation's
+      // specs, not claiming the car was built in chassis.from.
+      // Both helpers live in chassisDecode.js so the test exercises the real
+      // thing rather than a copy of it. See their comments for why a variant is
+      // skipped and why the probe year is the middle of the generation.
+      const variantDiffers = specVariantDiffers(chassis);
+      const spec = variantDiffers
+        ? null
+        : lookupFullSpec(ident.brand, ident.model, specProbeYear(chassis));
+      if (variantDiffers) specVariant = chassis.alt;
+      if (spec) {
+        if (blank(form.engineCc) && spec.engine_cc) updates.engineCc = String(spec.engine_cc);
+        if (blank(form.bodyType) && spec.body_type && BODY_TYPES.includes(spec.body_type)) updates.bodyType = spec.body_type;
+        if (blank(form.fuelType) && spec.fuel_type && FUEL_TYPES.includes(spec.fuel_type)) updates.fuelType = spec.fuel_type;
+        put("horsepower", spec.horsepower, `${spec.horsepower} bhp`);
+        put("cylinders", spec.cylinders, `${spec.cylinders}-cyl`);
+        put("doors", spec.doors, `${spec.doors} doors`);
+        put("seats", spec.seats, `${spec.seats} seats`);
+        put("fuelEconomyKpl", spec.fuel_consumption, `${spec.fuel_consumption} km/L`);
+      } else {
+        specGap = true;
+      }
     }
     if (Object.keys(updates).length) { setForm((f) => ({ ...f, ...updates })); setAutoFilled(true); }
 
@@ -1303,9 +1337,16 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
 
     const named = [updates.brand, updates.model, updates.year].filter(Boolean).join(" ");
     const parts = [named && `set ${named}`, filled.length && `filled ${filled.join(", ")}`].filter(Boolean);
-    if (!parts.length) { say(true, `${lead}. Everything it could set was already filled in.`); return; }
-    say(true, `${lead} — ${parts.join(", ")}.` +
-      (blank(form.year) && !updates.year ? " Add the year and the specs fill in on their own." : ""));
+    // Don't promise specs we do not hold. "Add the year and they fill in" is
+    // true only when there IS a row to find; for a model missing from the spec
+    // table it sends the seller to add a year and watch nothing happen.
+    const tail = specVariant
+      ? ` That code is the ${specVariant}, and its engine and output differ from the standard model — fill the Technical section in by hand rather than trusting a model average.`
+      : specGap
+        ? " We don't hold the specs for this model yet — fill the Technical section in by hand."
+        : (blank(form.year) && !updates.year ? " Add the year and the rest fills in on its own." : "");
+    if (!parts.length) { say(true, `${lead}. Everything it could set was already filled in.${tail}`); return; }
+    say(true, `${lead} — ${parts.join(", ")}.${tail}`);
   };
 
   // Fetch dealer products when picker is first opened
