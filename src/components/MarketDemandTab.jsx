@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { canonicalModel } from '../utils/modelKey';
-import { TrendingUp, TrendingDown, Search, AlertCircle, RefreshCw, Package } from 'lucide-react';
+import { TrendingUp, TrendingDown, Search, AlertCircle, RefreshCw, Package, ChevronRight } from 'lucide-react';
 
 /*
  * Market Demand — what the whole Malaysian market registered last month, from
@@ -40,6 +40,10 @@ const DOWN = '#dc2626';
 const MUTED = '#6b7280';
 const INK = '#111827';
 const LINE = '#e5e7eb';
+
+// Where the table and the detail panel stop sitting side by side:
+// their two flex bases (460 + 320) plus the 12px gap between them.
+const WRAP_AT = 792;
 
 const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -149,6 +153,7 @@ export default function MarketDemandTab({ dealerId }) {
   const [rowsLoading, setRowsLoading] = useState(true);
   const [err, setErr] = useState('');
   const [view, setView] = useState('market');     // market | stock
+  const detailRef = useRef(null);
   const [maker, setMaker] = useState('');
   const [body, setBody] = useState('');
   const [q, setQ] = useState('');
@@ -239,11 +244,30 @@ export default function MarketDemandTab({ dealerId }) {
     setSelected(key);
     setDetailLoading(true);
     setDetail(null);
+    // On a phone the detail panel has wrapped BELOW a table that is up to 560px
+    // tall, so tapping a row appears to do nothing at all - measured at 375px,
+    // the panel sat 918px down a 812px viewport. Above the wrap point the two
+    // sit side by side and moving the page would be wrong, so this is measured,
+    // not assumed: WRAP_AT is the two flex bases (460 + 320) plus the 12px gap.
+    //
+    // 'nearest' rather than 'start': it moves the page the minimum needed and
+    // does nothing at all when the panel is already fully in view. Twice,
+    // because the loading card is short and the loaded one is ~400px tall - the
+    // first call reveals something immediately so the tap visibly does
+    // something, the second only fires if the grown card now overflows.
+    const reveal = () => {
+      if (typeof window === 'undefined' || window.innerWidth >= WRAP_AT) return;
+      requestAnimationFrame(() => {
+        detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    };
+    reveal();
     const { data, error } = await supabase.rpc('get_market_model_detail', {
       p_model_key: key, p_months: 12,
     });
     setDetailLoading(false);
     if (!error) setDetail(data);
+    reveal();
   }, []);
 
   const market12 = Number(summary?.n_12m) || 0;
@@ -308,6 +332,13 @@ export default function MarketDemandTab({ dealerId }) {
 
   return (
     <div className="space-y-3">
+      {/* Row hover. Inline styles cannot express :hover, and holding a hovered
+          key in state would re-render the whole table on every row the pointer
+          crosses. Hover only - a phone gets the chevron and the caption. */}
+      <style>{`
+        .md-row:hover > td { background: #f9fafb; }
+        @media (hover: none) { .md-row:hover > td { background: transparent; } }
+      `}</style>
       <div>
         <h2 className="font-semibold text-base" style={{ color: INK }}>Market Demand</h2>
         <p className="text-gray-600 text-xs mt-0.5">
@@ -403,6 +434,18 @@ export default function MarketDemandTab({ dealerId }) {
           flex: '1 1 460px', minWidth: 0, background: '#fff',
           border: `1px solid ${LINE}`, borderRadius: 10, overflow: 'hidden',
         }}>
+          {/* The rows have always been tappable and nothing said so, so the
+              colour and fuel split went unfound. Says it in words once, above
+              the scroller rather than in the sticky header, which has to stay
+              a header. */}
+          <div style={{
+            padding: '7px 10px', fontSize: 11, color: MUTED,
+            borderBottom: `1px solid ${LINE}`, display: 'flex',
+            alignItems: 'flex-start', gap: 5, lineHeight: 1.45,
+          }}>
+            <ChevronRight size={12} style={{ flexShrink: 0, marginTop: 2 }} />
+            Tap a model for its 12-month trend, colour demand and fuel split
+          </div>
           <div style={{ overflowX: 'auto', maxHeight: 560, overflowY: 'auto' }}>
             <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse' }}>
               <thead>
@@ -420,10 +463,19 @@ export default function MarketDemandTab({ dealerId }) {
                 {derived.map((r) => {
                   const active = selected === r.model_key;
                   return (
-                    <tr key={r.model_key} onClick={() => openDetail(r.model_key)}
+                    <tr key={r.model_key} className="md-row"
+                      onClick={() => openDetail(r.model_key)}
                       style={{ cursor: 'pointer', background: active ? '#f9fafb' : '#fff' }}>
                       <td style={{ ...td, textAlign: 'left' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <ChevronRight
+                            size={13}
+                            style={{
+                              flexShrink: 0, color: active ? INK : '#9ca3af',
+                              transform: active ? 'rotate(90deg)' : 'none',
+                              transition: 'transform .12s ease, color .12s ease',
+                            }}
+                          />
                           <span style={{ fontWeight: 600 }}>{r.model}</span>
                           {r.held > 0 && (
                             <span style={{
@@ -435,7 +487,7 @@ export default function MarketDemandTab({ dealerId }) {
                             </span>
                           )}
                         </div>
-                        <div style={{ fontSize: 11, color: MUTED }}>{r.maker}</div>
+                        <div style={{ fontSize: 11, color: MUTED, paddingLeft: 19 }}>{r.maker}</div>
                       </td>
                       <td style={{ ...td, textAlign: 'right', fontWeight: 600 }}>{fmtInt(r.last)}</td>
                       <td style={{ ...td, textAlign: 'right' }}><Delta value={r.mom} small /></td>
@@ -461,7 +513,7 @@ export default function MarketDemandTab({ dealerId }) {
         </div>
 
         {/* Detail panel */}
-        <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+        <div ref={detailRef} style={{ flex: '1 1 320px', minWidth: 0, scrollMarginTop: 64 }}>
           <DetailPanel detail={detail} loading={detailLoading} />
         </div>
       </div>
