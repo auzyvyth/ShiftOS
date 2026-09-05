@@ -56,10 +56,17 @@ is a SaaS/gaming convention, not a car one — every marketplace a Malaysian buy
 already uses is light, and listing photos are shot on light backgrounds. So the
 ground, the headline band, the trust strip and the quick-filter chips are light.
 
-Dark on that surface is **`#0f1115`**, and it belongs to exactly two things:
-1. the masthead — announcement bar (`#15171c`, one step off) + `MarketplaceHeader`
+Dark on that surface is **charcoal `#2B323D`**, and it belongs to exactly two
+things:
+1. the masthead — announcement bar (`#232932`, one step darker) + `MarketplaceHeader`
 2. the hero's search **controls** — the tab group, the search bar, and the
    budget / state / more-filters chips, each painted individually
+
+**`#0f1115` is INK, not a surface.** It is the headline, the mega-menu link
+titles, the wordmark. It was tried as the bar and control fill and was too
+heavy: as a full-width band it read as a void rather than as chrome, and at
+control scale it read as holes punched in the page. Grey the surfaces, keep the
+type black.
 
 **Dark the CONTROLS, never a panel behind them.** Wrapping those controls in a
 filled dark card was tried and reverted: at that size a filled rectangle is
@@ -71,8 +78,11 @@ click", so keep dark fills at control scale.
 
 **They share one hex on purpose.** Dark elements separated by light bands only
 work if they read as the same system; give them two different darks and the fold
-becomes a stack of unrelated stripes. Rules that follow:
-- A new dark element in the fold uses `#0f1115` or it does not get to be dark.
+becomes a stack of unrelated stripes. So the navbar and the hero controls move
+together — change one, change the other. Rules that follow:
+- A new dark element in the fold uses `#2B323D` or it does not get to be dark.
+  The only other values on the dark ramp are `#232932` (announcement cap,
+  `<option>` lists) and `#333A45` (the mega-menu promo card's gradient top).
 - Anything moving INTO the search console takes the dark control tokens
   (field `rgba(255,255,255,.06–.07)`, border `rgba(255,255,255,.12–.14)`, text
   `#fff`, placeholder/muted `rgba(255,255,255,.4)`); anything moving OUT of it

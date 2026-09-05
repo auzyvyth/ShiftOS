@@ -747,12 +747,14 @@ export default function MarketplacePage() {
            bolted into a light page — the exact stacked-band problem this pass has
            been undoing — because a slab that size is perceived as a background,
            not as a control. So each control carries the dark instead, all on the
-           same #0f1115 as the navbar so they read as one set of objects sitting
-           on the light hero. */
+           same charcoal #2B323D as the navbar so they read as one set of objects
+           sitting on the light hero. Near-black was too heavy here — at control
+           scale on a light ground it read as holes punched in the page. Note the
+           headline above still uses #0f1115: that is INK, and ink stays black. */
         .mp-hero-tabs {
           display: flex;
           gap: 4px;
-          background: #0f1115;
+          background: #2B323D;
           border: 1px solid rgba(255,255,255,.08);
           border-radius: 12px;
           padding: 4px;
@@ -973,7 +975,7 @@ export default function MarketplacePage() {
               {/* Search bar — no wrapping <form> (SearchAutocomplete has its own;
                   nested forms broke navigation). Each entry point navigates via runHeroSearch. */}
               <div>
-                <div ref={heroSearchBarRef} className="mp-hero-search" style={{ display:'flex', alignItems:'stretch', gap:'5px', background:'#0f1115', border:'1px solid rgba(255,255,255,0.10)', borderRadius:'14px', padding:'5px', marginBottom:'10px', boxShadow:'0 2px 10px rgba(15,23,42,0.12)' }}>
+                <div ref={heroSearchBarRef} className="mp-hero-search" style={{ display:'flex', alignItems:'stretch', gap:'5px', background:'#2B323D', border:'1px solid rgba(255,255,255,0.10)', borderRadius:'14px', padding:'5px', marginBottom:'10px', boxShadow:'0 2px 10px rgba(15,23,42,0.12)' }}>
                   <div style={{ flex:1, minWidth:0 }}>
                     <SearchAutocomplete
                       dark
@@ -997,24 +999,24 @@ export default function MarketplacePage() {
                   {/* The per-<option> background is set explicitly: the control is
                       dark, so an unstyled dropdown LIST renders the browser's
                       light default and flashes white when opened. */}
-                  <div style={{ position:'relative', display:'flex', alignItems:'center', background:'#0f1115', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', overflow:'hidden' }}>
+                  <div style={{ position:'relative', display:'flex', alignItems:'center', background:'#2B323D', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', overflow:'hidden' }}>
                     <select value={heroBudget} onChange={e=>setHeroBudget(e.target.value)} aria-label="Budget"
                       style={{ border:'none', outline:'none', padding:'8px 26px 8px 12px', fontSize:'12px', color:heroBudget?'#fff':'rgba(255,255,255,0.55)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
-                      <option value="" style={{ background:'#15171c', color:'#fff' }}>Any budget</option>
-                      {PRICE_STEPS.filter(s=>s.value).map(o => <option key={o.value} value={o.value} style={{ background:'#15171c', color:'#fff' }}>{o.label}</option>)}
+                      <option value="" style={{ background:'#232932', color:'#fff' }}>Any budget</option>
+                      {PRICE_STEPS.filter(s=>s.value).map(o => <option key={o.value} value={o.value} style={{ background:'#232932', color:'#fff' }}>{o.label}</option>)}
                     </select>
                     <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.38)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
                   </div>
-                  <div style={{ position:'relative', display:'flex', alignItems:'center', background:'#0f1115', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', overflow:'hidden' }}>
+                  <div style={{ position:'relative', display:'flex', alignItems:'center', background:'#2B323D', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', overflow:'hidden' }}>
                     <select value={heroState} onChange={e=>setHeroState(e.target.value)} aria-label="State"
                       style={{ border:'none', outline:'none', padding:'8px 26px 8px 12px', fontSize:'12px', color:heroState?'#fff':'rgba(255,255,255,0.55)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
-                      <option value="" style={{ background:'#15171c', color:'#fff' }}>Any state</option>
-                      {MY_STATES.map(s => <option key={s} value={s} style={{ background:'#15171c', color:'#fff' }}>{s}</option>)}
+                      <option value="" style={{ background:'#232932', color:'#fff' }}>Any state</option>
+                      {MY_STATES.map(s => <option key={s} value={s} style={{ background:'#232932', color:'#fff' }}>{s}</option>)}
                     </select>
                     <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.38)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
                   </div>
                   <button type="button" onClick={() => setAdvancedOpen(true)}
-                    style={{ display:'flex', alignItems:'center', gap:'5px', background:'#0f1115', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', padding:'8px 12px', color:'rgba(255,255,255,0.65)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
+                    style={{ display:'flex', alignItems:'center', gap:'5px', background:'#2B323D', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', padding:'8px 12px', color:'rgba(255,255,255,0.72)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
                     <SlidersHorizontal size={11}/> More filters
                   </button>
                 </div>
