@@ -1,9 +1,15 @@
 # ShiftOS — Pending Tasks
 
-> **NO BRANCH IN FLIGHT — branch off `origin/main` (2026-09-05, later session).**
+> **BRANCH IN FLIGHT: `claude/marketplace-hero-styling-160xcm` @ `3e42d39`
+> (2026-09-05, marketplace hero styling session).** 8 commits, pushed, 0 behind
+> `origin/main`. NOT on staging, NO PR, never built or linted — see the
+> "Marketplace hero restyle" entry below before touching MarketplacePage.jsx,
+> MarketplaceHeader.jsx, AnnouncementBar.jsx, SearchAutocomplete.jsx or
+> DESIGN.md. Do NOT start a second branch over those files.
+>
 > `main` is at `3ea32fe` (PR #359, squash-merged) and IS what production serves.
-> Safe to branch from. Local `main` was reset to it in the same sitting and
-> content-diffed clean against `origin/main`.
+> Safe to branch from for UNRELATED work. Local `main` was reset to it in an
+> earlier sitting and content-diffed clean against `origin/main`.
 >
 > **Staging can be identical to prod and still look reviewed — check before you
 > trust it.** PR #359 was asked for on the basis that "staging had been
@@ -511,6 +517,37 @@ lead updates in both panels are NOT exploitable — missing belt-and-braces, not
 hole); `ai-proxy` pins model/max_tokens server-side and enforces a shared daily
 quota; `set_my_ic` hashes with a per-user salt and nulls the plaintext. No XSS
 sinks, no raw `chat_messages` read, no secrets in either bundle.
+
+## Marketplace hero restyle — IN FLIGHT, not shipped
+Branch `claude/marketplace-hero-styling-160xcm` @ `3e42d39`. Design-audit pass on
+the XDrive marketplace fold. Pushed to the branch only.
+
+- [ ] **HERO-1: get it on staging and look at it.** Nothing in these 8 commits
+      has ever been rendered in the real app. `npm install` fails in the web
+      container (proxy 403 on `cdn.sheetjs.com/xlsx-0.20.3`), so `npm run build`
+      and `npm run lint` were NEVER run this session. Every file was syntax-
+      checked through esbuild's JSX parser only. Run the build locally first,
+      then `git push origin claude/marketplace-hero-styling-160xcm:staging
+      --force` and review the Vercel preview at 375px and ~950px.
+- [ ] **HERO-2: judge the black navbar over the white hero.** That join is the
+      one thing a description cannot settle, and the palette was reworked five
+      times this session. It is currently: `#15171c` announcement bar ->
+      `#0f1115` navbar -> light hero (white -> `#F7F6F2` wave field) -> light
+      trust strip -> light chip strip -> light body.
+- [ ] **HERO-3: decide on the "More filters" text link.** The user asked for the
+      budget/state/more-filters pill row to be removed. It was — but that pill
+      was the ONLY entry point to `AdvancedSearchModal` on this page, so the
+      feature was kept alive as a plain underlined text link rather than
+      stranded. User has not confirmed they want it. If it goes, delete the
+      modal wiring with it instead of leaving orphaned code.
+- [ ] **HERO-4: `#F4F3EF` search bar may be too subtle at the top of the ramp.**
+      The hero ground is pure white at the top, so the dimmed field has the
+      least separation exactly where it sits. Check on a real screen.
+- [ ] **HERO-5 (pre-existing, out of scope, worth a cleanup):**
+      `MarketplacePage.jsx` has 11 unused imports that predate this session —
+      `ArrowLeftRight`, `BODY_TYPES`, `BRANDS`, `COLOURS`, `FUEL_TYPES`,
+      `React`, `SkeletonCard`, `TRANSMISSIONS`, `Users`, `YEARS`, `toast`.
+      Verified by diff that this session added none of them.
 
 ## 💡 Ideas (unrefined — capture only, not scheduled)
 
