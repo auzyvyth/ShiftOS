@@ -23,6 +23,7 @@ import ChannelBreakdown from "../components/ChannelBreakdown";
 import { toast } from "sonner";
 import { generateDealSheet } from "../utils/dealSheet";
 import { maskIC } from "../utils/maskIC";
+import { mergePendingTag } from "../utils/specializations";
 import {
  LogOut,
  Link,
@@ -6996,6 +6997,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  if (!profile?.id) return;
  setSettingsSaving(true);
  setSettingsError(null);
+ // Same rule as Premium: a tag still sitting in the input when Save is pressed
+ // is the user's answer, not something to throw away.
+ const specializations = mergePendingTag(profileSettings.specializations, tagInput);
  const { error } = await supabase.from('profiles').update({
  full_name: profileSettings.full_name,
  job_title: profileSettings.job_title,
@@ -7006,7 +7010,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  about_text: profileSettings.about_text,
  bio: profileSettings.bio || null,
  response_time: profileSettings.response_time || null,
- specializations: profileSettings.specializations.length > 0? profileSettings.specializations : null,
+ specializations: specializations.length > 0 ? specializations : null,
  telegram_chat_id: profileSettings.telegram_chat_id || null,
  monthly_target: Number(profileSettings.monthly_target) || 5,
  }).eq('id', profile.id);
@@ -7014,7 +7018,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  if (error) {
  setSettingsError('Failed to save. Please try again.');
  } else {
- setProfile(prev => ({ ...prev, ...profileSettings }));
+ setProfileSettings(p => ({ ...p, specializations }));
+ setTagInput('');
+ setProfile(prev => ({ ...prev, ...profileSettings, specializations }));
  setSettingsSaved(true);
  setTimeout(() => setSettingsSaved(false), 3000);
  }
@@ -7023,14 +7029,17 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const removeTag = (i) =>
  setProfileSettings(p => ({ ...p, specializations: p.specializations.filter((_, j) => j!== i) }));
 
- const handleTagKeyDown = (e) => {
- if (e.key === 'Enter' && tagInput.trim()) {
- e.preventDefault();
+ const addTag = () => {
  const val = tagInput.trim();
- if (!profileSettings.specializations.includes(val)) {
- setProfileSettings(p => ({ ...p, specializations: [...p.specializations, val] }));
- }
+ if (!val) return;
+ setProfileSettings(p => (p.specializations.includes(val) ? p : { ...p, specializations: [...p.specializations, val] }));
  setTagInput('');
+ };
+
+ const handleTagKeyDown = (e) => {
+ if (e.key === 'Enter') {
+ e.preventDefault();
+ addTag();
  }
  };
 
@@ -7175,12 +7184,22 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  ))}
  </div>
  )}
+ <div style={{ display: 'flex', gap: 8 }}>
  <input type="text" value={tagInput}
  onChange={e => setTagInput(e.target.value)}
  onKeyDown={handleTagKeyDown}
- placeholder="Type a specialization and press Enter"
- style={inputStyle} />
- <p style={{ margin: '5px 0 0', fontSize: 11, color: '#374151' }}>Press Enter to add each tag. Shown as pills on your public profile.
+ placeholder="e.g. Recon imports"
+ style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
+ <button type="button" onClick={addTag} disabled={!tagInput.trim()} style={{
+ flexShrink: 0, padding: '0 16px', borderRadius: 8,
+ border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.06)',
+ color: tagInput.trim() ? '#e5e7eb' : '#4b5563', fontSize: 12, fontWeight: 600,
+ cursor: tagInput.trim() ? 'pointer' : 'default',
+ }}>
+ Add
+ </button>
+ </div>
+ <p style={{ margin: '5px 0 0', fontSize: 11, color: '#374151' }}>Enter or Add for each tag. Shown as pills on your public profile.
  </p>
  </div>
  </div>

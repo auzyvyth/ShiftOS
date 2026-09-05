@@ -10,6 +10,7 @@ import { routeForRole } from "../hooks/useRoleRedirect";
 import useHandover from "../hooks/useHandover";
 import { useHideOnScroll } from "../hooks/useHideOnScroll";
 import { placeTourCard } from "../utils/tourPlacement";
+import { mergePendingTag } from "../utils/specializations";
 import { normalizePhone } from "../lib/phone";
 import SuspendedBanner from "../components/SuspendedBanner";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
@@ -4631,6 +4632,10 @@ export default function SalesmanPremium() {
  const handleSave = async () => {
  setSettingsSaving(true);
  const phone = "+60" + localPhone.replace(/\D/g, "");
+ // A tag typed but not yet entered is still the user's answer — saving with it
+ // sitting in the input used to discard it and write an empty array over the
+ // profile, so the pills never appeared on the public mini page.
+ const specializations = mergePendingTag(settingsForm.specializations, tagInput);
  const rest = {
  city: settingsForm.city || null,
  state: settingsForm.state || null,
@@ -4641,29 +4646,38 @@ export default function SalesmanPremium() {
  website: settingsForm.website || null,
  bio: settingsForm.bio || null,
  response_time: settingsForm.response_time || null,
- specializations: settingsForm.specializations,
+ specializations,
  deposit_policy: settingsForm.deposit_policy || null,
  deposit_terms: settingsForm.deposit_terms.trim() || null,
  processing_fee: String(settingsForm.processing_fee).trim() === "" ? null : (Number(settingsForm.processing_fee) || 0),
  };
- await supabase.from("profiles").update({ full_name: settingsForm.full_name, whatsapp_number: phone, ...rest }).eq("id", userId);
- setProfile((p) => ({ ...p, full_name: settingsForm.full_name, whatsapp_number: phone, ...rest }));
- setSettingsForm((p) => ({ ...p, whatsapp_number: phone }));
+ const { error: saveErr } = await supabase.from("profiles").update({ full_name: settingsForm.full_name, whatsapp_number: phone, ...rest }).eq("id", userId);
  setSettingsSaving(false);
+ if (saveErr) {
+ console.error("handleSave profile update:", saveErr);
+ toast.error("Couldn't save your profile - " + saveErr.message);
+ return;
+ }
+ setProfile((p) => ({ ...p, full_name: settingsForm.full_name, whatsapp_number: phone, ...rest }));
+ setSettingsForm((p) => ({ ...p, whatsapp_number: phone, specializations }));
+ setTagInput("");
  toast.success("Profile updated");
  };
 
  const removeTag = (i) =>
  setSettingsForm((p) => ({ ...p, specializations: p.specializations.filter((_, j) => j !== i) }));
 
- const handleTagKeyDown = (e) => {
- if (e.key === "Enter" && tagInput.trim()) {
- e.preventDefault();
+ const addTag = () => {
  const val = tagInput.trim();
- if (!settingsForm.specializations.includes(val)) {
- setSettingsForm((p) => ({ ...p, specializations: [...p.specializations, val] }));
- }
+ if (!val) return;
+ setSettingsForm((p) => (p.specializations.includes(val) ? p : { ...p, specializations: [...p.specializations, val] }));
  setTagInput("");
+ };
+
+ const handleTagKeyDown = (e) => {
+ if (e.key === "Enter") {
+ e.preventDefault();
+ addTag();
  }
  };
 
@@ -4867,8 +4881,14 @@ export default function SalesmanPremium() {
  ))}
  </div>
  )}
- <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown} placeholder="Type a specialization and press Enter" style={inputStyle} />
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Press Enter to add each tag. Shown as pills on your public profile.</p>
+ <div style={{ display: "flex", gap: 8 }}>
+ <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown} placeholder="e.g. Recon imports" style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
+ <button type="button" onClick={addTag} disabled={!tagInput.trim()}
+ style={{ flexShrink: 0, padding: "0 16px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: tagInput.trim() ? "#e5e7eb" : "#4b5563", fontSize: 12, fontWeight: 600, cursor: tagInput.trim() ? "pointer" : "default" }}>
+ Add
+ </button>
+ </div>
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Enter or Add for each tag. Shown as pills on your public profile.</p>
  </div>
  {/* Social links */}
  {[
