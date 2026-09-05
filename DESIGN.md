@@ -34,6 +34,24 @@ invent a new one.
   photography, not a stock car shot behind the headline.
 - **No radial "glow" behind a light hero.** A red glow over a light ground is a
   pink wash, which is the pastel clash the palette rules exist to prevent.
+- **The hero's ONE decoration is the wave field** (`.mp-hero-waves`,
+  MarketplacePage) — three offset SVG bands in warm neutrals. It is not pure
+  ornament: a flat white field under a black bar has no bottom edge, so the hero
+  reads as an unbounded void; the waves give it a horizon. Rules:
+  - Warm neutrals only (`#F3F0E9`–`#E9E4D8` family). **No red, no pink** — see
+    the glow rule above; a red wave breaks it exactly the same way.
+  - The frontmost band is `#F7F6F2`, the quick-filter strip's colour, so the
+    section ends ON the next section's ground. Change one, change the other.
+  - The section's own `background` ramp must stop ABOVE the page colour
+    (`#FAF9F6`), or it and the waves both try to reach `#F7F6F2` and the handoff
+    bands.
+  - Neighbouring bands shade on OPPOSITE gradient axes. Parallel shading makes
+    layered waves collapse back into one flat linear ramp.
+  - Bottom-anchored with a capped height, never `inset: 0` — a tall mobile hero
+    stretches full-height curves into vertical smears.
+  - `<defs>` ids are document-global: prefix them (`mpWaveA`…) or a second inline
+    SVG on the page silently steals the fill.
+  - It REPLACED the dot-grid overlay. One decoration system in the hero, not two.
 
 ## Type
 - **Display / headlines:** `'Bebas Neue', sans-serif` — uppercase, tight

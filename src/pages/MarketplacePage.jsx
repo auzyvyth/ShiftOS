@@ -722,11 +722,34 @@ export default function MarketplacePage() {
              so the ground is light end to end and the black/red identity
              lives in the TYPE, not the backdrop. The ramp lands exactly on
              the page background (#F7F6F2) so the fold and the body below it
-             are one continuous surface with no seam to patch. */
-          background: linear-gradient(180deg, #FFFFFF 0%, #FAF9F6 52%, #F7F6F2 100%);
+             are one continuous surface with no seam to patch.
+             This ramp only covers the TOP of the hero now; the wave field
+             (.mp-hero-waves) carries the last step down to #F7F6F2, so the two
+             must not both try to reach the page colour or the handoff banding
+             shows. */
+          background: linear-gradient(180deg, #FFFFFF 0%, #FCFBF8 60%, #FAF9F6 100%);
           position: relative;
           overflow-x: hidden;
         }
+        /* Wave field — the hero's one piece of decoration, and it does a job: a
+           flat white field with a black bar on top has no bottom edge, so the
+           hero reads as an unbounded void. Three offset waves give it a horizon,
+           and the frontmost is #F7F6F2 — the exact colour of the quick-filter
+           strip below — so the section ends ON the next section's ground.
+           Bottom-anchored with a capped height rather than inset:0 so a tall
+           mobile hero doesn't vertically stretch the curves into smears.
+           It REPLACED the dot-grid overlay that used to sit here. Two decorative
+           systems in one hero is the "assembled from parts" look the whole pass
+           has been removing — pick one. */
+        .mp-hero-waves {
+          position: absolute;
+          left: 0; right: 0; bottom: 0;
+          height: clamp(240px, 58%, 520px);
+          pointer-events: none;
+          z-index: -1;
+        }
+        .mp-hero-waves svg { display: block; width: 100%; height: 100%; }
+
         .mp-hero-main {
           flex: 1;
           display: flex;
@@ -916,14 +939,39 @@ export default function MarketplacePage() {
         {/* ── Hero ── */}
         <section className="mp-hero-section" style={{ position:'relative', isolation:'isolate' }}>
 
-          {/* BG grid — z-index:-1 keeps it behind all content within this stacking
-              context. Masked out toward the bottom so it fades into the flat page
-              ground instead of tiling on into the quick-filter strip.
-              The red radial glow that used to sit here is GONE: on a light ground
-              it is a pink wash, i.e. exactly the pastel-plus-dark palette clash
-              this pass exists to remove, and DESIGN.md bans glow blobs added for
-              vibe. The headline carries the red now. */}
-          <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(0,0,0,0.028) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.028) 1px,transparent 1px)', backgroundSize:'80px 80px', pointerEvents:'none', zIndex:-1, WebkitMaskImage:'linear-gradient(180deg,#000 0%,#000 40%,transparent 88%)', maskImage:'linear-gradient(180deg,#000 0%,#000 40%,transparent 88%)' }}/>
+          {/* Wave field. z-index:-1 keeps it behind all content within this
+              stacking context (the section is isolation:isolate).
+              Warm-neutral ONLY — the marketplace's own #F4F2EE / #F0EDE7 /
+              #F7F6F2 tints. No red: a red wash on a light ground is pink, which
+              is the pastel clash this pass removed once already and is not
+              coming back as a wave.
+              preserveAspectRatio="none" stretches the curves to whatever width
+              the viewport is; the container's capped height is what stops that
+              becoming a vertical smear on a tall phone hero. */}
+          <div className="mp-hero-waves" aria-hidden="true">
+            {/* Gradient ids are PREFIXED. An SVG <defs> id is document-global, so a
+                bare id like "w1" collides with any other inline SVG on the page and
+                one of the two silently gets the wrong fill. */}
+            <svg viewBox="0 0 1440 320" preserveAspectRatio="none" focusable="false">
+              <defs>
+                <linearGradient id="mpWaveA" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stopColor="#F3F0E9"/><stop offset="1" stopColor="#EFEBE1"/>
+                </linearGradient>
+                {/* Reversed axis so the two bands don't shade in the same
+                    direction — parallel shading is what makes layered waves read
+                    as one flat ramp again. */}
+                <linearGradient id="mpWaveB" x1="1" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor="#EDE8DC"/><stop offset="1" stopColor="#E9E4D8"/>
+                </linearGradient>
+                <linearGradient id="mpWaveC" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0" stopColor="#F8F7F3"/><stop offset="1" stopColor="#F4F2EB"/>
+                </linearGradient>
+              </defs>
+              <path fill="url(#mpWaveA)" d="M0,84 C240,142 480,26 720,74 C960,122 1200,50 1440,96 L1440,320 L0,320 Z"/>
+              <path fill="url(#mpWaveB)" d="M0,172 C200,108 420,218 660,190 C900,162 1160,244 1440,182 L1440,320 L0,320 Z"/>
+              <path fill="url(#mpWaveC)" d="M0,256 C260,304 520,206 780,244 C1020,278 1240,226 1440,258 L1440,320 L0,320 Z"/>
+            </svg>
+          </div>
 
           {/* Two-column hero content */}
           <div className="mp-hero-main">
