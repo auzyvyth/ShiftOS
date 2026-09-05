@@ -21,12 +21,17 @@ export default function AnnouncementBar() {
   // This bar only ever renders inside MarketplaceHeader, i.e. on the LIGHT
   // marketplace. It used to be styled for a dark surface — pale red-300 text on
   // a 12%-alpha red that composited over the near-black body background — so it
-  // read as a black band sitting on top of a white header. Light palette now:
-  // red-50 ground, red-800 text (7.6:1).
+  // read as a black band sitting on top of a white header. Do NOT take it dark
+  // again for that reason.
+  // It is not pastel red either: red-50 ground + red-800 text was a third
+  // palette stacked above the white header and the dark hero, and the fold read
+  // as unrelated strips. It sits on the marketplace's own alt-surface token
+  // (#F2F0EC) one step off the white header, with a single red hairline as the
+  // "this is an announcement" signal.
   const bar = (
     <div style={{
-      background: '#FEF2F2',
-      borderBottom: '1px solid rgba(220,38,38,0.18)',
+      background: '#F2F0EC',
+      borderBottom: '1px solid rgba(220,38,38,0.22)',
       padding: '9px 48px 9px 20px',
       display: 'flex',
       alignItems: 'center',
@@ -34,7 +39,7 @@ export default function AnnouncementBar() {
       position: 'relative',
       fontFamily: "'Outfit', sans-serif",
     }}>
-      <p style={{ fontSize: 13, color: '#991b1b', fontWeight: 500, margin: 0, textAlign: 'center', lineHeight: 1.4 }}>
+      <p style={{ fontSize: 13, color: '#1f2733', fontWeight: 500, margin: 0, textAlign: 'center', lineHeight: 1.4 }}>
         {settings.announcement_text}
       </p>
       <button

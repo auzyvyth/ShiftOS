@@ -169,13 +169,13 @@ export default function HeroCarRow({ eyebrow, title, cars, viewAllHref }) {
     <div style={{ minWidth: 0 }} onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 8 }}>
         <div>
-          <p style={{ margin: '0 0 2px', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'rgba(220,38,38,0.8)', fontFamily: "'Outfit',sans-serif" }}>{eyebrow}</p>
+          <p style={{ margin: '0 0 2px', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#f87171', fontFamily: "'Outfit',sans-serif" }}>{eyebrow}</p>
           <h3 style={{ margin: 0, fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(16px,1.6vw,20px)', color: '#ffffff', letterSpacing: '0.02em', lineHeight: 1 }}>{title}</h3>
         </div>
         {viewAllHref && (
           <Link
             to={viewAllHref}
-            style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textDecoration: 'none', fontFamily: "'Outfit',sans-serif", flexShrink: 0 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.55)', textDecoration: 'none', fontFamily: "'Outfit',sans-serif", flexShrink: 0 }}
           >
             View All <ArrowRight size={10} />
           </Link>

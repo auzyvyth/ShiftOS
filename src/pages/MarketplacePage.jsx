@@ -718,7 +718,10 @@ export default function MarketplacePage() {
         .mp-hero-section {
           display: flex;
           flex-direction: column;
-          background: #08090f;
+          /* Vertical ramp, not a flat fill: the fold now runs dark hero ->
+             dark quick-filter strip -> red seam -> light body as ONE surface,
+             and a single hex across that whole height read as a void. */
+          background: linear-gradient(180deg, #0d1117 0%, #0a0c13 42%, #08090f 100%);
           position: relative;
           overflow-x: hidden;
         }
@@ -727,7 +730,7 @@ export default function MarketplacePage() {
           display: flex;
           flex-direction: column;
           width: 100%;
-          padding: 28px 16px 20px;
+          padding: 28px clamp(20px,4vw,48px) 20px;
           position: relative;
           z-index: 1;
         }
@@ -742,7 +745,7 @@ export default function MarketplacePage() {
           border: 1px solid rgba(255,255,255,.08);
           border-radius: 12px;
           padding: 4px;
-          margin-bottom: 20px;
+          margin-bottom: 16px;
           overflow-x: auto;
           scrollbar-width: none;
           -ms-overflow-style: none;
@@ -752,7 +755,7 @@ export default function MarketplacePage() {
 
         /* Trust strip */
         .mp-trust-strip { padding: 16px 0; border-top: 1px solid rgba(255,255,255,.07); flex-shrink: 0; position: relative; z-index: 1; }
-        .mp-trust-grid  { max-width: 1360px; margin: 0 auto; padding: 0 16px; display: grid; grid-template-columns: 1fr 1fr; row-gap: 14px; }
+        .mp-trust-grid  { max-width: 1360px; margin: 0 auto; padding: 0 clamp(20px,4vw,48px); display: grid; grid-template-columns: 1fr 1fr; row-gap: 14px; }
         /* Mobile: balanced 2x2 with content centered in each cell and a single
            divider down the middle (left-column cells only). */
         .mp-trust-item  { padding: 6px 10px; display: flex; align-items: center; justify-content: center; gap: 10px; }
@@ -769,10 +772,13 @@ export default function MarketplacePage() {
         .mp-carrow-prev  { position: absolute; top: 0; left: -100%; }
         .mp-carrow-next  { position: absolute; top: 0; left: 100%; }
         .mp-carrow-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
-        .mp-carrow-item { display: block; text-decoration: none; border-radius: 8px; overflow: hidden; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); transition: transform .2s ease, border-color .2s ease; }
-        .mp-carrow-item:hover { transform: translateY(-3px); border-color: rgba(220,38,38,.45); }
-        .mp-carrow-img { height: 52px; background-size: cover; background-position: center; background-color: rgba(255,255,255,0.04); }
-        .mp-carrow-price { display: block; padding: 6px 8px 8px; font-size: 11px; font-weight: 700; color: #fff; font-family: 'Outfit',sans-serif; }
+        /* Tiles are a solid dark card, not a white-alpha wash — the wash sat a
+           different lightness on every band of the hero ramp above. The photo
+           is the only image in the hero, so it gets the height. */
+        .mp-carrow-item { display: block; text-decoration: none; border-radius: 10px; overflow: hidden; background: #0f1219; border: 1px solid rgba(255,255,255,.07); transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+        .mp-carrow-item:hover { transform: translateY(-3px); border-color: rgba(220,38,38,.45); box-shadow: 0 12px 28px rgba(0,0,0,.45); }
+        .mp-carrow-img { height: 62px; background-size: cover; background-position: center; background-color: #14181f; }
+        .mp-carrow-price { display: block; padding: 7px 9px 8px; font-size: 11px; font-weight: 700; color: #fff; font-family: 'Outfit',sans-serif; border-top: 1px solid rgba(255,255,255,.06); }
         .mp-carrow-progress { position: absolute; opacity: 0; width: 0; animation-name: mp-carrow-fill; animation-timing-function: linear; animation-fill-mode: forwards; }
         @keyframes mp-carrow-fill { from { width: 0; } to { width: 100%; } }
         @media (prefers-reduced-motion: reduce) {
@@ -787,15 +793,21 @@ export default function MarketplacePage() {
 
         /* ── Tablet ≥600px ── */
         @media(min-width:600px) {
-          .mp-hero-main { padding: 36px 24px 24px; }
+          .mp-hero-main { padding: 36px clamp(20px,4vw,48px) 24px; }
         }
 
         /* ── Desktop ≥900px ── */
         @media(min-width:900px) {
-          .mp-hero-section  { height: calc(100vh - 64px); min-height: 0; overflow: hidden; }
-          .mp-hero-main     { flex-direction: row; align-items: center; gap: clamp(32px,4vw,72px); max-width: 1360px; margin: 0 auto; padding: 0 clamp(20px,4vw,48px); }
-          .mp-hero-left     { flex: 1; min-width: 0; width: auto; }
-          .mp-hero-right    { flex: 1; min-width: 0; margin-top: 0; }
+          /* min-height, never height: a fixed 100vh with overflow:hidden CLIPPED
+             the bottom of the hero (trust strip, last tile row) on short laptops
+             and at the 900-1024px band. Content decides the height now; the
+             viewport is only a floor. */
+          .mp-hero-section  { min-height: calc(100vh - 64px); }
+          .mp-hero-main     { flex-direction: row; align-items: center; gap: clamp(28px,3.4vw,64px); max-width: 1360px; margin: 0 auto; padding: 32px clamp(20px,4vw,48px); }
+          /* Search is the hero's job; the inventory rows are proof, not a second
+             hero — so the left column carries the extra width. */
+          .mp-hero-left     { flex: 1.15; min-width: 0; width: auto; }
+          .mp-hero-right    { flex: 0.85; min-width: 0; margin-top: 0; }
           .mp-hero-tabs     { width: fit-content; overflow-x: visible; }
           .mp-trust-strip   { padding: 20px 0; }
           .mp-trust-grid    { grid-template-columns: repeat(4,1fr); padding: 0 clamp(20px,4vw,48px); row-gap: 0; }
@@ -803,7 +815,7 @@ export default function MarketplacePage() {
           /* Desktop: dividers between all four (last cell has none). */
           .mp-trust-item:nth-child(even):not(:last-child) { border-right: 1px solid rgba(255,255,255,.08); }
           .mp-carrow-grid   { gap: 10px; }
-          .mp-carrow-img    { height: 80px; }
+          .mp-carrow-img    { height: 96px; }
           .mp-filter-fab    { display: flex; }
           .mp-cars-layout   { flex-direction: row; }
           .mp-hero-search   { flex-direction: row; }
@@ -893,23 +905,29 @@ export default function MarketplacePage() {
 
       <main id="main-content" tabIndex={-1} style={S.page}>
         {/* ── Hero ── */}
-        <section className="mp-hero-section" style={{ background:'#08090f', position:'relative', isolation:'isolate' }}>
+        <section className="mp-hero-section" style={{ position:'relative', isolation:'isolate' }}>
 
-          {/* BG grid — z-index:-1 keeps it behind all content within this stacking context */}
-          <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)', backgroundSize:'80px 80px', pointerEvents:'none', zIndex:-1 }}/>
-          {/* Red glow */}
-          <div style={{ position:'absolute', top:'-200px', left:'50%', transform:'translateX(-50%)', width:'900px', height:'700px', background:'radial-gradient(ellipse at 50% 30%,rgba(220,38,38,0.12) 0%,transparent 60%)', pointerEvents:'none', zIndex:-1 }}/>
+          {/* BG grid — z-index:-1 keeps it behind all content within this stacking
+              context. Masked out toward the bottom so it stops tiling flatly into
+              the quick-filter strip below and hands off to a plain dark ground. */}
+          <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(255,255,255,0.022) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.022) 1px,transparent 1px)', backgroundSize:'80px 80px', pointerEvents:'none', zIndex:-1, WebkitMaskImage:'linear-gradient(180deg,#000 0%,#000 45%,transparent 92%)', maskImage:'linear-gradient(180deg,#000 0%,#000 45%,transparent 92%)' }}/>
+          {/* Red glow — anchored over the headline/search column rather than dead
+              centre, so it lights the thing the eye is meant to land on. */}
+          <div style={{ position:'absolute', top:'-220px', left:'22%', transform:'translateX(-50%)', width:'900px', height:'760px', background:'radial-gradient(ellipse at 50% 30%,rgba(220,38,38,0.13) 0%,transparent 62%)', pointerEvents:'none', zIndex:-1 }}/>
 
           {/* Two-column hero content */}
           <div className="mp-hero-main">
 
             {/* LEFT: headline + subtitle + tabs + search */}
             <div className="mp-hero-left">
-              <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 14px', lineHeight:'0.92', letterSpacing:'-0.01em', fontSize:'clamp(38px,10vw,96px)', color:'#ffffff' }}>
+              {/* Capped at 72px, not 96px: the display size was pushing the search
+                  bar — the page's whole conversion action — under the fold on a
+                  normal laptop height. */}
+              <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 10px', lineHeight:'0.92', letterSpacing:'-0.01em', fontSize:'clamp(36px,8.5vw,72px)', color:'#ffffff' }}>
                 FIND YOUR NEXT<br/><span style={{ color:'#dc2626' }}>CAR IN MALAYSIA</span>
               </h1>
 
-              <p style={{ fontSize:'clamp(13px,3.5vw,15px)', color:'rgba(255,255,255,0.6)', margin:'0 0 24px', lineHeight:'1.7', fontFamily:"'Outfit',sans-serif", maxWidth:'420px' }}>
+              <p style={{ fontSize:'clamp(13px,3.5vw,15px)', color:'rgba(255,255,255,0.6)', margin:'0 0 18px', lineHeight:'1.6', fontFamily:"'Outfit',sans-serif", maxWidth:'420px' }}>
                 New &middot; Used &middot; Recon &mdash; Verified Dealers, Full Docs, Zero Phantom Listings.
               </p>
 
@@ -984,11 +1002,10 @@ export default function MarketplacePage() {
                     <SlidersHorizontal size={11}/> More filters
                   </button>
                 </div>
-
-                <p style={{ display:'flex', alignItems:'center', gap:'6px', margin:'14px 0 0', fontSize:'11px', color:'rgba(255,255,255,0.4)', fontFamily:"'Outfit',sans-serif", fontWeight:500 }}>
-                  <ShieldCheck size={13} color="#dc2626" style={{ flexShrink:0 }} />
-                  Every listing verified. Every dealer certified. Zero phantom listings.
-                </p>
+                {/* No "every listing verified" line here — the subhead above says
+                    it and the trust strip below PROVES it with real counts. Three
+                    statements of one claim in one viewport is the clutter, and it
+                    was also what pushed the proof off the fold. */}
               </div>
             </div>
 
@@ -1043,14 +1060,12 @@ export default function MarketplacePage() {
           </div>
         </section>
 
-        {/* Seam accent — the hero is intentionally dark (brand statement) and the body
-            intentionally light (browsing surface, per DESIGN.md); the hard cut between
-            them read as two stapled-together templates rather than one product. A
-            single brand-red line ties them together without touching either palette. */}
-        <div style={{ height: 3, background: 'linear-gradient(90deg, transparent, #dc2626, transparent)' }} />
-
-        {/* ── Quick-filter strip ── */}
-        <section style={{ background: '#F7F6F2', padding: '20px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+        {/* ── Quick-filter strip — DARK, and deliberately part of the hero block.
+              It used to be beige, so the first screen stacked a pastel bar, a dark
+              hero and a cream strip: three palettes in one fold, and the chips read
+              as bolted on. Same container/gutter token as the hero and trust strip
+              so the left edges line up. ── */}
+        <section style={{ background: '#08090f', padding: '16px 0', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '0 clamp(20px, 4vw, 48px)' }}>
             <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', paddingBottom: '2px' }}>
               {[
@@ -1071,7 +1086,7 @@ export default function MarketplacePage() {
                 ]},
               ].map(({ groupLabel, pills }) => (
                 <div key={groupLabel} style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                  <span style={{ fontSize: '10px', fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Outfit',sans-serif", whiteSpace: 'nowrap' }}>{groupLabel}</span>
+                  <span style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Outfit',sans-serif", whiteSpace: 'nowrap' }}>{groupLabel}</span>
                   {pills.map(({ label, paramKey, paramVal }) => {
                     const isActive = searchParams.get(paramKey) === paramVal;
                     return (
@@ -1084,9 +1099,9 @@ export default function MarketplacePage() {
                         style={{
                           padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
                           fontFamily: "'Outfit',sans-serif", cursor: 'pointer', border: 'none', transition: 'all 0.15s',
-                          background: isActive ? 'rgba(220,38,38,0.1)' : 'rgba(0,0,0,0.05)',
-                          color: isActive ? '#dc2626' : '#374151',
-                          outline: isActive ? '1.5px solid rgba(220,38,38,0.4)' : '1.5px solid transparent',
+                          background: isActive ? 'rgba(220,38,38,0.16)' : 'rgba(255,255,255,0.06)',
+                          color: isActive ? '#fca5a5' : 'rgba(255,255,255,0.72)',
+                          outline: isActive ? '1.5px solid rgba(220,38,38,0.5)' : '1.5px solid rgba(255,255,255,0.07)',
                         }}
                       >{label}</button>
                     );
@@ -1096,6 +1111,12 @@ export default function MarketplacePage() {
             </div>
           </div>
         </section>
+
+        {/* Seam accent — the dark fold (hero + trust strip + quick filters) is the
+            brand statement and the body below is the light browsing surface, per
+            DESIGN.md. The hard cut between them read as two stapled-together
+            templates; one brand-red line ties them without touching either palette. */}
+        <div style={{ height: 3, background: 'linear-gradient(90deg, transparent, #dc2626, transparent)' }} />
 
         {/* ── Body Type Carousels — lazy loaded ── */}
         <section ref={carouselSectionRef} style={{ background: '#EDEAE3', padding: '48px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
