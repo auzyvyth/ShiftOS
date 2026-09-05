@@ -81,6 +81,10 @@ Project ID: lemdkdizdlcirhbzqlos
   in Outfit, so walking from the marketplace into a car changed the typeface.
 - Cards: bg-gray-900, border-gray-800
 - Public marketplace surfaces: read `DESIGN.md` (tokens, scales, grid, anti-slop rules) before any public-facing UI change.
+- Dealer/salesman DASHBOARD surfaces: read `DASHBOARD_DESIGN.md` (the "quiet terminal"
+  language — tokens, tabular figures, delta contract, sparkline spec, dense table rules)
+  before building any dashboard panel, stat tile, data table or trend. Reference
+  implementation is `src/components/MarketDemandTab.jsx`.
 
 ### Anti-slop UI rules (non-negotiable)
 - NEVER put a decorative coloured left accent bar / vertical side-line on list rows or cards to signal status or category — it reads as generic AI slop. Convey state with a small pill/tag, a status dot, or a very subtle full-row background tint (stage/status hue at ~5-10% alpha) instead.
