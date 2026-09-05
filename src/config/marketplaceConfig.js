@@ -9,7 +9,7 @@ export const BRANDS = [
   'Subaru','Daihatsu','Hyundai','Kia','BMW','Mercedes-Benz','Mercedes',
   'Volkswagen','Audi','Porsche','Lexus','Volvo','Tesla','Ford','MG','BYD',
   'MINI','Chery','Haval','Geely','Jaguar','Land Rover','Ferrari','Lamborghini',
-  'Bentley',
+  'Bentley','Rolls Royce','Alfa Romeo',
 ];
 // Brands surfaced in the filter <select> dropdowns (curated, common-first).
 export const BRAND_OPTIONS = ['Perodua','Proton','Honda','Toyota','Mazda','BMW','Mercedes-Benz','Hyundai','Nissan','Mitsubishi','Kia','Volvo','Lexus','Subaru','Volkswagen','Audi','Suzuki','Daihatsu'];

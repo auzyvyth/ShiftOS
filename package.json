@@ -14,7 +14,8 @@
     "test:tour": "node tests/tourPlacement.test.mjs",
     "test:perf": "node tests/salesPerformance.test.mjs",
     "test:plan": "node tests/salesmanPlan.test.mjs",
-    "test:chassis": "node tests/chassisDecode.test.mjs"
+    "test:chassis": "node tests/chassisDecode.test.mjs",
+    "test:modelkey": "node tests/modelKey.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
