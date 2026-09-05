@@ -10,7 +10,7 @@ import { routeForRole } from "../hooks/useRoleRedirect";
 import useHandover from "../hooks/useHandover";
 import { useHideOnScroll } from "../hooks/useHideOnScroll";
 import { placeTourCard } from "../utils/tourPlacement";
-import { mergePendingTag } from "../utils/specializations";
+import { mergePendingTag } from "../utils/pendingTag";
 import { normalizePhone } from "../lib/phone";
 import SuspendedBanner from "../components/SuspendedBanner";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";

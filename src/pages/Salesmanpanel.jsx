@@ -23,7 +23,7 @@ import ChannelBreakdown from "../components/ChannelBreakdown";
 import { toast } from "sonner";
 import { generateDealSheet } from "../utils/dealSheet";
 import { maskIC } from "../utils/maskIC";
-import { mergePendingTag } from "../utils/specializations";
+import { mergePendingTag } from "../utils/pendingTag";
 import {
  LogOut,
  Link,

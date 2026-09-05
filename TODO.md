@@ -707,13 +707,17 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   free Lite account would spam it.
   Two corrections to the sketch it came in with, both because the platform
   already has this plumbing:
-  - **The tier column is `profiles.selected_plan`, not a new `plan` column**, and
-    its values are `salesman_lite | salesman_full | dealer_starter |
-    dealer_growth | dealer_pro | dealer_group` — not `free|premium|dealer`.
-    Collapsing to one column was audit item C4; `src/utils/planConfig.js` mirrors
-    the `plan_config` table. A gate written against `plan in ('premium','dealer')`
-    matches nothing and locks everyone out. Gate on `PLAN_CONFIG[...]`, i.e. paid
-    tiers = everything except `salesman_lite`.
+  - **The tier column already exists: `profiles.plan`.** Values are
+    `salesman_lite | salesman_full | dealer_starter | dealer_growth | dealer_pro
+    | dealer_group` — not `free|premium|dealer`, so a gate written against
+    `plan in ('premium','dealer')` matches nothing and locks everyone out
+    including the people paying. `src/utils/planConfig.js` mirrors the
+    `plan_config` table; gate on `PLAN_CONFIG[...]`, i.e. paid tiers =
+    everything except `salesman_lite`. (Note for anyone reading C4 in CLAUDE.md:
+    that item says the collapse target is `selected_plan`. It is not —
+    `selected_plan` was DROPPED from the live table, the surviving column is
+    `plan`, and `enforce_listing_cap` reads it via `plan_config`. Verified
+    against the live DB 2026-09-05.)
   - **Do NOT deploy a standalone `extract-car-listing` edge function that calls
     api.anthropic.com directly.** `supabase/functions/ai-proxy` is already the
     one Anthropic entry point: it verifies the caller's JWT, resolves their

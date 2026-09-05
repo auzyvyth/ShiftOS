@@ -103,6 +103,7 @@ import { getPlanConfig, nextDealerPlan } from "../utils/planConfig";
 import { color, border, radius, font } from "../theme/tokens";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { getListingGaps } from "../utils/listingCompleteness";
+import { mergePendingTag } from "../utils/pendingTag";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
 import {
   Car,
@@ -8610,7 +8611,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
           puspakom_b7_done:    genForm.puspakom_b7_done,
           encumbrance_declared:genForm.encumbrance_declared,
           include_financing:   genForm.include_financing,
-          handover_items:      genForm.handover_items,
+          handover_items:      mergePendingTag(genForm.handover_items, newHandoverItem),
           exceptions_noted:    genForm.exceptions_noted,
         },
       }).select().single();
