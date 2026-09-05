@@ -201,6 +201,16 @@ export default function SalesmanProfilePage() {
     return `${profile?.full_name || 'Car agent'} has ${listings.length} ${listings.length === 1 ? 'car' : 'cars'} available${where}. Browse the listings and message them on XDrive.`;
   })();
 
+  // The listings column leads with the newest car (the query orders
+  // created_at desc) and puts the rest in the small-card grid under it. Up to
+  // three of the featured car's OWN other photos ride alongside it; anything
+  // past that is counted on the last thumb rather than dropped silently.
+  const featured = listings[0] || null;
+  const rest = listings.slice(1);
+  const featuredImages = Array.isArray(featured?.images) ? featured.images.filter(Boolean) : [];
+  const featuredThumbs = featuredImages.slice(1, 4);
+  const featuredExtra = Math.max(0, featuredImages.length - 4);
+
   // The dealership's own address (linked salesmen only) — a full free-text
   // address if the dealer set one, else fall back to city/state.
   const dealerLocationStr = dealer
@@ -270,6 +280,57 @@ export default function SalesmanProfilePage() {
            the right-hand cards). Columns stay exactly equal. */
         .sp-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
         @media (max-width: 640px) { .sp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
+
+        /* ── Desktop two-column: the seller on the left, their cars on the
+           right (the shape Mudah uses). Below 1024px nothing changes — the
+           same blocks stack in the same order they always did.
+           Column widths live in these classes rather than inline styles so
+           the media query can widen them without !important. */
+        .sp-narrow { max-width: 640px; margin: 0 auto; padding-left: clamp(14px, 5vw, 24px); padding-right: clamp(14px, 5vw, 24px); }
+        .sp-wide   { max-width: 1080px; margin: 0 auto; padding-left: clamp(14px, 5vw, 24px); padding-right: clamp(14px, 5vw, 24px); }
+        .sp-map    { max-width: 640px; margin: 36px auto 0; }
+        @media (min-width: 1024px) {
+          .sp-shell {
+            display: grid; grid-template-columns: 400px minmax(0, 1fr);
+            gap: 44px; max-width: 1280px; margin: 0 auto; padding: 0 32px;
+            align-items: start;
+          }
+          .sp-shell .sp-narrow, .sp-shell .sp-wide { max-width: none; margin: 0; padding-left: 0; padding-right: 0; }
+          /* The right column is ~half the width the grid used to have, so the
+             small cards drop from three across to two — that is the 2x2 block
+             under the featured car. */
+          .sp-shell .sp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+          .sp-shell .sp-map { max-width: none; margin: 36px 0 0; }
+          /* A rule between two side-by-side columns divides nothing. */
+          .sp-divider { display: none; }
+          /* The right column is roughly twice as wide as the stacked page, so
+             the same percentages give a photo half the screen tall and thumbs
+             that are no longer thumbs. Both are pinned down here. */
+          .sp-shell .sp-feat-main { padding-top: 46%; }
+          .sp-shell .sp-thumb { aspect-ratio: auto; height: 104px; }
+        }
+
+        /* ── Featured (most recent) listing — one big card that leads the
+           column: a large photo with a rail of the same car's other photos
+           beside it, then the details. */
+        .sp-feat { display: block; text-decoration: none; color: inherit; background: #0d1117; border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; overflow: hidden; margin-bottom: 16px; transition: border-color 0.18s, transform 0.18s; }
+        .sp-feat:hover { border-color: rgba(255,255,255,0.18); transform: translateY(-2px); }
+        .sp-feat-media { display: grid; gap: 6px; padding: 6px; }
+        .sp-feat-main { position: relative; padding-top: 58%; border-radius: 10px; overflow: hidden; background: #0a0e18; }
+        .sp-feat-main img, .sp-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        /* Thumbs run UNDER the big photo, not in a rail beside it: a vertical
+           rail is portrait and every car photo is landscape, so each thumb got
+           cropped to a door handle. */
+        .sp-thumbs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
+        .sp-thumb { position: relative; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: #0a0e18; }
+        .sp-thumb-more { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(10,14,24,0.66); font-size: 12px; font-weight: 700; color: #e5e7eb; }
+
+        /* The avatar hangs off the cover banner. In the stacked layout the
+           column carries its own 14-24px gutter, so the avatar is inset to
+           match; in the two-column layout the gutter is on the shell instead,
+           so it sits flush or the name (padded 106px clear) lands on top of it. */
+        .sp-avatar { left: clamp(14px, 5vw, 24px); }
+        @media (min-width: 1024px) { .sp-shell .sp-avatar { left: 0; } }
         .sp-card { transition: border-color 0.18s, transform 0.18s; }
         .sp-card:hover { border-color: rgba(255,255,255,0.18) !important; transform: translateY(-2px); }
         .social-btn:hover { color: #e5e7eb !important; }
@@ -292,6 +353,9 @@ export default function SalesmanProfilePage() {
 
         <div style={{ position: 'relative', zIndex: 1 }}>
 
+        <div className="sp-shell">
+        <div className="sp-left">
+
         {/* ── Cover banner — Facebook/blog-post style: capped to the same
             max width as the content below (not full-bleed across the
             viewport — on desktop that stretched into a thin "ribbon" and
@@ -300,7 +364,7 @@ export default function SalesmanProfilePage() {
             The avatar is positioned absolutely against this wrapper (not a
             sibling with a negative margin) so it can never end up painted
             behind the banner regardless of DOM/stacking edge cases. ── */}
-        <div style={{ position: 'relative', maxWidth: 640, margin: '0 auto' }}>
+        <div className="sp-narrow" style={{ position: 'relative', paddingLeft: 0, paddingRight: 0 }}>
           <div style={{
             width: '100%', height: 'clamp(150px, 30vw, 190px)', overflow: 'hidden',
             background: profile.cover_url
@@ -321,17 +385,17 @@ export default function SalesmanProfilePage() {
           )}
 
           {profile.avatar_url ? (
-            <img src={profile.avatar_url} alt={profile.full_name}
-              style={{ position: 'absolute', left: 'clamp(14px, 5vw, 24px)', bottom: -46, zIndex: 2, width: 92, height: 92, borderRadius: '50%', objectFit: 'cover', display: 'block', border: '4px solid #0b0e15', boxShadow: '0 2px 10px rgba(0,0,0,0.4)' }} />
+            <img src={profile.avatar_url} alt={profile.full_name} className="sp-avatar"
+              style={{ position: 'absolute', bottom: -46, zIndex: 2, width: 92, height: 92, borderRadius: '50%', objectFit: 'cover', display: 'block', border: '4px solid #0b0e15', boxShadow: '0 2px 10px rgba(0,0,0,0.4)' }} />
           ) : (
-            <div style={{ position: 'absolute', left: 'clamp(14px, 5vw, 24px)', bottom: -46, zIndex: 2, width: 92, height: 92, borderRadius: '50%', background: 'linear-gradient(135deg,#1d4ed8,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, fontWeight: 700, color: '#fff', border: '4px solid #0b0e15', boxShadow: '0 2px 10px rgba(0,0,0,0.4)' }}>
+            <div className="sp-avatar" style={{ position: 'absolute', bottom: -46, zIndex: 2, width: 92, height: 92, borderRadius: '50%', background: 'linear-gradient(135deg,#1d4ed8,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, fontWeight: 700, color: '#fff', border: '4px solid #0b0e15', boxShadow: '0 2px 10px rgba(0,0,0,0.4)' }}>
               {(profile.full_name || 'S')[0].toUpperCase()}
             </div>
           )}
         </div>
 
         {/* ── Hero ── */}
-        <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 clamp(14px, 5vw, 24px) 28px' }}>
+        <div className="sp-narrow" style={{ paddingBottom: 28 }}>
 
           {/* Name (+ verified badge) and listing count sit in the space the
               avatar overlaps — name padded clear of the avatar, count
@@ -429,7 +493,7 @@ export default function SalesmanProfilePage() {
 
           {/* Primary CTA (WhatsApp) + icon-only social links, all inline on
               the same row so the icons sit on the button's y-axis. */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
             {waHref && (
               <a href={waHref} target="_blank" rel="noopener noreferrer"
                 style={{ background: '#25D366', color: '#fff', fontWeight: 700, fontSize: 12, borderRadius: 8, padding: '9px 16px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
@@ -468,20 +532,78 @@ export default function SalesmanProfilePage() {
               after All Listings) so the cars lead the page. */}
         </div>
 
-        {/* ── Divider ── */}
-        <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 clamp(14px, 5vw, 24px)' }}>
+        </div>{/* /sp-left */}
+
+        <div className="sp-right">
+
+        {/* ── Divider — only meaningful in the stacked (mobile) order, where
+            the seller block sits directly above the cars. ── */}
+        <div className="sp-narrow sp-divider">
           <div style={{ height: 1, background: 'rgba(255,255,255,0.05)' }} />
         </div>
 
         {/* ── All Listings ── */}
-        <div style={{ maxWidth: 1080, margin: '0 auto', padding: '28px clamp(14px, 5vw, 24px) 80px' }}>
+        <div className="sp-wide" style={{ paddingTop: 28, paddingBottom: 80 }}>
           {listings.length > 0 && (
             <>
               <p style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 14 }}>
                 Listings{listings.length > 1 ? ` (${listings.length})` : ''}
               </p>
+
+              {/* The newest car leads the column at full width — listings come
+                  back ordered created_at desc, so [0] IS the latest. Its own
+                  extra photos sit in a rail beside it; a car with one photo
+                  gets the full width instead of an empty rail. */}
+              {featured && (
+                <Link to={`/showroom/${featured.slug}`} onClick={() => trackCardClick(featured)} className="sp-feat">
+                  <div className="sp-feat-media">
+                    <div className="sp-feat-main">
+                      {featuredImages[0] ? (
+                        <img src={featuredImages[0]} alt={`${featured.brand} ${featured.model}`} />
+                      ) : (
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span style={{ fontSize: 12, color: '#374151' }}>No photo</span>
+                        </div>
+                      )}
+                    </div>
+                    {featuredThumbs.length > 0 && (
+                      <div className="sp-thumbs">
+                        {featuredThumbs.map((src, i) => (
+                          <div key={i} className="sp-thumb">
+                            <img src={src} alt="" loading="lazy" />
+                            {i === featuredThumbs.length - 1 && featuredExtra > 0 && (
+                              <span className="sp-thumb-more">+{featuredExtra}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ padding: '14px 16px 16px' }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 6 }}>
+                      Latest listing
+                    </p>
+                    <p style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', marginBottom: 2 }}>
+                      {[featured.year, featured.brand, featured.model].filter(Boolean).join(' ')}
+                    </p>
+                    {featured.variant && (
+                      <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>{featured.variant}</p>
+                    )}
+                    {featured.selling_price > 0 && (
+                      <p style={{ fontSize: 22, fontWeight: 800, color: '#60a5fa', marginBottom: 8 }}>
+                        RM {fmt(featured.selling_price)}
+                      </p>
+                    )}
+                    <p style={{ fontSize: 11, color: '#4b5563' }}>
+                      {[featured.mileage ? `${fmt(featured.mileage)} km` : null, featured.transmission, featured.colour].filter(Boolean).join(' · ')}
+                    </p>
+                  </div>
+                </Link>
+              )}
+
+              {rest.length > 0 && (
               <div className="sp-grid">
-                {listings.map(car => {
+                {rest.map(car => {
                   const img = Array.isArray(car.images) ? car.images[0] : null;
                   return (
                     <Link key={car.id} to={`/showroom/${car.slug}`} onClick={() => trackCardClick(car)} style={{ textDecoration: 'none', color: 'inherit', display: 'block', minWidth: 0 }}>
@@ -520,6 +642,7 @@ export default function SalesmanProfilePage() {
                   );
                 })}
               </div>
+              )}
             </>
           )}
 
@@ -529,11 +652,12 @@ export default function SalesmanProfilePage() {
             </p>
           )}
 
-          {/* ── Location — moved below the car cards. The agent's own address,
-              or (linked salesmen with none set) the dealership's. Capped at the
-              hero width and centered so it doesn't stretch across the wide grid. ── */}
+          {/* ── Location — below the car cards in both layouts, so the cars
+              lead. The agent's own address, or (linked salesmen with none set)
+              the dealership's. Capped to hero width when the page is stacked,
+              full column width beside the seller panel. ── */}
           {mapLocationStr && (
-            <div style={{ maxWidth: 640, margin: '36px auto 0' }}>
+            <div className="sp-map">
               <p style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>
                 {ownLocationStr ? 'Find Me Here' : `Visit ${dealer?.dealership || 'the dealership'}`}
               </p>
@@ -563,6 +687,9 @@ export default function SalesmanProfilePage() {
             th={DARK_REVIEW_TH}
           />
         </div>
+
+        </div>{/* /sp-right */}
+        </div>{/* /sp-shell */}
 
         {/* ── Footer ── */}
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '22px 0', textAlign: 'center' }}>
