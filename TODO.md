@@ -393,6 +393,30 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   later alongside the metrics copilot — same funding blocker, same
   per-listing quota pattern as `feature="caption"` already uses.
 
+- **IDEA-5: JPJ open-data market intelligence (data.gov.my registration
+  transactions)** — free government dataset of Malaysian car registrations:
+  date_reg, type, maker, model, colour, fuel, state. No price, no mileage, no
+  VIN, no variant, no new-vs-recon — so it can never do price benchmarking.
+  What it CAN do, ranked: (a) colour demand per model, shown as a badge on the
+  stock unit at buy-time and hold-time, so a dealer knows before auction that a
+  colour sits; (b) model x state demand for stock buying; (c) model lifecycle
+  curves; (d) public "Market Pulse" SEO pages. Belongs on DEALER accounts
+  (Inventory group), NOT the salesman panels and NOT as a marketplace ranking
+  signal — popularity-sorting buries interesting stock, and showing a buyer
+  that a colour is unpopular hands them a negotiating lever on the dealer's own
+  listing. No push notifications: the data moves monthly and that channel
+  carries real leads.
+  UNVERIFIED, and it decides the value of the whole thing: does the dataset
+  count NEW registrations only, or include ownership transfers (pindah milik)?
+  Transfers would make it the actual used market and worth far more.
+  data.gov.my is egress-blocked from web sessions (403 at the proxy), so
+  phase 0 must be a local download.
+  Real work is model-string matching (JPJ strings -> CAR_DATA); colour is easy,
+  COLOURS at src/config/marketplaceConfig.js:48 already matches JPJ's buckets.
+  Shape: monthly cron -> two rollups (reg_colour_month, reg_model_month), read
+  via RPC. Never parse parquet in the browser.
+  (Came up 2026-09-05.)
+
 - **IDEA-4: One account, one door — stop making people classify themselves
   at sign-in** — owner's framing (2026-08-30), triggered by a real new user:
   a friend was told to "log in as a buyer" and reported ending up in the Lite
