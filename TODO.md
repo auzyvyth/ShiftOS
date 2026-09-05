@@ -393,29 +393,41 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   later alongside the metrics copilot — same funding blocker, same
   per-listing quota pattern as `feature="caption"` already uses.
 
-- **IDEA-5: JPJ open-data market intelligence (data.gov.my registration
-  transactions)** — free government dataset of Malaysian car registrations:
-  date_reg, type, maker, model, colour, fuel, state. No price, no mileage, no
-  VIN, no variant, no new-vs-recon — so it can never do price benchmarking.
-  What it CAN do, ranked: (a) colour demand per model, shown as a badge on the
-  stock unit at buy-time and hold-time, so a dealer knows before auction that a
-  colour sits; (b) model x state demand for stock buying; (c) model lifecycle
-  curves; (d) public "Market Pulse" SEO pages. Belongs on DEALER accounts
-  (Inventory group), NOT the salesman panels and NOT as a marketplace ranking
-  signal — popularity-sorting buries interesting stock, and showing a buyer
-  that a colour is unpopular hands them a negotiating lever on the dealer's own
-  listing. No push notifications: the data moves monthly and that channel
-  carries real leads.
-  UNVERIFIED, and it decides the value of the whole thing: does the dataset
-  count NEW registrations only, or include ownership transfers (pindah milik)?
-  Transfers would make it the actual used market and worth far more.
-  data.gov.my is egress-blocked from web sessions (403 at the proxy), so
-  phase 0 must be a local download.
-  Real work is model-string matching (JPJ strings -> CAR_DATA); colour is easy,
-  COLOURS at src/config/marketplaceConfig.js:48 already matches JPJ's buckets.
-  Shape: monthly cron -> two rollups (reg_colour_month, reg_model_month), read
-  via RPC. Never parse parquet in the browser.
-  (Came up 2026-09-05.)
+- **IDEA-5: JPJ open-data market intelligence (data.gov.my registrations)**
+  PHASE 0 DONE 2026-09-05, from the live files. No laptop needed — pg_net is
+  installed, so the DB itself fetched them (the Claude web session's proxy
+  blocks data.gov.my; Supabase's network does not).
+  - NO SECRETS. No key, no auth, no registration. Nothing to add to Vercel or
+    Supabase.
+  - Files: `https://storage.data.gov.my/transportation/cars_<year>.csv` and
+    `.parquet`, years 2000-2026. Parquet is ~650 KB/year (7 low-cardinality
+    columns dictionary-encode brilliantly), CSV ~50 MB/year. Range requests
+    work, so it can be sampled without downloading a whole year.
+  - Columns are exactly: date_reg, type, maker, model, colour, fuel, state.
+  - **NEW REGISTRATIONS ONLY, not ownership transfers.** A 10-chunk sample
+    across all of 2024 contained zero Kancil/Wira/Kelisa/Viva — every model
+    was one on sale that year. So this is not the used market directly.
+  - **BUT recon imports appear as first registrations**, which is the part
+    that matters here: Harrier, Vellfire, FJ Cruiser, Tank and Sequoia are all
+    in 2024 and none is sold new in Malaysia. Recon is exactly this platform's
+    segment, so the colour/volume signal for JDM imports IS in this data.
+    Not yet measured: what share of a given model's rows are recon.
+  - `maker`/`model` are CLEAN catalogue-style strings ("Perodua"/"Myvi",
+    "Chery"/"Omoda 5", "Toyota"/"Corolla Cross"), NOT messy manufacturer
+    trim strings. The mapping burden is far smaller than assumed — the messy
+    side is our own car_listings.model, which is what src/utils/modelKey.js
+    now resolves.
+  - `colour` is lowercase English (white, black, silver, grey, red, brown).
+    Maps straight onto COLOURS (src/config/marketplaceConfig.js:48).
+  - `type` is Malay: motokar, jip, motokar_pelbagai_utiliti. `state` includes
+    "Rakan Niaga" (dealer stock, no real state) — a large share, exclude it
+    from anything state-level.
+  - Rows are sorted by date_reg and grouped by model within a date.
+  Still to do: the two rollups (reg_colour_month, reg_model_month), the
+  monthly ingestion, then the "Market Demand" tab in the dealer dashboard's
+  INVENTORY group (not Reports — that group already holds five reports, and
+  those are the dealer's own numbers whereas this is the market's).
+  (Captured 2026-09-05.)
 
 - **IDEA-4: One account, one door — stop making people classify themselves
   at sign-in** — owner's framing (2026-08-30), triggered by a real new user:
