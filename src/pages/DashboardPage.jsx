@@ -90,6 +90,7 @@ const HPBoard          = React.lazy(() => import("../components/HPBoard"));
 const OversightTab     = React.lazy(() => import("../components/OversightTab"));
 const OverviewTab      = React.lazy(() => import("../components/OverviewTab"));
 const PostSaleBoard    = React.lazy(() => import("../components/postsale/PostSaleBoard"));
+const MarketDemandTab  = React.lazy(() => import("../components/MarketDemandTab"));
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
@@ -180,7 +181,20 @@ import {
   Mail,
   Film,
   ShieldCheck,
+  Activity,
 } from "lucide-react";
+
+// Which sidebar group owns each tab. Module scope on purpose: this was three
+// identical copies in three scopes, so a new tab had to be added to all three
+// or its group quietly stopped opening.
+const TAB_TO_GROUP = {
+  overview: "g_reports", analytics: "g_reports", oversight: "g_reports",
+  crm: "g_sales",       hp: "g_sales",
+  listings: "g_inventory", add: "g_inventory", stock: "g_inventory", market: "g_inventory",
+  handover: "g_operations", customers: "g_operations", documents: "g_operations",
+  outreach: "g_growth", storefront: "g_growth", ai_manager: "g_growth",
+  team: "g_admin",
+};
 
 const SERVER_URL = "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1";
 const MAX_DEALERSHIP_CHANGES = 2;
@@ -9369,15 +9383,7 @@ export default function DashboardPage() {
   const [deleteId, setDeleteId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState(() => {
-    const TAB_GROUP_MAP = {
-      overview: "g_reports", analytics: "g_reports", oversight: "g_reports",
-      crm: "g_sales", hp: "g_sales",
-      listings: "g_inventory", add: "g_inventory", stock: "g_inventory",
-      handover: "g_operations", customers: "g_operations", documents: "g_operations",
-      outreach: "g_growth", storefront: "g_growth", ai_manager: "g_growth",
-      team: "g_admin",
-    };
-    const gid = TAB_GROUP_MAP[tabParam || "overview"];
+    const gid = TAB_TO_GROUP[tabParam || "overview"];
     return gid ? new Set([gid]) : new Set();
   });
   const [priceEditListing, setPriceEditListing] = useState(null);
@@ -9707,15 +9713,7 @@ export default function DashboardPage() {
       if (tab !== 'add') { setAddMode(null); setMarketplaceDraftListing(null); }
       navigate(`/dashboard/${tab}`);
       // Keep the group containing this tab open in the sidebar
-      const TAB_GROUP_MAP = {
-        overview: "g_reports", analytics: "g_reports", oversight: "g_reports",
-        crm: "g_sales", hp: "g_sales",
-        listings: "g_inventory", add: "g_inventory", stock: "g_inventory",
-        handover: "g_operations", customers: "g_operations", documents: "g_operations",
-        outreach: "g_growth", storefront: "g_growth", ai_manager: "g_growth",
-        team: "g_admin",
-      };
-      const gid = TAB_GROUP_MAP[tab];
+      const gid = TAB_TO_GROUP[tab];
       if (gid) setOpenGroups(prev => new Set([...prev, gid]));
     });
   }, [navigate]);
@@ -10104,6 +10102,7 @@ export default function DashboardPage() {
     outreach:   { title: "Outreach Hub",     sub: "Lead campaigns & WhatsApp automation" },
     customers:  { title: "Customers",        sub: "Buyer history, expiry tracking & remarketing" },
     handover:   { title: "Handover",         sub: "Post-sale processing: JPJ transfer, Puspakom, road tax & insurance" },
+    market:     { title: "Market Demand",    sub: "What Malaysia registered last month, matched against your stock" },
   };
 
   const NAV_GROUPS = [
@@ -10129,6 +10128,7 @@ export default function DashboardPage() {
       items: [
         { id: "listings", Icon: Car,        label: "Inventory", badge: listings.length },
         { id: "add",      Icon: PlusCircle, label: "Add Listing" },
+        { id: "market",   Icon: Activity,   label: "Market Demand" },
       ],
     },
     {
@@ -10153,15 +10153,6 @@ export default function DashboardPage() {
       ],
     },
   ];
-
-  const TAB_TO_GROUP = {
-    overview: "g_reports", analytics: "g_reports", oversight: "g_reports",
-    crm: "g_sales",       hp: "g_sales",
-    listings: "g_inventory", add: "g_inventory", stock: "g_inventory",
-    handover: "g_operations", customers: "g_operations", documents: "g_operations",
-    outreach: "g_growth", storefront: "g_growth", ai_manager: "g_growth",
-    team: "g_admin",
-  };
 
   const toggleGroup = useCallback((gid) => {
     setOpenGroups(prev => {
@@ -11456,6 +11447,9 @@ export default function DashboardPage() {
           )}
           {activeTab === "handover" && userId && (
             <PostSaleBoard dealerId={getDealerIdFromProfile(profile)} />
+          )}
+          {activeTab === "market" && userId && (
+            <MarketDemandTab dealerId={getDealerIdFromProfile(profile)} />
           )}
           </React.Suspense>
           </TabErrorBoundary>

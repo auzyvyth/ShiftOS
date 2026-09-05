@@ -25,6 +25,7 @@ import {
   sanitizeFuelType, sanitizeColour, sanitizeSellerType, sanitizeStr,
 } from '../config/marketplaceConfig';
 import { CAR_DATA } from '../data/carData';
+import { modelFilter } from '../utils/modelKey';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import PriceAlertButton from '../components/PriceAlertButton';
 import ShowroomCard, { ShowroomCardSkeleton } from '../components/ShowroomCard';
@@ -515,7 +516,23 @@ export default function CarListingPage() {
         });
       }
       if (brand)        query = query.eq('brand', brand);
-      if (model)        query = query.ilike('model', model);        // case-insensitive
+      if (model) {
+        // car_listings.model is free text, so one car is stored under several
+        // spellings — 12 rows "ALPHARD 2.5L" and 5 rows "Alphard" live right
+        // now. An exact .ilike matched one group and hid the other, so a buyer
+        // filtering for an Alphard saw 5 of the 17 on the site. Resolve to the
+        // canonical model and match its spellings, excluding longer siblings
+        // ("Move" must not pull in "Move Canbus"). Falls back to the old exact
+        // match when the value does not resolve, so an unknown model still
+        // filters rather than returning everything.
+        const mf = modelFilter(brand, model);
+        if (mf) {
+          query = query.or(mf.like.map((pat) => `model.ilike.${pat}`).join(','));
+          for (const pat of mf.notLike) query = query.not('model', 'ilike', pat);
+        } else {
+          query = query.ilike('model', model);
+        }
+      }
       if (variant)      query = query.ilike('variant', `%${variant}%`);
       if (bodyType)     query = query.eq('body_type', bodyType);
       if (state)        query = query.eq('state', state);

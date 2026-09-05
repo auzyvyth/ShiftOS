@@ -119,10 +119,17 @@ serve(async (req) => {
 
     // Shared per-dealer daily quota, same pool as every other AI feature.
     const dealerId = resolveDealerId(profile);
-    const { data: usage } = await db.rpc("record_ai_request", {
+    const { data: usage, error: usageErr } = await db.rpc("record_ai_request", {
       p_dealer_id: dealerId, p_user_id: user.id, p_role: profile.role,
       p_feature: "crm_assist", p_model: MODEL, p_max_tokens: MAX_TOKENS,
     });
+    // The quota is the cost control on a paid API. A record that did not happen
+    // is a refusal, not something to log past — swallowing this error is how
+    // ai-proxy ran unmetered.
+    if (usageErr) {
+      console.error("chat-assist usage error:", usageErr);
+      return json({ error: "could not record AI usage" }, 500, origin);
+    }
     if (typeof usage === "number" && usage > 400) {
       return json({ error: "daily AI quota reached for this dealership. Try again tomorrow." }, 429, origin);
     }

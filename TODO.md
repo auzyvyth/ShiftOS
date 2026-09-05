@@ -28,6 +28,168 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## AI proxy was never metered, and would 403 the moment credits are funded — 2026-09-05
+
+> **DEPLOY REQUIRED: `ai-proxy` and `chat-assist` are FIXED IN THE REPO AND NOT
+> DEPLOYED.** The DB half (`20260905m`) is already live. Deploy both functions
+> with the next release or the repo/deployed gap this file keeps warning about
+> gets one entry wider.
+
+Found while triaging the SECURITY DEFINER grants. `ai-proxy` builds its client
+as `createClient(url, anonKey)` and then passes the caller's token only to
+`auth.getUser(token)` — which identifies the user but does NOT attach the token
+to the client. Every query it makes therefore runs as the `anon` role. Proven
+against the live DB inside a rolled-back DO block:
+
+- The `profiles` read (`.eq('id', user.id).single()`) returns **0 rows** as anon
+  — `profiles` has no anon SELECT policy — so `.single()` errors and the
+  function returns **403 "profile not found"** before it ever reaches Anthropic.
+  Every AI feature would fail this way. It is masked today only because
+  `AI_FEATURES_ENABLED = false` (`src/utils/aiFeatureFlag.js`) while Anthropic
+  credits are unfunded. **Flipping that flag would NOT have turned AI on** — it
+  would have produced a 403 with no obvious cause.
+- `record_ai_request` came back **`42501 permission denied for function`** as
+  anon, and the code only `console.error`'d it and carried on. So the shared
+  400/day per-dealer quota — the one control between a dealer and an unbounded
+  Anthropic bill — has never been enforced, and the usage log has never been
+  written. Evidence: `ai_request_log` has **0 rows, ever**; `ai_usage` has a
+  single row from 2026-05-18, before this code path existed.
+
+- [x] **AI-1: `ai-proxy` now uses a caller-scoped client**, the same shape
+  `chat-assist` already had (`global.headers.Authorization`). RLS still applies
+  to every read; the difference is that the reads run as the user instead of as
+  anon. `anonClient` is kept for `auth.getUser()` only, which is its correct use.
+- [x] **AI-2: a usage-record failure is now a refusal, not a warning.** Both
+  `ai-proxy` and `chat-assist` return 500 "could not record AI usage" instead of
+  proceeding unmetered. Deliberately fail-closed: on a paid API, an unrecorded
+  request is worse than a refused one.
+- [x] **AI-3: `record_ai_request` is scoped to the caller** (`20260905m`). It was
+  callable by any signed-in account for any dealer id, so anyone could burn a
+  competitor's daily pool to zero or poison their usage log. Guard mirrors
+  ai-proxy's `resolveDealerId` exactly, which is what `get_my_dealer_id()`
+  already computes; verified compatible with `chat-assist`, which resolves the
+  dealer identically.
+- [ ] **AI-4: verify end to end when credits are funded.** Deploy both functions,
+  flip `AI_FEATURES_ENABLED`, then check `ai_request_log` grows by one row per
+  request and that the 401st request in a day is refused. Until a row lands in
+  that table, the quota is unproven — that is the lesson ACT-13 already taught
+  (a config recorded as done is not done until data proves it fired).
+
+## Caller-scoping sweep — 2026-09-05 (`authenticated` is not a boundary here)
+
+Migration `20260905m`. Same family as the anon sweep below, one grant level up.
+It matters because **anonymous sign-in gives guest buyers the `authenticated`
+role**, so "authenticated only" protects nothing against the public on this
+project — any visitor who opens a chat can call these.
+
+- [x] **SEC-B1 (MED, was live): `get_plan_usage(p_dealer_id)` returned ANY
+  dealer's commercial position** — plan, price, listing and seat caps, active
+  listings, seat count, HP submissions MTD. No caller check at all. Now scoped
+  to `auth.uid()` / `get_my_dealer_id()` / `is_superadmin()`; the one caller
+  (`DashboardPage.jsx:1100`) already passes its own dealer id. Verified: own
+  scope returns the full object, another dealer's raises `not authorized`.
+- [x] **SEC-B2 (MED, was live): `get_dealer_slug_analytics(p_dealer_id, p_days)`
+  returned ANY dealer's per-salesman link clicks and WhatsApp taps.** The same
+  leak `get_car_analytics` had, one level up. Every caller
+  (`PerformanceTab.jsx:167`, `DashboardPage.jsx:3080` and `:4309`) hands it the
+  same `dealerId` it hands `get_dealer_car_analytics` on the adjacent line, and
+  that function already enforced this exact guard — so the fix was compatible by
+  construction. Verified: own dealer returns rows, another dealer returns none.
+  The `p_days` default is 90 and was preserved; changing it would have silently
+  shortened the dashboard's analytics window.
+- [ ] **SEC-B3 (open, pre-existing, unrelated to the guard): `get_plan_usage`
+  returns NULL for a profile whose `plan` has no `plan_config` row.** The live
+  superadmin-owned dealer account has `plan = 'superadmin'`, which is not a
+  plan, so the INNER JOIN drops the row and the settings card renders nothing.
+  Residue of the C4 tiering split-brain. Either add the row or LEFT JOIN and
+  render the caps as unlimited.
+- [ ] **SEC-B4 (open): the remaining `authenticated` definer surface is not
+  audited.** 169 functions; this pass read the ones that take an argument and
+  do work while checking nothing. Not re-checked: `count_other_dealer_vin_plate`
+  (count-only, but it is a VIN/plate existence oracle across dealers) and
+  `redeem_invite` (the code is the credential, which is the accepted pattern).
+  The buyer-admin pair (`admin_set_buyer_ban`, `admin_revoke_buyer_sessions`) was
+  checked and is correct — both go through `_assert_buyer_action_allowed`, which
+  requires superadmin, refuses self-targeting, and refuses a non-buyer target.
+
+## Anon SECURITY DEFINER sweep — 2026-09-05 (two real holes closed)
+
+Migration `20260905l_anon_definer_sweep`, applied to the live DB. The Supabase
+advisor lists 127 SECURITY DEFINER functions `anon` may EXECUTE; most are
+trigger functions (PostgREST never exposes those) or anon-facing by design.
+Three took an argument, did real work, and checked nothing about the caller.
+Each was confirmed live as `anon` inside a rolled-back DO block before the fix,
+and re-probed after it.
+
+- [x] **SEC-A1 (HIGH, was live): `login_throttle_clear(p_email)` reset ANY
+  email's login lockout.** Body was one unconditional
+  `delete from auth_login_throttle where email = $1`, EXECUTE granted to anon.
+  The 3-strike lockout `login_throttle_fail` applies was therefore removable by
+  anyone, for anyone, over the public REST endpoint — call it between password
+  attempts and there is no throttle. Proven as anon: target's row went 1 -> 0.
+  It now reads the caller's own email off `auth.users` via `auth.uid()` and
+  clears only that row, so clearing is something you EARN by logging in rather
+  than something you request by naming an email. `LoginPage.jsx:397` calls it
+  right after a successful `signInWithPassword`, so a session exists by then —
+  verified unbroken. Anon EXECUTE revoked. Degrades safely: with no session it
+  no-ops, and `login_throttle_fail` already zeroes a counter after 15 quiet
+  minutes, so a lingering row can never lock a real user out.
+  Worth noting alongside ACT-6: leaked-password protection is off (Pro-only),
+  so weak passwords are accepted — the throttle was the only brute-force
+  control on that path.
+
+- [x] **SEC-A2 (MED, was live): `get_car_analytics(uuid[])` leaked every
+  seller's per-car numbers to anon.** It aggregated `analytics_events` for
+  whatever car ids you handed it, with no ownership filter and no auth check.
+  Car ids are public by design (straight off `public_car_listings`), so any
+  visitor could pull views, enquiries and a 7-day series for every listing on
+  the marketplace — one dealer's demand signal readable by their competitor.
+  Proven as anon against 5 arbitrary public listings. It was also DEAD: the
+  dashboard and salesman panel both use `get_dealer_car_analytics(p_dealer_id,
+  p_days)`, which HAS the ownership check (`auth.uid() = dealer` or
+  `get_my_dealer_id() = dealer` or `is_superadmin()`). Superseded predecessor
+  left behind with the hole in it, zero `pg_depend` rows — dropped rather than
+  patched, because a second analytics entry point is the exact drift this repo
+  keeps getting bitten by.
+
+- [x] **SEC-A3 (LOW): `cron_key_matches(p_key)` was an anon-callable oracle for
+  the cron key.** Long random key so not practically guessable, but a
+  yes/no oracle anyone can query at network speed should not exist. Its only
+  caller (`notify-chat-unread`) runs on the service-role client, which bypasses
+  grants — revoked from anon AND authenticated.
+
+- [x] **SEC-A4: defence in depth on 11 admin/ops RPCs.** `admin_list_listing_
+  reports`, `admin_resolve_listing_report`, `decide_kyc_verification`,
+  `get_pending_kyc`, `get_error_logs`, `get_error_summary`,
+  `get_landing_page_visits`, `get_marketplace_funnel`, `get_marketplace_top`,
+  `get_platform_engagement`, `broadcast_notification`. All of them already
+  raise unless `is_superadmin()`, so this changed the error and not the
+  behaviour — but a grant nobody can justify is how the first two holes got
+  here. `get_marketplace_stats` deliberately KEEPS anon (the marketplace header
+  needs it). Verified with `has_function_privilege`, never by reading the
+  migration back.
+
+- [ ] **SEC-A5 (LOW, left open on purpose): the waitlist pair still runs as
+  anon.** `waitlist_lookup(p_phone)` returns queue position + referral code for
+  any phone (a membership/enumeration oracle), and `waitlist_credit_referrer
+  (p_ref_code)` flips `founding_member` for a code. Neither can be revoked:
+  `api/waitlist.js` is a public Vercel route that builds its client with the
+  ANON key, so revoking breaks signup. Credit-referrer is weaker than it looks
+  — it requires the code to already have >= 1 real referral, so it can only
+  re-apply a promotion that was genuinely earned, and it is idempotent. Both
+  sit behind the edge rate limit (3 req/IP/5min, `middleware.js`). Real fix is
+  a service-role key for that route, which is a Vercel env change (user
+  action); do that and revoke both.
+
+- [ ] **SEC-A6 (open): 169 SECURITY DEFINER functions are executable by
+  `authenticated`.** Not audited this session. It matters more than it sounds
+  because a GUEST BUYER is `authenticated`, not `anon` — anonymous sign-in
+  hands out the authenticated role. So "authenticated only" is not a real
+  boundary against the public on this project, and any function relying on it
+  needs an internal ownership check, the way `get_dealer_car_analytics` does.
+  Same triage as this pass: ignore trigger functions, read the ones that take
+  an argument and do work.
+
 ## Marketplace seller trust signals — 2026-09-03 (verified + sold count shipped)
 
 `ShowroomCard` now shows the seller's sold count and an identity-verified tick,
@@ -392,6 +554,35 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   existing listing's photos/copy and suggesting what's weak about it. Scope
   later alongside the metrics copilot — same funding blocker, same
   per-listing quota pattern as `feature="caption"` already uses.
+
+- **IDEA-6 - BUILT 2026-09-05: JPJ market demand (data.gov.my registrations)**
+  Shipped as the **Market Demand** tab in the dealer dashboard's INVENTORY
+  group (`src/components/MarketDemandTab.jsx`, wired in DashboardPage.jsx).
+  Renumbered from IDEA-5, which was already taken by the /plans work.
+  - **NO SECRETS anywhere.** data.gov.my needs no key, no auth, no
+    registration. Nothing added to Vercel or Supabase env vars.
+  - Ingestion is `pg_net` from the database itself - Supabase's network can
+    reach data.gov.my even though the Claude web sandbox cannot. The whole
+    50 MB CSV lands in ONE request, so no chunking. Two steps, two separate
+    transactions (pg_net is async). Procedure: `tools/jpj/README.md`.
+  - One rollup table `reg_car_month` (month, maker, maker_canon, model,
+    model_key, colour, fuel, body_type, n) - deliberately ONE table, not the
+    two originally planned, so no two rollups can disagree. `model_key` is a
+    GENERATED column mirroring keyOf() in src/utils/modelKey.js.
+  - Loaded 2023-2026(Jul): 3.05M registrations -> 52,571 rollup rows, zero
+    malformed rows. Refresh monthly; data.gov.my runs ~1 month in arrears.
+  - **NEW REGISTRATIONS ONLY, not ownership transfers** - but recon imports
+    get a first plate, so they ARE here: Alphard 57k, Harrier 18.6k, Vellfire
+    14.2k, Lexus RX 12.2k over 4 years. That is this platform's segment.
+  - Still open: what share of a given model's rows are recon vs CBU. Needs a
+    different signal - the source has no recon flag.
+  - Known data gap, surfaced honestly in the UI: JPJ does not break out
+    performance variants (a BMW M4 is counted inside "4 Series"), so those
+    models get a "not tracked separately" note rather than a zero.
+  - `state` includes "Rakan Niaga" (dealer stock, no real state) and it is a
+    large share - excluded from everything; there is no state view yet.
+  - NOT built, and deliberately: no price/valuation anywhere on this page.
+    The source has no price column, so any figure would be invented.
 
 - **IDEA-4: One account, one door — stop making people classify themselves
   at sign-in** — owner's framing (2026-08-30), triggered by a real new user:
