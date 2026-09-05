@@ -28,6 +28,84 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## Anon SECURITY DEFINER sweep — 2026-09-05 (two real holes closed)
+
+Migration `20260905l_anon_definer_sweep`, applied to the live DB. The Supabase
+advisor lists 127 SECURITY DEFINER functions `anon` may EXECUTE; most are
+trigger functions (PostgREST never exposes those) or anon-facing by design.
+Three took an argument, did real work, and checked nothing about the caller.
+Each was confirmed live as `anon` inside a rolled-back DO block before the fix,
+and re-probed after it.
+
+- [x] **SEC-A1 (HIGH, was live): `login_throttle_clear(p_email)` reset ANY
+  email's login lockout.** Body was one unconditional
+  `delete from auth_login_throttle where email = $1`, EXECUTE granted to anon.
+  The 3-strike lockout `login_throttle_fail` applies was therefore removable by
+  anyone, for anyone, over the public REST endpoint — call it between password
+  attempts and there is no throttle. Proven as anon: target's row went 1 -> 0.
+  It now reads the caller's own email off `auth.users` via `auth.uid()` and
+  clears only that row, so clearing is something you EARN by logging in rather
+  than something you request by naming an email. `LoginPage.jsx:397` calls it
+  right after a successful `signInWithPassword`, so a session exists by then —
+  verified unbroken. Anon EXECUTE revoked. Degrades safely: with no session it
+  no-ops, and `login_throttle_fail` already zeroes a counter after 15 quiet
+  minutes, so a lingering row can never lock a real user out.
+  Worth noting alongside ACT-6: leaked-password protection is off (Pro-only),
+  so weak passwords are accepted — the throttle was the only brute-force
+  control on that path.
+
+- [x] **SEC-A2 (MED, was live): `get_car_analytics(uuid[])` leaked every
+  seller's per-car numbers to anon.** It aggregated `analytics_events` for
+  whatever car ids you handed it, with no ownership filter and no auth check.
+  Car ids are public by design (straight off `public_car_listings`), so any
+  visitor could pull views, enquiries and a 7-day series for every listing on
+  the marketplace — one dealer's demand signal readable by their competitor.
+  Proven as anon against 5 arbitrary public listings. It was also DEAD: the
+  dashboard and salesman panel both use `get_dealer_car_analytics(p_dealer_id,
+  p_days)`, which HAS the ownership check (`auth.uid() = dealer` or
+  `get_my_dealer_id() = dealer` or `is_superadmin()`). Superseded predecessor
+  left behind with the hole in it, zero `pg_depend` rows — dropped rather than
+  patched, because a second analytics entry point is the exact drift this repo
+  keeps getting bitten by.
+
+- [x] **SEC-A3 (LOW): `cron_key_matches(p_key)` was an anon-callable oracle for
+  the cron key.** Long random key so not practically guessable, but a
+  yes/no oracle anyone can query at network speed should not exist. Its only
+  caller (`notify-chat-unread`) runs on the service-role client, which bypasses
+  grants — revoked from anon AND authenticated.
+
+- [x] **SEC-A4: defence in depth on 11 admin/ops RPCs.** `admin_list_listing_
+  reports`, `admin_resolve_listing_report`, `decide_kyc_verification`,
+  `get_pending_kyc`, `get_error_logs`, `get_error_summary`,
+  `get_landing_page_visits`, `get_marketplace_funnel`, `get_marketplace_top`,
+  `get_platform_engagement`, `broadcast_notification`. All of them already
+  raise unless `is_superadmin()`, so this changed the error and not the
+  behaviour — but a grant nobody can justify is how the first two holes got
+  here. `get_marketplace_stats` deliberately KEEPS anon (the marketplace header
+  needs it). Verified with `has_function_privilege`, never by reading the
+  migration back.
+
+- [ ] **SEC-A5 (LOW, left open on purpose): the waitlist pair still runs as
+  anon.** `waitlist_lookup(p_phone)` returns queue position + referral code for
+  any phone (a membership/enumeration oracle), and `waitlist_credit_referrer
+  (p_ref_code)` flips `founding_member` for a code. Neither can be revoked:
+  `api/waitlist.js` is a public Vercel route that builds its client with the
+  ANON key, so revoking breaks signup. Credit-referrer is weaker than it looks
+  — it requires the code to already have >= 1 real referral, so it can only
+  re-apply a promotion that was genuinely earned, and it is idempotent. Both
+  sit behind the edge rate limit (3 req/IP/5min, `middleware.js`). Real fix is
+  a service-role key for that route, which is a Vercel env change (user
+  action); do that and revoke both.
+
+- [ ] **SEC-A6 (open): 169 SECURITY DEFINER functions are executable by
+  `authenticated`.** Not audited this session. It matters more than it sounds
+  because a GUEST BUYER is `authenticated`, not `anon` — anonymous sign-in
+  hands out the authenticated role. So "authenticated only" is not a real
+  boundary against the public on this project, and any function relying on it
+  needs an internal ownership check, the way `get_dealer_car_analytics` does.
+  Same triage as this pass: ignore trigger functions, read the ones that take
+  an argument and do work.
+
 ## Marketplace seller trust signals — 2026-09-03 (verified + sold count shipped)
 
 `ShowroomCard` now shows the seller's sold count and an identity-verified tick,

@@ -911,6 +911,29 @@ Rules that follow:
   - Test every anon-reachable surface AS anon before shipping: `set local role anon`
     inside a DO block that raises at the end, so the probe rolls itself back.
 
+### Naming a subject in an argument is not an ownership check (same family)
+A share token at least has to be presented. An argument that merely NAMES whose
+row to touch — an email, a dealer id, a list of car ids — proves nothing at all,
+and a SECURITY DEFINER function that acts on it is doing the caller's bidding
+with the database's privileges. Two live examples, both fixed 2026-09-05
+(`20260905l`): `login_throttle_clear(p_email)` deleted ANY email's brute-force
+lockout, and `get_car_analytics(uuid[])` returned ANY seller's per-car views and
+enquiries. Both were granted to `anon`.
+  - Derive the subject from the SESSION (`auth.uid()`), then use the argument
+    only to confirm it. `get_dealer_car_analytics` is the pattern to copy: it
+    takes `p_dealer_id` but refuses unless it matches `auth.uid()`,
+    `get_my_dealer_id()` or `is_superadmin()`.
+  - **`authenticated` is not a boundary against the public here.** Anonymous
+    sign-in (guest buyers) hands out the `authenticated` role, so every
+    authenticated-only grant is reachable by any visitor who opens a chat. The
+    check has to be inside the function.
+  - When a function is superseded by a guarded version, DROP the old one. Both
+    holes above were dead or near-dead predecessors of a correct function that
+    already existed — a second entry point is the drift, not a spare.
+  - Trigger functions (`returns trigger`) are not PostgREST-callable, so ignore
+    them when triaging the advisor's anon/authenticated definer lists and read
+    the ones that take an argument and do work.
+
 ## Theme — know which surface you're on
 - The DEALER DASHBOARD is LIGHT: white cards (#fff), border #e5e7eb, primary text #111827, secondary #6b7280, accent #dc2626. Any panel embedded in the dealer dashboard (incl. handover/PostSaleBoard, CRM bookings) MUST be light to match — do NOT force a dark wrapper on it.
 - The #080C14 / dark background applies to the PUBLIC marketplace + marketing surfaces (HomePage, hero, public car pages), NOT the dealer dashboard.
