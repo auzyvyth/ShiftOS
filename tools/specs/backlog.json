@@ -1,12 +1,33 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "generated_at": "2026-09-05",
-  "note": "Models present in src/utils/chassisDecode.js with NO row in src/utils/carSpecs.js. my_regs_4y is Malaysian new registrations 2023-2026(Jul) from reg_car_month (JPJ open data); null means the nameplate does not appear in JPJ under this name. Work top-down.",
-  "total": 67,
+  "note": "Every brand+model in src/data/carData.js with NO row in src/utils/carSpecs.js. regs_4y is Malaysian new registrations 2023-Jul 2026 from reg_car_month (JPJ open data), matched on a normalised brand+model key. 0 means the nameplate has no Malaysian registrations in that window - discontinued, grey import only, or never sold here - and those sort last. There is no search-term data on this platform, so registrations are the demand proxy.",
+  "total": 288,
+  "with_registrations": 227,
+  "without": 61,
   "models": [
+    {
+      "make": "Ford",
+      "model": "Ranger",
+      "regs": 20792,
+      "chassis_codes": []
+    },
+    {
+      "make": "Chery",
+      "model": "Omoda 5",
+      "regs": 17377,
+      "chassis_codes": []
+    },
+    {
+      "make": "BYD",
+      "model": "Atto 3",
+      "regs": 12970,
+      "chassis_codes": []
+    },
     {
       "make": "Lexus",
       "model": "RX",
+      "regs": 12274,
       "chassis_codes": [
         "GGL10",
         "GYL10",
@@ -14,104 +35,146 @@
         "GYL20",
         "TALA10",
         "AALH10"
-      ],
-      "known_generations": [
-        "2009-2015",
-        "2015-2022",
-        "2022-"
-      ],
-      "my_regs_4y": 12274
+      ]
+    },
+    {
+      "make": "Mercedes",
+      "model": "C-Class",
+      "regs": 8531,
+      "chassis_codes": []
+    },
+    {
+      "make": "Tesla",
+      "model": "Model 3",
+      "regs": 8475,
+      "chassis_codes": []
+    },
+    {
+      "make": "Tesla",
+      "model": "Model Y",
+      "regs": 8350,
+      "chassis_codes": []
     },
     {
       "make": "Mazda",
       "model": "Mazda 3",
+      "regs": 7780,
       "chassis_codes": [
         "BM5FS",
         "BMLFS"
-      ],
-      "known_generations": [
-        "2013-2019"
-      ],
-      "my_regs_4y": 7780
+      ]
     },
     {
-      "make": "Toyota",
-      "model": "Voxy",
-      "chassis_codes": [
-        "ZRR70",
-        "ZRR80",
-        "ZWR80",
-        "MZRA90",
-        "ZWR90"
-      ],
-      "known_generations": [
-        "2007-2014",
-        "2014-2022",
-        "2022-"
-      ],
-      "my_regs_4y": 5794
+      "make": "Haval",
+      "model": "H6",
+      "regs": 7542,
+      "chassis_codes": []
+    },
+    {
+      "make": "BMW",
+      "model": "3 Series",
+      "regs": 7448,
+      "chassis_codes": []
+    },
+    {
+      "make": "Mercedes",
+      "model": "A-Class",
+      "regs": 7244,
+      "chassis_codes": []
+    },
+    {
+      "make": "Mercedes",
+      "model": "GLC",
+      "regs": 6107,
+      "chassis_codes": []
+    },
+    {
+      "make": "Mercedes",
+      "model": "E-Class",
+      "regs": 4885,
+      "chassis_codes": []
     },
     {
       "make": "Lexus",
       "model": "NX",
+      "regs": 4790,
       "chassis_codes": [
         "AGZ10",
         "AYZ10",
         "AAZH20",
         "TAZA20"
-      ],
-      "known_generations": [
-        "2014-2021",
-        "2021-"
-      ],
-      "my_regs_4y": 4790
+      ]
     },
     {
-      "make": "Toyota",
-      "model": "Hiace",
-      "chassis_codes": [
-        "KDH200",
-        "TRH200",
-        "GDH300",
-        "KDH300"
-      ],
-      "known_generations": [
-        "2004-2019",
-        "2019-"
-      ],
-      "my_regs_4y": 4474
+      "make": "BYD",
+      "model": "Seal",
+      "regs": 4194,
+      "chassis_codes": []
     },
     {
-      "make": "Toyota",
-      "model": "Yaris Cross",
-      "chassis_codes": [
-        "MXPB10",
-        "MXPJ10"
-      ],
-      "known_generations": [
-        "2020-"
-      ],
-      "my_regs_4y": 4084
+      "make": "Volkswagen",
+      "model": "Tiguan",
+      "regs": 4157,
+      "chassis_codes": []
+    },
+    {
+      "make": "Kia",
+      "model": "Carnival",
+      "regs": 4067,
+      "chassis_codes": []
     },
     {
       "make": "Toyota",
       "model": "Land Cruiser",
+      "regs": 3808,
       "chassis_codes": [
         "URJ200",
         "UZJ200",
         "VDJ200",
         "VJA300",
         "FJA300"
-      ],
-      "known_generations": [
-        "2007-2021",
-        "2021-"
-      ],
-      "my_regs_4y": 3808
+      ]
+    },
+    {
+      "make": "BMW",
+      "model": "X1",
+      "regs": 3712,
+      "chassis_codes": []
+    },
+    {
+      "make": "BMW",
+      "model": "5 Series",
+      "regs": 3522,
+      "chassis_codes": []
+    },
+    {
+      "make": "Porsche",
+      "model": "Cayenne",
+      "regs": 3490,
+      "chassis_codes": []
+    },
+    {
+      "make": "MINI",
+      "model": "Countryman",
+      "regs": 3485,
+      "chassis_codes": []
+    },
+    {
+      "make": "Mercedes",
+      "model": "CLA",
+      "regs": 3456,
+      "chassis_codes": []
+    },
+    {
+      "make": "Mercedes",
+      "model": "GLA",
+      "regs": 3254,
+      "chassis_codes": []
     },
     {
       "make": "Honda",
       "model": "Stepwgn",
+      "regs": 3163,
       "chassis_codes": [
         "RK1",
         "RK5",
@@ -120,46 +183,100 @@
         "RP5",
         "RP6",
         "RP8"
-      ],
-      "known_generations": [
-        "2009-2015",
-        "2015-2022",
-        "2022-"
-      ],
-      "my_regs_4y": 3163
+      ]
+    },
+    {
+      "make": "BYD",
+      "model": "Dolphin",
+      "regs": 2831,
+      "chassis_codes": []
+    },
+    {
+      "make": "BMW",
+      "model": "X3",
+      "regs": 2787,
+      "chassis_codes": []
+    },
+    {
+      "make": "MINI",
+      "model": "Cooper",
+      "regs": 2568,
+      "chassis_codes": []
     },
     {
       "make": "Subaru",
       "model": "XV",
+      "regs": 2527,
       "chassis_codes": [
         "GP7",
         "GT3",
         "GT7"
-      ],
-      "known_generations": [
-        "2011-2017",
-        "2017-2022"
-      ],
-      "my_regs_4y": 2527
+      ]
     },
     {
-      "make": "Honda",
-      "model": "N-Box",
-      "chassis_codes": [
-        "JF1",
-        "JF2",
-        "JF3",
-        "JF4"
-      ],
-      "known_generations": [
-        "2011-2017",
-        "2017-2023"
-      ],
-      "my_regs_4y": 1696
+      "make": "BMW",
+      "model": "X4",
+      "regs": 2275,
+      "chassis_codes": []
+    },
+    {
+      "make": "BMW",
+      "model": "2 Series",
+      "regs": 2272,
+      "chassis_codes": []
+    },
+    {
+      "make": "MG",
+      "model": "MG5",
+      "regs": 2255,
+      "chassis_codes": []
+    },
+    {
+      "make": "BMW",
+      "model": "X5",
+      "regs": 2250,
+      "chassis_codes": []
+    },
+    {
+      "make": "Hyundai",
+      "model": "Staria",
+      "regs": 2131,
+      "chassis_codes": []
+    },
+    {
+      "make": "Volvo",
+      "model": "XC60",
+      "regs": 1944,
+      "chassis_codes": []
+    },
+    {
+      "make": "Porsche",
+      "model": "Macan",
+      "regs": 1916,
+      "chassis_codes": []
+    },
+    {
+      "make": "BMW",
+      "model": "iX",
+      "regs": 1910,
+      "chassis_codes": []
+    },
+    {
+      "make": "Suzuki",
+      "model": "Jimny",
+      "regs": 1899,
+      "chassis_codes": []
+    },
+    {
+      "make": "Volkswagen",
+      "model": "Golf",
+      "regs": 1819,
+      "chassis_codes": []
     },
     {
       "make": "Subaru",
       "model": "Forester",
+      "regs": 1674,
       "chassis_codes": [
         "SH5",
         "SH9",
@@ -168,456 +285,991 @@
         "SK5",
         "SK9",
         "SKE"
-      ],
-      "known_generations": [
-        "2008-2012",
-        "2012-2018",
-        "2018-"
-      ],
-      "my_regs_4y": 1674
+      ]
+    },
+    {
+      "make": "Land Rover",
+      "model": "Defender",
+      "regs": 1657,
+      "chassis_codes": []
+    },
+    {
+      "make": "Nissan",
+      "model": "Kicks",
+      "regs": 1595,
+      "chassis_codes": []
+    },
+    {
+      "make": "Volvo",
+      "model": "XC90",
+      "regs": 1498,
+      "chassis_codes": []
+    },
+    {
+      "make": "Volvo",
+      "model": "XC40",
+      "regs": 1486,
+      "chassis_codes": []
     },
     {
       "make": "Toyota",
       "model": "GR86",
+      "regs": 1471,
       "chassis_codes": [
         "ZN8"
-      ],
-      "known_generations": [
-        "2021-"
-      ],
-      "my_regs_4y": 1471
+      ]
+    },
+    {
+      "make": "Mercedes",
+      "model": "GLE",
+      "regs": 1409,
+      "chassis_codes": []
+    },
+    {
+      "make": "Chery",
+      "model": "Tiggo 7",
+      "regs": 1402,
+      "chassis_codes": []
+    },
+    {
+      "make": "Porsche",
+      "model": "Taycan",
+      "regs": 1321,
+      "chassis_codes": []
+    },
+    {
+      "make": "Suzuki",
+      "model": "Swift",
+      "regs": 1305,
+      "chassis_codes": []
     },
     {
       "make": "Mazda",
       "model": "MX-5",
+      "regs": 1213,
       "chassis_codes": [
         "NCEC",
         "ND5RC"
-      ],
-      "known_generations": [
-        "2005-2015",
-        "2015-"
-      ],
-      "my_regs_4y": 1213
+      ]
     },
     {
       "make": "Lexus",
       "model": "IS",
+      "regs": 1131,
       "chassis_codes": [
         "GSE20",
         "GSE30",
         "AVE30"
-      ],
-      "known_generations": [
-        "2005-2013",
-        "2013-"
-      ],
-      "my_regs_4y": 1131
+      ]
+    },
+    {
+      "make": "Mazda",
+      "model": "CX-60",
+      "regs": 1131,
+      "chassis_codes": []
+    },
+    {
+      "make": "Mercedes",
+      "model": "G-Class",
+      "regs": 1038,
+      "chassis_codes": []
+    },
+    {
+      "make": "BMW",
+      "model": "i5",
+      "regs": 966,
+      "chassis_codes": []
     },
     {
       "make": "Lexus",
       "model": "LX",
+      "regs": 940,
       "chassis_codes": [
         "URJ201",
         "VJA310"
-      ],
-      "known_generations": [
-        "2007-2021",
-        "2021-"
-      ],
-      "my_regs_4y": 940
+      ]
     },
     {
-      "make": "Toyota",
-      "model": "Prado",
-      "chassis_codes": [
-        "TRJ150",
-        "GDJ150"
-      ],
-      "known_generations": [
-        "2009-2024"
-      ],
-      "my_regs_4y": 904
+      "make": "Volkswagen",
+      "model": "Arteon",
+      "regs": 905,
+      "chassis_codes": []
+    },
+    {
+      "make": "BMW",
+      "model": "i4",
+      "regs": 897,
+      "chassis_codes": []
     },
     {
       "make": "Toyota",
       "model": "Supra",
+      "regs": 876,
       "chassis_codes": [
         "JZA80",
         "DB02",
         "DB22",
         "DB42"
-      ],
-      "known_generations": [
-        "1993-2002",
-        "2019-"
-      ],
-      "my_regs_4y": 876
+      ]
     },
     {
       "make": "Toyota",
       "model": "Estima",
+      "regs": 812,
       "chassis_codes": [
         "ACR50",
         "GSR50",
         "AHR20"
-      ],
-      "known_generations": [
-        "2006-2019"
-      ],
-      "my_regs_4y": 812
+      ]
     },
     {
       "make": "Toyota",
       "model": "86",
+      "regs": 794,
       "chassis_codes": [
         "ZN6"
-      ],
-      "known_generations": [
-        "2012-2020"
-      ],
-      "my_regs_4y": 794
+      ]
+    },
+    {
+      "make": "Mercedes",
+      "model": "S-Class",
+      "regs": 790,
+      "chassis_codes": []
+    },
+    {
+      "make": "BMW",
+      "model": "7 Series",
+      "regs": 758,
+      "chassis_codes": []
+    },
+    {
+      "make": "Chery",
+      "model": "Tiggo 8",
+      "regs": 603,
+      "chassis_codes": []
+    },
+    {
+      "make": "Volvo",
+      "model": "EX30",
+      "regs": 572,
+      "chassis_codes": []
+    },
+    {
+      "make": "Kia",
+      "model": "Sportage",
+      "regs": 560,
+      "chassis_codes": []
+    },
+    {
+      "make": "BMW",
+      "model": "4 Series",
+      "regs": 533,
+      "chassis_codes": []
+    },
+    {
+      "make": "Volvo",
+      "model": "C40",
+      "regs": 522,
+      "chassis_codes": []
+    },
+    {
+      "make": "Land Rover",
+      "model": "Range Rover",
+      "regs": 512,
+      "chassis_codes": []
+    },
+    {
+      "make": "MINI",
+      "model": "Clubman",
+      "regs": 502,
+      "chassis_codes": []
     },
     {
       "make": "Toyota",
       "model": "Crown",
+      "regs": 496,
       "chassis_codes": [
         "GRS200",
         "GRS210",
         "AWS210",
         "ARS220",
         "AZSH20"
-      ],
-      "known_generations": [
-        "2008-2012",
-        "2012-2018",
-        "2018-"
-      ],
-      "my_regs_4y": 496
+      ]
+    },
+    {
+      "make": "Lamborghini",
+      "model": "Urus",
+      "regs": 474,
+      "chassis_codes": []
     },
     {
       "make": "Lexus",
       "model": "ES",
+      "regs": 462,
       "chassis_codes": [
         "AXZH10"
-      ],
-      "known_generations": [
-        "2018-"
-      ],
-      "my_regs_4y": 462
+      ]
+    },
+    {
+      "make": "Land Rover",
+      "model": "Range Rover Sport",
+      "regs": 458,
+      "chassis_codes": []
     },
     {
       "make": "Subaru",
       "model": "BRZ",
+      "regs": 457,
       "chassis_codes": [
         "ZC6",
         "ZD8"
-      ],
-      "known_generations": [
-        "2012-2020",
-        "2021-"
-      ],
-      "my_regs_4y": 457
+      ]
+    },
+    {
+      "make": "Land Rover",
+      "model": "Range Rover Velar",
+      "regs": 440,
+      "chassis_codes": []
+    },
+    {
+      "make": "BMW",
+      "model": "X7",
+      "regs": 422,
+      "chassis_codes": []
+    },
+    {
+      "make": "MG",
+      "model": "HS",
+      "regs": 400,
+      "chassis_codes": []
+    },
+    {
+      "make": "Ford",
+      "model": "Everest",
+      "regs": 366,
+      "chassis_codes": []
+    },
+    {
+      "make": "Hyundai",
+      "model": "Santa Fe",
+      "regs": 364,
+      "chassis_codes": []
+    },
+    {
+      "make": "Mercedes",
+      "model": "GLB",
+      "regs": 355,
+      "chassis_codes": []
+    },
+    {
+      "make": "Audi",
+      "model": "Q8",
+      "regs": 333,
+      "chassis_codes": []
     },
     {
       "make": "Nissan",
       "model": "GT-R",
+      "regs": 318,
       "chassis_codes": [
         "R35"
-      ],
-      "known_generations": [
-        "2007-"
-      ],
-      "my_regs_4y": 318
+      ]
+    },
+    {
+      "make": "Hyundai",
+      "model": "Tucson",
+      "regs": 303,
+      "chassis_codes": []
     },
     {
       "make": "Lexus",
       "model": "UX",
+      "regs": 301,
       "chassis_codes": [
         "MZAA10",
         "MZAH10"
-      ],
-      "known_generations": [
-        "2018-"
-      ],
-      "my_regs_4y": 301
+      ]
+    },
+    {
+      "make": "Mazda",
+      "model": "BT-50",
+      "regs": 296,
+      "chassis_codes": []
     },
     {
       "make": "Mazda",
       "model": "Mazda 2",
+      "regs": 294,
       "chassis_codes": [
         "DE3FS",
         "DE5FS",
         "DJ3FS",
         "DJ5FS"
-      ],
-      "known_generations": [
-        "2007-2014",
-        "2014-2022"
-      ],
-      "my_regs_4y": 294
+      ]
     },
     {
-      "make": "Nissan",
-      "model": "Elgrand",
-      "chassis_codes": [
-        "E51",
-        "E52"
-      ],
-      "known_generations": [
-        "2002-2010",
-        "2010-"
-      ],
-      "my_regs_4y": 284
+      "make": "BMW",
+      "model": "1 Series",
+      "regs": 258,
+      "chassis_codes": []
+    },
+    {
+      "make": "Ford",
+      "model": "Mustang",
+      "regs": 252,
+      "chassis_codes": []
     },
     {
       "make": "Toyota",
       "model": "C-HR",
+      "regs": 249,
       "chassis_codes": [
         "NGX10",
         "NGX50",
         "ZYX10",
         "ZYX11"
-      ],
-      "known_generations": [
-        "2016-2023"
-      ],
-      "my_regs_4y": 249
+      ]
     },
     {
-      "make": "Toyota",
-      "model": "Roomy",
-      "chassis_codes": [
-        "M900A",
-        "M910A"
-      ],
-      "known_generations": [
-        "2016-"
-      ],
-      "my_regs_4y": 229
+      "make": "BMW",
+      "model": "Z4",
+      "regs": 245,
+      "chassis_codes": []
+    },
+    {
+      "make": "Kia",
+      "model": "Sorento",
+      "regs": 243,
+      "chassis_codes": []
+    },
+    {
+      "make": "Porsche",
+      "model": "Panamera",
+      "regs": 237,
+      "chassis_codes": []
+    },
+    {
+      "make": "Hyundai",
+      "model": "Ioniq 5",
+      "regs": 230,
+      "chassis_codes": []
+    },
+    {
+      "make": "Hyundai",
+      "model": "Ioniq 6",
+      "regs": 222,
+      "chassis_codes": []
+    },
+    {
+      "make": "Audi",
+      "model": "Q7",
+      "regs": 216,
+      "chassis_codes": []
     },
     {
       "make": "Daihatsu",
       "model": "Move",
+      "regs": 212,
       "chassis_codes": [
         "LA100S",
         "LA150S"
-      ],
-      "known_generations": [
-        "2010-2014",
-        "2014-"
-      ],
-      "my_regs_4y": 212
+      ]
+    },
+    {
+      "make": "Daihatsu",
+      "model": "Taft",
+      "regs": 209,
+      "chassis_codes": []
+    },
+    {
+      "make": "Hyundai",
+      "model": "Creta",
+      "regs": 202,
+      "chassis_codes": []
     },
     {
       "make": "Mazda",
       "model": "Mazda 6",
+      "regs": 190,
       "chassis_codes": [
         "GJ2FP",
         "GJ5FP"
-      ],
-      "known_generations": [
-        "2012-"
-      ],
-      "my_regs_4y": 190
+      ]
     },
     {
-      "make": "Toyota",
-      "model": "Wish",
-      "chassis_codes": [
-        "ZNE10",
-        "ZGE20"
-      ],
-      "known_generations": [
-        "2003-2009",
-        "2009-2017"
-      ],
-      "my_regs_4y": 168
+      "make": "Volvo",
+      "model": "S60",
+      "regs": 161,
+      "chassis_codes": []
+    },
+    {
+      "make": "Volvo",
+      "model": "V60",
+      "regs": 158,
+      "chassis_codes": []
+    },
+    {
+      "make": "MINI",
+      "model": "Convertible",
+      "regs": 147,
+      "chassis_codes": []
+    },
+    {
+      "make": "Volvo",
+      "model": "S90",
+      "regs": 138,
+      "chassis_codes": []
+    },
+    {
+      "make": "Volkswagen",
+      "model": "Touareg",
+      "regs": 137,
+      "chassis_codes": []
+    },
+    {
+      "make": "Lamborghini",
+      "model": "Huracan",
+      "regs": 136,
+      "chassis_codes": []
+    },
+    {
+      "make": "Volvo",
+      "model": "EX90",
+      "regs": 136,
+      "chassis_codes": []
     },
     {
       "make": "Subaru",
       "model": "WRX",
+      "regs": 128,
       "chassis_codes": [
         "GDB",
         "GRB",
         "VAB",
         "VAG"
-      ],
-      "known_generations": [
-        "2000-2007",
-        "2007-2014",
-        "2014-2021"
-      ],
-      "my_regs_4y": 128
+      ]
+    },
+    {
+      "make": "Audi",
+      "model": "A5",
+      "regs": 117,
+      "chassis_codes": []
+    },
+    {
+      "make": "BMW",
+      "model": "8 Series",
+      "regs": 117,
+      "chassis_codes": []
+    },
+    {
+      "make": "Bentley",
+      "model": "Bentayga",
+      "regs": 116,
+      "chassis_codes": []
+    },
+    {
+      "make": "MG",
+      "model": "ZS",
+      "regs": 115,
+      "chassis_codes": []
+    },
+    {
+      "make": "Honda",
+      "model": "Stream",
+      "regs": 113,
+      "chassis_codes": []
+    },
+    {
+      "make": "Ferrari",
+      "model": "F8",
+      "regs": 112,
+      "chassis_codes": []
+    },
+    {
+      "make": "BMW",
+      "model": "X6",
+      "regs": 108,
+      "chassis_codes": []
+    },
+    {
+      "make": "Honda",
+      "model": "Fit",
+      "regs": 104,
+      "chassis_codes": []
     },
     {
       "make": "Subaru",
       "model": "Levorg",
+      "regs": 102,
       "chassis_codes": [
         "VM4",
         "VMG",
         "VN5"
-      ],
-      "known_generations": [
-        "2014-2020",
-        "2020-"
-      ],
-      "my_regs_4y": 102
+      ]
+    },
+    {
+      "make": "Rolls Royce",
+      "model": "Cullinan",
+      "regs": 99,
+      "chassis_codes": []
     },
     {
       "make": "Lexus",
       "model": "RC",
+      "regs": 98,
       "chassis_codes": [
         "ASC10",
         "GSC10"
-      ],
-      "known_generations": [
-        "2014-"
-      ],
-      "my_regs_4y": 98
+      ]
     },
     {
-      "make": "Honda",
-      "model": "S660",
-      "chassis_codes": [
-        "JW5"
-      ],
-      "known_generations": [
-        "2015-2022"
-      ],
-      "my_regs_4y": 92
+      "make": "Audi",
+      "model": "RS3",
+      "regs": 95,
+      "chassis_codes": []
+    },
+    {
+      "make": "Hyundai",
+      "model": "Kona",
+      "regs": 91,
+      "chassis_codes": []
+    },
+    {
+      "make": "Land Rover",
+      "model": "Range Rover Evoque",
+      "regs": 91,
+      "chassis_codes": []
+    },
+    {
+      "make": "Ferrari",
+      "model": "Roma",
+      "regs": 85,
+      "chassis_codes": []
+    },
+    {
+      "make": "Mercedes",
+      "model": "CLS",
+      "regs": 85,
+      "chassis_codes": []
     },
     {
       "make": "Lexus",
       "model": "LC",
+      "regs": 83,
       "chassis_codes": [
         "URZ100"
-      ],
-      "known_generations": [
-        "2017-"
-      ],
-      "my_regs_4y": 83
+      ]
     },
     {
-      "make": "Toyota",
-      "model": "Mark X",
-      "chassis_codes": [
-        "GRX120",
-        "GRX130"
-      ],
-      "known_generations": [
-        "2004-2009",
-        "2009-2019"
-      ],
-      "my_regs_4y": 65
+      "make": "Audi",
+      "model": "TT",
+      "regs": 77,
+      "chassis_codes": []
+    },
+    {
+      "make": "Audi",
+      "model": "Q5",
+      "regs": 73,
+      "chassis_codes": []
     },
     {
       "make": "Daihatsu",
       "model": "Tanto",
+      "regs": 62,
       "chassis_codes": [
         "L375S",
         "LA600S",
         "LA650S"
-      ],
-      "known_generations": [
-        "2007-2013",
-        "2013-2019",
-        "2019-"
-      ],
-      "my_regs_4y": 62
+      ]
+    },
+    {
+      "make": "Rolls Royce",
+      "model": "Ghost",
+      "regs": 59,
+      "chassis_codes": []
+    },
+    {
+      "make": "Ferrari",
+      "model": "812",
+      "regs": 58,
+      "chassis_codes": []
+    },
+    {
+      "make": "Jaguar",
+      "model": "I-Pace",
+      "regs": 58,
+      "chassis_codes": []
+    },
+    {
+      "make": "Bentley",
+      "model": "Continental GT",
+      "regs": 55,
+      "chassis_codes": []
+    },
+    {
+      "make": "Hyundai",
+      "model": "Palisade",
+      "regs": 55,
+      "chassis_codes": []
+    },
+    {
+      "make": "Mazda",
+      "model": "CX-9",
+      "regs": 55,
+      "chassis_codes": []
+    },
+    {
+      "make": "Ferrari",
+      "model": "Purosangue",
+      "regs": 51,
+      "chassis_codes": []
+    },
+    {
+      "make": "Audi",
+      "model": "Q3",
+      "regs": 50,
+      "chassis_codes": []
+    },
+    {
+      "make": "Mercedes",
+      "model": "GLS",
+      "regs": 48,
+      "chassis_codes": []
+    },
+    {
+      "make": "Mercedes",
+      "model": "V-Class",
+      "regs": 46,
+      "chassis_codes": []
+    },
+    {
+      "make": "Kia",
+      "model": "EV6",
+      "regs": 44,
+      "chassis_codes": []
     },
     {
       "make": "Lexus",
       "model": "LS",
+      "regs": 44,
       "chassis_codes": [
         "USF40",
         "VXFA50"
-      ],
-      "known_generations": [
-        "2006-2017",
-        "2017-"
-      ],
-      "my_regs_4y": 44
+      ]
     },
     {
-      "make": "Nissan",
-      "model": "Skyline",
-      "chassis_codes": [
-        "V37"
-      ],
-      "known_generations": [
-        "2013-"
-      ],
-      "my_regs_4y": 40
+      "make": "Rolls Royce",
+      "model": "Spectre",
+      "regs": 42,
+      "chassis_codes": []
     },
     {
-      "make": "Nissan",
-      "model": "Leaf",
-      "chassis_codes": [
-        "AZE0",
-        "ZE1"
-      ],
-      "known_generations": [
-        "2010-2017",
-        "2017-"
-      ],
-      "my_regs_4y": 38
+      "make": "Ferrari",
+      "model": "SF90",
+      "regs": 41,
+      "chassis_codes": []
+    },
+    {
+      "make": "Mitsubishi",
+      "model": "Lancer",
+      "regs": 41,
+      "chassis_codes": []
     },
     {
       "make": "Daihatsu",
       "model": "Copen",
+      "regs": 38,
       "chassis_codes": [
         "L880K",
         "LA400K"
-      ],
-      "known_generations": [
-        "2002-2012",
-        "2014-"
-      ],
-      "my_regs_4y": 38
+      ]
+    },
+    {
+      "make": "Nissan",
+      "model": "Leaf",
+      "regs": 38,
+      "chassis_codes": [
+        "AZE0",
+        "ZE1"
+      ]
+    },
+    {
+      "make": "Audi",
+      "model": "RS6",
+      "regs": 36,
+      "chassis_codes": []
     },
     {
       "make": "Toyota",
       "model": "RAV4",
+      "regs": 30,
       "chassis_codes": [
         "ZSA44",
         "MXAA54",
         "AXAH54"
-      ],
-      "known_generations": [
-        "2013-2018",
-        "2018-"
-      ],
-      "my_regs_4y": 30
+      ]
+    },
+    {
+      "make": "Alfa Romeo",
+      "model": "Giulia",
+      "regs": 29,
+      "chassis_codes": []
+    },
+    {
+      "make": "Audi",
+      "model": "A7",
+      "regs": 29,
+      "chassis_codes": []
+    },
+    {
+      "make": "Mercedes",
+      "model": "AMG GT",
+      "regs": 29,
+      "chassis_codes": []
+    },
+    {
+      "make": "Audi",
+      "model": "A4",
+      "regs": 28,
+      "chassis_codes": []
+    },
+    {
+      "make": "Audi",
+      "model": "S3",
+      "regs": 28,
+      "chassis_codes": []
+    },
+    {
+      "make": "Lamborghini",
+      "model": "Revuelto",
+      "regs": 28,
+      "chassis_codes": []
+    },
+    {
+      "make": "Subaru",
+      "model": "Impreza",
+      "regs": 28,
+      "chassis_codes": []
+    },
+    {
+      "make": "Porsche",
+      "model": "911",
+      "regs": 27,
+      "chassis_codes": []
+    },
+    {
+      "make": "Tesla",
+      "model": "Model X",
+      "regs": 27,
+      "chassis_codes": []
+    },
+    {
+      "make": "Land Rover",
+      "model": "Discovery",
+      "regs": 26,
+      "chassis_codes": []
     },
     {
       "make": "Honda",
       "model": "S2000",
+      "regs": 24,
       "chassis_codes": [
         "AP1",
         "AP2"
-      ],
-      "known_generations": [
-        "1999-2005",
-        "2005-2009"
-      ],
-      "my_regs_4y": 24
+      ]
+    },
+    {
+      "make": "Nissan",
+      "model": "Teana",
+      "regs": 24,
+      "chassis_codes": []
+    },
+    {
+      "make": "Rolls Royce",
+      "model": "Phantom",
+      "regs": 21,
+      "chassis_codes": []
+    },
+    {
+      "make": "Mazda",
+      "model": "RX-7",
+      "regs": 20,
+      "chassis_codes": []
+    },
+    {
+      "make": "Jaguar",
+      "model": "F-Pace",
+      "regs": 18,
+      "chassis_codes": []
+    },
+    {
+      "make": "Subaru",
+      "model": "Outback",
+      "regs": 17,
+      "chassis_codes": []
+    },
+    {
+      "make": "Audi",
+      "model": "A8",
+      "regs": 16,
+      "chassis_codes": []
+    },
+    {
+      "make": "Daihatsu",
+      "model": "Move Canbus",
+      "regs": 16,
+      "chassis_codes": [
+        "LA800S",
+        "LA810S",
+        "LA850S",
+        "LA860S"
+      ]
+    },
+    {
+      "make": "Honda",
+      "model": "NSX",
+      "regs": 15,
+      "chassis_codes": []
+    },
+    {
+      "make": "Audi",
+      "model": "A6",
+      "regs": 14,
+      "chassis_codes": []
+    },
+    {
+      "make": "Jaguar",
+      "model": "XF",
+      "regs": 14,
+      "chassis_codes": []
+    },
+    {
+      "make": "Rolls Royce",
+      "model": "Wraith",
+      "regs": 13,
+      "chassis_codes": []
+    },
+    {
+      "make": "Ferrari",
+      "model": "Portofino",
+      "regs": 12,
+      "chassis_codes": []
+    },
+    {
+      "make": "Lexus",
+      "model": "GX",
+      "regs": 12,
+      "chassis_codes": []
+    },
+    {
+      "make": "Kia",
+      "model": "Niro",
+      "regs": 11,
+      "chassis_codes": []
+    },
+    {
+      "make": "Audi",
+      "model": "RS5",
+      "regs": 10,
+      "chassis_codes": []
+    },
+    {
+      "make": "Volkswagen",
+      "model": "Polo",
+      "regs": 10,
+      "chassis_codes": []
+    },
+    {
+      "make": "Audi",
+      "model": "RS4",
+      "regs": 9,
+      "chassis_codes": []
+    },
+    {
+      "make": "Daihatsu",
+      "model": "Wake",
+      "regs": 9,
+      "chassis_codes": []
+    },
+    {
+      "make": "Lexus",
+      "model": "GS",
+      "regs": 9,
+      "chassis_codes": []
+    },
+    {
+      "make": "Hyundai",
+      "model": "Elantra",
+      "regs": 8,
+      "chassis_codes": []
+    },
+    {
+      "make": "Nissan",
+      "model": "Murano",
+      "regs": 8,
+      "chassis_codes": []
+    },
+    {
+      "make": "Honda",
+      "model": "Freed",
+      "regs": 7,
+      "chassis_codes": [
+        "GB3",
+        "GB4",
+        "GB5",
+        "GB6",
+        "GB7",
+        "GB8"
+      ]
+    },
+    {
+      "make": "Jaguar",
+      "model": "F-Type",
+      "regs": 7,
+      "chassis_codes": []
+    },
+    {
+      "make": "Jaguar",
+      "model": "XJ",
+      "regs": 7,
+      "chassis_codes": []
+    },
+    {
+      "make": "Mazda",
+      "model": "RX-8",
+      "regs": 7,
+      "chassis_codes": [
+        "SE3P"
+      ]
     },
     {
       "make": "Mitsubishi",
-      "model": "Delica",
-      "chassis_codes": [
-        "CV1W",
-        "CV5W"
-      ],
-      "known_generations": [
-        "2007-"
-      ],
-      "my_regs_4y": 0
+      "model": "Pajero",
+      "regs": 7,
+      "chassis_codes": []
+    },
+    {
+      "make": "Alfa Romeo",
+      "model": "Stelvio",
+      "regs": 6,
+      "chassis_codes": []
+    },
+    {
+      "make": "Audi",
+      "model": "A3",
+      "regs": 6,
+      "chassis_codes": []
+    },
+    {
+      "make": "Tesla",
+      "model": "Model S",
+      "regs": 6,
+      "chassis_codes": []
     },
     {
       "make": "Toyota",
       "model": "Prius",
+      "regs": 6,
       "chassis_codes": [
         "NHW20",
         "ZVW30",
@@ -626,292 +1278,651 @@
         "ZVW51",
         "ZVW55",
         "MXWH60"
-      ],
-      "known_generations": [
-        "2003-2009",
-        "2009-2015",
-        "2015-2022",
-        "2022-"
-      ],
-      "my_regs_4y": null
-    },
-    {
-      "make": "Toyota",
-      "model": "Prius Alpha",
-      "chassis_codes": [
-        "ZVW40",
-        "ZVW41"
-      ],
-      "known_generations": [
-        "2011-2021"
-      ],
-      "my_regs_4y": null
-    },
-    {
-      "make": "Toyota",
-      "model": "Aqua",
-      "chassis_codes": [
-        "NHP10",
-        "MXPK10",
-        "MXPK11"
-      ],
-      "known_generations": [
-        "2011-2021",
-        "2021-"
-      ],
-      "my_regs_4y": null
+      ]
     },
     {
       "make": "Toyota",
       "model": "Sienta",
+      "regs": 6,
       "chassis_codes": [
         "NHP170",
         "NSP170",
         "NCP175",
         "MXPC10",
         "MXPL10"
-      ],
-      "known_generations": [
-        "2015-2022",
-        "2022-"
-      ],
-      "my_regs_4y": null
+      ]
     },
     {
-      "make": "Toyota",
-      "model": "Raize",
-      "chassis_codes": [
-        "A200A",
-        "A210A"
-      ],
-      "known_generations": [
-        "2019-"
-      ],
-      "my_regs_4y": null
+      "make": "Kia",
+      "model": "Cerato",
+      "regs": 5,
+      "chassis_codes": []
     },
     {
-      "make": "Toyota",
-      "model": "GR Yaris",
-      "chassis_codes": [
-        "GXPA16"
-      ],
-      "known_generations": [
-        "2020-"
-      ],
-      "my_regs_4y": null
+      "make": "Suzuki",
+      "model": "Alto",
+      "regs": 5,
+      "chassis_codes": []
     },
     {
-      "make": "Lexus",
-      "model": "CT",
-      "chassis_codes": [
-        "ZWA10"
-      ],
-      "known_generations": [
-        "2011-2022"
-      ],
-      "my_regs_4y": null
+      "make": "Volkswagen",
+      "model": "T-Roc",
+      "regs": 5,
+      "chassis_codes": []
     },
     {
       "make": "Honda",
-      "model": "Vezel",
-      "chassis_codes": [
-        "RU1",
-        "RU2",
-        "RU3",
-        "RU4",
-        "RV3",
-        "RV5",
-        "RV6"
-      ],
-      "known_generations": [
-        "2013-2021",
-        "2021-"
-      ],
-      "my_regs_4y": null
+      "model": "ZR-V",
+      "regs": 4,
+      "chassis_codes": []
     },
     {
-      "make": "Honda",
-      "model": "Freed",
-      "chassis_codes": [
-        "GB3",
-        "GB4",
-        "GB5",
-        "GB6",
-        "GB7",
-        "GB8"
-      ],
-      "known_generations": [
-        "2008-2016",
-        "2016-"
-      ],
-      "my_regs_4y": null
-    },
-    {
-      "make": "Honda",
-      "model": "Shuttle",
-      "chassis_codes": [
-        "GP8",
-        "GK8",
-        "GK9"
-      ],
-      "known_generations": [
-        "2015-2022"
-      ],
-      "my_regs_4y": null
-    },
-    {
-      "make": "Honda",
-      "model": "Insight",
-      "chassis_codes": [
-        "ZE2",
-        "ZE4"
-      ],
-      "known_generations": [
-        "2009-2014",
-        "2018-2022"
-      ],
-      "my_regs_4y": null
-    },
-    {
-      "make": "Honda",
-      "model": "Integra",
-      "chassis_codes": [
-        "DC5"
-      ],
-      "known_generations": [
-        "2001-2006"
-      ],
-      "my_regs_4y": null
-    },
-    {
-      "make": "Nissan",
-      "model": "Note",
-      "chassis_codes": [
-        "E11",
-        "E12",
-        "E13"
-      ],
-      "known_generations": [
-        "2005-2012",
-        "2012-2020",
-        "2020-"
-      ],
-      "my_regs_4y": null
-    },
-    {
-      "make": "Nissan",
-      "model": "Juke",
-      "chassis_codes": [
-        "F15"
-      ],
-      "known_generations": [
-        "2010-2019"
-      ],
-      "my_regs_4y": null
+      "make": "Hyundai",
+      "model": "Sonata",
+      "regs": 4,
+      "chassis_codes": []
     },
     {
       "make": "Nissan",
       "model": "March",
+      "regs": 4,
       "chassis_codes": [
         "K12",
         "K13"
-      ],
-      "known_generations": [
-        "2002-2010",
-        "2010-2022"
-      ],
-      "my_regs_4y": null
+      ]
     },
     {
-      "make": "Mazda",
-      "model": "RX-8",
-      "chassis_codes": [
-        "SE3P"
-      ],
-      "known_generations": [
-        "2003-2012"
-      ],
-      "my_regs_4y": null
+      "make": "Alfa Romeo",
+      "model": "4C",
+      "regs": 3,
+      "chassis_codes": []
     },
     {
-      "make": "Mitsubishi",
-      "model": "Evo",
-      "chassis_codes": [
-        "CT9A",
-        "CZ4A"
-      ],
-      "known_generations": [
-        "2001-2007",
-        "2007-2016"
-      ],
-      "my_regs_4y": null
+      "make": "Alfa Romeo",
+      "model": "Giulietta",
+      "regs": 3,
+      "chassis_codes": []
     },
     {
-      "make": "Daihatsu",
-      "model": "Move Canbus",
+      "make": "Audi",
+      "model": "R8",
+      "regs": 3,
+      "chassis_codes": []
+    },
+    {
+      "make": "Bentley",
+      "model": "Mulsanne",
+      "regs": 3,
+      "chassis_codes": []
+    },
+    {
+      "make": "Jaguar",
+      "model": "XE",
+      "regs": 3,
+      "chassis_codes": []
+    },
+    {
+      "make": "Kia",
+      "model": "Stinger",
+      "regs": 3,
+      "chassis_codes": []
+    },
+    {
+      "make": "Nissan",
+      "model": "Note",
+      "regs": 3,
       "chassis_codes": [
-        "LA800S",
-        "LA810S",
-        "LA850S",
-        "LA860S"
-      ],
-      "known_generations": [
-        "2016-2022",
-        "2022-"
-      ],
-      "my_regs_4y": null
+        "E11",
+        "E12",
+        "E13"
+      ]
+    },
+    {
+      "make": "Rolls Royce",
+      "model": "Dawn",
+      "regs": 3,
+      "chassis_codes": []
+    },
+    {
+      "make": "Audi",
+      "model": "S4",
+      "regs": 2,
+      "chassis_codes": []
+    },
+    {
+      "make": "Kia",
+      "model": "Picanto",
+      "regs": 2,
+      "chassis_codes": []
+    },
+    {
+      "make": "Nissan",
+      "model": "Juke",
+      "regs": 2,
+      "chassis_codes": [
+        "F15"
+      ]
+    },
+    {
+      "make": "Porsche",
+      "model": "Cayman",
+      "regs": 2,
+      "chassis_codes": []
+    },
+    {
+      "make": "Subaru",
+      "model": "Crosstrek",
+      "regs": 2,
+      "chassis_codes": []
+    },
+    {
+      "make": "Subaru",
+      "model": "Legacy",
+      "regs": 2,
+      "chassis_codes": []
     },
     {
       "make": "Daihatsu",
       "model": "Mira",
+      "regs": 1,
       "chassis_codes": [
         "L275S",
         "LA350S"
-      ],
-      "known_generations": [
-        "2006-2018",
-        "2018-"
-      ],
-      "my_regs_4y": null
+      ]
+    },
+    {
+      "make": "Daihatsu",
+      "model": "Thor",
+      "regs": 1,
+      "chassis_codes": [
+        "M900S",
+        "M910S"
+      ]
+    },
+    {
+      "make": "Ford",
+      "model": "Focus",
+      "regs": 1,
+      "chassis_codes": []
+    },
+    {
+      "make": "Honda",
+      "model": "CR-Z",
+      "regs": 1,
+      "chassis_codes": []
+    },
+    {
+      "make": "Honda",
+      "model": "Insight",
+      "regs": 1,
+      "chassis_codes": [
+        "ZE2",
+        "ZE4"
+      ]
+    },
+    {
+      "make": "Honda",
+      "model": "Legend",
+      "regs": 1,
+      "chassis_codes": []
+    },
+    {
+      "make": "Hyundai",
+      "model": "i20",
+      "regs": 1,
+      "chassis_codes": []
+    },
+    {
+      "make": "Hyundai",
+      "model": "i30",
+      "regs": 1,
+      "chassis_codes": []
+    },
+    {
+      "make": "Kia",
+      "model": "Rio",
+      "regs": 1,
+      "chassis_codes": []
+    },
+    {
+      "make": "Kia",
+      "model": "Soul",
+      "regs": 1,
+      "chassis_codes": []
+    },
+    {
+      "make": "Mitsubishi",
+      "model": "Attrage",
+      "regs": 1,
+      "chassis_codes": []
+    },
+    {
+      "make": "Mitsubishi",
+      "model": "Galant",
+      "regs": 1,
+      "chassis_codes": []
+    },
+    {
+      "make": "Mitsubishi",
+      "model": "Mirage",
+      "regs": 1,
+      "chassis_codes": []
+    },
+    {
+      "make": "Nissan",
+      "model": "Terra",
+      "regs": 1,
+      "chassis_codes": []
+    },
+    {
+      "make": "Porsche",
+      "model": "Boxster",
+      "regs": 1,
+      "chassis_codes": []
+    },
+    {
+      "make": "Volkswagen",
+      "model": "ID.4",
+      "regs": 1,
+      "chassis_codes": []
+    },
+    {
+      "make": "Volkswagen",
+      "model": "Jetta",
+      "regs": 1,
+      "chassis_codes": []
+    },
+    {
+      "make": "Volkswagen",
+      "model": "Passat",
+      "regs": 1,
+      "chassis_codes": []
+    },
+    {
+      "make": "Volkswagen",
+      "model": "T-Cross",
+      "regs": 1,
+      "chassis_codes": []
+    },
+    {
+      "make": "Alfa Romeo",
+      "model": "Tonale",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Audi",
+      "model": "e-tron GT",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Bentley",
+      "model": "Flying Spur",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "BMW",
+      "model": "M2",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "BMW",
+      "model": "M3",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "BMW",
+      "model": "M4",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "BMW",
+      "model": "M5",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "BYD",
+      "model": "Destroyer 05",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "BYD",
+      "model": "Han",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "BYD",
+      "model": "Tang",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Chery",
+      "model": "Tiggo 4",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Daihatsu",
+      "model": "Boon",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Daihatsu",
+      "model": "Cast",
+      "regs": 0,
+      "chassis_codes": []
     },
     {
       "make": "Daihatsu",
       "model": "Hijet",
+      "regs": 0,
       "chassis_codes": [
         "S321V",
         "S331V",
         "S700V",
         "S710V"
-      ],
-      "known_generations": [
-        "2004-2021",
-        "2021-"
-      ],
-      "my_regs_4y": null
+      ]
+    },
+    {
+      "make": "Daihatsu",
+      "model": "Mira e:S",
+      "regs": 0,
+      "chassis_codes": []
     },
     {
       "make": "Daihatsu",
       "model": "Rocky",
+      "regs": 0,
       "chassis_codes": [
         "A200S",
         "A210S"
-      ],
-      "known_generations": [
-        "2019-"
-      ],
-      "my_regs_4y": null
+      ]
     },
     {
       "make": "Daihatsu",
-      "model": "Thor",
+      "model": "Terios",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Ford",
+      "model": "Bronco",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Ford",
+      "model": "Explorer",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Ford",
+      "model": "F-150",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Ford",
+      "model": "Fiesta",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Ford",
+      "model": "Puma",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Geely",
+      "model": "Azkarra",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Geely",
+      "model": "Coolray",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Geely",
+      "model": "Okavango",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Haval",
+      "model": "H2",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Haval",
+      "model": "H9",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Haval",
+      "model": "Jolion",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Honda",
+      "model": "Mobilio",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Honda",
+      "model": "Pilot",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Hyundai",
+      "model": "i10",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Hyundai",
+      "model": "Veloster",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Hyundai",
+      "model": "Venue",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Jaguar",
+      "model": "E-Pace",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Kia",
+      "model": "K5",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Kia",
+      "model": "Seltos",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Kia",
+      "model": "Telluride",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Land Rover",
+      "model": "Discovery Sport",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Mercedes",
+      "model": "SL",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "MG",
+      "model": "MG3",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "MG",
+      "model": "MG6",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Mitsubishi",
+      "model": "Eclipse Cross",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Mitsubishi",
+      "model": "Evo",
+      "regs": 0,
       "chassis_codes": [
-        "M900S",
-        "M910S"
-      ],
-      "known_generations": [
-        "2016-"
-      ],
-      "my_regs_4y": null
+        "CT9A",
+        "CZ4A"
+      ]
+    },
+    {
+      "make": "Nissan",
+      "model": "350Z",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Nissan",
+      "model": "370Z",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Nissan",
+      "model": "Patrol",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Nissan",
+      "model": "Qashqai",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Nissan",
+      "model": "Sylphy",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Proton",
+      "model": "Arena",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Proton",
+      "model": "Juara",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Subaru",
+      "model": "STI",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Suzuki",
+      "model": "Baleno",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Suzuki",
+      "model": "Celerio",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Suzuki",
+      "model": "Ciaz",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Suzuki",
+      "model": "Ertiga",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Suzuki",
+      "model": "SX4",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Suzuki",
+      "model": "Vitara",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Suzuki",
+      "model": "XL7",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Tesla",
+      "model": "Cybertruck",
+      "regs": 0,
+      "chassis_codes": []
+    },
+    {
+      "make": "Toyota",
+      "model": "Prado",
+      "regs": 0,
+      "chassis_codes": [
+        "TRJ150",
+        "GDJ150"
+      ]
+    },
+    {
+      "make": "Volkswagen",
+      "model": "Amarok",
+      "regs": 0,
+      "chassis_codes": []
     }
   ]
 }

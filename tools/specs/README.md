@@ -1,13 +1,13 @@
 # Filling in the car spec table
 
-`src/utils/carSpecs.js` prefills the technical half of a listing. It covers the
-Malaysian volume models well and the recon fleet barely at all: of the 88
-brand+model pairs in `src/utils/chassisDecode.js`, **21 have a spec row and 67 do
-not**. So a seller decodes a chassis code, gets a brand and a model, and types
-the rest by hand — which is the segment where the decode was supposed to help
-most.
+`src/utils/carSpecs.js` prefills the technical half of a listing, and it covers
+**57 of the 345 brand+model pairs** the form offers. 288 are missing — 83% of
+the catalogue. Whole brands return nothing: BMW, Audi, Mercedes, Hyundai, Kia,
+Lexus, Volkswagen, Daihatsu, Suzuki, Subaru, Volvo.
 
-This folder is the pipeline for closing that gap a few models at a time.
+So a seller picks a brand and a model and then types engine, power, doors, seats
+and consumption by hand for four cars out of five. This folder is the pipeline
+for closing that.
 
 ## The loop
 
@@ -18,7 +18,8 @@ This folder is the pipeline for closing that gap a few models at a time.
 4. Insert it into `car_specs` (see below).
 5. Tick those models off the backlog.
 
-Two or three runs a day, six models a run, clears the 67 in about a fortnight.
+Twenty models a run, three runs a day, clears the 288 in about five days — but
+prefer `ROUTINE.md`, which does the same thing without any copy-paste.
 
 ## The files
 
@@ -26,7 +27,7 @@ Two or three runs a day, six models a run, clears the 67 in about a fortnight.
 |---|---|
 | `SCHEMA.md` | The JSON contract. Field-by-field, where each one lands, the enums, the units. Read this if a row gets rejected. |
 | `COWORK_PROMPT.md` | The thing you paste into Cowork. Self-contained — it repeats the schema so the session needs no other context. |
-| `backlog.json` | The 67 uncovered models, ordered by real Malaysian registration volume, with their chassis codes and known generation boundaries already filled in. |
+| `backlog.json` | The 288 uncovered models, ordered by real Malaysian registration volume, with their chassis codes and known generation boundaries already filled in. |
 | `ROUTINE.md` | The same job as a scheduled routine that writes straight to the database, so there is no copy-paste at all. Must be created from the claude.ai Routines UI — a Claude Code session cannot attach the Supabase connector, and without it the run has no database. |
 
 ## Why the backlog is ordered the way it is
