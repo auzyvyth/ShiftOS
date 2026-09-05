@@ -1,0 +1,917 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-09-05",
+  "note": "Models present in src/utils/chassisDecode.js with NO row in src/utils/carSpecs.js. my_regs_4y is Malaysian new registrations 2023-2026(Jul) from reg_car_month (JPJ open data); null means the nameplate does not appear in JPJ under this name. Work top-down.",
+  "total": 67,
+  "models": [
+    {
+      "make": "Lexus",
+      "model": "RX",
+      "chassis_codes": [
+        "GGL10",
+        "GYL10",
+        "GGL20",
+        "GYL20",
+        "TALA10",
+        "AALH10"
+      ],
+      "known_generations": [
+        "2009-2015",
+        "2015-2022",
+        "2022-"
+      ],
+      "my_regs_4y": 12274
+    },
+    {
+      "make": "Mazda",
+      "model": "Mazda 3",
+      "chassis_codes": [
+        "BM5FS",
+        "BMLFS"
+      ],
+      "known_generations": [
+        "2013-2019"
+      ],
+      "my_regs_4y": 7780
+    },
+    {
+      "make": "Toyota",
+      "model": "Voxy",
+      "chassis_codes": [
+        "ZRR70",
+        "ZRR80",
+        "ZWR80",
+        "MZRA90",
+        "ZWR90"
+      ],
+      "known_generations": [
+        "2007-2014",
+        "2014-2022",
+        "2022-"
+      ],
+      "my_regs_4y": 5794
+    },
+    {
+      "make": "Lexus",
+      "model": "NX",
+      "chassis_codes": [
+        "AGZ10",
+        "AYZ10",
+        "AAZH20",
+        "TAZA20"
+      ],
+      "known_generations": [
+        "2014-2021",
+        "2021-"
+      ],
+      "my_regs_4y": 4790
+    },
+    {
+      "make": "Toyota",
+      "model": "Hiace",
+      "chassis_codes": [
+        "KDH200",
+        "TRH200",
+        "GDH300",
+        "KDH300"
+      ],
+      "known_generations": [
+        "2004-2019",
+        "2019-"
+      ],
+      "my_regs_4y": 4474
+    },
+    {
+      "make": "Toyota",
+      "model": "Yaris Cross",
+      "chassis_codes": [
+        "MXPB10",
+        "MXPJ10"
+      ],
+      "known_generations": [
+        "2020-"
+      ],
+      "my_regs_4y": 4084
+    },
+    {
+      "make": "Toyota",
+      "model": "Land Cruiser",
+      "chassis_codes": [
+        "URJ200",
+        "UZJ200",
+        "VDJ200",
+        "VJA300",
+        "FJA300"
+      ],
+      "known_generations": [
+        "2007-2021",
+        "2021-"
+      ],
+      "my_regs_4y": 3808
+    },
+    {
+      "make": "Honda",
+      "model": "Stepwgn",
+      "chassis_codes": [
+        "RK1",
+        "RK5",
+        "RP1",
+        "RP3",
+        "RP5",
+        "RP6",
+        "RP8"
+      ],
+      "known_generations": [
+        "2009-2015",
+        "2015-2022",
+        "2022-"
+      ],
+      "my_regs_4y": 3163
+    },
+    {
+      "make": "Subaru",
+      "model": "XV",
+      "chassis_codes": [
+        "GP7",
+        "GT3",
+        "GT7"
+      ],
+      "known_generations": [
+        "2011-2017",
+        "2017-2022"
+      ],
+      "my_regs_4y": 2527
+    },
+    {
+      "make": "Honda",
+      "model": "N-Box",
+      "chassis_codes": [
+        "JF1",
+        "JF2",
+        "JF3",
+        "JF4"
+      ],
+      "known_generations": [
+        "2011-2017",
+        "2017-2023"
+      ],
+      "my_regs_4y": 1696
+    },
+    {
+      "make": "Subaru",
+      "model": "Forester",
+      "chassis_codes": [
+        "SH5",
+        "SH9",
+        "SJ5",
+        "SJG",
+        "SK5",
+        "SK9",
+        "SKE"
+      ],
+      "known_generations": [
+        "2008-2012",
+        "2012-2018",
+        "2018-"
+      ],
+      "my_regs_4y": 1674
+    },
+    {
+      "make": "Toyota",
+      "model": "GR86",
+      "chassis_codes": [
+        "ZN8"
+      ],
+      "known_generations": [
+        "2021-"
+      ],
+      "my_regs_4y": 1471
+    },
+    {
+      "make": "Mazda",
+      "model": "MX-5",
+      "chassis_codes": [
+        "NCEC",
+        "ND5RC"
+      ],
+      "known_generations": [
+        "2005-2015",
+        "2015-"
+      ],
+      "my_regs_4y": 1213
+    },
+    {
+      "make": "Lexus",
+      "model": "IS",
+      "chassis_codes": [
+        "GSE20",
+        "GSE30",
+        "AVE30"
+      ],
+      "known_generations": [
+        "2005-2013",
+        "2013-"
+      ],
+      "my_regs_4y": 1131
+    },
+    {
+      "make": "Lexus",
+      "model": "LX",
+      "chassis_codes": [
+        "URJ201",
+        "VJA310"
+      ],
+      "known_generations": [
+        "2007-2021",
+        "2021-"
+      ],
+      "my_regs_4y": 940
+    },
+    {
+      "make": "Toyota",
+      "model": "Prado",
+      "chassis_codes": [
+        "TRJ150",
+        "GDJ150"
+      ],
+      "known_generations": [
+        "2009-2024"
+      ],
+      "my_regs_4y": 904
+    },
+    {
+      "make": "Toyota",
+      "model": "Supra",
+      "chassis_codes": [
+        "JZA80",
+        "DB02",
+        "DB22",
+        "DB42"
+      ],
+      "known_generations": [
+        "1993-2002",
+        "2019-"
+      ],
+      "my_regs_4y": 876
+    },
+    {
+      "make": "Toyota",
+      "model": "Estima",
+      "chassis_codes": [
+        "ACR50",
+        "GSR50",
+        "AHR20"
+      ],
+      "known_generations": [
+        "2006-2019"
+      ],
+      "my_regs_4y": 812
+    },
+    {
+      "make": "Toyota",
+      "model": "86",
+      "chassis_codes": [
+        "ZN6"
+      ],
+      "known_generations": [
+        "2012-2020"
+      ],
+      "my_regs_4y": 794
+    },
+    {
+      "make": "Toyota",
+      "model": "Crown",
+      "chassis_codes": [
+        "GRS200",
+        "GRS210",
+        "AWS210",
+        "ARS220",
+        "AZSH20"
+      ],
+      "known_generations": [
+        "2008-2012",
+        "2012-2018",
+        "2018-"
+      ],
+      "my_regs_4y": 496
+    },
+    {
+      "make": "Lexus",
+      "model": "ES",
+      "chassis_codes": [
+        "AXZH10"
+      ],
+      "known_generations": [
+        "2018-"
+      ],
+      "my_regs_4y": 462
+    },
+    {
+      "make": "Subaru",
+      "model": "BRZ",
+      "chassis_codes": [
+        "ZC6",
+        "ZD8"
+      ],
+      "known_generations": [
+        "2012-2020",
+        "2021-"
+      ],
+      "my_regs_4y": 457
+    },
+    {
+      "make": "Nissan",
+      "model": "GT-R",
+      "chassis_codes": [
+        "R35"
+      ],
+      "known_generations": [
+        "2007-"
+      ],
+      "my_regs_4y": 318
+    },
+    {
+      "make": "Lexus",
+      "model": "UX",
+      "chassis_codes": [
+        "MZAA10",
+        "MZAH10"
+      ],
+      "known_generations": [
+        "2018-"
+      ],
+      "my_regs_4y": 301
+    },
+    {
+      "make": "Mazda",
+      "model": "Mazda 2",
+      "chassis_codes": [
+        "DE3FS",
+        "DE5FS",
+        "DJ3FS",
+        "DJ5FS"
+      ],
+      "known_generations": [
+        "2007-2014",
+        "2014-2022"
+      ],
+      "my_regs_4y": 294
+    },
+    {
+      "make": "Nissan",
+      "model": "Elgrand",
+      "chassis_codes": [
+        "E51",
+        "E52"
+      ],
+      "known_generations": [
+        "2002-2010",
+        "2010-"
+      ],
+      "my_regs_4y": 284
+    },
+    {
+      "make": "Toyota",
+      "model": "C-HR",
+      "chassis_codes": [
+        "NGX10",
+        "NGX50",
+        "ZYX10",
+        "ZYX11"
+      ],
+      "known_generations": [
+        "2016-2023"
+      ],
+      "my_regs_4y": 249
+    },
+    {
+      "make": "Toyota",
+      "model": "Roomy",
+      "chassis_codes": [
+        "M900A",
+        "M910A"
+      ],
+      "known_generations": [
+        "2016-"
+      ],
+      "my_regs_4y": 229
+    },
+    {
+      "make": "Daihatsu",
+      "model": "Move",
+      "chassis_codes": [
+        "LA100S",
+        "LA150S"
+      ],
+      "known_generations": [
+        "2010-2014",
+        "2014-"
+      ],
+      "my_regs_4y": 212
+    },
+    {
+      "make": "Mazda",
+      "model": "Mazda 6",
+      "chassis_codes": [
+        "GJ2FP",
+        "GJ5FP"
+      ],
+      "known_generations": [
+        "2012-"
+      ],
+      "my_regs_4y": 190
+    },
+    {
+      "make": "Toyota",
+      "model": "Wish",
+      "chassis_codes": [
+        "ZNE10",
+        "ZGE20"
+      ],
+      "known_generations": [
+        "2003-2009",
+        "2009-2017"
+      ],
+      "my_regs_4y": 168
+    },
+    {
+      "make": "Subaru",
+      "model": "WRX",
+      "chassis_codes": [
+        "GDB",
+        "GRB",
+        "VAB",
+        "VAG"
+      ],
+      "known_generations": [
+        "2000-2007",
+        "2007-2014",
+        "2014-2021"
+      ],
+      "my_regs_4y": 128
+    },
+    {
+      "make": "Subaru",
+      "model": "Levorg",
+      "chassis_codes": [
+        "VM4",
+        "VMG",
+        "VN5"
+      ],
+      "known_generations": [
+        "2014-2020",
+        "2020-"
+      ],
+      "my_regs_4y": 102
+    },
+    {
+      "make": "Lexus",
+      "model": "RC",
+      "chassis_codes": [
+        "ASC10",
+        "GSC10"
+      ],
+      "known_generations": [
+        "2014-"
+      ],
+      "my_regs_4y": 98
+    },
+    {
+      "make": "Honda",
+      "model": "S660",
+      "chassis_codes": [
+        "JW5"
+      ],
+      "known_generations": [
+        "2015-2022"
+      ],
+      "my_regs_4y": 92
+    },
+    {
+      "make": "Lexus",
+      "model": "LC",
+      "chassis_codes": [
+        "URZ100"
+      ],
+      "known_generations": [
+        "2017-"
+      ],
+      "my_regs_4y": 83
+    },
+    {
+      "make": "Toyota",
+      "model": "Mark X",
+      "chassis_codes": [
+        "GRX120",
+        "GRX130"
+      ],
+      "known_generations": [
+        "2004-2009",
+        "2009-2019"
+      ],
+      "my_regs_4y": 65
+    },
+    {
+      "make": "Daihatsu",
+      "model": "Tanto",
+      "chassis_codes": [
+        "L375S",
+        "LA600S",
+        "LA650S"
+      ],
+      "known_generations": [
+        "2007-2013",
+        "2013-2019",
+        "2019-"
+      ],
+      "my_regs_4y": 62
+    },
+    {
+      "make": "Lexus",
+      "model": "LS",
+      "chassis_codes": [
+        "USF40",
+        "VXFA50"
+      ],
+      "known_generations": [
+        "2006-2017",
+        "2017-"
+      ],
+      "my_regs_4y": 44
+    },
+    {
+      "make": "Nissan",
+      "model": "Skyline",
+      "chassis_codes": [
+        "V37"
+      ],
+      "known_generations": [
+        "2013-"
+      ],
+      "my_regs_4y": 40
+    },
+    {
+      "make": "Nissan",
+      "model": "Leaf",
+      "chassis_codes": [
+        "AZE0",
+        "ZE1"
+      ],
+      "known_generations": [
+        "2010-2017",
+        "2017-"
+      ],
+      "my_regs_4y": 38
+    },
+    {
+      "make": "Daihatsu",
+      "model": "Copen",
+      "chassis_codes": [
+        "L880K",
+        "LA400K"
+      ],
+      "known_generations": [
+        "2002-2012",
+        "2014-"
+      ],
+      "my_regs_4y": 38
+    },
+    {
+      "make": "Toyota",
+      "model": "RAV4",
+      "chassis_codes": [
+        "ZSA44",
+        "MXAA54",
+        "AXAH54"
+      ],
+      "known_generations": [
+        "2013-2018",
+        "2018-"
+      ],
+      "my_regs_4y": 30
+    },
+    {
+      "make": "Honda",
+      "model": "S2000",
+      "chassis_codes": [
+        "AP1",
+        "AP2"
+      ],
+      "known_generations": [
+        "1999-2005",
+        "2005-2009"
+      ],
+      "my_regs_4y": 24
+    },
+    {
+      "make": "Mitsubishi",
+      "model": "Delica",
+      "chassis_codes": [
+        "CV1W",
+        "CV5W"
+      ],
+      "known_generations": [
+        "2007-"
+      ],
+      "my_regs_4y": 0
+    },
+    {
+      "make": "Toyota",
+      "model": "Prius",
+      "chassis_codes": [
+        "NHW20",
+        "ZVW30",
+        "ZVW35",
+        "ZVW50",
+        "ZVW51",
+        "ZVW55",
+        "MXWH60"
+      ],
+      "known_generations": [
+        "2003-2009",
+        "2009-2015",
+        "2015-2022",
+        "2022-"
+      ],
+      "my_regs_4y": null
+    },
+    {
+      "make": "Toyota",
+      "model": "Prius Alpha",
+      "chassis_codes": [
+        "ZVW40",
+        "ZVW41"
+      ],
+      "known_generations": [
+        "2011-2021"
+      ],
+      "my_regs_4y": null
+    },
+    {
+      "make": "Toyota",
+      "model": "Aqua",
+      "chassis_codes": [
+        "NHP10",
+        "MXPK10",
+        "MXPK11"
+      ],
+      "known_generations": [
+        "2011-2021",
+        "2021-"
+      ],
+      "my_regs_4y": null
+    },
+    {
+      "make": "Toyota",
+      "model": "Sienta",
+      "chassis_codes": [
+        "NHP170",
+        "NSP170",
+        "NCP175",
+        "MXPC10",
+        "MXPL10"
+      ],
+      "known_generations": [
+        "2015-2022",
+        "2022-"
+      ],
+      "my_regs_4y": null
+    },
+    {
+      "make": "Toyota",
+      "model": "Raize",
+      "chassis_codes": [
+        "A200A",
+        "A210A"
+      ],
+      "known_generations": [
+        "2019-"
+      ],
+      "my_regs_4y": null
+    },
+    {
+      "make": "Toyota",
+      "model": "GR Yaris",
+      "chassis_codes": [
+        "GXPA16"
+      ],
+      "known_generations": [
+        "2020-"
+      ],
+      "my_regs_4y": null
+    },
+    {
+      "make": "Lexus",
+      "model": "CT",
+      "chassis_codes": [
+        "ZWA10"
+      ],
+      "known_generations": [
+        "2011-2022"
+      ],
+      "my_regs_4y": null
+    },
+    {
+      "make": "Honda",
+      "model": "Vezel",
+      "chassis_codes": [
+        "RU1",
+        "RU2",
+        "RU3",
+        "RU4",
+        "RV3",
+        "RV5",
+        "RV6"
+      ],
+      "known_generations": [
+        "2013-2021",
+        "2021-"
+      ],
+      "my_regs_4y": null
+    },
+    {
+      "make": "Honda",
+      "model": "Freed",
+      "chassis_codes": [
+        "GB3",
+        "GB4",
+        "GB5",
+        "GB6",
+        "GB7",
+        "GB8"
+      ],
+      "known_generations": [
+        "2008-2016",
+        "2016-"
+      ],
+      "my_regs_4y": null
+    },
+    {
+      "make": "Honda",
+      "model": "Shuttle",
+      "chassis_codes": [
+        "GP8",
+        "GK8",
+        "GK9"
+      ],
+      "known_generations": [
+        "2015-2022"
+      ],
+      "my_regs_4y": null
+    },
+    {
+      "make": "Honda",
+      "model": "Insight",
+      "chassis_codes": [
+        "ZE2",
+        "ZE4"
+      ],
+      "known_generations": [
+        "2009-2014",
+        "2018-2022"
+      ],
+      "my_regs_4y": null
+    },
+    {
+      "make": "Honda",
+      "model": "Integra",
+      "chassis_codes": [
+        "DC5"
+      ],
+      "known_generations": [
+        "2001-2006"
+      ],
+      "my_regs_4y": null
+    },
+    {
+      "make": "Nissan",
+      "model": "Note",
+      "chassis_codes": [
+        "E11",
+        "E12",
+        "E13"
+      ],
+      "known_generations": [
+        "2005-2012",
+        "2012-2020",
+        "2020-"
+      ],
+      "my_regs_4y": null
+    },
+    {
+      "make": "Nissan",
+      "model": "Juke",
+      "chassis_codes": [
+        "F15"
+      ],
+      "known_generations": [
+        "2010-2019"
+      ],
+      "my_regs_4y": null
+    },
+    {
+      "make": "Nissan",
+      "model": "March",
+      "chassis_codes": [
+        "K12",
+        "K13"
+      ],
+      "known_generations": [
+        "2002-2010",
+        "2010-2022"
+      ],
+      "my_regs_4y": null
+    },
+    {
+      "make": "Mazda",
+      "model": "RX-8",
+      "chassis_codes": [
+        "SE3P"
+      ],
+      "known_generations": [
+        "2003-2012"
+      ],
+      "my_regs_4y": null
+    },
+    {
+      "make": "Mitsubishi",
+      "model": "Evo",
+      "chassis_codes": [
+        "CT9A",
+        "CZ4A"
+      ],
+      "known_generations": [
+        "2001-2007",
+        "2007-2016"
+      ],
+      "my_regs_4y": null
+    },
+    {
+      "make": "Daihatsu",
+      "model": "Move Canbus",
+      "chassis_codes": [
+        "LA800S",
+        "LA810S",
+        "LA850S",
+        "LA860S"
+      ],
+      "known_generations": [
+        "2016-2022",
+        "2022-"
+      ],
+      "my_regs_4y": null
+    },
+    {
+      "make": "Daihatsu",
+      "model": "Mira",
+      "chassis_codes": [
+        "L275S",
+        "LA350S"
+      ],
+      "known_generations": [
+        "2006-2018",
+        "2018-"
+      ],
+      "my_regs_4y": null
+    },
+    {
+      "make": "Daihatsu",
+      "model": "Hijet",
+      "chassis_codes": [
+        "S321V",
+        "S331V",
+        "S700V",
+        "S710V"
+      ],
+      "known_generations": [
+        "2004-2021",
+        "2021-"
+      ],
+      "my_regs_4y": null
+    },
+    {
+      "make": "Daihatsu",
+      "model": "Rocky",
+      "chassis_codes": [
+        "A200S",
+        "A210S"
+      ],
+      "known_generations": [
+        "2019-"
+      ],
+      "my_regs_4y": null
+    },
+    {
+      "make": "Daihatsu",
+      "model": "Thor",
+      "chassis_codes": [
+        "M900S",
+        "M910S"
+      ],
+      "known_generations": [
+        "2016-"
+      ],
+      "my_regs_4y": null
+    }
+  ]
+}
