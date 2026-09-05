@@ -4,7 +4,7 @@
 // 2026-09-05. They are the reason this resolver exists: 12 rows say
 // "ALPHARD 2.5L" and 5 say "Alphard", and the marketplace model filter
 // (CarListingPage.jsx:518, .ilike exact) shows a buyer only one group.
-import { canonicalModel, keyOf, norm, resolveBrand } from '../src/utils/modelKey.js';
+import { canonicalModel, keyOf, modelFilter, norm, resolveBrand } from '../src/utils/modelKey.js';
 
 let pass = 0;
 const fails = [];
@@ -86,6 +86,28 @@ eq(key('Daihatsu', 'MOVE CANBUS'), 'daihatsu:move-canbus', 'Daihatsu Move Canbus
 eq(key('Daihatsu', 'MOVE'), 'daihatsu:move', 'Move alone is not Move Canbus');
 eq(key('Daihatsu', 'TANTO'), 'daihatsu:tanto', 'Daihatsu kei import');
 eq(key('Toyota', 'CROWN'), 'toyota:crown', 'bare Crown');
+
+// --- modelFilter: what the marketplace query actually sends --------------
+// Counts verified against live car_listings on 2026-09-05: filtering
+// Alphard returned 5 of 17, Civic 5 of 7, Lexus IS 1 of 3, and Lexus RX
+// returned NOTHING at all because no row is stored as exactly "RX".
+const mf = (b, m) => modelFilter(b, m);
+eq(JSON.stringify(mf('Toyota', 'Alphard').like), '["Alphard%"]', 'Alphard prefix');
+eq(mf('Toyota', 'ALPHARD 2.5L').model, 'Alphard', 'a stored spelling resolves to the canonical model');
+eq(JSON.stringify(mf('Lexus', 'RX').like), '["RX%"]', 'RX matches RX350');
+eq(JSON.stringify(mf('Honda', 'CR-V').like), '["CR-V%","CRV%"]', 'hyphen-dropped spelling included');
+eq(JSON.stringify(mf('Daihatsu', 'Move').notLike), '["Move Canbus%"]',
+   'Move excludes its longer sibling');
+eq(JSON.stringify(mf('Daihatsu', 'Move Canbus').notLike), '[]',
+   'the longer sibling excludes nothing');
+eq(mf('Land Rover', 'Range Rover').notLike.length, 3, 'Range Rover excludes Sport/Velar/Evoque');
+eq(mf('Nope', 'Zzz'), null, 'an unresolvable model returns null so the caller falls back');
+eq(mf('Toyota', ''), null, 'empty model returns null');
+eq(mf(null, null), null, 'nulls return null rather than throwing');
+// A filter string is built from these, so a comma would break out of the
+// PostgREST or() tree.
+eq([...mf('Land Rover', 'Range Rover').like, ...mf('Land Rover', 'Range Rover').notLike]
+     .some((p) => /[,()]/.test(p)), false, 'no filter-breaking characters in any pattern');
 
 // --- helpers -------------------------------------------------------------
 eq(norm('CIVIC 2.0L(T)'), 'CIVIC 2 0L T', 'norm collapses punctuation');

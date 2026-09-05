@@ -154,3 +154,35 @@ export function canonicalModel(brand, model) {
 export function keyOf(brand, model) {
   return `${norm(brand).toLowerCase().replace(/ /g, '-')}:${norm(model).toLowerCase().replace(/ /g, '-')}`;
 }
+
+/**
+ * Build the marketplace model filter for a canonical model.
+ *
+ * The stored value is free text, so filtering on equality misses every row
+ * that carries a trim suffix. Returns ilike patterns to match, plus patterns
+ * to EXCLUDE so picking "Move" does not drag in "Move Canbus" — a longer
+ * model that happens to start with the same word.
+ *
+ * Returns null when the input does not resolve, so the caller can fall back
+ * to its old exact match rather than filtering on a guess.
+ */
+export function modelFilter(brand, model) {
+  const r = canonicalModel(brand, model);
+  if (!r.matched) return null;
+
+  const base = r.model;
+  const like = [base + '%'];
+  // "CR-V" is stored as "CRV" often enough to matter.
+  const squashed = base.replace(/[^A-Za-z0-9]/g, '');
+  if (squashed && squashed.toLowerCase() !== base.toLowerCase()) like.push(squashed + '%');
+
+  const baseNorm = norm(base);
+  const notLike = (CAR_DATA[r.brand] || [])
+    .filter((m) => m !== base && norm(m).startsWith(baseNorm + ' '))
+    .map((m) => m + '%');
+
+  // A comma would break out of PostgREST's or() filter tree. No catalogue
+  // model contains one, but never build a filter string on that assumption.
+  const safe = (s) => s.replace(/[,()]/g, '');
+  return { brand: r.brand, model: base, like: like.map(safe), notLike: notLike.map(safe) };
+}
