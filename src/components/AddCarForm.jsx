@@ -8,6 +8,7 @@ import { useProfile, getDealerIdFromProfile } from "../hooks/useProfile";
 import { estimateRoadTax } from "../utils/roadTax";
 import { lookupCarSpec } from "../utils/carSpecs";
 import { decodeVin, isLikelyVin } from "../utils/vinDecode";
+import { decodeChassis, isChassisCode, isMalaysianVin } from "../utils/chassisDecode";
 import { color } from "../theme/tokens";
 import AppraisalChecklist, { summarizeAppraisal } from "./AppraisalChecklist";
 
@@ -112,7 +113,11 @@ export default function AddCarForm({ onPublished, onStocked, mode, onBack, onCon
   const [uploading, setUploading] = useState(false);
   const [decoded, setDecoded] = useState(false);
   const [decodingVin, setDecodingVin] = useState(false);
-  const [vinResult, setVinResult] = useState(null); // "hit" | "miss" | null
+  // "hit" | "chassis" | "local" | "unknownChassis" | "miss" | "invalid" | null
+  const [vinResult, setVinResult] = useState(null);
+  // Decode accepts a full VIN OR a Japanese chassis code. Gating on the VIN
+  // alone is what left the button dead for every recon unit.
+  const canDecode = isLikelyVin(form.vin_number) || isChassisCode(form.vin_number);
   const [draftBanner, setDraftBanner] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState(null);
   const photosRef = useRef(null);
@@ -145,15 +150,36 @@ export default function AddCarForm({ onPublished, onStocked, mode, onBack, onCon
     }
   };
 
-  // ── VIN decode (free NHTSA lookup) ─────────────────────────────────────────
-  // Explicit user action: fills make/model/year/CC/body from the VIN. Best for
-  // CBU units; national cars (Perodua/Proton) miss → fall back to manual + the
-  // local carSpecs auto-fill that runs on make+model.
+  // ── VIN / chassis decode ───────────────────────────────────────────────────
+  // Three paths, same button (see utils/chassisDecode.js for the full why):
+  //   - a Japanese chassis code (FL5-1234567) decodes from the local table, no
+  //     network. A recon unit has no 17-char VIN, so gating on isLikelyVin()
+  //     alone left this button dead for every one of them.
+  //   - a Malaysian-built VIN (Perodua, Proton) skips NHTSA, which is a US
+  //     catalogue and has never heard of either.
+  //   - anything else 17 characters goes to NHTSA, unchanged.
+  // Setting brand + model is enough on its own: the lookupCarSpec effect below
+  // fires on that change and fills CC and body type from the local table.
   const handleDecodeVin = async () => {
     setVinResult(null); setError("");
-    if (!isLikelyVin(form.vin_number)) { setVinResult("invalid"); return; }
+    const raw = String(form.vin_number || "").trim().toUpperCase();
+
+    const chassis = isLikelyVin(raw) ? null : decodeChassis(raw);
+    if (chassis) {
+      const makeMatch = MAKES.find((m) => m.toLowerCase() === chassis.brand.toLowerCase()) || "Other";
+      setForm((f) => ({
+        ...f,
+        brand: f.brand || makeMatch,
+        model: f.model || chassis.model,
+      }));
+      setVinResult("chassis");
+      return;
+    }
+    if (!isLikelyVin(raw)) { setVinResult(isChassisCode(raw) ? "unknownChassis" : "invalid"); return; }
+    if (isMalaysianVin(raw)) { setVinResult("local"); return; }
+
     setDecodingVin(true);
-    const r = await decodeVin(form.vin_number);
+    const r = await decodeVin(raw);
     setDecodingVin(false);
     if (!r) { setVinResult("miss"); return; }
     const makeMatch = MAKES.find((m) => m.toLowerCase() === (r.make || "").toLowerCase()) || "Other";
@@ -448,19 +474,22 @@ export default function AddCarForm({ onPublished, onStocked, mode, onBack, onCon
             <label style={LBL}>VIN / chassis</label>
             <div style={{ display: "flex", gap: 8 }}>
               <input style={{ ...INP, flex: 1, textTransform: "uppercase" }} value={form.vin_number}
-                placeholder="17-char VIN — auto-fills make, model, year, CC"
+                placeholder="17-char VIN or Japanese chassis code (FL5-1234567)"
                 onChange={(e) => { setVal("vin_number", e.target.value); setVinResult(null); }} />
               <button type="button" onClick={handleDecodeVin}
-                disabled={decodingVin || !isLikelyVin(form.vin_number)}
+                disabled={decodingVin || !canDecode}
                 style={{ padding: "0 16px", borderRadius: 8, border: "none", whiteSpace: "nowrap",
-                  background: isLikelyVin(form.vin_number) && !decodingVin ? color.accent : "#FCA5A5",
-                  color: "#fff", fontSize: 13, fontWeight: 700, cursor: isLikelyVin(form.vin_number) && !decodingVin ? "pointer" : "default" }}>
+                  background: canDecode && !decodingVin ? color.accent : "#FCA5A5",
+                  color: "#fff", fontSize: 13, fontWeight: 700, cursor: canDecode && !decodingVin ? "pointer" : "default" }}>
                 {decodingVin ? "Decoding…" : "Decode"}
               </button>
             </div>
             {vinResult === "hit" && <p style={{ fontSize: 11, color: "#059669", marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}><Check className="w-3 h-3" /> Decoded — review the fields below and edit if needed.</p>}
-            {vinResult === "miss" && <p style={{ fontSize: 11, color: "#B45309", marginTop: 4 }}>Not found (common for Perodua/Proton). Pick make + model below — we will auto-fill CC.</p>}
-            {vinResult === "invalid" && <p style={{ fontSize: 11, color: color.textMuted, marginTop: 4 }}>A standard VIN is 17 characters. Leave blank if unknown.</p>}
+            {vinResult === "chassis" && <p style={{ fontSize: 11, color: "#059669", marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}><Check className="w-3 h-3" /> Japanese chassis code recognised — make and model set, CC filled below. Check the year.</p>}
+            {vinResult === "local" && <p style={{ fontSize: 11, color: "#B45309", marginTop: 4 }}>Malaysian-built VIN. Pick make + model below — we will auto-fill CC from our own spec table.</p>}
+            {vinResult === "unknownChassis" && <p style={{ fontSize: 11, color: "#B45309", marginTop: 4 }}>That chassis code is not in our table yet. Pick make + model below — we will auto-fill CC.</p>}
+            {vinResult === "miss" && <p style={{ fontSize: 11, color: "#B45309", marginTop: 4 }}>No match (NHTSA only covers US-market cars). Pick make + model below — we will auto-fill CC.</p>}
+            {vinResult === "invalid" && <p style={{ fontSize: 11, color: color.textMuted, marginTop: 4 }}>Enter a 17-character VIN or a Japanese chassis code. Leave blank if unknown.</p>}
           </div>
           <Field label="Make" required><FSelect k="brand" options={["", ...MAKES]} /></Field>
           <Field label="Model" required><FText k="model" ph="Civic" /></Field>

@@ -43,6 +43,7 @@ import { getListingGaps } from "../utils/listingCompleteness";
 import { TRUST_DOCS, TRUST_DOC_KEYS, GERAN_REASONS, getTrustTier } from "../utils/trustDocs";
 import { DOC_TYPES } from "../utils/docTypes";
 import { decodeVin, isLikelyVin } from "../utils/vinDecode";
+import { decodeChassis, isChassisCode, isMalaysianVin, generationYears } from "../utils/chassisDecode";
 import { isPremiumSalesman } from "../utils/salesmanPlan";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -1206,48 +1207,105 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     })();
   }, [form.brand, form.model, form.year]);
 
-  // ── VIN decode (salesman flows) ────────────────────────────────────────────
-  // Explicit tap fills the advanced specs (power/cylinders/doors/seats) plus any
-  // still-empty core fields, so a salesman's listing isn't missing spec rows on
-  // the detail page. Only fills blanks — never clobbers what they typed. NHTSA
-  // covers CBU/continental VINs; national cars (Perodua/Proton) miss gracefully.
+  // ── VIN / chassis decode (salesman flows) ─────────────────────────────────
+  // This button's ONE job is IDENTITY: brand, model, and a year when the source
+  // knows one. It deliberately does not fill specs — the effect above already
+  // does that from brand + model + year (local table, then cache, then the
+  // /api/car-specs proxy), and a second spec path here is exactly the kind of
+  // drift that ends with two tables disagreeing.
+  //
+  // Three ways in, because a Malaysian forecourt holds three kinds of car and
+  // only one of them has a VIN that NHTSA has ever seen:
+  //   1. Japanese chassis code (FL5-1234567) -> local table, no network. A
+  //      recon unit has no 17-char VIN at all, so gating this button on
+  //      isLikelyVin() alone left it permanently disabled for the whole recon
+  //      segment: no request, no message, nothing happened when it was tapped.
+  //   2. Malaysian-built VIN (Perodua, Proton) -> don't call NHTSA. It is the
+  //      US federal catalogue and has never held either marque.
+  //   3. Anything else 17 characters -> NHTSA, unchanged.
+  // Only ever fills blanks — never clobbers what the seller typed.
   const [decodingVin, setDecodingVin] = useState(false);
   const [vinDecodeMsg, setVinDecodeMsg] = useState(null); // { ok, text } | null
   const handleDecodeVin = async () => {
     setVinDecodeMsg(null);
-    if (!isLikelyVin(form.vin_number)) {
-      setVinDecodeMsg({ ok: false, text: "Enter the full 17-character VIN to decode." });
-      return;
-    }
-    setDecodingVin(true);
-    const r = await decodeVin(form.vin_number);
-    setDecodingVin(false);
-    if (!r) {
-      setVinDecodeMsg({ ok: false, text: "Couldn't decode this VIN (common for Perodua/Proton) — fill the specs manually." });
-      return;
-    }
-    const updates = {};
-    const filled = [];
+    const raw = String(form.vin_number || "").trim().toUpperCase();
     const blank = (v) => !String(v ?? "").trim();
-    if (blank(form.brand) && r.make) {
-      updates.brand = ALL_BRANDS.find((b) => b.toLowerCase() === r.make.toLowerCase()) || r.make;
+    const say = (ok, text) => setVinDecodeMsg({ ok, text });
+    const fillsItself = "Set the brand, model and year below and the specs fill in on their own.";
+
+    let ident = null;  // { brand, model, year } — identity only
+    let extra = null;  // NHTSA spec extras, which are VIN-specific
+    let lead = "";
+
+    const chassis = isLikelyVin(raw) ? null : decodeChassis(raw);
+    if (chassis) {
+      ident = { brand: chassis.brand, model: chassis.model, year: null };
+      const yrs = generationYears(chassis);
+      lead = `${chassis.code} is a ${chassis.model}${yrs ? `, ${yrs}` : ""}` +
+        (chassis.alt ? ` (also sold as ${chassis.alt})` : "");
+    } else if (isLikelyVin(raw)) {
+      if (isMalaysianVin(raw)) {
+        say(false, `That is a Malaysian-built VIN, and the decoder reads a US database that has never held one. ${fillsItself}`);
+        return;
+      }
+      setDecodingVin(true);
+      const r = await decodeVin(raw);
+      setDecodingVin(false);
+      if (!r) {
+        say(false, `No match — the decoder reads a US database, so Japan-market and Malaysian cars miss. ${fillsItself}`);
+        return;
+      }
+      ident = { brand: r.make, model: r.model, year: r.year };
+      extra = r;
+      lead = "VIN decoded";
+    } else if (isChassisCode(raw)) {
+      say(false, `We don't have "${raw}" in the chassis table yet. ${fillsItself}`);
+      return;
+    } else {
+      say(false, "Enter a 17-character VIN, or the Japanese chassis code from the grant (e.g. FL5-1234567).");
+      return;
     }
-    if (blank(form.model) && r.model) updates.model = r.model;
-    if (blank(form.year) && r.year) updates.year = String(r.year);
-    if (blank(form.engineCc) && r.cc) updates.engineCc = String(r.cc);
-    if (blank(form.bodyType) && r.body && BODY_TYPES.includes(r.body)) updates.bodyType = r.body;
-    if (blank(form.horsepower) && r.horsepower) { updates.horsepower = String(r.horsepower); filled.push(`${r.horsepower} bhp`); }
-    if (blank(form.cylinders) && r.cylinders) { updates.cylinders = String(r.cylinders); filled.push(`${r.cylinders}-cyl`); }
-    if (blank(form.doors) && r.doors) { updates.doors = String(r.doors); filled.push(`${r.doors} doors`); }
-    if (blank(form.seats) && r.seats) { updates.seats = String(r.seats); filled.push(`${r.seats} seats`); }
-    if (Object.keys(updates).length) setForm((f) => ({ ...f, ...updates }));
-    setAutoFilled(true);
-    setVinDecodeMsg({
-      ok: true,
-      text: filled.length
-        ? `Auto-filled: ${filled.join(", ")} — check the Advanced specs section on the Technical step.`
-        : "VIN decoded — no extra specs available for this vehicle.",
-    });
+
+    // Match what we found against the form's own vocabulary, so the pickers
+    // show a real selection rather than a near-miss string.
+    const pick = (list, v) => list.find((o) => o.toLowerCase() === String(v || "").toLowerCase());
+    const updates = {};
+    if (blank(form.brand) && ident.brand) updates.brand = pick(ALL_BRANDS, ident.brand) || ident.brand;
+    const brandNow = updates.brand || form.brand;
+    if (blank(form.model) && ident.model) updates.model = pick(CAR_DATA[brandNow] || [], ident.model) || ident.model;
+    if (blank(form.year) && ident.year) updates.year = String(ident.year);
+
+    // NHTSA also returns per-VIN specs. Those beat a model average, so they are
+    // the one thing this handler does fill — still blanks only.
+    const filled = [];
+    const put = (k, v, label) => {
+      if (!v || !blank(form[k])) return;
+      updates[k] = String(v);
+      filled.push(label);
+    };
+    if (extra) {
+      if (blank(form.engineCc) && extra.cc) updates.engineCc = String(extra.cc);
+      if (blank(form.bodyType) && extra.body && BODY_TYPES.includes(extra.body)) updates.bodyType = extra.body;
+      put("horsepower", extra.horsepower, `${extra.horsepower} bhp`);
+      put("cylinders", extra.cylinders, `${extra.cylinders}-cyl`);
+      put("doors", extra.doors, `${extra.doors} doors`);
+      put("seats", extra.seats, `${extra.seats} seats`);
+    }
+    if (Object.keys(updates).length) { setForm((f) => ({ ...f, ...updates })); setAutoFilled(true); }
+
+    // A chassis code names a generation, never a build year. If the seller has
+    // already typed a year that sits outside it, one of the two is wrong.
+    const yr = parseInt(updates.year || form.year, 10);
+    if (chassis && yr && chassis.from && (yr < chassis.from || (chassis.to && yr > chassis.to))) {
+      say(false, `${lead}. Your year (${yr}) is outside that generation — check the year or the chassis code.`);
+      return;
+    }
+
+    const named = [updates.brand, updates.model, updates.year].filter(Boolean).join(" ");
+    const parts = [named && `set ${named}`, filled.length && `filled ${filled.join(", ")}`].filter(Boolean);
+    if (!parts.length) { say(true, `${lead}. Everything it could set was already filled in.`); return; }
+    say(true, `${lead} — ${parts.join(", ")}.` +
+      (blank(form.year) && !updates.year ? " Add the year and the specs fill in on their own." : ""));
   };
 
   // Fetch dealer products when picker is first opened
@@ -1295,6 +1353,10 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   const handleChange = (e) => set(e.target.name, e.target.value);
   const modelOptions =
     form.brand && CAR_DATA[form.brand] ? CAR_DATA[form.brand] : [];
+  // Decode accepts a full VIN OR a Japanese chassis code. Gating on the VIN
+  // alone is what left the button permanently dead for recon stock.
+  const canDecodeVin =
+    isLikelyVin(form.vin_number) || isChassisCode(form.vin_number);
   // The seller's own city rides along when it is not one of ours, so the
   // prefill above has something the dropdown can actually show.
   const cityOptions = cityOptionsFor(form.state, form.city);
@@ -2225,14 +2287,14 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               <p className="text-xs text-red-600 mt-1 font-semibold">This plate is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
             )}
           </Field>
-          <Field label="VIN Number" hint={isPremiumPlan ? "17-char VIN — tap Decode to auto-fill specs" : "Vehicle Identification Number"}>
+          <Field label="VIN / chassis number" hint={isPremiumPlan ? "17-char VIN, or the Japanese chassis code — tap Decode to auto-fill specs" : "VIN, or the Japanese chassis code from the grant"}>
             <div className="flex gap-2">
               <input
                 name="vin_number"
                 value={form.vin_number}
                 onChange={handleChange}
                 onBlur={e => checkDuplicate('vin', e.target.value)}
-                placeholder="e.g. JN1CA31D1XT000001"
+                placeholder="e.g. JN1CA31D1XT000001 or FL5-1234567"
                 className={`${inputCls} flex-1`}
                 style={{ textTransform: "uppercase" }}
               />
@@ -2240,8 +2302,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 <button
                   type="button"
                   onClick={handleDecodeVin}
-                  disabled={decodingVin || !isLikelyVin(form.vin_number)}
-                  className={`shrink-0 px-4 text-sm font-semibold text-white transition-colors ${isLikelyVin(form.vin_number) && !decodingVin ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-300 cursor-not-allowed"}`}
+                  disabled={decodingVin || !canDecodeVin}
+                  className={`shrink-0 px-4 text-sm font-semibold text-white transition-colors ${canDecodeVin && !decodingVin ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-300 cursor-not-allowed"}`}
                 >
                   {decodingVin ? "Decoding…" : "Decode"}
                 </button>
