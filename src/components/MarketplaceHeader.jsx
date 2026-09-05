@@ -192,13 +192,19 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
     <>
       {!hideAnnouncement && <AnnouncementBar />}
       <style>{`
-        .mh-root { position:sticky; top:0; z-index:100; background:#fff; border-bottom:1px solid #ECEAE3; transition:box-shadow .25s,border-color .25s; font-family:'Outfit',sans-serif; }
-        .mh-root.scrolled { box-shadow:0 1px 0 rgba(0,0,0,.03), 0 10px 30px rgba(15,23,42,.08); border-bottom-color:#E5E7EB; }
+        /* DARK bar. #0f1115 is not a new colour — it is the ink this file already
+           used for the logo wordmark and the Get Started button, so the bar reads
+           as the brand black rather than a fourth palette. The marketplace hero's
+           search panel is painted the SAME hex deliberately: the two dark elements
+           have to read as one system with a light headline band between them, not
+           as two unrelated dark stripes. */
+        .mh-root { position:sticky; top:0; z-index:100; background:#0f1115; border-bottom:1px solid rgba(255,255,255,.08); transition:box-shadow .25s,border-color .25s; font-family:'Outfit',sans-serif; }
+        .mh-root.scrolled { box-shadow:0 10px 30px rgba(0,0,0,.4); border-bottom-color:rgba(255,255,255,.14); }
         .mh-bar { max-width:1400px; margin:0 auto; padding:0 clamp(16px,3.5vw,44px); height:70px; display:flex; align-items:center; gap:clamp(14px,2.4vw,30px); }
 
         .mh-logo { text-decoration:none; display:flex; align-items:baseline; gap:1px; flex-shrink:0; }
         .mh-logo-x { font-family:'Bebas Neue',sans-serif; font-size:29px; letter-spacing:.03em; line-height:1; color:#dc2626; }
-        .mh-logo-t { font-family:'Bebas Neue',sans-serif; font-size:29px; letter-spacing:.03em; line-height:1; color:#0f1115; }
+        .mh-logo-t { font-family:'Bebas Neue',sans-serif; font-size:29px; letter-spacing:.03em; line-height:1; color:#ffffff; }
         .mh-logo-my { font-size:9.5px; font-weight:800; color:#C4A265; letter-spacing:.12em; margin-left:3px; }
 
         /* left nav */
@@ -213,10 +219,11 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
            right edge, both of which are on-screen by construction. */
         .mh-nav { display:flex; align-items:center; gap:2px; position:relative; }
         .mh-nav-item { position:static; }
-        .mh-nav-link, .mh-nav-trigger { display:flex; align-items:center; gap:6px; color:#3f4654; font-size:14px; font-weight:600; text-decoration:none; padding:9px 13px; border-radius:10px; background:none; border:none; cursor:pointer; font-family:inherit; white-space:nowrap; transition:background .14s,color .14s; }
-        .mh-nav-link:hover, .mh-nav-trigger:hover, .mh-nav-item:hover .mh-nav-trigger, .mh-nav-item.mh-open .mh-nav-trigger { background:#F5F3EE; color:#0f1115; }
-        .mh-nav-link.hot { color:#ea580c; }
-        .mh-nav-link.hot:hover, .mh-nav-link.hot.active { background:#fff7ed; color:#c2410c; }
+        .mh-nav-link, .mh-nav-trigger { display:flex; align-items:center; gap:6px; color:rgba(255,255,255,.72); font-size:14px; font-weight:600; text-decoration:none; padding:9px 13px; border-radius:10px; background:none; border:none; cursor:pointer; font-family:inherit; white-space:nowrap; transition:background .14s,color .14s; }
+        .mh-nav-link:hover, .mh-nav-trigger:hover, .mh-nav-item:hover .mh-nav-trigger, .mh-nav-item.mh-open .mh-nav-trigger { background:rgba(255,255,255,.08); color:#ffffff; }
+        /* orange-600 was picked for white; it fails on #0f1115. */
+        .mh-nav-link.hot { color:#fb923c; }
+        .mh-nav-link.hot:hover, .mh-nav-link.hot.active { background:rgba(251,146,60,.14); color:#fdba74; }
         .mh-chev { transition:transform .2s; }
         .mh-nav-item:hover .mh-chev, .mh-nav-item.mh-open .mh-chev { transform:rotate(180deg); }
 
@@ -250,11 +257,11 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
 
         /* right cluster */
         .mh-right { display:flex; align-items:center; gap:4px; margin-left:auto; flex-shrink:0; }
-        .mh-icon-btn { position:relative; width:42px; height:42px; border-radius:11px; background:none; border:none; cursor:pointer; color:#3f4654; display:flex; align-items:center; justify-content:center; transition:background .14s,color .14s; }
-        .mh-icon-btn:hover { background:#F5F3EE; color:#0f1115; }
+        .mh-icon-btn { position:relative; width:42px; height:42px; border-radius:11px; background:none; border:none; cursor:pointer; color:rgba(255,255,255,.72); display:flex; align-items:center; justify-content:center; transition:background .14s,color .14s; }
+        .mh-icon-btn:hover { background:rgba(255,255,255,.08); color:#ffffff; }
         .mh-badge { position:absolute; top:5px; right:5px; background:#dc2626; color:#fff; font-size:9px; font-weight:800; border-radius:20px; min-width:15px; height:15px; display:flex; align-items:center; justify-content:center; padding:0 4px; line-height:1; }
-        .mh-vsep { width:1px; height:26px; background:#E7E4DB; margin:0 8px; }
-        .mh-signin { color:#0f1115; font-size:14px; font-weight:600; text-decoration:none; padding:9px 6px; position:relative; font-family:inherit; }
+        .mh-vsep { width:1px; height:26px; background:rgba(255,255,255,.14); margin:0 8px; }
+        .mh-signin { color:#ffffff; font-size:14px; font-weight:600; text-decoration:none; padding:9px 6px; position:relative; font-family:inherit; }
         .mh-signin::after { content:''; position:absolute; left:6px; right:6px; bottom:3px; height:2px; background:#dc2626; border-radius:2px; transform:scaleX(0); transform-origin:left; transition:transform .2s; }
         .mh-signin:hover::after { transform:scaleX(1); }
         .mh-signin-menu { position:absolute; top:calc(100% + 12px); right:0; width:248px; background:#fff; border:1px solid #e5e7eb; border-radius:14px; box-shadow:0 16px 40px rgba(15,23,42,0.16); padding:6px; display:flex; flex-direction:column; gap:2px; z-index:1000; }
@@ -262,29 +269,36 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
         .mh-signin-item:hover { background:#f5f6f8; }
         .mh-signin-item-t { display:block; font-size:13px; font-weight:700; color:#0f1115; }
         .mh-signin-item-s { display:block; font-size:11px; color:#6b7280; margin-top:1px; }
-        .mh-getstarted { display:flex; align-items:center; gap:6px; background:#0f1115; color:#fff; font-size:13.5px; font-weight:700; padding:11px 18px; border-radius:11px; text-decoration:none; white-space:nowrap; transition:background .15s,transform .12s,box-shadow .15s; box-shadow:0 1px 2px rgba(0,0,0,.18); }
-        .mh-getstarted:hover { background:#dc2626; transform:translateY(-1px); box-shadow:0 8px 22px rgba(220,38,38,.26); }
+        /* Was #0f1115 — the bar's own colour now, i.e. an invisible button. The
+           primary action takes the accent instead. */
+        .mh-getstarted { display:flex; align-items:center; gap:6px; background:#dc2626; color:#fff; font-size:13.5px; font-weight:700; padding:11px 18px; border-radius:11px; text-decoration:none; white-space:nowrap; transition:background .15s,transform .12s,box-shadow .15s; box-shadow:0 1px 2px rgba(0,0,0,.28); }
+        .mh-getstarted:hover { background:#b91c1c; transform:translateY(-1px); box-shadow:0 8px 22px rgba(220,38,38,.3); }
 
         /* search drawer */
-        .mh-search-drawer { max-height:0; overflow:hidden; transition:max-height .28s ease; border-top:0 solid #ECEAE3; }
-        .mh-search-drawer.open { max-height:90px; border-top:1px solid #ECEAE3; }
+        .mh-search-drawer { max-height:0; overflow:hidden; transition:max-height .28s ease; border-top:0 solid rgba(255,255,255,.08); }
+        .mh-search-drawer.open { max-height:90px; border-top:1px solid rgba(255,255,255,.08); }
         .mh-search-form { max-width:1400px; margin:0 auto; padding:14px clamp(16px,3.5vw,44px); display:flex; gap:10px; box-sizing:border-box; width:100%; }
-        .mh-search-field { flex:1; min-width:0; box-sizing:border-box; display:flex; align-items:center; gap:10px; background:#F4F3EF; border:1.5px solid #E7E4DB; border-radius:13px; padding:0 14px; height:50px; transition:border-color .15s,box-shadow .15s,background .15s; }
-        .mh-search-field:focus-within { background:#fff; border-color:#dc2626; box-shadow:0 0 0 4px rgba(220,38,38,.10); }
-        .mh-search-field input { flex:1; min-width:0; border:none; background:none; outline:none; font-family:inherit; font-size:15px; color:#0f1115; }
+        .mh-search-field { flex:1; min-width:0; box-sizing:border-box; display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.14); border-radius:13px; padding:0 14px; height:50px; transition:border-color .15s,box-shadow .15s,background .15s; }
+        .mh-search-field:focus-within { background:rgba(255,255,255,.1); border-color:#dc2626; box-shadow:0 0 0 4px rgba(220,38,38,.18); }
+        .mh-search-field input { flex:1; min-width:0; border:none; background:none; outline:none; font-family:inherit; font-size:15px; color:#ffffff; }
+        /* An unstyled placeholder inherits the browser's dark-on-light default and
+           is unreadable here. */
+        .mh-search-field input::placeholder { color:rgba(255,255,255,.4); }
         .mh-search-go { flex-shrink:0; background:#dc2626; color:#fff; border:none; border-radius:12px; padding:0 24px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; }
 
         /* mobile */
-        .mh-burger { display:none; background:#F4F3EF; border:1px solid #E7E4DB; color:#0f1115; border-radius:11px; padding:9px; cursor:pointer; align-items:center; justify-content:center; }
-        /* Full-height solid sheet so the dark hero can never show through/below it.
-           Body scroll is locked while it's open (see effect), so it stays put. */
-        .mh-mobile { display:none; flex-direction:column; padding:14px 18px 22px; border-top:1px solid #ECEAE3; background:#fff; gap:2px; height:calc(100dvh - 64px); overflow-y:auto; -webkit-overflow-scrolling:touch; }
-        .mh-m-link, .mh-m-acc { color:#1f2733; font-size:15px; font-weight:600; text-decoration:none; padding:13px 6px; border-bottom:1px solid #F1EFE9; display:flex; align-items:center; gap:10px; justify-content:space-between; background:none; border-left:none; border-right:none; border-top:none; cursor:pointer; width:100%; font-family:inherit; }
+        .mh-burger { display:none; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14); color:#ffffff; border-radius:11px; padding:9px; cursor:pointer; align-items:center; justify-content:center; }
+        /* Full-height solid sheet so the page can never show through/below it.
+           Body scroll is locked while it's open (see effect), so it stays put.
+           It is the bar's own colour — a white sheet dropping out of a black bar
+           was the loudest palette break on mobile. */
+        .mh-mobile { display:none; flex-direction:column; padding:14px 18px 22px; border-top:1px solid rgba(255,255,255,.08); background:#0f1115; gap:2px; height:calc(100dvh - 64px); overflow-y:auto; -webkit-overflow-scrolling:touch; }
+        .mh-m-link, .mh-m-acc { color:rgba(255,255,255,.88); font-size:15px; font-weight:600; text-decoration:none; padding:13px 6px; border-bottom:1px solid rgba(255,255,255,.07); display:flex; align-items:center; gap:10px; justify-content:space-between; background:none; border-left:none; border-right:none; border-top:none; cursor:pointer; width:100%; font-family:inherit; }
         .mh-m-sub { display:flex; flex-direction:column; padding:2px 0 10px 16px; }
-        .mh-m-sub a { color:#5b626e; font-size:13.5px; font-weight:500; text-decoration:none; padding:10px 0; display:flex; align-items:center; gap:9px; }
+        .mh-m-sub a { color:rgba(255,255,255,.6); font-size:13.5px; font-weight:500; text-decoration:none; padding:10px 0; display:flex; align-items:center; gap:9px; }
         .mh-m-cta { margin-top:12px; display:flex; align-items:center; justify-content:center; gap:7px; background:#dc2626; color:#fff; font-size:15px; font-weight:700; padding:14px; border-radius:12px; text-decoration:none; }
-        .mh-m-cta-alt { margin-top:8px; display:flex; align-items:center; justify-content:center; gap:6px; background:#fff; color:#0f1115; border:1.5px solid #E7E4DB; font-size:14px; font-weight:600; padding:13px; border-radius:12px; text-decoration:none; }
-        .mh-m-signin { margin-top:8px; text-align:center; color:#0f1115; font-weight:600; text-decoration:none; padding:12px; }
+        .mh-m-cta-alt { margin-top:8px; display:flex; align-items:center; justify-content:center; gap:6px; background:transparent; color:#ffffff; border:1.5px solid rgba(255,255,255,.2); font-size:14px; font-weight:600; padding:13px; border-radius:12px; text-decoration:none; }
+        .mh-m-signin { margin-top:8px; text-align:center; color:#ffffff; font-weight:600; text-decoration:none; padding:12px; }
 
         /* keep mega panels inside the viewport on mid-size screens */
         @media (max-width:1240px) { .mh-mega-promo { display:none; } }
@@ -373,7 +387,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
         <div className={`mh-search-drawer${searchOpen ? ' open' : ''}`}>
           <form className="mh-search-form" onSubmit={submitSearch} role="search">
             <div className="mh-search-field">
-              <Search size={18} style={{ color:'#9ca3af', flexShrink:0 }} />
+              <Search size={18} style={{ color:'rgba(255,255,255,0.45)', flexShrink:0 }} />
               <input ref={searchInputRef} value={q} onChange={e => setQ(e.target.value)} placeholder="Search by brand, model or keyword…" aria-label="Search cars" />
             </div>
             <button type="submit" className="mh-search-go">Search</button>

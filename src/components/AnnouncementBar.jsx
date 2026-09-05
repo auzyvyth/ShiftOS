@@ -18,20 +18,20 @@ export default function AnnouncementBar() {
 
   if (!settings.announcement_enabled || !settings.announcement_text || dismissed) return null;
 
-  // This bar only ever renders inside MarketplaceHeader, i.e. on the LIGHT
-  // marketplace. It used to be styled for a dark surface — pale red-300 text on
-  // a 12%-alpha red that composited over the near-black body background — so it
-  // read as a black band sitting on top of a white header. Do NOT take it dark
-  // again for that reason.
-  // It is not pastel red either: red-50 ground + red-800 text was a third
-  // palette stacked above the white header and the dark hero, and the fold read
-  // as unrelated strips. It sits on the marketplace's own alt-surface token
-  // (#F2F0EC) one step off the white header, with a single red hairline as the
-  // "this is an announcement" signal.
+  // This bar renders directly above MarketplaceHeader, which is now a DARK bar,
+  // so the bar is dark too — a light strip capping a black masthead was the one
+  // remaining palette break at the top of the page.
+  // The original bug this file carries a scar from was NOT "dark": it was a
+  // TRANSLUCENT 12%-alpha red that composited over whatever was behind it, under
+  // a white header, so it rendered as a black band on top of white. The fix then
+  // and the rule now is the same — paint an EXPLICIT OPAQUE colour, and paint it
+  // to match the surface it actually sits on. #15171c is one step off the header's
+  // #0f1115 so the two read as related, not identical, and the red hairline stays
+  // as the "this is an announcement" signal.
   const bar = (
     <div style={{
-      background: '#F2F0EC',
-      borderBottom: '1px solid rgba(220,38,38,0.22)',
+      background: '#15171c',
+      borderBottom: '1px solid rgba(220,38,38,0.35)',
       padding: '9px 48px 9px 20px',
       display: 'flex',
       alignItems: 'center',
@@ -39,12 +39,12 @@ export default function AnnouncementBar() {
       position: 'relative',
       fontFamily: "'Outfit', sans-serif",
     }}>
-      <p style={{ fontSize: 13, color: '#1f2733', fontWeight: 500, margin: 0, textAlign: 'center', lineHeight: 1.4 }}>
+      <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.88)', fontWeight: 500, margin: 0, textAlign: 'center', lineHeight: 1.4 }}>
         {settings.announcement_text}
       </p>
       <button
         onClick={e => { e.preventDefault(); e.stopPropagation(); setDismissed(true); }}
-        style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#4b5563', fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '4px 6px' }}
+        style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(255,255,255,0.55)', fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '4px 6px' }}
         aria-label="Dismiss announcement"
       >
         ×
