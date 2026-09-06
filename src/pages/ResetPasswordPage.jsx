@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
+import { supabase, INITIAL_URL } from '../supabaseClient';
 import { handoffSuffix } from '../lib/authHandoff';
 
 const STRONG_PW = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
@@ -70,27 +70,73 @@ export default function ResetPasswordPage() {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    const isRecovery =
-      window.location.href.includes('type=recovery') ||
-      window.location.hash.includes('type=recovery');
+    // Recovery is detected TWO ways, because neither is reliable alone.
+    //
+    // 1. The PASSWORD_RECOVERY event. supabase-js emits it for a recovery link
+    //    under BOTH auth flows, so it needs nothing in the URL. But it can fire
+    //    before this effect subscribes, in which case we never hear it.
+    // 2. INITIAL_URL -- the address this tab opened with, captured in
+    //    supabaseClient.js before the client existed. If it carried an auth
+    //    payload (implicit puts #access_token + type=recovery in the hash, PKCE
+    //    puts a ?code= in the query) the visitor arrived from an emailed link.
+    //    Reading window.location here instead would race the client's own
+    //    history.replaceState cleanup and could find the URL already scrubbed.
+    //
+    // What is deliberately NOT used any more: a marker of ours on the redirectTo
+    // (`?flow=recovery`). Supabase matches redirect_to against the project's
+    // Redirect URL allowlist and, on a miss, silently falls back to the Site URL
+    // while STILL issuing the session -- so the user lands somewhere else, logged
+    // in, with no prompt and no error. Changing that URL is not free, and the
+    // page must never depend on it.
+    const hash = INITIAL_URL.includes('#') ? INITIAL_URL.slice(INITIAL_URL.indexOf('#')) : '';
+    const query = new URLSearchParams(
+      INITIAL_URL.includes('?')
+        ? INITIAL_URL.slice(INITIAL_URL.indexOf('?') + 1).split('#')[0]
+        : ''
+    );
+    const fromEmailLink =
+      query.has('code') ||
+      hash.includes('access_token') ||
+      INITIAL_URL.includes('type=recovery');
+
     // Dealer-created salesmen arrive here via the emailed setup link
     // (?flow=setup). Hand them to the branded /salesman-setup welcome page once
     // the recovery session is live, instead of the generic reset form.
-    const isSetup = window.location.href.includes('flow=setup');
+    const isSetup = INITIAL_URL.includes('flow=setup');
 
-    supabase.auth.getSession().then(({ data, error: err }) => {
-      if (err || !data.session) {
+    let settled = false;
+    let subscription;
+
+    const settle = (session, isRecovery) => {
+      if (settled) return;
+      settled = true;
+      subscription?.unsubscribe();
+      if (!session) {
         setPhase('expired');
-        return;
-      }
-      if (isSetup) {
+      } else if (isSetup) {
         navigate('/salesman-setup');
-      } else if (isRecovery) {
+      } else if (isRecovery || fromEmailLink) {
         setPhase('reset');
       } else {
-        redirectByRole(data.session, navigate);
+        // No recovery signal and nothing in the URL: someone already signed in
+        // navigated here by hand. Send them where they were going.
+        redirectByRole(session, navigate);
       }
+    };
+
+    ({ data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') settle(session, true);
+    }));
+
+    // getSession() awaits the client's initialize(), and under PKCE that includes
+    // the network round trip swapping ?code= for a session -- so this is not a
+    // race against the exchange. It IS a race against the event above, which is
+    // why fromEmailLink has to stand on its own.
+    supabase.auth.getSession().then(({ data, error: err }) => {
+      settle(err ? null : data.session, false);
     });
+
+    return () => subscription?.unsubscribe();
   }, []);
 
   const handleSubmit = async () => {
@@ -150,7 +196,8 @@ export default function ResetPasswordPage() {
           </div>
           <h2 style={styles.cardHeading}>LINK EXPIRED</h2>
           <p style={styles.cardBody}>
-            This link has expired. Request a new one.
+            Reset links last one hour and work only once. Request a fresh
+            one from the sign-in page and it will let you straight through.
           </p>
           <button style={styles.btnPrimary} onClick={() => navigate('/login')}>
             BACK TO SIGN IN

@@ -226,7 +226,7 @@ export default function AuthCallbackPage() {
     // sign-in on the Vercel preview). So act on every event that can carry a live
     // session, and additionally read it directly in case we subscribed too late.
     ({ data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED')) {
+      if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED' || event === 'PASSWORD_RECOVERY')) {
         finish(session);
       }
     }));

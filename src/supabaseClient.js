@@ -6,6 +6,14 @@ export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://lemdkd
 // Vite env vars, and a second copy of these values would be free to drift.
 export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxlbWRrZGl6ZGxjaXJoYnpxbG9zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MjY2MTUsImV4cCI6MjA4ODIwMjYxNX0.KhD0skeM_lgmWfq94nIISvRWzEGUmBc8BReTLdPKji4";
 
+// The URL this tab was opened with, captured BEFORE createClient exists.
+// detectSessionInUrl deletes the auth payload (the #access_token... hash, or the
+// ?code= query) from the address bar as soon as it has consumed it, via
+// history.replaceState. Any component that reads window.location later is racing
+// that cleanup and may find the URL already scrubbed -- which is how a page can
+// end up unable to tell an emailed link from an ordinary visit.
+export const INITIAL_URL = typeof window !== "undefined" ? window.location.href : "";
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
