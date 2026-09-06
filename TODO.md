@@ -2409,9 +2409,23 @@ native build.
   brand asset is your call, not a silent refactor. Options: (a) leave it, (b) re-cut
   the icon on the #080C14 background, (c) set `background_color` to white so the
   splash matches the icon.
+- [ ] **AUTH-1 (ACTION NEEDED FROM YOU — 2 minutes in the Supabase dashboard):
+  paste the new reset-password email template.** `email-templates/reset-password.html`
+  is written and matches `confirm-signup.html`. It is NOT live until someone
+  pastes it into Supabase Dashboard -> Authentication -> Email Templates ->
+  "Reset Password" (subject: `Reset your XDrive password`). Nothing in the repo
+  can apply it — Supabase serves auth email from project settings, not from here.
+  STILL LOOKS LIKE PHISHING UNTIL TWO SETTINGS CHANGE, and no template can fix
+  either: (a) Authentication -> SMTP Settings needs custom SMTP (Resend, from
+  no-reply@xdrive.my) to kill the "via supabase.io" sender line; (b) the href
+  stays `<project-ref>.supabase.co/auth/v1/verify?token=...` until a custom auth
+  domain (paid Supabase add-on) makes it `auth.xdrive.my`. The template explains
+  the unfamiliar domain in the fallback block rather than hiding it.
 - [ ] **MOBILE-1 (CODE DONE, NOT SHIPPED — blocked on a staging auth test):
-  migrate auth to PKCE.** Written and building on branch
-  `claude/pkce-auth-flow`: `flowType: 'pkce'` in `src/supabaseClient.js`, plus
+  migrate auth to PKCE.** The RESET-PAGE RACE FIX that testing this uncovered has
+  been SPLIT OUT and shipped to prod on its own — it was a live bug with or
+  without PKCE — so this entry is now only about the flow switch itself.
+  Written and building on branch `claude/pkce-auth-flow`: `flowType: 'pkce'` in `src/supabaseClient.js`, plus
   the recovery-detection fix it forces. `ResetPasswordPage.jsx:74` detected a
   password reset by looking for `type=recovery` in the URL; PKCE sends `?code=`
   with no type at all, so that check falls through to `redirectByRole` and the
