@@ -13,7 +13,7 @@ const OWN_KEYS = [
   'mileage_max', 'transmission', 'financing', 'model', 'variant',
 ];
 
-export default function AdvancedSearchModal({ open, onClose, heroQ, heroBudget, onApply, currentParams }) {
+export default function AdvancedSearchModal({ open, onClose, heroQ, onApply, currentParams }) {
   const [advBrand,        setAdvBrand]        = useState('');
   const [advBodyType,     setAdvBodyType]     = useState('');
   const [advCondition,    setAdvCondition]    = useState('');
@@ -72,7 +72,9 @@ export default function AdvancedSearchModal({ open, onClose, heroQ, heroBudget, 
     // The hero box and budget select are not synced from the URL, so an empty
     // one means "unchanged", not "cleared".
     const q      = heroQ      || p.get('q')         || '';
-    const budget = heroBudget || p.get('max_price') || '';
+    // Was `heroBudget || p.get('max_price')`. The hero's budget <select> is
+    // gone, so the applied URL param is now the only source.
+    const budget = p.get('max_price') || '';
     q      ? p.set('q', q)               : p.delete('q');
     budget ? p.set('max_price', budget)  : p.delete('max_price');
     if (advBrand)        p.set('brand', advBrand);

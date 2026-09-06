@@ -1,19 +1,15 @@
 # ShiftOS — Pending Tasks
 
-> **BRANCH IN FLIGHT — `claude/marketplace-hero-styling-160xcm` @ `90a68a8`,
-> 9 commits ahead of `origin/main`, NOT merged, NOT on staging, NEVER BUILT.**
-> It rewrites the marketplace hero across `MarketplacePage.jsx`,
-> `MarketplaceHeader.jsx`, `SearchAutocomplete.jsx` and `DESIGN.md`. `npm install`
-> failed in that container (proxy 403 on the xlsx CDN pin) so `npm run build` and
-> `npm run lint` never ran — treat the whole branch as unverified. Its open items
-> are HERO-1..5, written in that branch's OWN `TODO.md` — read them with
-> `git show origin/claude/marketplace-hero-styling-160xcm:TODO.md`. They are
-> deliberately not copied here: that branch edits this file too, so duplicating
-> them would guarantee a merge conflict. Do NOT start new work over the same
-> public files until it is staged, built and merged, or abandoned.
+> **NO BRANCH IN FLIGHT — branch off `origin/main` (2026-09-06).**
+> Two branches that had been sitting unmerged since 2026-09-05 both landed today,
+> after prod was checked against the live Vercel deployment rather than assumed:
+> the mini page profile fixes (PR #364) and the marketplace hero restyle
+> (`claude/marketplace-hero-styling-160xcm`, merged as the tip — the dark and
+> charcoal palette passes in its history were superseded by the final wave-field
+> commit `3e42d39`, so only that last look shipped).
 >
-> `main` is at `25bcecf` (PR #360) and IS what production serves. Safe to branch
-> from for anything that does not touch the marketplace hero.
+> `main` IS what production serves — confirmed against the Vercel deployment with
+> `target: production`, not from `git status`.
 >
 > **Staging can be identical to prod and still look reviewed — check before you
 > trust it.** PR #359 was asked for on the basis that "staging had been
@@ -521,6 +517,74 @@ lead updates in both panels are NOT exploitable — missing belt-and-braces, not
 hole); `ai-proxy` pins model/max_tokens server-side and enforces a shared daily
 quota; `set_my_ic` hashes with a per-user salt and nulls the plaintext. No XSS
 sinks, no raw `chat_messages` read, no secrets in either bundle.
+
+## Marketplace hero restyle — SHIPPED 2026-09-06
+Merged from `claude/marketplace-hero-styling-160xcm` at its tip. Design-audit
+pass on the XDrive marketplace fold.
+
+**Only the last look shipped, and that was deliberate.** The branch's history is
+five palette passes over the same lines (dark masthead -> charcoal -> light
+controls -> masthead back to near-black -> wave field). Each overwrote the one
+before, so merging the tip carries the final state and none of the experiments.
+Owner confirmed this cut on 2026-09-06. Do NOT go looking for the intermediate
+commits as separately shippable work — they are revisions, not features.
+
+Two structural changes from the branch's FIRST commit survive into the final
+state, because no later commit undid them: the search bar sits higher, and the
+budget/state pill row is gone (HERO-3).
+
+- [x] **HERO-1: built and rendered.** The gap the branch carried — never built,
+      never linted, never on staging — is closed. `npm install` still fails in
+      the web container (403 on `cdn.sheetjs.com/xlsx-0.20.3`, a gateway policy
+      denial, see `package.json:73`), so the local build remains impossible from
+      a web session. GitHub Actions "Lint & Build" and "test" are the real check
+      and both passed on the merge PR. Pushed to `staging` as well.
+**The marketplace header auto-hides (added 2026-09-06).** `.mh-root` was always
+`position:sticky`; what it never did was get out of the way. It now hides on
+scroll down and returns on scroll up via the EXISTING `useHideOnScroll` hook
+(`src/hooks/useHideOnScroll.js`, already used by Salesman Premium) — do not write
+a second scroll-direction hook. It is pinned visible whenever the mobile sheet,
+saved-cars panel, search field or a click-pinned mega panel is open, because all
+of those render from inside `.mh-root`. Deliberately no `will-change:transform`:
+it establishes a containing block for `position:fixed` descendants even when
+transform is none, and `SavedCarsPanel` is fixed — which is why it is a SIBLING
+of `<header>` (line 474, after `</header>`), not a child. Keep it that way.
+
+- [ ] **HERO-2: judge the near-black navbar over the light hero.** Live now, so
+      this is a look-at-it item rather than a described one. Current ramp:
+      `#15171c` announcement bar -> `#0f1115` navbar -> light hero (white ->
+      `#F7F6F2` wave field) -> light trust strip -> light chip strip -> light
+      body. Check at 375px and ~950px.
+- [ ] **HERO-3: decide on the "More filters" text link.** The pill row was
+      removed as asked, but that pill was the ONLY entry point to
+      `AdvancedSearchModal` on this page, so the feature was kept alive as a
+      plain underlined text link (`MarketplacePage.jsx:1060`) rather than
+      stranded. Owner has still not confirmed they want it. If it goes, delete
+      the modal wiring with it instead of leaving orphaned code.
+- [ ] **HERO-4: `#F4F3EF` search bar may be too subtle at the top of the ramp.**
+      The hero ground is pure white at the top, so the dimmed field has the
+      least separation exactly where it sits. Check on a real screen.
+- [ ] **HERO-5 (pre-existing, out of scope, worth a cleanup):**
+      `MarketplacePage.jsx` has 11 unused imports that predate this work —
+      `ArrowLeftRight`, `BODY_TYPES`, `BRANDS`, `COLOURS`, `FUEL_TYPES`,
+      `React`, `SkeletonCard`, `TRANSMISSIONS`, `Users`, `YEARS`, `toast`.
+      Verified by diff that the hero session added none of them.
+
+## Mini page profile fields — SHIPPED 2026-09-06 (PR #364)
+Merged from `claude/llm-gating-plan-tier-0t83ei`, pushed 2026-09-05 and never
+merged, which is why the fields were still missing on prod.
+
+Root cause of the reported bug: a specialization tag only entered the array on
+Enter, so anything still in the text box when Save was pressed was dropped, and
+the save then wrote that empty array over the profile. `get_salesman_by_slug`
+was returning the column correctly — the column was empty. Fixed by
+`mergePendingTag()` in `src/utils/pendingTag.js`, shared by both panels so they
+cannot drift, plus an explicit Add button next to both tag inputs.
+
+The same "typed but not committed" shape was found and fixed on handover items
+in the `DashboardPage.jsx` document generator. Also shipped: Job Title editable
+from Salesman Premium, `bio`/`about_text` collapsed to one field with a real
+derived meta description, and a two-column mini page at 1024px+.
 
 ## 💡 Ideas (unrefined — capture only, not scheduled)
 

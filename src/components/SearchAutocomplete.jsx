@@ -12,6 +12,11 @@ export default function SearchAutocomplete({
   onSubmit,
   placeholder = 'Search brand, model, variant…',
   inputStyle = {},
+  // Overrides for the field shell itself. The shell's background/border are
+  // INLINE styles, so a caller that wants the field to sit flush inside its own
+  // container cannot override them from CSS without !important — hence a real
+  // prop rather than a stylesheet hack reaching into this component's DOM.
+  formStyle = {},
   wrapStyle = {},
   wrapClassName = '',
   dark = false,
@@ -30,7 +35,7 @@ export default function SearchAutocomplete({
     <div className={wrapClassName} style={{ position: 'relative', ...wrapStyle }}>
       <form
         onSubmit={handleSubmit}
-        style={{ display: 'flex', alignItems: 'center', background: bg, border, borderRadius: '10px', overflow: 'hidden' }}
+        style={{ display: 'flex', alignItems: 'center', background: bg, border, borderRadius: '10px', overflow: 'hidden', ...formStyle }}
       >
         <button
           type="submit"
