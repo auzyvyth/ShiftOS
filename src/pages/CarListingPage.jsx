@@ -742,9 +742,13 @@ export default function CarListingPage() {
 
         {/* ── Top bar ── On the subdomain the header is a floating fixed pill that
              hides on scroll, so the bar is in-flow (scrolls away, never follows /
-             overlaps the header). On the marketplace it stays sticky below the
-             64px sticky header. */}
-        <div style={{ background:T.barBg, backdropFilter:'blur(12px)', borderBottom:`1px solid ${T.barBorder}`, padding:'10px 0', position: dark ? 'static' : 'sticky', top: dark ? 'auto' : '64px', zIndex:20 }}>
+             overlaps the header). On the marketplace it sticks below the header,
+             at whatever height the header is actually occupying right now
+             (--mh-h, published by MarketplaceHeader) rather than a fixed 64px.
+             It was 64px, which was 6px short of the real 70px desktop bar AND
+             stayed 64px after the header auto-hid, stranding this bar with a
+             strip of page scrolling past above it. */}
+        <div style={{ background:T.barBg, backdropFilter:'blur(12px)', borderBottom:`1px solid ${T.barBorder}`, padding:'10px 0', position: dark ? 'static' : 'sticky', top: dark ? 'auto' : 'var(--mh-h, 64px)', transition:'top .28s ease', zIndex:20 }}>
           <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'0 20px' }}>
             <div className="cl-topbar" style={{ display:'flex', gap:'8px', alignItems:'center' }}>
               {/* Search */}
@@ -914,7 +918,7 @@ export default function CarListingPage() {
             {/* ── Filter sidebar — RIGHT side (desktop only) ── */}
             {isWide && <aside
               className="cl-sidebar-desktop cl-sidebar-scroll"
-              style={{ width:'260px', flexShrink:0, background: dark ? '#0d1117' : '#fff', border:`1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb'}`, borderRadius:'16px', padding:'16px 18px', position:'sticky', top:'130px', maxHeight:'calc(100vh - 150px)', overflowY:'auto' }}
+              style={{ width:'260px', flexShrink:0, background: dark ? '#0d1117' : '#fff', border:`1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb'}`, borderRadius:'16px', padding:'16px 18px', position:'sticky', top:'calc(var(--mh-h, 64px) + 66px)', transition:'top .28s ease', maxHeight:'calc(100vh - var(--mh-h, 64px) - 86px)', overflowY:'auto' }}
             >
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'14px', paddingBottom:'12px', borderBottom:`1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}` }}>
                 <h2 style={{ color:T.text, fontSize:'13px', fontWeight:'800', margin:0, display:'flex', alignItems:'center', gap:'6px', fontFamily:"'Outfit',sans-serif" }}>

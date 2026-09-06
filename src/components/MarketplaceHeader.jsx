@@ -57,6 +57,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
   });
 
   const rootRef = useRef(null);
+  const barRef = useRef(null);
   const searchInputRef = useRef(null);
   const navigate = useNavigate();
   const { search } = useLocation();
@@ -98,6 +99,50 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
     const onScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // ── The header publishes how much room it is ACTUALLY taking right now ──
+  // Anything that sticks below this bar has to clear it, and every one of those
+  // places used to hardcode the number. That was already wrong by 6px on
+  // desktop (the bar is 70px, they all said 64px), and it broke outright once
+  // the bar started auto-hiding: the bar slid away and the sticky thing under
+  // it stayed pinned 64px down, leaving a band of page scrolling past above it.
+  // It reads as an empty slot where the header should be, and it only heals
+  // when you scroll up and the header comes back to fill it.
+  //
+  // So: --mh-h is the bar's measured height while visible and 0 while hidden.
+  // Consumers stick at `var(--mh-h, <px>)` and follow it up and down. The
+  // fallback keeps every surface that does NOT mount this header (the dealer
+  // dashboard, the car page) on exactly the number it has today.
+  //
+  // Measured, not a constant, because the bar is 70px above 980px wide and
+  // 64px below it — a constant would just re-create the drift one breakpoint
+  // over. The ResizeObserver is what tracks that across a window resize.
+  //
+  // We measure .mh-bar and not <header>: the search drawer expands the header
+  // by 90px, but it is a transient overlay painted above these consumers
+  // (z-index 100 vs 20/40), so pushing them down for it would be movement for
+  // nothing.
+  useEffect(() => {
+    const root = document.documentElement;
+    const write = () => {
+      const h = headerVisible ? (barRef.current?.offsetHeight || 70) : 0;
+      root.style.setProperty('--mh-h', `${h}px`);
+    };
+    write();
+    const el = barRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(write);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [headerVisible]);
+
+  // Separate, mount-scoped: drop the property when this header leaves, or a
+  // page that never had it inherits the last value written — a dashboard
+  // rendered after the marketplace would read --mh-h: 0px and pull its own
+  // sticky panels to the top of the window.
+  useEffect(() => () => {
+    document.documentElement.style.removeProperty('--mh-h');
   }, []);
 
   useEffect(() => {
@@ -365,7 +410,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
       <a href="#main-content" className="mh-skip">Skip to main content</a>
 
       <header className={`mh-root${scrolled ? ' scrolled' : ''}${headerVisible ? '' : ' mh-hidden'}`} ref={rootRef}>
-        <div className="mh-bar">
+        <div className="mh-bar" ref={barRef}>
           <Link to="/" className="mh-logo">
             <span className="mh-logo-x">X</span><span className="mh-logo-t">DRIVE</span><span className="mh-logo-my">.MY</span>
           </Link>

@@ -441,13 +441,24 @@ export default function ComparePage() {
         </div>
 
         {/* ── Sticky car strip ── */}
-        {/* On the dealer subdomain the floating header slides up on scroll, so the
-            strip rises to top:0 to fill the gap it leaves behind. */}
+        {/* Both headers slide away on scroll-down, so the strip has to rise into
+            the space each one leaves or it hangs there with the page scrolling
+            past above it.
+            - subdomain: Header is a floating pill, tracked by local `scrolled`.
+            - marketplace: MarketplaceHeader publishes its live height as
+              --mh-h (its measured height, 0 while hidden). This used to be a
+              hardcoded 64, which was 6px short of the real 70px desktop bar and
+              did not move at all when the header hid.
+            The two headers animate on DIFFERENT curves, so the strip has to
+            borrow whichever one is above it — a single shared curve leaves the
+            strip leading or trailing the chrome it is supposed to sit under. */}
         <div style={{
-          position: 'sticky', top: sub ? (scrolled ? 0 : 80) : 64, zIndex: 40,
+          position: 'sticky', top: sub ? (scrolled ? 0 : 80) : 'var(--mh-h, 64px)', zIndex: 40,
           background: 'var(--cp-surface,#fff)', borderBottom: '2px solid var(--cp-border,#e5e7eb)',
           boxShadow: scrolled ? '0 3px 14px rgba(0,0,0,0.1)' : '0 2px 6px rgba(0,0,0,0.05)',
-          transition: 'box-shadow 0.3s, top 0.38s cubic-bezier(0.16, 1, 0.3, 1)',
+          transition: sub
+            ? 'box-shadow 0.3s, top 0.38s cubic-bezier(0.16, 1, 0.3, 1)'  // matches Header
+            : 'box-shadow 0.3s, top 0.28s ease',                           // matches MarketplaceHeader
         }}>
 
           {/* ── Expanded strip (at top) ── */}
