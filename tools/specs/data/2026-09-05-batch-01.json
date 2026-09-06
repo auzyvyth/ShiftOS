@@ -1,0 +1,56 @@
+{
+  "schema_version": "2.0",
+  "generated_at": "2026-09-05",
+  "batch": { "requested": 2, "returned": 2, "skipped": 0 },
+  "note": "First collected batch. Ranger is complete (both current generations); Lexus RX has only the AL20 middle generation - AL10 (2009-2015) and AL30 (2022-) are still open.",
+  "specs": [
+    {
+      "make": "Ford", "model": "Ranger", "generation": "T6 (facelift)",
+      "year_from": 2015, "year_to": 2022, "market": "CBU", "chassis_codes": [],
+      "body_type": "Pickup", "doors": 4, "seats": 5,
+      "primary_variant": "2.2L XLT",
+      "engine_cc": 2198, "cylinders": 4, "horsepower": 160, "torque_nm": 385,
+      "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel",
+      "fuel_consumption": null, "confidence": "medium",
+      "source_note": "T6 facelift, CBU Thailand. Double-cab is the volume body. Ford has no chassis-code table in the decoder, so this fills from brand/model/year only. Figures from memory; economy left null.",
+      "variants": [
+        { "name": "2.2L XLT", "horsepower": 160, "torque_nm": 385, "transmission": "Auto", "drivetrain": "4WD", "notes": "2.2 Duratorq TDCi I4" },
+        { "name": "3.2L Wildtrak", "horsepower": 200, "torque_nm": 470, "transmission": "Auto", "drivetrain": "4WD", "notes": "3.2 5-cyl 3198cc diesel" },
+        { "name": "2.0L Bi-Turbo Raptor", "horsepower": 213, "torque_nm": 500, "transmission": "Auto", "drivetrain": "4WD", "notes": "1996cc bi-turbo, 10-speed" }
+      ]
+    },
+    {
+      "make": "Ford", "model": "Ranger", "generation": "P703 (next-gen)",
+      "year_from": 2023, "year_to": null, "market": "CBU", "chassis_codes": [],
+      "body_type": "Pickup", "doors": 4, "seats": 5,
+      "primary_variant": "2.0L Bi-Turbo Wildtrak",
+      "engine_cc": 1996, "cylinders": 4, "horsepower": 210, "torque_nm": 500,
+      "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel",
+      "fuel_consumption": null, "confidence": "medium",
+      "source_note": "Current generation. year_from moved to 2023 so it does not overlap the T6 facelift row, which runs to 2022. Raptor 3.0 V6 output nulled - the collected figure sat next to 583 Nm and looked like a kW value, and a wrong number is worse than a blank.",
+      "variants": [
+        { "name": "2.0L Single-Turbo XL/XLT", "horsepower": 170, "torque_nm": 405, "transmission": "Auto", "drivetrain": "4WD", "notes": "1996cc single-turbo" },
+        { "name": "2.0L Bi-Turbo Wildtrak", "horsepower": 210, "torque_nm": 500, "transmission": "Auto", "drivetrain": "4WD", "notes": "1996cc bi-turbo, 10-speed" },
+        { "name": "3.0L V6 Platinum", "horsepower": 250, "torque_nm": 600, "transmission": "Auto", "drivetrain": "4WD", "notes": "2993cc V6 diesel" },
+        { "name": "Raptor 3.0 V6", "horsepower": null, "torque_nm": 583, "transmission": "Auto", "drivetrain": "4WD", "notes": "2997cc twin-turbo petrol EcoBoost. Output needs checking against a spec sheet before it is filled in." }
+      ]
+    },
+    {
+      "make": "Lexus", "model": "RX", "generation": "AL20",
+      "year_from": 2015, "year_to": 2022, "market": "CBU",
+      "chassis_codes": ["AGL20", "AGL25", "GGL25", "GYL20", "GYL25"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "RX300",
+      "engine_cc": 1998, "cylinders": 4, "horsepower": 238, "torque_nm": 350,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null, "confidence": "medium",
+      "source_note": "AGL20/AGL25 are the RX300 2.0 turbo and were missing from chassisDecode.js, which knows only GGL20 and GYL20 for this generation. GGL25 = RX350 V6, GYL20/25 = RX450h. The 7-seat RX350L (GGL26) is a separate body and is not this row.",
+      "variants": [
+        { "name": "RX300", "horsepower": 238, "torque_nm": 350, "transmission": "Auto", "drivetrain": "AWD", "notes": "8AR-FTS 1998cc turbo; FWD also offered" },
+        { "name": "RX350", "horsepower": 300, "torque_nm": 370, "transmission": "Auto", "drivetrain": "AWD", "notes": "2GR-FKS 3456cc V6" },
+        { "name": "RX450h", "horsepower": 313, "torque_nm": null, "transmission": "Auto", "drivetrain": "AWD", "notes": "3456cc V6 hybrid, combined system output" }
+      ]
+    }
+  ],
+  "skipped": []
+}

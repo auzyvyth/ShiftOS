@@ -1,10 +1,29 @@
 # ShiftOS — Pending Tasks
 
-> **BRANCH IN FLIGHT: `claude/market-demand-handoff-tc7cyl` (2026-09-05).**
-> `origin/main` is at `2f6c0c3` (PR #358, squash-merged) and IS what production
-> serves. The branch is a clean fast-forward from it — verified, no squash drift
-> — and carries the car-spec collection pipeline, the chassis-decode spec fill
-> and this refresh cron's migration file. NOT on staging and NOT on prod yet.
+> **BRANCH IN FLIGHT — `claude/marketplace-hero-styling-160xcm` @ `90a68a8`,
+> 9 commits ahead of `origin/main`, NOT merged, NOT on staging, NEVER BUILT.**
+> It rewrites the marketplace hero across `MarketplacePage.jsx`,
+> `MarketplaceHeader.jsx`, `SearchAutocomplete.jsx` and `DESIGN.md`. `npm install`
+> failed in that container (proxy 403 on the xlsx CDN pin) so `npm run build` and
+> `npm run lint` never ran — treat the whole branch as unverified. Its open items
+> are HERO-1..5, written in that branch's OWN `TODO.md` — read them with
+> `git show origin/claude/marketplace-hero-styling-160xcm:TODO.md`. They are
+> deliberately not copied here: that branch edits this file too, so duplicating
+> them would guarantee a merge conflict. Do NOT start new work over the same
+> public files until it is staged, built and merged, or abandoned.
+>
+> `main` is at `25bcecf` (PR #360) and IS what production serves. Safe to branch
+> from for anything that does not touch the marketplace hero.
+>
+> **Staging can be identical to prod and still look reviewed — check before you
+> trust it.** PR #359 was asked for on the basis that "staging had been
+> reviewed". Staging was at `ed7069d`, the PRE-SQUASH head of PR #358, whose
+> content was already on `main` under `2f6c0c3`: a content-diff of branch vs
+> staging came back as nothing but deletions of the new work, i.e. staging held
+> exactly what prod held and none of the six new commits. The review had been of
+> the previous cycle. Staging was pushed for real and the deploy confirmed before
+> the PR was opened. `git log` alone would not have caught this — the 11 commits
+> "on staging but not on the branch" looked like unique work and were duplicates.
 >
 > **`main` was a month stale until today — know why, so it does not recur.**
 > Production was being served by `a5e58b4`, a commit on
@@ -829,6 +848,91 @@ until these are done:**
 > Reminder protocol: while ACT-2, ACT-4, ACT-9 or ACT-10 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. **ACT-8 was found ALREADY COMPLETE and removed 2026-08-15** — `package.json` AND `package-lock.json` both resolve `xlsx` to `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, and `vercel.json` CSP already whitelists `cdn.sheetjs.com` in connect-src; it had been sitting in this list as a blocked user-action for weeks after the fact. **ACT-12 verified RESOLVED 2026-08-24** — see entry above; drop from this nag list. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then.) LESSON: verify an ACT item against the code before re-surfacing it — a stale nag costs a session's attention every time.
 
 ## Dev tasks
+
+---
+
+### SESSION 2026-09-05 — CarDetailPage competitor audit (Mudah + Carlist), scoped
+
+A competitor teardown of Mudah and Carlist was run against `CarDetailPage.jsx`
+and produced six "priorities". Four of them are ALREADY BUILT, one reverses a
+documented rule, and the colour half of it targets the wrong theme. Recorded
+here so nobody re-runs the audit and re-opens the settled items.
+
+**Already built — do NOT rebuild:**
+- 1-big + 2x2 gallery with a "show all" overlay: `CarDetailPage.jsx:2211`
+  (desktop 3-cell grid, primary spans both rows), thumbnail strip `:2337`,
+  mobile swipeable panel `:2464`. Photo-count badge already on cards
+  (`ShowroomCard.jsx:289`, `CarCard.jsx:481`).
+- 6-8 spec icon grid with the long list hidden: `:2636` (mobile), `:3281`
+  ("Quick stats grid — 8 cells"), tabs at `:3379`.
+- 3-field cards on the similar/more-from-seller strips: `SellerStrip:900` is
+  image + name + price at 152px, exactly what the audit recommends. The dense
+  10-field card is the SEARCH card (`ShowroomCard.jsx`) and is correct there —
+  the split by context is already right, do not flatten one into the other.
+- Trust signals: `ReconTrust:270`, `WarrantyBanner:245`, `PriceIncludes:393`,
+  `PuspakomDates:352`, `SellerRating:497`, plus `docs_verified` / `geran_status`
+  / `condition_declared_at` / `auction_grade` in the public select `:1237`.
+
+**Rejected — reverses RAPTOR-6:** a sticky bar with its own green WhatsApp
+button. The car card is exactly two buttons (red "Book a Viewing" + neutral
+"Contact") and every channel lives inside the `BuyerChat` sheet — see the
+comment at `CarDetailPage.jsx:2676` and the rule in CLAUDE.md.
+`StickyWhatsAppButton.jsx` exists and is deliberately NOT on this page (only
+`CarListingPage.jsx:947`, `HomePage.jsx:1964`, `CalculatorPage.jsx:104`).
+Making the EXISTING two-button card sticky on scroll breaks no rule and is
+folded into CDP-3.
+
+**Wrong theme:** the audit prescribes cream `#EDE4D3` on `#080C14`.
+CarDetailPage on xdrive.my is LIGHT — `th` at `:933-946` is `pageBg #F6F7F9`,
+`card #ffffff`, `text #0F172A`. The dark tokens apply only on dealer
+subdomains. Its two real rules (green stays functional, red stays scarce) are
+already how the code works (`#25D366` at `ShowroomCard.jsx:388`).
+
+- [ ] **CDP-1 — package the trust signals into one named badge + a report.**
+  The only item with real upside. XDrive already carries MORE signal than
+  Carlist Qualified; what it lacks is Carlist's packaging — one badge a buyer
+  recognises, backed by an inspection checklist and a downloadable report.
+  Today the signals are scattered across five components and read as a sticker
+  sheet rather than one claim. Name it **XDrive Verified** — XDrive is the
+  marketplace, ShiftOS is the dealer product; the audit mixed the two up.
+  Touches the DB (a report artifact needs somewhere to live), so it is its own
+  session. Respect the anti-slop rule: one badge, not a sixth accent colour.
+
+- [ ] **CDP-2 — decide the price hierarchy before building anything.**
+  Carlist leads with monthly ("As Low As RM 778/mo") and shows total smaller
+  underneath, with a Monthly/Total toggle on both search and detail. XDrive
+  already renders the monthly figure, deliberately SECONDARY: `:2586` and
+  `:4030` in `th.textMuted`, `ShowroomCard.jsx:377` on cards, and Sambung Bayar
+  cars already lead with monthly (`SambungPriceBlock:201`). So this is not
+  "add monthly" — it is inverting the hierarchy, and it is a product decision,
+  not a design borrow.
+  RECOMMENDATION ON RECORD (owner to overrule if they want): keep total
+  primary, strengthen the monthly line typographically, no toggle. `calcMonthly`
+  (`src/utils/financing.js`) derives that number from an assumed rate and
+  tenure. Carlist can lead with a guessed instalment because it is lead-gen
+  classifieds; XDrive's whole position is verified/inspected, and a headline
+  number nobody can stand behind is the one thing that undercuts it — same
+  logic as the no-invented-numbers rule in CLAUDE.md.
+
+- [ ] **CDP-3 — price overlaid on the hero image + sticky mobile CTA card.**
+  The one genuinely new layout idea in the audit: Carlist puts the price
+  bottom-left ON the hero photo, the most-looked-at pixel. Small change at the
+  gallery in `CarDetailPage.jsx:2211` / `:2464`. Bundle with making the
+  existing M4 CTA card (`:2666`) sticky on mobile scroll — same two buttons,
+  no new CTA. Verify at 375px.
+
+- [ ] **CDP-4 — token drift: CarDetailPage light `pageBg` is `#F6F7F9`,
+  DESIGN.md says `#F7F6F2`.** `CarDetailPage.jsx:934` against DESIGN.md's
+  Color section. The audit surfaced this by accident. Cheap fix, but check the
+  rest of the `th` block against DESIGN.md in the same pass rather than fixing
+  one value — `card2`, `text`, `textSec`, `border` all look locally invented
+  too (`#EEF1F5` / `#0F172A` / `#475569` vs DESIGN.md's `#F0EEE8` / `#111827`
+  / `#4b5563`). Decide which file is the source of truth and make the other
+  match; do not leave two palettes.
+
+**Sequencing:** four separate sessions — one concern each, per the prompt
+discipline rule. CDP-2 is a decision before it is a build. Nothing here should
+start while the hero branch below is still unbuilt and unmerged.
 
 ---
 
