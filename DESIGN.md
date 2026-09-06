@@ -21,8 +21,37 @@ invent a new one.
   for the surface you're on (light vs dark) — see Color.
 - **Restrained elevation.** Two shadow levels only (resting + hover). No unique
   shadow per component.
+- **One search control in the hero, not a rack of them.** The hero holds the
+  input and nothing else; a budget/state/more-filters pill row under it was
+  three controls competing with the one field the hero exists to get someone
+  typing into. Every other filter is applied on `/showroom`, which has the full
+  filter UI. Advanced search stays reachable from the hero as a plain text link
+  — it is the only entry to `AdvancedSearchModal` on this page, so it must never
+  be deleted along with the chrome around it.
 - **Search-forward, not image-forward.** The hero's job is headline + obvious
-  search/filter. Imagery and effects are secondary.
+  search — and the search input itself must be visible without scrolling.
+  Imagery and effects are secondary; the live inventory tiles are the hero's
+  photography, not a stock car shot behind the headline.
+- **No radial "glow" behind a light hero.** A red glow over a light ground is a
+  pink wash, which is the pastel clash the palette rules exist to prevent.
+- **The hero's ONE decoration is the wave field** (`.mp-hero-waves`,
+  MarketplacePage) — three offset SVG bands in warm neutrals. It is not pure
+  ornament: a flat white field under a black bar has no bottom edge, so the hero
+  reads as an unbounded void; the waves give it a horizon. Rules:
+  - Warm neutrals only (`#F3F0E9`–`#E9E4D8` family). **No red, no pink** — see
+    the glow rule above; a red wave breaks it exactly the same way.
+  - The frontmost band is `#F7F6F2`, the quick-filter strip's colour, so the
+    section ends ON the next section's ground. Change one, change the other.
+  - The section's own `background` ramp must stop ABOVE the page colour
+    (`#FAF9F6`), or it and the waves both try to reach `#F7F6F2` and the handoff
+    bands.
+  - Neighbouring bands shade on OPPOSITE gradient axes. Parallel shading makes
+    layered waves collapse back into one flat linear ramp.
+  - Bottom-anchored with a capped height, never `inset: 0` — a tall mobile hero
+    stretches full-height curves into vertical smears.
+  - `<defs>` ids are document-global: prefix them (`mpWaveA`…) or a second inline
+    SVG on the page silently steals the fill.
+  - It REPLACED the dot-grid overlay. One decoration system in the hero, not two.
 
 ## Type
 - **Display / headlines:** `'Bebas Neue', sans-serif` — uppercase, tight
@@ -34,8 +63,11 @@ invent a new one.
   body 13–15px / 400–500; label 13px / 600; price (card) 20px / 800.
 
 ## Color
-Light surfaces (marketplace pages, car detail on xdrive):
+Light surfaces (marketplace pages including the hero GROUND — see the fold rules
+below for the two dark objects on it — and car detail on xdrive):
 - Page bg `#F7F6F2`; alt section bg `#F2F0EC` / `#EDEAE3` / `#EDE9E3`
+- Hero ramp `#FFFFFF → #FAF9F6 → #F7F6F2` (lands on the page bg, so the fold and
+  the body below are one surface with no seam to patch)
 - Card `#ffffff`; card-2 `#F0EEE8`
 - Text: primary `#111827`, secondary `#4b5563`, muted `#6b7280`, faint `#9ca3af`
 - Border: `rgba(0,0,0,0.06)` hairline → `rgba(0,0,0,0.12)` input
@@ -43,7 +75,59 @@ Light surfaces (marketplace pages, car detail on xdrive):
   (the light/saturated `#4ade80`/`#93c5fd`/`#fbbf24` are DARK-theme only — they
   read as near-white on light. This bit twice.)
 
-Dark surfaces (hero block, lightbox, dark car detail on subdomains):
+### The marketplace fold: light ground, two dark objects, ONE dark hex
+The hero GROUND is light. It was a near-black block over a light body, and that
+is a SaaS/gaming convention, not a car one — every marketplace a Malaysian buyer
+already uses is light, and listing photos are shot on light backgrounds. So the
+ground, the headline band, the trust strip and the quick-filter chips are light.
+
+Dark belongs to ONE thing: the masthead — announcement bar (`#15171c`, one step
+off) + `MarketplaceHeader`, both on **`#0f1115`**. Everything below the masthead
+is light, the hero's own controls included.
+
+`#0f1115` is also the page's INK — the hero headline, the mega-menu link titles,
+the wordmark — so the bar is the brand black rather than an invented colour.
+Charcoal `#2B323D` was tried in between and rejected: on a light page a grey bar
+reads as washed rather than as deliberate chrome. The bar could go back to
+near-black precisely BECAUSE it is now the only dark surface — while the hero
+controls were also dark, the two had to colour-match and near-black was too
+heavy at control scale, which is what forced the grey. One dark object has no
+such constraint.
+
+**Dark was tried in the hero three times and reverted three times** — a filled
+panel behind the search controls, then near-black controls, then charcoal
+controls. Every version turned the hero into a dark band sitting in a light
+page, whatever the hex or the size. Do not try a fourth. The search bar earns
+attention by being the one **inset** field on the surface (`#F4F3EF`, the same
+value as the header's `.mh-search-field`), not by being a dark object.
+
+**Dark the CONTROLS, never a panel behind them.** Wrapping those controls in a
+filled dark card was tried and reverted: at that size a filled rectangle is
+perceived as a background, so the hero read as a dark SECTION bolted into a
+light page — the stacked-band problem this file exists to prevent. A dark
+control on a light ground reads as an object; a dark slab reads as a surface.
+The size at which one becomes the other is roughly "bigger than the thing you
+click", so keep dark fills at control scale.
+
+Rules that follow:
+- A new dark element in the fold uses `#0f1115` or it does not get to be dark.
+  `#15171c` is the only other value on the dark ramp (announcement cap, the
+  mega-menu promo card's gradient top).
+- A control keeps the palette of its CONTAINER, not the one it was written in.
+  Moving a control between the masthead and the hero means restyling it, and
+  that has bitten in both directions.
+- A `<select>` inside the masthead needs explicit `<option>` backgrounds
+  (`#15171c`) or the dropdown LIST renders the browser's light default and
+  flashes white when opened.
+- A text `input` on a dark control needs an explicit `::placeholder` colour for
+  the same reason.
+- Header dropdown panels (mega menu, sign-in menu) stay LIGHT — they are
+  floating overlays with their own shadow, which is the standard pattern and
+  reads correctly off a dark bar. The mobile sheet does NOT: it is full-bleed
+  and part of the bar, so it is `#0f1115`.
+
+Dark surfaces (masthead, hero search console, lightbox, modals over the
+marketplace, dark car detail on subdomains):
 - Bg `#08090f` / `#0d1117`; text `#ffffff`, secondary `rgba(255,255,255,0.45)`,
   muted `rgba(255,255,255,0.35)`; border `rgba(255,255,255,0.07)`→`0.12`
 
