@@ -10,6 +10,7 @@ import { routeForRole } from "../hooks/useRoleRedirect";
 import useHandover from "../hooks/useHandover";
 import { useHideOnScroll } from "../hooks/useHideOnScroll";
 import { placeTourCard } from "../utils/tourPlacement";
+import { mergePendingTag } from "../utils/pendingTag";
 import { normalizePhone } from "../lib/phone";
 import SuspendedBanner from "../components/SuspendedBanner";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
@@ -435,6 +436,7 @@ export default function SalesmanPremium() {
  // settings
  const [settingsForm, setSettingsForm] = useState({
  full_name: "",
+ job_title: "",
  whatsapp_number: "",
  telegram_chat_id: "",
  city: "",
@@ -809,6 +811,7 @@ export default function SalesmanPremium() {
  if (profile) {
  setSettingsForm({
  full_name: profile.full_name || "",
+ job_title: profile.job_title || "",
  whatsapp_number: profile.whatsapp_number || "",
  telegram_chat_id: profile.telegram_chat_id || "",
  city: profile.city || "",
@@ -4631,7 +4634,12 @@ export default function SalesmanPremium() {
  const handleSave = async () => {
  setSettingsSaving(true);
  const phone = "+60" + localPhone.replace(/\D/g, "");
+ // A tag typed but not yet entered is still the user's answer — saving with it
+ // sitting in the input used to discard it and write an empty array over the
+ // profile, so the pills never appeared on the public mini page.
+ const specializations = mergePendingTag(settingsForm.specializations, tagInput);
  const rest = {
+ job_title: settingsForm.job_title.trim() || null,
  city: settingsForm.city || null,
  state: settingsForm.state || null,
  location: settingsForm.location || null,
@@ -4641,29 +4649,38 @@ export default function SalesmanPremium() {
  website: settingsForm.website || null,
  bio: settingsForm.bio || null,
  response_time: settingsForm.response_time || null,
- specializations: settingsForm.specializations,
+ specializations,
  deposit_policy: settingsForm.deposit_policy || null,
  deposit_terms: settingsForm.deposit_terms.trim() || null,
  processing_fee: String(settingsForm.processing_fee).trim() === "" ? null : (Number(settingsForm.processing_fee) || 0),
  };
- await supabase.from("profiles").update({ full_name: settingsForm.full_name, whatsapp_number: phone, ...rest }).eq("id", userId);
- setProfile((p) => ({ ...p, full_name: settingsForm.full_name, whatsapp_number: phone, ...rest }));
- setSettingsForm((p) => ({ ...p, whatsapp_number: phone }));
+ const { error: saveErr } = await supabase.from("profiles").update({ full_name: settingsForm.full_name, whatsapp_number: phone, ...rest }).eq("id", userId);
  setSettingsSaving(false);
+ if (saveErr) {
+ console.error("handleSave profile update:", saveErr);
+ toast.error("Couldn't save your profile - " + saveErr.message);
+ return;
+ }
+ setProfile((p) => ({ ...p, full_name: settingsForm.full_name, whatsapp_number: phone, ...rest }));
+ setSettingsForm((p) => ({ ...p, whatsapp_number: phone, specializations }));
+ setTagInput("");
  toast.success("Profile updated");
  };
 
  const removeTag = (i) =>
  setSettingsForm((p) => ({ ...p, specializations: p.specializations.filter((_, j) => j !== i) }));
 
- const handleTagKeyDown = (e) => {
- if (e.key === "Enter" && tagInput.trim()) {
- e.preventDefault();
+ const addTag = () => {
  const val = tagInput.trim();
- if (!settingsForm.specializations.includes(val)) {
- setSettingsForm((p) => ({ ...p, specializations: [...p.specializations, val] }));
- }
+ if (!val) return;
+ setSettingsForm((p) => (p.specializations.includes(val) ? p : { ...p, specializations: [...p.specializations, val] }));
  setTagInput("");
+ };
+
+ const handleTagKeyDown = (e) => {
+ if (e.key === "Enter") {
+ e.preventDefault();
+ addTag();
  }
  };
 
@@ -4781,6 +4798,11 @@ export default function SalesmanPremium() {
  <input value={settingsForm.full_name} onChange={(e) => setSettingsForm((p) => ({ ...p, full_name: e.target.value }))} placeholder="Your full name" style={inputStyle} />
  </div>
  <div>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Job Title</label>
+ <input value={settingsForm.job_title} onChange={(e) => setSettingsForm((p) => ({ ...p, job_title: e.target.value }))} placeholder="e.g. Senior Sales Advisor" maxLength={60} style={inputStyle} />
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Shown under your name on your public page. Leave blank to hide.</p>
+ </div>
+ <div>
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>WhatsApp Number</label>
  <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, overflow: "hidden" }}>
  <span style={{ padding: "10px 12px", fontSize: 13, color: "#6b7280", background: "rgba(255,255,255,0.03)", borderRight: "1px solid rgba(255,255,255,0.08)", whiteSpace: "nowrap", flexShrink: 0 }}>+60</span>
@@ -4867,8 +4889,14 @@ export default function SalesmanPremium() {
  ))}
  </div>
  )}
- <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown} placeholder="Type a specialization and press Enter" style={inputStyle} />
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Press Enter to add each tag. Shown as pills on your public profile.</p>
+ <div style={{ display: "flex", gap: 8 }}>
+ <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown} placeholder="e.g. Recon imports" style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
+ <button type="button" onClick={addTag} disabled={!tagInput.trim()}
+ style={{ flexShrink: 0, padding: "0 16px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: tagInput.trim() ? "#e5e7eb" : "#4b5563", fontSize: 12, fontWeight: 600, cursor: tagInput.trim() ? "pointer" : "default" }}>
+ Add
+ </button>
+ </div>
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Enter or Add for each tag. Shown as pills on your public profile.</p>
  </div>
  {/* Social links */}
  {[
