@@ -539,6 +539,17 @@ budget/state pill row is gone (HERO-3).
       denial, see `package.json:73`), so the local build remains impossible from
       a web session. GitHub Actions "Lint & Build" and "test" are the real check
       and both passed on the merge PR. Pushed to `staging` as well.
+**The marketplace header auto-hides (added 2026-09-06).** `.mh-root` was always
+`position:sticky`; what it never did was get out of the way. It now hides on
+scroll down and returns on scroll up via the EXISTING `useHideOnScroll` hook
+(`src/hooks/useHideOnScroll.js`, already used by Salesman Premium) — do not write
+a second scroll-direction hook. It is pinned visible whenever the mobile sheet,
+saved-cars panel, search field or a click-pinned mega panel is open, because all
+of those render from inside `.mh-root`. Deliberately no `will-change:transform`:
+it establishes a containing block for `position:fixed` descendants even when
+transform is none, and `SavedCarsPanel` is fixed — which is why it is a SIBLING
+of `<header>` (line 474, after `</header>`), not a child. Keep it that way.
+
 - [ ] **HERO-2: judge the near-black navbar over the light hero.** Live now, so
       this is a look-at-it item rather than a described one. Current ramp:
       `#15171c` announcement bar -> `#0f1115` navbar -> light hero (white ->

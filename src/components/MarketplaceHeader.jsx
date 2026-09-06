@@ -12,6 +12,7 @@ import AnnouncementBar from './AnnouncementBar';
 import useMarketplaceSettings from '../hooks/useMarketplaceSettings';
 import useMarketplaceStats from '../hooks/useMarketplaceStats';
 import { routeForProfile, isSellerRole } from '../hooks/useRoleRedirect';
+import { useHideOnScroll } from '../hooks/useHideOnScroll';
 
 export default function MarketplaceHeader({ hideAnnouncement = false }) {
   const [scrolled, setScrolled]     = useState(false);
@@ -38,6 +39,23 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
   // salesman/…) → "Dashboard" to their panel. A buyer (session, no business role)
   // → "My Account" (/account). null = not logged in.
   const [authLink, setAuthLink]     = useState(null);
+  // Auto-hiding chrome: the bar gives its 70px back while you read down the
+  // page and returns the moment you scroll up. Sticky already worked (.mh-root
+  // below) — what was missing is that it never got out of the way.
+  //
+  // Pinned visible whenever something that LIVES IN the bar is open: the mobile
+  // sheet, the saved-cars panel, the search field, a click-pinned mega panel.
+  // Every one of those renders from inside .mh-root, so translating the bar
+  // off-screen would take the panel and its close button with it. The mobile
+  // sheet also scroll-locks the body, and a locked page must not move the bar.
+  //
+  // offset 90 > the 70px bar: the announcement strip scrolls away first, so
+  // nothing hides until the header is genuinely stuck to the top.
+  const headerVisible = useHideOnScroll({
+    offset: 90,
+    locked: menuOpen || savedOpen || searchOpen || megaOpen !== null,
+  });
+
   const rootRef = useRef(null);
   const searchInputRef = useRef(null);
   const navigate = useNavigate();
@@ -200,7 +218,23 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
            the ONLY dark surface on the marketplace — the hero below it is light
            end to end — so it no longer has to colour-match anything beneath it,
            which is what forced the softer grey. */
-        .mh-root { position:sticky; top:0; z-index:100; background:#0f1115; border-bottom:1px solid rgba(255,255,255,.08); transition:box-shadow .25s,border-color .25s; font-family:'Outfit',sans-serif; }
+        .mh-root { position:sticky; top:0; z-index:100; background:#0f1115; border-bottom:1px solid rgba(255,255,255,.08); transition:box-shadow .25s,border-color .25s,transform .28s ease; font-family:'Outfit',sans-serif; }
+        /* translateY, never display/height: taking a sticky bar out of layout
+           makes the page jump under the reader's finger.
+           Deliberately NO will-change:transform here. It would buy a compositor
+           layer this bar does not need, and it establishes a containing block
+           for position:fixed DESCENDANTS even while transform is none — so the
+           day someone renders a fixed overlay inside <header> it would silently
+           anchor to a 70px box instead of the viewport. SavedCarsPanel is fixed
+           and is a SIBLING of the header for exactly this reason; keep it that
+           way. */
+        .mh-root.mh-hidden { transform:translateY(-100%); }
+        /* A bar that is off-screen must still come back for the keyboard, or
+           tabbing into the nav moves focus somewhere the user cannot see. */
+        .mh-root:focus-within { transform:none; }
+        @media (prefers-reduced-motion: reduce) {
+          .mh-root { transition:box-shadow .25s,border-color .25s; }
+        }
         .mh-root.scrolled { box-shadow:0 10px 30px rgba(0,0,0,.4); border-bottom-color:rgba(255,255,255,.14); }
         .mh-bar { max-width:1400px; margin:0 auto; padding:0 clamp(16px,3.5vw,44px); height:70px; display:flex; align-items:center; gap:clamp(14px,2.4vw,30px); }
 
@@ -330,7 +364,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
           hidden until focused. */}
       <a href="#main-content" className="mh-skip">Skip to main content</a>
 
-      <header className={`mh-root${scrolled ? ' scrolled' : ''}`} ref={rootRef}>
+      <header className={`mh-root${scrolled ? ' scrolled' : ''}${headerVisible ? '' : ' mh-hidden'}`} ref={rootRef}>
         <div className="mh-bar">
           <Link to="/" className="mh-logo">
             <span className="mh-logo-x">X</span><span className="mh-logo-t">DRIVE</span><span className="mh-logo-my">.MY</span>
