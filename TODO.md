@@ -123,13 +123,47 @@ against the live DB inside a rolled-back DO block:
   ai-proxy's `resolveDealerId` exactly, which is what `get_my_dealer_id()`
   already computes; verified compatible with `chat-assist`, which resolves the
   dealer identically.
-- [ ] **AI-4: verify end to end when credits are funded.** The deploy half is
-  done (see above); what is left is to flip `AI_FEATURES_ENABLED`, then check
-  `ai_request_log` grows by one row per request and that the 401st request in a
-  day is refused. `ai_request_log` was still at 0 rows on 2026-09-05, which is
-  expected while the flag is off — it is not proof the fix works. Until a row lands in
-  that table, the quota is unproven — that is the lesson ACT-13 already taught
-  (a config recorded as done is not done until data proves it fired).
+- [ ] **AI-4: the DB half is now PROVEN; only the Anthropic call is unverified.**
+  Probed live 2026-09-06 inside a rolled-back DO block, acting as a real dealer
+  via `request.jwt.claims`, so no fake usage was written to anyone's pool:
+    - 1st call -> `count=1`, 2nd -> `count=2`; `ai_request_log` grew 0 -> 2 rows,
+      so the metering path writes for real.
+    - seeding `ai_usage.count = 400` then calling returns **401**, which is
+      `> DAILY_QUOTA` (ai-proxy/index.ts:12) -> the 401st request of a day is
+      refused. The cap binds.
+    - another dealer's id -> `not authorized`; another user's id ->
+      `not authorized`; as `anon` -> `permission denied for function`. AI-3 holds.
+    - the `profiles` read that used to 403 as anon returns 1 row as the caller,
+      and a dealer reads 0 rows of another dealer's `ai_usage` /
+      `ai_request_log`. AI-1 holds.
+  What is genuinely left needs funded Anthropic credits: flip
+  `AI_FEATURES_ENABLED` (`src/utils/aiFeatureFlag.js`) and confirm a real
+  request reaches Anthropic and lands a row. Nothing in the code or the DB is
+  blocking it any more.
+
+- [x] **AI-5 (was live, salesman caps never bound): `Salesmanpanel.jsx`
+  logged AI usage to a column that does not exist.** `logAiUsage` upserted
+  `ai_salesman_usage` with `usage_date`; the table's column is `date`. Every
+  write died `42703 column "usage_date" does not exist` straight into
+  `.then(null, () => {})`, so the counter `salesman_ai_quota_ok()` reads never
+  moved and the daily caps (caption 50, wa_reply 50, rescore 20, followup 30)
+  have never bound for a salesman under a dealer. The upsert also wrote
+  `{ [col]: 1 }` — a SET, not an increment — so it could not have counted past 1
+  even with the right column name.
+  Same bug was already found and fixed in `SalesmanPremium.jsx:2272`, and
+  `OutreachHub.jsx:217` was always correct — this was the third fork left behind.
+  Fix: call the same `increment_ai_usage(p_feature)` RPC (SECURITY DEFINER,
+  keyed on `auth.uid()` + `CURRENT_DATE`, real `+ 1`). Proven live in a
+  rolled-back probe: the old insert raises 42703, the RPC twice gives
+  `caption_count=2`, and as `anon` it is stopped by the `salesman_id` NOT NULL
+  constraint.
+  `AiQuotaBadge.jsx` was already reading `date` correctly — it was truthfully
+  reporting a counter that never moved, so it showed "0 / 50 used today"
+  forever. It now reflects real usage.
+  **Rule this leaves behind: a quota is a counter plus a writer. A cap that
+  reads a counter nothing successfully writes is not a cap, and a swallowed
+  error is how it stays invisible.** Three call sites for one counter is what
+  let two of them drift.
 
 ## Caller-scoping sweep — 2026-09-05 (`authenticated` is not a boundary here)
 
