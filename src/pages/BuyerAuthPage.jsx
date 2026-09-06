@@ -161,7 +161,7 @@ export default function BuyerAuthPage() {
   const handleForgot = async () => {
     if (!email) { setError("Enter your email above first."); return; }
     setResetLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${base}/reset-password` });
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${base}/reset-password?flow=recovery` });
     setResetLoading(false);
     if (error) setError(error.message); else setResetSent(true);
   };

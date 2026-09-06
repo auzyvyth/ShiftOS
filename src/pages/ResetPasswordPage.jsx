@@ -70,7 +70,15 @@ export default function ResetPasswordPage() {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
+    // `flow=recovery` is OUR marker on the redirectTo we ask Supabase for, so it
+    // survives both auth flows. `type=recovery` is what the implicit flow puts in
+    // the hash -- kept because the edge-function invite/setup emails still use
+    // generateLink, and because links already sitting in inboxes must keep working.
+    // Under PKCE the link arrives as ?code=... with no type at all, so the old
+    // check alone would fall through to redirectByRole and bounce the user to
+    // their dashboard instead of showing the password form.
     const isRecovery =
+      window.location.href.includes('flow=recovery') ||
       window.location.href.includes('type=recovery') ||
       window.location.hash.includes('type=recovery');
     // Dealer-created salesmen arrive here via the emailed setup link
@@ -78,6 +86,8 @@ export default function ResetPasswordPage() {
     // the recovery session is live, instead of the generic reset form.
     const isSetup = window.location.href.includes('flow=setup');
 
+    // getSession() awaits the client's initialize(), and under PKCE that includes
+    // the network round trip swapping ?code= for a session -- so this is not a race.
     supabase.auth.getSession().then(({ data, error: err }) => {
       if (err || !data.session) {
         setPhase('expired');
@@ -150,7 +160,9 @@ export default function ResetPasswordPage() {
           </div>
           <h2 style={styles.cardHeading}>LINK EXPIRED</h2>
           <p style={styles.cardBody}>
-            This link has expired. Request a new one.
+            This link has expired, or it was opened on a different device
+            from the one you requested the reset on. Request a new one and
+            open it on this device.
           </p>
           <button style={styles.btnPrimary} onClick={() => navigate('/login')}>
             BACK TO SIGN IN

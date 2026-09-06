@@ -11,6 +11,14 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    // PKCE instead of the implicit flow. Implicit returns the access token in the
+    // URL fragment, so it lands in history, referrers and any logger that records
+    // a URL. PKCE returns a short-lived ?code= that is worthless without the
+    // verifier this browser generated and kept in local storage, and it is the
+    // only flow that survives a native WebView handoff -- which is what the
+    // mobile app needs. Trade-off: the verifier is per-browser, so a password
+    // reset must be opened in the SAME browser that requested it.
+    flowType: 'pkce',
     // Use the in-memory lock instead of the browser Web Locks API. The default
     // navigatorLock serializes every auth call (getSession runs before every
     // PostgREST query) across tabs and, on timeout, retries with { steal: true },
