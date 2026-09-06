@@ -203,7 +203,7 @@ export default function LoginPage() {
     }
     setResetLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${base}/reset-password?flow=recovery`,
+      redirectTo: `${base}/reset-password`,
     });
     setResetLoading(false);
     if (error) setError(error.message);

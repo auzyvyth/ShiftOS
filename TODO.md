@@ -2425,6 +2425,22 @@ native build.
   their own accounts. It cannot ship on a code read. Before merging, click
   through all five on the Vercel preview: signup confirm, magic link, Google,
   password reset, cross-subdomain handoff.
+  FOUND ON TEST 2026-09-06, and it is a PROD BUG independent of PKCE: the reset
+  link logged the user straight in with no password prompt. `detectSessionInUrl`
+  strips the auth payload out of the address bar (`history.replaceState`) as soon
+  as it has consumed it, and `ResetPasswordPage` read `window.location.hash`
+  AFTER that -- found nothing, and fell through to `redirectByRole`. A race, so
+  it shows up in Gmail's in-app browser and not everywhere. Fixed by capturing
+  `INITIAL_URL` in `src/supabaseClient.js` before `createClient` exists, and by
+  also listening for the `PASSWORD_RECOVERY` event. This half is worth shipping
+  to prod whether or not PKCE does.
+  OPEN QUESTION BEFORE PKCE MERGES: most Android users open email links in the
+  GMAIL IN-APP BROWSER, which is not the browser that requested the reset -- so
+  under PKCE there is no code verifier there and the reset will fail outright.
+  That is not an edge case for this user base. If it bites, the fix is to send
+  recovery mail from an edge function via `generateLink` (implicit, works in any
+  browser -- `invites` and `create-salesman` already do this) and leave PKCE
+  driving OAuth and the native app only.
   KNOWN BEHAVIOUR CHANGE, not a bug: the PKCE verifier lives in the requesting
   browser's local storage, so a reset link must be opened on the device that
   asked for it. Cross-device reset worked under the implicit flow and will not
