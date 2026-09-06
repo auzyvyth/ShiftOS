@@ -118,6 +118,12 @@ const SPECS = [
   { make:"Mitsubishi", model:"ASX",       yearFrom:2011, yearTo:2099, engine_cc:1998, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"SUV",    horsepower:150, doors:5, seats:5, fuel_consumption:12 },
   { make:"Mitsubishi", model:"Outlander", yearFrom:2016, yearTo:2099, engine_cc:2360, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"SUV",    horsepower:167, doors:5, seats:7, fuel_consumption:11 },
   { make:"Mitsubishi", model:"Xpander",   yearFrom:2020, yearTo:2099, engine_cc:1499, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV",    horsepower:105, doors:5, seats:7, fuel_consumption:14 },
+
+  // ─── generated from tools/specs/data — do not edit by hand ─── BEGIN
+  { make:"Ford", model:"Ranger", yearFrom:2015, yearTo:2022, engine_cc:2198, cylinders:4, transmission:"Auto", fuel_type:"Diesel", body_type:"Pickup", horsepower:160, doors:4, seats:5, fuel_consumption:null },
+  { make:"Ford", model:"Ranger", yearFrom:2023, yearTo:2099, engine_cc:1996, cylinders:4, transmission:"Auto", fuel_type:"Diesel", body_type:"Pickup", horsepower:210, doors:4, seats:5, fuel_consumption:null },
+  { make:"Lexus", model:"RX", yearFrom:2015, yearTo:2022, engine_cc:1998, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"SUV", horsepower:238, doors:5, seats:5, fuel_consumption:null },
+  // ─── generated ─── END
 ];
 
 // Normalise for matching: drop case, spaces and dashes so "HR-V" / "hrv" and
