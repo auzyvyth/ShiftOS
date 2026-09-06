@@ -23,6 +23,7 @@ import ChannelBreakdown from "../components/ChannelBreakdown";
 import { toast } from "sonner";
 import { generateDealSheet } from "../utils/dealSheet";
 import { maskIC } from "../utils/maskIC";
+import { mergePendingTag } from "../utils/pendingTag";
 import {
  LogOut,
  Link,
@@ -419,7 +420,12 @@ export default function SalesmanPanel() {
  // profile settings tab
  const [profileSettings, setProfileSettings] = useState({
  full_name: '', job_title: '', whatsapp_number: '',
- city: '', state: '', location: '', about_text: '',
+ city: '', state: '', location: '',
+ // No about_text here: it is the DEALER storefront's "About us"
+ // (DashboardPage Settings -> Footer). This panel used to offer it as a
+ // second box directly above Bio, both labelled "shown on your public
+ // page", and the mini page rendered both as consecutive paragraphs. Bio
+ // is the agent's one about-field.
  monthly_target: 5,
  bio: '', response_time: '', specializations: [],
  telegram_chat_id: '',
@@ -449,7 +455,6 @@ export default function SalesmanPanel() {
  city: profile.city || '',
  state: profile.state || '',
  location: profile.location || '',
- about_text: profile.about_text || '',
  bio: profile.bio || '',
  response_time: profile.response_time || '',
  specializations: profile.specializations || [],
@@ -6996,6 +7001,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  if (!profile?.id) return;
  setSettingsSaving(true);
  setSettingsError(null);
+ // Same rule as Premium: a tag still sitting in the input when Save is pressed
+ // is the user's answer, not something to throw away.
+ const specializations = mergePendingTag(profileSettings.specializations, tagInput);
  const { error } = await supabase.from('profiles').update({
  full_name: profileSettings.full_name,
  job_title: profileSettings.job_title,
@@ -7003,10 +7011,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  city: profileSettings.city,
  state: profileSettings.state,
  location: profileSettings.location || null,
- about_text: profileSettings.about_text,
  bio: profileSettings.bio || null,
  response_time: profileSettings.response_time || null,
- specializations: profileSettings.specializations.length > 0? profileSettings.specializations : null,
+ specializations: specializations.length > 0 ? specializations : null,
  telegram_chat_id: profileSettings.telegram_chat_id || null,
  monthly_target: Number(profileSettings.monthly_target) || 5,
  }).eq('id', profile.id);
@@ -7014,7 +7021,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  if (error) {
  setSettingsError('Failed to save. Please try again.');
  } else {
- setProfile(prev => ({ ...prev, ...profileSettings }));
+ setProfileSettings(p => ({ ...p, specializations }));
+ setTagInput('');
+ setProfile(prev => ({ ...prev, ...profileSettings, specializations }));
  setSettingsSaved(true);
  setTimeout(() => setSettingsSaved(false), 3000);
  }
@@ -7023,14 +7032,17 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const removeTag = (i) =>
  setProfileSettings(p => ({ ...p, specializations: p.specializations.filter((_, j) => j!== i) }));
 
- const handleTagKeyDown = (e) => {
- if (e.key === 'Enter' && tagInput.trim()) {
- e.preventDefault();
+ const addTag = () => {
  const val = tagInput.trim();
- if (!profileSettings.specializations.includes(val)) {
- setProfileSettings(p => ({ ...p, specializations: [...p.specializations, val] }));
- }
+ if (!val) return;
+ setProfileSettings(p => (p.specializations.includes(val) ? p : { ...p, specializations: [...p.specializations, val] }));
  setTagInput('');
+ };
+
+ const handleTagKeyDown = (e) => {
+ if (e.key === 'Enter') {
+ e.preventDefault();
+ addTag();
  }
  };
 
@@ -7132,13 +7144,6 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <p style={sectionLabel}>Public Profile</p>
  <div style={{ display: 'grid', gap: 14 }}>
  <div>
- <label style={labelStyle}>About</label>
- <textarea value={profileSettings.about_text}
- onChange={e => setProfileSettings(p => ({ ...p, about_text: e.target.value }))}
- placeholder="A short description shown on your public page"
- rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
- </div>
- <div>
  <label style={labelStyle}>Bio</label>
  <textarea value={profileSettings.bio}
  onChange={e => setProfileSettings(p => ({ ...p, bio: e.target.value }))}
@@ -7175,12 +7180,22 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  ))}
  </div>
  )}
+ <div style={{ display: 'flex', gap: 8 }}>
  <input type="text" value={tagInput}
  onChange={e => setTagInput(e.target.value)}
  onKeyDown={handleTagKeyDown}
- placeholder="Type a specialization and press Enter"
- style={inputStyle} />
- <p style={{ margin: '5px 0 0', fontSize: 11, color: '#374151' }}>Press Enter to add each tag. Shown as pills on your public profile.
+ placeholder="e.g. Recon imports"
+ style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
+ <button type="button" onClick={addTag} disabled={!tagInput.trim()} style={{
+ flexShrink: 0, padding: '0 16px', borderRadius: 8,
+ border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.06)',
+ color: tagInput.trim() ? '#e5e7eb' : '#4b5563', fontSize: 12, fontWeight: 600,
+ cursor: tagInput.trim() ? 'pointer' : 'default',
+ }}>
+ Add
+ </button>
+ </div>
+ <p style={{ margin: '5px 0 0', fontSize: 11, color: '#374151' }}>Enter or Add for each tag. Shown as pills on your public profile.
  </p>
  </div>
  </div>

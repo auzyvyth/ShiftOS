@@ -699,6 +699,42 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   as required. Dealer Group (RM2999) is intentionally not listed — it has no
   onboarding route.
 
+- **IDEA-7: "Easy Fill AI" — paste a spec sheet, the listing form fills itself
+  (plan-gated)** — owner's framing (2026-09-05): sellers retype the same
+  WhatsApp/broker blurb into the 8-step `CarForm.jsx` every time. Paste the raw
+  text, an LLM extracts chassis / mileage / colour / price / options as JSON,
+  the form populates. Gate it because every press costs money per request and a
+  free Lite account would spam it.
+  Two corrections to the sketch it came in with, both because the platform
+  already has this plumbing:
+  - **The tier column already exists: `profiles.plan`.** Values are
+    `salesman_lite | salesman_full | dealer_starter | dealer_growth | dealer_pro
+    | dealer_group` — not `free|premium|dealer`, so a gate written against
+    `plan in ('premium','dealer')` matches nothing and locks everyone out
+    including the people paying. `src/utils/planConfig.js` mirrors the
+    `plan_config` table; gate on `PLAN_CONFIG[...]`, i.e. paid tiers =
+    everything except `salesman_lite`. (Note for anyone reading C4 in CLAUDE.md:
+    that item says the collapse target is `selected_plan`. It is not —
+    `selected_plan` was DROPPED from the live table, the surviving column is
+    `plan`, and `enforce_listing_cap` reads it via `plan_config`. Verified
+    against the live DB 2026-09-05.)
+  - **Do NOT deploy a standalone `extract-car-listing` edge function that calls
+    api.anthropic.com directly.** `supabase/functions/ai-proxy` is already the
+    one Anthropic entry point: it verifies the caller's JWT, resolves their
+    dealer scope, pins model + `max_tokens` PER FEATURE server-side, and enforces
+    the shared 400/day quota (`salesman_ai_quota_ok()`). A second function is a
+    second copy of the auth check, the key and the token budget, and CLAUDE.md's
+    "AI call capped to fit max_tokens" trap lives there too. This is a new
+    `FEATURES` key (e.g. `listing_extract`) plus the plan check, not a new
+    function.
+  Still open when picked up: which tiers get it (Premium at RM35/month has to
+  cover its own Claude cost — same funding question as IDEA-3), whether the
+  frontend hides or disables the button for Lite (a disabled button with "upgrade
+  to use" is an upsell, a hidden one is not), and the extraction prompt's price
+  rule — "188" meaning RM188,000 is a convention in one seller's messages, not a
+  universal one, and mis-reading it writes a wrong price onto a public listing.
+  Frontend check is UX only; the gate is the server.
+
 ## CHAT-EMAIL — BUILT 2026-08-31 (see CLAUDE.md for the rules)
 
 Shipped on `claude/buyer-notification-emails-n0yv8d`. Backend is LIVE on the
