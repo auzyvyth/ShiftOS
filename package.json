@@ -20,7 +20,8 @@
     "test": "npm run test:tour && npm run test:perf && npm run test:plan && npm run test:chassis && npm run test:modelkey && npm run test:chassisspec && npm run test:specs && npm run specs:check",
     "specs:build": "node tools/specs/generate.mjs",
     "specs:check": "node tools/specs/generate.mjs --check",
-    "test:specs": "node tests/specsPipeline.test.mjs"
+    "test:specs": "node tests/specsPipeline.test.mjs",
+    "specs:next": "node tools/specs/next.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
