@@ -2409,6 +2409,26 @@ native build.
   brand asset is your call, not a silent refactor. Options: (a) leave it, (b) re-cut
   the icon on the #080C14 background, (c) set `background_color` to white so the
   splash matches the icon.
+- [ ] **MOBILE-1 (CODE DONE, NOT SHIPPED — blocked on a staging auth test):
+  migrate auth to PKCE.** Written and building on branch
+  `claude/pkce-auth-flow`: `flowType: 'pkce'` in `src/supabaseClient.js`, plus
+  the recovery-detection fix it forces. `ResetPasswordPage.jsx:74` detected a
+  password reset by looking for `type=recovery` in the URL; PKCE sends `?code=`
+  with no type at all, so that check falls through to `redirectByRole` and the
+  user is bounced to their dashboard with no way to set a password. It now also
+  accepts `flow=recovery`, a marker added to the reset links requested at
+  `LoginPage.jsx:206` and `BuyerAuthPage.jsx:164`, and keeps the `type=recovery`
+  check so links already sitting in inboxes (and the edge-function
+  `generateLink` emails, which stay implicit) still work.
+  DELIBERATELY HELD BACK FROM PROD: this changes how every password reset,
+  magic link and Google sign-in completes, and a mistake locks people out of
+  their own accounts. It cannot ship on a code read. Before merging, click
+  through all five on the Vercel preview: signup confirm, magic link, Google,
+  password reset, cross-subdomain handoff.
+  KNOWN BEHAVIOUR CHANGE, not a bug: the PKCE verifier lives in the requesting
+  browser's local storage, so a reset link must be opened on the device that
+  asked for it. Cross-device reset worked under the implicit flow and will not
+  after. The expired-link copy on that branch names it as a cause.
 - [ ] **MOBILE-2 (BLOCKING DECISION — gates MOBILE-3 and MOBILE-4): pick the native path.**
   Capacitor-wrapping this React app vs a separate React Native client. This single call
   determines the shape of the push-notification work, the CORS allowlist change, and whether
