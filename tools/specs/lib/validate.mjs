@@ -39,6 +39,13 @@ const MONEY = /\b(rm\s*\d|price|priced|worth|valuation|deposit|instalment|instal
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 
+// The same normalisation lookupFullSpec and generate.mjs use, so "CX-5",
+// "CX 5" and "cx5" collapse to one model here too. Comparing raw strings would
+// let an overlap hide behind a dash.
+const modelKey = (make, model) =>
+  `${String(make || '').toLowerCase().replace(/[-\s]+/g, '')}|` +
+  `${String(model || '').toLowerCase().replace(/[-\s]+/g, '')}`;
+
 function checkRow(row, path, errors, warnings) {
   const at = (m) => errors.push(`${path}: ${m}`);
   const warn = (m) => warnings.push(`${path}: ${m}`);
@@ -105,7 +112,7 @@ function checkOverlaps(rows, errors) {
   const byModel = new Map();
   for (const r of rows) {
     if (!r.make || !r.model || !isNum(r.year_from)) continue;
-    const key = `${String(r.make).toLowerCase()}|${String(r.model).toLowerCase()}`;
+    const key = modelKey(r.make, r.model);
     if (!byModel.has(key)) byModel.set(key, []);
     byModel.get(key).push(r);
   }
@@ -129,8 +136,73 @@ function checkOverlaps(rows, errors) {
   }
 }
 
+// The other half of the overlap problem: a collected row can also collide with
+// the HAND-CURATED rows above the marker in carSpecs.js.
+//
+// Those win outright - generate.mjs drops a collected row whose make+model+
+// yearFrom already exists - so an EXACT match is a designed skip, not an error.
+// What is an error is a collected row that OVERLAPS a curated one without
+// matching its yearFrom: the generator has no reason to drop it, so it lands in
+// the generated block where lookupFullSpec can never reach it. The curated row
+// sits earlier in SPECS and rows.find() stops there. The row is dead on arrival
+// and turns into a wrong prefill the day somebody sorts that array.
+//
+// This shipped: a batch re-collecting already-curated models emitted
+// Honda City 2008-2013, Toyota Vios 2007-2012 and Toyota Vios 2023-2099 on top
+// of curated rows covering every one of those years, and the run reported
+// success.
+//
+// Curated rows are only ever checked against COLLECTED ones, never against each
+// other: several already overlap (Perodua Myvi 2005-2011 and 2011-2017 both
+// cover 2011) and failing the build on a pre-existing condition helps nobody.
+function checkHandOverlaps(rows, hand, errors) {
+  if (!hand || !hand.length) return;
+
+  const byModel = new Map();
+  for (const h of hand) {
+    if (!h || !h.make || !h.model || !isNum(h.yearFrom)) continue;
+    const key = modelKey(h.make, h.model);
+    if (!byModel.has(key)) byModel.set(key, []);
+    byModel.get(key).push(h);
+  }
+
+  rows.forEach((r, i) => {
+    if (!r.make || !r.model || !isNum(r.year_from)) return;
+    const curated = byModel.get(modelKey(r.make, r.model));
+    if (!curated) return;
+
+    // An exact yearFrom match means generate.mjs drops the row before it can
+    // reach the output, so it can never BE a dead row - whatever else its range
+    // touches. Re-collecting an already-curated model is the designed
+    // behaviour, and failing the run for it would reject every honest batch
+    // that happens to revisit one. It also keeps the curated table's own
+    // boundary overlaps (Myvi 2005-2011 / 2011-2017) out of the report.
+    if (curated.some((h) => h.yearFrom === r.year_from)) return;
+
+    const from = r.year_from;
+    const to = r.year_to === null || r.year_to === undefined ? OPEN_ENDED : r.year_to;
+
+    const hits = curated.filter((h) => {
+      const hTo = isNum(h.yearTo) ? h.yearTo : OPEN_ENDED;
+      return from <= hTo && h.yearFrom <= to;
+    });
+    if (!hits.length) return;
+
+    errors.push(
+      `${r._file || 'input'}[${r._index ?? i}] ${r.make} ${r.model} ${from}-${r.year_to ?? 'current'}: ` +
+      `overlaps hand-curated carSpecs.js row(s) ` +
+      `${hits.map((h) => `${h.yearFrom}-${h.yearTo}`).join(', ')}. ` +
+      'The curated row sits earlier in SPECS and wins at lookup, so this one would ' +
+      'never be reached - drop it from the batch, or align its years with the ' +
+      'curated row and correct that row by hand.',
+    );
+  });
+}
+
 // rows: every collected row across every batch file, each carrying _file.
-export function validateRows(rows) {
+// hand: the hand-curated carSpecs.js rows ({ make, model, yearFrom, yearTo }),
+// optional - callers with no access to that file just skip the second check.
+export function validateRows(rows, hand = []) {
   const errors = [];
   const warnings = [];
   rows.forEach((row, i) => {
@@ -138,6 +210,7 @@ export function validateRows(rows) {
     checkRow(row, path, errors, warnings);
   });
   checkOverlaps(rows, errors);
+  checkHandOverlaps(rows, hand, errors);
   return { errors, warnings, ok: errors.length === 0 };
 }
 

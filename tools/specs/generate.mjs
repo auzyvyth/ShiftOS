@@ -51,12 +51,18 @@ function loadBatches() {
 
 // The hand-curated rows above the marker. They are the ones a person wrote and
 // checked, so on a collision they win and the generated row is dropped.
+//
+// yearTo is read as well as yearFrom because the validator needs the whole
+// range: an exact yearFrom match is a designed skip, but a collected row that
+// merely OVERLAPS a curated one is a dead row and has to fail the run.
 function handRows(text) {
   const head = text.includes(BEGIN) ? text.slice(0, text.indexOf(BEGIN)) : text;
   const out = [];
-  const re = /make:\s*"([^"]+)",\s*model:\s*"([^"]+)",\s*yearFrom:\s*(\d+)/g;
+  const re = /make:\s*"([^"]+)",\s*model:\s*"([^"]+)",\s*yearFrom:\s*(\d+),\s*yearTo:\s*(\d+)/g;
   let m;
-  while ((m = re.exec(head))) out.push({ make: m[1], model: m[2], yearFrom: Number(m[3]) });
+  while ((m = re.exec(head))) {
+    out.push({ make: m[1], model: m[2], yearFrom: Number(m[3]), yearTo: Number(m[4]) });
+  }
   return out;
 }
 
@@ -101,7 +107,12 @@ if (!rows.length) {
   process.exit(0);
 }
 
-const { errors, warnings, ok } = validateRows(rows);
+// Read carSpecs.js before validating, not after: the curated rows are an input
+// to the check, not just to the collision skip below.
+const text = readFileSync(TARGET, 'utf8');
+const handList = handRows(text);
+
+const { errors, warnings, ok } = validateRows(rows, handList);
 for (const w of warnings) console.log(`  warn  ${w}`);
 if (!ok) {
   console.error(`\n${errors.length} error(s) - nothing was written:\n`);
@@ -109,8 +120,7 @@ if (!ok) {
   process.exit(1);
 }
 
-const text = readFileSync(TARGET, 'utf8');
-const hand = new Set(handRows(text).map((r) => key(r.make, r.model, r.yearFrom)));
+const hand = new Set(handList.map((r) => key(r.make, r.model, r.yearFrom)));
 
 const kept = [];
 const skipped = [];
