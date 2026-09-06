@@ -120,6 +120,17 @@ const SPECS = [
   { make:"Mitsubishi", model:"Xpander",   yearFrom:2020, yearTo:2099, engine_cc:1499, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV",    horsepower:105, doors:5, seats:7, fuel_consumption:14 },
 
   // ─── generated from tools/specs/data — do not edit by hand ─── BEGIN
+  { make:"BMW", model:"M2", yearFrom:2016, yearTo:2021, engine_cc:2979, cylinders:6, transmission:"Auto", fuel_type:"Petrol", body_type:"Coupe", horsepower:410, doors:2, seats:4, fuel_consumption:null },
+  { make:"BMW", model:"M2", yearFrom:2023, yearTo:2099, engine_cc:2993, cylinders:6, transmission:"Auto", fuel_type:"Petrol", body_type:"Coupe", horsepower:460, doors:2, seats:4, fuel_consumption:null },
+  { make:"BMW", model:"M3", yearFrom:2007, yearTo:2013, engine_cc:3999, cylinders:8, transmission:"Auto", fuel_type:"Petrol", body_type:"Coupe", horsepower:420, doors:2, seats:4, fuel_consumption:null },
+  { make:"BMW", model:"M3", yearFrom:2014, yearTo:2018, engine_cc:2979, cylinders:6, transmission:"Auto", fuel_type:"Petrol", body_type:"Sedan", horsepower:450, doors:4, seats:5, fuel_consumption:null },
+  { make:"BMW", model:"M3", yearFrom:2021, yearTo:2099, engine_cc:2993, cylinders:6, transmission:"Auto", fuel_type:"Petrol", body_type:"Sedan", horsepower:510, doors:4, seats:5, fuel_consumption:null },
+  { make:"BMW", model:"M4", yearFrom:2014, yearTo:2020, engine_cc:2979, cylinders:6, transmission:"Auto", fuel_type:"Petrol", body_type:"Coupe", horsepower:450, doors:2, seats:4, fuel_consumption:null },
+  { make:"BMW", model:"M4", yearFrom:2021, yearTo:2099, engine_cc:2993, cylinders:6, transmission:"Auto", fuel_type:"Petrol", body_type:"Coupe", horsepower:510, doors:2, seats:4, fuel_consumption:null },
+  { make:"BMW", model:"M5", yearFrom:2005, yearTo:2010, engine_cc:4999, cylinders:10, transmission:"Auto", fuel_type:"Petrol", body_type:"Sedan", horsepower:507, doors:4, seats:5, fuel_consumption:null },
+  { make:"BMW", model:"M5", yearFrom:2011, yearTo:2016, engine_cc:4395, cylinders:8, transmission:"Auto", fuel_type:"Petrol", body_type:"Sedan", horsepower:560, doors:4, seats:5, fuel_consumption:null },
+  { make:"BMW", model:"M5", yearFrom:2018, yearTo:2023, engine_cc:4395, cylinders:8, transmission:"Auto", fuel_type:"Petrol", body_type:"Sedan", horsepower:625, doors:4, seats:5, fuel_consumption:null },
+  { make:"BMW", model:"M8", yearFrom:2019, yearTo:2099, engine_cc:4395, cylinders:8, transmission:"Auto", fuel_type:"Petrol", body_type:"Coupe", horsepower:625, doors:2, seats:4, fuel_consumption:null },
   { make:"Ford", model:"Ranger", yearFrom:2015, yearTo:2022, engine_cc:2198, cylinders:4, transmission:"Auto", fuel_type:"Diesel", body_type:"Pickup", horsepower:160, doors:4, seats:5, fuel_consumption:null },
   { make:"Ford", model:"Ranger", yearFrom:2023, yearTo:2099, engine_cc:1996, cylinders:4, transmission:"Auto", fuel_type:"Diesel", body_type:"Pickup", horsepower:210, doors:4, seats:5, fuel_consumption:null },
   { make:"Lexus", model:"RX", yearFrom:2015, yearTo:2022, engine_cc:1998, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"SUV", horsepower:238, doors:5, seats:5, fuel_consumption:null },

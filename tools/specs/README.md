@@ -130,3 +130,21 @@ leaves the field blank for them to fill.
 rows of dense figures from memory in one pass, which is where wrong numbers come
 from. The bigger accuracy lever is nulling what is not known rather than filling
 it — a blank costs a seller seconds, a wrong number can get published.
+
+## Running a collection batch by hand
+
+`ROUTINE.md` is gone. It described a scheduled job writing to `car_specs`, and
+that job was never created — the `create_trigger` call failed on connectors and
+the design has since moved to JSON-in-git anyway.
+
+```
+npm run specs:next            # prints the next 8 models, skipping what is done
+```
+
+Paste that block into the `<targets>` section of `PROMPT.md`, run the prompt in
+a fresh chat, save the JSON it returns to `tools/specs/data/<date>-batch-NN.json`,
+then `npm run specs:build` and read the diff.
+
+`specs:next` works out where to resume by reading `data/` and the hand-curated
+half of `carSpecs.js`, so nothing has to be tracked anywhere else and two runs
+cannot collide on the same model.

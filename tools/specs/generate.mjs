@@ -14,6 +14,7 @@ import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateRows, toCarSpecsRow } from './lib/validate.mjs';
+import { decodeChassis } from '../../src/utils/chassisDecode.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
@@ -77,16 +78,18 @@ function renderRow(r) {
 }
 
 // Chassis codes are collected but carSpecs.js has nowhere to put them. Report
-// the ones the decoder does not know rather than patching it: a code may need
-// an `alt` (Type R, hybrid, 450h) and getting that wrong makes the decoder fill
+// the ones the app cannot resolve rather than patching it: a code may need an
+// `alt` (Type R, hybrid, 450h) and getting that wrong makes the decoder fill
 // the wrong specs, which is the one outcome worse than filling nothing.
+//
+// Ask decodeChassis itself. Grepping chassisDecode.js for the key misses every
+// European code, because those live in chassisCodes.js and are resolved through
+// chassisSearch - which reported all 18 BMW codes as missing when the index
+// already held most of them. A report that cries wolf gets ignored.
 function chassisGaps(rows) {
-  if (!existsSync(DECODER)) return [];
-  const text = readFileSync(DECODER, 'utf8');
-  const known = new Set([...text.matchAll(/^\s{2}([A-Z0-9]+):\s*\{/gm)].map((m) => m[1]));
   const gaps = [];
   for (const r of rows) {
-    const missing = (r.chassis_codes || []).filter((c) => !known.has(c));
+    const missing = (r.chassis_codes || []).filter((c) => !decodeChassis(c));
     if (missing.length) gaps.push({ make: r.make, model: r.model, year_from: r.year_from, missing });
   }
   return gaps;
