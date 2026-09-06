@@ -53,7 +53,7 @@ const SORT_OPTIONS = [
 ];
 const SELLER_TYPES = [{ value:'dealer', label:'Dealer' },{ value:'agent', label:'Agent' }];
 
-const CAR_FIELDS  = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,engine_cc,condition,previous_owners,auction_grade,interior_grade,is_recon,financing_type,images,status,created_at,market_avg_price,seller_role,dealer_is_verified,seller_sold_count';
+const CAR_FIELDS  = 'id,slug,listing_title,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,engine_cc,condition,previous_owners,auction_grade,interior_grade,is_recon,financing_type,images,status,created_at,market_avg_price,seller_role,dealer_is_verified,seller_sold_count';
 const DEALER_JOIN = 'dealer:profiles!dealer_id(dealership,site_name,subdomain,whatsapp_number,site_logo_url,brand_color,role)';
 
 /* ── Sanitisers ─────────────────────────────────────────────────────

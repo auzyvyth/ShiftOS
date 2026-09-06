@@ -163,6 +163,13 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
   const rawImage   = slides[safeIdx] || (Array.isArray(car.images) && car.images[0]) || null;
   const image      = !imgError && toThumb(rawImage);
   const normalTx   = ['Auto', 'Automatic', 'AT'].includes(transmission) ? 'Auto' : ['Manual', 'MT'].includes(transmission) ? 'Manual' : transmission || null;
+  // The seller's own headline wins on the card, because the card IS the search
+  // result — it is the line a buyer scans. It never replaces the structured
+  // name in aria-label, alt text, the WhatsApp opener or analytics: those have
+  // to stay predictable, and a 120-char seller string is neither.
+  const cardName = (car.listing_title || '').trim()
+    || [brand, model, variant].filter(Boolean).join(' ');
+
   const waText     = `Hi, I'm interested in the ${year} ${brand} ${model}${variant ? ' ' + variant : ''}. Can you share more details?`;
   const ctxResolved = ctaContext?.type !== 'loading' ? ctaContext : null;
   const whatsappUrl = buildWaUrl(ctxResolved || { type: 'listing', profile: null, ref: null }, XDRIVE_WA, waText);
@@ -321,7 +328,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
         {/* Row 2: car name */}
         <h3 style={{ color: c.title, fontSize: '14px', fontWeight: '700', margin: '0 0 4px', lineHeight: '1.25', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
           {isSold || !(car.slug || car.id) ? (
-            [brand, model, variant].filter(Boolean).join(' ')
+            cardName
           ) : (
             /* The keyboard/screen-reader entry point into this card. aria-label
                carries year + price because the visible text is only the model
@@ -334,7 +341,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
               aria-label={`${[year, brand, model, variant].filter(Boolean).join(' ')}, ${price ? 'RM ' + price.toLocaleString('en-MY') : 'price on request'}`}
               style={{ color: 'inherit', textDecoration: 'none' }}
             >
-              {[brand, model, variant].filter(Boolean).join(' ')}
+              {cardName}
             </Link>
           )}
         </h3>

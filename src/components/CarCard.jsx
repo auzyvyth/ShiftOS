@@ -167,6 +167,11 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
   const subLine  = [colour, location].filter(Boolean).join(' · ') || null;
   const ageLabel = formatAge(ageDays);
 
+  // Seller's own headline wins on the card — the card is the search result.
+  // Structured name still backs aria-label, alt text, WhatsApp and analytics.
+  const cardName = (car.listing_title || '').trim()
+    || [year, brand, model, variant].filter(Boolean).join(' ');
+
   const waText = `Hi, I'm interested in the ${year} ${brand} ${model}${variant ? ' ' + variant : ''}. Can you share more details?`;
   const ctxResolved = ctaContext?.type !== 'loading' ? ctaContext : null;
   const whatsappUrl = buildWaUrl(
@@ -563,7 +568,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
             minHeight:        34,
             margin:           '0 0 2px',
           }}>
-            {[year, brand, model, variant].filter(Boolean).join(' ')}
+            {cardName}
           </h3>
 
           {/* Sub: colour · location — 14px reserved */}

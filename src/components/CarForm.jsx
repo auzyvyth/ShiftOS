@@ -48,6 +48,8 @@ import { isPremiumSalesman } from "../utils/salesmanPlan";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 const initialListing = {
+  listing_title: "",
+  specs_overridden: false,
   brand: "",
   model: "",
   variant: "",
@@ -1062,6 +1064,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   useEffect(() => {
     if (listing) {
       setForm({
+        listing_title: listing.listing_title || "",
+        specs_overridden: !!listing.specs_overridden,
         brand: listing.brand || "",
         model: listing.model || "",
         variant: listing.variant || "",
@@ -1150,10 +1154,27 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   }, [listing]);
 
   // ── Auto-fill specs when brand + model + year are known ────────────────────
+  // The LOCAL table is the only source that locks the fields. It is curated,
+  // Malaysian-market and reviewed; /api/car-specs is the long tail and stays a
+  // suggestion the seller can edit. A spec the catalogue knows must not be
+  // retypeable, because two people typing the same 2019 Civic differently is
+  // exactly what makes an engine-size or body-type filter untrustworthy.
   const [autoFilled, setAutoFilled] = useState(false);
+  const [specLock, setSpecLock] = useState(null);      // the matched catalogue row
+  const [specsUnlocked, setSpecsUnlocked] = useState(false);
   useEffect(() => {
     setAutoFilled(false);
-  }, [form.brand, form.model]);
+    setSpecLock(null);
+  }, [form.brand, form.model, form.year]);
+  // A new match re-locks: the seller corrected the specs for a DIFFERENT car.
+  useEffect(() => {
+    setSpecsUnlocked(false);
+  }, [specLock]);
+  const specsLocked = !!specLock && !specsUnlocked;
+  const unlockSpecs = () => {
+    setSpecsUnlocked(true);
+    set("specs_overridden", true);
+  };
 
   useEffect(() => {
     if (!form.brand || !form.model || !form.year || listing) return;
@@ -1182,7 +1203,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     // 1. Try the curated local table first, for ANY brand (no network cost).
     //    Covers Perodua/Proton + the common CBU sellers with Malaysian-spec data.
     const local = lookupFullSpec(form.brand, form.model, y);
-    if (local) { applySpec(local); return; }
+    if (local) { applySpec(local); setSpecLock(local); return; }
 
     // 2. Check localStorage cache
     try {
@@ -1394,6 +1415,14 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   const handleChange = (e) => set(e.target.name, e.target.value);
   const modelOptions =
     form.brand && CAR_DATA[form.brand] ? CAR_DATA[form.brand] : [];
+  // The model picker allows a custom value, and that freedom is what produced
+  // "ALPHARD 2.5L", "CIVIC 2.0L(T) HATCHBACK" and "RX350 2.4L(T)" in the live
+  // data — 12 Alphards spelled four ways, only the clean one resolving against
+  // the spec table or a buyer's model filter. Blocking it outright would trap a
+  // seller whose model we genuinely lack, so say what it costs instead.
+  const offCatalogueModel =
+    !!form.brand && !!form.model && modelOptions.length > 0 &&
+    !modelOptions.some((m) => m.toLowerCase() === form.model.trim().toLowerCase());
   // Decode accepts a full VIN OR a Japanese chassis code. Gating on the VIN
   // alone is what left the button permanently dead for recon stock.
   const canDecodeVin =
@@ -1910,6 +1939,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         0,
       );
       const payload = {
+        listing_title: form.listing_title?.trim() || null,
+        specs_overridden: !!form.specs_overridden,
         brand: form.brand,
         model: form.model,
         variant: form.variant,
@@ -2383,6 +2414,39 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       );
       case 2: return (
         <div className="space-y-4">
+          {/* Listing title — the ONE free-text field on this step, and the
+              reason every other field on it can be structured. Sellers were
+              writing "ALPHARD 2.5L" and "CIVIC 2.0L(T) HATCHBACK" into `model`
+              to get the extra words a listing needs; that broke spec lookup
+              (only the clean "Alphard" resolves) and dropped the car out of the
+              buyer's model filter. Give them the headline, keep `model` clean. */}
+          <Field
+            label="Listing Title"
+            hint="How buyers see this car in search. Write it your way — extras, condition, anything worth shouting about."
+          >
+            <div className="space-y-2">
+              <input
+                name="listing_title"
+                value={form.listing_title}
+                onChange={handleChange}
+                maxLength={120}
+                placeholder="e.g. BMW M4 G82 2025 LCI LIGHTS + BUCKET SEAT, LOW MILEAGE"
+                enterKeyHint="next"
+                className={inputCls}
+              />
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-gray-500 min-w-0 truncate">
+                  {form.listing_title?.trim()
+                    ? "This is the headline buyers read."
+                    : `Leave it blank and buyers see "${[form.year, form.brand, form.model, form.variant].filter(Boolean).join(" ") || "Year Brand Model"}".`}
+                </p>
+                <span className={`text-xs tabular-nums flex-shrink-0 ${(form.listing_title?.length || 0) > 105 ? "text-amber-600" : "text-gray-400"}`}>
+                  {form.listing_title?.length || 0}/120
+                </span>
+              </div>
+            </div>
+          </Field>
+
           {intakeDone && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
               <Check size={12} />
@@ -2413,6 +2477,16 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               allowCustom
             />
           </Field>
+          {offCatalogueModel && (
+            <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
+              <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
+              <span>
+                "{form.model}" is not a model we recognise for {form.brand}. Specs will not
+                fill in, and buyers filtering by model will not see this car. Pick the plain
+                model name and put the rest in the Listing Title or Variant.
+              </span>
+            </div>
+          )}
           <Field label="Variant">
             <input
               name="variant"
@@ -2519,14 +2593,72 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       );
       case 3: return (
         <div className="space-y-4">
-          {intakeDone && (
+          {/* Catalogue lock. When the curated table knows this exact car, its
+              specs are shown and NOT retypeable — that is the whole point: two
+              sellers listing the same 2019 Civic have to produce the same
+              engine_cc, or no buyer filter built on it can be trusted. The
+              override exists because the catalogue covers a fraction of the
+              fleet and a seller with a 3.5 in a car we recorded as a 2.5 must
+              not be trapped; it stamps specs_overridden, which is the
+              catalogue's error log. */}
+          {specsLocked && (
+            <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+              <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-gray-100 bg-gray-50">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
+                    <Check size={13} className="text-emerald-600 flex-shrink-0" />
+                    Specs from our catalogue
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5 truncate">
+                    {specLock.make} {specLock.model} · {specLock.yearFrom}
+                    {specLock.yearTo >= 2099 ? " onwards" : `-${specLock.yearTo}`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={unlockSpecs}
+                  className="flex-shrink-0 text-xs font-medium text-gray-500 underline underline-offset-2 hover:text-gray-900"
+                >
+                  Not my car?
+                </button>
+              </div>
+              <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3">
+                {[
+                  ["Engine",       form.engineCc && `${form.engineCc} cc`],
+                  ["Cylinders",    form.cylinders],
+                  ["Body",         form.bodyType],
+                  ["Fuel",         form.fuelType],
+                  ["Transmission", form.transmission],
+                  ["Power",        form.horsepower && `${form.horsepower} hp`],
+                  ["Doors",        form.doors],
+                  ["Seats",        form.seats],
+                  ["Economy",      form.fuelEconomyKpl && `${form.fuelEconomyKpl} km/L`],
+                ].filter(([, v]) => v).map(([k, v]) => (
+                  <div key={k} className="min-w-0">
+                    <dt className="text-[11px] uppercase tracking-wide text-gray-400">{k}</dt>
+                    <dd className="text-sm font-medium text-gray-900 tabular-nums truncate">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
+          {specsUnlocked && specLock && (
+            <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
+              <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
+              <span>
+                You are overriding our catalogue figures for the {specLock.make} {specLock.model}.
+                Buyers see these as seller-stated, and we will review the catalogue entry.
+              </span>
+            </div>
+          )}
+          {intakeDone && !specsLocked && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
               <Check size={12} />
               {[form.bodyType, form.fuelType, form.transmission, form.engineCc && `${form.engineCc}cc`].filter(Boolean).join(" · ")} — carried over from Core Details
             </div>
           )}
           {/* Core input */}
-          {!intakeDone && (
+          {!intakeDone && !specsLocked && (
           <Field
             label="Engine Displacement (CC)"
             hint="Used for road tax & insurance calc"
@@ -2709,7 +2841,10 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           )}
 
           {/* Advanced specs — enthusiast-facing, collapsed by default. A
-              salesman's VIN decode fills bhp/cylinders/doors/seats for them. */}
+              salesman's VIN decode fills bhp/cylinders/doors/seats for them.
+              Hidden under the catalogue lock: every field in here is already
+              shown, and correct, in the block above. */}
+          {!specsLocked && (
           <MoreDetails collapsible label="Advanced specs (optional)">
             <Field label="Power (bhp)">
               <div className="relative">
@@ -2777,9 +2912,10 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               />
             </Field>
           </MoreDetails>
+          )}
 
           {/* Pills — below everything */}
-          {!intakeDone && (
+          {!intakeDone && !specsLocked && (
           <>
           <Field label="Body Type" required>
             <PillSelect
