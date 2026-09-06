@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { supabase, supabaseAuthLinks } from "../supabaseClient";
 import { markBuyerIntent, markBuyerConsent, ensureBuyerProfile } from "../lib/buyerAuth";
 import { routeForProfile } from "../hooks/useRoleRedirect";
 import { Heart, Bell, MessageCircle, Tag, Check, Eye, EyeOff, ArrowLeft } from "lucide-react";
@@ -161,7 +161,9 @@ export default function BuyerAuthPage() {
   const handleForgot = async () => {
     if (!email) { setError("Enter your email above first."); return; }
     setResetLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${base}/reset-password` });
+    // supabaseAuthLinks, not supabase -- recovery mail stays on the implicit
+    // flow so the link survives Gmail's in-app browser. See src/supabaseClient.js.
+    const { error } = await supabaseAuthLinks.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${base}/reset-password` });
     setResetLoading(false);
     if (error) setError(error.message); else setResetSent(true);
   };
