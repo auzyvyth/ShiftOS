@@ -45,6 +45,85 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## Reported by the owner — 2026-09-06 batch
+
+Eight items came in together. Two are fixed (below, struck through); the rest
+are here with what is known so far. Splitting them because they are four
+different concerns and the house rule is one per session.
+
+### Blocked on the owner
+- [ ] **LOGO-1 (urgent, BLOCKED — needs the file): replace both logos.**
+  XDrive gets a supplied `x.png`; the file has NOT been pasted into a session
+  yet, so nothing can be wired up. ShiftOS: every dashboard renders the word
+  "ShiftOS" top-left and that wordmark should become an image too. When the
+  file lands: add it under `public/`, and replace the two text logos —
+  `MarketplaceHeader.jsx` (`.mh-logo-x` / `.mh-logo-t` / `.mh-logo-my`, three
+  spans in Bebas Neue) and the dashboard top-left in `DashboardPage.jsx` plus
+  the salesman panels. Keep an `alt` and a text fallback; do not delete the
+  spans until the image is confirmed rendering, and check both at 375px.
+
+### Needs a location before it can be fixed
+- [ ] **PREM-1: the red wave for a cold lead does not render in Premium.**
+  Two screenshots show a flat red diagonal slash where a wave should be.
+  Could not find it: Premium's `cold` is `#93c5fd` (light blue) in
+  `salesmanPremium/shared.jsx:295`, the only red cold indicator is
+  `OverviewTab.jsx:348` (`#DC2626`) and OverviewTab is not mounted anywhere in
+  Premium, and the "waves" in `salesmanPremium/DashboardTab.jsx:417` are the
+  three traffic series, not a lead indicator. Ask which screen and which
+  element before touching anything.
+
+### Dealer account block — owner said explicitly this is a later job
+- [ ] **DEAL-1: a dealer cannot be verified even after the owner approves.**
+  Latest test: approved from the platform console, the account still did not
+  come out verified. Start at `set_account_suspended` / the approval write in
+  `UserApprovalsTab.jsx` and check what column verification actually reads.
+- [ ] **DEAL-2: the dealer record has no poskod, no SSM number, no street
+  address.** Either the fields are not captured at signup/settings or they are
+  captured and not persisted — check which before adding UI.
+- [ ] **DEAL-3: business hours and deposit amount set in Settings do not
+  appear.** Saved but not read back, or not saved at all.
+- [ ] **DEAL-4: the "audit front page" controller in the Settings tab does not
+  appear anywhere.** A control that governs a surface nothing renders.
+  DEAL-1..4 are one investigation: they all smell like dealer settings being
+  written to a column nobody reads, so triage them together, not one at a time.
+
+### Layout / UX
+- [ ] **UX-1: the Settings tab is too centred and needs rearranging.** Which
+  Settings — Premium's, the dealer dashboard's, or both — was not stated.
+- [ ] **UX-2: the side tab should auto-scroll to the button that was clicked,**
+  so the dropdown it opens is on screen instead of below the fold.
+- [x] **UX-3: the photo count pill sat behind the back button on the car
+  page.** It was `top:14/left:14` on the desktop mosaic, directly under the
+  floating back/share bar. Moved to bottom-right on desktop AND mobile (mobile
+  was bottom-LEFT, so the two layouts also disagreed). Bottom-right is clear of
+  the centred dots (`.cdp-dots`, bottom 16px, left 50%) and of the arrows
+  (`.cdp-arrow`, vertically centred). `CarDetailPage.jsx`.
+
+### Push
+- [ ] **PUSH-5: "ID verification submitted" does not arrive as a phone push.**
+  Per CLAUDE.md a row in `dealer_notifications` / `salesman_notifications` IS
+  the push, and ops alerts go through `notify_ops`. So the question is whether
+  the ID-verification path inserts a notification row at all — check that
+  before looking at `send-push`, which is almost certainly not the problem.
+
+### Auth — FIXED this session
+- [x] **AUTH-2 (was live, blocked dealer sign-in): signing in and being signed
+  straight back out** with "You hadn't used ShiftOS for 33 days, so we signed
+  you out to keep your account safe."
+  `useIdleLogout` kept the last-activity stamp in ONE localStorage key shared
+  by every account on the browser, and nothing reset it on sign-in. Sign out,
+  come back five weeks later, sign in — `check()` runs on page load before any
+  pointer event can refresh the stamp, reads the 33-day-old value and signs the
+  new session out. The login itself always worked; it could not survive its
+  first second. Same for a second account signing in on a browser holding
+  someone else's stale stamp.
+  Fix: compare the stamp against `session.user.last_sign_in_at` — a stamp older
+  than the login it is being applied to says nothing about that login, so it is
+  reseeded instead of enforced. Plus seed on `SIGNED_IN` and clear on
+  `SIGNED_OUT`. The guard is the race-free half; the listener is belt and
+  braces. The 30-day window itself is unchanged and still enforced for a
+  genuinely idle session.
+
 ## JPJ registration data now refreshes itself — 2026-09-05
 
 The Market Demand tab shipped reading four year-files that had been loaded BY
