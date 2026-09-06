@@ -305,7 +305,7 @@ export default function AddCarForm({ onPublished, onStocked, mode, onBack, onCon
       const urls = [];
       for (const file of accepted) {
         const path = `stock/${dealerId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-        const { error: upErr } = await supabase.storage.from("car-images").upload(path, file);
+        const { error: upErr } = await supabase.storage.from("car-images").upload(path, file, { cacheControl: '31536000' });
         if (upErr) throw upErr;
         urls.push(supabase.storage.from("car-images").getPublicUrl(path).data.publicUrl);
       }

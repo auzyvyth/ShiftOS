@@ -10,6 +10,7 @@ import { i18nReady } from './i18n/config';
 import './utils/installPrompt';
 import App from '@/App';
 import { logError } from '@/utils/logError';
+import { purgeDeadImageCaches } from '@/utils/localCache';
 import '@/index.css';
 
 const queryClient = new QueryClient({
@@ -192,6 +193,10 @@ if ('serviceWorker' in navigator) {
 // awaits one small chunk for Malay ones, so the first paint is already in the
 // right language instead of flashing English. It never rejects — a failed
 // locale fetch falls back to en — so the app always mounts.
+// Reclaim the Cache Storage buckets the old hand-rolled image precache left on
+// existing installs — they hold real megabytes and nothing reads them.
+purgeDeadImageCaches();
+
 i18nReady.then(() => {
   ReactDOM.createRoot(document.getElementById('root')).render(
     <Sentry.ErrorBoundary

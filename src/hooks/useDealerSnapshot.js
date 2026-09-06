@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useCachedFetch } from './useCachedFetch';
 import { supabase } from '../supabaseClient';
 
 async function fetchSnapshot(userId) {
@@ -138,13 +138,22 @@ async function fetchSnapshot(userId) {
   };
 }
 
+// Backed by useCachedFetch (localStorage) rather than react-query. react-query
+// holds its cache in memory only — there is no persister wired up — so the
+// snapshot died with the tab and every PWA cold start re-ran all six queries
+// against an empty cache before the Overview tab could show a number.
+//
+// ttlMs: 0 makes this pure stale-while-revalidate: the cached snapshot paints
+// immediately on every visit AND a fresh fetch always runs behind it. Anything
+// higher would leave the dealer looking at this morning's numbers all day —
+// useCachedFetch's default is a full day, which is right for a report and wrong
+// for a dashboard.
 export function useDealerSnapshot(userId) {
-  const { data: snapshot, isLoading: loading } = useQuery({
-    queryKey: ['dealer-snapshot', userId],
-    queryFn: () => fetchSnapshot(userId),
-    enabled: !!userId,
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: snapshot, loading } = useCachedFetch(
+    userId ? `snapshot:${userId}` : null,
+    () => fetchSnapshot(userId),
+    { enabled: !!userId, ttlMs: 0 },
+  );
 
   return { snapshot: snapshot ?? null, loading };
 }

@@ -35,7 +35,7 @@ import CarCard from "@/components/CarCard";
 import HeroCarousel from "@/components/HeroCarousel";
 import SearchAutocomplete from "@/components/SearchAutocomplete";
 import { supabase } from "../supabaseClient";
-import { readCache, writeCache, precacheImages } from "../utils/localCache";
+import { readCache, writeCache } from "../utils/localCache";
 import { useSiteProfile } from "../hooks/useSiteProfile";
 import ReviewsSection from "../components/reviews/ReviewsSection";
 import useTenant, { isSubdomain, getSubdomain } from "../hooks/useTenant";
@@ -364,12 +364,10 @@ const HomePage = () => {
         setStock(stockCount);
         setHotDeals(hotDealsRows);
         result = { featured: featuredRows, stock: stockCount, hotDeals: hotDealsRows };
-        if (dealerId) {
-          precacheImages(
-            featuredRows.flatMap((c) => Array.isArray(c.images) ? c.images.slice(0, 1) : []).filter(Boolean),
-            "hp-images-v1",
-          );
-        }
+        // The precacheImages() call that used to sit here wrote into an
+        // 'hp-images-v1' Cache Storage bucket that nothing ever read back. Car
+        // photos are cached by the service worker's runtime route now
+        // (vite.config.js), which serves what the storefront actually renders.
       }
       setLoading(false);
       return result;

@@ -925,7 +925,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       const path = `${folder}docs/${Date.now()}-${rand}-${(upload.name || "document").replace(/[^a-zA-Z0-9._-]/g, "_")}`;
       const { error } = await supabase.storage
         .from("car-images")
-        .upload(path, upload, { contentType: upload.type });
+        .upload(path, upload, { contentType: upload.type, cacheControl: '31536000' });
       if (error) throw error;
       const url = supabase.storage.from("car-images").getPublicUrl(path)
         .data.publicUrl;
@@ -1562,6 +1562,10 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         .upload(path, compressed, {
           upsert: true,
           contentType: compressed.type || "image/jpeg",
+          // Immutable: the path carries Date.now() + a random suffix, so a new
+          // photo is a new URL. Supabase Storage defaults to max-age=3600, which
+          // made every car photo re-download roughly hourly.
+          cacheControl: '31536000',
         });
       if (!error) {
         const url = supabase.storage
@@ -1838,7 +1842,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       const name = `${folder}${Date.now()}-${(file.name || "photo.jpg").replace(/[^a-zA-Z0-9._-]/g, "_")}`;
       const { error } = await supabase.storage
         .from("car-images")
-        .upload(name, file, { upsert: true, contentType: file.type || "image/jpeg" });
+        .upload(name, file, { upsert: true, contentType: file.type || "image/jpeg", cacheControl: '31536000' });
       if (error) {
         // Tag it as an IMAGE failure. A storage RLS rejection also carries
         // code 42501, which the publish catch-block otherwise reports as

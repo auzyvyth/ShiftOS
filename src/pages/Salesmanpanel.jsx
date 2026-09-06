@@ -90,6 +90,17 @@ import AiLoadingState from "../components/ai/AiLoadingState";
 import AiQuotaBadge from "../components/ai/AiQuotaBadge";
 import PushToggle from "../components/PushToggle";
 import { isPremiumSalesman } from "../utils/salesmanPlan";
+import {
+  readCache,
+  writeCache,
+  redactLeadsForCache,
+  redactProfileForCache,
+  rememberPanelUid,
+  seedPanelCache,
+} from "../utils/panelCache";
+
+// Cache namespace for this panel (keys look like `spanel_leads_<uid>`).
+const PANEL_CACHE_KEY = "spanel";
 
 // ShiftOS Studio — full-screen marketing-content editor (camera overlay +
 // branded templates). Lazy so the panel's initial bundle stays lean.
@@ -164,7 +175,15 @@ export default function SalesmanPanel() {
  const { t } = useTranslation();
  const redirectByRole = useRoleRedirect("salesman");
 
- const [profile, setProfile] = useState(null);
+ // First-frame cache seed. This panel had NO persistent cache at all, so every
+ // cold start was a spinner through getUser() -> profiles.select() -> the
+ // userId+profile effect's own queries — four serial round trips to
+ // ap-southeast-2 before a single row rendered. State now initialises from what
+ // this device already knows; the live bootstrap overwrites it, and clears it if
+ // the real uid differs.
+ const [seed] = useState(() => seedPanelCache(PANEL_CACHE_KEY));
+
+ const [profile, setProfile] = useState(seed.profile);
  const { can: canPerm, permissions } = usePermissions(profile);
  // Owner-granted extra: Outreach Hub (scoped to this salesman's own leads).
  const showOutreach = hasFeature('salesman', 'outreach', permissions);
@@ -172,7 +191,7 @@ export default function SalesmanPanel() {
  // Broadcast presence on the dealer's shared channel so the dealer dashboard
  // sees this salesman as live (keyed on the dealer's profile id).
  usePresence(profile?.dealer_id || profile?.id || null);
- const [userId, setUserId] = useState(null);
+ const [userId, setUserId] = useState(seed.uid);
  // This panel has NO inbox tab, so a buyer who chose "chat here" on a car
  // assigned to this rep had no reachable channel at all. chat_threads.lead_id
  // is written by the DB trigger on the buyer's first message; the map lets the
@@ -183,7 +202,9 @@ export default function SalesmanPanel() {
  // car gets a second thread that dedups onto the same lead. These rows arrive
  // ordered by last_message_at desc, so the first one seen is the live one.
  chatThreads.forEach((th) => { if (th.lead_id && !threadByLead.has(th.lead_id)) threadByLead.set(th.lead_id, th); });
- const [loading, setLoading] = useState(true);
+ // A cached profile is enough to render the panel; the fresh one lands moments
+ // later and the role / dealer_id gates below re-run against it.
+ const [loading, setLoading] = useState(!seed.profile);
  const [activeTab, setActiveTab] = useState("dashboard");
  const [moreOpen, setMoreOpen] = useState(false);
  const [subTab, setSubTab] = useState("overview");
@@ -203,7 +224,7 @@ export default function SalesmanPanel() {
  const [commission, setCommission] = useState(null);
 
  // my listings
- const [myListings, setMyListings] = useState([]);
+ const [myListings, setMyListings] = useState(seed.listings);
  const [listingCopied, setListingCopied] = useState({}); // { [carId]: 'link' | 'wa' | null }
 
  // shared dealer inventory (browse + add to deals)
@@ -215,15 +236,15 @@ export default function SalesmanPanel() {
  const [featuredIds, setFeaturedIds] = useState([]); // listing_ids this salesman has featured
 
  // appointments
- const [appointments, setAppointments] = useState([]);
+ const [appointments, setAppointments] = useState(seed.appts);
 
  // Notifications
  const [notifications, setNotifications] = useState([]);
  const [notifOpen, setNotifOpen] = useState(false);
 
  // Enquiries
- const [enquiries, setEnquiries] = useState([]);
- const [enquiriesLoading, setEnquiriesLoading] = useState(true);
+ const [enquiries, setEnquiries] = useState(seed.enquiries);
+ const [enquiriesLoading, setEnquiriesLoading] = useState(!seed.enquiries.length);
  const [openTemplateId, setOpenTemplateId] = useState(null);
  const [templateToast, setTemplateToast] = useState(null);
  const [openAiReplyId, setOpenAiReplyId] = useState(null);
@@ -245,14 +266,14 @@ export default function SalesmanPanel() {
  const [tgTesting, setTgTesting] = useState(false);
 
  // Leads
- const [leads, setLeads] = useState([]);
+ const [leads, setLeads] = useState(seed.leads || []);
  const [chatSheet, setChatSheet] = useState(null);
  const [editPhoneLeadId, setEditPhoneLeadId] = useState(null);
  const [editPhoneVal, setEditPhoneVal] = useState("");
  const [phoneSavingId, setPhoneSavingId] = useState(null);
  const [staleLeads, setStaleLeads] = useState([]);
  const [leaderboard, setLeaderboard] = useState([]);
- const [leadsLoading, setLeadsLoading] = useState(true);
+ const [leadsLoading, setLeadsLoading] = useState(!seed.leads);
  // Incoming (unclaimed) leads pool — first salesman to claim wins.
  const [incomingLeads, setIncomingLeads] = useState([]);
  const [incomingLoading, setIncomingLoading] = useState(true);
@@ -492,7 +513,13 @@ export default function SalesmanPanel() {
    ? supabase.auth.setSession({ access_token: _at, refresh_token: _rt })
        .then(() => { clearHandoffTokens(); })
    : Promise.resolve();
- authReady.then(() => supabase.auth.getUser()).then(async ({ data: { user }, error }) => {
+ // getSession() reads the persisted token; the getUser() this used to call is a
+ // NETWORK round trip to /auth/v1/user, and it sat in front of the profile query
+ // which sat in front of every data query. RLS on the server is what actually
+ // gates the data, so validating the JWT here bought a hop and no safety. Lite,
+ // Premium and the dealer dashboard already use getSession().
+ authReady.then(() => supabase.auth.getSession()).then(async ({ data, error }) => {
+ const user = data?.session?.user;
  if (error ||!user) {
  setLoading(false);
  navigate("/login");
@@ -500,6 +527,18 @@ export default function SalesmanPanel() {
  }
 
  setUserId(user.id);
+ // The first-frame seed was keyed on the LAST user on this device. If a
+ // different account signed in since, everything painted from it belongs to
+ // someone else — blank it before the fresh data lands.
+ if (seed.uid && seed.uid !== user.id) {
+ setProfile(null);
+ setMyListings([]);
+ setLeads([]);
+ setEnquiries([]);
+ setAppointments([]);
+ setLoading(true);
+ }
+ rememberPanelUid(PANEL_CACHE_KEY, user.id);
  const { data: profileData, error: profileError } = await supabase
  .from("profiles")
  .select("*")
@@ -527,6 +566,10 @@ export default function SalesmanPanel() {
 
  setProfile(profileData);
  setLoading(false);
+ // Cached so the NEXT cold start clears the loading gate on frame 1. The role
+ // and dealer_id gates above re-run against the fresh row when it lands, so a
+ // cached profile only ever brings the panel forward, never past a check.
+ writeCache(`${PANEL_CACHE_KEY}_profile_${user.id}`, redactProfileForCache(profileData));
  if (profileData.dealer_id) {
   supabase
    .from("profiles")
@@ -649,6 +692,7 @@ export default function SalesmanPanel() {
    }
  }
  setMyListings(merged);
+ writeCache(`${PANEL_CACHE_KEY}_listings_${userId}`, merged);
  setFeaturedIds((featuredRows || []).map((r) => r.listing_id));
  };
  fetchMyListings();
@@ -698,6 +742,7 @@ export default function SalesmanPanel() {
    .filter((a) => { if (seen.has(a.id)) return false; seen.add(a.id); return true; })
    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
  setAppointments(merged);
+ writeCache(`${PANEL_CACHE_KEY}_appts_${userId}`, merged);
  };
  fetchAppts();
 
@@ -756,6 +801,7 @@ export default function SalesmanPanel() {
      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
      .slice(0, 40);
    setEnquiries(merged);
+   writeCache(`${PANEL_CACHE_KEY}_enquiries_${userId}`, merged);
    setEnquiriesLoading(false);
  });
  })();
@@ -773,6 +819,9 @@ export default function SalesmanPanel() {
  .then(async ({ data }) => {
  const rows = data || [];
  setLeads(rows);
+ // Buyer IC + home address are stripped before this touches disk — see
+ // redactLeadsForCache in ../utils/panelCache.
+ writeCache(`${PANEL_CACHE_KEY}_leads_${userId}`, redactLeadsForCache(rows));
  setLeadsLoading(false);
  if (rows.length === 0) return;
  // AI lead scoring — cached per session keyed on a signature of the leads'

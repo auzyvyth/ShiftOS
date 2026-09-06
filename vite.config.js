@@ -127,6 +127,43 @@ export default defineConfig({
 							}],
 						},
 					},
+					// Car photos. Every car-images path is `<uid>/<Date.now()>-<rand>-<name>`,
+					// so a given URL's bytes never change — a new photo is a new URL. That
+					// makes CacheFirst safe and correct: once a listing's photo has been
+					// seen on this device it is served from disk forever, no revalidation.
+					//
+					// This replaces the hand-rolled precacheImages() the two salesman panels
+					// ran on every load. Those wrote into their own Cache Storage buckets
+					// ("slite-images-v1" / "sp-images-v1") that NOTHING ever read back —
+					// there was no fetch handler for them — so they eagerly downloaded two
+					// photos per listing and threw the bytes away, competing for bandwidth
+					// with the queries the user was waiting on. This route caches what the
+					// page actually renders, and actually serves it back.
+					//
+					// `avatars` is deliberately NOT matched: those upload with
+					// `upsert: true` to a STABLE path, so the same URL does change bytes.
+					// They stay on normal HTTP caching (the panels already cache-bust the
+					// URL with a query string when one is replaced).
+					{
+						urlPattern: ({ url }) =>
+							url.hostname.endsWith('.supabase.co') &&
+							url.pathname.startsWith('/storage/v1/object/public/car-images/'),
+						handler: 'CacheFirst',
+						options: {
+							cacheName: 'car-images-v1',
+							expiration: {
+								// A dealer with 40 listings x ~10 photos is ~400 images; LRU
+								// past that. purgeOnQuotaError lets the browser reclaim this
+								// cache under storage pressure instead of failing writes.
+								maxEntries: 500,
+								maxAgeSeconds: 60 * 60 * 24 * 60,
+								purgeOnQuotaError: true,
+							},
+							// 0 = an opaque cross-origin response. Images requested by <img>
+							// are no-cors, so without 0 here nothing would ever be cached.
+							cacheableResponse: { statuses: [0, 200] },
+						},
+					},
 				],
 				// offline.html has to be in the precache from the very first SW
 				// install, not fetched on demand — by definition it's only ever

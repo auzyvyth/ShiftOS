@@ -159,14 +159,29 @@ project — any visitor who opens a chat can call these.
   plan, so the INNER JOIN drops the row and the settings card renders nothing.
   Residue of the C4 tiering split-brain. Either add the row or LEFT JOIN and
   render the caps as unlimited.
-- [ ] **SEC-B4 (open): the remaining `authenticated` definer surface is not
-  audited.** 169 functions; this pass read the ones that take an argument and
-  do work while checking nothing. Not re-checked: `count_other_dealer_vin_plate`
-  (count-only, but it is a VIN/plate existence oracle across dealers) and
-  `redeem_invite` (the code is the credential, which is the accepted pattern).
-  The buyer-admin pair (`admin_set_buyer_ban`, `admin_revoke_buyer_sessions`) was
-  checked and is correct — both go through `_assert_buyer_action_allowed`, which
-  requires superadmin, refuses self-targeting, and refuses a non-buyer target.
+- [ ] **SEC-B5 (NEEDS YOUR DECISION, not a bug): `auth_account_status(p_email)`
+  is an account-enumeration oracle open to `anon`.** Hand it any email, it
+  answers "does this have an account, and does it have a password". It is
+  deliberate — it drives "this email signed up with Google, use a magic link"
+  at `LoginPage.jsx:360` and `BuyerAuthPage.jsx:114`. There is no clean fix
+  that keeps the UX: PostgREST gives the function no caller IP, so the only
+  levers are (a) a global rate cap, which degrades to a WRONG "no account
+  found" message for a legitimate user unless both call sites learn to treat
+  null as "unknown", or (b) collapse the two booleans into one vaguer answer
+  and lose the Google-vs-password branch. Pairs with SEC-A1 (leaked-password
+  protection is off, Pro-only): enumeration plus weak passwords is the real
+  risk. Decide which trade you want.
+- [ ] **PUSH-4 (LOW, design note): `push_swap_endpoint` REDIRECTS, its sibling
+  only deletes.** Both treat the push endpoint as the credential, which is
+  correct — `public/push-sw.js:134` calls it from a service worker where no
+  session exists, so `auth.uid()` is null by construction. But
+  `push_forget_device` can only DELETE (worst case: someone loses push),
+  whereas this one repoints a row to a caller-supplied subscription while
+  keeping the victim's `user_id`, and does an unscoped
+  `delete from push_subscriptions where endpoint = v_new`. Both need the
+  victim's endpoint string, which is secret, so this is low. Written down so
+  it is not rediscovered as a finding: deleting is safe under a bearer model,
+  redirecting is not.
 
 ## Anon SECURITY DEFINER sweep — 2026-09-05 (two real holes closed)
 
@@ -236,15 +251,6 @@ and re-probed after it.
   sit behind the edge rate limit (3 req/IP/5min, `middleware.js`). Real fix is
   a service-role key for that route, which is a Vercel env change (user
   action); do that and revoke both.
-
-- [ ] **SEC-A6 (open): 169 SECURITY DEFINER functions are executable by
-  `authenticated`.** Not audited this session. It matters more than it sounds
-  because a GUEST BUYER is `authenticated`, not `anon` — anonymous sign-in
-  hands out the authenticated role. So "authenticated only" is not a real
-  boundary against the public on this project, and any function relying on it
-  needs an internal ownership check, the way `get_dealer_car_analytics` does.
-  Same triage as this pass: ignore trigger functions, read the ones that take
-  an argument and do work.
 
 ## Marketplace seller trust signals — 2026-09-03 (verified + sold count shipped)
 
@@ -2283,14 +2289,21 @@ to the client, which is the intent.
   {`idx_leads_dealer_stage`, `leads_dealer_stage_idx`} and `deal_products`
   {`deal_products_dealer_id_idx`, `idx_deal_products_dealer_id`}. Dropped the redundant
   one from each pair (kept the `idx_`-prefixed name for consistency).
-- [ ] **INFRA-3 (HIGH at scale): `auth_rls_initplan` — 115 policies re-evaluate `auth.uid()`
-  PER ROW.** Worst on the hot tables: `car_listings` (13), `leads` (7), `profiles` (5),
-  `appointments` (5), `salesman_notifications` (5). FIX: wrap the call as
-  `(select auth.uid())` so Postgres evaluates it once per query instead of per row. Same
-  CLASS of bug as the shipped PERF-1 fix (marking helpers STABLE) but a different mechanism
-  — PERF-1 did NOT fix this. NOT a quick job: 115 policies, and CLAUDE.md's RLS rule
-  ("test with a real row read before shipping") applies to every one. Do it as its own
-  session, hot tables first, and re-run the advisor after.
+- [ ] **INFRA-3 (PARTIALLY DONE — hot tables shipped, 45 tables remain):
+  `auth_rls_initplan`.** Done 2026-09-06 (`20260906b_rls_initplan_hot_tables`):
+  47 policies on `car_listings`, `leads`, `appointments`,
+  `salesman_notifications` and `whatsapp_enquiries` now wrap every call as
+  `(select fn())`. EXPLAIN ANALYZE confirms 20 InitPlans at loops=1.
+  CORRECTION to the original entry: it counted only the 118 unwrapped
+  `auth.uid()` calls. Also unwrapped platform-wide are **78
+  `get_my_dealer_id()`, 22 `is_superadmin()`, 7 `auth.jwt()`** plus
+  `is_active_salesman` / `is_linked_salesman` / `salesman_under_listing_limit`
+  — ~225 call sites total, and the helpers are the expensive ones because they
+  are SECURITY DEFINER functions that READ `profiles`, once per row. REMAINING:
+  the other ~45 tables (`profiles` 4, `reviews` 4, `scheduled_nudges` 4,
+  `price_alerts` 4, the long tail). The migration's DO block is a mechanical
+  rewrite — widen its table list and re-run, but re-do the persona row-count
+  probe for the new tables first (CLAUDE.md: test with a real row read).
 - [ ] **INFRA-4 (MED at scale): `multiple_permissive_policies` — 150 instances.**
   `profiles` (24), `car_listings` (19), `leads` (18), `appointments` (12),
   `loan_applications` (10). Every redundant PERMISSIVE policy on the same table+action is
@@ -2396,16 +2409,26 @@ native build.
   brand asset is your call, not a silent refactor. Options: (a) leave it, (b) re-cut
   the icon on the #080C14 background, (c) set `background_color` to white so the
   splash matches the icon.
-- [ ] **MOBILE-1 (DO THIS ONE EARLY — ACT-7 reclassified): migrate auth to PKCE.**
-  `src/supabaseClient.js` sets no `flowType`, so it defaults to **implicit** (tokens land in
-  the URL hash). TODO has this filed as ACT-7 "optional, deferred". For a native/wrapped app
-  it stops being optional: OAuth, magic-link and password-reset callbacks inside a
-  Capacitor/RN WebView need PKCE + a custom URL scheme or Universal/App Links, and implicit
-  flow does not survive that handoff reliably. This is the ONE item where deferring makes it
-  MORE expensive — the risk is regressing `AuthConfirmPage` (token_hash) and
-  `ResetPasswordPage` (`type=recovery`) parsing, and that blast radius only grows with the
-  user base. Do it now while it's small, with its own tested pass. Do NOT flip `flowType`
-  blindly.
+- [ ] **MOBILE-1 (CODE DONE, NOT SHIPPED — blocked on a staging auth test):
+  migrate auth to PKCE.** Written and building on branch
+  `claude/pkce-auth-flow`: `flowType: 'pkce'` in `src/supabaseClient.js`, plus
+  the recovery-detection fix it forces. `ResetPasswordPage.jsx:74` detected a
+  password reset by looking for `type=recovery` in the URL; PKCE sends `?code=`
+  with no type at all, so that check falls through to `redirectByRole` and the
+  user is bounced to their dashboard with no way to set a password. It now also
+  accepts `flow=recovery`, a marker added to the reset links requested at
+  `LoginPage.jsx:206` and `BuyerAuthPage.jsx:164`, and keeps the `type=recovery`
+  check so links already sitting in inboxes (and the edge-function
+  `generateLink` emails, which stay implicit) still work.
+  DELIBERATELY HELD BACK FROM PROD: this changes how every password reset,
+  magic link and Google sign-in completes, and a mistake locks people out of
+  their own accounts. It cannot ship on a code read. Before merging, click
+  through all five on the Vercel preview: signup confirm, magic link, Google,
+  password reset, cross-subdomain handoff.
+  KNOWN BEHAVIOUR CHANGE, not a bug: the PKCE verifier lives in the requesting
+  browser's local storage, so a reset link must be opened on the device that
+  asked for it. Cross-device reset worked under the implicit flow and will not
+  after. The expired-link copy on that branch names it as a cause.
 - [ ] **MOBILE-2 (BLOCKING DECISION — gates MOBILE-3 and MOBILE-4): pick the native path.**
   Capacitor-wrapping this React app vs a separate React Native client. This single call
   determines the shape of the push-notification work, the CORS allowlist change, and whether

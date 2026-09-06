@@ -62,7 +62,7 @@ export default function CarFormFast({ onCreate }) {
       const urls = await Promise.all(images.map(async (file) => {
         const ext = file.name.split(".").pop() || "jpg";
         const path = `${profile.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false });
+        const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false, cacheControl: '31536000' });
         if (upErr) throw upErr;
         const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(path);
         return publicUrl;
