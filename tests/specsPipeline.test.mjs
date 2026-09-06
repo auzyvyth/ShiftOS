@@ -70,6 +70,51 @@ ok('the same year range on a DIFFERENT model is fine', validateRows([
   row({ model: 'Fortuner', year_from: 2015, year_to: 2022 }),
 ]).ok);
 
+// ── the other overlap: a collected row against the HAND-CURATED table ───────
+// Hand rows win at lookup because they sit earlier in SPECS, so a collected row
+// whose years overlap one is dead on arrival - it lands in the generated block
+// and rows.find() stops at the curated row before it. This shipped: a batch
+// re-collecting already-curated models emitted Honda City 2008-2013 and two
+// Vios rows on top of curated rows covering the same years, and the run
+// reported success.
+const curated = [
+  { make: 'Toyota', model: 'Hilux', yearFrom: 2005, yearTo: 2015 },
+  { make: 'Toyota', model: 'Hilux', yearFrom: 2016, yearTo: 2099 },
+];
+ok('a collected row overlapping a curated row is rejected',
+   validateRows([row({ year_from: 2010, year_to: 2014 })], curated).errors.length > 0);
+ok('the error names the curated row it collides with',
+   validateRows([row({ year_from: 2010, year_to: 2014 })], curated).errors[0].includes('2005-2015'));
+ok('an open-ended curated row blocks a later collected row',
+   validateRows([row({ year_from: 2021, year_to: null })], curated).errors.length > 0);
+
+// An exact yearFrom match is generate.mjs dropping the row, which is the
+// designed way a batch may revisit a curated model. Failing there would reject
+// every honest batch that happens to re-collect one.
+ok('an exact yearFrom match is a skip, not an error',
+   validateRows([row({ year_from: 2016, year_to: 2020 })], curated).ok);
+ok('an exact match still passes when its range spans another curated row',
+   validateRows([row({ year_from: 2016, year_to: null })], curated).ok);
+
+ok('a curated row for a DIFFERENT model does not interfere',
+   validateRows([row({ model: 'Fortuner', year_from: 2010, year_to: 2014 })], curated).ok);
+ok('a gap between curated rows is fine',
+   validateRows([row({ year_from: 2003, year_to: 2004 })],
+                [{ make: 'Toyota', model: 'Hilux', yearFrom: 2005, yearTo: 2015 }]).ok);
+ok('curated matching ignores case and dashes, like lookupFullSpec',
+   validateRows([row({ make: 'Mazda', model: 'CX-5', year_from: 2014, year_to: 2018 })],
+                [{ make: 'mazda', model: 'cx 5', yearFrom: 2013, yearTo: 2016 }]).errors.length > 0);
+ok('no curated list behaves exactly as before',
+   validateRows([row({ year_from: 2010, year_to: 2014 })]).ok);
+
+// Several curated rows already overlap each other (Perodua Myvi 2005-2011 and
+// 2011-2017 both cover 2011). That is a pre-existing condition, and failing
+// every build on it would help nobody.
+ok('curated rows are never checked against each other', validateRows([], [
+  { make: 'Perodua', model: 'Myvi', yearFrom: 2005, yearTo: 2011 },
+  { make: 'Perodua', model: 'Myvi', yearFrom: 2011, yearTo: 2017 },
+]).ok);
+
 // ── unit slips: the mistakes that look like real numbers ────────────────────
 ok('kW written into horsepower is rejected', rejects({ horsepower: 8 }));
 ok('L/100km written into km/L is rejected', rejects({ fuel_consumption: 2 }));
