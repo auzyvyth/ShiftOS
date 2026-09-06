@@ -1234,7 +1234,7 @@ export default function CarDetailPage() {
       // for agent-vs-dealer below — without it in the select, carData.seller_role is
       // always undefined and the get_salesman_by_id lookup never fires, so a Salesman
       // Lite listing silently falls through to a nameless "Seller" with no mini-page link.
-      const PUBLIC_FIELDS = "id,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,video_url,salesman_slug,document_types,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating,cylinders,market_avg_price,market_sample_count,puspakom_b5_date,puspakom_b7_date,seller_role,payment_type,sambung_monthly,sambung_months_left,sambung_balance,sambung_deposit,sambung_bank,docs_verified,geran_status,condition_declared_at";
+      const PUBLIC_FIELDS = "id,listing_title,specs_overridden,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,video_url,salesman_slug,document_types,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating,cylinders,market_avg_price,market_sample_count,puspakom_b5_date,puspakom_b7_date,seller_role,payment_type,sambung_monthly,sambung_months_left,sambung_balance,sambung_deposit,sambung_bank,docs_verified,geran_status,condition_declared_at";
       let { data: carData, error } = await supabase
         .from("public_car_listings")
         .select(PUBLIC_FIELDS)
@@ -1808,6 +1808,11 @@ export default function CarDetailPage() {
   // otherwise the badge honestly reads "Docs on File" (a file merely exists).
   const docsVerified = !!car.docs_verified;
   const carTitle = `${car.year} ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""}`;
+  // The seller's headline renders UNDER the masthead, never as it. A 120-char
+  // string in 4.4rem Bebas breaks the page, and every SEO surface (title tag,
+  // og:title, JSON-LD, breadcrumb, alt text) has to stay the structured name so
+  // Google keeps matching "<model> <chassis code>" queries to this listing.
+  const sellerHeadline = (car.listing_title || '').trim();
   // Display nameplate: model, then trim, then engine size (derived from cc so it
   // reads "6.5L" not the raw "6.5" baked into the variant), then year — e.g.
   // "812 Superfast 6.5L 2021". The variant often carries a leading displacement
@@ -2568,6 +2573,11 @@ export default function CarDetailPage() {
               </button>
             </div>
           </div>
+          {sellerHeadline && (
+            <p style={{ fontSize:14, lineHeight:1.4, color: th.textSec, fontFamily:"var(--xd-font-body)", margin:'-6px 0 12px' }}>
+              {sellerHeadline}
+            </p>
+          )}
           {/* Mini details (body · transmission · fuel) — sits directly under the
               title, per layout */}
           <p style={{ fontSize:12, color: th.textMuted, letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:600, margin:'0 0 12px' }}>
@@ -3169,6 +3179,11 @@ export default function CarDetailPage() {
       model/variant/year share one strong colour. */}
   <span style={{ color: th.text }}>{car.brand} {nameplate}</span>
 </h1>
+            {sellerHeadline && (
+              <p style={{ fontSize: 15, lineHeight: 1.45, color: th.textSec, fontFamily: "var(--xd-font-body)", margin: "-4px 0 16px" }}>
+                {sellerHeadline}
+              </p>
+            )}
             <p
               style={{
                 fontSize: 12,

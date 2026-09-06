@@ -35,7 +35,7 @@ const PER_PAGE = 12;
 /* Trimmed field list for the hero rows (photo + price only, above-the-fold
    critical path) — the full CAR_FIELDS (29 cols) is for detail-heavy grids,
    not warranted here. */
-const HERO_ROW_FIELDS = 'id,slug,brand,model,variant,year,selling_price,original_price,images,created_at';
+const HERO_ROW_FIELDS = 'id,slug,listing_title,brand,model,variant,year,selling_price,original_price,images,created_at';
 
 /* sanitizePrice depends on PRICE_STEPS from PriceDrumPicker so lives here */
 function sanitizePrice(val) {
