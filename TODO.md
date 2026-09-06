@@ -2323,21 +2323,31 @@ to the client, which is the intent.
   {`idx_leads_dealer_stage`, `leads_dealer_stage_idx`} and `deal_products`
   {`deal_products_dealer_id_idx`, `idx_deal_products_dealer_id`}. Dropped the redundant
   one from each pair (kept the `idx_`-prefixed name for consistency).
-- [ ] **INFRA-3 (PARTIALLY DONE — hot tables shipped, 45 tables remain):
-  `auth_rls_initplan`.** Done 2026-09-06 (`20260906b_rls_initplan_hot_tables`):
-  47 policies on `car_listings`, `leads`, `appointments`,
-  `salesman_notifications` and `whatsapp_enquiries` now wrap every call as
-  `(select fn())`. EXPLAIN ANALYZE confirms 20 InitPlans at loops=1.
-  CORRECTION to the original entry: it counted only the 118 unwrapped
-  `auth.uid()` calls. Also unwrapped platform-wide are **78
-  `get_my_dealer_id()`, 22 `is_superadmin()`, 7 `auth.jwt()`** plus
-  `is_active_salesman` / `is_linked_salesman` / `salesman_under_listing_limit`
-  — ~225 call sites total, and the helpers are the expensive ones because they
-  are SECURITY DEFINER functions that READ `profiles`, once per row. REMAINING:
-  the other ~45 tables (`profiles` 4, `reviews` 4, `scheduled_nudges` 4,
-  `price_alerts` 4, the long tail). The migration's DO block is a mechanical
-  rewrite — widen its table list and re-run, but re-do the persona row-count
-  probe for the new tables first (CLAUDE.md: test with a real row read).
+- [x] **INFRA-3: `auth_rls_initplan` — DONE (2026-09-06).** Two migrations:
+  `20260906b_rls_initplan_hot_tables` (47 policies on `car_listings`, `leads`,
+  `appointments`, `salesman_notifications`, `whatsapp_enquiries`) and
+  `20260906c_rls_initplan_remaining_tables` (the other 64 tables). Every call is
+  now wrapped as `(select fn())`, so it is an InitPlan evaluated once per query
+  instead of once per row scanned.
+  Final state, measured not assumed: **188 of 215 policies carry one of these
+  calls, 0 are left unwrapped, 0 got double-wrapped**, and the
+  `auth_rls_initplan` class has disappeared from the Supabase performance
+  advisor entirely (what remains there is `multiple_permissive_policies` 141,
+  `unindexed_foreign_keys` 67, `unused_index` 32 — INFRA-4 and INFRA-5).
+  CORRECTION to the original entry, kept because the undercount is the lesson:
+  it counted only the 118 unwrapped `auth.uid()` calls. The expensive ones were
+  the SECURITY DEFINER helpers — `get_my_dealer_id()` (78), `is_superadmin()`
+  (22), `auth.jwt()` (7), plus `is_active_salesman` / `is_linked_salesman` /
+  `salesman_under_listing_limit` — because each is a `profiles` READ, once per
+  row. ~225 call sites in total.
+  Safety: row counts visible to a dealer, a linked salesman, a standalone
+  salesman, a buyer and `anon` were captured across 25 tables before and after
+  and diffed byte-for-byte — identical, so no policy's meaning moved.
+  **The five hot tables are excluded from the second migration on purpose:**
+  the regex matches the inner call of an already-wrapped expression, so
+  re-running it over them would nest a second `(select ...)`. Reversal, if ever
+  needed, is stripping the wrapper — which is why no backup table was kept.
+
 - [ ] **INFRA-4 (MED at scale): `multiple_permissive_policies` — 150 instances.**
   `profiles` (24), `car_listings` (19), `leads` (18), `appointments` (12),
   `loan_applications` (10). Every redundant PERMISSIVE policy on the same table+action is
