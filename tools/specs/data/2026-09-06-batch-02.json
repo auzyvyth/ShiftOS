@@ -1,0 +1,187 @@
+{
+  "schema_version": "2.0",
+  "generated_at": "2026-09-06",
+  "batch": { "requested": 13, "returned": 11, "skipped": 2 },
+  "specs": [
+    {
+      "make": "BMW", "model": "M2", "generation": "F87",
+      "year_from": 2016, "year_to": 2021, "market": "CBU",
+      "chassis_codes": ["F87"],
+      "body_type": "Coupe", "doors": 2, "seats": 4,
+      "primary_variant": "M2 Competition",
+      "engine_cc": 2979, "cylinders": 6, "horsepower": 410, "torque_nm": 550,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "high",
+      "source_note": "M2 Competition uses the S55 twin-turbo (2979cc); the earlier 2016-2018 M2 used the N55 single-turbo at 370 PS/465 Nm.",
+      "variants": [
+        { "name": "M2", "horsepower": 370, "torque_nm": 465, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 4, "notes": "N55B30 single-turbo, 2016-2018; 7-speed DCT or 6-speed manual" },
+        { "name": "M2 Competition", "horsepower": 410, "torque_nm": 550, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 4, "notes": "S55 twin-turbo, 2018-2021; 7-speed DCT or 6-speed manual" }
+      ]
+    },
+    {
+      "make": "BMW", "model": "M2", "generation": "G87",
+      "year_from": 2023, "year_to": null, "market": "CBU",
+      "chassis_codes": ["G87"],
+      "body_type": "Coupe", "doors": 2, "seats": 4,
+      "primary_variant": "M2",
+      "engine_cc": 2993, "cylinders": 6, "horsepower": 460, "torque_nm": 550,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "S58 twin-turbo (2993cc); 8-speed torque-converter auto or 6-speed manual. Output raised to ~480 PS on later model-year cars.",
+      "variants": [
+        { "name": "M2", "horsepower": 460, "torque_nm": 550, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 4, "notes": "S58; 8-speed auto or 6-speed manual" }
+      ]
+    },
+    {
+      "make": "BMW", "model": "M3", "generation": "E90/E92/E93",
+      "year_from": 2007, "year_to": 2013, "market": "CBU",
+      "chassis_codes": ["E90", "E92", "E93"],
+      "body_type": "Coupe", "doors": 2, "seats": 4,
+      "primary_variant": "M3 Coupe",
+      "engine_cc": 3999, "cylinders": 8, "horsepower": 420, "torque_nm": 400,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "high",
+      "source_note": "S65 4.0 V8, 420 PS/400 Nm. E92 Coupe was the highest-volume body; E90 Sedan (4-door) and E93 Convertible shared the drivetrain. 7-speed M-DCT or 6-speed manual.",
+      "variants": [
+        { "name": "M3 Coupe", "horsepower": 420, "torque_nm": 400, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 4, "notes": "E92, 2 doors" },
+        { "name": "M3 Sedan", "horsepower": 420, "torque_nm": 400, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "E90, 4 doors" }
+      ]
+    },
+    {
+      "make": "BMW", "model": "M3", "generation": "F80",
+      "year_from": 2014, "year_to": 2018, "market": "CBU",
+      "chassis_codes": ["F80"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "M3 Competition",
+      "engine_cc": 2979, "cylinders": 6, "horsepower": 450, "torque_nm": 550,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "S55 twin-turbo. Standard M3 431 PS; Competition Package 450 PS. F80 M3 is the sedan; the two-door of this generation is the F82 M4. 7-speed DCT or 6-speed manual.",
+      "variants": [
+        { "name": "M3", "horsepower": 431, "torque_nm": 550, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "standard" },
+        { "name": "M3 Competition", "horsepower": 450, "torque_nm": 550, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "Competition Package" }
+      ]
+    },
+    {
+      "make": "BMW", "model": "M3", "generation": "G80",
+      "year_from": 2021, "year_to": null, "market": "CBU",
+      "chassis_codes": ["G80"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "M3 Competition",
+      "engine_cc": 2993, "cylinders": 6, "horsepower": 510, "torque_nm": 650,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "S58 twin-turbo. Base M3 480 PS/550 Nm with 6-speed manual (RWD); Competition 510 PS/650 Nm with 8-speed auto. Competition xDrive adds AWD.",
+      "variants": [
+        { "name": "M3", "horsepower": 480, "torque_nm": 550, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "6-speed manual" },
+        { "name": "M3 Competition", "horsepower": 510, "torque_nm": 650, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "8-speed auto, RWD" },
+        { "name": "M3 Competition xDrive", "horsepower": 510, "torque_nm": 650, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "M xDrive AWD" }
+      ]
+    },
+    {
+      "make": "BMW", "model": "M4", "generation": "F82",
+      "year_from": 2014, "year_to": 2020, "market": "CBU",
+      "chassis_codes": ["F82", "F83"],
+      "body_type": "Coupe", "doors": 2, "seats": 4,
+      "primary_variant": "M4 Competition",
+      "engine_cc": 2979, "cylinders": 6, "horsepower": 450, "torque_nm": 550,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "S55 twin-turbo; the two-door counterpart to the F80 M3. Standard 431 PS, Competition 450 PS. F83 is the convertible. 7-speed DCT or 6-speed manual.",
+      "variants": [
+        { "name": "M4", "horsepower": 431, "torque_nm": 550, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 4, "notes": "standard" },
+        { "name": "M4 Competition", "horsepower": 450, "torque_nm": 550, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 4, "notes": "Competition Package" }
+      ]
+    },
+    {
+      "make": "BMW", "model": "M4", "generation": "G82",
+      "year_from": 2021, "year_to": null, "market": "CBU",
+      "chassis_codes": ["G82", "G83"],
+      "body_type": "Coupe", "doors": 2, "seats": 4,
+      "primary_variant": "M4 Competition",
+      "engine_cc": 2993, "cylinders": 6, "horsepower": 510, "torque_nm": 650,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "S58 twin-turbo, two-door counterpart to G80 M3. Base 480 PS/550 Nm 6-speed manual; Competition 510 PS/650 Nm 8-speed auto; Competition xDrive adds AWD. G83 is the convertible.",
+      "variants": [
+        { "name": "M4", "horsepower": 480, "torque_nm": 550, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 4, "notes": "6-speed manual" },
+        { "name": "M4 Competition", "horsepower": 510, "torque_nm": 650, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 4, "notes": "8-speed auto, RWD" },
+        { "name": "M4 Competition xDrive", "horsepower": 510, "torque_nm": 650, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 4, "notes": "M xDrive AWD" }
+      ]
+    },
+    {
+      "make": "BMW", "model": "M5", "generation": "E60",
+      "year_from": 2005, "year_to": 2010, "market": "CBU",
+      "chassis_codes": ["E60", "E61"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "M5",
+      "engine_cc": 4999, "cylinders": 10, "horsepower": 507, "torque_nm": 520,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "high",
+      "source_note": "S85 5.0 V10, 507 PS/520 Nm, 7-speed SMG III single-clutch automated manual. E61 Touring wagon shared the drivetrain.",
+      "variants": [
+        { "name": "M5", "horsepower": 507, "torque_nm": 520, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "S85 V10, SMG III" }
+      ]
+    },
+    {
+      "make": "BMW", "model": "M5", "generation": "F10",
+      "year_from": 2011, "year_to": 2016, "market": "CBU",
+      "chassis_codes": ["F10"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "M5",
+      "engine_cc": 4395, "cylinders": 8, "horsepower": 560, "torque_nm": 680,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "S63 4.4 V8 twin-turbo, 560 PS/680 Nm; Competition Package raised output to 575 PS. 7-speed M-DCT.",
+      "variants": [
+        { "name": "M5", "horsepower": 560, "torque_nm": 680, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "standard" },
+        { "name": "M5 Competition", "horsepower": 575, "torque_nm": 680, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "Competition Package" }
+      ]
+    },
+    {
+      "make": "BMW", "model": "M5", "generation": "F90",
+      "year_from": 2018, "year_to": 2023, "market": "CBU",
+      "chassis_codes": ["F90"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "M5 Competition",
+      "engine_cc": 4395, "cylinders": 8, "horsepower": 625, "torque_nm": 750,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "S63 4.4 V8 twin-turbo with M xDrive AWD (switchable to RWD). Standard 600 PS; Competition 625 PS. 8-speed torque-converter automatic.",
+      "variants": [
+        { "name": "M5", "horsepower": 600, "torque_nm": 750, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "standard, M xDrive" },
+        { "name": "M5 Competition", "horsepower": 625, "torque_nm": 750, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "M xDrive" }
+      ]
+    },
+    {
+      "make": "BMW", "model": "M8", "generation": "F92",
+      "year_from": 2019, "year_to": null, "market": "CBU",
+      "chassis_codes": ["F91", "F92", "F93"],
+      "body_type": "Coupe", "doors": 2, "seats": 4,
+      "primary_variant": "M8 Competition",
+      "engine_cc": 4395, "cylinders": 8, "horsepower": 625, "torque_nm": 750,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "S63 4.4 V8 twin-turbo, M xDrive AWD, 8-speed automatic. Standard 600 PS, Competition 625 PS. F92 Coupe; F93 Gran Coupe (4-door) and F91 Convertible share the drivetrain.",
+      "variants": [
+        { "name": "M8", "horsepower": 600, "torque_nm": 750, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 4, "notes": "standard" },
+        { "name": "M8 Competition", "horsepower": 625, "torque_nm": 750, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 4, "notes": "Competition" }
+      ]
+    }
+  ],
+  "skipped": [
+    { "make": "BMW", "model": "X5 M / X6 M / X3 M / X4 M", "reason": "M SUVs — deferring to a dedicated BMW SUV batch so this batch stays M sedans/coupes" },
+    { "make": "BMW", "model": "M5 (G90, 2024-)", "reason": "current-gen V8 plug-in hybrid; effectively no Malaysian used-market volume yet and specs not confident enough" }
+  ]
+}
