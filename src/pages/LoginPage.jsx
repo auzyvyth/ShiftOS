@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { readLogoutNotice, clearLogoutNotice, daysSince } from "../utils/authNotice";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Clock } from "lucide-react";
-import { supabase } from "../supabaseClient";
+import { supabase, supabaseAuthLinks } from "../supabaseClient";
 import { handoffSuffix } from "../lib/authHandoff";
 import { markBuyerIntent } from "../lib/buyerAuth";
 
@@ -202,7 +202,10 @@ export default function LoginPage() {
       return;
     }
     setResetLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    // supabaseAuthLinks, not supabase: recovery mail stays on the implicit flow
+    // so the link still works when it is opened in Gmail's in-app browser rather
+    // than the browser that asked for it. See src/supabaseClient.js.
+    const { error } = await supabaseAuthLinks.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: `${base}/reset-password`,
     });
     setResetLoading(false);

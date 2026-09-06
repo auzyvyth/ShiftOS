@@ -2421,28 +2421,20 @@ native build.
   stays `<project-ref>.supabase.co/auth/v1/verify?token=...` until a custom auth
   domain (paid Supabase add-on) makes it `auth.xdrive.my`. The template explains
   the unfamiliar domain in the fallback block rather than hiding it.
-- [ ] **MOBILE-1 (CODE DONE, NOT SHIPPED — blocked on a staging auth test):
-  migrate auth to PKCE.** The RESET-PAGE RACE FIX that testing this uncovered has
-  been SPLIT OUT and shipped to prod on its own — it was a live bug with or
-  without PKCE — so this entry is now only about the flow switch itself.
-  Written and building on branch `claude/pkce-auth-flow`: `flowType: 'pkce'` in `src/supabaseClient.js`, plus
-  the recovery-detection fix it forces. `ResetPasswordPage.jsx:74` detected a
-  password reset by looking for `type=recovery` in the URL; PKCE sends `?code=`
-  with no type at all, so that check falls through to `redirectByRole` and the
-  user is bounced to their dashboard with no way to set a password. It now also
-  accepts `flow=recovery`, a marker added to the reset links requested at
-  `LoginPage.jsx:206` and `BuyerAuthPage.jsx:164`, and keeps the `type=recovery`
-  check so links already sitting in inboxes (and the edge-function
-  `generateLink` emails, which stay implicit) still work.
-  DELIBERATELY HELD BACK FROM PROD: this changes how every password reset,
-  magic link and Google sign-in completes, and a mistake locks people out of
-  their own accounts. It cannot ship on a code read. Before merging, click
-  through all five on the Vercel preview: signup confirm, magic link, Google,
-  password reset, cross-subdomain handoff.
-  KNOWN BEHAVIOUR CHANGE, not a bug: the PKCE verifier lives in the requesting
-  browser's local storage, so a reset link must be opened on the device that
-  asked for it. Cross-device reset worked under the implicit flow and will not
-  after. The expired-link copy on that branch names it as a cause.
+- [x] **MOBILE-1 — SHIPPED 2026-09-06. Auth runs on PKCE, except password reset.**
+  `flowType: 'pkce'` in `src/supabaseClient.js`. Implicit handed the access token
+  back in the URL fragment, where it lands in history, referrers and any URL
+  logger; PKCE hands back a short-lived `?code=` that is useless without the
+  verifier this browser kept. The real reason it was on the list is MOBILE-2:
+  it is the only flow that survives a native WebView handoff.
+  PASSWORD RESET IS DELIBERATELY EXEMPT and must stay that way. PKCE keeps its
+  secret in the browser that STARTED the reset, and on Android the email is
+  normally opened in Gmail's in-app browser — a different browser, no secret, so
+  the link would die with "link expired". Recovery mail therefore goes out
+  through `supabaseAuthLinks`, a stateless implicit-flow client that cannot read
+  or race the real session. If reset ever has to be PKCE, send it from an edge
+  function via `generateLink` (`invites/`, `create-salesman/` already do) —
+  do NOT point those two call sites back at the main client.
 - [ ] **MOBILE-2 (BLOCKING DECISION — gates MOBILE-3 and MOBILE-4): pick the native path.**
   Capacitor-wrapping this React app vs a separate React Native client. This single call
   determines the shape of the push-notification work, the CORS allowlist change, and whether
