@@ -12,7 +12,7 @@ import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
 import { trackEvent } from '../utils/analytics';
 import { chassisSearch } from '../utils/chassisCodes';
-import { readCache, writeCache, precacheImages } from '../utils/localCache';
+import { readCache, writeCache } from '../utils/localCache';
 import { PRICE_STEPS } from '../components/PriceDrumPicker';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import BodyTypeCarousel from '../components/marketplace/BodyTypeCarousel';
@@ -305,10 +305,10 @@ export default function MarketplacePage() {
         setCars(deduped);
         if (isDefaultView) {
           writeCache(DEFAULT_GRID_CACHE_KEY, { cars: deduped, totalCount: count || 0 });
-          precacheImages(
-            deduped.slice(0, 8).flatMap(c => Array.isArray(c.images) ? c.images.slice(0, 1) : []).filter(Boolean),
-            'mp-images-v1',
-          );
+          // The precacheImages() call that used to sit here wrote into an
+          // 'mp-images-v1' Cache Storage bucket that nothing ever read back.
+          // Car photos are cached by the service worker's runtime route now
+          // (vite.config.js), which serves what the grid actually renders.
         }
       } else {
         setCars(prev => dedupe([...prev, ...rows]));

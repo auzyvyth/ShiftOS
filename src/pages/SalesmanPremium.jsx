@@ -121,7 +121,15 @@ import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha 
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { hydrateLeadInto } from "../utils/leadHydrate";
 import { isPremiumSalesman } from "../utils/salesmanPlan";
-import { redactLeadsForCache, clearPanelDataCache } from "../utils/panelCache";
+import {
+  readCache,
+  writeCache,
+  redactLeadsForCache,
+  redactProfileForCache,
+  clearPanelDataCache,
+  rememberPanelUid,
+  seedPanelCache,
+} from "../utils/panelCache";
 import { redactForAI } from "../utils/redactForAI";
 // Style tokens, formatters, and small shared components (SOFT/CARD/STAGE_COLOR/
 // SubTabs/PrevMonthModal/etc.) live here so DashboardTab/ListingsTab/AnalyticsTab
@@ -132,6 +140,9 @@ import {
  LEAD_STAGES, STAGE_COLOR, STAGE_WEIGHT, getHeatScore, LOST_REASONS, SubTabs,
  ListingFormModal,
 } from "./salesmanPremium/shared";
+
+// Cache namespace for this panel (keys look like `sp_leads_<uid>`).
+const PANEL_CACHE_KEY = "sp";
 
 // Shared fallback for every lazy-loaded tab/section below — keeps the loading
 // state visually consistent instead of each Suspense boundary inventing its own.
@@ -188,9 +199,19 @@ export default function SalesmanPremium() {
  const navigate = useNavigate();
  const isMobile = useWindowSize() < 768;
 
- const [profile, setProfile] = useState(null);
- const [userId, setUserId] = useState(null);
- const [loading, setLoading] = useState(true);
+ // First-frame cache seed. Everything below initialises from what this device
+ // already knows about the last signed-in user, so the panel paints on frame 1
+ // instead of after getSession() -> profiles.select() -> the data queries (three
+ // serial round trips to ap-southeast-2 before a single pixel). The live
+ // bootstrap below overwrites all of it, and clears it if the real uid differs.
+ const [seed] = useState(() => seedPanelCache(PANEL_CACHE_KEY));
+
+ const [profile, setProfile] = useState(seed.profile);
+ const [userId, setUserId] = useState(seed.uid);
+ // A cached profile is enough to render the panel; the fresh one lands moments
+ // later and every access gate below (pending pay / expired trial / wrong role)
+ // re-runs against it. Without a cached profile this is the old blocking spinner.
+ const [loading, setLoading] = useState(!seed.profile);
  const [pendingPay, setPendingPay] = useState(false);
  const [trialExpired, setTrialExpired] = useState(false);
  const isPremium = isPremiumSalesman(profile);
@@ -263,13 +284,13 @@ export default function SalesmanPremium() {
  }, [resolvedTab]);
 
  // listings
- const [myListings, setMyListings] = useState([]);
+ const [myListings, setMyListings] = useState(seed.listings);
  const [listingCopied, setListingCopied] = useState({});
  const [showAddForm, setShowAddForm] = useState(false);
  const [showFastForm, setShowFastForm] = useState(false);
 
  // leads
- const [leads, setLeads] = useState([]);
+ const [leads, setLeads] = useState(seed.leads || []);
  const [staleLeads, setStaleLeads] = useState([]);
  // "reward the comeback" greeting + Monthly Goal card (ported from Lite)
  const [isReturning, setIsReturning] = useState(false);
@@ -300,7 +321,7 @@ export default function SalesmanPremium() {
  };
  useEffect(() => () => { if (glowTimeoutRef.current) clearTimeout(glowTimeoutRef.current); }, []);
  const jumpToLead = (lead) => { switchTab("leads"); triggerGlow([lead.id]); };
- const [leadsLoading, setLeadsLoading] = useState(true);
+ const [leadsLoading, setLeadsLoading] = useState(!seed.leads);
  const [lostOpen, setLostOpen] = useState(false);
  const [showAddLead, setShowAddLead] = useState(false);
  const [addLeadForm, setAddLeadForm] = useState({
@@ -762,36 +783,21 @@ export default function SalesmanPremium() {
 
  const channelRef = useRef(null);
  const pendingStageRef = useRef({});
- const [appointments, setAppointments] = useState([]);
- const [enquiries, setEnquiries] = useState([]);
+ const [appointments, setAppointments] = useState(seed.appts);
+ const [enquiries, setEnquiries] = useState(seed.enquiries);
  // analyticsEvents removed — aggregated server-side via get_salesman_analytics RPC
 
- // ── local cache helpers (ported from SalesmanLite.jsx) ────────────────────
- const CACHE_TTL = 30 * 60 * 1000; // 30 min
- const readCache = (key) => {
- try {
- const raw = localStorage.getItem(key);
- if (!raw) return null;
- const { ts, data } = JSON.parse(raw);
- return Date.now() - ts < CACHE_TTL ? data : null;
- } catch (e) { console.error("readCache:", e); return null; }
- };
- const writeCache = (key, data) => {
- try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch (e) { console.error("writeCache:", e); }
- };
- const precacheImages = (listings) => {
- if (!("caches" in window)) return;
- const urls = listings.flatMap((c) => (Array.isArray(c.images) ? c.images.slice(0, 2) : [])).filter(Boolean);
- if (!urls.length) return;
- caches.open("sp-images-v1").then(async (cache) => {
- // batch 4 at a time to avoid saturating bandwidth on first load
- for (let i = 0; i < urls.length; i += 4) {
- await Promise.all(urls.slice(i, i + 4).map((url) =>
- cache.match(url).then((hit) => { if (!hit) return cache.add(url).catch(() => {}); })
- ));
- }
- }).catch(() => {});
- };
+ // Cache helpers (readCache/writeCache/redactLeadsForCache) live in
+ // ../utils/panelCache — one copy shared with Lite.
+ //
+ // The old precacheImages() was DELETED, not moved. It opened a Cache Storage
+ // bucket ("sp-images-v1") and eagerly downloaded the first two photos of every
+ // listing on each load — but nothing ever read that bucket back. There is no
+ // service-worker fetch handler for it, so the bytes were fetched, stored and
+ // never served: pure bandwidth competing with the queries the user is actually
+ // waiting for. Car photos are now cached by the service worker's runtime route
+ // (vite.config.js), which caches what the panel actually renders and serves it
+ // back cache-first.
 
  // stale leads (48h + overdue follow-ups)
  useEffect(() => {
@@ -853,6 +859,18 @@ export default function SalesmanPremium() {
 
  const uid = data.session.user.id;
  setUserId(uid);
+ // The first-frame seed was keyed on the LAST user on this device. If a
+ // different account signed in since, everything painted from it belongs to
+ // someone else — blank it before the fresh data lands.
+ if (seed.uid && seed.uid !== uid) {
+ setProfile(null);
+ setMyListings([]);
+ setLeads([]);
+ setEnquiries([]);
+ setAppointments([]);
+ setLoading(true);
+ }
+ rememberPanelUid(PANEL_CACHE_KEY, uid);
 
  const { data: profileData } = await supabase
  .from("profiles")
@@ -920,16 +938,26 @@ export default function SalesmanPremium() {
 
  setProfile(profileData);
  setLoading(false);
+ // Cached so the NEXT cold start can clear the loading gate on frame 1. The
+ // gates above (pending pay / expired trial / wrong role) all re-run against
+ // this same shape when the fresh row lands, so a cached profile can only ever
+ // bring the panel forward, never past an access check.
+ writeCache(`${PANEL_CACHE_KEY}_profile_${uid}`, redactProfileForCache(profileData));
 
- // seed from cache immediately so UI is instant, real fetches below replace it
- const cachedListings = readCache(`sp_listings_${uid}`);
+ // Seed from cache. For the common case the useState initialisers at the top
+ // already did this on frame 1 — this covers the first load after a different
+ // account signed in on the same device, where the frame-1 seed was for the
+ // wrong uid and got blanked above.
+ if (seed.uid !== uid) {
+ const cachedListings = readCache(`${PANEL_CACHE_KEY}_listings_${uid}`);
  if (cachedListings) setMyListings(cachedListings);
- const cachedLeads = readCache(`sp_leads_${uid}`);
+ const cachedLeads = readCache(`${PANEL_CACHE_KEY}_leads_${uid}`);
  if (cachedLeads) { setLeads(cachedLeads); setLeadsLoading(false); }
- const cachedEnquiries = readCache(`sp_enquiries_${uid}`);
+ const cachedEnquiries = readCache(`${PANEL_CACHE_KEY}_enquiries_${uid}`);
  if (cachedEnquiries) setEnquiries(cachedEnquiries);
- const cachedAppts = readCache(`sp_appts_${uid}`);
+ const cachedAppts = readCache(`${PANEL_CACHE_KEY}_appts_${uid}`);
  if (cachedAppts) setAppointments(cachedAppts);
+ }
 
  // profiles.onboarding_tour_done is the real, per-account guard (mirrors
  // SalesmanLite.jsx:1390) — sp_tour_seen_${uid} is only a same-session
@@ -1133,7 +1161,6 @@ export default function SalesmanPremium() {
  .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
  setMyListings(merged);
  writeCache(`sp_listings_${uid}`, merged);
- precacheImages(merged);
  });
 
  // Analytics: server-side aggregation via RPC — one row per car, no raw events in browser

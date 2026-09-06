@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabaseClient';
+import { readCache, writeCache } from '../utils/panelCache';
 
 const LS_KEY = 'xdrive_saved_cars';
 const CARD_COLS = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,condition,images,status,created_at,dealer_id,seller_role,dealer_is_verified,seller_sold_count,auction_grade,interior_grade,is_recon,financing_type,engine_cc,previous_owners';
@@ -79,21 +80,44 @@ export function useSavedCars() {
   return { savedIds, isSaved, toggleSave, ready: !isLoading };
 }
 
+// Saved-car rows survive a cold start in localStorage as well as in react-query.
+// react-query's cache is in-memory only (no persister is wired up), so a buyer
+// who reopened the PWA got an empty Saved list and a spinner every single time,
+// even though the ids were already on the device. `sig` pins the cache to the
+// exact id set it was fetched for, so a save/unsave can never paint a stale grid.
+const DETAILS_CACHE_KEY = 'savedcars:details';
+const DETAILS_TTL = 24 * 60 * 60 * 1000;
+
+function readDetailsCache(sig) {
+  const hit = readCache(DETAILS_CACHE_KEY, DETAILS_TTL);
+  return hit && hit.sig === sig ? hit.cars : null;
+}
+
 // Full car objects for a set of saved ids, in saved order — cached by id set so
 // AccountPage / SavedCarsPanel / SavedCarsPage share one fetch instead of three.
 export function useSavedCarsDetails(savedIds, ready) {
   const ids = [...savedIds].sort();
+  const sig = ids.join(',');
   const { data, isLoading } = useQuery({
-    queryKey: ['saved-cars-details', ids.join(',')],
+    queryKey: ['saved-cars-details', sig],
     queryFn: async () => {
-      if (!ids.length) return [];
+      if (!ids.length) {
+        writeCache(DETAILS_CACHE_KEY, { sig, cars: [] });
+        return [];
+      }
       const { data } = await supabase.from('public_car_listings').select(CARD_COLS).in('id', ids);
       const map = Object.fromEntries((data || []).map((c) => [c.id, c]));
-      return ids.map((id) => map[id]).filter(Boolean);
+      const cars = ids.map((id) => map[id]).filter(Boolean);
+      writeCache(DETAILS_CACHE_KEY, { sig, cars });
+      return cars;
     },
     enabled: ready,
     staleTime: 2 * 60 * 1000,
+    // Paints last visit's rows on the first frame while the fetch above runs.
+    // placeholderData (not initialData) so react-query still treats the query as
+    // needing a fetch — the grid is never left showing only cached rows.
+    placeholderData: () => readDetailsCache(sig) ?? undefined,
   });
 
-  return { cars: data ?? [], loading: ready && isLoading };
+  return { cars: data ?? [], loading: ready && isLoading && !data };
 }

@@ -100,8 +100,19 @@ import {
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
-import { redactLeadsForCache, clearPanelDataCache } from "../utils/panelCache";
+import {
+  readCache,
+  writeCache,
+  redactLeadsForCache,
+  redactProfileForCache,
+  clearPanelDataCache,
+  rememberPanelUid,
+  seedPanelCache,
+} from "../utils/panelCache";
 import AvailabilityEditor from "../components/AvailabilityEditor";
+
+// Cache namespace for this panel (keys look like `slite_leads_<uid>`).
+const PANEL_CACHE_KEY = "slite";
 
 // The pipeline card renders lead.car_listings, so every path that puts a lead
 // into state has to carry this join — not just the bootstrap fetch.
@@ -752,9 +763,19 @@ export default function SalesmanLite() {
   // for any stage not in the map.
   const stageLabel = (s) => t("salesmanLite.stages." + s, { defaultValue: (s || "").replace(/_/g, " ") });
 
-  const [profile, setProfile] = useState(null);
-  const [userId, setUserId] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // First-frame cache seed. Everything below initialises from what this device
+  // already knows about the last signed-in user, so the panel paints on frame 1
+  // instead of after getSession() -> profiles.select() -> the data queries (three
+  // serial round trips to ap-southeast-2 before a single pixel). The live
+  // bootstrap below overwrites all of it, and clears it if the real uid differs.
+  const [seed] = useState(() => seedPanelCache(PANEL_CACHE_KEY));
+
+  const [profile, setProfile] = useState(seed.profile);
+  const [userId, setUserId] = useState(seed.uid);
+  // A cached profile is enough to render the panel; the fresh one lands moments
+  // later and every access gate below (pending / deleted / wrong role) re-runs
+  // against it. Without a cached profile this is the old blocking spinner.
+  const [loading, setLoading] = useState(!seed.profile);
   // Unread buyer-chat count for the nav badge. Deliberately a second hook
   // instance rather than lifting state out of SellerInbox — each gets its own
   // realtime channel, and the badge stays live while the tab is closed.
@@ -851,7 +872,7 @@ export default function SalesmanLite() {
   }
 
   // listings
-  const [myListings, setMyListings] = useState([]);
+  const [myListings, setMyListings] = useState(seed.listings);
   const [listingCopied, setListingCopied] = useState({});
   const [showAddForm, setShowAddForm] = useState(false);
   const [commissionConfig, setCommissionConfig] = useState(null); // dealer's commission rule, same source CarForm uses
@@ -878,14 +899,14 @@ export default function SalesmanLite() {
   }, [icGateOpen]);
 
   // leads
-  const [leads, setLeads] = useState([]);
+  const [leads, setLeads] = useState(seed.leads || []);
   const [staleLeads, setStaleLeads] = useState([]);
   // "Reward the comeback" — true for this session only, when the salesman is
   // opening Lite after a 3+ day gap. Swaps the stale-leads scold in the
   // greeting for a welcome-back line instead (see the profile-load effect
   // that sets this, and personalizedLine in renderDashboard).
   const [isReturning, setIsReturning] = useState(false);
-  const [leadsLoading, setLeadsLoading] = useState(true);
+  const [leadsLoading, setLeadsLoading] = useState(!seed.leads);
   const [lostOpen, setLostOpen] = useState(false);
   const [showAddLead, setShowAddLead] = useState(false);
   const [addLeadForm, setAddLeadForm] = useState({
@@ -1294,44 +1315,23 @@ export default function SalesmanLite() {
   // Set by the unmount cleanup below; read by the async bootstrap before it
   // subscribes, so a dead mount never leaves a channel behind.
   const rtCancelledRef = useRef(false);
-  const [appointments, setAppointments] = useState([]);
+  const [appointments, setAppointments] = useState(seed.appts);
   const [pastOpen, setPastOpen] = useState(false);
-  const [enquiries, setEnquiries] = useState([]);
+  const [enquiries, setEnquiries] = useState(seed.enquiries);
   // analyticsEvents removed — aggregation now done server-side via get_salesman_analytics RPC
 
-  // ── local cache helpers ────────────────────────────────────────────────────
-  const CACHE_TTL = 30 * 60 * 1000; // 30 min
-  const readCache = (key) => {
-    try {
-      const raw = localStorage.getItem(key);
-      if (!raw) return null;
-      const { ts, data } = JSON.parse(raw);
-      return Date.now() - ts < CACHE_TTL ? data : null;
-    } catch (e) { console.error("readCache:", e); return null; }
-  };
-  const writeCache = (key, data) => {
-    try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch (e) { console.error("writeCache:", e); }
-  };
-  // Buyer IC and home address are identity documents, not UI-necessary for the
-  // stale-while-refetching preview this cache exists for — strip them before
-  // they sit in localStorage, which has no expiry of its own (the 30-min TTL
-  // above only stops the app from TRUSTING a stale read, it never deletes the
-  // entry). Live in-memory state (setLeads) still gets the real values.
-  // redactLeadsForCache now lives in ../utils/panelCache — Premium needs the
-  // same rule and the local copy here is exactly why it never got it.
-  const precacheImages = (listings) => {
-    if (!("caches" in window)) return;
-    const urls = listings.flatMap((c) => (Array.isArray(c.images) ? c.images.slice(0, 2) : [])).filter(Boolean);
-    if (!urls.length) return;
-    caches.open("slite-images-v1").then(async (cache) => {
-      // batch 4 at a time to avoid saturating bandwidth on first load
-      for (let i = 0; i < urls.length; i += 4) {
-        await Promise.all(urls.slice(i, i + 4).map((url) =>
-          cache.match(url).then((hit) => { if (!hit) return cache.add(url).catch(() => {}); })
-        ));
-      }
-    }).catch(() => {});
-  };
+  // Cache helpers (readCache/writeCache/redactLeadsForCache) live in
+  // ../utils/panelCache — a local copy here is exactly why Premium never got
+  // the lead redaction rule.
+  //
+  // The old precacheImages() was DELETED, not moved. It opened a Cache Storage
+  // bucket ("slite-images-v1") and eagerly downloaded the first two photos of
+  // every listing on each load — but nothing ever read that bucket back. There
+  // is no service-worker fetch handler for it, so the bytes were fetched,
+  // stored and never served: pure bandwidth competing with the queries the user
+  // is actually waiting for. Car photos are now cached by the service worker's
+  // runtime route (vite.config.js), which caches what the panel actually
+  // renders and serves it back cache-first.
 
   // Hours-per-stage before a lead counts as needing follow-up.
   // Indexed by lead.stage; falls back to 48h for unknown stages.
@@ -1409,6 +1409,18 @@ export default function SalesmanLite() {
 
       const uid = data.session.user.id;
       setUserId(uid);
+      // The first-frame seed was keyed on the LAST user on this device. If a
+      // different account signed in since, everything painted from it belongs
+      // to someone else — blank it before the fresh data lands.
+      if (seed.uid && seed.uid !== uid) {
+        setProfile(null);
+        setMyListings([]);
+        setLeads([]);
+        setEnquiries([]);
+        setAppointments([]);
+        setLoading(true);
+      }
+      rememberPanelUid(PANEL_CACHE_KEY, uid);
 
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
@@ -1471,6 +1483,11 @@ export default function SalesmanLite() {
 
       setProfile(profileData);
       setLoading(false);
+      // Cached so the NEXT cold start can clear the loading gate on frame 1.
+      // The gates above (pending / deleted / wrong role / wrong plan) all re-run
+      // against this same shape when the fresh row lands, so a cached profile
+      // can only ever bring the panel forward, never past an access check.
+      writeCache(`${PANEL_CACHE_KEY}_profile_${uid}`, redactProfileForCache(profileData));
 
       // "Reward the comeback" — detect a 3+ day gap since the last visit so
       // the greeting welcomes the salesman back instead of leading with a
@@ -1509,15 +1526,20 @@ export default function SalesmanLite() {
         setTourStep(0);
       }
 
-      // seed from cache immediately so UI is instant
-      const cachedListings = readCache(`slite_listings_${uid}`);
-      if (cachedListings) setMyListings(cachedListings);
-      const cachedLeads = readCache(`slite_leads_${uid}`);
-      if (cachedLeads) { setLeads(cachedLeads); setLeadsLoading(false); }
-      const cachedEnquiries = readCache(`slite_enquiries_${uid}`);
-      if (cachedEnquiries) setEnquiries(cachedEnquiries);
-      const cachedAppts = readCache(`slite_appts_${uid}`);
-      if (cachedAppts) setAppointments(cachedAppts);
+      // Seed from cache. For the common case the useState initialisers at the
+      // top already did this on frame 1 — this covers the first load after a
+      // different account signed in on the same device, where the frame-1 seed
+      // was for the wrong uid and got blanked above.
+      if (seed.uid !== uid) {
+        const cachedListings = readCache(`${PANEL_CACHE_KEY}_listings_${uid}`);
+        if (cachedListings) setMyListings(cachedListings);
+        const cachedLeads = readCache(`${PANEL_CACHE_KEY}_leads_${uid}`);
+        if (cachedLeads) { setLeads(cachedLeads); setLeadsLoading(false); }
+        const cachedEnquiries = readCache(`${PANEL_CACHE_KEY}_enquiries_${uid}`);
+        if (cachedEnquiries) setEnquiries(cachedEnquiries);
+        const cachedAppts = readCache(`${PANEL_CACHE_KEY}_appts_${uid}`);
+        if (cachedAppts) setAppointments(cachedAppts);
+      }
 
       // fetch listings with full columns for car detail popup
       Promise.all([
@@ -1552,7 +1574,6 @@ export default function SalesmanLite() {
           .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         setMyListings(merged);
         writeCache(`slite_listings_${uid}`, merged);
-        precacheImages(merged);
         // Commission earned this month from sold listings (salesman earns commission, not vehicle gross)
         const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
         supabase

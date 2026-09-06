@@ -13,7 +13,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 //   );
 
 const VERSION = 'v1';
-const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Default: ALWAYS revalidate in the background. The cached value still paints
+// instantly — that is the whole point — but it is never trusted as fresh.
+//
+// This used to default to a full day, which made every consumer a
+// once-per-day-per-device snapshot: a dealer who sold a car saw yesterday's
+// numbers on the dashboard until tomorrow, with no way to force a refresh
+// short of clearing site data. A cache that suppresses the refetch is only
+// right for something genuinely daily; pass an explicit ttlMs for that.
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -27,7 +35,7 @@ function readCache(storageKey) {
   }
 }
 
-export function useCachedFetch(key, fetcher, { enabled = true, ttlMs = DAY_MS } = {}) {
+export function useCachedFetch(key, fetcher, { enabled = true, ttlMs = 0 } = {}) {
   const storageKey = key ? `cf:${VERSION}:${key}` : null;
 
   const [data, setData] = useState(() => readCache(storageKey)?.data ?? null);
@@ -60,8 +68,9 @@ export function useCachedFetch(key, fetcher, { enabled = true, ttlMs = DAY_MS } 
     if (cached?.data != null) {
       setData(cached.data);
       setLoading(false);
-      // Refresh in the background only if the cache is from another day or
-      // older than the TTL — same-day revisits are instant with no refetch.
+      // Refresh in the background unless the caller asked for a TTL and the
+      // cache is still inside it. With the default ttlMs of 0 this is always a
+      // refetch, i.e. pure stale-while-revalidate: instant paint, live data.
       const fresh = cached.day === today() && cached.t && (Date.now() - cached.t) < ttlMs;
       if (!fresh) revalidate();
     } else {

@@ -15,6 +15,13 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
+import {
+  readCache,
+  writeCache,
+  redactProfileForCache,
+  rememberPanelUid,
+  seedPanelCache,
+} from "../utils/panelCache";
 import { getStorefrontUrl as buildStorefrontUrl } from "../hooks/useTenant";
 import { usePermissions } from "../hooks/usePermissions";
 import { CONFIGURABLE_ROLES, capabilitiesForRole, resolvePermissions, roleExtras } from "../lib/permissions";
@@ -184,6 +191,12 @@ import {
   ShieldCheck,
   Activity,
 } from "lucide-react";
+
+// Cache namespace for the dealer dashboard (keys look like `dash_listings_<uid>`).
+// Deliberately keyed on the AUTH uid, not the dealer id: a manager and their
+// dealer resolve to the same dealer_id and would otherwise share one cache entry
+// on a shared device. A few KB duplicated is the right trade for that.
+const PANEL_CACHE_KEY = "dash";
 
 // Which sidebar group owns each tab. Module scope on purpose: this was three
 // identical copies in three scopes, so a new tab had to be added to all three
@@ -9375,8 +9388,17 @@ export default function DashboardPage() {
     ? Math.max(0, Math.ceil((new Date(trialEndsAt) - Date.now()) / 86400000))
     : null;
 
-  const [listings, setListings] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // First-frame cache seed. The dashboard had no persistent cache at all — the
+  // one cached surface, useDealerSnapshot, is react-query with no persister, so
+  // its cache dies with the tab and every PWA cold start started from zero. That
+  // meant a spinner through session -> profiles.select(*) -> the four listing
+  // queries, three serial round trips to ap-southeast-2, before any pixel.
+  const [seed] = useState(() => seedPanelCache(PANEL_CACHE_KEY));
+
+  const [listings, setListings] = useState(seed.listings);
+  // A cached profile is enough to render; the fresh one lands moments later and
+  // the role gate in loadSession re-runs against it.
+  const [loading, setLoading] = useState(!seed.profile);
   const [activeTab, setActiveTab] = useState(tabParam || "overview");
   const [analyticsSub, setAnalyticsSub] = useState(() => new URLSearchParams(window.location.search).get('sub') || 'revenue'); // revenue | performance
   const [storefrontSub, setStorefrontSub] = useState("hero");   // hero | services
@@ -9391,7 +9413,7 @@ export default function DashboardPage() {
   const [markSoldListing, setMarkSoldListing] = useState(null);
   const [studioListing, setStudioListing] = useState(null);
   const [markSoldLoading, setMarkSoldLoading] = useState(false);
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfile] = useState(seed.profile);
   const [dealerSubdomain, setDealerSubdomain] = useState(null); // parent dealer's subdomain (used for manager/admin roles)
   const [updatingStatus, setUpdatingStatus] = useState(null);
   const [editListing, setEditListing] = useState(null);
@@ -9413,8 +9435,8 @@ export default function DashboardPage() {
   const [visibleCount, setVisibleCount] = useState(30);
   const sentinelRef = useRef(null);
   const [copiedListingId, setCopiedListingId] = useState(null);
-  const [userId, setUserId] = useState(null);
-  const [salesmen,         setSalesmen]         = useState([]);
+  const [userId, setUserId] = useState(seed.uid);
+  const [salesmen,         setSalesmen]         = useState(() => seed.uid ? (readCache(`dash_salesmen_${seed.uid}`) || []) : []);
   const [assignDropdownId, setAssignDropdownId] = useState(null);
   const [assignToast,      setAssignToast]      = useState(null);
   const [detailListing,    setDetailListing]    = useState(null);
@@ -9503,12 +9525,21 @@ export default function DashboardPage() {
 
       // Reset to a clean slate before populating for this session.
       // Prevents any previous owner's branding from bleeding through.
-      setProfile(null);
-      setListings([]);
-      setAddonNetByListing({});
-      setSalesmen([]);
-      setLoading(true);
+      //
+      // Skipped when the first-frame cache seed already belongs to THIS uid —
+      // otherwise the reset immediately blanks the cached paint and puts the
+      // spinner back, which is the whole thing the seed exists to remove. Any
+      // other uid (a different account signed in on this device) still gets the
+      // full wipe, so no previous owner's data survives.
+      if (seed.uid !== uid) {
+        setProfile(null);
+        setListings([]);
+        setAddonNetByListing({});
+        setSalesmen([]);
+        setLoading(true);
+      }
       setUserId(uid);
+      rememberPanelUid(PANEL_CACHE_KEY, uid);
 
       const { data: p } = await supabase
         .from("profiles")
@@ -9524,6 +9555,9 @@ export default function DashboardPage() {
           return;
         }
         setProfile(p);
+        // Cached so the NEXT cold start clears the loading gate on frame 1. The
+        // role gate two lines up re-runs against the fresh row when it lands.
+        writeCache(`${PANEL_CACHE_KEY}_profile_${uid}`, redactProfileForCache(p));
         const dealerId = getDealerIdFromProfile(p);
         setUserId(dealerId);
         // For manager/admin, subdomain lives on the parent dealer's profile row
@@ -9579,6 +9613,13 @@ export default function DashboardPage() {
         setListings(carsError ? [] : merged);
         setSalesmen(sm || []);
         setLoading(false);
+        // Cache the listings table + team roster for the next cold start. Skipped
+        // on a failed read so one bad response can't overwrite a good cache with
+        // an empty grid.
+        if (!carsError) {
+          writeCache(`${PANEL_CACHE_KEY}_listings_${uid}`, merged);
+          writeCache(`${PANEL_CACHE_KEY}_salesmen_${uid}`, sm || []);
+        }
       }
     };
 
