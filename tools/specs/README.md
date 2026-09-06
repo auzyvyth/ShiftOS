@@ -62,6 +62,14 @@ has to be machine-made. `lib/validate.mjs` rejects a batch outright on:
   `lookupFullSpec` uses `rows.find()`, so two rows covering the same year
   resolve by array position. Nothing errors, and which specs a seller gets
   depends on file order.
+- **a collected row whose years overlap a HAND-CURATED row** in `carSpecs.js` —
+  the same failure from the other side, and it shipped. Hand rows sit earlier in
+  `SPECS`, so `rows.find()` stops at them and the collected row is dead on
+  arrival: it lands in the generated block, never fires, and becomes a wrong
+  prefill the day somebody sorts that array. An exact `yearFrom` match is *not*
+  an error — that is the generator's designed skip, which is how a batch may
+  revisit a curated model. Curated rows are never checked against each other:
+  several already overlap (Myvi 2005-2011 and 2011-2017 both cover 2011).
 - an internal contradiction: an Electric row with an engine, `year_to` before
   `year_from`, a `primary_variant` that is not in `variants[]`
 - a chassis code carrying its serial (`AGH30W-0123456` instead of `AGH30`)
@@ -69,7 +77,7 @@ has to be machine-made. `lib/validate.mjs` rejects a batch outright on:
   depreciation, project-wide, because the source has none and any figure would
   be invented
 
-`low` confidence and a missing `engine_cc` warn but pass. 40 assertions in
+`low` confidence and a missing `engine_cc` warn but pass. 50 assertions in
 `tests/specsPipeline.test.mjs`.
 
 ## The two conversions, and why they matter
