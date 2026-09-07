@@ -308,13 +308,34 @@ login page. What the code actually looks like today:
     links are `token_hash` verify URLs, not PKCE codes, so they were never
     browser-bound either.
 
-- [ ] **AUTH-9: the salesman setup email will claim the wrong expiry.**
-  `supabase/functions/create-salesman/index.ts:70` says "This link expires in 24
-  hours". Once Email OTP Expiration is set to 3600 for AUTH-8, that sentence is
-  false and a salesman will trust it. One-line copy fix — but DO NOT redeploy
-  that function without first diffing the live version
-  (`mcp__Supabase__get_edge_function`) against the repo, per the edge-function
-  drift rule in CLAUDE.md. Cheap, just not free.
+- [~] **AUTH-9 CODE DONE, NOT DEPLOYED 2026-09-07: setup emails claimed a
+  24-hour expiry that the AUTH-8 setting makes false.**
+  Two functions carried the line, not one: `create-salesman/index.ts:69` AND
+  `invites/index.ts:83` (back-office manager/admin/accountant/F&I invites).
+  Both now say the link is single use, do not name a duration, and point at
+  "Forgot password" — which is the 6-digit code flow from AUTH-8.
+  NOT naming a duration is the point: the old copy hardcoded 24 hours while the
+  real number lives in a dashboard setting nobody syncs it with. That is the bug
+  repeating itself, one release later.
+  - Both were diffed against the LIVE deployed versions first (CLAUDE.md edge
+    function rule). No drift: every structural marker matched, so there is no
+    deployed-only code a redeploy would delete.
+  - **STILL TO DEPLOY.** The repo change alone does nothing — these run on
+    Supabase. Deploy with `supabase functions deploy create-salesman` and
+    `supabase functions deploy invites`, or paste each file into the dashboard
+    editor. Both must keep `verify_jwt: false` (they do their own auth check
+    against the Authorization header; turning it on would break both).
+    Deliberately not deployed from the web session: the MCP deploy tool takes
+    the file CONTENT inline, so shipping it that way means hand-reproducing 324
+    and 255 lines of account-creation and cross-tenant-authz code. The one-line
+    win is not worth that class of risk on those two files.
+  - CONSEQUENCE OF AUTH-8 WORTH KNOWING: Email OTP Expiration is ONE project
+    setting shared by the reset code and these setup links. Setting it to 3600
+    also shortens salesman/team setup links to an hour. Recoverable — the Team
+    tab's "resend setup email" (`create-salesman` action `resend_setup`) issues
+    a fresh one — but `invites` has NO resend action, so a back-office invite
+    that goes stale has to be recreated or recovered via Forgot password.
+
 
 - [x] **AUTH-7 DONE 2026-09-07: `TURNSTILE_SECRET` was NOT set on Vercel, so the
   buyer-form captcha had never verified anything.** Fixed and VERIFIED on prod —

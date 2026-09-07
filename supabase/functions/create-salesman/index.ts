@@ -66,7 +66,7 @@ async function sendSetupEmail(
     <p style="margin:0 0 16px;">Hi ${fullName}, ${dealershipName} has created your salesman account on ShiftOS.</p>
     <p style="margin:0 0 24px;">Set your password to finish setting up and access your dashboard:</p>
     <a href="${actionLink}" style="display:inline-block;background:#dc2626;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:13px 28px;border-radius:8px;">Set your password</a>
-    <p style="margin:24px 0 0;font-size:12px;color:#9ca3af;">This link expires in 24 hours. If it expires, use "Forgot password" on the ShiftOS login page.</p>
+    <p style="margin:24px 0 0;font-size:12px;color:#9ca3af;">This link is single use and expires. If it no longer works, use &quot;Forgot password&quot; on the ShiftOS login page and we will email you a 6-digit code.</p>
   </div>
   <div style="background:#f9fafb;padding:18px 32px;border-top:1px solid #e5e7eb;text-align:center;">
     <p style="margin:0;font-size:11px;color:#9ca3af;">Sent by ${dealershipName} via ShiftOS</p>
