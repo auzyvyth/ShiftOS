@@ -166,7 +166,7 @@ export default function ResetPasswordPage() {
         <style>{CSS}</style>
         <div style={styles.brand}>
           <div className="rp-pulse" style={styles.icon}>⚡</div>
-          <span style={styles.brandText}>SHIFTOS</span>
+          <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 20, width: 'auto', display: 'block' }} />
         </div>
         <div style={{ display: 'flex', gap: 3, marginTop: 4 }}>
           <span className="rp-dot" style={styles.dot}>·</span>
@@ -184,7 +184,7 @@ export default function ResetPasswordPage() {
         <style>{CSS}</style>
         <div style={styles.brand}>
           <div style={styles.icon}>⚡</div>
-          <span style={styles.brandText}>SHIFTOS</span>
+          <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 20, width: 'auto', display: 'block' }} />
         </div>
         <div style={styles.card}>
           <div style={styles.expiredIcon}>
@@ -212,7 +212,7 @@ export default function ResetPasswordPage() {
       <style>{CSS}</style>
       <div style={styles.brand}>
         <div className="rp-pulse" style={styles.icon}>⚡</div>
-        <span style={styles.brandText}>SHIFTOS</span>
+        <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 20, width: 'auto', display: 'block' }} />
       </div>
 
       <div style={{ ...styles.card, opacity: 1 }}>

@@ -5,6 +5,8 @@ import { markBuyerIntent, markBuyerConsent, ensureBuyerProfile } from "../lib/bu
 import { routeForProfile } from "../hooks/useRoleRedirect";
 import { Heart, Bell, MessageCircle, Tag, Check, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import LegalModal from "../components/LegalModal";
+import { RESET_AFTER_FAILS, throttleCheck, throttleFail, throttleClear, emailActionGate, EMAIL_ACTIONS } from "../utils/authThrottle";
+import useAuthCaptcha, { isCaptchaError, CAPTCHA_ERROR_MESSAGE } from "../hooks/useAuthCaptcha";
 
 const CONSENT_ERR =
   "Please confirm you're 18+ and agree to the Terms of Service and Privacy Policy to continue.";
@@ -34,6 +36,8 @@ function GoogleIcon() {
 }
 
 export default function BuyerAuthPage() {
+  // AUTH-6: fresh proof-of-human token per auth call (inert until configured).
+  const { getToken } = useAuthCaptcha();
   const isProd = window.location.hostname === "xdrive.my" || window.location.hostname.endsWith(".xdrive.my");
   const base = isProd ? "https://xdrive.my" : window.location.origin;
 
@@ -56,6 +60,10 @@ export default function BuyerAuthPage() {
   const [showMagic, setShowMagic] = useState(false);
   const [magicSent, setMagicSent] = useState(false);
   const [magicLoading, setMagicLoading] = useState(false);
+  // Brute-force lock, shared with /login and /platform (utils/authThrottle.js).
+  // This page had NO throttle at all: the dealer login enforced one and the
+  // buyer login did not, so unlimited password guessing was one URL away.
+  const [lockSeconds, setLockSeconds] = useState(0);
 
   useEffect(() => {
     document.title = "Sign in — XDrive";
@@ -77,15 +85,26 @@ export default function BuyerAuthPage() {
     window.location.href = `${base}${routeForProfile(profile)}`;
   };
 
+  // Tick the visible lockout down. Same shape as LoginPage's.
+  useEffect(() => {
+    if (lockSeconds <= 0) return;
+    const id = setInterval(() => setLockSeconds((n) => (n <= 1 ? 0 : n - 1)), 1000);
+    return () => clearInterval(id);
+  }, [lockSeconds]);
+
   const switchMode = (m) => { setMode(m); setError(""); setConfirmSent(false); setShowForgot(false); setShowMagic(false); setMagicSent(false); };
 
   const sendMagicLink = async () => {
     if (isSignup && !consent) { setError(CONSENT_ERR); return; }
     if (isSignup) markBuyerConsent();
     setMagicLoading(true);
+    // AUTH-5: 3 sends per address per 15 min, checked before we send.
+    const gate = await emailActionGate(email, EMAIL_ACTIONS.MAGIC);
+    if (!gate.allowed) { setError(gate.message); setMagicLoading(false); return; }
+    const captchaToken = await getToken();
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: `${base}/auth/callback` },
+      options: { captchaToken, emailRedirectTo: `${base}/auth/callback` },
     });
     setMagicLoading(false);
     if (error) setError(error.message); else setMagicSent(true);
@@ -106,25 +125,80 @@ export default function BuyerAuthPage() {
 
   const handleSignIn = async () => {
     if (!email || !password) { setError("Please enter your email and password."); return; }
-    setError(""); setShowForgot(false); setShowMagic(false); setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (lockSeconds > 0) { setError(`Too many attempts. Try again in ${lockSeconds}s.`); return; }
+    setError(""); setLoading(true);
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Server-side lock check before the attempt — a reload cannot shake it off.
+    const gate = await throttleCheck(cleanEmail);
+    if (!gate.allowed) {
+      setLockSeconds(gate.secondsLeft);
+      setError(`Too many attempts. Try again in ${gate.secondsLeft}s.`);
+      setLoading(false);
+      return;
+    }
+
+    const captchaToken = await getToken();
+    const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password, options: { captchaToken } });
     if (error) {
+      // A captcha rejection is also a 400, so it has to be caught before the
+      // isInvalidCreds test below reads it as a wrong password — that would
+      // spend one of the three attempts on a credential that was never judged.
+      if (isCaptchaError(error)) {
+        setShowMagic(false);
+        setShowForgot(false);
+        setError(CAPTCHA_ERROR_MESSAGE);
+        setLoading(false);
+        return;
+      }
+      // Only a rejected credential counts against the lock — an unconfirmed
+      // email or a 5xx is not a guess, and it must not spend an attempt or get
+      // answered with "wrong password".
+      const isInvalidCreds =
+        error.status === 400 || /invalid|credential/i.test(error.message || "");
+      if (!isInvalidCreds) {
+        setShowMagic(false);
+        setShowForgot(false);
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
+      const f = await throttleFail(cleanEmail);
+      if (f.locked) setLockSeconds(f.secondsLeft);
       // Distinguish "no account" vs "wrong password" and offer the right recovery:
       // a password user gets a reset link; a Google/OTP-only user gets a magic link.
-      const { data: rows } = await supabase.rpc("auth_account_status", { p_email: email.trim().toLowerCase() });
+      const { data: rows } = await supabase.rpc("auth_account_status", { p_email: cleanEmail });
       const st = Array.isArray(rows) ? rows[0] : rows;
       if (st?.account_exists && !st?.has_password) {
-        setError("This email signed up with Google. Use “Continue with Google”, or get a magic link below.");
+        // No password to get wrong — the link is their only way in, so it shows
+        // on the first try and the lock never hides it.
+        setShowForgot(false);
         setShowMagic(true);
+        setError(f.locked
+          ? `Too many attempts. Try again in ${f.secondsLeft}s, or get a magic link below.`
+          : "This email signed up with Google. Use “Continue with Google”, or get a magic link below.");
       } else if (st?.account_exists) {
-        setError("Wrong password. Try again or reset it below.");
-        setShowForgot(true);
+        // Reset offered from the 3rd wrong password, not the 1st — same rule as
+        // /login. Three is also where the lock lands, so the way out arrives with it.
+        const offerReset = f.attempts >= RESET_AFTER_FAILS;
+        setShowMagic(false);
+        setShowForgot(offerReset);
+        setError(
+          f.locked
+            ? `Wrong password ${f.attempts} times. Try again in ${f.secondsLeft}s, or reset it below.`
+            : offerReset
+            ? "Wrong password. Try again, or reset it below."
+            : "Wrong password. Please try again.",
+        );
       } else {
+        setShowMagic(false);
+        setShowForgot(false);
         setError("No account found with that email. Check for typos or create one.");
       }
       setLoading(false);
       return;
     }
+    throttleClear(cleanEmail);
     await ensureBuyerProfile(data.user);
     await redirectByRole(data.user);
   };
@@ -134,10 +208,11 @@ export default function BuyerAuthPage() {
     if (!pwValid) { setError("Please meet all the password requirements below."); return; }
     if (!consent) { setError(CONSENT_ERR); return; }
     setError(""); setLoading(true);
+    const captchaToken = await getToken();
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { emailRedirectTo: `${base}/auth/callback`, data: { account_type: "buyer" } },
+      options: { captchaToken, emailRedirectTo: `${base}/auth/callback`, data: { account_type: "buyer" } },
     });
     if (error) { setError(error.message); setLoading(false); return; }
     // Empty identities array (no error) = email already registered.
@@ -161,7 +236,11 @@ export default function BuyerAuthPage() {
   const handleForgot = async () => {
     if (!email) { setError("Enter your email above first."); return; }
     setResetLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${base}/reset-password` });
+    // AUTH-5, own bucket — see LoginPage. Same gate, same numbers.
+    const gate = await emailActionGate(email, EMAIL_ACTIONS.RESET);
+    if (!gate.allowed) { setError(gate.message); setResetLoading(false); return; }
+    const captchaToken = await getToken();
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { captchaToken, redirectTo: `${base}/reset-password` });
     setResetLoading(false);
     if (error) setError(error.message); else setResetSent(true);
   };
@@ -190,7 +269,7 @@ export default function BuyerAuthPage() {
 
         .ba-brand { display: flex; align-items: center; gap: 12px; position: relative; z-index: 1; text-decoration: none; }
         .ba-brand-mark { width: 38px; height: 38px; background: #dc2626; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: #fff; box-shadow: 0 0 28px rgba(220,38,38,0.45); }
-        .ba-brand-name { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 4px; color: #fff; line-height: 1; }
+        .ba-brand-img { height: 20px; width: auto; display: block; }
 
         .ba-hero { position: relative; z-index: 1; }
         .ba-hero-eyebrow { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: rgba(220,38,38,0.85); font-weight: 600; margin-bottom: 18px; }
@@ -280,7 +359,7 @@ export default function BuyerAuthPage() {
         <div className="ba-left">
           <Link to="/" className="ba-brand">
             <div className="ba-brand-mark">X</div>
-            <span className="ba-brand-name">XDRIVE</span>
+            <img src="/logo-xdrive.png" alt="XDrive" width="349" height="58" className="ba-brand-img" />
           </Link>
 
           <div className="ba-hero">

@@ -1562,12 +1562,13 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  };
 
  const logAiUsage = async (feature) => {
- const today = new Date().toISOString().slice(0, 10);
- const col = `${feature}_count`;
- await supabase.from("ai_salesman_usage").upsert(
- { salesman_id: userId, usage_date: today, [col]: 1 },
- { onConflict: "salesman_id,usage_date", ignoreDuplicates: false }
- ).then(null, () => {});
+ // Single atomic increment server-side (keyed on auth.uid() + CURRENT_DATE),
+ // the same call SalesmanPremium and OutreachHub make. The direct upsert this
+ // replaced wrote a `usage_date` column that does not exist (the table's column
+ // is `date`), so every write died 42703 into a swallowed catch and the counter
+ // salesman_ai_quota_ok reads never moved — the daily caps never bound for any
+ // salesman under a dealer. Premium had already been fixed; this was the fork.
+ await supabase.rpc("increment_ai_usage", { p_feature: feature }).then(null, () => {});
  };
 
  const generateAiCaptions = async (car, platform = captionPlatform) => {
@@ -7476,35 +7477,8 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  gap: 8,
  }}
  >
- <div
- style={{
- width: 28,
- height: 28,
- background: "#2563eb",
- borderRadius: 6,
- display: "flex",
- alignItems: "center",
- justifyContent: "center",
- fontSize: 14,
- fontFamily: "'Bebas Neue', sans-serif",
- fontWeight: 700,
- color: "#fff",
- flexShrink: 0,
- }}
- >S
- </div>
  <div>
- <p
- style={{
- fontFamily: "'Bebas Neue', sans-serif",
- fontSize: 15,
- letterSpacing: "2px",
- color: "#fff",
- lineHeight: 1,
- margin: 0,
- }}
- >SHIFTOS
- </p>
+ <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
  <p
  style={{
  fontSize: 10,
@@ -7899,33 +7873,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  gap: 8,
  }}
  >
- <div
- style={{
- width: 28,
- height: 28,
- background: "#2563eb",
- borderRadius: 6,
- display: "flex",
- alignItems: "center",
- justifyContent: "center",
- fontSize: 14,
- fontFamily: "'Bebas Neue', sans-serif",
- fontWeight: 700,
- color: "#fff",
- flexShrink: 0,
- }}
- >S
- </div>
- <p
- style={{
- fontFamily: "'Bebas Neue', sans-serif",
- fontSize: 15,
- letterSpacing: "2px",
- color: "#fff",
- margin: 0,
- }}
- >SHIFTOS
- </p>
+ <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
  </div>
  <button
  onClick={() => setNotifOpen((v) =>!v)}

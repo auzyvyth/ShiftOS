@@ -10354,14 +10354,12 @@ export default function DashboardPage() {
         style={{ background: '#FFFFFF', borderRight: '1px solid #EAECF0' }}
       >
         <div className="flex-shrink-0 px-4 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid #EAECF0' }}>
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm text-white flex-shrink-0"
-            style={{ background: '#DC2626', boxShadow: '0 2px 8px rgba(220,38,38,0.3)' }}
-          >
-            S
-          </div>
           <div className="flex-1 min-w-0">
-            <p style={{ fontWeight: 700, fontSize: 14, color: color.ink, letterSpacing: '0.05em' }}>ShiftOS</p>
+            {/* Ink variant, not the supplied white one: this sidebar is a LIGHT
+                surface (#EAECF0 borders, dark ink), so the white lockup would be
+                invisible on it. Same artwork, wordmark recoloured to the
+                dashboard's own text colour, red bar untouched. */}
+            <img src="/logo-shiftos-dark.png" alt="ShiftOS" width="354" height="59" style={{ height: 16, width: 'auto', display: 'block' }} />
             <p style={{ fontSize: 11, color: color.textMuted, marginTop: 1 }}>XDrive Dashboard</p>
           </div>
           {/* Bell */}
@@ -10562,13 +10560,12 @@ export default function DashboardPage() {
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            <div
-              className="w-5 h-5 rounded flex items-center justify-center font-black text-xs text-white"
-              style={{ background: '#DC2626' }}
-            >
-              S
-            </div>
-            <span style={{ fontWeight: 700, fontSize: 12, color: color.ink }} className="hidden xs:inline">ShiftOS</span>
+            {/* Always visible, at the size the red "S" badge used to be. That
+                badge was the only brand mark on this bar below sm (the wordmark
+                was hidden there), so hiding both would leave a 375px dealer bar
+                with no brand at all. One mark, the lockup — not a badge saying
+                the same thing beside it. */}
+            <img src="/logo-shiftos-dark.png" alt="ShiftOS" width="354" height="59" style={{ height: 14, width: 'auto', display: 'block' }} />
           </div>
           <span style={{ fontSize: 12, color: color.textMuted }} className="truncate flex-1 min-w-0">
             {TITLES[activeTab]?.title}

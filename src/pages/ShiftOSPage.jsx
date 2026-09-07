@@ -603,8 +603,11 @@ function Logo({ size = 34 }) {
         <span style={{ position: "relative", fontFamily: "'Bebas Neue',sans-serif", fontSize: fs, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", height: "100%", letterSpacing: 0 }}>S</span>
       </div>
       <div>
-        <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 21, letterSpacing: "0.04em", background: "linear-gradient(135deg,#fb7185,#dc2626 60%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>ShiftOS</span>
-        <span style={{ display: "block", fontSize: 10, color: "#4b5563", letterSpacing: "0.1em", lineHeight: 1, marginTop: -1 }}>by XDrive</span>
+        {/* The lockup replaces the gradient-filled wordmark. Height tracks the
+            size prop so the nav (34) and the footer (28) stay proportional. */}
+        <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59"
+             style={{ height: Math.round(size * 0.5), width: "auto", display: "block" }} />
+        <span style={{ display: "block", fontSize: 10, color: "#4b5563", letterSpacing: "0.1em", lineHeight: 1, marginTop: 3 }}>by XDrive</span>
       </div>
     </Link>
   );

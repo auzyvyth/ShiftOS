@@ -7,6 +7,7 @@ import { isReservedSubdomain } from '../utils/reservedSubdomains';
 import { isAdultFromIC } from '../utils/icAge';
 import { MY_STATES, cityOptionsFor } from '../utils/locations';
 import DealerPendingApproval from '../components/DealerPendingApproval';
+import useAuthCaptcha from '../hooks/useAuthCaptcha';
 
 // Same design system CSS as SalesmanOnboarding (eo- prefix)
 const CSS = `
@@ -16,7 +17,7 @@ const CSS = `
 .eo-right{flex:1;min-width:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 48px;position:relative;}
 .eo-logo{display:flex;align-items:center;gap:10px;margin-bottom:32px;}
 .eo-logo-icon{width:30px;height:30px;background:#dc2626;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;font-family:'Bebas Neue',cursive;letter-spacing:1px;}
-.eo-logo-text{font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:4px;color:#E8EDF5;}
+.eo-logo-img{height:18px;width:auto;display:block;}
 .eo-plan-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:rgba(220,38,38,0.12);border:1px solid rgba(220,38,38,0.25);border-radius:4px;font-size:10px;letter-spacing:0.2em;color:rgba(220,38,38,0.9);text-transform:uppercase;margin-bottom:10px;width:fit-content;}
 .eo-changeplan{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:6px 11px;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.5);cursor:pointer;margin-bottom:32px;font-family:system-ui,sans-serif;transition:border-color 0.15s,color 0.15s;}
 .eo-changeplan:hover{border-color:rgba(220,38,38,0.45);color:rgba(255,255,255,0.8);}
@@ -178,7 +179,7 @@ function LeftPanel({ step, tier, onChangePlan }) {
     <div className="eo-left">
       <div className="eo-logo">
         <div className="eo-logo-icon">X</div>
-        <span className="eo-logo-text">SHIFTOS</span>
+        <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" className="eo-logo-img" />
       </div>
       <div className="eo-plan-badge">{cfg.label} &mdash; {cfg.price}</div>
       <button type="button" className="eo-changeplan" onClick={onChangePlan}>Change plan</button>
@@ -213,6 +214,9 @@ function LeftPanel({ step, tier, onChangePlan }) {
 }
 
 export default function DealerOnboarding() {
+  // AUTH-6: signUp goes through /auth/v1/signup, which the Supabase captcha
+  // guards. Inert until the site key + dashboard toggle are both set.
+  const { getToken } = useAuthCaptcha();
   const navigate = useNavigate();
   const { tier: tierParam } = useParams();
   const tier = ['starter', 'growth', 'pro'].includes(tierParam) ? tierParam : 'starter';
@@ -361,12 +365,14 @@ export default function DealerOnboarding() {
     if (form.password !== form.confirmPassword) { setErr('Passwords do not match.'); return; }
     setLoading(true);
     try {
+      const captchaToken = await getToken();
       const { data, error } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
         // Persist onboarding context on the ACCOUNT (user_metadata) so confirming
         // on another device resumes the correct (dealer) flow at the right tier.
         options: {
+          captchaToken,
           emailRedirectTo: `${window.location.origin}/auth/callback`,
           // consent: true is the durable backup for the sessionStorage 'ob_agreed'
           // flag read in the init() resume check above — this one lives on the
@@ -515,7 +521,7 @@ export default function DealerOnboarding() {
         <div style={{ width: 'min(420px, 90%)', padding: '0 20px' }}>
           <div className="eo-logo" style={{ justifyContent: 'center', marginBottom: 32 }}>
             <div className="eo-logo-icon">X</div>
-            <span className="eo-logo-text">SHIFTOS</span>
+            <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" className="eo-logo-img" />
           </div>
           <p className="eo-eyebrow" style={{ textAlign: 'center', marginBottom: 20 }}>INCOMPLETE SIGN-UP FOUND</p>
           <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 40, letterSpacing: 3, color: '#E8EDF5', marginBottom: 10, textAlign: 'center' }}>WELCOME BACK</div>
@@ -552,7 +558,7 @@ export default function DealerOnboarding() {
             <div className="eo-mobile-bar">
               <div className="eo-logo" style={{ marginBottom: 0 }}>
                 <div className="eo-logo-icon">X</div>
-                <span className="eo-logo-text">SHIFTOS</span>
+                <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" className="eo-logo-img" />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
                 <span style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 11, letterSpacing: 3, color: 'rgba(220,38,38,0.6)' }}>

@@ -153,7 +153,7 @@ export default function SalesmanSetup() {
       <style>{CSS}</style>
       <div style={S.brand}>
         <div className="ss-pulse" style={S.icon}>⚡</div>
-        <span style={S.brandText}>SHIFTOS</span>
+        <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 21, width: 'auto', display: 'block' }} />
       </div>
 
       {phase === 'loading' && (

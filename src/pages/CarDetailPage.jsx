@@ -2247,11 +2247,16 @@ export default function CarDetailPage() {
                   >
                     <ChevronRight size={18} />
                   </button>
+                  {/* Bottom-RIGHT, not top-left: the floating back/share chrome
+                      is an absolute bar across the top of the mosaic, so a pill
+                      at top:14/left:14 sat underneath the back button. Bottom
+                      right is clear of that, of the centred dots and of the
+                      vertically-centred arrows. Mobile matches. */}
                   <div
                     style={{
                       position: "absolute",
-                      top: 14,
-                      left: 14,
+                      bottom: 14,
+                      right: 14,
                       zIndex: 4,
                       background: "rgba(6,8,15,0.62)",
                       backdropFilter: "blur(10px)",
@@ -2489,7 +2494,7 @@ export default function CarDetailPage() {
             }}
           />
           <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'45%', background:'linear-gradient(to top, rgba(6,8,15,0.8), transparent)', pointerEvents:'none', zIndex:3 }} />
-          <div style={{ position:'absolute', bottom:14, left:14, zIndex:5, background:'rgba(6,8,15,0.7)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:20, padding:'4px 12px', fontSize:11, color:'rgba(255,255,255,0.8)', fontFamily:"var(--xd-font-body)", fontWeight:500 }}>
+          <div style={{ position:'absolute', bottom:14, right:14, zIndex:5, background:'rgba(6,8,15,0.7)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:20, padding:'4px 12px', fontSize:11, color:'rgba(255,255,255,0.8)', fontFamily:"var(--xd-font-body)", fontWeight:500 }}>
             {activeIdx + 1} / {imgCount}
           </div>
           {imgCount > 1 && (() => {

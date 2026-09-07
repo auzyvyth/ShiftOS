@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../supabaseClient';
+import useAuthCaptcha from './useAuthCaptcha';
 
 // In-app buyer <-> seller chat.
 //
@@ -161,6 +162,14 @@ export function useChatThreads({ salesmanId = null, dealerId = null }) {
 // account. Supabase keeps the same user id if they register later, so the
 // history carries over.
 export function useBuyerThread(listingId, { autoStart = false, active = true } = {}) {
+  // AUTH-6, and this is the one that matters most. signInAnonymously() goes
+  // through /auth/v1/signup — the endpoint the Supabase captcha guards — and
+  // Supabase explicitly recommends a captcha on it. Without a token here,
+  // switching the project captcha on kills EVERY guest buyer conversation
+  // silently: no chat opens, the seller simply stops receiving messages.
+  // There is no widget to put on a form because there is no form; the hook
+  // runs Turnstile invisibly and only shows anything if Cloudflare asks.
+  const { getToken } = useAuthCaptcha();
   const [threadId, setThreadId] = useState(null);
   const [starting, setStarting] = useState(false);
   const [needsAnon, setNeedsAnon] = useState(false);
@@ -172,7 +181,8 @@ export function useBuyerThread(listingId, { autoStart = false, active = true } =
     try {
       let { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        const { data, error } = await supabase.auth.signInAnonymously();
+        const captchaToken = await getToken();
+        const { data, error } = await supabase.auth.signInAnonymously({ options: { captchaToken } });
         if (error) {
           // Anonymous sign-ins are a project-level toggle. If it's off, say so
           // rather than failing silently on the buyer.
@@ -189,7 +199,7 @@ export function useBuyerThread(listingId, { autoStart = false, active = true } =
     } finally {
       setStarting(false);
     }
-  }, [listingId, starting]);
+  }, [listingId, starting, getToken]);
 
   // Reattach to an existing thread — deferred until `active` (the Contact
   // sheet is actually open) and run at most once per mount. This used to

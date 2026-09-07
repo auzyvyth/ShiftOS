@@ -156,7 +156,7 @@ export default function WaitlistPage() {
       {/* NAV */}
       <nav style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "14px 20px", display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ width: 26, height: 26, background: "#dc2626", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontFamily: "'Bebas Neue', sans-serif", fontWeight: 700, color: "#fff" }}>S</div>
-        <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, letterSpacing: "2px", color: "#fff" }}>SHIFTOS</span>
+        <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
         <span style={{ marginLeft: 8, fontSize: 10, padding: "2px 8px", borderRadius: 99, background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.3)", color: "#f87171", fontWeight: 700, letterSpacing: "0.05em" }}>EARLY ACCESS</span>
         <button
           onClick={toggleLang}

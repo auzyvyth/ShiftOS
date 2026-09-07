@@ -950,7 +950,13 @@ const FinancingCalculator = ({
           </div>
 
           {/* ══ RIGHT: Results ════════════════════════════════════════════════ */}
-          <div className="calc-results" style={{ width: 300, flexShrink: 0, position: 'sticky', top: 88 }}>
+          {/* top: clears the site header plus an 18px breath. On CalculatorPage
+              this sits under MarketplaceHeader, which auto-hides and publishes
+              its live height as --mh-h, so the panel follows it up and down.
+              The 70px fallback is the same bar's height, which keeps every
+              other host of this component (dealer dashboard, F&I panel, car
+              page — none of which set --mh-h) on exactly the 88px it has now. */}
+          <div className="calc-results" style={{ width: 300, flexShrink: 0, position: 'sticky', top: 'calc(var(--mh-h, 70px) + 18px)', transition: 'top .28s ease' }}>
             <div style={{ ...card, border: `1px solid ${light ? 'rgba(220,38,38,0.25)' : 'rgba(220,38,38,0.18)'}` }}>
 
               {/* Monthly installment hero */}

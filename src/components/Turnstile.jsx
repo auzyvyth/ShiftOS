@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { TURNSTILE_SITE_KEY as SITE_KEY, loadTurnstileScript } from '../utils/turnstileScript';
 
 // Cloudflare Turnstile proof-of-human widget for public write forms (ContactGate,
 // enquiry modal). Rendered in `interaction-only` mode: invisible and frictionless
@@ -8,25 +9,8 @@ import React, { useEffect, useRef } from 'react';
 // No-ops (renders nothing) when VITE_TURNSTILE_SITE_KEY is unset so local dev and
 // pre-setup prod keep working; the server verify then fails open to match.
 
-const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
-const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-
-let scriptPromise = null;
-function loadTurnstileScript() {
-  if (typeof window === 'undefined') return Promise.reject();
-  if (window.turnstile) return Promise.resolve();
-  if (scriptPromise) return scriptPromise;
-  scriptPromise = new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = SCRIPT_SRC;
-    s.async = true;
-    s.defer = true;
-    s.onload = () => resolve();
-    s.onerror = () => { scriptPromise = null; reject(new Error('turnstile script failed to load')); };
-    document.head.appendChild(s);
-  });
-  return scriptPromise;
-}
+// The script loader and the site key live in src/utils/turnstileScript.js so
+// this widget and the auth captcha hook share one <script> tag.
 
 // Props: onToken(token|null) — fired with a fresh token on solve, null on expiry/error.
 export default function Turnstile({ onToken, action, className }) {
