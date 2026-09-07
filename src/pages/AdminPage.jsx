@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 // used once, to adopt an existing superadmin session handed off from the public
 // /login redirect (see checkAuth).
 import { platformClient as supabase } from "../lib/platformClient";
+import { throttleCheck, throttleFail, throttleClear } from "../utils/authThrottle";
 import { supabase as mainClient } from "../supabaseClient";
 import { invalidateMarketplaceSettingsCache, MARKETPLACE_FALLBACK } from "../hooks/useMarketplaceSettings";
 import { PLAN_CONFIG } from "../utils/planConfig";
@@ -227,6 +228,11 @@ export default function AdminPage() {
   const [loginPw, setLoginPw] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
   const [authError, setAuthError] = useState("");
+  // Brute-force lock (utils/authThrottle.js). /login enforced one and this page
+  // did not — and this is the superadmin credential, so it was the softest way
+  // in on the platform. No visible countdown here: the console is deliberately
+  // spartan, and login_throttle_check hands back the live remaining seconds on
+  // the next submit, so the number is never stale when it matters.
   const [mfaFactorId, setMfaFactorId] = useState(null);
   const [mfaCode, setMfaCode] = useState("");
   const [dealers, setDealers] = useState([]);
@@ -397,11 +403,39 @@ export default function AdminPage() {
     if (loginBusy) return;
     setAuthError("");
     setLoginBusy(true);
+    const cleanEmail = loginEmail.trim().toLowerCase();
+
+    // Locked out? Refuse before spending an attempt. Runs on `supabase` (the
+    // platform client) — same project and anon key, so the RPCs resolve the
+    // same, and the CLEAR below needs the client that holds the new session.
+    const gate = await throttleCheck(cleanEmail, supabase);
+    if (!gate.allowed) {
+      setAuthError(`Too many attempts. Try again in ${gate.secondsLeft}s.`);
+      setLoginBusy(false);
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
-      email: loginEmail.trim(),
+      email: cleanEmail,
       password: loginPw,
     });
-    if (error) { setAuthError(error.message); setLoginBusy(false); return; }
+    if (error) {
+      // Only a genuinely rejected credential counts against the lock. A network
+      // blip or a 5xx must never spend an attempt — this is the one account that
+      // cannot ask anyone else to let it back in.
+      const isInvalidCreds =
+        error.status === 400 ||
+        /invalid|credential/i.test(error.message || "");
+      const f = isInvalidCreds
+        ? await throttleFail(cleanEmail, supabase)
+        : { locked: false, secondsLeft: 0, attempts: 0 };
+      setAuthError(f.locked
+        ? `Too many attempts. Try again in ${f.secondsLeft}s.`
+        : error.message);
+      setLoginBusy(false);
+      return;
+    }
+    throttleClear(cleanEmail, supabase);
     const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aal?.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
       const { data: factors } = await supabase.auth.mfa.listFactors();

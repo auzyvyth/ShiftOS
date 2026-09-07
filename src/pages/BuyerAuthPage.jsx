@@ -5,6 +5,7 @@ import { markBuyerIntent, markBuyerConsent, ensureBuyerProfile } from "../lib/bu
 import { routeForProfile } from "../hooks/useRoleRedirect";
 import { Heart, Bell, MessageCircle, Tag, Check, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import LegalModal from "../components/LegalModal";
+import { RESET_AFTER_FAILS, throttleCheck, throttleFail, throttleClear } from "../utils/authThrottle";
 
 const CONSENT_ERR =
   "Please confirm you're 18+ and agree to the Terms of Service and Privacy Policy to continue.";
@@ -56,6 +57,10 @@ export default function BuyerAuthPage() {
   const [showMagic, setShowMagic] = useState(false);
   const [magicSent, setMagicSent] = useState(false);
   const [magicLoading, setMagicLoading] = useState(false);
+  // Brute-force lock, shared with /login and /platform (utils/authThrottle.js).
+  // This page had NO throttle at all: the dealer login enforced one and the
+  // buyer login did not, so unlimited password guessing was one URL away.
+  const [lockSeconds, setLockSeconds] = useState(0);
 
   useEffect(() => {
     document.title = "Sign in — XDrive";
@@ -76,6 +81,13 @@ export default function BuyerAuthPage() {
     // because a standalone salesman's home is Lite or Premium, not /salesman.
     window.location.href = `${base}${routeForProfile(profile)}`;
   };
+
+  // Tick the visible lockout down. Same shape as LoginPage's.
+  useEffect(() => {
+    if (lockSeconds <= 0) return;
+    const id = setInterval(() => setLockSeconds((n) => (n <= 1 ? 0 : n - 1)), 1000);
+    return () => clearInterval(id);
+  }, [lockSeconds]);
 
   const switchMode = (m) => { setMode(m); setError(""); setConfirmSent(false); setShowForgot(false); setShowMagic(false); setMagicSent(false); };
 
@@ -106,25 +118,69 @@ export default function BuyerAuthPage() {
 
   const handleSignIn = async () => {
     if (!email || !password) { setError("Please enter your email and password."); return; }
-    setError(""); setShowForgot(false); setShowMagic(false); setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (lockSeconds > 0) { setError(`Too many attempts. Try again in ${lockSeconds}s.`); return; }
+    setError(""); setLoading(true);
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Server-side lock check before the attempt — a reload cannot shake it off.
+    const gate = await throttleCheck(cleanEmail);
+    if (!gate.allowed) {
+      setLockSeconds(gate.secondsLeft);
+      setError(`Too many attempts. Try again in ${gate.secondsLeft}s.`);
+      setLoading(false);
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
     if (error) {
+      // Only a rejected credential counts against the lock — an unconfirmed
+      // email or a 5xx is not a guess, and it must not spend an attempt or get
+      // answered with "wrong password".
+      const isInvalidCreds =
+        error.status === 400 || /invalid|credential/i.test(error.message || "");
+      if (!isInvalidCreds) {
+        setShowMagic(false);
+        setShowForgot(false);
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
+      const f = await throttleFail(cleanEmail);
+      if (f.locked) setLockSeconds(f.secondsLeft);
       // Distinguish "no account" vs "wrong password" and offer the right recovery:
       // a password user gets a reset link; a Google/OTP-only user gets a magic link.
-      const { data: rows } = await supabase.rpc("auth_account_status", { p_email: email.trim().toLowerCase() });
+      const { data: rows } = await supabase.rpc("auth_account_status", { p_email: cleanEmail });
       const st = Array.isArray(rows) ? rows[0] : rows;
       if (st?.account_exists && !st?.has_password) {
-        setError("This email signed up with Google. Use “Continue with Google”, or get a magic link below.");
+        // No password to get wrong — the link is their only way in, so it shows
+        // on the first try and the lock never hides it.
+        setShowForgot(false);
         setShowMagic(true);
+        setError(f.locked
+          ? `Too many attempts. Try again in ${f.secondsLeft}s, or get a magic link below.`
+          : "This email signed up with Google. Use “Continue with Google”, or get a magic link below.");
       } else if (st?.account_exists) {
-        setError("Wrong password. Try again or reset it below.");
-        setShowForgot(true);
+        // Reset offered from the 3rd wrong password, not the 1st — same rule as
+        // /login. Three is also where the lock lands, so the way out arrives with it.
+        const offerReset = f.attempts >= RESET_AFTER_FAILS;
+        setShowMagic(false);
+        setShowForgot(offerReset);
+        setError(
+          f.locked
+            ? `Wrong password ${f.attempts} times. Try again in ${f.secondsLeft}s, or reset it below.`
+            : offerReset
+            ? "Wrong password. Try again, or reset it below."
+            : "Wrong password. Please try again.",
+        );
       } else {
+        setShowMagic(false);
+        setShowForgot(false);
         setError("No account found with that email. Check for typos or create one.");
       }
       setLoading(false);
       return;
     }
+    throttleClear(cleanEmail);
     await ensureBuyerProfile(data.user);
     await redirectByRole(data.user);
   };

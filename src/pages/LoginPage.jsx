@@ -6,6 +6,7 @@ import { ArrowLeft, Clock } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { handoffSuffix } from "../lib/authHandoff";
 import { markBuyerIntent } from "../lib/buyerAuth";
+import { RESET_AFTER_FAILS, throttleCheck, throttleFail, throttleClear } from "../utils/authThrottle";
 
 const Field = ({ id, label, focused, children }) => (
   <div className={`field ${focused === id ? "is-focused" : ""}`}>
@@ -324,13 +325,12 @@ export default function LoginPage() {
     const cleanEmail = email.trim().toLowerCase();
 
     // Ask the server if this email is currently locked out before we even try —
-    // a reload can't shake off an active lock.
-    const { data: gate } = await supabase.rpc("login_throttle_check", { p_email: cleanEmail });
-    const g = Array.isArray(gate) ? gate[0] : gate;
-    if (g && g.allowed === false) {
-      const secs = g.seconds_left || 60;
-      setLockSeconds(secs);
-      setError(`Too many attempts. Try again in ${secs}s.`);
+    // a reload can't shake off an active lock. Whatever recovery link is
+    // already on screen stays there: a lock is the moment someone most needs it.
+    const gate = await throttleCheck(cleanEmail);
+    if (!gate.allowed) {
+      setLockSeconds(gate.secondsLeft);
+      setError(`Too many attempts. Try again in ${gate.secondsLeft}s.`);
       setLoading(false);
       return;
     }
@@ -344,13 +344,15 @@ export default function LoginPage() {
         signInError.message.toLowerCase().includes("credentials") ||
         signInError.status === 400;
 
-      // Record the failed attempt server-side; the DB locks after the 3rd.
+      // Record the failed attempt server-side; the DB locks after the 3rd and
+      // hands back the running count, which is what gates the reset link below.
       let lockedNow = false;
       let lockSecs = 60;
+      let fails = 0;
       if (isInvalidCreds) {
-        const { data: fail } = await supabase.rpc("login_throttle_fail", { p_email: cleanEmail });
-        const f = Array.isArray(fail) ? fail[0] : fail;
-        if (f && f.locked) { lockedNow = true; lockSecs = f.seconds_left || 60; setLockSeconds(lockSecs); }
+        const f = await throttleFail(cleanEmail);
+        fails = f.attempts;
+        if (f.locked) { lockedNow = true; lockSecs = f.secondsLeft; setLockSeconds(lockSecs); }
       }
 
       if (isInvalidCreds) {
@@ -360,16 +362,34 @@ export default function LoginPage() {
         const { data: statusRows } = await supabase.rpc("auth_account_status", { p_email: cleanEmail });
         const st = Array.isArray(statusRows) ? statusRows[0] : statusRows;
         if (st?.account_exists && !st?.has_password) {
-          // Account exists but has no password — Google/OTP user → magic link
-          setError("");
+          // Account exists but has no password — Google/OTP user → magic link.
+          // Offered on the FIRST failure and never withheld by the lock: this
+          // person has no password to get right, so the link is not a fallback,
+          // it is their only door in. Hiding it behind three failures (or behind
+          // a 60s lock they will hit every time) would be a dead end.
+          setError(lockedNow
+            ? `Too many attempts. Try again in ${lockSecs}s, or use the sign-in link below.`
+            : "");
           setShowForgotPassword(false);
           setShowMagicLink(true);
           setMagicEmail(cleanEmail);
         } else if (st?.account_exists) {
-          // Account + password exist → it's the wrong password
-          setError("Wrong password. Try again or reset it below.");
+          // Account + password exist → it's the wrong password. The reset link
+          // only appears from the RESET_AFTER_FAILS'th failure. One mistyped
+          // password is a typo, not a forgotten password, and answering a typo
+          // with "reset your password" pushes people into an email round-trip
+          // they did not need. Three is also exactly where login_throttle_fail
+          // locks the account, so the lock and the way out arrive together.
+          const offerReset = fails >= RESET_AFTER_FAILS;
           setShowMagicLink(false);
-          setShowForgotPassword(true);
+          setShowForgotPassword(offerReset);
+          setError(
+            lockedNow
+              ? `Wrong password ${fails} times. Try again in ${lockSecs}s, or reset your password below.`
+              : offerReset
+              ? "Wrong password. Try again, or reset it below."
+              : "Wrong password. Please try again.",
+          );
         } else {
           // No account found at all
           setError(
@@ -379,14 +399,9 @@ export default function LoginPage() {
           setShowForgotPassword(false);
         }
       } else {
-        // Other errors (e.g. email not confirmed) — just show the message
-        setError(signInError.message);
-        setShowMagicLink(false);
-        setShowForgotPassword(false);
-      }
-      // A fresh lock takes priority over the per-message guidance above.
-      if (lockedNow) {
-        setError(`Too many attempts. Try again in ${lockSecs}s.`);
+        // Other errors (e.g. email not confirmed) — just show the message.
+        // A lock still takes priority: it is the reason the next try will fail.
+        setError(lockedNow ? `Too many attempts. Try again in ${lockSecs}s.` : signInError.message);
         setShowMagicLink(false);
         setShowForgotPassword(false);
       }
@@ -394,7 +409,7 @@ export default function LoginPage() {
       return;
     }
     // Successful password — reset the throttle counter for this email.
-    supabase.rpc("login_throttle_clear", { p_email: cleanEmail });
+    throttleClear(cleanEmail);
     try {
       const proceed = await checkMfaAndProceed(data.user);
       if (proceed) await redirectByRole(data.user, data.session);
