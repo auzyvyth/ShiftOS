@@ -1024,14 +1024,28 @@ export default function LoginPage() {
             {showForgotPassword && (
               <div className="lr-reset-panel">
                 {resetSent ? (
-                  <p className="lr-success">
-                    ✓ Reset link sent — check your inbox.
-                  </p>
+                  <>
+                    <p className="lr-success">
+                      ✓ Code sent — check your inbox.
+                    </p>
+                    {/* The email carries a CODE, not a link, so the person needs
+                        somewhere to type it. Leaving them on "check your inbox"
+                        with no next step is the whole reason this flow changed. */}
+                    <button
+                      type="button"
+                      className="lr-reset-btn"
+                      onClick={() =>
+                        navigate(`/reset-password?email=${encodeURIComponent(email.trim())}`)
+                      }
+                    >
+                      ENTER THE CODE
+                    </button>
+                  </>
                 ) : (
                   <>
                     <p className="lr-reset-hint">
-                      We'll send a reset link to the email address you entered
-                      above.
+                      We'll email a 6-digit code to the address above. It lasts an
+                      hour and works on any device.
                     </p>
                     <button
                       type="button"
@@ -1039,7 +1053,7 @@ export default function LoginPage() {
                       onClick={handlePasswordReset}
                       disabled={resetLoading}
                     >
-                      {resetLoading ? "SENDING…" : "SEND RESET LINK"}
+                      {resetLoading ? "SENDING…" : "SEND RESET CODE"}
                     </button>
                   </>
                 )}

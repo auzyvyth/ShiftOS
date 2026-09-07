@@ -271,6 +271,51 @@ login page. What the code actually looks like today:
     the wrong one was pasted.
   - STILL TO TEST: guest chat from a logged-out browser, and a magic link.
 
+- [x] **AUTH-8 DONE 2026-09-07 (code): password reset is a 6-DIGIT CODE, not a
+  link. NEEDS ONE OWNER STEP BEFORE IT WORKS — see below.**
+  Owner reported a reset link "expired as soon as I got to work" and asked for a
+  1-hour expiry. Setting 1 hour would NOT have fixed it, and this is the useful
+  part to remember: the app runs the PKCE flow (no `flowType` in
+  `src/supabaseClient.js:17`, and PKCE is supabase-js's default), and Supabase's
+  own docs state a PKCE code is valid for **5 minutes**, is single-use, and
+  "must be initiated on the same browser and device where the flow was started".
+  None of that is configurable — the Email OTP Expiration setting does not touch
+  it. So a reset requested at home and opened at work could never work, at any
+  expiry setting. Mail scanners pre-clicking the link burn it too (Supabase
+  documents prefetching as the most common cause of "expired immediately").
+  A 6-digit code has none of those limits: it honours Email OTP Expiration, works
+  on any device, and cannot be consumed by a scanner. Same pattern the codebase
+  already uses in `BuyerEmailPrompt` for the same reason.
+  - `ResetPasswordPage.jsx` — new `code` phase (email + 6 digits ->
+    `verifyOtp({ type: 'recovery' })` -> the existing set-password form). The
+    `expired` DEAD END IS GONE: a failed link now lands on the code form with an
+    explanation instead of a full stop. Its old copy also claimed "Reset links
+    last one hour", which was never true under PKCE — that wrong sentence is
+    what sent the owner looking at the expiry setting.
+  - `LoginPage` + `BuyerAuthPage` — copy says code not link, and the sent state
+    now has an ENTER THE CODE button through to `/reset-password?email=…`.
+    A code email with nowhere to type the code is the obvious failure here.
+  - **OWNER STEPS — the flow does nothing until both are done:**
+    1. Supabase -> Authentication -> Emails -> "Reset Password" template: replace
+       the `{{ .ConfirmationURL }}` link with `{{ .Token }}` (the 6-digit code).
+       Leaving the link in re-opens the mail-scanner hole, since the link and the
+       code are the same underlying token.
+    2. Supabase -> Authentication -> Providers -> Email -> "Email OTP Expiration"
+       -> `3600` (1 hour).
+  - Checked and SAFE: `create-salesman` and `invites` build their own Resend
+    emails from `admin.generateLink()` (`create-salesman/index.ts:48`), so they
+    do NOT use the Supabase Reset Password template and are unaffected. Their
+    links are `token_hash` verify URLs, not PKCE codes, so they were never
+    browser-bound either.
+
+- [ ] **AUTH-9: the salesman setup email will claim the wrong expiry.**
+  `supabase/functions/create-salesman/index.ts:70` says "This link expires in 24
+  hours". Once Email OTP Expiration is set to 3600 for AUTH-8, that sentence is
+  false and a salesman will trust it. One-line copy fix — but DO NOT redeploy
+  that function without first diffing the live version
+  (`mcp__Supabase__get_edge_function`) against the repo, per the edge-function
+  drift rule in CLAUDE.md. Cheap, just not free.
+
 - [x] **AUTH-7 DONE 2026-09-07: `TURNSTILE_SECRET` was NOT set on Vercel, so the
   buyer-form captcha had never verified anything.** Fixed and VERIFIED on prod —
   the probe below now returns `403 captcha_failed / missing_token`, where it
