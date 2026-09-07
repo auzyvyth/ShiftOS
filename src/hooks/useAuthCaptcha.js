@@ -19,10 +19,17 @@ import { TURNSTILE_SITE_KEY, loadTurnstileScript } from '../utils/turnstileScrip
 //  3. No layout work on five different forms, and no per-surface light/dark
 //     theming for a box that is invisible almost always.
 //
-// The widget runs in `execution: 'execute'` + `appearance: 'interaction-only'`:
-// nothing is shown to a normal person. Only if Cloudflare wants a real
-// challenge does the box become visible, and `before-interactive-callback`
-// is what reveals it.
+// TIMING — the thing this got wrong once, so do not "simplify" it back.
+// The widget solves its challenge ON PAGE LOAD and parks the token. getToken()
+// hands over the parked one and immediately re-arms in the background, so the
+// person pressing Sign In waits for nothing. The first version passed
+// `execution: 'execute'`, which defers the whole Cloudflare handshake until the
+// button is pressed — every login and password reset took about ten seconds,
+// on production. A captcha the user waits for is a captcha you have put in
+// front of your own front door.
+// `appearance: 'interaction-only'` still means nothing is SHOWN unless
+// Cloudflare actually wants a challenge; that is what stays invisible, not the
+// solving.
 //
 // INERT UNTIL CONFIGURED: with no VITE_TURNSTILE_SITE_KEY, getToken() resolves
 // undefined immediately, and `options: { captchaToken: undefined }` is exactly
@@ -47,6 +54,9 @@ export default function useAuthCaptcha() {
   const widgetId = useRef(null);
   const pendingRef = useRef(null);
   const prevOverflow = useRef('');
+  // The pre-solved token, waiting to be spent. Null while a challenge is in
+  // flight, or straight after one is consumed.
+  const tokenRef = useRef(null);
 
   // NOTE ON HIDING: we deliberately do NOT hide the container ourselves.
   // `appearance: 'interaction-only'` means CLOUDFLARE decides what to show — it
@@ -80,16 +90,29 @@ export default function useAuthCaptcha() {
     }
   }, []);
 
-  const settle = useCallback((token) => {
-    const p = pendingRef.current;
-    pendingRef.current = null;
+  // Start earning the next token. Background work — nobody awaits this.
+  const rearm = useCallback(() => {
+    if (widgetId.current === null || !window.turnstile) return;
+    try { window.turnstile.reset(widgetId.current); } catch { /* ignore */ }
+  }, []);
+
+  // A challenge finished (or failed). Either hand the result to whoever is
+  // waiting, or park it for the next getToken().
+  const deliver = useCallback((token) => {
     hide();
-    if (!p) return;
+    const p = pendingRef.current;
+    if (!p) {
+      tokenRef.current = token || null;
+      return;
+    }
+    pendingRef.current = null;
     if (p.timer) clearTimeout(p.timer);
+    tokenRef.current = null;
     // Never reject: a captcha that fails must produce a call Supabase can
     // answer with a real error, not an unhandled promise in a submit handler.
     p.resolve(token || undefined);
-  }, [hide]);
+    rearm();
+  }, [hide, rearm]);
 
   useEffect(() => {
     if (!TURNSTILE_SITE_KEY) return undefined;
@@ -121,24 +144,36 @@ export default function useAuthCaptcha() {
         if (widgetId.current !== null) return; // guard StrictMode double-mount
         widgetId.current = window.turnstile.render(slot, {
           sitekey: TURNSTILE_SITE_KEY,
-          execution: 'execute',
+          // No `execution` option on purpose — the default solves at render
+          // time, which is the whole point. See the timing note at the top.
           appearance: 'interaction-only',
           action: 'auth',
           'before-interactive-callback': () => reveal(),
-          callback: (t) => settle(t),
-          'expired-callback': () => settle(undefined),
-          'error-callback': () => settle(undefined),
+          callback: (t) => deliver(t),
+          // A parked token goes stale after ~5 minutes. Drop it and earn a
+          // fresh one, or someone who left the login page open sends an
+          // expired token and gets told their password is wrong.
+          'expired-callback': () => {
+            tokenRef.current = null;
+            // deliver() re-arms when someone is waiting; when nobody is, we
+            // still want a fresh token ready for the next login. Never both,
+            // or the second reset abandons the challenge the first just began.
+            if (pendingRef.current) deliver(undefined);
+            else rearm();
+          },
+          'error-callback': () => { tokenRef.current = null; deliver(undefined); },
         });
       })
       .catch(() => {
         // Script blocked or offline. Any in-flight ask resolves empty and
         // Supabase gives the real answer.
-        if (!cancelled) settle(undefined);
+        if (!cancelled) deliver(undefined);
       });
 
     return () => {
       cancelled = true;
-      if (pendingRef.current) settle(undefined);
+      tokenRef.current = null;
+      if (pendingRef.current) deliver(undefined);
       if (widgetId.current !== null && window.turnstile) {
         try { window.turnstile.remove(widgetId.current); } catch { /* ignore */ }
       }
@@ -146,11 +181,16 @@ export default function useAuthCaptcha() {
       try { host.remove(); } catch { /* ignore */ }
       hostRef.current = null;
     };
-  }, [reveal, settle]);
+  }, [reveal, deliver]);
 
   /**
-   * Get a FRESH single-use token for one auth call.
-   * Always await it immediately before the call, never cache the result.
+   * Take the single-use token for one auth call, and start earning the next.
+   * Await it immediately before the call; never cache the result yourself.
+   *
+   * Normally resolves INSTANTLY — the token was solved when the page loaded.
+   * It only waits if someone submits within the first moment of page load, or
+   * if a challenge is genuinely on screen.
+   *
    * @returns {Promise<string|undefined>} undefined when Turnstile is not
    *   configured or could not produce one — the call then goes to Supabase
    *   without a token and Supabase decides.
@@ -159,24 +199,27 @@ export default function useAuthCaptcha() {
     if (!TURNSTILE_SITE_KEY) return Promise.resolve(undefined);
     if (!window.turnstile || widgetId.current === null) return Promise.resolve(undefined);
 
-    // A second ask cancels the first rather than leaking it. Forms disable
-    // their submit button, so this is belt and braces.
-    if (pendingRef.current) settle(undefined);
+    // The fast path, and the one almost every login takes.
+    const parked = tokenRef.current;
+    if (parked) {
+      tokenRef.current = null;
+      // Single use: spending this one immediately starts earning the next, so
+      // a retry after a wrong password has a fresh token ready rather than
+      // replaying a spent one.
+      rearm();
+      return Promise.resolve(parked);
+    }
+
+    // Nothing parked yet. Wait for the in-flight challenge rather than firing
+    // a second one — reset() here would abandon the challenge already running
+    // and start the clock over.
+    if (pendingRef.current) deliver(undefined);
 
     return new Promise((resolve) => {
-      const timer = setTimeout(() => settle(undefined), TOKEN_TIMEOUT_MS);
+      const timer = setTimeout(() => deliver(undefined), TOKEN_TIMEOUT_MS);
       pendingRef.current = { resolve, timer };
-      try {
-        // reset() before execute() is what makes the token fresh. Without it a
-        // retry after a wrong password replays a spent token and Supabase
-        // rejects the login for the wrong reason.
-        window.turnstile.reset(widgetId.current);
-        window.turnstile.execute(widgetId.current);
-      } catch {
-        settle(undefined);
-      }
     });
-  }, [settle]);
+  }, [deliver, rearm]);
 
   return { getToken };
 }
