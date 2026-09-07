@@ -91,3 +91,54 @@ export function throttleClear(email, client = mainClient) {
     /* never block a successful login on cleanup */
   }
 }
+
+// ── AUTH-5: how often a stranger can make us send an auth email ──────────────
+// Password reset, magic link and "resend confirmation" all mail whatever
+// address is typed in the box. Nothing in the app limited that, so typing
+// someone else's address and holding down the button mail-bombed their inbox
+// on our behalf. `auth_email_action_gate` is a sliding window per
+// (email, action): 3 sends per 15 minutes, and it hands back the seconds until
+// the oldest one ages out.
+//
+// Per ACTION, not per email — filling the "reset" bucket must not also block
+// the magic link, which may be the only way that person can get in.
+//
+// Say plainly what this is: the key is an address the CALLER supplies, so it
+// is a spam brake, not proof of a human. Someone can burn a victim's three
+// sends and delay that victim's own reset by up to 15 minutes, which is why
+// the window is short and self-healing instead of a long lock. The real
+// proof-of-human control is the captcha in AUTH-6 / ACT-10.
+export const EMAIL_ACTIONS = { RESET: "reset", MAGIC: "magic", RESEND: "resend" };
+
+/**
+ * @returns {{allowed: boolean, secondsLeft: number, message: string}}
+ * `message` is ready to show — the caller does not have to format the wait.
+ * Fails OPEN, same rule as the login throttle: a broken brake must never
+ * become the reason nobody can recover their account.
+ */
+export async function emailActionGate(email, action, client = mainClient) {
+  const clean = (email || "").trim().toLowerCase();
+  if (!clean) return { allowed: true, secondsLeft: 0, message: "" };
+  try {
+    const { data } = await client.rpc("auth_email_action_gate", {
+      p_email: clean,
+      p_action: action,
+    });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (row && row.allowed === false) {
+      const secs = row.seconds_left || 60;
+      const mins = Math.ceil(secs / 60);
+      return {
+        allowed: false,
+        secondsLeft: secs,
+        message:
+          secs > 90
+            ? `Too many requests for this email. Try again in about ${mins} minutes.`
+            : `Too many requests for this email. Try again in ${secs}s.`,
+      };
+    }
+  } catch {
+    /* fail open */
+  }
+  return { allowed: true, secondsLeft: 0, message: "" };
+}

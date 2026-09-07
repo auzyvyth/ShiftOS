@@ -5,7 +5,7 @@ import { markBuyerIntent, markBuyerConsent, ensureBuyerProfile } from "../lib/bu
 import { routeForProfile } from "../hooks/useRoleRedirect";
 import { Heart, Bell, MessageCircle, Tag, Check, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import LegalModal from "../components/LegalModal";
-import { RESET_AFTER_FAILS, throttleCheck, throttleFail, throttleClear } from "../utils/authThrottle";
+import { RESET_AFTER_FAILS, throttleCheck, throttleFail, throttleClear, emailActionGate, EMAIL_ACTIONS } from "../utils/authThrottle";
 
 const CONSENT_ERR =
   "Please confirm you're 18+ and agree to the Terms of Service and Privacy Policy to continue.";
@@ -95,6 +95,9 @@ export default function BuyerAuthPage() {
     if (isSignup && !consent) { setError(CONSENT_ERR); return; }
     if (isSignup) markBuyerConsent();
     setMagicLoading(true);
+    // AUTH-5: 3 sends per address per 15 min, checked before we send.
+    const gate = await emailActionGate(email, EMAIL_ACTIONS.MAGIC);
+    if (!gate.allowed) { setError(gate.message); setMagicLoading(false); return; }
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: { emailRedirectTo: `${base}/auth/callback` },
@@ -217,6 +220,9 @@ export default function BuyerAuthPage() {
   const handleForgot = async () => {
     if (!email) { setError("Enter your email above first."); return; }
     setResetLoading(true);
+    // AUTH-5, own bucket — see LoginPage. Same gate, same numbers.
+    const gate = await emailActionGate(email, EMAIL_ACTIONS.RESET);
+    if (!gate.allowed) { setError(gate.message); setResetLoading(false); return; }
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${base}/reset-password` });
     setResetLoading(false);
     if (error) setError(error.message); else setResetSent(true);

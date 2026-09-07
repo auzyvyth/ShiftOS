@@ -6,7 +6,7 @@ import { ArrowLeft, Clock } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { handoffSuffix } from "../lib/authHandoff";
 import { markBuyerIntent } from "../lib/buyerAuth";
-import { RESET_AFTER_FAILS, throttleCheck, throttleFail, throttleClear } from "../utils/authThrottle";
+import { RESET_AFTER_FAILS, throttleCheck, throttleFail, throttleClear, emailActionGate, EMAIL_ACTIONS } from "../utils/authThrottle";
 
 const Field = ({ id, label, focused, children }) => (
   <div className={`field ${focused === id ? "is-focused" : ""}`}>
@@ -96,6 +96,10 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSent, setResendSent] = useState(false);
+  // The confirm-your-email screen renders none of the page's shared `error`
+  // line, so a refusal from the AUTH-5 gate needs its own slot here or the
+  // button would just silently do nothing.
+  const [resendError, setResendError] = useState("");
   const [showMagicLink, setShowMagicLink] = useState(false);
   const [magicEmail, setMagicEmail] = useState("");
   const [magicSent, setMagicSent] = useState(false);
@@ -172,6 +176,10 @@ export default function LoginPage() {
   const handleMagicLink = async () => {
     if (!magicEmail) return;
     setMagicLoading(true);
+    // AUTH-5: cap how many of these we will send to one address (3 / 15 min).
+    // Checked BEFORE the send, so a refusal costs nobody an email.
+    const gate = await emailActionGate(magicEmail, EMAIL_ACTIONS.MAGIC);
+    if (!gate.allowed) { setError(gate.message); setMagicLoading(false); return; }
     const { error } = await supabase.auth.signInWithOtp({
       email: magicEmail.trim(),
       options: {
@@ -203,6 +211,10 @@ export default function LoginPage() {
       return;
     }
     setResetLoading(true);
+    // AUTH-5. Its own bucket, separate from the magic link: filling one must
+    // not block the other, since either might be this person's only way in.
+    const gate = await emailActionGate(email, EMAIL_ACTIONS.RESET);
+    if (!gate.allowed) { setError(gate.message); setResetLoading(false); return; }
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: `${base}/reset-password`,
     });
@@ -576,11 +588,23 @@ export default function LoginPage() {
               Confirmation email resent!
             </p>
           )}
+          {resendError && (
+            <p style={{ fontSize: 12, color: "#f87171", marginBottom: 16 }}>{resendError}</p>
+          )}
           {unconfirmedEmail && (
             <button
               onClick={async () => {
                 setResendLoading(true);
                 setResendSent(false);
+                setResendError("");
+                // AUTH-5, third bucket. This button is the easiest of the three
+                // to lean on: it needs no password and no account lookup.
+                const gate = await emailActionGate(unconfirmedEmail, EMAIL_ACTIONS.RESEND);
+                if (!gate.allowed) {
+                  setResendError(gate.message);
+                  setResendLoading(false);
+                  return;
+                }
                 await supabase.auth.resend({
                   type: "signup",
                   email: unconfirmedEmail,
