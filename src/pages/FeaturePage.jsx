@@ -224,7 +224,7 @@ function Logo() {
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg,#e02020,#991b1b)", borderRadius: 7, transform: "rotate(6deg)", boxShadow: "0 3px 12px rgba(220,38,38,0.5)" }} />
         <span style={{ position: "relative", fontFamily: "'Bebas Neue',sans-serif", fontSize: 17, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>S</span>
       </div>
-      <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 21, width: "auto", display: "block" }} />
+      <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 17, width: "auto", display: "block" }} />
     </Link>
   );
 }

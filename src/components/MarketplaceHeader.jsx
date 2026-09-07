@@ -288,7 +288,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
            this bar (#0f1115) and is why no recolour is needed here. width:auto off
            a fixed height keeps the ratio; the width/height ATTRIBUTES on the tag
            reserve the box before the file loads so the nav does not jump. */
-        .mh-logo-img { height:26px; width:auto; display:block; }
+        .mh-logo-img { height:21px; width:auto; display:block; }
 
         /* left nav */
         /* The mega panel anchors to this row, NOT to the trigger that opens it
@@ -391,7 +391,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
           .mh-burger { display:flex!important; }
           .mh-mobile.open { display:flex!important; }
           .mh-bar { height:64px; }
-          .mh-logo-img { height:22px; }
+          .mh-logo-img { height:18px; }
         }
         @media (max-width:420px) { .mh-search-go { padding:0 16px; } }
 

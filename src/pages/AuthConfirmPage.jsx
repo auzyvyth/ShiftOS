@@ -90,7 +90,7 @@ export default function AuthConfirmPage() {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24, padding: '24px 16px', background: '#0a0a0c', fontFamily: "system-ui, sans-serif" }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#fff' }}>
         <span style={{ width: 30, height: 30, background: '#dc2626', borderRadius: 999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1 }}>S</span>
-        <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 26, width: 'auto', display: 'block' }} />
+        <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 21, width: 'auto', display: 'block' }} />
       </div>
       <div style={{ width: 'min(420px, 100%)', background: '#111114', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, padding: '48px 40px', textAlign: 'center', boxShadow: '0 30px 80px rgba(0,0,0,0.45)' }}>
         {status === 'verifying' ? (

@@ -606,7 +606,7 @@ function Logo({ size = 34 }) {
         {/* The lockup replaces the gradient-filled wordmark. Height tracks the
             size prop so the nav (34) and the footer (28) stay proportional. */}
         <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59"
-             style={{ height: Math.round(size * 0.62), width: "auto", display: "block" }} />
+             style={{ height: Math.round(size * 0.5), width: "auto", display: "block" }} />
         <span style={{ display: "block", fontSize: 10, color: "#4b5563", letterSpacing: "0.1em", lineHeight: 1, marginTop: 3 }}>by XDrive</span>
       </div>
     </Link>

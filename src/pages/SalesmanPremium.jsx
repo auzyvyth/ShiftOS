@@ -2560,9 +2560,8 @@ export default function SalesmanPremium() {
  }}
  >
  <div style={{ padding: 16, borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 8 }}>
- <div style={{ width: 28, height: 28, background: "#2563eb", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontFamily: "'Bebas Neue', sans-serif", fontWeight: 700, color: "#fff", flexShrink: 0 }}>S</div>
  <div style={{ flex: 1, minWidth: 0 }}>
- <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 18, width: "auto", display: "block" }} />
+ <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
  <p style={{ fontSize: 10, color: "#4b5563", marginTop: 2, marginBottom: 0 }}>· {isPremium ? "Premium Panel" : "Lite Panel"}</p>
  </div>
  <button onClick={() => setMobileNavOpen(false)} aria-label="Close navigation"
@@ -5951,25 +5950,8 @@ export default function SalesmanPremium() {
  gap: 8,
  }}
  >
- <div
- style={{
- width: 28,
- height: 28,
- background: "#2563eb",
- borderRadius: 6,
- display: "flex",
- alignItems: "center",
- justifyContent: "center",
- fontSize: 14,
- fontFamily: "'Bebas Neue', sans-serif",
- fontWeight: 700,
- color: "#fff",
- flexShrink: 0,
- }}
- >S
- </div>
  <div>
- <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 18, width: "auto", display: "block" }} />
+ <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
  <p
  style={{
  fontSize: 10,
@@ -6164,24 +6146,7 @@ export default function SalesmanPremium() {
  )}
  {isMobile? (
  <>
- <div
- style={{
- width: 28,
- height: 28,
- background: "#2563eb",
- borderRadius: 6,
- display: "flex",
- alignItems: "center",
- justifyContent: "center",
- fontSize: 14,
- fontFamily: "'Bebas Neue', sans-serif",
- fontWeight: 700,
- color: "#fff",
- flexShrink: 0,
- }}
- >S
- </div>
- <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 18, width: "auto", display: "block" }} />
+ <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
  <div style={{ flex: 1 }} />
  <button
  onClick={() => setNotifOpen((v) =>!v)}

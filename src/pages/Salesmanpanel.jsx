@@ -7477,25 +7477,8 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  gap: 8,
  }}
  >
- <div
- style={{
- width: 28,
- height: 28,
- background: "#2563eb",
- borderRadius: 6,
- display: "flex",
- alignItems: "center",
- justifyContent: "center",
- fontSize: 14,
- fontFamily: "'Bebas Neue', sans-serif",
- fontWeight: 700,
- color: "#fff",
- flexShrink: 0,
- }}
- >S
- </div>
  <div>
- <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 18, width: "auto", display: "block" }} />
+ <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
  <p
  style={{
  fontSize: 10,
@@ -7890,24 +7873,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  gap: 8,
  }}
  >
- <div
- style={{
- width: 28,
- height: 28,
- background: "#2563eb",
- borderRadius: 6,
- display: "flex",
- alignItems: "center",
- justifyContent: "center",
- fontSize: 14,
- fontFamily: "'Bebas Neue', sans-serif",
- fontWeight: 700,
- color: "#fff",
- flexShrink: 0,
- }}
- >S
- </div>
- <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 18, width: "auto", display: "block" }} />
+ <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
  </div>
  <button
  onClick={() => setNotifOpen((v) =>!v)}

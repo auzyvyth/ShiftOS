@@ -8167,26 +8167,8 @@ export default function SalesmanLite() {
               gap: 8,
             }}
           >
-            <div
-              style={{
-                width: 28,
-                height: 28,
-                background: "#dc2626",
-                borderRadius: 6,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 14,
-                fontFamily: "'Bebas Neue', sans-serif",
-                fontWeight: 700,
-                color: "#fff",
-                flexShrink: 0,
-              }}
-            >
-              S
-            </div>
             <div>
-              <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 18, width: "auto", display: "block" }} />
+              <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
               <p
                 style={{
                   fontSize: 10,
@@ -8354,25 +8336,7 @@ export default function SalesmanLite() {
         >
           {isMobile ? (
             <>
-              <div
-                style={{
-                  width: 28,
-                  height: 28,
-                  background: "#dc2626",
-                  borderRadius: 6,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 14,
-                  fontFamily: "'Bebas Neue', sans-serif",
-                  fontWeight: 700,
-                  color: "#fff",
-                  flexShrink: 0,
-                }}
-              >
-                S
-              </div>
-              <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 18, width: "auto", display: "block" }} />
+              <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
               <div style={{ flex: 1 }} />
               <button
                 onClick={() => setNotifOpen((v) => !v)}
