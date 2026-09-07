@@ -161,7 +161,21 @@ export default function useAuthCaptcha() {
             if (pendingRef.current) deliver(undefined);
             else rearm();
           },
-          'error-callback': () => { tokenRef.current = null; deliver(undefined); },
+          // Cloudflare hands back a numeric code and we used to throw it away,
+          // which made every failure look identical: the form says "couldn't
+          // verify you're human, check your ad blocker" whatever actually
+          // happened. The one that costs the most time is 110200 — THIS
+          // HOSTNAME IS NOT ON THE WIDGET'S DOMAIN LIST, which is what every
+          // Vercel preview URL hits while the widget only allows xdrive.my.
+          // An ad blocker cannot cause that, and nothing in the app can fix
+          // it. Name it in the console so the next person reads the cause
+          // instead of guessing at it.
+          'error-callback': (code) => {
+            console.warn(`[turnstile] auth widget error ${code} on ${window.location.hostname}` +
+              (String(code) === '110200' ? ' — this hostname is not on the Turnstile widget\'s domain list' : ''));
+            tokenRef.current = null;
+            deliver(undefined);
+          },
         });
       })
       .catch(() => {
