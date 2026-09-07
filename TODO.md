@@ -182,7 +182,7 @@ login page. What the code actually looks like today:
   shipping: four consecutive `login_throttle_fail` calls returned attempts
   1, 2, 3 and then held at 3 while locked, so the message cannot inflate past
   three, and `login_throttle_check` refused for the whole 60s.
-- [ ] **AUTH-5 (NEXT): password reset, magic link and resend have no app-level limit.**
+- [x] **AUTH-5 DONE 2026-09-07: password reset, magic link and resend had no app-level limit.**
   `LoginPage.jsx:174,205,569` and `BuyerAuthPage.jsx:86,164` call Supabase
   directly. Anyone can type someone else's address and mail-bomb them, bounded
   only by Supabase's own per-address cooldown. Note the tradeoff before
@@ -190,6 +190,21 @@ login page. What the code actually looks like today:
   victim OUT of their own reset for the window, so keep the window short
   (15 min, self-healing) — the same accepted tradeoff `login_throttle_fail`
   already carries.
+  Built as `auth_email_action_gate(p_email, p_action)` + the table it counts in
+  (migration `20260907a`): sliding window per (email, action), 3 sends per 15
+  min, and a REFUSED attempt does not extend the window — hammering the button
+  must not push the legitimate owner's wait further out. Per action so a full
+  reset bucket never blocks the magic link. Table has RLS on with zero policies
+  and its default anon/authenticated grants revoked; the definer function is the
+  only door, because counting rows must not become a way to ask whether an
+  address requested a reset. Wired at `LoginPage.jsx:181,216,602` and
+  `BuyerAuthPage.jsx:99,224`, always before the send. Probed live: 3 allowed /
+  4th refused at 900s, second action kept its own budget, refusals did not
+  extend, window rolled over, junk address passed through with no row, and as
+  anon the gate worked while a direct table read was refused.
+  Still unthrottled, deliberately out of the owner's stated scope: the signup
+  confirmation resend at `SalesmanOnboarding.jsx:409`. Same gate, one line, if
+  it should be covered too.
 - [ ] **AUTH-6 (ACT-10, wider): Turnstile on every auth entry point.**
   Recommendation on the table: use Supabase's BUILT-IN captcha (dashboard
   secret + `options.captchaToken`), not a widget we verify ourselves — an
