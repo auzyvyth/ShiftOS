@@ -51,6 +51,10 @@ export function isCaptchaError(error) {
 
 export default function useAuthCaptcha() {
   const hostRef = useRef(null);
+  const slotRef = useRef(null);
+  // True while an interactive challenge is on screen (between
+  // before-interactive-callback and the solve/error that ends it).
+  const revealedRef = useRef(false);
   const widgetId = useRef(null);
   const pendingRef = useRef(null);
   const prevOverflow = useRef('');
@@ -58,19 +62,31 @@ export default function useAuthCaptcha() {
   // flight, or straight after one is consumed.
   const tokenRef = useRef(null);
 
-  // NOTE ON HIDING: we deliberately do NOT hide the container ourselves.
+  // NOTE ON HIDING: we never hide a widget that has not finished.
   // `appearance: 'interaction-only'` means CLOUDFLARE decides what to show — it
-  // renders nothing at all (a 0x0 slot) unless a real challenge is needed. A
-  // container we had forced to visibility:hidden would risk the challenge being
+  // renders nothing at all (a 0x0 slot) unless a real challenge is needed, and
+  // a container forced out of view while a challenge is live risks it being
   // unsolvable, or refused outright as an anti-abuse signal. So the host sits
-  // there permanently, empty and click-through, and all `reveal` adds is the
-  // dim backdrop behind whatever Cloudflare just put on screen.
+  // there permanently, empty and click-through; `reveal` adds the dim backdrop
+  // behind whatever Cloudflare just put on screen, and `hide` clears it AND
+  // collapses the spent widget once the challenge is over.
 
   const hide = useCallback(() => {
     const host = hostRef.current;
     if (!host) return;
     host.style.background = 'transparent';
     document.body.style.overflow = prevOverflow.current;
+    // ...and take the box off the screen. Cloudflare does NOT clear a widget
+    // that has been interacted with: after the person ticks the checkbox it
+    // sits there in its success (or error) state until the widget is reset,
+    // which for a parked token is not until the NEXT auth call. So dropping
+    // only the backdrop left a buyer who solved a chat challenge staring at a
+    // floating captcha box, over a page they could no longer click. This is
+    // the one moment hiding is safe — the challenge is already finished and
+    // its token is in hand. reveal() puts the slot back before the next one is
+    // shown, so nothing is ever hidden while it still needs solving.
+    if (revealedRef.current && slotRef.current) slotRef.current.style.display = 'none';
+    revealedRef.current = false;
   }, []);
 
   // Cloudflare is asking the person to do something. Dim the page behind it and
@@ -82,6 +98,10 @@ export default function useAuthCaptcha() {
     prevOverflow.current = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     host.style.background = 'rgba(0,0,0,0.55)';
+    // Fires before Cloudflare draws the challenge, so restoring the slot here
+    // means a challenge is never shown into a hidden container.
+    if (slotRef.current) slotRef.current.style.display = '';
+    revealedRef.current = true;
     // The person is now driving. Stop the clock — nobody gets timed out in the
     // middle of solving a puzzle.
     if (pendingRef.current?.timer) {
@@ -137,6 +157,7 @@ export default function useAuthCaptcha() {
     document.body.appendChild(host);
     host.appendChild(slot);
     hostRef.current = host;
+    slotRef.current = slot;
 
     loadTurnstileScript()
       .then(() => {
@@ -194,6 +215,8 @@ export default function useAuthCaptcha() {
       widgetId.current = null;
       try { host.remove(); } catch { /* ignore */ }
       hostRef.current = null;
+      slotRef.current = null;
+      revealedRef.current = false;
     };
   }, [reveal, deliver]);
 
