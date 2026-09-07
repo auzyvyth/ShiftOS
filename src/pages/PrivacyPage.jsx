@@ -36,7 +36,7 @@ export default function PrivacyPage() {
         <header style={S.header}>
           <Link to="/" style={S.brand}>
             <div style={S.dot}>S</div>
-            <span style={S.name}>SHIFTOS</span>
+            <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 22, width: 'auto', display: 'block' }} />
           </Link>
           <Link to="/" style={S.back}>← Back to home</Link>
         </header>

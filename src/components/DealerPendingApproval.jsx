@@ -54,7 +54,7 @@ export default function DealerPendingApproval({ planKey, dealershipName, email, 
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 26 }}>
         <div style={{ width: 30, height: 30, background: '#dc2626', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 16 }}>X</div>
-        <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 24, letterSpacing: 3, color: '#E8EDF5' }}>SHIFTOS</span>
+        <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 24, width: 'auto', display: 'block' }} />
       </div>
 
       <div style={box}>

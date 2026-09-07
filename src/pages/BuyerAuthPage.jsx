@@ -190,7 +190,7 @@ export default function BuyerAuthPage() {
 
         .ba-brand { display: flex; align-items: center; gap: 12px; position: relative; z-index: 1; text-decoration: none; }
         .ba-brand-mark { width: 38px; height: 38px; background: #dc2626; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: #fff; box-shadow: 0 0 28px rgba(220,38,38,0.45); }
-        .ba-brand-name { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 4px; color: #fff; line-height: 1; }
+        .ba-brand-img { height: 24px; width: auto; display: block; }
 
         .ba-hero { position: relative; z-index: 1; }
         .ba-hero-eyebrow { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: rgba(220,38,38,0.85); font-weight: 600; margin-bottom: 18px; }
@@ -280,7 +280,7 @@ export default function BuyerAuthPage() {
         <div className="ba-left">
           <Link to="/" className="ba-brand">
             <div className="ba-brand-mark">X</div>
-            <span className="ba-brand-name">XDRIVE</span>
+            <img src="/logo-xdrive.png" alt="XDrive" width="349" height="58" className="ba-brand-img" />
           </Link>
 
           <div className="ba-hero">

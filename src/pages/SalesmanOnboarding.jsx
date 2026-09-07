@@ -14,7 +14,7 @@ const CSS = `
 .eo-right{flex:1;min-width:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:64px 48px;position:relative;}
 .eo-logo{display:flex;align-items:center;gap:10px;margin-bottom:32px;}
 .eo-logo-icon{width:30px;height:30px;background:#dc2626;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;font-family:'Bebas Neue',cursive;letter-spacing:1px;}
-.eo-logo-text{font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:4px;color:#E8EDF5;}
+.eo-logo-img{height:22px;width:auto;display:block;}
 .eo-plan-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);border-radius:20px;font-size:10px;font-weight:600;letter-spacing:0.1em;color:#fff;text-transform:uppercase;margin-bottom:10px;width:fit-content;}
 .eo-changeplan{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:6px 11px;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.5);cursor:pointer;margin-bottom:32px;font-family:'Outfit',system-ui,sans-serif;transition:border-color 0.15s,color 0.15s;}
 .eo-changeplan:hover{border-color:rgba(220,38,38,0.45);color:rgba(255,255,255,0.8);}
@@ -167,7 +167,7 @@ function LeftPanel({ step, tier, onChangePlan }) {
     <div className="eo-left">
       <div className="eo-logo">
         <div className="eo-logo-icon">X</div>
-        <span className="eo-logo-text">SHIFTOS</span>
+        <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" className="eo-logo-img" />
       </div>
       <div className="eo-plan-badge">{cfg.label} &mdash; {cfg.price}</div>
       <button type="button" className="eo-changeplan" onClick={onChangePlan}>Change plan</button>
@@ -569,7 +569,7 @@ export default function SalesmanOnboarding() {
         <div style={{ width: 'min(420px, 90%)', padding: '0 20px' }}>
           <div className="eo-logo" style={{ justifyContent: 'center', marginBottom: 32 }}>
             <div className="eo-logo-icon">X</div>
-            <span className="eo-logo-text">SHIFTOS</span>
+            <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" className="eo-logo-img" />
           </div>
           <p className="eo-eyebrow" style={{ textAlign: 'center', marginBottom: 20 }}>
             {resumeIsBuyer ? "YOU'RE ALREADY SIGNED IN" : 'INCOMPLETE SIGN-UP FOUND'}
@@ -602,7 +602,7 @@ export default function SalesmanOnboarding() {
         <div style={{ width: 'min(420px, 90%)', padding: '0 20px' }}>
           <div className="eo-logo" style={{ justifyContent: 'center', marginBottom: 32 }}>
             <div className="eo-logo-icon">X</div>
-            <span className="eo-logo-text">SHIFTOS</span>
+            <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" className="eo-logo-img" />
           </div>
           <p className="eo-eyebrow" style={{ textAlign: 'center', marginBottom: 20 }}>ONE MORE STEP</p>
           <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 40, letterSpacing: 3, color: '#E8EDF5', marginBottom: 10, textAlign: 'center' }}>CHECK YOUR EMAIL</div>
@@ -656,7 +656,7 @@ export default function SalesmanOnboarding() {
             <div className="eo-mobile-bar">
               <div className="eo-logo" style={{ marginBottom: 0 }}>
                 <div className="eo-logo-icon">X</div>
-                <span className="eo-logo-text">SHIFTOS</span>
+                <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" className="eo-logo-img" />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
                 <span style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 11, letterSpacing: 3, color: 'rgba(220,38,38,0.6)' }}>

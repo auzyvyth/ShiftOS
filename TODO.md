@@ -77,6 +77,37 @@ different concerns and the house rule is one per session.
   `MarketplaceFooter.jsx:280`, `DealerPendingApproval.jsx:57`,
   `DealerOnboarding.jsx` (3), `AuthConfirmPage.jsx:93`. Say the word and they
   can take the image too.
+- [x] **LOGO-3: every brand lockup now carries the image, not the word.**
+  Rule applied: a wordmark in a NAVBAR or a focal position (a centred
+  full-screen brand, a split-screen panel head) becomes the logo; the name
+  inside a sentence stays text. 22 swaps across 16 files:
+    - salesman dashboards, 2 each (desktop rail + mobile bar):
+      `SalesmanLite`, `SalesmanPremium` (+ the mobile nav done earlier),
+      `Salesmanpanel`
+    - the for-dealers site `ShiftOSPage` — its `Logo()` component, used twice
+      (nav 34, footer 28); the image height tracks the `size` prop
+    - `FeaturePage` (same lockup, its own copy)
+    - auth + onboarding: `LoginPage` x2, `ResetPasswordPage` x3,
+      `AuthConfirmPage`, `BuyerAuthPage` (XDrive, not ShiftOS),
+      `DealerOnboarding` x3, `SalesmanOnboarding` x4, `SalesmanSetup`,
+      `DealerPendingApproval`, `WaitlistPage`
+    - legal: `TermsPage`, `PrivacyPage`
+  `/for-salesmen` (`SalesmanLiteLanding`) needed nothing — it mounts
+  `MarketplaceHeader`, so it inherited the XDrive logo already.
+  Every one of these is a DARK surface, so the supplied white file is used
+  throughout. The ink variant is still only for the light dealer dashboard.
+  **Deliberately left as text** (the name is inside a sentence, 11-12px, not
+  the focus): "Powered by ShiftOS" in `Footer.jsx:300` and
+  `MarketplaceFooter.jsx:280`, and "ShiftOS · Initializing" in
+  `SciFiLoader.jsx:252`.
+  **Still open, same decision as LOGO-1:** a red "S"/"X" badge tile still sits
+  beside the wordmark in most of these. Badge + wordmark says the same thing
+  twice and the lockup already carries its own red bar. Removing them is one
+  pass whenever you want it.
+  Dead style keys left behind on purpose (harmless, and they live in shared
+  style objects): `S.name` in Terms/Privacy, `styles.brandText` in
+  ResetPassword, `S.brandText` in SalesmanSetup.
+
 - [x] **LOGO-2 (found while doing LOGO-1): `hidden xs:inline` on the dashboard
   mobile bar was dead.** `xs` is not a breakpoint in `tailwind.config.js` —
   only `2xl` is customised — so it compiled to a plain `hidden` and the ShiftOS

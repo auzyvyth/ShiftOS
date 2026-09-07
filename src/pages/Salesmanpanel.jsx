@@ -7495,17 +7495,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  >S
  </div>
  <div>
- <p
- style={{
- fontFamily: "'Bebas Neue', sans-serif",
- fontSize: 15,
- letterSpacing: "2px",
- color: "#fff",
- lineHeight: 1,
- margin: 0,
- }}
- >SHIFTOS
- </p>
+ <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 18, width: "auto", display: "block" }} />
  <p
  style={{
  fontSize: 10,
@@ -7917,16 +7907,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  }}
  >S
  </div>
- <p
- style={{
- fontFamily: "'Bebas Neue', sans-serif",
- fontSize: 15,
- letterSpacing: "2px",
- color: "#fff",
- margin: 0,
- }}
- >SHIFTOS
- </p>
+ <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 18, width: "auto", display: "block" }} />
  </div>
  <button
  onClick={() => setNotifOpen((v) =>!v)}
