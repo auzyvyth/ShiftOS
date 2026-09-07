@@ -152,13 +152,23 @@ different concerns and the house rule is one per session.
 Owner's ask: rate-limit sign-in, password reset and magic link; stop offering
 the reset link after ONE wrong password (make it three); put Turnstile on every
 login page. What the code actually looks like today:
-- [ ] **AUTH-3: two of the three login pages have no brute-force throttle.**
+- [x] **AUTH-3 DONE 2026-09-07: two of the three login pages had no brute-force throttle.**
   `login_throttle_check` / `_fail` / `_clear` (3 wrong passwords in 15 min ->
   60s lock, enforced in the DB) is wired into `LoginPage.jsx:328,351,397` only.
   Missing from `BuyerAuthPage.jsx:110` (buyer sign-in) and — the one that
   matters — `AdminPage.jsx:400`, the platform console. That is the superadmin
-  credential, and it currently accepts unlimited password guesses.
-- [ ] **AUTH-4: the reset link is offered after ONE wrong password.**
+  credential, and it accepted unlimited password guesses.
+  Fixed by one shared implementation, `src/utils/authThrottle.js`
+  (`throttleCheck` / `throttleFail` / `throttleClear` + `RESET_AFTER_FAILS`),
+  imported by all three pages. It takes a `client` argument because /platform
+  runs on the isolated `platformClient` session — `login_throttle_clear` checks
+  the caller's own `auth.uid()`, so the clear must go through the client
+  holding the new session. It fails OPEN (a broken throttle must never be the
+  reason nobody can sign in) and only a genuinely rejected credential counts
+  against the lock — an unconfirmed email or a 5xx is not a guess, which
+  matters most on the console: it is the one account that cannot ask anyone
+  else to let it back in.
+- [x] **AUTH-4 DONE 2026-09-07: the reset link was offered after ONE wrong password.**
   `LoginPage.jsx:371` sets `showForgotPassword` on the first failure.
   `login_throttle_fail` already RETURNS the attempt count and the page throws
   it away, so the gate is a one-line change: offer it at 3, which is also
@@ -166,7 +176,13 @@ login page. What the code actually looks like today:
   or reset it below". Keep one exception: an account with no password at all
   (Google/magic-link user) still gets the magic link on the first try, because
   that is not a wrong guess.
-- [ ] **AUTH-5: password reset, magic link and resend have no app-level limit.**
+  Shipped exactly that on both `/login` and the buyer page. The permanent
+  "Forgot password?" button (`LoginPage.jsx:929`, `BuyerAuthPage.jsx:419`) is
+  untouched — this only changed what the page VOLUNTEERS. Probed live before
+  shipping: four consecutive `login_throttle_fail` calls returned attempts
+  1, 2, 3 and then held at 3 while locked, so the message cannot inflate past
+  three, and `login_throttle_check` refused for the whole 60s.
+- [ ] **AUTH-5 (NEXT): password reset, magic link and resend have no app-level limit.**
   `LoginPage.jsx:174,205,569` and `BuyerAuthPage.jsx:86,164` call Supabase
   directly. Anyone can type someone else's address and mail-bomb them, bounded
   only by Supabase's own per-address cooldown. Note the tradeoff before
