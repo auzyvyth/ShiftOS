@@ -503,6 +503,15 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
             </React.Fragment>
           ))}
 
+          {/* Desktop has this as a top-level nav link and the mobile sheet did
+              not have it at all, so on a phone there was no way from the
+              marketplace to /for-salesmen — the entry point for every agent
+              who is not a dealership. A plain row, not an accordion: it is one
+              destination, and it pairs with For Dealers directly above. */}
+          <Link to="/for-salesmen" className="mh-m-link" onClick={() => setMenuOpen(false)}>
+            <span style={{ display:'flex', alignItems:'center', gap:10 }}><User size={17} /> Salesman Lite</span>
+          </Link>
+
           {/* Guides collapsed to one link instead of its own accordion — the
               /articles index is the real browse surface for these, a nested
               4-item accordion here was extra depth for content that isn't

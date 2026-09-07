@@ -31,7 +31,7 @@ export default function DashboardTab({
  setShowAddForm, setAiFollowups, setInboxSubTab,
  saveGoal, triggerGlow, switchTab, pingWA, handleThisWeekContacted,
  fetchFollowupSuggestions, requestBrowserNotif, dismissNotifBanner, dismissTour,
- handleListingCopy, onVisitMinipage, starterHidden, onStarterDismiss,
+ handleListingCopy, onVisitMinipage, starterHidden, onStarterDismiss, onEditBio,
 }) {
  const activeLeads = leads.filter(
  (l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won" && l.stage !== "won",
@@ -553,10 +553,7 @@ export default function DashboardTab({
  palette={{ surface: C.surface, border: C.border, line: C.line, text: C.text, textMuted: C.textMuted, textDim: C.textDim, accent: C.accent, onAccent: C.onAccent, success: C.success }}
  onAddListing={() => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }}
  onVisitMinipage={onVisitMinipage}
- onEditBio={() => {
- switchTab("settings");
- setTimeout(() => document.getElementById("sp-bio-field")?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
- }}
+ onEditBio={onEditBio}
  onDismiss={onStarterDismiss}
  />
  )}
