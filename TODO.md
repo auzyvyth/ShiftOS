@@ -205,14 +205,32 @@ login page. What the code actually looks like today:
   Still unthrottled, deliberately out of the owner's stated scope: the signup
   confirmation resend at `SalesmanOnboarding.jsx:409`. Same gate, one line, if
   it should be covered too.
-- [x] **AUTH-6 DONE 2026-09-07 (code): Turnstile on every auth entry point.**
-  Shipped INERT and waiting on the owner to flip one switch. All 13 auth calls
-  now carry a `captchaToken`; with the Supabase toggle off, that token is
-  `undefined`, which is exactly what Supabase receives today. Nothing changes
-  until the toggle is on.
+- [x] **AUTH-6 DONE 2026-09-07: Turnstile on every auth entry point. LIVE ON
+  PROD — captcha toggle ON, PR #373 + #374.** All 13 auth calls carry a
+  `captchaToken`. Owner tested password login and password reset on prod after
+  the toggle: both work. GUEST CHAT IS STILL UNTESTED — that is the one path
+  with no form and no visible widget, so test it before trusting this.
+  - **TIMING — the mistake, and do not undo the fix (PR #374).** The first
+    version rendered the widget with `execution: 'execute'`, which defers the
+    whole Cloudflare handshake until `execute()` is called — and that call sat
+    inside the submit handler. Every login and password reset on PRODUCTION
+    took about ten seconds. The widget now solves at RENDER time (Turnstile's
+    default) and parks the token; `getToken()` hands over the parked one and
+    re-arms in the background, so the common path is instant. A captcha the
+    user waits for is a captcha put in front of your own front door.
+    Note for any future rollback: the slowness was CLIENT-side and had nothing
+    to do with the Supabase toggle — the hook runs whenever
+    `VITE_TURNSTILE_SITE_KEY` is set and Supabase merely ignores the token when
+    the toggle is off, so turning the toggle off would not have helped.
+  - **Token expiry is handled, and was not at first.** A parked Turnstile token
+    goes stale after ~5 minutes, so someone who opened the login page, got
+    distracted and came back would have sent an expired token and been told
+    THEIR PASSWORD WAS WRONG. `expired-callback` drops it and earns another,
+    re-arming exactly once (deliver() already re-arms when a caller waits;
+    doing both abandons the challenge the first reset just began).
   - `src/hooks/useAuthCaptcha.js` — the whole mechanism. An INVISIBLE Turnstile
-    widget in `execution: 'execute'` + `appearance: 'interaction-only'` mode,
-    exposing one imperative `getToken()` that returns a FRESH single-use token.
+    widget in `appearance: 'interaction-only'` mode, exposing one imperative
+    `getToken()` that returns a FRESH single-use token.
     Not the existing `<Turnstile>` component, for three reasons: (a)
     `signInAnonymously()` has no form to host a widget in; (b) a Turnstile token
     is single-use and "wrong password, try again" is a login page's normal
@@ -246,15 +264,21 @@ login page. What the code actually looks like today:
     web session, so the exact `execute`/`interaction-only` render behaviour is
     reasoned from the Supabase docs + our working widget, not observed. Watch
     the first real login after the toggle goes on.
-  - OWNER STEP, in this order: (1) confirm sign-in still works on staging with
-    the toggle OFF; (2) Supabase → Auth → Bot and Abuse Protection → enable
-    CAPTCHA, provider Turnstile, paste the Cloudflare SECRET; (3) test one
-    password login, one magic link, and one GUEST CHAT from a logged-out
-    browser. If anything breaks, flipping the toggle back off is instant.
+  - Toggle lives at Supabase → Authentication → Attack Protection (direct:
+    `/dashboard/project/lemdkdizdlcirhbzqlos/auth/protection`). Cloudflare site
+    key and secret key BOTH start `0x4AAA`, so the prefix cannot tell them
+    apart — compare against Vercel's `VITE_TURNSTILE_SITE_KEY`; if it matches,
+    the wrong one was pasted.
+  - STILL TO TEST: guest chat from a logged-out browser, and a magic link.
 
-- [ ] **AUTH-7: `TURNSTILE_SECRET` is NOT set on Vercel — the buyer-form captcha
-  has never actually verified anything.** Found 2026-09-07 from the owner's own
-  env-var screenshot: the only Turnstile variable on the `shift-os` project is
+- [x] **AUTH-7 DONE 2026-09-07: `TURNSTILE_SECRET` was NOT set on Vercel, so the
+  buyer-form captcha had never verified anything.** Fixed and VERIFIED on prod —
+  the probe below now returns `403 captcha_failed / missing_token`, where it
+  would have returned 404 while failing open. Two traps on the way: the variable
+  was first named `TURNSTILES_SECRET` (plural), which `lib/turnstile.js:15` does
+  not read, and a Vercel env var only reaches a NEW deployment, so it took the
+  next prod push to land. Original finding, kept because the failure mode is
+  worth remembering: found from the owner's own env-var screenshot: the only Turnstile variable on the `shift-os` project is
   `VITE_TURNSTILE_SITE_KEY`. `lib/turnstile.js:16` returns
   `{ ok: true, reason: 'not_configured' }` when the secret is missing, so
   `api/enquiry.js` and `api/whatsapp-lead.js` have been waving every request
