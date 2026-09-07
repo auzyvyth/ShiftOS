@@ -69,10 +69,13 @@ different concerns and the house rule is one per session.
   - the header no longer says **.MY** — the supplied lockup is "XDRIVE" only,
     and bolting a gold `.MY` onto a finished logo is the kind of thing
     DESIGN.md calls out. One line to restore if it should stay.
-  - a red **"S" badge still sits immediately left of the wordmark** in both
-    DashboardPage spots. Badge + wordmark is the duplication the anti-slop
-    rules name; it should probably be the logo alone. Left in place because
-    removing it is a design call.
+  - ~~a red **"S" badge still sits immediately left of the wordmark**~~ —
+    **DONE 2026-09-07, owner asked for it.** Removed from both DashboardPage
+    spots, both SalesmanLite headers, all three SalesmanPremium headers and
+    both Salesmanpanel headers. One exception recorded there: the dealer
+    MOBILE bar's wordmark was `hidden sm:block`, so the badge was the only
+    brand mark below 640px — the wordmark is now always visible at 14px
+    instead (`DashboardPage.jsx:10562`).
   Still TEXT, deliberately out of scope: `Footer.jsx:300`,
   `MarketplaceFooter.jsx:280`, `DealerPendingApproval.jsx:57`,
   `DealerOnboarding.jsx` (3), `AuthConfirmPage.jsx:93`. Say the word and they
@@ -100,10 +103,14 @@ different concerns and the house rule is one per session.
   the focus): "Powered by ShiftOS" in `Footer.jsx:300` and
   `MarketplaceFooter.jsx:280`, and "ShiftOS · Initializing" in
   `SciFiLoader.jsx:252`.
-  **Still open, same decision as LOGO-1:** a red "S"/"X" badge tile still sits
-  beside the wordmark in most of these. Badge + wordmark says the same thing
-  twice and the lockup already carries its own red bar. Removing them is one
-  pass whenever you want it.
+  **CLOSED 2026-09-07:** the "S" badge is gone from the three panel families
+  and the dealer dashboard (see LOGO-1). Two marketing surfaces deliberately
+  keep their own: `ShiftOSPage`'s gradient S tile and `MarketplaceHeader`'s X —
+  neither was in the owner's ask. `LoginPage.jsx:410` (the 2FA challenge
+  screen) also still has one; it was not named either.
+  Same pass shrank every logo render site about 20% (panels 18 -> 15, dealer
+  sidebar 20 -> 16, login/auth 26 -> 21, onboarding/legal 22 -> 18,
+  marketplace header 26/22 -> 21/18, ShiftOSPage `size * 0.62` -> `* 0.5`).
   Dead style keys left behind on purpose (harmless, and they live in shared
   style objects): `S.name` in Terms/Privacy, `styles.brandText` in
   ResetPassword, `S.brandText` in SalesmanSetup.
@@ -115,15 +122,73 @@ different concerns and the house rule is one per session.
   which is what it was reaching for and keeps the logo off a 375px bar that
   already carries a burger, a badge and a truncating page title.
 
-### Needs a location before it can be fixed
-- [ ] **PREM-1: the red wave for a cold lead does not render in Premium.**
-  Two screenshots show a flat red diagonal slash where a wave should be.
-  Could not find it: Premium's `cold` is `#93c5fd` (light blue) in
-  `salesmanPremium/shared.jsx:295`, the only red cold indicator is
-  `OverviewTab.jsx:348` (`#DC2626`) and OverviewTab is not mounted anywhere in
-  Premium, and the "waves" in `salesmanPremium/DashboardTab.jsx:417` are the
-  three traffic series, not a lead indicator. Ask which screen and which
-  element before touching anything.
+### Located 2026-09-07 — ready to build
+- [ ] **PREM-1: the stale-lead glow in the Premium pipeline. TWO defects, both
+  confirmed in code.** Owner's spec: in the Leads stage pipeline, a lead that
+  has gone unanswered for a period gets a red outline wave, and it pulses for
+  about one second when you open that stage.
+  Lite already does exactly this. Premium does not, for two separate reasons:
+  1. **Premium never fires it from a stage.** `triggerGlow` exists
+     (`SalesmanPremium.jsx:316`) but has only two callers — `jumpToLead`
+     (`:323`) and the prop handed to DashboardTab (`:6324`). Lite calls it from
+     seven places, and the one that matches the spec is the stage pill at
+     `SalesmanLite.jsx:5234`: `setMobileLeadStage(stage)` then
+     `triggerGlow(staleInStage.map(l => l.id))` — open a stage, every stale lead
+     in it pulses. Premium has no equivalent, so viewing a stage glows nothing.
+  2. **Premium's wave is BLUE, not red.** The keyframes at
+     `SalesmanPremium.jsx:5913` are hardcoded `rgba(59,130,246,…)`;
+     Lite's (`SalesmanLite.jsx:5120`) use `C.accent`, the red. So even on the
+     one path that does fire (a nudge jump), the owner sees a blue ring, never
+     the red one they are describing.
+  Fix: give Premium's stage view the same `triggerGlow(staleInStage)` call, and
+  drive `sp-lead-glow` off the accent token instead of a hardcoded blue —
+  the same duplication rule as everywhere else, one definition of the colour.
+  Still unexplained and worth one screenshot before shipping: the "flat red
+  diagonal slash" in the original report. Nothing found so far draws a diagonal;
+  it may simply be the ring rendering clipped inside a card with
+  `overflow:hidden`, which the fix above would need to account for.
+
+### Auth hardening — asked for 2026-09-07, investigated, NOT yet built
+Owner's ask: rate-limit sign-in, password reset and magic link; stop offering
+the reset link after ONE wrong password (make it three); put Turnstile on every
+login page. What the code actually looks like today:
+- [ ] **AUTH-3: two of the three login pages have no brute-force throttle.**
+  `login_throttle_check` / `_fail` / `_clear` (3 wrong passwords in 15 min ->
+  60s lock, enforced in the DB) is wired into `LoginPage.jsx:328,351,397` only.
+  Missing from `BuyerAuthPage.jsx:110` (buyer sign-in) and — the one that
+  matters — `AdminPage.jsx:400`, the platform console. That is the superadmin
+  credential, and it currently accepts unlimited password guesses.
+- [ ] **AUTH-4: the reset link is offered after ONE wrong password.**
+  `LoginPage.jsx:371` sets `showForgotPassword` on the first failure.
+  `login_throttle_fail` already RETURNS the attempt count and the page throws
+  it away, so the gate is a one-line change: offer it at 3, which is also
+  exactly when the 60s lock lands — "wrong password 3 times, try again in 60s
+  or reset it below". Keep one exception: an account with no password at all
+  (Google/magic-link user) still gets the magic link on the first try, because
+  that is not a wrong guess.
+- [ ] **AUTH-5: password reset, magic link and resend have no app-level limit.**
+  `LoginPage.jsx:174,205,569` and `BuyerAuthPage.jsx:86,164` call Supabase
+  directly. Anyone can type someone else's address and mail-bomb them, bounded
+  only by Supabase's own per-address cooldown. Note the tradeoff before
+  building: a throttle keyed on a client-supplied email is also a way to lock a
+  victim OUT of their own reset for the window, so keep the window short
+  (15 min, self-healing) — the same accepted tradeoff `login_throttle_fail`
+  already carries.
+- [ ] **AUTH-6 (ACT-10, wider): Turnstile on every auth entry point.**
+  Recommendation on the table: use Supabase's BUILT-IN captcha (dashboard
+  secret + `options.captchaToken`), not a widget we verify ourselves — an
+  attacker just calls `supabase.auth` directly and skips our own check.
+  The catch is that the toggle is project-wide and instant: every auth call
+  without a token starts failing the moment it is flipped. All 12 call sites
+  must carry a token FIRST, shipped inert (no site key = no widget = behaves
+  as today), then the owner adds the key and flips it. The one that will be
+  missed: `useChat.js:175` `signInAnonymously()` — miss it and every guest
+  buyer conversation dies silently.
+  Sites: `LoginPage` x4 (`174,205,338,569`), `BuyerAuthPage` x4
+  (`86,110,137,164`), `AdminPage:400`, `DealerOnboarding:364`,
+  `SalesmanOnboarding:364,409`, `useChat.js:175`.
+- Related and still open: **SEC-B5** — `auth_account_status` answers "does this
+  email have an account here" to anyone who asks.
 
 ### Dealer account block — owner said explicitly this is a later job
 - [ ] **DEAL-1: a dealer cannot be verified even after the owner approves.**
@@ -141,8 +206,16 @@ different concerns and the house rule is one per session.
   written to a column nobody reads, so triage them together, not one at a time.
 
 ### Layout / UX
-- [ ] **UX-1: the Settings tab is too centred and needs rearranging.** Which
-  Settings — Premium's, the dealer dashboard's, or both — was not stated.
+- [ ] **UX-1: Settings is a single centred column, so laptop and desktop get a
+  huge dead margin either side.** Owner's spec (2026-09-07): every section sits
+  in one narrow column running straight down the middle. It should fill the
+  width — two columns side by side on laptop/desktop instead of one long row of
+  cards going down. Mobile stays one column.
+  Not yet pinned to a file: confirm whether this is Premium's Settings, the
+  dealer dashboard's, or both, by looking at which one has the centred
+  max-width wrapper. Whichever it is, the fix is a responsive grid
+  (`grid-template-columns: repeat(auto-fit, minmax(…, 1fr))`), NOT a wider
+  fixed width — and per the mobile rule it must still be one column at 375px.
 - [ ] **UX-2: the side tab should auto-scroll to the button that was clicked,**
   so the dropdown it opens is on screen instead of below the fold.
 - [x] **UX-3: the photo count pill sat behind the back button on the car
@@ -1013,18 +1086,13 @@ until these are done:**
 
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
 
-- **ACT-VERIFY-PUSH: confirm on a real phone that notifications now arrive
-  immediately.** `send-push` v18 is deployed (2026-08-30) with `urgency: 'high'`
-  and TTL capped at 24h. The server side was never the problem and was measured
-  at 193ms; the fix is a request to FCM for immediate delivery, so ONLY a real
-  device can confirm it. Send a chat message between two accounts and time it.
-  If it is still slow, the next suspect is the device, not us: Android battery
-  optimisation on the installed PWA, or notification permission granted but the
-  app restricted in the background.
-  Second thing to watch in the same pass: roughly a third of sends were failing
-  (`{"sent":2,"failed":2}` in `net._http_response`) and the old code discarded
-  the reason. v18 logs the status per endpoint, so the Supabase function logs
-  will now say why. 13 subscriptions, all FCM.
+> **ACT-VERIFY-PUSH DONE — owner confirmed on a real phone, 2026-09-07.**
+> Notifications arrive immediately. `send-push` v18 (urgency `high`, TTL capped
+> at 24h) is what fixed it; the server side was never slow (measured 193ms).
+> If delivery ever looks slow again, the suspects in order are the device
+> (Android battery optimisation on the installed PWA, or permission granted but
+> the app restricted in the background), then the per-endpoint status now
+> logged by v18 in the Supabase function logs — not the sender.
 
 > **ACT-DEPENDABOT DONE — all 5 alerts cleared 2026-08-30.** `npm audit` now reports
 > 0 vulnerabilities. Two bumps in `package.json`: `pdfjs-dist` ^5.7.284 -> ^6.3.289
@@ -1052,7 +1120,7 @@ until these are done:**
 > with a real dealer PDF and an xlsx before trusting it, since the xlsx half of that page
 > could not be exercised at all with the stub in place.
 
-- **ACT-1: Enable TOTP in Supabase dashboard — DEFERRED until revenue (user: paid)** — 2FA (SEC-1) will not work end-to-end until the TOTP factor type is enabled: Supabase → Authentication → Settings → Multi-Factor → enable **TOTP**. Until then, the "Enable 2FA" button in Settings will error on enroll. Owner is deferring this until revenue/Supabase Pro (treats it as a paid feature — note: standard app-based TOTP MFA is typically free on Supabase; the paid MFA add-on is Phone/SMS, which we are avoiding anyway — worth re-checking billing before permanently shelving). Interim idea from owner: keep Gmail/Google link verification and add an email verification code as a lightweight second factor. NOTE (2026-08-05): TOTP is NOT deprecated — Bank Negara's RMiT (28 Nov 2025) bans **SMS OTP** as a standalone factor, not TOTP. TOTP (authenticator-app codes, RFC 6238) is offline/device-local and is one of the regulator's recommended interception-resistant replacements, so it stays the correct choice here. Do NOT enable Supabase's Phone/SMS OTP factor. Passkeys (FIDO2/WebAuthn) are the gold standard but are not a native Supabase MFA factor yet.
+- **ACT-1: Enable TOTP in Supabase dashboard — PARKED, owner reconfirmed 2026-09-07 ("keep it until Pro comes, we have no way to do it now"). Do not nag.** — 2FA (SEC-1) will not work end-to-end until the TOTP factor type is enabled: Supabase → Authentication → Settings → Multi-Factor → enable **TOTP**. Until then, the "Enable 2FA" button in Settings will error on enroll. Owner is deferring this until revenue/Supabase Pro (treats it as a paid feature — note: standard app-based TOTP MFA is typically free on Supabase; the paid MFA add-on is Phone/SMS, which we are avoiding anyway — worth re-checking billing before permanently shelving). Interim idea from owner: keep Gmail/Google link verification and add an email verification code as a lightweight second factor. NOTE (2026-08-05): TOTP is NOT deprecated — Bank Negara's RMiT (28 Nov 2025) bans **SMS OTP** as a standalone factor, not TOTP. TOTP (authenticator-app codes, RFC 6238) is offline/device-local and is one of the regulator's recommended interception-resistant replacements, so it stays the correct choice here. Do NOT enable Supabase's Phone/SMS OTP factor. Passkeys (FIDO2/WebAuthn) are the gold standard but are not a native Supabase MFA factor yet.
 > **ACT-13 DONE — verified end to end 2026-08-29.** Anonymous sign-ins are on and guest
 > chat works for the first time. It had been recorded as done on 2026-08-24 but the
 > dashboard toggle was never SAVED, so `signInAnonymously()` was refused and every guest
@@ -1068,9 +1136,22 @@ until these are done:**
 
 - **ACT-2: Decide on full 2FA enforcement (SEC-1b)** — Client-side 2FA only challenges the password login path. Google OAuth and magic-link logins are NOT challenged. True enforcement across all auth methods needs RLS policies keyed on `aal2` so the database rejects aal1 sessions. Confirm if/when you want this hardening built.
 
-- **ACT-4: Enable Google One Tap (`VITE_GOOGLE_CLIENT_ID`)** — The Google One Tap popup for new marketplace visitors (`src/components/GoogleOneTap.jsx`) is built but no-ops until the Google OAuth **Web client ID** is exposed to the frontend. Steps: (1) Vercel → env `VITE_GOOGLE_CLIENT_ID=<google web client id>` (same client used by Supabase's Google provider); (2) Google Cloud Console → that Web client → add `https://xdrive.my` (+ preview origin) to **Authorized JavaScript origins**; (3) Supabase → Auth → Providers → Google → add the same client ID under **Authorized Client IDs** so `signInWithIdToken` accepts the One Tap token. Until done, the popup simply never shows (no error).
+> **ACT-4 DONE — owner confirmed 2026-09-07.** `VITE_GOOGLE_CLIENT_ID` is set and
+> Google One Tap is live for marketplace visitors.
+> **This makes BUY-D live, and BUY-D said to fix it BEFORE enabling ACT-4.**
+> `GoogleOneTap.jsx:122` calls `ensureBuyerProfile` with no consent argument,
+> because the popup is Google-rendered and our PDPA tick box cannot go inside
+> it. So every One Tap signup now creates a buyer with no recorded consent.
+> Live count at the time of writing: 14 buyer profiles, **1 with consent
+> recorded and 13 without** — most of those 13 are anonymous guest-chat users
+> (expected, they were never asked) and 6 predate the consent gate (BUY-E), so
+> this is not proof One Tap caused any of them. It is proof the column is
+> mostly empty and that the one signup path that cannot ask is now switched on.
+> Fix is in BUY-D: a one-time consent step on a One Tap account's first
+> landing, or suppress One Tap until the marketplace consent line is
+> acknowledged. Promoted out of the nag list into real work — see BUY-D.
 
-- **ACT-6: Enable Leaked Password Protection — BLOCKED (needs Supabase Pro)** — Supabase → Authentication →
+- **ACT-6: Enable Leaked Password Protection — PARKED, owner reconfirmed 2026-09-07 (same answer as ACT-1: waiting on Pro). Do not nag.** — Supabase → Authentication →
   Settings → Password → turn on **"Check against HaveIBeenPwned"**. Until then,
   signups/resets accept known-breached passwords. One toggle, no code. NOT DOABLE on the
   free tier — the HIBP check is a Pro-plan feature. DEFERRED until revenue starts and
@@ -1117,7 +1198,7 @@ until these are done:**
   If push ever looks dead again, verify like this before re-opening ACT-12 — don't take a
   stale TODO note's word for it.
 
-> Reminder protocol: while ACT-2, ACT-4, ACT-9 or ACT-10 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. **ACT-8 was found ALREADY COMPLETE and removed 2026-08-15** — `package.json` AND `package-lock.json` both resolve `xlsx` to `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, and `vercel.json` CSP already whitelists `cdn.sheetjs.com` in connect-src; it had been sitting in this list as a blocked user-action for weeks after the fact. **ACT-12 verified RESOLVED 2026-08-24** — see entry above; drop from this nag list. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then.) LESSON: verify an ACT item against the code before re-surfacing it — a stale nag costs a session's attention every time.
+> Reminder protocol: while ACT-2, ACT-9 or ACT-10 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. **ACT-8 was found ALREADY COMPLETE and removed 2026-08-15** — `package.json` AND `package-lock.json` both resolve `xlsx` to `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, and `vercel.json` CSP already whitelists `cdn.sheetjs.com` in connect-src; it had been sitting in this list as a blocked user-action for weeks after the fact. **ACT-12 verified RESOLVED 2026-08-24** — see entry above; drop from this nag list. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then; owner reconfirmed both 2026-09-07. **ACT-4 and ACT-VERIFY-PUSH confirmed DONE 2026-09-07** — both dropped from this list; ACT-4 leaves BUY-D live, which is now real work rather than a warning.) LESSON: verify an ACT item against the code before re-surfacing it — a stale nag costs a session's attention every time.
 
 ## Dev tasks
 
@@ -1934,7 +2015,8 @@ before this goes to prod.
 - **BUY-C: CLAUDE.md key-tables list is wrong about `leads`** — it documents a `source`
   column; the real column is `lead_source` (the one carrying the CHECK constraint).
   Cost a debugging round this session. Fix the line in CLAUDE.md.
-- **BUY-D: Google One Tap bypasses the PDPA consent gate** — buyer signup now records
+- **BUY-D: Google One Tap bypasses the PDPA consent gate — NOW LIVE, ACT-4 was
+  enabled 2026-09-07 and this entry said to fix it first. Treat as real work.** — buyer signup now records
   `pdpa_consent` on every path that shows the tick box (email, Google button, magic
   link), but `src/components/GoogleOneTap.jsx:122` calls `ensureBuyerProfile` with no
   consent because One Tap is a Google-rendered popup we cannot put our consent text
