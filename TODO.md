@@ -378,16 +378,54 @@ login page. What the code actually looks like today:
   written to a column nobody reads, so triage them together, not one at a time.
 
 ### Layout / UX
-- [ ] **UX-1: Settings is a single centred column, so laptop and desktop get a
-  huge dead margin either side.** Owner's spec (2026-09-07): every section sits
-  in one narrow column running straight down the middle. It should fill the
-  width — two columns side by side on laptop/desktop instead of one long row of
-  cards going down. Mobile stays one column.
-  Not yet pinned to a file: confirm whether this is Premium's Settings, the
-  dealer dashboard's, or both, by looking at which one has the centred
-  max-width wrapper. Whichever it is, the fix is a responsive grid
-  (`grid-template-columns: repeat(auto-fit, minmax(…, 1fr))`), NOT a wider
-  fixed width — and per the mobile rule it must still be one column at 375px.
+- [x] **UX-1: Salesman Premium Settings was one 480px centred column.** It was
+  Premium's, not the dealer dashboard's — the dealer already had the right
+  shape (`SettingsTab`, `DashboardPage.jsx:1587`) and Premium had every field
+  in the product stacked down one strip: verify, push, avatar, cover, viewing
+  hours, twelve profile fields, four socials, selling terms, join-a-dealership
+  and the tour, with nothing dividing them.
+  Owner's call 2026-09-07 superseded the earlier "two columns side by side"
+  spec: **same look as the dealer dashboard, separated per concern.** So it is
+  the same grouped-section pattern, not a card grid — 8 sections in 4 groups
+  (Profile: Public Profile / Contact & Location · Selling: Viewing Hours /
+  Selling Terms · Notifications: Alerts · Account: Verified Badge / Join a
+  Dealership / Product Tour), one list (`SETTINGS_GROUPS`,
+  `SalesmanPremium.jsx:183`) driving a 190px rail on desktop and a drill-in
+  menu on mobile. Dark tokens, not the dealer's light ones.
+  Three things that had to move with it:
+  - **One Save, shown in every section that owns a profile field.** The form
+    state lives on the page (`settingsForm`), not in the section, so switching
+    section never drops what was typed and saving from either persists both.
+  - **`handleSave` now writes `telegram_chat_id`.** It did not before — the
+    ONLY thing that persisted it was "Send test message"
+    (`testTelegramConnection`), so an ID typed and left alone was gone on
+    reload. A Save button sitting under that field which ignored it would have
+    been worse than no button.
+  - **Deep links name a section instead of scrolling.** `openSettings(key)` is
+    the one door: the Verify-ID prompt opens `verify`, the dashboard's "add a
+    bio" opens `profile` (passed down as `onEditBio` — the parent owns which
+    section is open), and `/salesman-premium/merge` opens `dealership` via
+    `TAB_ALIASES` rather than scrolling to `#sp-merge`. The anchor-scroll
+    branch and the now-unread `tourOpenRef` went with it.
+- [x] **MKT-NAV-1: no way to reach /for-salesmen from a phone.** The desktop
+  marketplace nav has had a "Salesman Lite" link since it shipped; the mobile
+  sheet never did, so on a phone the entry point for every agent who is not a
+  dealership did not exist. Added as a plain row next to For Dealers
+  (`MarketplaceHeader.jsx:505`), not an accordion — it is one destination.
+  Label kept identical to desktop on purpose. Worth revisiting: naming a nav
+  item after a PLAN TIER ("Salesman Lite") is the same which-one-am-I problem
+  IDEA-4 describes; "For Salesmen" would pair with "For Dealers" and read as a
+  destination. Not renamed unilaterally — say the word and it is one line in
+  two places.
+- [x] **MKT-NAV-2: the sticky filter/compare strips did not follow the
+  auto-hiding navbar.** Reported 2026-09-07; already fixed earlier the same day
+  in ab31a81 (PR #373) and live on prod at 45f153b, which is why re-checking
+  before building anything mattered. `MarketplaceHeader` publishes its live
+  height as `--mh-h` (measured, and 0 while hidden); the showroom filter bar
+  (`CarListingPage.jsx:751`), its filter sidebar (`:921`) and the compare car
+  strip (`ComparePage.jsx:456`) stick at `var(--mh-h, 64px)` with a matching
+  `top .28s ease`, so they rise into the space the bar leaves. Hard-refresh if
+  the old gap is still showing.
 - [ ] **UX-2: the side tab should auto-scroll to the button that was clicked,**
   so the dropdown it opens is on screen instead of below the fold.
 - [x] **UX-3: the photo count pill sat behind the back button on the car

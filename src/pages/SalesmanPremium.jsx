@@ -177,8 +177,31 @@ const TAB_ALIASES = {
  // and anything that links to them keep working.
  handover: { tab: "sold", sub: "handover" },
  customers: { tab: "sold", sub: "customers" },
- merge: { tab: "settings", anchor: "sp-merge" },
+ merge: { tab: "settings", section: "dealership" },
 };
+
+// Settings sections, grouped by concern — the left rail on desktop and the
+// drill-in menu on mobile both render this one list. Mirrors the dealer
+// dashboard's settingsNavGroups (DashboardPage.jsx:1587) so the two panels are
+// the same screen with different fields.
+const SETTINGS_GROUPS = [
+ { group: "Profile", items: [
+ { key: "profile", icon: User, label: "Public Profile", desc: "Photo, name, bio & tags" },
+ { key: "contact", icon: Phone, label: "Contact & Location", desc: "WhatsApp, address & socials" },
+ ]},
+ { group: "Selling", items: [
+ { key: "availability", icon: Clock, label: "Viewing Hours", desc: "When buyers can book you" },
+ { key: "terms", icon: DollarSign, label: "Selling Terms", desc: "Deposit policy & your fees" },
+ ]},
+ { group: "Notifications", items: [
+ { key: "alerts", icon: Bell, label: "Alerts", desc: "Push & Telegram" },
+ ]},
+ { group: "Account", items: [
+ { key: "verify", icon: ShieldCheck, label: "Verified Badge", desc: "ID & IC verification" },
+ { key: "dealership", icon: Store, label: "Join a Dealership", desc: "Link up with a dealer" },
+ { key: "help", icon: Sparkles, label: "Product Tour", desc: "Replay the walkthrough" },
+ ]},
+];
 
 // Which tab each tour step rings, index-matched to TOUR_STEPS (step 0 is the
 // welcome card and rings nothing). One step per sidebar link — exactly the
@@ -188,6 +211,7 @@ const TAB_ALIASES = {
 // already sits, so there's no separate TOUR_HIGHLIGHT/TOUR_IN_CONTENT
 // distinction to maintain the way there was when steps pointed at things
 // buried inside page content (sub-tab pills, the invite box).
+
 const TOUR_TABS = [
  null, "dashboard", "listings", "leads", "enquiries", "sold",
  "analytics", "loans", "outreach", "chat", "settings",
@@ -254,10 +278,10 @@ export default function SalesmanPremium() {
  // Sold hosts both halves of "after the deal is won": the handover checklist
  // and the buyers those handovers produced.
  const [soldSubTab, setSoldSubTab] = useState("handover");
+ // Which Settings section is open. null = the mobile menu (desktop falls back
+ // to "profile"), so a phone lands on the list rather than mid-form.
+ const [settingsNav, setSettingsNav] = useState(null);
 
- // Set from render below (tourStep lives further down). Read by effects that
- // must not fight the tour for control of the scroll position.
- const tourOpenRef = useRef(false);
 
  // opts is passed straight to navigate(): the tour uses { replace: true } so a
  // 14-step run does not leave 13 history entries for the back gesture to walk.
@@ -265,22 +289,20 @@ export default function SalesmanPremium() {
  setActiveTab(tab, opts);
  }
 
+ // Anything that sends someone to a specific settings section goes through
+ // here. Deep links used to land on the top of one long column and leave the
+ // reader to scroll for the field they were sent to.
+ const openSettings = (section) => {
+ setSettingsNav(section || null);
+ switchTab("settings");
+ };
+
  // Land an aliased route on the right sub-view / section of its host tab.
  useEffect(() => {
  const alias = TAB_ALIASES[resolvedTab];
  if (!alias) return;
  if (alias.sub) (alias.tab === "sold" ? setSoldSubTab : setInboxSubTab)(alias.sub);
- // The tour drives this same route (step 13 = /salesman-premium/merge) and does
- // its own, exact scroll. Two smooth scrolls to two different offsets cancel
- // each other mid-flight, which is why that step used to end up with the invite
- // box jammed against the bottom nav. The tour wins; this only runs for a real
- // link or a manual visit.
- if (alias.anchor && !tourOpenRef.current) {
- const t = setTimeout(() => {
- document.getElementById(alias.anchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
- }, 80);
- return () => clearTimeout(t);
- }
+ if (alias.section) setSettingsNav(alias.section);
  }, [resolvedTab]);
 
  // listings
@@ -596,7 +618,6 @@ export default function SalesmanPremium() {
  // The auto-start below must fire ONCE per mount. Without this guard anything
  // that re-runs the bootstrap effect drags the tour back to step 0.
  const tourAutoStarted = useRef(false);
- tourOpenRef.current = tourStep !== null;
 
  // Mobile nav — a slide-out drawer (replaces the old fixed bottom bar, which
  // had grown to 10 flex:1 buttons in a 60px strip). See anyOverlayOpen below
@@ -4675,6 +4696,7 @@ export default function SalesmanPremium() {
  website: settingsForm.website || null,
  bio: settingsForm.bio || null,
  response_time: settingsForm.response_time || null,
+ telegram_chat_id: (settingsForm.telegram_chat_id || "").trim() || null,
  specializations,
  deposit_policy: settingsForm.deposit_policy || null,
  deposit_terms: settingsForm.deposit_terms.trim() || null,
@@ -4750,29 +4772,46 @@ export default function SalesmanPremium() {
 
  const initials = (profile?.full_name || profile?.slug || "S")[0].toUpperCase();
 
- return (
- <div style={{ maxWidth: 480, margin: "0 auto" }}>
- <p style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Profile Settings</p>
+ // Settings is grouped BY CONCERN and shows one section at a time — the same
+ // shape as the dealer dashboard's SettingsTab (DashboardPage.jsx:1587), so a
+ // dealer and their reps learn one screen, not two. It was a single 480px
+ // centred column with every field in the product stacked down it: verify,
+ // push, avatar, cover, viewing hours, twelve profile fields, socials, selling
+ // terms and the tour, one after another with nothing dividing them.
+ const nav = settingsNav || "profile";
+ const navItem = SETTINGS_GROUPS.flatMap((g) => g.items).find((i) => i.key === nav);
 
- {/* Identity verification — earns the public Verified badge. First because it
-     is the one thing here that changes how buyers see every listing. Premium
-     had no upload step at all before this, so the badge was unearnable. */}
- <div style={{ marginBottom: 24 }}>
- <VerifyIdentity
- profile={profile}
- userId={profile?.id}
- onSubmitted={() => setProfile((p) => ({ ...p, kyc_submitted_at: new Date().toISOString() }))}
- />
+ // ONE save writes the whole profile row, so every section that owns a field in
+ // it shows the same button. The form state lives on the PAGE (settingsForm),
+ // not inside a section, so editing in two sections and saving from either
+ // persists both — switching section never drops what was typed.
+ const saveBtn = (
+ <div>
+ <button
+ onClick={handleSave}
+ disabled={settingsSaving}
+ style={{
+ padding: "10px 16px",
+ borderRadius: 8,
+ background: "#2563eb",
+ border: "none",
+ color: "#fff",
+ fontSize: 13,
+ fontWeight: 600,
+ cursor: settingsSaving ? "not-allowed" : "pointer",
+ opacity: settingsSaving ? 0.6 : 1,
+ }}
+ >
+ {settingsSaving ? "Saving..." : "Save Changes"}
+ </button>
  </div>
+ );
 
- {/* Push alerts on this device. Own id, not a dealer id — push_subscriptions
-     RLS is auth.uid() = user_id. */}
- <div style={{ marginBottom: 24 }}>
- <PushToggle userId={profile?.id} theme="dark"
- style={{ padding: 16, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }} />
- </div>
-
- <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
+ const sectionContent = (
+ <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 560 }}>
+ {nav === "profile" && (
+ <>
+ <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
  <div style={{ position: "relative", flexShrink: 0 }}>
  {avatarUrl
 ? <img src={avatarUrl} alt="Profile" style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(255,255,255,0.1)" }} />
@@ -4795,8 +4834,7 @@ export default function SalesmanPremium() {
  </button>
  </div>
  </div>
-
- <div style={{ marginBottom: 24, padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
+ <div style={{ padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
  <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Cover Photo</p>
  <p style={{ margin: "0 0 10px", fontSize: 11, color: "#4b5563" }}>Shown as the banner at the top of your public page</p>
  <div
@@ -4812,13 +4850,6 @@ export default function SalesmanPremium() {
  <input ref={coverInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleCoverUpload} />
  </div>
  </div>
-
- {/* Viewing availability — buyers can only book the days/times set here */}
- <div style={{ marginBottom: 24, padding: 16, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
- <AvailabilityEditor ownerId={userId} dealerId={userId} dark />
- </div>
-
- <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
  <div>
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Full Name</label>
  <input value={settingsForm.full_name} onChange={(e) => setSettingsForm((p) => ({ ...p, full_name: e.target.value }))} placeholder="Your full name" style={inputStyle} />
@@ -4827,65 +4858,6 @@ export default function SalesmanPremium() {
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Job Title</label>
  <input value={settingsForm.job_title} onChange={(e) => setSettingsForm((p) => ({ ...p, job_title: e.target.value }))} placeholder="e.g. Senior Sales Advisor" maxLength={60} style={inputStyle} />
  <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Shown under your name on your public page. Leave blank to hide.</p>
- </div>
- <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>WhatsApp Number</label>
- <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, overflow: "hidden" }}>
- <span style={{ padding: "10px 12px", fontSize: 13, color: "#6b7280", background: "rgba(255,255,255,0.03)", borderRight: "1px solid rgba(255,255,255,0.08)", whiteSpace: "nowrap", flexShrink: 0 }}>+60</span>
- <input type="tel" value={localPhone} onChange={(e) => { const d = e.target.value.replace(/\D/g, ""); setSettingsForm((p) => ({ ...p, whatsapp_number: "+60" + d })); }} placeholder="123456789"
- style={{ ...inputStyle, background: "transparent", border: "none", borderRadius: 0, flex: 1, width: "auto" }} />
- </div>
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Malaysia country code pre-applied. Enter digits only.</p>
- </div>
- <div>
- <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
- <label style={{ fontSize: 11, color: "#6b7280", display: "inline-flex", alignItems: "center", gap: 5 }}><Send size={11} /> Telegram</label>
- {profile?.telegram_chat_id
- ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4ade80" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />Connected</span>
- : <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4b5563" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4b5563", display: "inline-block" }} />Not set</span>
- }
- </div>
- <input value={settingsForm.telegram_chat_id} onChange={(e) => setSettingsForm((p) => ({ ...p, telegram_chat_id: e.target.value }))} placeholder="Your Telegram chat ID" style={inputStyle} />
- <button type="button" onClick={testTelegramConnection} disabled={tgTesting || !settingsForm.telegram_chat_id.trim()}
- style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, padding: "8px 14px", borderRadius: 8, background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.3)", color: "#93c5fd", fontFamily: "inherit", cursor: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? "not-allowed" : "pointer", opacity: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? 0.55 : 1 }}>
- <Send size={13} /> {tgTesting ? "Testing…" : "Send test message"}
- </button>
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151", lineHeight: 1.6 }}>Message <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: "#93c5fd", textDecoration: "none" }}>@userinfobot</a> on Telegram, send /start, and paste the Id number here.</p>
- </div>
- <div style={{ display: "flex", gap: 10 }}>
- <div style={{ flex: 1 }}>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>City</label>
- <input value={settingsForm.city} onChange={(e) => setSettingsForm((p) => ({ ...p, city: e.target.value }))} placeholder="e.g. Petaling Jaya" style={inputStyle} />
- </div>
- <div style={{ flex: 1 }}>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>State</label>
- <select value={settingsForm.state} onChange={(e) => setSettingsForm((p) => ({ ...p, state: e.target.value }))} style={{ ...inputStyle, appearance: "none" }}>
- <option value="">Select state</option>
- {["Johor","Kedah","Kelantan","Kuala Lumpur","Labuan","Melaka","Negeri Sembilan","Pahang","Penang","Perak","Perlis","Putrajaya","Sabah","Sarawak","Selangor","Terengganu"].map(s => (
- <option key={s} value={s}>{s}</option>
- ))}
- </select>
- </div>
- </div>
- <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Full Address (for map)</label>
- <input value={settingsForm.location} onChange={(e) => setSettingsForm((p) => ({ ...p, location: e.target.value }))} placeholder="e.g. 12, Jalan Ampang, 50450 Kuala Lumpur" style={inputStyle} />
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Shown as a map on your public page so buyers can find you.</p>
- </div>
- <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>IC Number <span style={{ color: "#4b5563" }}>(private, verify only)</span></label>
- {profile?.ic_hash ? (
- <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 13px", borderRadius: 8, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)" }}>
- <ShieldCheck size={15} style={{ color: "#22c55e", flexShrink: 0 }} />
- <span style={{ fontSize: 13, color: "#e5e7eb", fontWeight: 600 }}>Verified</span>
- </div>
- ) : (
- <button onClick={() => { setIcGateVal(""); setIcGateOpen(true); }}
- style={{ display: "flex", alignItems: "center", gap: 7, padding: "11px 13px", borderRadius: 8, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", width: "100%" }}>
- <ShieldCheck size={15} style={{ flexShrink: 0 }} /> Verify your MyKad IC
- </button>
- )}
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Stored hashed, never shown in plaintext. Buyers see a verified badge only.</p>
  </div>
  {/* Public-profile extras — Premium's own bio/specializations block, not
  offered to Lite yet. Shown on the public agent page with a Read-more
@@ -4924,6 +4896,46 @@ export default function SalesmanPremium() {
  </div>
  <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Enter or Add for each tag. Shown as pills on your public profile.</p>
  </div>
+ <div>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Username / Slug</label>
+ <input value={profile?.slug || ""} readOnly style={{ ...inputStyle, color: "#4b5563", cursor: "not-allowed", background: "rgba(255,255,255,0.02)" }} />
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Contact support to change your username.</p>
+ </div>
+ <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+ {saveBtn}
+ </>
+ )}
+ {nav === "contact" && (
+ <>
+ <div>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>WhatsApp Number</label>
+ <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, overflow: "hidden" }}>
+ <span style={{ padding: "10px 12px", fontSize: 13, color: "#6b7280", background: "rgba(255,255,255,0.03)", borderRight: "1px solid rgba(255,255,255,0.08)", whiteSpace: "nowrap", flexShrink: 0 }}>+60</span>
+ <input type="tel" value={localPhone} onChange={(e) => { const d = e.target.value.replace(/\D/g, ""); setSettingsForm((p) => ({ ...p, whatsapp_number: "+60" + d })); }} placeholder="123456789"
+ style={{ ...inputStyle, background: "transparent", border: "none", borderRadius: 0, flex: 1, width: "auto" }} />
+ </div>
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Malaysia country code pre-applied. Enter digits only.</p>
+ </div>
+ <div style={{ display: "flex", gap: 10 }}>
+ <div style={{ flex: 1 }}>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>City</label>
+ <input value={settingsForm.city} onChange={(e) => setSettingsForm((p) => ({ ...p, city: e.target.value }))} placeholder="e.g. Petaling Jaya" style={inputStyle} />
+ </div>
+ <div style={{ flex: 1 }}>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>State</label>
+ <select value={settingsForm.state} onChange={(e) => setSettingsForm((p) => ({ ...p, state: e.target.value }))} style={{ ...inputStyle, appearance: "none" }}>
+ <option value="">Select state</option>
+ {["Johor","Kedah","Kelantan","Kuala Lumpur","Labuan","Melaka","Negeri Sembilan","Pahang","Penang","Perak","Perlis","Putrajaya","Sabah","Sarawak","Selangor","Terengganu"].map(s => (
+ <option key={s} value={s}>{s}</option>
+ ))}
+ </select>
+ </div>
+ </div>
+ <div>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Full Address (for map)</label>
+ <input value={settingsForm.location} onChange={(e) => setSettingsForm((p) => ({ ...p, location: e.target.value }))} placeholder="e.g. 12, Jalan Ampang, 50450 Kuala Lumpur" style={inputStyle} />
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Shown as a map on your public page so buyers can find you.</p>
+ </div>
  {/* Social links */}
  {[
  { key: "instagram", label: "Instagram", placeholder: "@yourusername", prefix: "instagram.com/" },
@@ -4940,6 +4952,19 @@ export default function SalesmanPremium() {
  </div>
  </div>
  ))}
+ {saveBtn}
+ </>
+ )}
+ {nav === "availability" && (
+ <>
+ {/* Viewing availability — buyers can only book the days/times set here */}
+ <div style={{ padding: 16, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
+ <AvailabilityEditor ownerId={userId} dealerId={userId} dark />
+ </div>
+ </>
+ )}
+ {nav === "terms" && (
+ <>
  {/* Selling terms — you own these listings, so the buyer's questions (is my
  deposit safe, what else do I pay) land on you, not on a dealer. */}
  <div>
@@ -4965,41 +4990,80 @@ export default function SalesmanPremium() {
  </div>
  <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Your own fee on top of the official JPJ and Puspakom charges. Enter 0 if you charge none.</p>
  </div>
+ {saveBtn}
+ </>
+ )}
+ {nav === "alerts" && (
+ <>
+ {/* Push alerts on this device. Own id, not a dealer id — push_subscriptions
+     RLS is auth.uid() = user_id. */}
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Username / Slug</label>
- <input value={profile?.slug || ""} readOnly style={{ ...inputStyle, color: "#4b5563", cursor: "not-allowed", background: "rgba(255,255,255,0.02)" }} />
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Contact support to change your username.</p>
+ <PushToggle userId={profile?.id} theme="dark"
+ style={{ padding: 16, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }} />
  </div>
- <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
- <button
- onClick={handleSave}
- disabled={settingsSaving}
- style={{
- padding: "10px 16px",
- borderRadius: 8,
- background: "#2563eb",
- border: "none",
- color: "#fff",
- fontSize: 13,
- fontWeight: 600,
- cursor: settingsSaving? "not-allowed" : "pointer",
- opacity: settingsSaving? 0.6 : 1,
- }}
- >
- {settingsSaving? "Saving..." : "Save Changes"}
+ <div>
+ <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "inline-flex", alignItems: "center", gap: 5 }}><Send size={11} /> Telegram</label>
+ {profile?.telegram_chat_id
+ ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4ade80" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />Connected</span>
+ : <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4b5563" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4b5563", display: "inline-block" }} />Not set</span>
+ }
+ </div>
+ <input value={settingsForm.telegram_chat_id} onChange={(e) => setSettingsForm((p) => ({ ...p, telegram_chat_id: e.target.value }))} placeholder="Your Telegram chat ID" style={inputStyle} />
+ <button type="button" onClick={testTelegramConnection} disabled={tgTesting || !settingsForm.telegram_chat_id.trim()}
+ style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, padding: "8px 14px", borderRadius: 8, background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.3)", color: "#93c5fd", fontFamily: "inherit", cursor: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? "not-allowed" : "pointer", opacity: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? 0.55 : 1 }}>
+ <Send size={13} /> {tgTesting ? "Testing…" : "Send test message"}
  </button>
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151", lineHeight: 1.6 }}>Message <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: "#93c5fd", textDecoration: "none" }}>@userinfobot</a> on Telegram, send /start, and paste the Id number here.</p>
  </div>
+ {saveBtn}
+ </>
+ )}
+ {nav === "verify" && (
+ <>
+ {/* Identity verification — earns the public Verified badge, the one thing
+     in Settings that changes how buyers see every listing. Premium had no
+     upload step at all before this, so the badge was unearnable. */}
+ <div>
+ <VerifyIdentity
+ profile={profile}
+ userId={profile?.id}
+ onSubmitted={() => setProfile((p) => ({ ...p, kyc_submitted_at: new Date().toISOString() }))}
+ />
+ </div>
+ <div>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>IC Number <span style={{ color: "#4b5563" }}>(private, verify only)</span></label>
+ {profile?.ic_hash ? (
+ <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 13px", borderRadius: 8, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)" }}>
+ <ShieldCheck size={15} style={{ color: "#22c55e", flexShrink: 0 }} />
+ <span style={{ fontSize: 13, color: "#e5e7eb", fontWeight: 600 }}>Verified</span>
+ </div>
+ ) : (
+ <button onClick={() => { setIcGateVal(""); setIcGateOpen(true); }}
+ style={{ display: "flex", alignItems: "center", gap: 7, padding: "11px 13px", borderRadius: 8, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", width: "100%" }}>
+ <ShieldCheck size={15} style={{ flexShrink: 0 }} /> Verify your MyKad IC
+ </button>
+ )}
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Stored hashed, never shown in plaintext. Buyers see a verified badge only.</p>
+ </div>
+ </>
+ )}
+ {nav === "dealership" && (
+ <>
  {/* Joining a dealership is a one-time action, not something that needs a
      permanent nav slot — it lives here, and /salesman-premium/merge still
      resolves to this section (see TAB_ALIASES). */}
- <div id="sp-merge" style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+ <div id="sp-merge">
  {renderMerge()}
  </div>
+ </>
+ )}
+ {nav === "help" && (
+ <>
  {/* Replay the tour. It only auto-runs once (profiles.onboarding_tour_done),
      so without this there was no way back to it — and no way for anyone who
      skipped it on day one to find out what the other tabs do. */}
- <div style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
- <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Product tour</p>
+ <div>
  <p style={{ margin: "0 0 10px", fontSize: 12, color: "#94a3b8", lineHeight: 1.6 }}>
  Walks you through every tab — Dashboard, Listings, Leads, Bookings, Lead History,
  Analytics, Loans, Outreach, Chat, Customers, Handover and Settings — opening each one
@@ -5012,8 +5076,104 @@ export default function SalesmanPremium() {
  <Sparkles size={14} /> Replay the tour
  </button>
  </div>
+ </>
+ )}
  </div>
  );
+
+ return (
+ <div>
+ {isMobile ? (
+ /* MOBILE — the grouped menu, then one section at a time behind a back
+    button. Same drill-in the dealer dashboard uses; a 190px rail beside
+    the content does not fit a phone. */
+ !settingsNav ? (
+ <div style={{ paddingBottom: 8 }}>
+ {SETTINGS_GROUPS.map(({ group, items }) => (
+ <div key={group} style={{ marginBottom: 18 }}>
+ <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#4b5563", margin: "0 0 6px", paddingLeft: 4 }}>{group}</p>
+ <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
+ {items.map(({ key, icon: Icon, label, desc }, idx) => (
+ <button
+ key={key}
+ onClick={() => setSettingsNav(key)}
+ style={{
+ display: "flex", alignItems: "center", gap: 12, width: "100%",
+ padding: "12px 14px", background: "none", border: "none",
+ borderTop: idx > 0 ? "1px solid rgba(255,255,255,0.05)" : "none",
+ cursor: "pointer", textAlign: "left", fontFamily: "inherit",
+ }}
+ >
+ <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+ <Icon size={14} style={{ color: "#93c5fd" }} />
+ </div>
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{label}</p>
+ <p style={{ margin: "1px 0 0", fontSize: 11, color: "#4b5563" }}>{desc}</p>
+ </div>
+ <ChevronRight size={14} style={{ color: "#374151", flexShrink: 0 }} />
+ </button>
+ ))}
+ </div>
+ </div>
+ ))}
+ </div>
+ ) : (
+ <div>
+ <div style={{ display: "flex", alignItems: "center", gap: 7, paddingBottom: 12, marginBottom: 16, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+ <button
+ onClick={() => setSettingsNav(null)}
+ style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: 13, fontWeight: 500, padding: 0, fontFamily: "inherit" }}
+ >
+ <ChevronLeft size={15} /> Settings
+ </button>
+ <ChevronRight size={13} style={{ color: "#374151" }} />
+ <span style={{ fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{navItem?.label}</span>
+ </div>
+ {sectionContent}
+ </div>
+ )
+ ) : (
+ /* DESKTOP — grouped rail on the left, the open section on the right.
+    The page it sits in is already capped at 1180px wide. */
+ <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
+ <nav style={{ width: 190, flexShrink: 0, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "14px 8px" }}>
+ {SETTINGS_GROUPS.map(({ group, items }, gi) => (
+ <div key={group} style={{ marginBottom: gi < SETTINGS_GROUPS.length - 1 ? 16 : 0 }}>
+ <p style={{ fontSize: 10, letterSpacing: "0.1em", color: "#374151", fontWeight: 700, textTransform: "uppercase", padding: "0 10px", margin: "0 0 4px" }}>{group}</p>
+ {items.map(({ key, icon: Icon, label }) => {
+ const active = nav === key;
+ return (
+ <button
+ key={key}
+ onClick={() => setSettingsNav(key)}
+ style={{
+ display: "flex", alignItems: "center", gap: 9, width: "100%",
+ padding: "7px 10px", borderRadius: 8, cursor: "pointer",
+ textAlign: "left", marginBottom: 1, fontFamily: "inherit",
+ background: active ? "rgba(37,99,235,0.15)" : "transparent",
+ border: active ? "0.5px solid rgba(37,99,235,0.25)" : "0.5px solid transparent",
+ color: active ? "#93c5fd" : "#6b7280",
+ fontSize: 13, fontWeight: 500,
+ }}
+ >
+ <Icon size={14} style={{ flexShrink: 0 }} /> {label}
+ </button>
+ );
+ })}
+ </div>
+ ))}
+ </nav>
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <p style={{ margin: "0 0 3px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>{navItem?.label}</p>
+ <p style={{ margin: "0 0 18px", fontSize: 12, color: "#4b5563" }}>{navItem?.desc}</p>
+ {sectionContent}
+ </div>
+ </div>
+ )}
+ </div>
+ );
+
  };
 
  // RENDER MERGE 
@@ -6327,6 +6487,10 @@ export default function SalesmanPremium() {
  dismissTour={dismissTour} handleListingCopy={handleListingCopy}
  onVisitMinipage={openMyMinipage} starterHidden={starterHidden}
  onStarterDismiss={() => setStarterHidden(true)}
+ onEditBio={() => {
+ openSettings("profile");
+ setTimeout(() => document.getElementById("sp-bio-field")?.scrollIntoView({ behavior: "smooth", block: "center" }), 200);
+ }}
  />
  </Suspense>
  )}
@@ -6359,7 +6523,7 @@ export default function SalesmanPremium() {
       listingScore={listingScore} updateListingStatus={updateListingStatus}
       handleDeleteListing={handleDeleteListing} handleListingCopy={handleListingCopy}
       openBroadcast={openBroadcast} generateAiCaptions={generateAiCaptions}
-      onVerifyId={() => switchTab("settings")}
+      onVerifyId={() => openSettings("verify")}
       refreshCommissionData={refreshCommissionData}
      />
     </Suspense>
