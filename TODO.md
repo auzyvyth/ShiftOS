@@ -52,15 +52,37 @@ are here with what is known so far. Splitting them because they are four
 different concerns and the house rule is one per session.
 
 ### Blocked on the owner
-- [ ] **LOGO-1 (urgent, BLOCKED — needs the file): replace both logos.**
-  XDrive gets a supplied `x.png`; the file has NOT been pasted into a session
-  yet, so nothing can be wired up. ShiftOS: every dashboard renders the word
-  "ShiftOS" top-left and that wordmark should become an image too. When the
-  file lands: add it under `public/`, and replace the two text logos —
-  `MarketplaceHeader.jsx` (`.mh-logo-x` / `.mh-logo-t` / `.mh-logo-my`, three
-  spans in Bebas Neue) and the dashboard top-left in `DashboardPage.jsx` plus
-  the salesman panels. Keep an `alt` and a text fallback; do not delete the
-  spans until the image is confirmed rendering, and check both at 375px.
+- [x] **LOGO-1: both logos are in.** Files supplied as white-on-transparent
+  lockups (wordmark + red underbar), trimmed of their ~85% transparent padding
+  and committed as `public/logo-xdrive.png` (349x58) and
+  `public/logo-shiftos.png` (354x59).
+  **A third file exists and matters: `public/logo-shiftos-dark.png`.** The
+  dealer dashboard is a LIGHT surface, so the supplied white wordmark would be
+  invisible on it. That variant is the same artwork with the wordmark
+  recoloured to `#111827` (the dashboard's own ink) and the red bar left
+  exactly as drawn, alpha preserved. If the brand ever changes, regenerate it
+  from the white one rather than editing it by hand.
+  Wired at: `MarketplaceHeader.jsx` (dark bar, white file, 26px / 22px under
+  980px), `DashboardPage.jsx` sidebar + mobile bar (light, dark file, 20px /
+  16px), `SalesmanPremium.jsx:2565` mobile nav (dark, white file, 18px).
+  Two consequences to decide on, neither done unilaterally:
+  - the header no longer says **.MY** — the supplied lockup is "XDRIVE" only,
+    and bolting a gold `.MY` onto a finished logo is the kind of thing
+    DESIGN.md calls out. One line to restore if it should stay.
+  - a red **"S" badge still sits immediately left of the wordmark** in both
+    DashboardPage spots. Badge + wordmark is the duplication the anti-slop
+    rules name; it should probably be the logo alone. Left in place because
+    removing it is a design call.
+  Still TEXT, deliberately out of scope: `Footer.jsx:300`,
+  `MarketplaceFooter.jsx:280`, `DealerPendingApproval.jsx:57`,
+  `DealerOnboarding.jsx` (3), `AuthConfirmPage.jsx:93`. Say the word and they
+  can take the image too.
+- [x] **LOGO-2 (found while doing LOGO-1): `hidden xs:inline` on the dashboard
+  mobile bar was dead.** `xs` is not a breakpoint in `tailwind.config.js` —
+  only `2xl` is customised — so it compiled to a plain `hidden` and the ShiftOS
+  wordmark on that bar has never been visible to anyone. Now `hidden sm:block`,
+  which is what it was reaching for and keeps the logo off a 375px bar that
+  already carries a burger, a badge and a truncating page title.
 
 ### Needs a location before it can be fixed
 - [ ] **PREM-1: the red wave for a cold lead does not render in Premium.**

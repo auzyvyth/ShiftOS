@@ -283,10 +283,12 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
         .mh-root.scrolled { box-shadow:0 10px 30px rgba(0,0,0,.4); border-bottom-color:rgba(255,255,255,.14); }
         .mh-bar { max-width:1400px; margin:0 auto; padding:0 clamp(16px,3.5vw,44px); height:70px; display:flex; align-items:center; gap:clamp(14px,2.4vw,30px); }
 
-        .mh-logo { text-decoration:none; display:flex; align-items:baseline; gap:1px; flex-shrink:0; }
-        .mh-logo-x { font-family:'Bebas Neue',sans-serif; font-size:29px; letter-spacing:.03em; line-height:1; color:#dc2626; }
-        .mh-logo-t { font-family:'Bebas Neue',sans-serif; font-size:29px; letter-spacing:.03em; line-height:1; color:#ffffff; }
-        .mh-logo-my { font-size:9.5px; font-weight:800; color:#C4A265; letter-spacing:.12em; margin-left:3px; }
+        .mh-logo { text-decoration:none; display:flex; align-items:center; flex-shrink:0; }
+        /* The supplied lockup is white-on-transparent, which is exactly right on
+           this bar (#0f1115) and is why no recolour is needed here. width:auto off
+           a fixed height keeps the ratio; the width/height ATTRIBUTES on the tag
+           reserve the box before the file loads so the nav does not jump. */
+        .mh-logo-img { height:26px; width:auto; display:block; }
 
         /* left nav */
         /* The mega panel anchors to this row, NOT to the trigger that opens it
@@ -389,6 +391,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
           .mh-burger { display:flex!important; }
           .mh-mobile.open { display:flex!important; }
           .mh-bar { height:64px; }
+          .mh-logo-img { height:22px; }
         }
         @media (max-width:420px) { .mh-search-go { padding:0 16px; } }
 
@@ -411,8 +414,8 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
 
       <header className={`mh-root${scrolled ? ' scrolled' : ''}${headerVisible ? '' : ' mh-hidden'}`} ref={rootRef}>
         <div className="mh-bar" ref={barRef}>
-          <Link to="/" className="mh-logo">
-            <span className="mh-logo-x">X</span><span className="mh-logo-t">DRIVE</span><span className="mh-logo-my">.MY</span>
+          <Link to="/" className="mh-logo" aria-label="XDrive home">
+            <img src="/logo-xdrive.png" alt="XDrive" className="mh-logo-img" width="349" height="58" />
           </Link>
 
           {/* LEFT — links + mega dropdowns */}

@@ -10361,7 +10361,11 @@ export default function DashboardPage() {
             S
           </div>
           <div className="flex-1 min-w-0">
-            <p style={{ fontWeight: 700, fontSize: 14, color: color.ink, letterSpacing: '0.05em' }}>ShiftOS</p>
+            {/* Ink variant, not the supplied white one: this sidebar is a LIGHT
+                surface (#EAECF0 borders, dark ink), so the white lockup would be
+                invisible on it. Same artwork, wordmark recoloured to the
+                dashboard's own text colour, red bar untouched. */}
+            <img src="/logo-shiftos-dark.png" alt="ShiftOS" width="354" height="59" style={{ height: 20, width: 'auto', display: 'block' }} />
             <p style={{ fontSize: 11, color: color.textMuted, marginTop: 1 }}>XDrive Dashboard</p>
           </div>
           {/* Bell */}
@@ -10568,7 +10572,13 @@ export default function DashboardPage() {
             >
               S
             </div>
-            <span style={{ fontWeight: 700, fontSize: 12, color: color.ink }} className="hidden xs:inline">ShiftOS</span>
+            {/* sm:, not the xs: this inherited. `xs` is not a breakpoint in
+                tailwind.config.js (only 2xl is customised), so `hidden xs:inline`
+                compiled to a plain `hidden` and the ShiftOS wordmark here was
+                never visible to anyone. sm: is what that was reaching for, and
+                it keeps the logo off a 375px bar that already carries a burger,
+                a badge and a truncating page title. */}
+            <img src="/logo-shiftos-dark.png" alt="ShiftOS" width="354" height="59" className="hidden sm:block" style={{ height: 16, width: 'auto' }} />
           </div>
           <span style={{ fontSize: 12, color: color.textMuted }} className="truncate flex-1 min-w-0">
             {TITLES[activeTab]?.title}
