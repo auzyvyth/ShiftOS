@@ -205,14 +205,32 @@ login page. What the code actually looks like today:
   Still unthrottled, deliberately out of the owner's stated scope: the signup
   confirmation resend at `SalesmanOnboarding.jsx:409`. Same gate, one line, if
   it should be covered too.
-- [x] **AUTH-6 DONE 2026-09-07 (code): Turnstile on every auth entry point.**
-  Shipped INERT and waiting on the owner to flip one switch. All 13 auth calls
-  now carry a `captchaToken`; with the Supabase toggle off, that token is
-  `undefined`, which is exactly what Supabase receives today. Nothing changes
-  until the toggle is on.
+- [x] **AUTH-6 DONE 2026-09-07: Turnstile on every auth entry point. LIVE ON
+  PROD — captcha toggle ON, PR #373 + #374.** All 13 auth calls carry a
+  `captchaToken`. Owner tested password login and password reset on prod after
+  the toggle: both work. GUEST CHAT IS STILL UNTESTED — that is the one path
+  with no form and no visible widget, so test it before trusting this.
+  - **TIMING — the mistake, and do not undo the fix (PR #374).** The first
+    version rendered the widget with `execution: 'execute'`, which defers the
+    whole Cloudflare handshake until `execute()` is called — and that call sat
+    inside the submit handler. Every login and password reset on PRODUCTION
+    took about ten seconds. The widget now solves at RENDER time (Turnstile's
+    default) and parks the token; `getToken()` hands over the parked one and
+    re-arms in the background, so the common path is instant. A captcha the
+    user waits for is a captcha put in front of your own front door.
+    Note for any future rollback: the slowness was CLIENT-side and had nothing
+    to do with the Supabase toggle — the hook runs whenever
+    `VITE_TURNSTILE_SITE_KEY` is set and Supabase merely ignores the token when
+    the toggle is off, so turning the toggle off would not have helped.
+  - **Token expiry is handled, and was not at first.** A parked Turnstile token
+    goes stale after ~5 minutes, so someone who opened the login page, got
+    distracted and came back would have sent an expired token and been told
+    THEIR PASSWORD WAS WRONG. `expired-callback` drops it and earns another,
+    re-arming exactly once (deliver() already re-arms when a caller waits;
+    doing both abandons the challenge the first reset just began).
   - `src/hooks/useAuthCaptcha.js` — the whole mechanism. An INVISIBLE Turnstile
-    widget in `execution: 'execute'` + `appearance: 'interaction-only'` mode,
-    exposing one imperative `getToken()` that returns a FRESH single-use token.
+    widget in `appearance: 'interaction-only'` mode, exposing one imperative
+    `getToken()` that returns a FRESH single-use token.
     Not the existing `<Turnstile>` component, for three reasons: (a)
     `signInAnonymously()` has no form to host a widget in; (b) a Turnstile token
     is single-use and "wrong password, try again" is a login page's normal
@@ -246,15 +264,87 @@ login page. What the code actually looks like today:
     web session, so the exact `execute`/`interaction-only` render behaviour is
     reasoned from the Supabase docs + our working widget, not observed. Watch
     the first real login after the toggle goes on.
-  - OWNER STEP, in this order: (1) confirm sign-in still works on staging with
-    the toggle OFF; (2) Supabase → Auth → Bot and Abuse Protection → enable
-    CAPTCHA, provider Turnstile, paste the Cloudflare SECRET; (3) test one
-    password login, one magic link, and one GUEST CHAT from a logged-out
-    browser. If anything breaks, flipping the toggle back off is instant.
+  - Toggle lives at Supabase → Authentication → Attack Protection (direct:
+    `/dashboard/project/lemdkdizdlcirhbzqlos/auth/protection`). Cloudflare site
+    key and secret key BOTH start `0x4AAA`, so the prefix cannot tell them
+    apart — compare against Vercel's `VITE_TURNSTILE_SITE_KEY`; if it matches,
+    the wrong one was pasted.
+  - STILL TO TEST: guest chat from a logged-out browser, and a magic link.
 
-- [ ] **AUTH-7: `TURNSTILE_SECRET` is NOT set on Vercel — the buyer-form captcha
-  has never actually verified anything.** Found 2026-09-07 from the owner's own
-  env-var screenshot: the only Turnstile variable on the `shift-os` project is
+- [x] **AUTH-8 DONE 2026-09-07 (code): password reset is a 6-DIGIT CODE, not a
+  link. NEEDS ONE OWNER STEP BEFORE IT WORKS — see below.**
+  Owner reported a reset link "expired as soon as I got to work" and asked for a
+  1-hour expiry. Setting 1 hour would NOT have fixed it, and this is the useful
+  part to remember: the app runs the PKCE flow (no `flowType` in
+  `src/supabaseClient.js:17`, and PKCE is supabase-js's default), and Supabase's
+  own docs state a PKCE code is valid for **5 minutes**, is single-use, and
+  "must be initiated on the same browser and device where the flow was started".
+  None of that is configurable — the Email OTP Expiration setting does not touch
+  it. So a reset requested at home and opened at work could never work, at any
+  expiry setting. Mail scanners pre-clicking the link burn it too (Supabase
+  documents prefetching as the most common cause of "expired immediately").
+  A 6-digit code has none of those limits: it honours Email OTP Expiration, works
+  on any device, and cannot be consumed by a scanner. Same pattern the codebase
+  already uses in `BuyerEmailPrompt` for the same reason.
+  - `ResetPasswordPage.jsx` — new `code` phase (email + 6 digits ->
+    `verifyOtp({ type: 'recovery' })` -> the existing set-password form). The
+    `expired` DEAD END IS GONE: a failed link now lands on the code form with an
+    explanation instead of a full stop. Its old copy also claimed "Reset links
+    last one hour", which was never true under PKCE — that wrong sentence is
+    what sent the owner looking at the expiry setting.
+  - `LoginPage` + `BuyerAuthPage` — copy says code not link, and the sent state
+    now has an ENTER THE CODE button through to `/reset-password?email=…`.
+    A code email with nowhere to type the code is the obvious failure here.
+  - **OWNER STEPS — the flow does nothing until both are done:**
+    1. Supabase -> Authentication -> Emails -> "Reset Password" template: replace
+       the `{{ .ConfirmationURL }}` link with `{{ .Token }}` (the 6-digit code).
+       Leaving the link in re-opens the mail-scanner hole, since the link and the
+       code are the same underlying token.
+    2. Supabase -> Authentication -> Providers -> Email -> "Email OTP Expiration"
+       -> `3600` (1 hour).
+  - Checked and SAFE: `create-salesman` and `invites` build their own Resend
+    emails from `admin.generateLink()` (`create-salesman/index.ts:48`), so they
+    do NOT use the Supabase Reset Password template and are unaffected. Their
+    links are `token_hash` verify URLs, not PKCE codes, so they were never
+    browser-bound either.
+
+- [~] **AUTH-9 CODE DONE, NOT DEPLOYED 2026-09-07: setup emails claimed a
+  24-hour expiry that the AUTH-8 setting makes false.**
+  Two functions carried the line, not one: `create-salesman/index.ts:69` AND
+  `invites/index.ts:83` (back-office manager/admin/accountant/F&I invites).
+  Both now say the link is single use, do not name a duration, and point at
+  "Forgot password" — which is the 6-digit code flow from AUTH-8.
+  NOT naming a duration is the point: the old copy hardcoded 24 hours while the
+  real number lives in a dashboard setting nobody syncs it with. That is the bug
+  repeating itself, one release later.
+  - Both were diffed against the LIVE deployed versions first (CLAUDE.md edge
+    function rule). No drift: every structural marker matched, so there is no
+    deployed-only code a redeploy would delete.
+  - **STILL TO DEPLOY.** The repo change alone does nothing — these run on
+    Supabase. Deploy with `supabase functions deploy create-salesman` and
+    `supabase functions deploy invites`, or paste each file into the dashboard
+    editor. Both must keep `verify_jwt: false` (they do their own auth check
+    against the Authorization header; turning it on would break both).
+    Deliberately not deployed from the web session: the MCP deploy tool takes
+    the file CONTENT inline, so shipping it that way means hand-reproducing 324
+    and 255 lines of account-creation and cross-tenant-authz code. The one-line
+    win is not worth that class of risk on those two files.
+  - CONSEQUENCE OF AUTH-8 WORTH KNOWING: Email OTP Expiration is ONE project
+    setting shared by the reset code and these setup links. Setting it to 3600
+    also shortens salesman/team setup links to an hour. Recoverable — the Team
+    tab's "resend setup email" (`create-salesman` action `resend_setup`) issues
+    a fresh one — but `invites` has NO resend action, so a back-office invite
+    that goes stale has to be recreated or recovered via Forgot password.
+
+
+- [x] **AUTH-7 DONE 2026-09-07: `TURNSTILE_SECRET` was NOT set on Vercel, so the
+  buyer-form captcha had never verified anything.** Fixed and VERIFIED on prod —
+  the probe below now returns `403 captcha_failed / missing_token`, where it
+  would have returned 404 while failing open. Two traps on the way: the variable
+  was first named `TURNSTILES_SECRET` (plural), which `lib/turnstile.js:15` does
+  not read, and a Vercel env var only reaches a NEW deployment, so it took the
+  next prod push to land. Original finding, kept because the failure mode is
+  worth remembering: found from the owner's own env-var screenshot: the only Turnstile variable on the `shift-os` project is
   `VITE_TURNSTILE_SITE_KEY`. `lib/turnstile.js:16` returns
   `{ ok: true, reason: 'not_configured' }` when the secret is missing, so
   `api/enquiry.js` and `api/whatsapp-lead.js` have been waving every request

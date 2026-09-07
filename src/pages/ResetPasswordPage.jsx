@@ -60,7 +60,22 @@ async function redirectByRole(session, navigate) {
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
-  const [phase, setPhase] = useState('loading'); // loading | reset | expired
+  // loading | code | reset
+  // There is deliberately no 'expired' dead end any more. A recovery email now
+  // carries a 6-DIGIT CODE rather than a link, because a PKCE link is usable for
+  // only 5 minutes AND only in the browser that asked for it (Supabase's own
+  // limit, not a setting we can raise) — so a reset requested at home and opened
+  // at work always failed, and the page said "link expired", which sent everyone
+  // looking at the wrong thing. A code has none of those problems: it honours the
+  // project's Email OTP Expiration (set to 1 hour), works on any device, and a
+  // corporate mail scanner pre-clicking links cannot burn it.
+  const [phase, setPhase] = useState('loading');
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [codeLoading, setCodeLoading] = useState(false);
+  // True when someone arrived on an old-style link that did not work, so the
+  // code screen can explain why rather than just appearing out of nowhere.
+  const [linkFailed, setLinkFailed] = useState(false);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -107,12 +122,21 @@ export default function ResetPasswordPage() {
     let settled = false;
     let subscription;
 
+    // Prefilled by the sign-in page when it hands over after sending the code,
+    // so the usual path is "type the 6 digits" and nothing else.
+    const emailParam = query.get('email');
+    if (emailParam) setEmail(emailParam);
+
     const settle = (session, isRecovery) => {
       if (settled) return;
       settled = true;
       subscription?.unsubscribe();
       if (!session) {
-        setPhase('expired');
+        // No session. Either they came here cold (normal now — they have a code
+        // to type) or a link failed. Never a dead end: both land on the code
+        // form, the second with an explanation.
+        if (fromEmailLink) setLinkFailed(true);
+        setPhase('code');
       } else if (isSetup) {
         navigate('/salesman-setup');
       } else if (isRecovery || fromEmailLink) {
@@ -138,6 +162,33 @@ export default function ResetPasswordPage() {
 
     return () => subscription?.unsubscribe();
   }, []);
+
+  const handleVerifyCode = async () => {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanCode = code.replace(/\D/g, '');
+    if (!cleanEmail) { setError('Enter the email you asked for the reset with.'); return; }
+    if (cleanCode.length !== 6) { setError('Enter the 6-digit code from the email.'); return; }
+    setError('');
+    setCodeLoading(true);
+    // type 'recovery' is what resetPasswordForEmail issues. On success this
+    // returns a real session, which is what updateUser({ password }) needs.
+    const { data, error: err } = await supabase.auth.verifyOtp({
+      email: cleanEmail,
+      token: cleanCode,
+      type: 'recovery',
+    });
+    setCodeLoading(false);
+    if (err || !data?.session) {
+      setError(
+        /expired/i.test(err?.message || '')
+          ? 'That code has expired. Request a new one from the sign-in page.'
+          : 'That code is not right. Check the digits, or request a new one.',
+      );
+      return;
+    }
+    setLinkFailed(false);
+    setPhase('reset');
+  };
 
   const handleSubmit = async () => {
     if (!STRONG_PW.test(password)) {
@@ -178,7 +229,7 @@ export default function ResetPasswordPage() {
     );
   }
 
-  if (phase === 'expired') {
+  if (phase === 'code') {
     return (
       <div style={styles.root}>
         <style>{CSS}</style>
@@ -187,19 +238,55 @@ export default function ResetPasswordPage() {
           <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 20, width: 'auto', display: 'block' }} />
         </div>
         <div style={styles.card}>
-          <div style={styles.expiredIcon}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.5">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-          </div>
-          <h2 style={styles.cardHeading}>LINK EXPIRED</h2>
+          <p style={styles.eyebrow}>ACCOUNT SECURITY</p>
+          <h2 style={styles.cardHeading}>ENTER YOUR CODE</h2>
           <p style={styles.cardBody}>
-            Reset links last one hour and work only once. Request a fresh
-            one from the sign-in page and it will let you straight through.
+            {linkFailed
+              ? 'That link did not work — reset links are single-use and short-lived. Your email also contains a 6-digit code, which lasts an hour and works on any device. Enter it below.'
+              : 'We emailed you a 6-digit code. It lasts one hour and works on any device, so it is fine to open this on a different computer or phone.'}
           </p>
-          <button style={styles.btnPrimary} onClick={() => navigate('/login')}>
+
+          <div style={styles.fieldWrap}>
+            <label style={styles.label}>Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              autoComplete="email"
+              style={{ ...styles.input, paddingRight: 14 }}
+            />
+          </div>
+
+          <div style={styles.fieldWrap}>
+            <label style={styles.label}>6-digit code</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleVerifyCode(); }}
+              placeholder="000000"
+              style={{ ...styles.input, paddingRight: 14, letterSpacing: '6px', fontSize: 18, textAlign: 'center' }}
+            />
+          </div>
+
+          {error && <div style={styles.errorBox}>⚠ {error}</div>}
+
+          <button
+            style={{ ...styles.btnPrimary, opacity: codeLoading ? 0.6 : 1 }}
+            onClick={handleVerifyCode}
+            disabled={codeLoading}
+          >
+            {codeLoading ? 'CHECKING…' : 'CONTINUE'}
+          </button>
+
+          <button
+            style={{ ...styles.btnPrimary, background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', marginTop: 10 }}
+            onClick={() => navigate('/login')}
+          >
             BACK TO SIGN IN
           </button>
         </div>
@@ -437,17 +524,6 @@ const styles = {
     fontSize: 17,
     letterSpacing: 3,
     cursor: 'pointer',
-  },
-  expiredIcon: {
-    width: 52,
-    height: 52,
-    background: 'rgba(220,38,38,0.08)',
-    border: '1px solid rgba(220,38,38,0.2)',
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    margin: '0 auto 18px',
   },
   successIcon: {
     width: 48,

@@ -466,12 +466,22 @@ export default function BuyerAuthPage() {
             {showForgot && !isSignup && (
               <div className="ba-reset">
                 {resetSent ? (
-                  <p className="ba-success"><Check size={13} /> Reset link sent — check your inbox.</p>
+                  <>
+                    <p className="ba-success"><Check size={13} /> Code sent — check your inbox.</p>
+                    {/* A code needs somewhere to be typed — see LoginPage. */}
+                    <button
+                      type="button"
+                      className="ba-reset-btn"
+                      onClick={() => { window.location.href = `${base}/reset-password?email=${encodeURIComponent(email.trim())}`; }}
+                    >
+                      ENTER THE CODE
+                    </button>
+                  </>
                 ) : (
                   <>
-                    <p className="ba-reset-hint">We'll send a reset link to the email address you entered above.</p>
+                    <p className="ba-reset-hint">We'll email a 6-digit code to the address above. It lasts an hour and works on any device.</p>
                     <button type="button" className="ba-reset-btn" onClick={handleForgot} disabled={resetLoading}>
-                      {resetLoading ? "SENDING…" : "SEND RESET LINK"}
+                      {resetLoading ? "SENDING…" : "SEND RESET CODE"}
                     </button>
                   </>
                 )}
