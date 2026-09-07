@@ -6,6 +6,7 @@ import { routeForProfile } from "../hooks/useRoleRedirect";
 import { Heart, Bell, MessageCircle, Tag, Check, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import LegalModal from "../components/LegalModal";
 import { RESET_AFTER_FAILS, throttleCheck, throttleFail, throttleClear, emailActionGate, EMAIL_ACTIONS } from "../utils/authThrottle";
+import useAuthCaptcha, { isCaptchaError, CAPTCHA_ERROR_MESSAGE } from "../hooks/useAuthCaptcha";
 
 const CONSENT_ERR =
   "Please confirm you're 18+ and agree to the Terms of Service and Privacy Policy to continue.";
@@ -35,6 +36,8 @@ function GoogleIcon() {
 }
 
 export default function BuyerAuthPage() {
+  // AUTH-6: fresh proof-of-human token per auth call (inert until configured).
+  const { getToken } = useAuthCaptcha();
   const isProd = window.location.hostname === "xdrive.my" || window.location.hostname.endsWith(".xdrive.my");
   const base = isProd ? "https://xdrive.my" : window.location.origin;
 
@@ -98,9 +101,10 @@ export default function BuyerAuthPage() {
     // AUTH-5: 3 sends per address per 15 min, checked before we send.
     const gate = await emailActionGate(email, EMAIL_ACTIONS.MAGIC);
     if (!gate.allowed) { setError(gate.message); setMagicLoading(false); return; }
+    const captchaToken = await getToken();
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: `${base}/auth/callback` },
+      options: { captchaToken, emailRedirectTo: `${base}/auth/callback` },
     });
     setMagicLoading(false);
     if (error) setError(error.message); else setMagicSent(true);
@@ -134,8 +138,19 @@ export default function BuyerAuthPage() {
       return;
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+    const captchaToken = await getToken();
+    const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password, options: { captchaToken } });
     if (error) {
+      // A captcha rejection is also a 400, so it has to be caught before the
+      // isInvalidCreds test below reads it as a wrong password — that would
+      // spend one of the three attempts on a credential that was never judged.
+      if (isCaptchaError(error)) {
+        setShowMagic(false);
+        setShowForgot(false);
+        setError(CAPTCHA_ERROR_MESSAGE);
+        setLoading(false);
+        return;
+      }
       // Only a rejected credential counts against the lock — an unconfirmed
       // email or a 5xx is not a guess, and it must not spend an attempt or get
       // answered with "wrong password".
@@ -193,10 +208,11 @@ export default function BuyerAuthPage() {
     if (!pwValid) { setError("Please meet all the password requirements below."); return; }
     if (!consent) { setError(CONSENT_ERR); return; }
     setError(""); setLoading(true);
+    const captchaToken = await getToken();
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { emailRedirectTo: `${base}/auth/callback`, data: { account_type: "buyer" } },
+      options: { captchaToken, emailRedirectTo: `${base}/auth/callback`, data: { account_type: "buyer" } },
     });
     if (error) { setError(error.message); setLoading(false); return; }
     // Empty identities array (no error) = email already registered.
@@ -223,7 +239,8 @@ export default function BuyerAuthPage() {
     // AUTH-5, own bucket — see LoginPage. Same gate, same numbers.
     const gate = await emailActionGate(email, EMAIL_ACTIONS.RESET);
     if (!gate.allowed) { setError(gate.message); setResetLoading(false); return; }
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${base}/reset-password` });
+    const captchaToken = await getToken();
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { captchaToken, redirectTo: `${base}/reset-password` });
     setResetLoading(false);
     if (error) setError(error.message); else setResetSent(true);
   };

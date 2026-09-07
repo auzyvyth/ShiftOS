@@ -7,6 +7,7 @@ import { supabase } from "../supabaseClient";
 import { handoffSuffix } from "../lib/authHandoff";
 import { markBuyerIntent } from "../lib/buyerAuth";
 import { RESET_AFTER_FAILS, throttleCheck, throttleFail, throttleClear, emailActionGate, EMAIL_ACTIONS } from "../utils/authThrottle";
+import useAuthCaptcha, { isCaptchaError, CAPTCHA_ERROR_MESSAGE } from "../hooks/useAuthCaptcha";
 
 const Field = ({ id, label, focused, children }) => (
   <div className={`field ${focused === id ? "is-focused" : ""}`}>
@@ -61,6 +62,9 @@ function GoogleIcon() {
 }
 
 export default function LoginPage() {
+  // AUTH-6: a fresh proof-of-human token per auth call. Inert until
+  // VITE_TURNSTILE_SITE_KEY is set and the Supabase captcha toggle is on.
+  const { getToken } = useAuthCaptcha();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t } = useTranslation();
@@ -180,9 +184,11 @@ export default function LoginPage() {
     // Checked BEFORE the send, so a refusal costs nobody an email.
     const gate = await emailActionGate(magicEmail, EMAIL_ACTIONS.MAGIC);
     if (!gate.allowed) { setError(gate.message); setMagicLoading(false); return; }
+    const captchaToken = await getToken();
     const { error } = await supabase.auth.signInWithOtp({
       email: magicEmail.trim(),
       options: {
+        captchaToken,
         emailRedirectTo: `${base}/auth/callback`,
         // Never mint a brand-new account from the login page's magic link — that
         // path is for signing INTO an existing account. A typo'd/unknown email
@@ -215,7 +221,9 @@ export default function LoginPage() {
     // not block the other, since either might be this person's only way in.
     const gate = await emailActionGate(email, EMAIL_ACTIONS.RESET);
     if (!gate.allowed) { setError(gate.message); setResetLoading(false); return; }
+    const captchaToken = await getToken();
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      captchaToken,
       redirectTo: `${base}/reset-password`,
     });
     setResetLoading(false);
@@ -347,10 +355,20 @@ export default function LoginPage() {
       return;
     }
 
+    const captchaToken = await getToken();
     const { data, error: signInError } = await supabase.auth.signInWithPassword(
-      { email: cleanEmail, password },
+      { email: cleanEmail, password, options: { captchaToken } },
     );
     if (signInError) {
+      // Check this FIRST. A captcha rejection also comes back as a 400, so the
+      // isInvalidCreds test below would read it as a wrong password: it would
+      // burn one of the three attempts and tell someone their correct password
+      // is wrong. Nothing about their credentials failed here.
+      if (isCaptchaError(signInError)) {
+        setError(CAPTCHA_ERROR_MESSAGE);
+        setLoading(false);
+        return;
+      }
       const isInvalidCreds =
         signInError.message.toLowerCase().includes("invalid") ||
         signInError.message.toLowerCase().includes("credentials") ||
@@ -605,9 +623,11 @@ export default function LoginPage() {
                   setResendLoading(false);
                   return;
                 }
+                const captchaToken = await getToken();
                 await supabase.auth.resend({
                   type: "signup",
                   email: unconfirmedEmail,
+                  options: { captchaToken },
                 });
                 setResendLoading(false);
                 setResendSent(true);

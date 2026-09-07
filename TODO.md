@@ -205,19 +205,70 @@ login page. What the code actually looks like today:
   Still unthrottled, deliberately out of the owner's stated scope: the signup
   confirmation resend at `SalesmanOnboarding.jsx:409`. Same gate, one line, if
   it should be covered too.
-- [ ] **AUTH-6 (ACT-10, wider): Turnstile on every auth entry point.**
-  Recommendation on the table: use Supabase's BUILT-IN captcha (dashboard
-  secret + `options.captchaToken`), not a widget we verify ourselves — an
-  attacker just calls `supabase.auth` directly and skips our own check.
-  The catch is that the toggle is project-wide and instant: every auth call
-  without a token starts failing the moment it is flipped. All 12 call sites
-  must carry a token FIRST, shipped inert (no site key = no widget = behaves
-  as today), then the owner adds the key and flips it. The one that will be
-  missed: `useChat.js:175` `signInAnonymously()` — miss it and every guest
-  buyer conversation dies silently.
-  Sites: `LoginPage` x4 (`174,205,338,569`), `BuyerAuthPage` x4
-  (`86,110,137,164`), `AdminPage:400`, `DealerOnboarding:364`,
-  `SalesmanOnboarding:364,409`, `useChat.js:175`.
+- [x] **AUTH-6 DONE 2026-09-07 (code): Turnstile on every auth entry point.**
+  Shipped INERT and waiting on the owner to flip one switch. All 13 auth calls
+  now carry a `captchaToken`; with the Supabase toggle off, that token is
+  `undefined`, which is exactly what Supabase receives today. Nothing changes
+  until the toggle is on.
+  - `src/hooks/useAuthCaptcha.js` — the whole mechanism. An INVISIBLE Turnstile
+    widget in `execution: 'execute'` + `appearance: 'interaction-only'` mode,
+    exposing one imperative `getToken()` that returns a FRESH single-use token.
+    Not the existing `<Turnstile>` component, for three reasons: (a)
+    `signInAnonymously()` has no form to host a widget in; (b) a Turnstile token
+    is single-use and "wrong password, try again" is a login page's normal
+    path, so a token captured once into state is stale by the second attempt —
+    `getToken()` does `reset()` then `execute()` every time; (c) no layout or
+    light/dark work on five forms for a box that is invisible almost always.
+  - Cloudflare, not us, controls whether anything is visible — do NOT wrap the
+    container in `visibility:hidden`, a challenge inside a hidden element can be
+    unsolvable or refused. All the hook adds when `before-interactive-callback`
+    fires is a dim backdrop + body-scroll lock (overlay rules).
+  - `src/utils/turnstileScript.js` — one script loader, shared by the visible
+    buyer-form widget and this hook. Same site key, TWO different verifiers:
+    buyer-form tokens are checked by our own `/api` routes (`lib/turnstile.js`),
+    auth tokens are checked by Supabase.
+  - A captcha rejection comes back as HTTP 400, the same as a bad password, so
+    all three password pages test `isCaptchaError()` FIRST (`LoginPage`,
+    `BuyerAuthPage`, `AdminPage`). Without that a captcha failure would spend
+    one of the three brute-force attempts and tell someone their correct
+    password was wrong.
+  - Sites wired (13): `LoginPage` x4 (magic/reset/password/resend),
+    `BuyerAuthPage` x4 (magic/password/signup/reset), `AdminPage` (platform
+    console — the captcha is project-wide so the isolated `platformClient`
+    needs one too), `DealerOnboarding` signup, `SalesmanOnboarding`
+    signup + resend, and `useChat.js` `signInAnonymously()`.
+    The 9 `signInWithOAuth` calls need nothing — a redirect flow takes no token.
+  - `signInAnonymously` was the dangerous one and it is confirmed, not assumed:
+    Supabase docs put anonymous sign-in on `/auth/v1/signup`, the endpoint the
+    captcha guards, and explicitly recommend Turnstile on it. Missing it would
+    have killed every guest buyer conversation silently.
+  - NOT eyeballed in a browser, and the Cloudflare docs are blocked from the
+    web session, so the exact `execute`/`interaction-only` render behaviour is
+    reasoned from the Supabase docs + our working widget, not observed. Watch
+    the first real login after the toggle goes on.
+  - OWNER STEP, in this order: (1) confirm sign-in still works on staging with
+    the toggle OFF; (2) Supabase → Auth → Bot and Abuse Protection → enable
+    CAPTCHA, provider Turnstile, paste the Cloudflare SECRET; (3) test one
+    password login, one magic link, and one GUEST CHAT from a logged-out
+    browser. If anything breaks, flipping the toggle back off is instant.
+
+- [ ] **AUTH-7: `TURNSTILE_SECRET` is NOT set on Vercel — the buyer-form captcha
+  has never actually verified anything.** Found 2026-09-07 from the owner's own
+  env-var screenshot: the only Turnstile variable on the `shift-os` project is
+  `VITE_TURNSTILE_SITE_KEY`. `lib/turnstile.js:16` returns
+  `{ ok: true, reason: 'not_configured' }` when the secret is missing, so
+  `api/enquiry.js` and `api/whatsapp-lead.js` have been waving every request
+  through. The widget renders, buyers see it, nothing is checked — which is the
+  worst state to be in, because it looks protected.
+  FIX: add `TURNSTILE_SECRET=<Cloudflare secret>` to Vercel (check the "Shared"
+  team-level tab first in case it lives there). One variable, no code change.
+  VERIFY after: `curl -i -X POST https://xdrive.my/api/enquiry -H 'Content-Type:
+  application/json' -d '{"carId":"00000000-0000-0000-0000-000000000000","name":"probe"}'`
+  → `403 captcha_failed` means it is on; `404 Listing not found` means it is
+  still failing open. Nothing is created either way.
+  NOTE: this is the same secret Supabase needs pasted into its own dashboard for
+  AUTH-6. Cloudflare secret goes in TWO places, Vercel and Supabase.
+
 - Related and still open: **SEC-B5** — `auth_account_status` answers "does this
   email have an account here" to anyone who asks.
 
@@ -1213,6 +1264,11 @@ until these are done:**
   car-hunt/enquiry forms and pass the token to a small verify step (edge function or
   inline verify against siteverify) before create_lead_from_whatsapp / hunt insert.
   Until done, public lead/hunt writes rely on DB rate limits alone. (Audit F5, 2026-08-03.)
+  STATUS 2026-09-07: steps (1), (2) and (4) are done — widget live on ContactGate
+  + the enquiry modal, verified in `api/enquiry.js` / `api/whatsapp-lead.js`.
+  Step (3) was NEVER done: `TURNSTILE_SECRET` is absent from Vercel, so the
+  verify fails open and none of it enforces. See AUTH-7. Auth entry points are
+  covered separately by AUTH-6.
 
 - ~~ACT-12: three values to set before push notifications can deliver~~ — **RESOLVED,
   verified live 2026-08-24.** Re-checked against the code per this file's own lesson

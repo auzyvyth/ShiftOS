@@ -5,6 +5,8 @@ import LegalContent from '../components/onboarding/LegalContent';
 import PlanPickerModal from '../components/onboarding/PlanPickerModal';
 import { isAdultFromIC } from '../utils/icAge';
 import { MY_STATES, cityOptionsFor } from '../utils/locations';
+import useAuthCaptcha from '../hooks/useAuthCaptcha';
+import { emailActionGate, EMAIL_ACTIONS } from '../utils/authThrottle';
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700&display=swap');
@@ -201,6 +203,8 @@ function LeftPanel({ step, tier, onChangePlan }) {
 }
 
 export default function SalesmanOnboarding() {
+  // AUTH-6: signUp and resend both hit captcha-guarded auth endpoints.
+  const { getToken } = useAuthCaptcha();
   const navigate = useNavigate();
   const { tier: tierParam } = useParams();
   const PREMIUM_ENABLED = true;
@@ -361,6 +365,7 @@ export default function SalesmanOnboarding() {
       // instead of defaulting to the dealer flow.
       sessionStorage.setItem('ob_plan_slug', tier);
       sessionStorage.setItem('ob_account_type', 'salesman');
+      const captchaToken = await getToken();
       const { data, error } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
@@ -368,6 +373,7 @@ export default function SalesmanOnboarding() {
         // sessionStorage — so confirming the email on a different device still
         // resumes the correct (salesman) flow at the right tier.
         options: {
+          captchaToken,
           emailRedirectTo: `${window.location.origin}/auth/callback`,
           // consent: true is the durable backup for the sessionStorage 'ob_agreed'
           // flag read in the init() resume check above — this one lives on the
@@ -406,7 +412,16 @@ export default function SalesmanOnboarding() {
   const resendConfirmation = async () => {
     setResendMsg('');
     try {
-      const { error } = await supabase.auth.resend({ type: 'signup', email: form.email });
+      // AUTH-5: this was the last auth-email sender with no app-level cap on it.
+      // Same 3-per-15-minutes bucket as the resend on /login.
+      const gate = await emailActionGate(form.email, EMAIL_ACTIONS.RESEND);
+      if (!gate.allowed) { setResendMsg(gate.message); return; }
+      const captchaToken = await getToken();
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: form.email,
+        options: { captchaToken },
+      });
       if (error) throw error;
       setResendMsg('Sent. Check your inbox (and spam folder).');
     } catch (e) {

@@ -1,0 +1,13 @@
+-- AUTH-5 follow-up: take away the table grants PostgREST hands out by default.
+--
+-- Applied live in the same session as 20260907a; committed here so the repo and
+-- the database do not drift (CLAUDE.md: the repo is not the source of truth
+-- unless we keep making it one).
+--
+-- RLS on with zero policies already stops anon and authenticated reading rows,
+-- but the default GRANT still leaves the table listed and probeable over the
+-- REST API. The SECURITY DEFINER function auth_email_action_gate() is meant to
+-- be the only door, and it does not need these grants to work — it runs as the
+-- owner. Counting rows must never become a way to ask "has this address asked
+-- for a password reset recently".
+revoke all on table public.auth_email_action_throttle from anon, authenticated;

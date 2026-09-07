@@ -6,6 +6,7 @@ import React, { useEffect, useState } from "react";
 // /login redirect (see checkAuth).
 import { platformClient as supabase } from "../lib/platformClient";
 import { throttleCheck, throttleFail, throttleClear } from "../utils/authThrottle";
+import useAuthCaptcha, { isCaptchaError, CAPTCHA_ERROR_MESSAGE } from "../hooks/useAuthCaptcha";
 import { supabase as mainClient } from "../supabaseClient";
 import { invalidateMarketplaceSettingsCache, MARKETPLACE_FALLBACK } from "../hooks/useMarketplaceSettings";
 import { PLAN_CONFIG } from "../utils/planConfig";
@@ -216,6 +217,10 @@ function BillingTab({ dealers, dealerStats }) {
 }
 
 export default function AdminPage() {
+  // AUTH-6. The captcha is a PROJECT-wide Supabase setting, so it applies to the
+  // isolated platformClient session too — this console login needs a token like
+  // any other.
+  const { getToken } = useAuthCaptcha();
   // Auth gate for the isolated management console.
   //   "checking" → verifying the platform session on mount
   //   "login"    → no valid superadmin session; show the sign-in gate
@@ -415,11 +420,21 @@ export default function AdminPage() {
       return;
     }
 
+    const captchaToken = await getToken();
     const { error } = await supabase.auth.signInWithPassword({
       email: cleanEmail,
       password: loginPw,
+      options: { captchaToken },
     });
     if (error) {
+      // A captcha rejection arrives as a 400 too. Catch it before the
+      // isInvalidCreds test below spends one of this account's three attempts
+      // on a password that was never actually judged.
+      if (isCaptchaError(error)) {
+        setAuthError(CAPTCHA_ERROR_MESSAGE);
+        setLoginBusy(false);
+        return;
+      }
       // Only a genuinely rejected credential counts against the lock. A network
       // blip or a 5xx must never spend an attempt — this is the one account that
       // cannot ask anyone else to let it back in.

@@ -7,6 +7,7 @@ import { isReservedSubdomain } from '../utils/reservedSubdomains';
 import { isAdultFromIC } from '../utils/icAge';
 import { MY_STATES, cityOptionsFor } from '../utils/locations';
 import DealerPendingApproval from '../components/DealerPendingApproval';
+import useAuthCaptcha from '../hooks/useAuthCaptcha';
 
 // Same design system CSS as SalesmanOnboarding (eo- prefix)
 const CSS = `
@@ -213,6 +214,9 @@ function LeftPanel({ step, tier, onChangePlan }) {
 }
 
 export default function DealerOnboarding() {
+  // AUTH-6: signUp goes through /auth/v1/signup, which the Supabase captcha
+  // guards. Inert until the site key + dashboard toggle are both set.
+  const { getToken } = useAuthCaptcha();
   const navigate = useNavigate();
   const { tier: tierParam } = useParams();
   const tier = ['starter', 'growth', 'pro'].includes(tierParam) ? tierParam : 'starter';
@@ -361,12 +365,14 @@ export default function DealerOnboarding() {
     if (form.password !== form.confirmPassword) { setErr('Passwords do not match.'); return; }
     setLoading(true);
     try {
+      const captchaToken = await getToken();
       const { data, error } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
         // Persist onboarding context on the ACCOUNT (user_metadata) so confirming
         // on another device resumes the correct (dealer) flow at the right tier.
         options: {
+          captchaToken,
           emailRedirectTo: `${window.location.origin}/auth/callback`,
           // consent: true is the durable backup for the sessionStorage 'ob_agreed'
           // flag read in the init() resume check above — this one lives on the
