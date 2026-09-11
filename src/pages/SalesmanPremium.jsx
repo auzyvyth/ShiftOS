@@ -2689,6 +2689,20 @@ export default function SalesmanPremium() {
  (l) => l.stage === "lost" || l.stage === "closed_lost",
  );
 
+ // Opening a stage pulses the leads in it that have gone unanswered, so the
+ // eye lands on the cards that need a call instead of on the stage as a whole.
+ // Lite has done this since it shipped (SalesmanLite.jsx:5235); Premium had
+ // triggerGlow but never called it from a stage, so viewing a stage glowed
+ // nothing. ONE handler for both the mobile pill row and the desktop rail --
+ // they were two copies of setActiveLeadStage and that is how they drift.
+ const staleIdSet = new Set(staleLeads.map((l) => l.id));
+ const openStage = (stage) => {
+ setActiveLeadStage(stage);
+ triggerGlow(
+ searchedLeads.filter((l) => l.stage === stage && staleIdSet.has(l.id)).map((l) => l.id),
+ );
+ };
+
  const renderLeadCard = (lead) => {
  const car = lead.car_listings;
  const carName = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
@@ -2722,7 +2736,9 @@ export default function SalesmanPremium() {
  className={glowLeadIds.has(lead.id) ? "sp-lead-glow" : undefined}
  style={{
  background: "#0d1117",
- border: "1px solid rgba(255,255,255,0.07)",
+ // Same token the glow's last keyframe settles back to, so the wave can
+ // never land on a border colour the card does not actually rest at.
+ border: `1px solid ${C.border}`,
  borderRadius: 10,
  overflow: "hidden",
  }}
@@ -2996,7 +3012,7 @@ export default function SalesmanPremium() {
  return (
  <button
  key={stage}
- onClick={() => setActiveLeadStage(stage)}
+ onClick={() => openStage(stage)}
  style={{
  flexShrink: 0,
  display: "flex",
@@ -3118,7 +3134,7 @@ export default function SalesmanPremium() {
  return (
  <button
  key={stage}
- onClick={() => setActiveLeadStage(stage)}
+ onClick={() => openStage(stage)}
  style={{
  display: "flex",
  alignItems: "center",
@@ -6071,13 +6087,13 @@ export default function SalesmanPremium() {
  </Helmet>
  <style>{`
  @keyframes sp-lead-glow {
- 0% { box-shadow: 0 0 0 0 rgba(59,130,246,0.55); border-color: rgba(59,130,246,0.7); }
- 70% { box-shadow: 0 0 0 12px rgba(59,130,246,0); border-color: rgba(59,130,246,0.7); }
- 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); border-color: rgba(255,255,255,0.07); }
+ 0% { box-shadow: 0 0 0 0 ${withAlpha(C.accent, 0.55)}; border-color: ${withAlpha(C.accent, 0.7)}; }
+ 70% { box-shadow: 0 0 0 12px ${withAlpha(C.accent, 0)}; border-color: ${withAlpha(C.accent, 0.7)}; }
+ 100% { box-shadow: 0 0 0 0 ${withAlpha(C.accent, 0)}; border-color: ${C.border}; }
  }
  .sp-lead-glow { animation: sp-lead-glow 1s ease-out; }
  @media (prefers-reduced-motion: reduce) {
- .sp-lead-glow { animation: none; border-color: rgba(59,130,246,0.7); }
+ .sp-lead-glow { animation: none; border-color: ${withAlpha(C.accent, 0.7)}; }
  .sp-topbar { transition: none !important; }
  }
  `}</style>

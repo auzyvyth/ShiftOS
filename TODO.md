@@ -123,7 +123,7 @@ different concerns and the house rule is one per session.
   already carries a burger, a badge and a truncating page title.
 
 ### Located 2026-09-07 — ready to build
-- [ ] **PREM-1: the stale-lead glow in the Premium pipeline. TWO defects, both
+- [x] **PREM-1: the stale-lead glow in the Premium pipeline. TWO defects, both
   confirmed in code.** Owner's spec: in the Leads stage pipeline, a lead that
   has gone unanswered for a period gets a red outline wave, and it pulses for
   about one second when you open that stage.
@@ -147,6 +147,36 @@ different concerns and the house rule is one per session.
   diagonal slash" in the original report. Nothing found so far draws a diagonal;
   it may simply be the ring rendering clipped inside a card with
   `overflow:hidden`, which the fix above would need to account for.
+  **DONE 2026-09-11. Both defects fixed, exactly as scoped above.**
+  - **Fires from a stage now, through ONE handler.** `openStage(stage)`
+    (`SalesmanPremium.jsx:2697`) sets the stage and pulses the stale leads in
+    it. Premium had TWO copies of `onClick={() => setActiveLeadStage(stage)}` —
+    the mobile pill row (`:3015`) and the desktop rail (`:3137`) — and adding
+    the glow to each separately is how the next drift starts, so both call the
+    one handler. `staleIdSet` is built from the page's existing `staleLeads`
+    state (`:316`, the 48h + overdue-follow-up set), so no surface gains a query.
+  - **The wave is red.** `sp-lead-glow` (`:6089`) now interpolates
+    `withAlpha(C.accent, …)` and settles back to `C.border`. Premium already
+    imported the same token module Lite uses (`:120`), so this needed no new
+    import — the blue was hardcoded next to a token that was right there.
+    Verified the values resolve: `rgba(220, 38, 38, …)`, i.e. `#dc2626`.
+    The `prefers-reduced-motion` fallback was blue too; it is the same red now.
+  - One line beyond the two defects, same principle: the lead card's resting
+    border was the literal `rgba(255,255,255,0.07)` (`:2739`) while the glow's
+    last keyframe settled to `C.border`. Identical values today, and exactly the
+    pair that drifts. The card reads the token now, so the wave provably lands
+    on the colour the card actually rests at.
+  - **The `overflow:hidden` worry was unfounded — do not "fix" it.** The class
+    sits on a card with `overflow:hidden`, but that clips CHILDREN, never the
+    element's own outward `box-shadow`. Lite's card is structurally identical
+    (`SalesmanLite.jsx:4957`, same `overflow:hidden`) and its ring renders fine.
+  - Still NOT explained, and still wants one screenshot: the "flat red diagonal
+    slash". Nothing in either file draws a diagonal. Now that the ring is red
+    rather than blue, the likeliest reading is that the slash WAS the intended
+    glow all along, seen at a stage boundary — worth one look before anyone
+    opens a second bug for it.
+  - Verified: eslint clean, all 7 test suites pass, production build clean.
+    NOT eyeballed in a browser from this session.
 
 ### Auth hardening — asked for 2026-09-07, investigated, NOT yet built
 Owner's ask: rate-limit sign-in, password reset and magic link; stop offering
