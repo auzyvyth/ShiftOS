@@ -1360,6 +1360,28 @@ until these are done:**
 > with a real dealer PDF and an xlsx before trusting it, since the xlsx half of that page
 > could not be exercised at all with the stub in place.
 
+- [ ] **DEP-1: the "0 vulnerabilities" above is STALE — it is 8 again (checked
+  2026-09-11).** Not a regression in our code; these are new advisories
+  published against dependencies we already had. GitHub's Dependabot counts 9 on
+  the default branch (it counts differently from npm).
+  **None is production-reachable, which is why this is a scheduled bump and not
+  a drop-everything:** `express`/`body-parser`/`qs` are only used by
+  `server/index.js`, and `.vercelignore` excludes `server` AND `tools` from the
+  deployment; `sharp` is a devDependency; `js-yaml`,
+  `postcss-selector-parser`, `fast-uri` and `fflate` are build/dev transitives.
+  Production is a static Vercel build plus `api/` functions, and none of these
+  ship into it.
+  3 high (`fast-uri` SSRF/host-confusion, `js-yaml` CPU, `sharp` libheif),
+  4 moderate, 1 low. `npm audit fix` claims to clear all of them, so this is
+  likely one short session — but run the full build + tests after, because that
+  is what the last bump caught.
+  **Read ACT-DEPENDABOT above before starting: `npm install` cannot complete in
+  a web session** — `xlsx` is pinned to `cdn.sheetjs.com` and org egress 403s
+  it. Point `xlsx` at a throwaway local stub for the install only and restore
+  `package.json` + `package-lock.json` byte-identical before committing (verify
+  with `git diff` showing zero changes to both). Confirmed still true and still
+  the workaround, 2026-09-11.
+
 - **ACT-1: Enable TOTP in Supabase dashboard — PARKED, owner reconfirmed 2026-09-07 ("keep it until Pro comes, we have no way to do it now"). Do not nag.** — 2FA (SEC-1) will not work end-to-end until the TOTP factor type is enabled: Supabase → Authentication → Settings → Multi-Factor → enable **TOTP**. Until then, the "Enable 2FA" button in Settings will error on enroll. Owner is deferring this until revenue/Supabase Pro (treats it as a paid feature — note: standard app-based TOTP MFA is typically free on Supabase; the paid MFA add-on is Phone/SMS, which we are avoiding anyway — worth re-checking billing before permanently shelving). Interim idea from owner: keep Gmail/Google link verification and add an email verification code as a lightweight second factor. NOTE (2026-08-05): TOTP is NOT deprecated — Bank Negara's RMiT (28 Nov 2025) bans **SMS OTP** as a standalone factor, not TOTP. TOTP (authenticator-app codes, RFC 6238) is offline/device-local and is one of the regulator's recommended interception-resistant replacements, so it stays the correct choice here. Do NOT enable Supabase's Phone/SMS OTP factor. Passkeys (FIDO2/WebAuthn) are the gold standard but are not a native Supabase MFA factor yet.
 > **ACT-13 DONE — verified end to end 2026-08-29.** Anonymous sign-ins are on and guest
 > chat works for the first time. It had been recorded as done on 2026-08-24 but the
