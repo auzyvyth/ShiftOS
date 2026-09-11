@@ -118,6 +118,7 @@ const LEAD_SELECT = "*, car_listings(id, slug, brand, model, year, variant, sell
 import ChannelBreakdown from "../components/ChannelBreakdown";
 import ShareMenu from "../components/ShareMenu";
 import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha } from "../theme/tokens";
+import { compareFollowUp, followUpStatus, isLeadStale } from "../lib/leadsHelpers";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { hydrateLeadInto } from "../utils/leadHydrate";
 import { isPremiumSalesman } from "../utils/salesmanPlan";
@@ -646,7 +647,7 @@ export default function SalesmanPremium() {
  showAddLead || waModalLead || bookingDetailId || notifOpen ||
  testDriveConfirm || broadcastCar || aiCaptionCar ||
  confirmBookingApt || sellerBookingLead || mobileNavOpen ||
- drawerLeadId || linkCarLeadId || logoutConfirmOpen
+ drawerLeadId || linkCarLeadId || logoutConfirmOpen || followUpModalLead
  );
  useEffect(() => {
  document.body.style.overflow = anyOverlayOpen? "hidden" : "";
@@ -820,17 +821,17 @@ export default function SalesmanPremium() {
  // (vite.config.js), which caches what the panel actually renders and serves it
  // back cache-first.
 
- // stale leads (48h + overdue follow-ups)
+ // Leads needing a call — ONE definition, shared with Lite, Salesmanpanel and
+ // the dealer board (`isLeadStale` / `followUpStatus` in lib/leadsHelpers).
+ // Premium used to answer this on its own and answer it WRONG twice over: it
+ // required an overdue reminder AND 48h of no activity (an AND, where every
+ // other surface uses OR), and it measured that activity from `updated_at`, so
+ // editing a note cleared the alarm without anyone calling the buyer. Sorted
+ // worst-first so every surface that shows these agrees on the order.
  useEffect(() => {
- const now = new Date();
- const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000);
+ const now = Date.now();
  setStaleLeads(
- leads.filter((l) => {
- if (["won", "lost", "closed_won", "closed_lost"].includes(l.stage)) return false;
- const overdueFollowUp = l.follow_up_at && new Date(l.follow_up_at) <= now;
- const noRecentActivity = l.updated_at && new Date(l.updated_at) < cutoff;
- return overdueFollowUp && noRecentActivity;
- })
+ leads.filter((l) => isLeadStale(l, now)).sort((a, b) => compareFollowUp(a, b, now)),
  );
  }, [leads]);
 
@@ -2689,6 +2690,26 @@ export default function SalesmanPremium() {
  (l) => l.stage === "lost" || l.stage === "closed_lost",
  );
 
+ // Opening a stage pulses the leads in it that have gone unanswered, so the
+ // eye lands on the cards that need a call instead of on the stage as a whole.
+ // Lite has done this since it shipped (SalesmanLite.jsx:5235); Premium had
+ // triggerGlow but never called it from a stage, so viewing a stage glowed
+ // nothing. ONE handler for both the mobile pill row and the desktop rail --
+ // they were two copies of setActiveLeadStage and that is how they drift.
+ const staleIdSet = new Set(staleLeads.map((l) => l.id));
+ const openStage = (stage) => {
+ setActiveLeadStage(stage);
+ // Worst first, via the shared comparator — so if this list is ever capped or
+ // read top-down, it leads with the buyer who has been waiting longest.
+ const now = Date.now();
+ triggerGlow(
+ searchedLeads
+ .filter((l) => l.stage === stage && staleIdSet.has(l.id))
+ .sort((a, b) => compareFollowUp(a, b, now))
+ .map((l) => l.id),
+ );
+ };
+
  const renderLeadCard = (lead) => {
  const car = lead.car_listings;
  const carName = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
@@ -2708,7 +2729,13 @@ export default function SalesmanPremium() {
  const handoverStatus = isWonLead ? handover.statusForLead(lead.id) : null;
  const isConfirmingDelete = deleteConfirmId === lead.id;
  const isPromptingLost = lostPromptId === lead.id;
- const followUpOverdue = lead.follow_up_at && new Date(lead.follow_up_at).getTime() <= Date.now();
+ // The card's follow-up chip used to fire ONLY on an overdue manual reminder.
+ // One lead in the entire live pipeline has a reminder set, so the chip was
+ // invisible on 67 of 68 cards that genuinely needed a call. It reads the
+ // shared rule now, so it also says "Never contacted" and "Gone quiet" — the
+ // two reasons that actually describe this pipeline.
+ const followUp = followUpStatus(lead);
+ const followUpOverdue = followUp.due;
  const initials = (lead.buyer_name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
  const heatStyle = heat.label === "hot"
 ? { bg: "rgba(248,113,113,0.12)", color: "#f87171" }
@@ -2722,7 +2749,9 @@ export default function SalesmanPremium() {
  className={glowLeadIds.has(lead.id) ? "sp-lead-glow" : undefined}
  style={{
  background: "#0d1117",
- border: "1px solid rgba(255,255,255,0.07)",
+ // Same token the glow's last keyframe settles back to, so the wave can
+ // never land on a border colour the card does not actually rest at.
+ border: `1px solid ${C.border}`,
  borderRadius: 10,
  overflow: "hidden",
  }}
@@ -2806,9 +2835,13 @@ export default function SalesmanPremium() {
  </p>
  </div>
 
- {/* Follow-up warning */}
+ {/* Follow-up warning — reason first, then how long it has been waiting.
+     "Never contacted · 3d" tells a rep what to do; a bare red ring does not. */}
  {followUpOverdue && (
- <div style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.22)", borderRadius: 7, color: "#fb923c", fontSize: 11, padding: "6px 10px", marginBottom: 12 }}>Follow-up: {timeAgo(lead.follow_up_at)}
+ <div style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.22)", borderRadius: 7, color: "#fb923c", fontSize: 11, padding: "6px 10px", marginBottom: 12 }}>
+ {followUp.reason === 'reminder_due'
+ ? `Reminder due ${timeAgo(lead.follow_up_at)}`
+ : `${followUp.label} · ${Math.max(1, Math.round(followUp.sinceHours / 24))}d`}
  </div>
  )}
 
@@ -2996,7 +3029,7 @@ export default function SalesmanPremium() {
  return (
  <button
  key={stage}
- onClick={() => setActiveLeadStage(stage)}
+ onClick={() => openStage(stage)}
  style={{
  flexShrink: 0,
  display: "flex",
@@ -3118,7 +3151,7 @@ export default function SalesmanPremium() {
  return (
  <button
  key={stage}
- onClick={() => setActiveLeadStage(stage)}
+ onClick={() => openStage(stage)}
  style={{
  display: "flex",
  alignItems: "center",
@@ -3481,6 +3514,92 @@ export default function SalesmanPremium() {
  </button>
  );
  })}
+ </div>
+ </div>
+ </div>
+ );
+ })(),
+ document.body,
+ )}
+
+ {/* SET A FOLLOW-UP REMINDER — third time this exact shape has bitten this
+     file. "Set reminder" set followUpModalLead and NOTHING rendered for it, so
+     the button did nothing at all; saveFollowUp sat there with no caller. Same
+     as the test-drive sheet (PREM-B2) and the Link Car modal above.
+     This one was the most expensive of the three: follow_up_at was READ in
+     four places and written in none, so no Premium rep could set a follow-up
+     anywhere in the product — which silently emptied staleLeads, the KPI that
+     counts on it, and the stage glow that pulses it.
+     Portalled per overlay rule 1 (it opens from inside the lead drawer, itself
+     a fixed panel). Deliberately NOT registered with useModalHistory — overlay
+     rule 5: it is a lightweight popup with its own Cancel and overlay-click. */}
+ {followUpModalLead && createPortal(
+ (() => {
+ const fl = leads.find((l) => l.id === followUpModalLead.id) || followUpModalLead;
+ const closeFollowUp = () => setFollowUpModalLead(null);
+ // Build the preset dates from LOCAL parts, never toISOString(). Malaysia
+ // is UTC+8, so toISOString().slice(0,10) before 8am local returns
+ // YESTERDAY — "Tomorrow" would have quietly set today. Same local-parts
+ // approach the reschedule picker already uses.
+ const pad = (n) => String(n).padStart(2, "0");
+ const localDay = (offsetDays) => {
+ const d = new Date();
+ d.setDate(d.getDate() + offsetDays);
+ return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+ };
+ return (
+ <div onClick={closeFollowUp} style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(3px)", display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", padding: isMobile ? 0 : 20 }}>
+ <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, background: "#0d1117", border: "1px solid rgba(255,255,255,0.1)", borderRadius: isMobile ? "16px 16px 0 0" : 14, padding: "18px 18px 24px", boxSizing: "border-box" }}>
+ <p style={{ margin: "0 0 3px", fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>Set a follow-up reminder</p>
+ <p style={{ margin: "0 0 16px", fontSize: 11.5, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {fl.buyer_name || "this lead"}
+ </p>
+
+ <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>Remind me on</p>
+ <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+ {[
+ { label: "Tomorrow", days: 1 },
+ { label: "In 2 days", days: 2 },
+ { label: "In 3 days", days: 3 },
+ { label: "Next week", days: 7 },
+ ].map(({ label, days }) => {
+ const val = localDay(days);
+ const on = followUpDate === val;
+ return (
+ <button key={label} onClick={() => setFollowUpDate(val)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 99, cursor: "pointer", fontFamily: "inherit", background: on ? "rgba(251,191,36,0.15)" : "rgba(255,255,255,0.04)", border: `1px solid ${on ? "rgba(251,191,36,0.4)" : "rgba(255,255,255,0.08)"}`, color: on ? "#fbbf24" : "#6b7280", fontWeight: on ? 600 : 400 }}>
+ {label}
+ </button>
+ );
+ })}
+ </div>
+
+ <input
+ type="date"
+ value={followUpDate}
+ onChange={(e) => setFollowUpDate(e.target.value)}
+ style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 9, color: "#e5e7eb", fontSize: 13, padding: "10px 12px", outline: "none", fontFamily: "inherit", boxSizing: "border-box", marginBottom: followUpDate ? 6 : 14 }}
+ />
+ {/* A native date input renders in the browser's locale and can show
+     mm/dd/yyyy. Echo it back in Malaysian dd/mm/yyyy so a reminder is
+     never set a month out because the field was read the US way. */}
+ {followUpDate && (
+ <p style={{ margin: "0 0 14px", fontSize: 11, color: "#9ca3af" }}>
+ Reminder set for <span style={{ color: "#e5e7eb", fontWeight: 600 }}>{followUpDate.split("-").reverse().join("/")}</span>
+ </p>
+ )}
+
+ <div style={{ display: "flex", gap: 8 }}>
+ {fl.follow_up_at && (
+ <button onClick={() => saveFollowUp(fl.id, null)} disabled={followUpSaving} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600, cursor: followUpSaving ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: followUpSaving ? 0.5 : 1 }}>Clear</button>
+ )}
+ <button onClick={closeFollowUp} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+ <button
+ onClick={() => followUpDate && saveFollowUp(fl.id, followUpDate)}
+ disabled={!followUpDate || followUpSaving}
+ style={{ flex: 2, padding: "11px 0", borderRadius: 10, background: "#dc2626", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: (!followUpDate || followUpSaving) ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: (!followUpDate || followUpSaving) ? 0.5 : 1 }}
+ >
+ {followUpSaving ? "Saving…" : "Set reminder"}
+ </button>
  </div>
  </div>
  </div>
@@ -6070,14 +6189,19 @@ export default function SalesmanPremium() {
  <meta name="robots" content="noindex, nofollow" />
  </Helmet>
  <style>{`
+ /* Premium's wave is BLUE — owner's call 2026-09-11, overriding the original
+    PREM-1 spec. C.info is #3b82f6, the exact blue that used to be hardcoded
+    here as rgba(59,130,246); the token is the point, not the hue, so the
+    colour has one definition and the next person can change it in one place.
+    Lite stays red (C.accent) — that is deliberate, not drift. */
  @keyframes sp-lead-glow {
- 0% { box-shadow: 0 0 0 0 rgba(59,130,246,0.55); border-color: rgba(59,130,246,0.7); }
- 70% { box-shadow: 0 0 0 12px rgba(59,130,246,0); border-color: rgba(59,130,246,0.7); }
- 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); border-color: rgba(255,255,255,0.07); }
+ 0% { box-shadow: 0 0 0 0 ${withAlpha(C.info, 0.55)}; border-color: ${withAlpha(C.info, 0.7)}; }
+ 70% { box-shadow: 0 0 0 12px ${withAlpha(C.info, 0)}; border-color: ${withAlpha(C.info, 0.7)}; }
+ 100% { box-shadow: 0 0 0 0 ${withAlpha(C.info, 0)}; border-color: ${C.border}; }
  }
  .sp-lead-glow { animation: sp-lead-glow 1s ease-out; }
  @media (prefers-reduced-motion: reduce) {
- .sp-lead-glow { animation: none; border-color: rgba(59,130,246,0.7); }
+ .sp-lead-glow { animation: none; border-color: ${withAlpha(C.info, 0.7)}; }
  .sp-topbar { transition: none !important; }
  }
  `}</style>

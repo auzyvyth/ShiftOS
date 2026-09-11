@@ -395,9 +395,12 @@ were edited in the repo and never redeployed. Both directions exist RIGHT NOW.
   BEFORE you edit or redeploy anything.** Redeploying "the repo version" without
   checking silently deletes whatever only exists in the deployed version.
 - Same rule for discovery: `mcp__Supabase__list_edge_functions` is the real inventory.
-  As of 2026-08-21 missing from the repo entirely: `send-push`, `send-push-warm-leads`,
-  `notify-price-alerts`, `telegram-enquiry-notify`, `bootstrap-superadmin-alias`.
-  (`appointment-reminder` was closed 2026-08-21 — now tracked in the repo.)
+  Re-checked against the live inventory 2026-09-11: 18 deployed, 16 in the repo,
+  so exactly TWO are missing from the repo — `telegram-enquiry-notify` and
+  `bootstrap-superadmin-alias`. The other three this line used to name
+  (`send-push`, `send-push-warm-leads`, `notify-price-alerts`) have since been
+  committed, as was `appointment-reminder` on 2026-08-21. The gap is closing;
+  keep closing it rather than trusting this count — run the tool.
 - When you touch a drifted function, commit the deployed source into the repo as part
   of the same change so the gap closes instead of growing.
 - Caught this way (2026-08-16, `send-telegram`): deployed v10 had a

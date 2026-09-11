@@ -123,7 +123,7 @@ different concerns and the house rule is one per session.
   already carries a burger, a badge and a truncating page title.
 
 ### Located 2026-09-07 — ready to build
-- [ ] **PREM-1: the stale-lead glow in the Premium pipeline. TWO defects, both
+- [x] **PREM-1: the stale-lead glow in the Premium pipeline. TWO defects, both
   confirmed in code.** Owner's spec: in the Leads stage pipeline, a lead that
   has gone unanswered for a period gets a red outline wave, and it pulses for
   about one second when you open that stage.
@@ -147,6 +147,171 @@ different concerns and the house rule is one per session.
   diagonal slash" in the original report. Nothing found so far draws a diagonal;
   it may simply be the ring rendering clipped inside a card with
   `overflow:hidden`, which the fix above would need to account for.
+  **DONE 2026-09-11. Both defects fixed, exactly as scoped above.**
+  - **Fires from a stage now, through ONE handler.** `openStage(stage)`
+    (`SalesmanPremium.jsx:2697`) sets the stage and pulses the stale leads in
+    it. Premium had TWO copies of `onClick={() => setActiveLeadStage(stage)}` —
+    the mobile pill row (`:3015`) and the desktop rail (`:3137`) — and adding
+    the glow to each separately is how the next drift starts, so both call the
+    one handler. `staleIdSet` is built from the page's existing `staleLeads`
+    state (`:316`, the 48h + overdue-follow-up set), so no surface gains a query.
+  - **The wave stays BLUE on Premium — owner's call 2026-09-11, overriding the
+    original spec above.** It was shipped red first (the spec said red, and Lite
+    is red); the owner saw it and chose blue for Premium. Lite stays red, and
+    that difference is now DELIBERATE, not drift — do not "fix" one to match the
+    other.
+    What actually changed and must stay changed is the DUPLICATION, not the hue:
+    `sp-lead-glow` (`:6089`) interpolates `withAlpha(C.info, …)` instead of a
+    hardcoded `rgba(59,130,246,…)`, and settles back to `C.border`. `C.info` IS
+    `#3b82f6` = `rgb(59,130,246)`, so the colour on screen is byte-identical to
+    what was there before — the win is that it now has ONE definition and the
+    next change is one token, not four literals. Premium already imported that
+    token module (`:120`); the blue was hardcoded next to the token all along.
+    The `prefers-reduced-motion` fallback carried its own copy of the literal
+    and now reads the same token.
+  - One line beyond the two defects, same principle: the lead card's resting
+    border was the literal `rgba(255,255,255,0.07)` (`:2739`) while the glow's
+    last keyframe settled to `C.border`. Identical values today, and exactly the
+    pair that drifts. The card reads the token now, so the wave provably lands
+    on the colour the card actually rests at.
+  - **The `overflow:hidden` worry was unfounded — do not "fix" it.** The class
+    sits on a card with `overflow:hidden`, but that clips CHILDREN, never the
+    element's own outward `box-shadow`. Lite's card is structurally identical
+    (`SalesmanLite.jsx:4957`, same `overflow:hidden`) and its ring renders fine.
+  - Still NOT explained, and still wants one screenshot: the "flat red diagonal
+    slash". Nothing in either file draws a diagonal. Now that the ring is red
+    rather than blue, the likeliest reading is that the slash WAS the intended
+    glow all along, seen at a stage boundary — worth one look before anyone
+    opens a second bug for it.
+  - Verified: eslint clean, all 7 test suites pass, production build clean.
+    NOT eyeballed in a browser from this session.
+
+- [x] **PREM-2: "Set reminder" on the Premium pipeline card did nothing — and it
+  was quietly breaking three other things. FIXED 2026-09-11.** Owner reported it
+  ("pipeline stage card, reschedule or notification button doesn't work").
+  **Reschedule is fine** — the booking detail sheet's reschedule is fully wired
+  (`SalesmanPremium.jsx:4390-4425`: input, save, cancel). Not the bug.
+  **"Set reminder" was dead, and it is the THIRD time this exact shape has bitten
+  this file.** The button (`:3736`) set `followUpModalLead`, and nothing in the
+  file rendered anything for it. `saveFollowUp` (`:1651`) existed with **no
+  caller at all**. Same failure as PREM-B2 (test-drive sheet: state declared,
+  set, never rendered) and the Link Car modal (its own comment at `:3423` says
+  "nothing rendered for it, so the button did nothing at all").
+  **Why this one cost more than a dead button.** `follow_up_at` was READ in four
+  places in Premium and WRITTEN in none, so no Premium rep could set a follow-up
+  anywhere in the product. Everything keyed on it was therefore dead too:
+  - `staleLeads` (`:830`) is `overdueFollowUp && noRecentActivity` — an AND, so
+    with `follow_up_at` never set it is **always empty**.
+  - so the follow-ups KPI always read 0, the tab-return browser notification
+    (`:1541`) could never fire, and PREM-1's brand-new stage glow pulsed
+    nothing — the two reports are one bug chain, not two bugs.
+  Fix: ported Lite's follow-up modal (`SalesmanLite.jsx:7504`) into Premium in
+  Premium's own dark tokens, portalled per overlay rule 1, added to the combined
+  `anyOverlayOpen` scroll lock (`:649`), and deliberately NOT registered with
+  `useModalHistory` (overlay rule 5 — it is a lightweight popup with its own
+  Cancel and overlay-click close).
+  **One bug in Lite's version deliberately NOT copied:** its quick presets build
+  dates with `toISOString().slice(0,10)`, which is UTC. Malaysia is UTC+8, so
+  pressing "Tomorrow" before 8am local returns YESTERDAY's UTC date — i.e. it
+  silently sets the reminder to today. Premium's version builds the date from
+  local parts, the same way the reschedule picker at `:4390` already does.
+  **Lite still has that off-by-one — see PREM-3.**
+  Verified: eslint clean, all 7 test suites pass, production build clean.
+  NOT eyeballed in a browser from this session.
+
+- [ ] **PREM-3: Lite's follow-up quick presets are off by one before 8am.**
+  `SalesmanLite.jsx:7516-7519` builds "Tomorrow / In 2 days / In 3 days / Next
+  week" with `d.toISOString().slice(0, 10)`. That is UTC; Malaysia is UTC+8, so
+  between midnight and 8am local the string is the PREVIOUS day — "Tomorrow"
+  sets the reminder for today and it fires immediately. Premium's port already
+  builds from local parts and is correct; this is the same four lines in Lite.
+  Low severity (an 8-hour window), but it is a wrong date written to
+  `follow_up_at`, which drives nudges and the "This week" list.
+  Salesmanpanel.jsx:1894 writes `follow_up_at` too — check its presets for the
+  same pattern while in there.
+
+- [x] **PREM-4 DONE 2026-09-11 — and the answer was not the one the question
+  asked for. ONE shared rule, measured off the right column.**
+  The question was "AND or OR?". Researching it turned up a bigger problem and
+  two more copies of the rule, so the fix is a single definition in
+  `src/lib/leadsHelpers.js` (`followUpStatus` / `isLeadStale` / `compareFollowUp`)
+  that Lite, Premium, Salesmanpanel and the dealer board all read.
+  - **FOUR definitions existed, not two:** `leadsHelpers.isLeadStale` (used by
+    Salesmanpanel + `LeadGridCard`), Lite's byte-identical private copy,
+    Premium's different one, and `thisWeek.js` / `OutreachHub.jsx:96` — which
+    were already using the RIGHT signal while the pipeline used the wrong one.
+  - **The real bug was the COLUMN, not the boolean operator.** Every pipeline
+    copy measured inactivity from `updated_at`. That moves on ANY write — a
+    note edit, linking a car, an AI re-score, a stage change, a trigger — none
+    of which reached the buyer. So a rep who opened a lead and typed a note
+    silenced its alarm for a whole stage window without calling anyone. Live
+    count at the time: **16 of 68 open leads had been edited with no contact
+    ever logged.** The codebase already knew this — `SalesmanPremium.jsx:1586`
+    and `SalesmanLite.jsx:2229` both carry "not a contact event, so it stamps
+    updated_at only" comments, and CLAUDE.md calls `last_contacted_at` the
+    heartbeat of "This week". The pipeline was simply never brought across.
+    The rule now measures from `last_contacted_at`, falling back to
+    `created_at` so a never-contacted lead's clock starts when it arrived.
+  - **It returns a REASON and a rank, not a boolean.** `never_contacted` >
+    `reminder_due` > `gone_quiet`, the same order `thisWeek.js` already ranks
+    by — a pipeline badge that disagreed with the documented call list would
+    send a rep to a different name than the list told them to work.
+    `compareFollowUp` sorts worst-first and every surface uses it.
+  - Kept: per-stage windows (new 5h ... deposit_taken 72h) and OR semantics.
+    Premium's AND is gone. `isLeadStale` survives as a thin wrapper so the
+    existing boolean callers did not have to change.
+  - Premium's lead card chip now reads the shared rule. It used to fire ONLY on
+    an overdue manual reminder, and exactly ONE lead in the live pipeline has a
+    reminder set — so the chip was invisible on 67 of 68 cards that needed a
+    call. It says "Never contacted · 3d" / "Gone quiet · 5d" now.
+  - `tests/followUp.test.mjs`, 28 assertions, `npm run test:followup`, wired
+    into `npm test`. The first block is the regression guard: a fresh
+    `updated_at` must NOT clear a lead contacted 40h ago. If someone moves this
+    back onto `updated_at`, that is the test that fails.
+  - **WHAT THIS DOES NOT FIX, stated honestly: the count is still 68 of 68.**
+    The rule explains the pipeline, it does not shrink it. Measured after:
+    **46 leads never contacted at all, average 73 days waiting**, and 22 gone
+    quiet, average 52 days. A badge that fires on 100% of the board still tells
+    a rep nothing by itself — the reason and the ranking are what make it
+    usable. See PREM-5.
+  - Verified: eslint clean, all 8 test suites pass, production build clean.
+    NOT eyeballed in a browser from this session.
+
+- [ ] **PREM-5: 46 buyers asked and nobody ever answered — that is the actual
+  finding, and no code change fixes it.** Surfaced by PREM-4's measurement, not
+  a bug report. Of 68 open leads: 46 have NO contact ever logged (average 73
+  days since they enquired) and 22 have gone quiet (average 52 days). 31 of the
+  68 are over 90 days old.
+  Two things worth deciding, neither of them a defect:
+  1. **A lead this old is not a lead.** Consider an auto-archive (or a "cold"
+     bucket) past some age, so the board shows work a rep can actually do
+     today. Without it the follow-up badge fires on everything and gets
+     ignored, which is the state it is in now.
+  2. **Is `last_contacted_at` being stamped by every path that should?** Today
+     only `logCall`, OutreachHub and `handleThisWeekContacted` write it. Tapping
+     WhatsApp from a card almost certainly counts as contact to the rep, and if
+     it does not stamp, leads will keep reading "never contacted" after the rep
+     has in fact messaged them — which would make the new reason wrong in the
+     one direction that loses trust fastest. Worth auditing before adding the
+     archive above.
+
+- [x] ~~**PREM-4 (NEEDS A DECISION): Lite and Premium disagree on what
+  "needs follow-up" MEANS.**~~ Superseded by the entry above. Original finding
+  kept for the reasoning:
+  - Lite (`SalesmanLite.jsx:1353-1357`): `overdueFollowUp || stale`, an **OR**,
+    with a PER-STAGE window (`FOLLOW_UP_HOURS[l.stage] ?? 48`).
+  - Premium (`SalesmanPremium.jsx:830-832`): `overdueFollowUp && noRecentActivity`,
+    an **AND**, with a flat 48h.
+  Consequence: on Premium a lead counts as needing follow-up ONLY if the rep
+  remembered to set a date AND it lapsed AND nothing touched the lead for 48h.
+  On Lite, going quiet for the stage's own window is enough on its own. So the
+  same pipeline on the two products reports different numbers of leads needing a
+  call — and Premium's is the far quieter one, which is backwards for the paid
+  tier.
+  Recommendation: make Premium match Lite (OR, per-stage hours), and lift the
+  rule into ONE shared helper both import, rather than a third copy. Not done
+  unilaterally — it changes what every Premium follow-up count, the KPI and the
+  stage glow report, and that is a product call.
 
 ### Auth hardening — asked for 2026-09-07, investigated, NOT yet built
 Owner's ask: rate-limit sign-in, password reset and magic link; stop offering
@@ -1329,6 +1494,28 @@ until these are done:**
 > NOT verified from here: the import-stock flow in a real browser. Worth one manual pass
 > with a real dealer PDF and an xlsx before trusting it, since the xlsx half of that page
 > could not be exercised at all with the stub in place.
+
+- [ ] **DEP-1: the "0 vulnerabilities" above is STALE — it is 8 again (checked
+  2026-09-11).** Not a regression in our code; these are new advisories
+  published against dependencies we already had. GitHub's Dependabot counts 9 on
+  the default branch (it counts differently from npm).
+  **None is production-reachable, which is why this is a scheduled bump and not
+  a drop-everything:** `express`/`body-parser`/`qs` are only used by
+  `server/index.js`, and `.vercelignore` excludes `server` AND `tools` from the
+  deployment; `sharp` is a devDependency; `js-yaml`,
+  `postcss-selector-parser`, `fast-uri` and `fflate` are build/dev transitives.
+  Production is a static Vercel build plus `api/` functions, and none of these
+  ship into it.
+  3 high (`fast-uri` SSRF/host-confusion, `js-yaml` CPU, `sharp` libheif),
+  4 moderate, 1 low. `npm audit fix` claims to clear all of them, so this is
+  likely one short session — but run the full build + tests after, because that
+  is what the last bump caught.
+  **Read ACT-DEPENDABOT above before starting: `npm install` cannot complete in
+  a web session** — `xlsx` is pinned to `cdn.sheetjs.com` and org egress 403s
+  it. Point `xlsx` at a throwaway local stub for the install only and restore
+  `package.json` + `package-lock.json` byte-identical before committing (verify
+  with `git diff` showing zero changes to both). Confirmed still true and still
+  the workaround, 2026-09-11.
 
 - **ACT-1: Enable TOTP in Supabase dashboard — PARKED, owner reconfirmed 2026-09-07 ("keep it until Pro comes, we have no way to do it now"). Do not nag.** — 2FA (SEC-1) will not work end-to-end until the TOTP factor type is enabled: Supabase → Authentication → Settings → Multi-Factor → enable **TOTP**. Until then, the "Enable 2FA" button in Settings will error on enroll. Owner is deferring this until revenue/Supabase Pro (treats it as a paid feature — note: standard app-based TOTP MFA is typically free on Supabase; the paid MFA add-on is Phone/SMS, which we are avoiding anyway — worth re-checking billing before permanently shelving). Interim idea from owner: keep Gmail/Google link verification and add an email verification code as a lightweight second factor. NOTE (2026-08-05): TOTP is NOT deprecated — Bank Negara's RMiT (28 Nov 2025) bans **SMS OTP** as a standalone factor, not TOTP. TOTP (authenticator-app codes, RFC 6238) is offline/device-local and is one of the regulator's recommended interception-resistant replacements, so it stays the correct choice here. Do NOT enable Supabase's Phone/SMS OTP factor. Passkeys (FIDO2/WebAuthn) are the gold standard but are not a native Supabase MFA factor yet.
 > **ACT-13 DONE — verified end to end 2026-08-29.** Anonymous sign-ins are on and guest

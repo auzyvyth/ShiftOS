@@ -1,0 +1,255 @@
+{
+  "schema_version": "2.0",
+  "generated_at": "2026-09-11",
+  "batch": { "requested": 18, "returned": 15, "skipped": 3 },
+  "specs": [
+    {
+      "make": "Toyota", "model": "Alphard", "generation": "AH20",
+      "year_from": 2008, "year_to": 2014, "market": "CBU",
+      "chassis_codes": ["ANH20", "ANH25", "GGH20", "GGH25"],
+      "body_type": "MPV", "doors": 5, "seats": 7,
+      "primary_variant": "2.4 240S",
+      "engine_cc": 2362, "cylinders": 4, "horsepower": 170, "torque_nm": 224,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen Alphard, very common Malaysian recond import; 2.4L is the volume variant, 3.5L V6 also imported.",
+      "variants": [
+        { "name": "2.4 240S", "horsepower": 170, "torque_nm": 224, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 8, "notes": "2AZ-FE 2362cc, Super CVT-i" },
+        { "name": "3.5 350S", "horsepower": 280, "torque_nm": 344, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "2GR-FE 3456cc V6, 6-speed torque-converter AT" }
+      ]
+    },
+    {
+      "make": "Toyota", "model": "Alphard", "generation": "AH30",
+      "year_from": 2015, "year_to": 2022, "market": "CBU",
+      "chassis_codes": ["AGH30", "AGH35", "GGH30", "GGH35", "AYH30"],
+      "body_type": "MPV", "doors": 5, "seats": 7,
+      "primary_variant": "2.5 SC",
+      "engine_cc": 2494, "cylinders": 4, "horsepower": 182, "torque_nm": 235,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Third-gen Alphard; heavy Malaysian recond volume. 2.5L petrol is the volume seller, 3.5L V6 and 2.5 hybrid also available.",
+      "variants": [
+        { "name": "2.5 SC", "horsepower": 182, "torque_nm": 235, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "2AR-FE 2494cc, CVT" },
+        { "name": "3.5 SC", "horsepower": 301, "torque_nm": 361, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "2GR-FKS 3456cc V6, 8-speed AT" },
+        { "name": "2.5 Hybrid", "horsepower": null, "torque_nm": null, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Hybrid", "seats": 7, "notes": "AYH30 2AR-FXE 2494cc + E-Four, e-CVT" }
+      ]
+    },
+    {
+      "make": "Toyota", "model": "Alphard", "generation": "AH40",
+      "year_from": 2023, "year_to": null, "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "MPV", "doors": 5, "seats": 7,
+      "primary_variant": "2.5 Hybrid",
+      "engine_cc": 2487, "cylinders": 4, "horsepower": null, "torque_nm": null,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Hybrid",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Fourth-gen Alphard, recent recond arrivals; 2.5 hybrid is the volume unit, 2.4 turbo also offered. Malaysian-market figures still thin.",
+      "variants": [
+        { "name": "2.5 Hybrid", "horsepower": null, "torque_nm": null, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Hybrid", "seats": 7, "notes": "A25A-FXS 2487cc + e-CVT; E-Four AWD optional" }
+      ]
+    },
+    {
+      "make": "Toyota", "model": "Vellfire", "generation": "AH20",
+      "year_from": 2008, "year_to": 2014, "market": "CBU",
+      "chassis_codes": ["ANH20", "ANH25", "GGH20", "GGH25"],
+      "body_type": "MPV", "doors": 5, "seats": 7,
+      "primary_variant": "2.4 240V",
+      "engine_cc": 2362, "cylinders": 4, "horsepower": 170, "torque_nm": 224,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Sportier twin of the AH20 Alphard, mechanically identical; common Malaysian recond. 2.4L volume, 3.5L V6 also imported.",
+      "variants": [
+        { "name": "2.4 240V", "horsepower": 170, "torque_nm": 224, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "2AZ-FE 2362cc, Super CVT-i" },
+        { "name": "3.5 350V", "horsepower": 280, "torque_nm": 344, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "2GR-FE 3456cc V6, 6-speed AT" }
+      ]
+    },
+    {
+      "make": "Toyota", "model": "Vellfire", "generation": "AH30",
+      "year_from": 2015, "year_to": 2023, "market": "CBU",
+      "chassis_codes": ["AGH30", "AGH35", "GGH30", "GGH35", "AYH30"],
+      "body_type": "MPV", "doors": 5, "seats": 7,
+      "primary_variant": "2.5 ZG",
+      "engine_cc": 2494, "cylinders": 4, "horsepower": 182, "torque_nm": 235,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Third-gen Vellfire, twin of the AH30 Alphard; strong Malaysian recond volume. 2.5L petrol volume seller, 3.5 V6 and 2.5 hybrid offered.",
+      "variants": [
+        { "name": "2.5 ZG", "horsepower": 182, "torque_nm": 235, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "2AR-FE 2494cc, CVT" },
+        { "name": "3.5 ZG", "horsepower": 301, "torque_nm": 361, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "2GR-FKS 3456cc V6, 8-speed AT" },
+        { "name": "2.5 Hybrid", "horsepower": null, "torque_nm": null, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Hybrid", "seats": 7, "notes": "AYH30 2494cc + E-Four, e-CVT" }
+      ]
+    },
+    {
+      "make": "Toyota", "model": "Estima", "generation": "XR50 (ACR50)",
+      "year_from": 2006, "year_to": 2019, "market": "CBU",
+      "chassis_codes": ["ACR50", "ACR55", "GSR50", "GSR55", "AHR20"],
+      "body_type": "MPV", "doors": 5, "seats": 7,
+      "primary_variant": "2.4 Aeras",
+      "engine_cc": 2362, "cylinders": 4, "horsepower": 170, "torque_nm": 224,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Third-gen Estima, long-running Malaysian recond MPV; 2.4L volume, 3.5 V6 and 2.4 hybrid also imported.",
+      "variants": [
+        { "name": "2.4 Aeras", "horsepower": 170, "torque_nm": 224, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "2AZ-FE 2362cc, CVT; AWD offered" },
+        { "name": "3.5 Aeras", "horsepower": 280, "torque_nm": 344, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "2GR-FE 3456cc V6, 6-speed AT" },
+        { "name": "2.4 Hybrid", "horsepower": null, "torque_nm": null, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Hybrid", "seats": 7, "notes": "AHR20 2AZ-FXE 2362cc + E-Four, e-CVT" }
+      ]
+    },
+    {
+      "make": "Honda", "model": "BR-V", "generation": "1st gen (DG)",
+      "year_from": 2016, "year_to": 2021, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "1.5 V",
+      "engine_cc": 1497, "cylinders": 4, "horsepower": 120, "torque_nm": 145,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "First-gen BR-V, CKD 7-seat crossover; 1.5 i-VTEC with CVT, base grade also offered with manual.",
+      "variants": [
+        { "name": "1.5 E", "horsepower": 120, "torque_nm": 145, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "L15Z 1497cc, CVT; base E also with 6MT" },
+        { "name": "1.5 V", "horsepower": 120, "torque_nm": 145, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "L15Z 1497cc, CVT" }
+      ]
+    },
+    {
+      "make": "Honda", "model": "BR-V", "generation": "2nd gen (DG5)",
+      "year_from": 2022, "year_to": null, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "1.5 V",
+      "engine_cc": 1498, "cylinders": 4, "horsepower": 121, "torque_nm": 145,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen BR-V, CKD 7-seater launched in Malaysia late 2022; 1.5 DOHC i-VTEC with CVT, Honda Sensing on higher grades.",
+      "variants": [
+        { "name": "1.5 E", "horsepower": 121, "torque_nm": 145, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "1498cc DOHC i-VTEC, CVT" },
+        { "name": "1.5 V", "horsepower": 121, "torque_nm": 145, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "1498cc DOHC i-VTEC, CVT" },
+        { "name": "1.5 RS", "horsepower": 121, "torque_nm": 145, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "1498cc DOHC i-VTEC, CVT, Honda Sensing" }
+      ]
+    },
+    {
+      "make": "Nissan", "model": "Navara", "generation": "D40",
+      "year_from": 2005, "year_to": 2014, "market": "CKD",
+      "chassis_codes": ["D40"],
+      "body_type": "Pickup", "doors": 4, "seats": 5,
+      "primary_variant": "2.5 LE",
+      "engine_cc": 2488, "cylinders": 4, "horsepower": 174, "torque_nm": 403,
+      "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "D40 Navara double cab; 2.5 YD25DDTi turbodiesel, auto variant quoted near 403Nm, manual lower. King cab also sold.",
+      "variants": [
+        { "name": "2.5 LE", "horsepower": 174, "torque_nm": 403, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel", "seats": 5, "notes": "YD25DDTi 2488cc, 5-speed AT" },
+        { "name": "2.5 SE", "horsepower": 174, "torque_nm": 356, "transmission": "Manual", "drivetrain": "4WD", "fuel_type": "Diesel", "seats": 5, "notes": "YD25DDTi 2488cc, 6MT" }
+      ]
+    },
+    {
+      "make": "Nissan", "model": "Navara", "generation": "D23 (NP300)",
+      "year_from": 2015, "year_to": null, "market": "CKD",
+      "chassis_codes": ["D23"],
+      "body_type": "Pickup", "doors": 4, "seats": 5,
+      "primary_variant": "2.5 VL",
+      "engine_cc": 2488, "cylinders": 4, "horsepower": 190, "torque_nm": 450,
+      "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "NP300 Navara double cab, CKD; top VL uses twin-turbo YD25 near 190PS/450Nm, lower grades single-turbo near 163PS.",
+      "variants": [
+        { "name": "2.5 VL", "horsepower": 190, "torque_nm": 450, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel", "seats": 5, "notes": "YD25DDTi twin-turbo 2488cc, 7-speed AT" },
+        { "name": "2.5 SE", "horsepower": 163, "torque_nm": 403, "transmission": "Manual", "drivetrain": "4WD", "fuel_type": "Diesel", "seats": 5, "notes": "YD25DDTi single-turbo 2488cc, 6MT" }
+      ]
+    },
+    {
+      "make": "Isuzu", "model": "D-Max", "generation": "2nd gen (RT)",
+      "year_from": 2012, "year_to": 2019, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Pickup", "doors": 4, "seats": 5,
+      "primary_variant": "2.5 Premium",
+      "engine_cc": 2499, "cylinders": 4, "horsepower": 136, "torque_nm": 320,
+      "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen D-Max double cab, CKD; 2.5 4JK1 volume engine, 3.0 4JJ1 flagship. 1.9 Blue Power added in later facelift.",
+      "variants": [
+        { "name": "2.5 Premium", "horsepower": 136, "torque_nm": 320, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel", "seats": 5, "notes": "4JK1-TCX 2499cc, 5-speed AT" },
+        { "name": "3.0 Premium", "horsepower": 177, "torque_nm": 380, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel", "seats": 5, "notes": "4JJ1-TCX 2999cc, 5-speed AT" }
+      ]
+    },
+    {
+      "make": "Isuzu", "model": "D-Max", "generation": "3rd gen (RG)",
+      "year_from": 2021, "year_to": null, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Pickup", "doors": 4, "seats": 5,
+      "primary_variant": "1.9 Premium",
+      "engine_cc": 1898, "cylinders": 4, "horsepower": 150, "torque_nm": 350,
+      "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Third-gen D-Max, CKD launched in Malaysia 2021; 1.9 RZ4E volume engine, 3.0 4JJ3 flagship.",
+      "variants": [
+        { "name": "1.9 Premium", "horsepower": 150, "torque_nm": 350, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel", "seats": 5, "notes": "RZ4E-TC 1898cc, 6-speed AT" },
+        { "name": "3.0 X-Terrain", "horsepower": 190, "torque_nm": 450, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel", "seats": 5, "notes": "4JJ3-TCX 2999cc, 6-speed AT" }
+      ]
+    },
+    {
+      "make": "Mazda", "model": "Mazda 2", "generation": "DE",
+      "year_from": 2007, "year_to": 2014, "market": "CBU",
+      "chassis_codes": ["DE"],
+      "body_type": "Hatchback", "doors": 5, "seats": 5,
+      "primary_variant": "1.5 Hatchback",
+      "engine_cc": 1498, "cylinders": 4, "horsepower": 103, "torque_nm": 135,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "DE Mazda 2, imported; 1.5 ZY-VE, offered as 5-door hatch and 4-door sedan.",
+      "variants": [
+        { "name": "1.5 Hatchback", "horsepower": 103, "torque_nm": 135, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "ZY-VE 1498cc, 4-speed AT" },
+        { "name": "1.5 Sedan", "horsepower": 103, "torque_nm": 135, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "ZY-VE 1498cc, 4-door sedan body" }
+      ]
+    },
+    {
+      "make": "Mazda", "model": "Mazda 2", "generation": "DJ",
+      "year_from": 2015, "year_to": null, "market": "CBU",
+      "chassis_codes": ["DJ"],
+      "body_type": "Hatchback", "doors": 5, "seats": 5,
+      "primary_variant": "1.5 Hatchback",
+      "engine_cc": 1496, "cylinders": 4, "horsepower": 114, "torque_nm": 149,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "DJ Mazda 2 SkyActiv, CBU from Thailand; 1.5 P5-VPS petrol, 5-door hatch and 4-door sedan, 6-speed AT.",
+      "variants": [
+        { "name": "1.5 Hatchback", "horsepower": 114, "torque_nm": 149, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "P5-VPS SkyActiv-G 1496cc, 6-speed AT" },
+        { "name": "1.5 Sedan", "horsepower": 114, "torque_nm": 149, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "P5-VPS SkyActiv-G 1496cc, 4-door sedan" }
+      ]
+    },
+    {
+      "make": "Mitsubishi", "model": "Outlander", "generation": "3rd gen (GF)",
+      "year_from": 2016, "year_to": 2021, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "2.0",
+      "engine_cc": 1998, "cylinders": 4, "horsepower": 145, "torque_nm": 196,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Third-gen Outlander, CKD Malaysia from 2016; 2.0 FWD is the volume variant, 2.4 AWD flagship, CVT, 7 seats.",
+      "variants": [
+        { "name": "2.0", "horsepower": 145, "torque_nm": 196, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "4B11 1998cc, CVT" },
+        { "name": "2.4", "horsepower": 167, "torque_nm": 222, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 7, "notes": "4B12 2360cc, CVT, S-AWC" }
+      ]
+    }
+  ],
+  "skipped": [
+    { "make": "Isuzu", "model": "D-Max", "reason": "1st gen (2002-2012) — Malaysian-market engine/spec figures uncertain, held for verification" },
+    { "make": "Toyota", "model": "Vellfire", "reason": "AH40 (2023+) recond volume still thin, figures not confident yet" },
+    { "make": "Toyota", "model": "Estima", "reason": "XR30/XR40 (2000-2006) earlier gen — figures uncertain, held for a later batch" }
+  ]
+}

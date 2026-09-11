@@ -22,6 +22,7 @@ import {
   panelStageHue,
   withAlpha,
 } from "../theme/tokens";
+import { compareFollowUp, isLeadStale } from "../lib/leadsHelpers";
 import ServicesAddonsTab from "../components/salesman/ServicesAddonsTab";
 import SalesmanLiteHelp from "../components/SalesmanLiteHelp";
 import ChannelBreakdown from "../components/ChannelBreakdown";
@@ -1335,27 +1336,17 @@ export default function SalesmanLite() {
 
   // Hours-per-stage before a lead counts as needing follow-up.
   // Indexed by lead.stage; falls back to 48h for unknown stages.
-  const FOLLOW_UP_HOURS = {
-    new: 5,
-    contacted: 24,
-    viewing_booked: 48,
-    test_drive: 24,
-    negotiating: 48,
-    deposit_taken: 72,
-  };
-
+  // Leads needing a call — ONE definition, shared with Premium, Salesmanpanel
+  // and the dealer board (`isLeadStale` in lib/leadsHelpers). Lite used to keep
+  // its own byte-identical copy of FOLLOW_UP_HOURS plus this filter, which is
+  // how the two drifted apart in the first place. The shared rule also fixes
+  // the column: staleness is measured from `last_contacted_at` (falling back to
+  // `created_at`), not `updated_at` — editing a note is not contacting a buyer.
+  // Sorted worst-first so every surface agrees on the order.
   useEffect(() => {
     const now = Date.now();
     setStaleLeads(
-      leads.filter((l) => {
-        const closed = ["won","lost","closed_won","closed_lost"].includes(l.stage);
-        if (closed) return false;
-        const overdueFollowUp = l.follow_up_at && new Date(l.follow_up_at).getTime() <= now;
-        const hours = FOLLOW_UP_HOURS[l.stage] ?? 48;
-        const cutoff = now - hours * 60 * 60 * 1000;
-        const stale = l.updated_at && new Date(l.updated_at).getTime() < cutoff;
-        return overdueFollowUp || stale;
-      }),
+      leads.filter((l) => isLeadStale(l, now)).sort((a, b) => compareFollowUp(a, b, now)),
     );
   }, [leads]);
 
@@ -7432,8 +7423,9 @@ export default function SalesmanLite() {
     if (!current) return;
     const car = current.car_listings;
     const carName = car ? `${car.brand} ${car.model}` : 'kereta tu';
-    const hours = FOLLOW_UP_HOURS[current.stage] ?? 48;
-    const isStale = current.updated_at && Date.now() - new Date(current.updated_at).getTime() > hours * 3600 * 1000;
+    // Same shared rule as the pipeline badge, so the urgency this message
+    // claims ("someone else is asking") matches what the board is showing.
+    const isStale = isLeadStale(current);
     setBatchWAMsg(isStale
       ? `Hi ${current.buyer_name || 'kawan'}! Ada orang lain tengah tanya pasal ${carName} ni — kalau you still interested, jom lock dulu sebelum terlambat 🔒`
       : `Hi ${current.buyer_name || 'kawan'}! Macam mana, still interested dalam ${carName} tu? Jom kita discuss lagi 😊`

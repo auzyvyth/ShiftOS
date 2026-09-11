@@ -203,19 +203,103 @@ export function followUpHoursFor(stage) {
   return FOLLOW_UP_HOURS[canonicalStage(stage)] ?? 48;
 }
 
+// ─── Why a lead needs a call, ranked ────────────────────────────────────────
+// Lower rank = call this one first. The order matches `src/utils/thisWeek.js`
+// (never replied > due reminder > going quiet) on purpose: "This week" is the
+// documented call list, and a pipeline badge that disagreed with it would send
+// a rep to a different name than the list they were told to work.
+export const FOLLOW_UP_REASON = {
+  never_contacted: { rank: 0, label: 'Never contacted' },
+  reminder_due:    { rank: 1, label: 'Reminder due' },
+  gone_quiet:      { rank: 2, label: 'Gone quiet' },
+};
+
+const NOT_DUE = Object.freeze({
+  due: false, reason: null, rank: 99, label: '', sinceHours: 0, overdueHours: 0,
+});
+
 /**
- * True when a lead needs a follow-up ping: either its manual follow_up_at
- * reminder is overdue, OR it has had no activity for longer than its stage's
- * threshold. Terminal (won/lost) leads never qualify.
+ * Why (and how badly) a lead needs a follow-up. Returns
+ * `{ due, reason, rank, label, sinceHours, overdueHours }`.
+ *
+ * THE CLOCK RUNS FROM `last_contacted_at`, falling back to `created_at` — NOT
+ * from `updated_at`. This is the whole point of the helper. `updated_at` moves
+ * on ANY write: editing a note, linking a car, an AI re-score, a stage change,
+ * a DB trigger. None of those reached the buyer, so measuring from it means a
+ * rep who opens a lead and types a note has silenced its alarm for a full stage
+ * window without speaking to anyone. Measured on the live pipeline the day this
+ * changed: 16 of 68 open leads had been edited since creation with no contact
+ * ever logged — a quarter of the board was reporting "recently handled" about
+ * buyers nobody had called.
+ * `OutreachHub.jsx:96` and `thisWeek.js` already used `last_contacted_at ||
+ * created_at`; this brings the pipeline signal onto the same column instead of
+ * leaving the product with two contradictory ideas of "touched".
+ *
+ * Terminal (won/lost) leads never qualify.
+ */
+export function followUpStatus(lead, now = Date.now()) {
+  if (!lead) return NOT_DUE;
+  const stage = canonicalStage(lead.stage);
+  if (stage === 'won' || stage === 'lost') return NOT_DUE;
+
+  const windowHours = followUpHoursFor(stage);
+  const lastTouch = lead.last_contacted_at || lead.created_at;
+  const sinceHours = lastTouch
+    ? (now - new Date(lastTouch).getTime()) / 3600000
+    : 0;
+
+  // A lead that arrived inside its own window is not late yet. Without this a
+  // brand-new enquiry would be flagged the second it lands, which is the fastest
+  // way to teach a rep that the badge means nothing.
+  const pastWindow = Boolean(lastTouch) && sinceHours >= windowHours;
+
+  const followUpAt = lead.follow_up_at ? new Date(lead.follow_up_at).getTime() : null;
+  const reminderDue = followUpAt !== null && followUpAt <= now;
+
+  const make = (reason, overdueHours) => ({
+    due: true,
+    reason,
+    rank: FOLLOW_UP_REASON[reason].rank,
+    label: FOLLOW_UP_REASON[reason].label,
+    sinceHours,
+    overdueHours: Math.max(0, overdueHours),
+  });
+
+  // Nobody has ever contacted this buyer and their window has run out. The most
+  // expensive row on any sales board — they asked, and got silence.
+  if (!lead.last_contacted_at && pastWindow) {
+    return make('never_contacted', sinceHours - windowHours);
+  }
+  // A reminder this rep set for this buyer, and let lapse. Fires regardless of
+  // the stage window: the rep named the time themselves.
+  if (reminderDue) {
+    return make('reminder_due', (now - followUpAt) / 3600000);
+  }
+  if (pastWindow) {
+    return make('gone_quiet', sinceHours - windowHours);
+  }
+  return NOT_DUE;
+}
+
+/**
+ * True when a lead needs a follow-up ping. Thin wrapper over followUpStatus so
+ * existing boolean callers keep working — prefer followUpStatus when you can
+ * show the rep WHY, because "12 leads need attention" with no reason is a
+ * number they cannot act on.
  */
 export function isLeadStale(lead, now = Date.now()) {
-  if (!lead) return false;
-  const stage = canonicalStage(lead.stage);
-  if (stage === 'won' || stage === 'lost') return false;
-  const overdueFollowUp = lead.follow_up_at && new Date(lead.follow_up_at).getTime() <= now;
-  const cutoff = now - followUpHoursFor(stage) * 3600 * 1000;
-  const inactive = lead.updated_at && new Date(lead.updated_at).getTime() < cutoff;
-  return Boolean(overdueFollowUp || inactive);
+  return followUpStatus(lead, now).due;
+}
+
+/**
+ * Sort comparator: most urgent first (reason rank, then most overdue).
+ * Use it wherever due leads are listed so every surface agrees on "worst first".
+ */
+export function compareFollowUp(a, b, now = Date.now()) {
+  const sa = followUpStatus(a, now);
+  const sb = followUpStatus(b, now);
+  if (sa.rank !== sb.rank) return sa.rank - sb.rank;
+  return sb.overdueHours - sa.overdueHours;
 }
 
 /** Extract 1-2 initials from a name */
