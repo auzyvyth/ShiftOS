@@ -230,9 +230,74 @@ different concerns and the house rule is one per session.
   Salesmanpanel.jsx:1894 writes `follow_up_at` too — check its presets for the
   same pattern while in there.
 
-- [ ] **PREM-4 (NEEDS A DECISION, not a bug): Lite and Premium disagree on what
-  "needs follow-up" MEANS.** Found while fixing PREM-2. Two different rules for
-  one concept, which is the duplication smell the rules file keeps naming:
+- [x] **PREM-4 DONE 2026-09-11 — and the answer was not the one the question
+  asked for. ONE shared rule, measured off the right column.**
+  The question was "AND or OR?". Researching it turned up a bigger problem and
+  two more copies of the rule, so the fix is a single definition in
+  `src/lib/leadsHelpers.js` (`followUpStatus` / `isLeadStale` / `compareFollowUp`)
+  that Lite, Premium, Salesmanpanel and the dealer board all read.
+  - **FOUR definitions existed, not two:** `leadsHelpers.isLeadStale` (used by
+    Salesmanpanel + `LeadGridCard`), Lite's byte-identical private copy,
+    Premium's different one, and `thisWeek.js` / `OutreachHub.jsx:96` — which
+    were already using the RIGHT signal while the pipeline used the wrong one.
+  - **The real bug was the COLUMN, not the boolean operator.** Every pipeline
+    copy measured inactivity from `updated_at`. That moves on ANY write — a
+    note edit, linking a car, an AI re-score, a stage change, a trigger — none
+    of which reached the buyer. So a rep who opened a lead and typed a note
+    silenced its alarm for a whole stage window without calling anyone. Live
+    count at the time: **16 of 68 open leads had been edited with no contact
+    ever logged.** The codebase already knew this — `SalesmanPremium.jsx:1586`
+    and `SalesmanLite.jsx:2229` both carry "not a contact event, so it stamps
+    updated_at only" comments, and CLAUDE.md calls `last_contacted_at` the
+    heartbeat of "This week". The pipeline was simply never brought across.
+    The rule now measures from `last_contacted_at`, falling back to
+    `created_at` so a never-contacted lead's clock starts when it arrived.
+  - **It returns a REASON and a rank, not a boolean.** `never_contacted` >
+    `reminder_due` > `gone_quiet`, the same order `thisWeek.js` already ranks
+    by — a pipeline badge that disagreed with the documented call list would
+    send a rep to a different name than the list told them to work.
+    `compareFollowUp` sorts worst-first and every surface uses it.
+  - Kept: per-stage windows (new 5h ... deposit_taken 72h) and OR semantics.
+    Premium's AND is gone. `isLeadStale` survives as a thin wrapper so the
+    existing boolean callers did not have to change.
+  - Premium's lead card chip now reads the shared rule. It used to fire ONLY on
+    an overdue manual reminder, and exactly ONE lead in the live pipeline has a
+    reminder set — so the chip was invisible on 67 of 68 cards that needed a
+    call. It says "Never contacted · 3d" / "Gone quiet · 5d" now.
+  - `tests/followUp.test.mjs`, 28 assertions, `npm run test:followup`, wired
+    into `npm test`. The first block is the regression guard: a fresh
+    `updated_at` must NOT clear a lead contacted 40h ago. If someone moves this
+    back onto `updated_at`, that is the test that fails.
+  - **WHAT THIS DOES NOT FIX, stated honestly: the count is still 68 of 68.**
+    The rule explains the pipeline, it does not shrink it. Measured after:
+    **46 leads never contacted at all, average 73 days waiting**, and 22 gone
+    quiet, average 52 days. A badge that fires on 100% of the board still tells
+    a rep nothing by itself — the reason and the ranking are what make it
+    usable. See PREM-5.
+  - Verified: eslint clean, all 8 test suites pass, production build clean.
+    NOT eyeballed in a browser from this session.
+
+- [ ] **PREM-5: 46 buyers asked and nobody ever answered — that is the actual
+  finding, and no code change fixes it.** Surfaced by PREM-4's measurement, not
+  a bug report. Of 68 open leads: 46 have NO contact ever logged (average 73
+  days since they enquired) and 22 have gone quiet (average 52 days). 31 of the
+  68 are over 90 days old.
+  Two things worth deciding, neither of them a defect:
+  1. **A lead this old is not a lead.** Consider an auto-archive (or a "cold"
+     bucket) past some age, so the board shows work a rep can actually do
+     today. Without it the follow-up badge fires on everything and gets
+     ignored, which is the state it is in now.
+  2. **Is `last_contacted_at` being stamped by every path that should?** Today
+     only `logCall`, OutreachHub and `handleThisWeekContacted` write it. Tapping
+     WhatsApp from a card almost certainly counts as contact to the rep, and if
+     it does not stamp, leads will keep reading "never contacted" after the rep
+     has in fact messaged them — which would make the new reason wrong in the
+     one direction that loses trust fastest. Worth auditing before adding the
+     archive above.
+
+- [x] ~~**PREM-4 (NEEDS A DECISION): Lite and Premium disagree on what
+  "needs follow-up" MEANS.**~~ Superseded by the entry above. Original finding
+  kept for the reasoning:
   - Lite (`SalesmanLite.jsx:1353-1357`): `overdueFollowUp || stale`, an **OR**,
     with a PER-STAGE window (`FOLLOW_UP_HOURS[l.stage] ?? 48`).
   - Premium (`SalesmanPremium.jsx:830-832`): `overdueFollowUp && noRecentActivity`,

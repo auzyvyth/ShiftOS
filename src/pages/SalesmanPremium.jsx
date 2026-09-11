@@ -118,6 +118,7 @@ const LEAD_SELECT = "*, car_listings(id, slug, brand, model, year, variant, sell
 import ChannelBreakdown from "../components/ChannelBreakdown";
 import ShareMenu from "../components/ShareMenu";
 import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha } from "../theme/tokens";
+import { compareFollowUp, followUpStatus, isLeadStale } from "../lib/leadsHelpers";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { hydrateLeadInto } from "../utils/leadHydrate";
 import { isPremiumSalesman } from "../utils/salesmanPlan";
@@ -820,17 +821,17 @@ export default function SalesmanPremium() {
  // (vite.config.js), which caches what the panel actually renders and serves it
  // back cache-first.
 
- // stale leads (48h + overdue follow-ups)
+ // Leads needing a call — ONE definition, shared with Lite, Salesmanpanel and
+ // the dealer board (`isLeadStale` / `followUpStatus` in lib/leadsHelpers).
+ // Premium used to answer this on its own and answer it WRONG twice over: it
+ // required an overdue reminder AND 48h of no activity (an AND, where every
+ // other surface uses OR), and it measured that activity from `updated_at`, so
+ // editing a note cleared the alarm without anyone calling the buyer. Sorted
+ // worst-first so every surface that shows these agrees on the order.
  useEffect(() => {
- const now = new Date();
- const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000);
+ const now = Date.now();
  setStaleLeads(
- leads.filter((l) => {
- if (["won", "lost", "closed_won", "closed_lost"].includes(l.stage)) return false;
- const overdueFollowUp = l.follow_up_at && new Date(l.follow_up_at) <= now;
- const noRecentActivity = l.updated_at && new Date(l.updated_at) < cutoff;
- return overdueFollowUp && noRecentActivity;
- })
+ leads.filter((l) => isLeadStale(l, now)).sort((a, b) => compareFollowUp(a, b, now)),
  );
  }, [leads]);
 
@@ -2698,8 +2699,14 @@ export default function SalesmanPremium() {
  const staleIdSet = new Set(staleLeads.map((l) => l.id));
  const openStage = (stage) => {
  setActiveLeadStage(stage);
+ // Worst first, via the shared comparator — so if this list is ever capped or
+ // read top-down, it leads with the buyer who has been waiting longest.
+ const now = Date.now();
  triggerGlow(
- searchedLeads.filter((l) => l.stage === stage && staleIdSet.has(l.id)).map((l) => l.id),
+ searchedLeads
+ .filter((l) => l.stage === stage && staleIdSet.has(l.id))
+ .sort((a, b) => compareFollowUp(a, b, now))
+ .map((l) => l.id),
  );
  };
 
@@ -2722,7 +2729,13 @@ export default function SalesmanPremium() {
  const handoverStatus = isWonLead ? handover.statusForLead(lead.id) : null;
  const isConfirmingDelete = deleteConfirmId === lead.id;
  const isPromptingLost = lostPromptId === lead.id;
- const followUpOverdue = lead.follow_up_at && new Date(lead.follow_up_at).getTime() <= Date.now();
+ // The card's follow-up chip used to fire ONLY on an overdue manual reminder.
+ // One lead in the entire live pipeline has a reminder set, so the chip was
+ // invisible on 67 of 68 cards that genuinely needed a call. It reads the
+ // shared rule now, so it also says "Never contacted" and "Gone quiet" — the
+ // two reasons that actually describe this pipeline.
+ const followUp = followUpStatus(lead);
+ const followUpOverdue = followUp.due;
  const initials = (lead.buyer_name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
  const heatStyle = heat.label === "hot"
 ? { bg: "rgba(248,113,113,0.12)", color: "#f87171" }
@@ -2822,9 +2835,13 @@ export default function SalesmanPremium() {
  </p>
  </div>
 
- {/* Follow-up warning */}
+ {/* Follow-up warning — reason first, then how long it has been waiting.
+     "Never contacted · 3d" tells a rep what to do; a bare red ring does not. */}
  {followUpOverdue && (
- <div style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.22)", borderRadius: 7, color: "#fb923c", fontSize: 11, padding: "6px 10px", marginBottom: 12 }}>Follow-up: {timeAgo(lead.follow_up_at)}
+ <div style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.22)", borderRadius: 7, color: "#fb923c", fontSize: 11, padding: "6px 10px", marginBottom: 12 }}>
+ {followUp.reason === 'reminder_due'
+ ? `Reminder due ${timeAgo(lead.follow_up_at)}`
+ : `${followUp.label} · ${Math.max(1, Math.round(followUp.sinceHours / 24))}d`}
  </div>
  )}
 
