@@ -646,7 +646,7 @@ export default function SalesmanPremium() {
  showAddLead || waModalLead || bookingDetailId || notifOpen ||
  testDriveConfirm || broadcastCar || aiCaptionCar ||
  confirmBookingApt || sellerBookingLead || mobileNavOpen ||
- drawerLeadId || linkCarLeadId || logoutConfirmOpen
+ drawerLeadId || linkCarLeadId || logoutConfirmOpen || followUpModalLead
  );
  useEffect(() => {
  document.body.style.overflow = anyOverlayOpen? "hidden" : "";
@@ -3505,6 +3505,92 @@ export default function SalesmanPremium() {
  document.body,
  )}
 
+ {/* SET A FOLLOW-UP REMINDER — third time this exact shape has bitten this
+     file. "Set reminder" set followUpModalLead and NOTHING rendered for it, so
+     the button did nothing at all; saveFollowUp sat there with no caller. Same
+     as the test-drive sheet (PREM-B2) and the Link Car modal above.
+     This one was the most expensive of the three: follow_up_at was READ in
+     four places and written in none, so no Premium rep could set a follow-up
+     anywhere in the product — which silently emptied staleLeads, the KPI that
+     counts on it, and the stage glow that pulses it.
+     Portalled per overlay rule 1 (it opens from inside the lead drawer, itself
+     a fixed panel). Deliberately NOT registered with useModalHistory — overlay
+     rule 5: it is a lightweight popup with its own Cancel and overlay-click. */}
+ {followUpModalLead && createPortal(
+ (() => {
+ const fl = leads.find((l) => l.id === followUpModalLead.id) || followUpModalLead;
+ const closeFollowUp = () => setFollowUpModalLead(null);
+ // Build the preset dates from LOCAL parts, never toISOString(). Malaysia
+ // is UTC+8, so toISOString().slice(0,10) before 8am local returns
+ // YESTERDAY — "Tomorrow" would have quietly set today. Same local-parts
+ // approach the reschedule picker already uses.
+ const pad = (n) => String(n).padStart(2, "0");
+ const localDay = (offsetDays) => {
+ const d = new Date();
+ d.setDate(d.getDate() + offsetDays);
+ return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+ };
+ return (
+ <div onClick={closeFollowUp} style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(3px)", display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", padding: isMobile ? 0 : 20 }}>
+ <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, background: "#0d1117", border: "1px solid rgba(255,255,255,0.1)", borderRadius: isMobile ? "16px 16px 0 0" : 14, padding: "18px 18px 24px", boxSizing: "border-box" }}>
+ <p style={{ margin: "0 0 3px", fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>Set a follow-up reminder</p>
+ <p style={{ margin: "0 0 16px", fontSize: 11.5, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {fl.buyer_name || "this lead"}
+ </p>
+
+ <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>Remind me on</p>
+ <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+ {[
+ { label: "Tomorrow", days: 1 },
+ { label: "In 2 days", days: 2 },
+ { label: "In 3 days", days: 3 },
+ { label: "Next week", days: 7 },
+ ].map(({ label, days }) => {
+ const val = localDay(days);
+ const on = followUpDate === val;
+ return (
+ <button key={label} onClick={() => setFollowUpDate(val)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 99, cursor: "pointer", fontFamily: "inherit", background: on ? "rgba(251,191,36,0.15)" : "rgba(255,255,255,0.04)", border: `1px solid ${on ? "rgba(251,191,36,0.4)" : "rgba(255,255,255,0.08)"}`, color: on ? "#fbbf24" : "#6b7280", fontWeight: on ? 600 : 400 }}>
+ {label}
+ </button>
+ );
+ })}
+ </div>
+
+ <input
+ type="date"
+ value={followUpDate}
+ onChange={(e) => setFollowUpDate(e.target.value)}
+ style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 9, color: "#e5e7eb", fontSize: 13, padding: "10px 12px", outline: "none", fontFamily: "inherit", boxSizing: "border-box", marginBottom: followUpDate ? 6 : 14 }}
+ />
+ {/* A native date input renders in the browser's locale and can show
+     mm/dd/yyyy. Echo it back in Malaysian dd/mm/yyyy so a reminder is
+     never set a month out because the field was read the US way. */}
+ {followUpDate && (
+ <p style={{ margin: "0 0 14px", fontSize: 11, color: "#9ca3af" }}>
+ Reminder set for <span style={{ color: "#e5e7eb", fontWeight: 600 }}>{followUpDate.split("-").reverse().join("/")}</span>
+ </p>
+ )}
+
+ <div style={{ display: "flex", gap: 8 }}>
+ {fl.follow_up_at && (
+ <button onClick={() => saveFollowUp(fl.id, null)} disabled={followUpSaving} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600, cursor: followUpSaving ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: followUpSaving ? 0.5 : 1 }}>Clear</button>
+ )}
+ <button onClick={closeFollowUp} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+ <button
+ onClick={() => followUpDate && saveFollowUp(fl.id, followUpDate)}
+ disabled={!followUpDate || followUpSaving}
+ style={{ flex: 2, padding: "11px 0", borderRadius: 10, background: "#dc2626", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: (!followUpDate || followUpSaving) ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: (!followUpDate || followUpSaving) ? 0.5 : 1 }}
+ >
+ {followUpSaving ? "Saving…" : "Set reminder"}
+ </button>
+ </div>
+ </div>
+ </div>
+ );
+ })(),
+ document.body,
+ )}
+
  {/* LEAD DETAIL SIDEBAR */}
  {drawerLeadId && (() => {
  const pl = leads.find(l => l.id === drawerLeadId);
@@ -6086,14 +6172,19 @@ export default function SalesmanPremium() {
  <meta name="robots" content="noindex, nofollow" />
  </Helmet>
  <style>{`
+ /* Premium's wave is BLUE — owner's call 2026-09-11, overriding the original
+    PREM-1 spec. C.info is #3b82f6, the exact blue that used to be hardcoded
+    here as rgba(59,130,246); the token is the point, not the hue, so the
+    colour has one definition and the next person can change it in one place.
+    Lite stays red (C.accent) — that is deliberate, not drift. */
  @keyframes sp-lead-glow {
- 0% { box-shadow: 0 0 0 0 ${withAlpha(C.accent, 0.55)}; border-color: ${withAlpha(C.accent, 0.7)}; }
- 70% { box-shadow: 0 0 0 12px ${withAlpha(C.accent, 0)}; border-color: ${withAlpha(C.accent, 0.7)}; }
- 100% { box-shadow: 0 0 0 0 ${withAlpha(C.accent, 0)}; border-color: ${C.border}; }
+ 0% { box-shadow: 0 0 0 0 ${withAlpha(C.info, 0.55)}; border-color: ${withAlpha(C.info, 0.7)}; }
+ 70% { box-shadow: 0 0 0 12px ${withAlpha(C.info, 0)}; border-color: ${withAlpha(C.info, 0.7)}; }
+ 100% { box-shadow: 0 0 0 0 ${withAlpha(C.info, 0)}; border-color: ${C.border}; }
  }
  .sp-lead-glow { animation: sp-lead-glow 1s ease-out; }
  @media (prefers-reduced-motion: reduce) {
- .sp-lead-glow { animation: none; border-color: ${withAlpha(C.accent, 0.7)}; }
+ .sp-lead-glow { animation: none; border-color: ${withAlpha(C.info, 0.7)}; }
  .sp-topbar { transition: none !important; }
  }
  `}</style>

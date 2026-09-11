@@ -155,12 +155,20 @@ different concerns and the house rule is one per session.
     the glow to each separately is how the next drift starts, so both call the
     one handler. `staleIdSet` is built from the page's existing `staleLeads`
     state (`:316`, the 48h + overdue-follow-up set), so no surface gains a query.
-  - **The wave is red.** `sp-lead-glow` (`:6089`) now interpolates
-    `withAlpha(C.accent, …)` and settles back to `C.border`. Premium already
-    imported the same token module Lite uses (`:120`), so this needed no new
-    import — the blue was hardcoded next to a token that was right there.
-    Verified the values resolve: `rgba(220, 38, 38, …)`, i.e. `#dc2626`.
-    The `prefers-reduced-motion` fallback was blue too; it is the same red now.
+  - **The wave stays BLUE on Premium — owner's call 2026-09-11, overriding the
+    original spec above.** It was shipped red first (the spec said red, and Lite
+    is red); the owner saw it and chose blue for Premium. Lite stays red, and
+    that difference is now DELIBERATE, not drift — do not "fix" one to match the
+    other.
+    What actually changed and must stay changed is the DUPLICATION, not the hue:
+    `sp-lead-glow` (`:6089`) interpolates `withAlpha(C.info, …)` instead of a
+    hardcoded `rgba(59,130,246,…)`, and settles back to `C.border`. `C.info` IS
+    `#3b82f6` = `rgb(59,130,246)`, so the colour on screen is byte-identical to
+    what was there before — the win is that it now has ONE definition and the
+    next change is one token, not four literals. Premium already imported that
+    token module (`:120`); the blue was hardcoded next to the token all along.
+    The `prefers-reduced-motion` fallback carried its own copy of the literal
+    and now reads the same token.
   - One line beyond the two defects, same principle: the lead card's resting
     border was the literal `rgba(255,255,255,0.07)` (`:2739`) while the glow's
     last keyframe settled to `C.border`. Identical values today, and exactly the
@@ -177,6 +185,68 @@ different concerns and the house rule is one per session.
     opens a second bug for it.
   - Verified: eslint clean, all 7 test suites pass, production build clean.
     NOT eyeballed in a browser from this session.
+
+- [x] **PREM-2: "Set reminder" on the Premium pipeline card did nothing — and it
+  was quietly breaking three other things. FIXED 2026-09-11.** Owner reported it
+  ("pipeline stage card, reschedule or notification button doesn't work").
+  **Reschedule is fine** — the booking detail sheet's reschedule is fully wired
+  (`SalesmanPremium.jsx:4390-4425`: input, save, cancel). Not the bug.
+  **"Set reminder" was dead, and it is the THIRD time this exact shape has bitten
+  this file.** The button (`:3736`) set `followUpModalLead`, and nothing in the
+  file rendered anything for it. `saveFollowUp` (`:1651`) existed with **no
+  caller at all**. Same failure as PREM-B2 (test-drive sheet: state declared,
+  set, never rendered) and the Link Car modal (its own comment at `:3423` says
+  "nothing rendered for it, so the button did nothing at all").
+  **Why this one cost more than a dead button.** `follow_up_at` was READ in four
+  places in Premium and WRITTEN in none, so no Premium rep could set a follow-up
+  anywhere in the product. Everything keyed on it was therefore dead too:
+  - `staleLeads` (`:830`) is `overdueFollowUp && noRecentActivity` — an AND, so
+    with `follow_up_at` never set it is **always empty**.
+  - so the follow-ups KPI always read 0, the tab-return browser notification
+    (`:1541`) could never fire, and PREM-1's brand-new stage glow pulsed
+    nothing — the two reports are one bug chain, not two bugs.
+  Fix: ported Lite's follow-up modal (`SalesmanLite.jsx:7504`) into Premium in
+  Premium's own dark tokens, portalled per overlay rule 1, added to the combined
+  `anyOverlayOpen` scroll lock (`:649`), and deliberately NOT registered with
+  `useModalHistory` (overlay rule 5 — it is a lightweight popup with its own
+  Cancel and overlay-click close).
+  **One bug in Lite's version deliberately NOT copied:** its quick presets build
+  dates with `toISOString().slice(0,10)`, which is UTC. Malaysia is UTC+8, so
+  pressing "Tomorrow" before 8am local returns YESTERDAY's UTC date — i.e. it
+  silently sets the reminder to today. Premium's version builds the date from
+  local parts, the same way the reschedule picker at `:4390` already does.
+  **Lite still has that off-by-one — see PREM-3.**
+  Verified: eslint clean, all 7 test suites pass, production build clean.
+  NOT eyeballed in a browser from this session.
+
+- [ ] **PREM-3: Lite's follow-up quick presets are off by one before 8am.**
+  `SalesmanLite.jsx:7516-7519` builds "Tomorrow / In 2 days / In 3 days / Next
+  week" with `d.toISOString().slice(0, 10)`. That is UTC; Malaysia is UTC+8, so
+  between midnight and 8am local the string is the PREVIOUS day — "Tomorrow"
+  sets the reminder for today and it fires immediately. Premium's port already
+  builds from local parts and is correct; this is the same four lines in Lite.
+  Low severity (an 8-hour window), but it is a wrong date written to
+  `follow_up_at`, which drives nudges and the "This week" list.
+  Salesmanpanel.jsx:1894 writes `follow_up_at` too — check its presets for the
+  same pattern while in there.
+
+- [ ] **PREM-4 (NEEDS A DECISION, not a bug): Lite and Premium disagree on what
+  "needs follow-up" MEANS.** Found while fixing PREM-2. Two different rules for
+  one concept, which is the duplication smell the rules file keeps naming:
+  - Lite (`SalesmanLite.jsx:1353-1357`): `overdueFollowUp || stale`, an **OR**,
+    with a PER-STAGE window (`FOLLOW_UP_HOURS[l.stage] ?? 48`).
+  - Premium (`SalesmanPremium.jsx:830-832`): `overdueFollowUp && noRecentActivity`,
+    an **AND**, with a flat 48h.
+  Consequence: on Premium a lead counts as needing follow-up ONLY if the rep
+  remembered to set a date AND it lapsed AND nothing touched the lead for 48h.
+  On Lite, going quiet for the stage's own window is enough on its own. So the
+  same pipeline on the two products reports different numbers of leads needing a
+  call — and Premium's is the far quieter one, which is backwards for the paid
+  tier.
+  Recommendation: make Premium match Lite (OR, per-stage hours), and lift the
+  rule into ONE shared helper both import, rather than a third copy. Not done
+  unilaterally — it changes what every Premium follow-up count, the KPI and the
+  stage glow report, and that is a product call.
 
 ### Auth hardening — asked for 2026-09-07, investigated, NOT yet built
 Owner's ask: rate-limit sign-in, password reset and magic link; stop offering
