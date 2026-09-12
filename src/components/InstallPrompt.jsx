@@ -27,11 +27,23 @@ const InstallPromptCard = lazy(() => import('./InstallPromptCard'));
 // invitation only appears on the authenticated panels.
 //
 // Excluded on purpose: '/login', '/auth', '/reset-password' and every
-// onboarding route (never interrupt a signup), '/platform' (isolated superadmin
-// console), and '/account' (buyer-side, public surface).
+// onboarding route (never interrupt a signup), and '/account' (buyer-side,
+// public surface).
+//
+// '/platform' WAS excluded here as "the isolated superadmin console". That
+// reasoning confused two different things: the console is isolated in its AUTH
+// (its own supabase session), which says nothing about whether the person
+// holding it wants the app on their phone. The consequence was a closed loop —
+// iOS only permits web push to an installed PWA, so an owner running the
+// console from an iPhone was never invited to install, could therefore never
+// grant push, and every notify_ops() alert (new signup, listing awaiting
+// review, KYC submitted, error spikes) had nowhere to land. Measured
+// 2026-09-12: superadmin held zero push subscriptions while sellers held 11.
+// The admin is the single user most dependent on alerts arriving while the app
+// is shut.
 const APP_PREFIXES = [
   '/dashboard', '/salesman', '/salesman-lite', '/salesman-premium',
-  '/manager', '/accountant', '/fi', '/admin', '/accounts',
+  '/manager', '/accountant', '/fi', '/admin', '/accounts', '/platform',
 ];
 
 // Long enough that the card never competes with the panel's own first paint or
@@ -39,16 +51,25 @@ const APP_PREFIXES = [
 const REVEAL_DELAY_MS = 2500;
 
 export default function InstallPrompt() {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const [deferred, setDeferred] = useState(getDeferredPrompt);
   const [visible, setVisible] = useState(false);
 
+  // `?install=1` re-opens the invitation for someone who has already dismissed
+  // it. Dismissal snoozes for 30 DAYS in this device's localStorage, which is
+  // unreachable on a phone without a debugger — so "it doesn't show on mobile"
+  // is indistinguishable from "I tapped Not now once, weeks ago", and neither
+  // the owner nor anyone testing a fix could tell the two apart or reset it.
+  // Only lifts the snooze: an installed app and an in-app webview still get
+  // nothing, because in those cases the card is wrong rather than snoozed.
+  const forceShow = useMemo(() => new URLSearchParams(search).has('install'), [search]);
+
   // Environment facts, not state — none of these change within a session, and
   // the snooze is only ever written by this component (which hides itself in
-  // the same tick), so reading it once on mount is correct.
+  // the same tick), so reading it once is correct.
   const eligible = useMemo(
-    () => !isStandalone() && !isInAppBrowser() && !isInstallPromptSnoozed(),
-    [],
+    () => !isStandalone() && !isInAppBrowser() && (forceShow || !isInstallPromptSnoozed()),
+    [forceShow],
   );
   const iosSafari = useMemo(() => isIOSSafari(), []);
 

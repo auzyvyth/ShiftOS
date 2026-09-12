@@ -264,8 +264,45 @@ fixes. Nothing in this batch has been built.
   `PushPromptStrip`, reused or adapted) that fires once, early, for both
   Lite and Premium, independent of chat.
 
-- [ ] **PWA-2: install prompt likely excludes real mobile traffic via
-  in-app browsers, not mobile itself.** `isInAppBrowser()`
+- [x] **PWA-2 DONE 2026-09-12 — no defect in the install logic itself, but
+  two real gaps found, one of which explains the missing ops pushes.**
+  Checked first, rather than "fixing" a prompt that works: the manifest is
+  complete and correct (`vite.config.js:35` — name, short_name,
+  `display: standalone`, `start_url`, `id`, `scope`, 192 + 512 icons with a
+  plain-`any` 192), so Android's installability criteria are met and
+  `beforeinstallprompt` has no reason not to fire. The module-scope listener
+  (`installPrompt.js:47`) already handles the event arriving before React
+  mounts. Nothing there needed changing.
+  - **REAL FIX 1 — `/platform` was excluded from the install prompt, and
+    that closed a loop.** `APP_PREFIXES` (`InstallPrompt.jsx:32`) left the
+    console out as "the isolated superadmin console", which confuses AUTH
+    isolation with whether the person wants the app on their phone. iOS
+    permits web push ONLY to an installed PWA, so an owner running the
+    console from an iPhone was never invited to install, could therefore
+    never grant push, and every `notify_ops()` alert had nowhere to land —
+    the same zero-devices measurement as PUSH-PROMPT-1. The admin is the
+    user most dependent on alerts arriving while the app is shut. Added.
+  - **REAL FIX 2 — dismissal hid the prompt for 30 days with no way back.**
+    `snoozeInstallPrompt()` writes `xdrive_install_snooze` to that device's
+    localStorage for 30 days, which is unreachable from a phone without a
+    debugger. So "it doesn't show on mobile" and "I tapped Not now once,
+    weeks ago" are indistinguishable — to the owner AND to anyone testing a
+    fix. `?install=1` now lifts the snooze (only the snooze: an installed
+    app and an in-app webview still correctly get nothing).
+    **This is most likely why the owner's phone showed nothing** — add
+    `?install=1` to the URL to re-test.
+  - **NOT changed, all correct as written:** `isInAppBrowser()` excludes
+    Facebook/Instagram/TikTok/Line/Android `wv` webviews, which genuinely
+    cannot install anything; `isIOSSafari()` excludes Chrome/Firefox/Edge on
+    iOS, which create a bookmark rather than an install. If the phone test
+    was a link opened from Instagram or WhatsApp, or from Chrome on iOS,
+    both silences are the right behaviour and not a bug.
+  - Syntax-checked with esbuild; no build (`npm ci` blocked). NOT tested on
+    a real phone from this session — that one needs the owner.
+
+- [ ] ~~PWA-2 original finding, kept for the reasoning:~~ **install prompt
+  likely excludes real mobile traffic via in-app browsers, not mobile
+  itself.** `isInAppBrowser()`
   (`src/utils/installPrompt.js:142-145`) blocks Facebook/Instagram/Line/
   WeChat/TikTok/generic Android `wv` webviews from ever seeing the prompt —
   no such exclusion exists on desktop, and no `matchMedia`/viewport check
