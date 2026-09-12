@@ -7,6 +7,7 @@ import { Heart, Bell, MessageCircle, Tag, Check, Eye, EyeOff, ArrowLeft } from "
 import LegalModal from "../components/LegalModal";
 import { RESET_AFTER_FAILS, throttleCheck, throttleFail, throttleClear, emailActionGate, EMAIL_ACTIONS } from "../utils/authThrottle";
 import useAuthCaptcha, { isCaptchaError, CAPTCHA_ERROR_MESSAGE } from "../hooks/useAuthCaptcha";
+import { checkAccountStatus } from "../utils/authAccountStatus";
 
 const CONSENT_ERR =
   "Please confirm you're 18+ and agree to the Terms of Service and Privacy Policy to continue.";
@@ -167,8 +168,10 @@ export default function BuyerAuthPage() {
       if (f.locked) setLockSeconds(f.secondsLeft);
       // Distinguish "no account" vs "wrong password" and offer the right recovery:
       // a password user gets a reset link; a Google/OTP-only user gets a magic link.
-      const { data: rows } = await supabase.rpc("auth_account_status", { p_email: cleanEmail });
-      const st = Array.isArray(rows) ? rows[0] : rows;
+      // Goes through the Turnstile-gated api/auth-account-status.js — the RPC
+      // itself is no longer anon-callable (SEC-B5 — it's an enumeration oracle).
+      const statusToken = await getToken();
+      const st = await checkAccountStatus(cleanEmail, statusToken);
       if (st?.account_exists && !st?.has_password) {
         // No password to get wrong — the link is their only way in, so it shows
         // on the first try and the lock never hides it.

@@ -38,6 +38,20 @@ function scrubUrl(url) {
 
 const _dsn = import.meta.env.VITE_SENTRY_DSN;
 
+// Session Replay's masking (maskAllText/maskAllInputs/blockAllMedia) walks
+// and re-tags every mutated DOM node on every observed mutation — real,
+// continuous CPU cost, not just a one-time setup fee. Lighthouse attributed
+// 16.5s of bootup CPU and 1.1s of forced reflow to the replay script on the
+// public marketplace, a page with no buyer PII to protect in the first
+// place (anon can't read profiles; no lead/deal data ever renders there).
+// So: only load Replay at all on the surfaces that actually carry PII
+// (dealer dashboard, salesman panels, admin/platform console) — everywhere
+// else (marketplace, car pages, storefronts) skips the script entirely
+// rather than paying to mask nothing.
+const REPLAY_PATH_PREFIXES = ['/dashboard', '/salesman', '/admin', '/platform', '/manager', '/accountant', '/fi'];
+const wantsReplay = typeof window !== 'undefined'
+  && REPLAY_PATH_PREFIXES.some((p) => window.location.pathname.startsWith(p));
+
 if (_dsn) {
   Sentry.init({
     dsn: _dsn,
@@ -55,16 +69,19 @@ if (_dsn) {
         matchRoutes,
       }),
       // Replay is loaded lazily after the page is idle so it doesn't block
-      // the main thread during initial load (was causing ~35s TBT).
+      // the main thread during initial load (was causing ~35s TBT), and only
+      // on PII-bearing routes at all (see wantsReplay above).
       // Explicitly mask all text/inputs and block media so Session Replay cannot
       // capture buyer PII rendered on the dealer dashboard.
-      Sentry.lazyLoadIntegration('replayIntegration').then((integration) => {
-        Sentry.addIntegration(integration({
-          maskAllText: true,
-          maskAllInputs: true,
-          blockAllMedia: true,
-        }));
-      }).catch(() => {}),
+      ...(wantsReplay ? [
+        Sentry.lazyLoadIntegration('replayIntegration').then((integration) => {
+          Sentry.addIntegration(integration({
+            maskAllText: true,
+            maskAllInputs: true,
+            blockAllMedia: true,
+          }));
+        }).catch(() => {}),
+      ] : []),
     ],
     // 10% trace sampling — 100% was adding instrumentation overhead to every fetch.
     tracesSampleRate: 0.1,
@@ -73,8 +90,8 @@ if (_dsn) {
       /^https:\/\/lemdkdizdlcirhbzqlos\.supabase\.co/,
       /^https:\/\/.*\.xdrive\.my/,
     ],
-    replaysSessionSampleRate: 0.1,
-    replaysOnErrorSampleRate: 1.0,
+    replaysSessionSampleRate: wantsReplay ? 0.1 : 0,
+    replaysOnErrorSampleRate: wantsReplay ? 1.0 : 0,
     enableLogs: true,
     // Scrub buyer PII out of request URLs before anything is sent.
     // PostgREST puts every filter in the query string, so a lookup like

@@ -352,6 +352,12 @@ histories "diverge" even though the content is identical — `git log branch..ma
 - Prevention: rebase your working branch onto `origin/main` regularly (e.g. start of
   each session) so drift never accumulates into a large diff to untangle later.
 
+## Car spec batches — act on a pasted batch automatically
+If the user pastes a raw JSON document shaped like `tools/specs/PROMPT.md`'s
+envelope (`schema_version`/`generated_at`/`batch`/`specs`/`skipped`), that IS the
+instruction — run the intake yourself, do not ask first. Full runbook:
+`tools/specs/README.md` → "Automated batch intake (paste JSON → done)".
+
 ## DB migrations
 - Schema changes (ALTER TABLE, CREATE VIEW) go directly to the live Supabase DB via MCP apply_migration
 - Always update public_car_listings VIEW after adding columns to car_listings

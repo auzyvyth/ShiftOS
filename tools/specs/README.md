@@ -49,6 +49,47 @@ npm run test:specs      # the validator's own tests
 Drop a batch into `tools/specs/data/`, run `specs:build`, read the diff, commit.
 `npm test` fails if the generated block is stale, so the two cannot drift.
 
+## Automated batch intake (paste JSON → done)
+
+When the user pastes one raw batch document (the envelope from `PROMPT.md` —
+`schema_version`/`generated_at`/`batch`/`specs`/`skipped`) straight into chat,
+that paste IS the request. Do this without being asked:
+
+1. Save it to `tools/specs/data/<today>-batch-NN.json` (NN = next number for
+   today; check what's already there).
+2. Run `npm run specs:build`. Read the written/skipped list and any warnings.
+3. For every line under "Chassis codes the decoder does not know": open that
+   row's `source_note` in the pasted batch — it names the engine/variant each
+   code is. Add each code to `src/utils/chassisDecode.js` (Japanese/JDM codes)
+   or `src/utils/chassisCodes.js` (European generation codes — extend the
+   compound `code` string, e.g. `"F82"` → `"F82/F83"`) by:
+   - matching it to a sibling row already in the table for the same
+     make/model/year range and copying `from`/`to`,
+   - only setting `alt` when the source_note itself says hybrid / Type R /
+     NISMO / STI / a badge-twin name — never invent one. A wrong `alt` fills a
+     listing with the wrong mechanicals, which is worse than an unmapped code
+     (see "Chassis codes are reported, never auto-patched" below).
+   - skipping a bare 2-character family root (e.g. `"RE"`, `"DE"`) when a
+     same-range suffixed sibling (`RE3`/`RE4`, `DE3FS`/`DE5FS`, …) already
+     covers it — say so, don't add it. A real plate is never entered shorter
+     than `MIN_PREFIX` (3 chars) in `chassisDecode.js`, so the bare root is
+     unreachable anyway.
+4. Re-run `npm run specs:build`. The "does not know" list must now be empty,
+   or every line still on it must have an explicit reason in your report.
+5. Run the guards: `npm run test:specs`, `node tests/chassisDecode.test.mjs`,
+   `node tests/chassisSpec.test.mjs`, `node tests/modelKey.test.mjs`. (Full
+   `npm test` needs `node_modules`, which may not be installed in a fresh
+   sandbox — don't block the report on that specific gap.)
+6. Report: what got written to `carSpecs.js`, which chassis codes were
+   added/fixed and why, what was skipped and why. Don't commit or push unless
+   the user separately asks.
+
+The same reasoning applies outside a batch paste too: if the user reports one
+real chassis plate that fails to decode, look up the make/model/year they give
+you, check it isn't already covered under a different but equivalent code (a
+prior hand-written guess can simply be wrong — replace it rather than adding a
+duplicate), and add or correct that one row the same way.
+
 ## The validator is the safeguard, not the paste step
 
 A person pasting JSON is moving text, not checking torque figures. So the check

@@ -148,18 +148,27 @@ export default function HeroCarRow({ eyebrow, title, cars, viewAllHref }) {
     return (
       <div className={`mp-carrow-layer ${cls}`}>
         <div className="mp-carrow-grid">
-          {set.map((car) => (
-            <Link
-              key={car.id}
-              to={`/showroom/${car.slug || car.id}`}
-              className="mp-carrow-item"
-              onClick={onTileClick}
-              draggable={false}
-            >
-              <div className="mp-carrow-img" style={{ backgroundImage: `url(${cdnImg(car.images?.[0], 300, 65)})` }} />
-              <span className="mp-carrow-price">{fmtPrice(car)}</span>
-            </Link>
-          ))}
+          {set.map((car) => {
+            // A car with no photos yet made cdnImg() return undefined, which the
+            // template literal below stringified as the literal text "url(undefined)"
+            // — the browser then requested https://xdrive.my/undefined (caught by the
+            // SPA catch-all rewrite, served index.html, wasted a request every load).
+            // .mp-carrow-img already carries a neutral background-color fallback
+            // (MarketplacePage.jsx:813), so just omit backgroundImage when there's no photo.
+            const img = cdnImg(car.images?.[0], 300, 65);
+            return (
+              <Link
+                key={car.id}
+                to={`/showroom/${car.slug || car.id}`}
+                className="mp-carrow-item"
+                onClick={onTileClick}
+                draggable={false}
+              >
+                <div className="mp-carrow-img" style={img ? { backgroundImage: `url(${img})` } : undefined} />
+                <span className="mp-carrow-price">{fmtPrice(car)}</span>
+              </Link>
+            );
+          })}
         </div>
       </div>
     );

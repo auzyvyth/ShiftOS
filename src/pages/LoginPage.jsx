@@ -8,6 +8,7 @@ import { handoffSuffix } from "../lib/authHandoff";
 import { markBuyerIntent } from "../lib/buyerAuth";
 import { RESET_AFTER_FAILS, throttleCheck, throttleFail, throttleClear, emailActionGate, EMAIL_ACTIONS } from "../utils/authThrottle";
 import useAuthCaptcha, { isCaptchaError, CAPTCHA_ERROR_MESSAGE } from "../hooks/useAuthCaptcha";
+import { checkAccountStatus } from "../utils/authAccountStatus";
 
 const Field = ({ id, label, focused, children }) => (
   <div className={`field ${focused === id ? "is-focused" : ""}`}>
@@ -386,11 +387,14 @@ export default function LoginPage() {
       }
 
       if (isInvalidCreds) {
-        // Resolve account existence via a SECURITY DEFINER RPC — the old direct
-        // profiles query ran as anon and was RLS-blocked, so it returned null for
-        // real accounts and falsely showed "No account found" on a wrong password.
-        const { data: statusRows } = await supabase.rpc("auth_account_status", { p_email: cleanEmail });
-        const st = Array.isArray(statusRows) ? statusRows[0] : statusRows;
+        // Resolve account existence via api/auth-account-status.js, which fronts
+        // a SECURITY DEFINER RPC — the old direct profiles query ran as anon and
+        // was RLS-blocked, so it returned null for real accounts and falsely
+        // showed "No account found" on a wrong password. The RPC itself is no
+        // longer anon-callable (SEC-B5 — it's an enumeration oracle), so this
+        // goes through the Turnstile-gated route instead of supabase.rpc().
+        const statusToken = await getToken();
+        const st = await checkAccountStatus(cleanEmail, statusToken);
         if (st?.account_exists && !st?.has_password) {
           // Account exists but has no password — Google/OTP user → magic link.
           // Offered on the FIRST failure and never withheld by the lock: this

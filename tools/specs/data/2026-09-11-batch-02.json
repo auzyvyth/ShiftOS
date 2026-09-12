@@ -1,0 +1,243 @@
+{
+  "schema_version": "2.0",
+  "generated_at": "2026-09-11",
+  "batch": { "requested": 17, "returned": 15, "skipped": 2 },
+  "specs": [
+    {
+      "make": "Toyota", "model": "Yaris", "generation": "XP150",
+      "year_from": 2019, "year_to": null, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Hatchback", "doors": 5, "seats": 5,
+      "primary_variant": "1.5 G",
+      "engine_cc": 1496, "cylinders": 4, "horsepower": 107, "torque_nm": 140,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "ASEAN CKD hatchback, shares platform with Vios; 2NR-VE 1.5 with CVT.",
+      "variants": [
+        { "name": "1.5 G", "horsepower": 107, "torque_nm": 140, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "2NR-VE 1496cc, CVT" },
+        { "name": "1.5 E", "horsepower": 107, "torque_nm": 140, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "lower trim, same drivetrain" }
+      ]
+    },
+    {
+      "make": "Toyota", "model": "Innova", "generation": "AN40",
+      "year_from": 2005, "year_to": 2015, "market": "CKD",
+      "chassis_codes": ["TGN40"],
+      "body_type": "MPV", "doors": 5, "seats": 8,
+      "primary_variant": "2.0 G",
+      "engine_cc": 1998, "cylinders": 4, "horsepower": 136, "torque_nm": 182,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "1TR-FE 2.0 petrol on the IMV ladder-frame platform; rear-wheel drive.",
+      "variants": [
+        { "name": "2.0 G", "horsepower": 136, "torque_nm": 182, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 8, "notes": "1TR-FE 1998cc" },
+        { "name": "2.0 E", "horsepower": 136, "torque_nm": 182, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 8, "notes": "manual option" }
+      ]
+    },
+    {
+      "make": "Toyota", "model": "Innova", "generation": "AN140",
+      "year_from": 2016, "year_to": 2020, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "MPV", "doors": 5, "seats": 8,
+      "primary_variant": "2.0 G",
+      "engine_cc": 1998, "cylinders": 4, "horsepower": 139, "torque_nm": 183,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-generation IMV Innova, 1TR-FE 2.0 petrol, 6-speed auto, RWD.",
+      "variants": [
+        { "name": "2.0 G", "horsepower": 139, "torque_nm": 183, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 8, "notes": "1TR-FE 1998cc, 6AT" }
+      ]
+    },
+    {
+      "make": "Proton", "model": "Iriz", "generation": "1st gen",
+      "year_from": 2014, "year_to": null, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Hatchback", "doors": 5, "seats": 5,
+      "primary_variant": "1.6 Executive",
+      "engine_cc": 1597, "cylinders": 4, "horsepower": 109, "torque_nm": 150,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "B-segment hatch; 1.3 and 1.6 VVT petrol, CVT (Auto) on higher trims.",
+      "variants": [
+        { "name": "1.3 Standard", "horsepower": 94, "torque_nm": 120, "transmission": "Manual", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "1.3 VVT 1332cc" },
+        { "name": "1.6 Executive", "horsepower": 109, "torque_nm": 150, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "1.6 VVT 1597cc, CVT" }
+      ]
+    },
+    {
+      "make": "Proton", "model": "Preve", "generation": "P3-21A",
+      "year_from": 2012, "year_to": 2019, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "1.6 Premium CFE",
+      "engine_cc": 1561, "cylinders": 4, "horsepower": 140, "torque_nm": 205,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "C-segment sedan; CamPro CFE 1.6 turbo on Premium, NA 1.6 on Executive; CVT (Auto).",
+      "variants": [
+        { "name": "1.6 Executive", "horsepower": 109, "torque_nm": 150, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "CamPro IAFM+ 1561cc NA" },
+        { "name": "1.6 Premium CFE", "horsepower": 140, "torque_nm": 205, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "CamPro CFE 1561cc turbo, CVT" }
+      ]
+    },
+    {
+      "make": "Perodua", "model": "Kancil", "generation": "L200",
+      "year_from": 1994, "year_to": 2009, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Hatchback", "doors": 5, "seats": 4,
+      "primary_variant": "850 EZ",
+      "engine_cc": 847, "cylinders": 3, "horsepower": 44, "torque_nm": 63,
+      "transmission": "Manual", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Daihatsu Mira L200 based city car; 660cc and 850cc engines offered.",
+      "variants": [
+        { "name": "660 EX", "horsepower": 31, "torque_nm": 52, "transmission": "Manual", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 4, "notes": "EF-series 659cc" },
+        { "name": "850 EZ", "horsepower": 44, "torque_nm": 63, "transmission": "Manual", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 4, "notes": "ED-series 847cc; auto also offered" }
+      ]
+    },
+    {
+      "make": "Honda", "model": "Odyssey", "generation": "RB1",
+      "year_from": 2003, "year_to": 2008, "market": "CBU",
+      "chassis_codes": ["RB1"],
+      "body_type": "MPV", "doors": 5, "seats": 7,
+      "primary_variant": "2.4",
+      "engine_cc": 2354, "cylinders": 4, "horsepower": 160, "torque_nm": 218,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Low-slung MPV, K24A 2.4 petrol, CBU import to Malaysia.",
+      "variants": [
+        { "name": "2.4", "horsepower": 160, "torque_nm": 218, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "K24A 2354cc" }
+      ]
+    },
+    {
+      "make": "Honda", "model": "Odyssey", "generation": "RB3",
+      "year_from": 2009, "year_to": 2013, "market": "CBU",
+      "chassis_codes": ["RB3"],
+      "body_type": "MPV", "doors": 5, "seats": 7,
+      "primary_variant": "2.4 i-VTEC",
+      "engine_cc": 2354, "cylinders": 4, "horsepower": 173, "torque_nm": 222,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second low-slung Odyssey, K24 i-VTEC 2.4, 5-speed auto, CBU.",
+      "variants": [
+        { "name": "2.4 i-VTEC", "horsepower": 173, "torque_nm": 222, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "K24A 2354cc" }
+      ]
+    },
+    {
+      "make": "Honda", "model": "Odyssey", "generation": "RC1",
+      "year_from": 2014, "year_to": 2021, "market": "CBU",
+      "chassis_codes": ["RC1"],
+      "body_type": "MPV", "doors": 5, "seats": 7,
+      "primary_variant": "2.4 EXV",
+      "engine_cc": 2356, "cylinders": 4, "horsepower": 175, "torque_nm": 225,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Taller body with power sliding doors, K24W 2.4, CVT (Auto), CBU import.",
+      "variants": [
+        { "name": "2.4 EXV", "horsepower": 175, "torque_nm": 225, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "K24W 2356cc, CVT; 7/8-seat layouts" }
+      ]
+    },
+    {
+      "make": "Nissan", "model": "Teana", "generation": "J31",
+      "year_from": 2003, "year_to": 2008, "market": "CKD",
+      "chassis_codes": ["J31"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "230JK 2.3",
+      "engine_cc": 2349, "cylinders": 4, "horsepower": 173, "torque_nm": 225,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "D-segment sedan; QR23DE 2.3 as volume variant, VQ35 3.5 V6 offered.",
+      "variants": [
+        { "name": "230JK 2.3", "horsepower": 173, "torque_nm": 225, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "QR23DE 2349cc" },
+        { "name": "350JK 3.5", "horsepower": 231, "torque_nm": 333, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "VQ35DE 3498cc V6" }
+      ]
+    },
+    {
+      "make": "Nissan", "model": "Teana", "generation": "J32",
+      "year_from": 2009, "year_to": 2013, "market": "CKD",
+      "chassis_codes": ["J32"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "2.0 XL",
+      "engine_cc": 1997, "cylinders": 4, "horsepower": 136, "torque_nm": 190,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "MR20DE 2.0 as volume variant with CVT (Auto); QR25DE 2.5 offered.",
+      "variants": [
+        { "name": "2.0 XL", "horsepower": 136, "torque_nm": 190, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "MR20DE 1997cc, CVT" },
+        { "name": "2.5 XV", "horsepower": 182, "torque_nm": 234, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "QR25DE 2488cc, CVT" }
+      ]
+    },
+    {
+      "make": "Nissan", "model": "Teana", "generation": "L33",
+      "year_from": 2014, "year_to": 2019, "market": "CKD",
+      "chassis_codes": ["L33"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "2.5 XV",
+      "engine_cc": 2488, "cylinders": 4, "horsepower": 173, "torque_nm": 234,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Altima-based sedan; QR25DE 2.5 with CVT (Auto), sold mainly as 2.5 XV in Malaysia.",
+      "variants": [
+        { "name": "2.5 XV", "horsepower": 173, "torque_nm": 234, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "QR25DE 2488cc, CVT" }
+      ]
+    },
+    {
+      "make": "Mazda", "model": "CX-30", "generation": "DM",
+      "year_from": 2020, "year_to": null, "market": "CKD",
+      "chassis_codes": ["DM"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "2.0 High",
+      "engine_cc": 1998, "cylinders": 4, "horsepower": 162, "torque_nm": 213,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Compact crossover between CX-3 and CX-5; Skyactiv-G 2.0, 6-speed auto, CKD Malaysia.",
+      "variants": [
+        { "name": "2.0 High", "horsepower": 162, "torque_nm": 213, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "Skyactiv-G 1998cc, 6AT" }
+      ]
+    },
+    {
+      "make": "Mitsubishi", "model": "Lancer", "generation": "CS",
+      "year_from": 2004, "year_to": 2007, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "1.6 GLi",
+      "engine_cc": 1584, "cylinders": 4, "horsepower": 98, "torque_nm": 145,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "CS-platform Lancer sedan; 1.6 4G18 as volume variant, 2.0 offered. Figures reconstructed from memory.",
+      "variants": [
+        { "name": "1.6 GLi", "horsepower": 98, "torque_nm": 145, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "4G18 1584cc" }
+      ]
+    },
+    {
+      "make": "Mitsubishi", "model": "Lancer", "generation": "CY",
+      "year_from": 2008, "year_to": 2017, "market": "CKD",
+      "chassis_codes": ["CY4A"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "2.0 GT",
+      "engine_cc": 1998, "cylinders": 4, "horsepower": 150, "torque_nm": 198,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Sold as Lancer GT / Lancer EX in Malaysia; 4B11 2.0 with INVECS CVT (Auto).",
+      "variants": [
+        { "name": "2.0 GT", "horsepower": 150, "torque_nm": 198, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "4B11 1998cc, CVT" }
+      ]
+    }
+  ],
+  "skipped": [
+    { "make": "Toyota", "model": "Yaris Cross", "reason": "Separate crossover nameplate, not part of the Yaris hatch generations covered here — still open" },
+    { "make": "Mitsubishi", "model": "Lancer Evolution", "reason": "Performance variant warrants its own dedicated row set — left out this batch, still open" }
+  ]
+}
