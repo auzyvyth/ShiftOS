@@ -22,7 +22,7 @@ import {
   panelStageHue,
   withAlpha,
 } from "../theme/tokens";
-import { compareFollowUp, isLeadStale } from "../lib/leadsHelpers";
+import { compareFollowUp, isLeadStale, lastTouch } from "../lib/leadsHelpers";
 import ServicesAddonsTab from "../components/salesman/ServicesAddonsTab";
 import SalesmanLiteHelp from "../components/SalesmanLiteHelp";
 import ChannelBreakdown from "../components/ChannelBreakdown";
@@ -5014,7 +5014,7 @@ export default function SalesmanLite() {
                 )}
                 {lead.updated_at && (
                   <p style={{ margin: "3px 0 0", fontSize: T.size.sm, color: Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000 ? C.stale : C.textSec }}>
-                    Last contact: {timeAgo(lead.updated_at)}
+                    {lastTouch(lead).label}: {timeAgo(lastTouch(lead).at)}
                   </p>
                 )}
                 {lead.last_call_outcome && (() => {

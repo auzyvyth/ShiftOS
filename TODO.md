@@ -554,9 +554,24 @@ fixes. Nothing in this batch has been built.
   decision first, then reserving fixed slots for the optional blocks so
   every card is the same height whether or not each block renders.
 
-- [ ] **PREM-PIPELINE-LABEL-1: "Last contact: 2d ago" next to "Never
-  contacted · 4d" isn't a bug, it's two different timestamps with a
-  misleading label.** "Last contact" (`SalesmanPremium.jsx:2818-2820`)
+- [x] **PREM-PIPELINE-LABEL-1 DONE 2026-09-12 — the label now follows the
+  data, in all FIVE places it was wrong.** The card said "Last contact:
+  {timeAgo(lead.updated_at)}" directly above a badge reading
+  `last_contacted_at`, so one card could say "Last contact: 2d ago" AND
+  "Never contacted · 4d" at once. Both were technically true and together
+  they were nonsense: the lead was EDITED two days ago and nobody had ever
+  called the buyer.
+  - Fixed by making the LABEL honest rather than moving the badge — the
+    badge is the signal that must not drift (see PREM-4). New shared helper
+    `lastTouch(lead)` in `src/lib/leadsHelpers.js`, beside `followUpStatus`
+    so the two can't diverge: it says "Last contact" only when
+    `last_contacted_at` exists, and "Last activity" otherwise.
+  - It was not one site, it was five, across three panels — Premium card +
+    detail row, Lite card, Salesmanpanel card + detail. All five now read
+    the helper, so the next change is one function.
+
+- [ ] ~~PREM-PIPELINE-LABEL-1 original finding:~~ **two different timestamps
+  with a misleading label.** "Last contact" (`SalesmanPremium.jsx:2818-2820`)
   reads `lead.updated_at`, which bumps on ANY edit — a note, a stage
   change, an AI re-score. "Never contacted · 4d" comes from
   `followUpStatus()` (`src/lib/leadsHelpers.js:240,246`), which
@@ -568,15 +583,37 @@ fixes. Nothing in this batch has been built.
   activity" so it stops reading as a contact claim, or drop it from cards
   where the follow-up badge already covers the real signal.
 
-- [ ] **PREM-SIDEBAR-ICON-1: Chat and Inbox use the identical icon.** Both
+- [x] **PREM-SIDEBAR-ICON-1 DONE 2026-09-12.** Both nav rows rendered
+  `MessageSquare`, so they were distinguishable only by their text. The tour
+  copy in the same file had always drawn the distinction the nav never
+  applied — `MessageSquare` for Inbox (`:5998`), `MessageCircle` for Chat
+  (`:6003`) — so that is what was applied, rather than picking a third icon.
+
+- [ ] ~~PREM-SIDEBAR-ICON-1 original finding:~~ **Chat and Inbox use the
+  identical icon.** Both
   nav entries render `<MessageSquare>` (`SalesmanPremium.jsx:2498-2501` and
   `:2509-2513`). The onboarding tour copy already treats them as visually
   distinct — `MessageSquare` for Inbox, `MessageCircle` for Chat
   (`:5946,5951`) — so the fix is applying that same distinction to the
   actual nav array.
 
-- [ ] **PREM-TODAY-REMOVE-1: remove "What to do today," rebuild later once
-  the AI API is paid for.** `src/pages/salesmanPremium/DashboardTab.jsx:
+- [x] **PREM-TODAY-REMOVE-1 DONE 2026-09-12 — section gone, and the state
+  behind it went with it.** Removed from
+  `salesmanPremium/DashboardTab.jsx` along with everything it was the only
+  consumer of: the `aiFollowups` / `followupsLoading` state and the
+  `fetchFollowupSuggestions` call in `SalesmanPremium.jsx`, the props
+  wiring, and the now-unused `UpgradeBanner` / `AiLoadingState` imports.
+  Leaving those behind is the "dead code that reads as working" trap
+  (cf. PREM-MINI-2) — the git history has the implementation when the
+  Anthropic credits are funded and it gets rebuilt.
+  - **Scoped to Premium on purpose.** `Salesmanpanel.jsx` (the panel for a
+    salesman under a dealer) has its OWN copy at `:2451` and keeps it — the
+    owner's request was in the Premium audit. `SalesmanPanelHelp.jsx:52`
+    still documents it and is rendered only by that panel, so the help text
+    stays accurate. Say the word if it should go there too.
+
+- [ ] ~~PREM-TODAY-REMOVE-1 original finding:~~ **remove "What to do today,"
+  rebuild later once the AI API is paid for.** `src/pages/salesmanPremium/DashboardTab.jsx:
   290-330+` — the developer's own comment there already flags it as
   removable ("Flagging this in case you want it gone too"). Coupled state
   to remove alongside it: `aiFollowups`/`followupsLoading`

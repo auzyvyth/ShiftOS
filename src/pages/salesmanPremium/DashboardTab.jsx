@@ -10,9 +10,7 @@ import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha 
 import ShareMenu from "../../components/ShareMenu";
 import ChannelBreakdown from "../../components/ChannelBreakdown";
 import ThisWeek from "../../components/crm/ThisWeek";
-import UpgradeBanner from "../../components/ai/UpgradeBanner";
 import StarterTasks from "../../components/onboarding/StarterTasks";
-import AiLoadingState from "../../components/ai/AiLoadingState";
 import {
  CARD_HEADER, EYEBROW, STAT, SOFT, ROW_LINE, LEAD_STAGES, PrevMonthModal,
 } from "./shared";
@@ -25,12 +23,12 @@ export default function DashboardTab({
  leads, appointments, myListings, carStatsMap, enquiries, staleLeads, isReturning,
  goal, goalEditing, goalDraft, showPrevMonth, customers, dueNudges, profile, servicePackages,
  handoverActive, handoverNext,
- minipageStats, aiFollowups, followupsLoading, browserNotifPerm, notifBannerDismissed,
- isPremium, isMobile,
+ minipageStats, browserNotifPerm, notifBannerDismissed,
+ isMobile,
  setActiveTab, setMobileLeadStage, setGoalDraft, setGoalEditing, setShowPrevMonth,
  setShowAddForm, setAiFollowups, setInboxSubTab,
  saveGoal, triggerGlow, switchTab, pingWA, handleThisWeekContacted,
- fetchFollowupSuggestions, requestBrowserNotif, dismissNotifBanner, dismissTour,
+ requestBrowserNotif, dismissNotifBanner, dismissTour,
  handleListingCopy, onVisitMinipage, starterHidden, onStarterDismiss, onEditBio,
 }) {
  const activeLeads = leads.filter(
@@ -286,53 +284,6 @@ export default function DashboardTab({
  background: radial-gradient(120% 60px at 15% 0%, rgba(255,255,255,0.05), transparent 60%);
  }
  `}</style>
-
- {/* AI: What to do today — Premium-only, kept from the old dashboard (not
- part of Lite's page, but a working paid feature with its own backend
- quota/generation wiring; deleting the call site would've left
- fetchFollowupSuggestions/aiFollowups dead). Flagging this in case you
- want it gone too. */}
- <div style={{ background: "rgba(220,38,38,0.04)", border: "1px solid rgba(220,38,38,0.15)", borderRadius: 12, padding: "14px 16px" }}>
- <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
- <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
- <span style={{ fontSize: 13, fontWeight: 700, color: "#fca5a5" }}>What to do today</span>
- </div>
- {isPremium && (
- <button
- onClick={fetchFollowupSuggestions}
- disabled={followupsLoading}
- style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.3)", color: "#fca5a5", cursor: "pointer" }}
- >
- {followupsLoading? "Loading..." : aiFollowups.length? "Refresh" : "Generate"}
- </button>
- )}
- </div>
- {!isPremium? (
- <UpgradeBanner feature="AI Follow-up Suggestions" />
- ) : followupsLoading? (
- <AiLoadingState text="AI sedang analisa leads anda..." />
- ) : aiFollowups.length === 0? (
- <p style={{ margin: 0, fontSize: 12, color: "#4b5563" }}>Klik Generate untuk cadangan susulan AI anda.</p>
- ) : (
- <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
- {aiFollowups.map((item, i) => (
- <div key={i} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, opacity: item.is_acted_on? 0.4 : 1 }}>
- <span style={{ fontSize: 18, flexShrink: 0 }}>{item.type === "call"? "" : item.type === "whatsapp"? "" : item.type === "visit"? "" : item.type === "offer"? "" : ""}</span>
- <div style={{ flex: 1, minWidth: 0 }}>
- <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.lead.buyer_name || "—"}</p>
- <p style={{ margin: "2px 0 0", fontSize: 11, color: "#6b7280" }}>{item.suggestion}</p>
- </div>
- <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
- {item.lead.phone && (
- <button onClick={() => { const ph = item.lead.phone.replace(/\D/g,""); window.open(`https://wa.me/${ph.startsWith("6")? ph : "6"+ph}`, "_blank"); }} style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>WA</button>
- )}
- <button onClick={() => setAiFollowups((p) => p.map((x, j) => j === i? { ...x, is_acted_on: true } : x))} style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Done</button>
- </div>
- </div>
- ))}
- </div>
- )}
- </div>
 
  {/* Hero: greeting + live portfolio snapshot */}
  <div className="sp-insight-card" style={{ padding: isMobile ? "20px 18px" : "26px 28px" }}>

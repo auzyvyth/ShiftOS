@@ -123,7 +123,7 @@ import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha 
 // Static, unlike SellerInbox/ChatSheet above: this is a one-line strip that has
 // to render on first paint, and it pulls no chat code with it.
 import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip";
-import { compareFollowUp, followUpStatus, isLeadStale } from "../lib/leadsHelpers";
+import { compareFollowUp, followUpStatus, isLeadStale, lastTouch } from "../lib/leadsHelpers";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { hydrateLeadInto } from "../utils/leadHydrate";
 import { isPremiumSalesman } from "../utils/salesmanPlan";
@@ -702,8 +702,6 @@ export default function SalesmanPremium() {
  const [scoreLoading, setScoreLoading] = useState(false);
 
  // AI follow-up suggestions
- const [aiFollowups, setAiFollowups] = useState([]);
- const [followupsLoading, setFollowupsLoading] = useState(false);
  // AI WA reply per lead
  const [aiWaReplies, setAiWaReplies] = useState({});
  const [waReplyLoading, setWaReplyLoading] = useState({});
@@ -2404,42 +2402,6 @@ export default function SalesmanPremium() {
  }
  };
 
- const fetchFollowupSuggestions = async () => {
- if (!isPremium) return;
- setFollowupsLoading(true);
- try {
- const today = new Date().toISOString().slice(0, 10);
- const topLeads = leads
- .filter((l) =>!["closed_won", "closed_lost"].includes(l.stage))
- .filter((l) =>!l.follow_up_at || l.follow_up_at <= today)
- .sort((a, b) => {
- const scoreOrder = { hot: 3, warm: 2, cold: 1 };
- const aScore = scoreOrder[a.ai_score] || 0;
- const bScore = scoreOrder[b.ai_score] || 0;
- if (bScore!== aScore) return bScore - aScore;
- return new Date(a.created_at) - new Date(b.created_at);
- })
- .slice(0, 3);
- const results = await Promise.all(
- topLeads.map(async (lead) => {
- const daysSince = lead.updated_at? Math.floor((Date.now() - new Date(lead.updated_at)) / 86400000) : 0;
- const prompt = `Suggest one follow-up action for this car sales lead.\nRespond ONLY with JSON:\n{"type":"call"|"whatsapp"|"visit"|"offer"|"close","suggestion":"string max 20 words in BM/English mix"}\nLead stage: ${lead.stage}, score: ${lead.ai_score || "unknown"}, days since last contact: ${daysSince}, last outcome: ${lead.last_call_outcome || "none"}`;
- try {
- const raw = await callClaude(prompt, "You are a sales coach. Respond with JSON only.");
- const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
- return { lead, ...parsed, is_acted_on: false };
- } catch { return { lead, type: "whatsapp", suggestion: "Hantar mesej WhatsApp semak status", is_acted_on: false }; }
- })
- );
- setAiFollowups(results);
- const rows = results.map((r) => ({ salesman_id: userId, lead_id: r.lead.id, suggestion_type: r.type, suggestion_text: r.suggestion }));
- if (rows.length) await supabase.from("ai_followup_suggestions").insert(rows).then(null, () => {});
- await logAiUsage("followup");
- } finally {
- setFollowupsLoading(false);
- }
- };
-
  const openBroadcast = (car) => {
  const name = [car.year, car.brand, car.model, car.variant]
  .filter(Boolean)
@@ -2514,7 +2476,12 @@ export default function SalesmanPremium() {
  {
  tab: "chat",
  label: t("salesmanPremium.tabs.chat", { defaultValue: "Chat" }),
- icon: <MessageSquare style={{ width: 14, height: 14 }} />,
+ // Chat and Inbox both rendered MessageSquare, so the two nav rows were
+ // distinguishable only by their text. The tour copy below has always drawn
+ // the distinction the nav never applied — MessageSquare for Inbox (:5998),
+ // MessageCircle for Chat (:6003) — so it is applied here rather than a
+ // third icon being picked.
+ icon: <MessageCircle style={{ width: 14, height: 14 }} />,
  badge: chatUnread || null,
  },
  {
@@ -2832,10 +2799,17 @@ export default function SalesmanPremium() {
  {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#60a5fa", flexShrink: 0 }}>{carPrice}</p>}
  </div>
  )}
- {lead.updated_at && (
- <p style={{ margin: "2px 0 0", fontSize: 10, color: Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000? "#fb923c" : "#374151" }}>Last contact: {timeAgo(lead.updated_at)}
+ {(() => {
+ // Was "Last contact: {timeAgo(lead.updated_at)}", which sat directly above a
+ // follow-up badge reading last_contacted_at — so one card could say "Last
+ // contact: 2d ago" and "Never contacted · 4d" at the same time.
+ const lt = lastTouch(lead);
+ if (!lt.at) return null;
+ return (
+ <p style={{ margin: "2px 0 0", fontSize: 10, color: Date.now() - new Date(lt.at).getTime() > 48 * 3600 * 1000? "#fb923c" : "#374151" }}>{lt.label}: {timeAgo(lt.at)}
  </p>
- )}
+ );
+ })()}
  {lead.last_call_outcome && (() => {
  const OUTCOME = { answered: { icon: CheckCircle, label: "Answered", color: "#4ade80" }, no_answer: { icon: PhoneOff, label: "No Answer", color: "#f87171" }, callback_requested: { icon: RefreshCw, label: "Callback", color: "#fbbf24" }, voicemail: { icon: Voicemail, label: "Voicemail", color: "#94a3b8" } };
  const o = OUTCOME[lead.last_call_outcome];
@@ -3826,7 +3800,7 @@ export default function SalesmanPremium() {
  );
  })()}
  {pl.updated_at && (
- <span style={{ marginLeft: "auto", fontSize: 10.5, color: "#4b5563" }}>Last contact {timeAgo(pl.updated_at)}</span>
+ <span style={{ marginLeft: "auto", fontSize: 10.5, color: "#4b5563" }}>{lastTouch(pl).label} {timeAgo(lastTouch(pl).at)}</span>
  )}
  </div>
  </div>
@@ -6669,7 +6643,7 @@ export default function SalesmanPremium() {
  enquiries={enquiries} staleLeads={staleLeads} isReturning={isReturning}
  goal={goal} goalEditing={goalEditing} goalDraft={goalDraft} showPrevMonth={showPrevMonth}
  customers={customers} dueNudges={dueNudges} profile={profile}
- minipageStats={minipageStats} aiFollowups={aiFollowups} followupsLoading={followupsLoading}
+ minipageStats={minipageStats}
  servicePackages={servicePackages}
  handoverActive={handover.activeCount} handoverNext={soldNextStep}
  browserNotifPerm={browserNotifPerm} notifBannerDismissed={notifBannerDismissed}
@@ -6678,7 +6652,7 @@ export default function SalesmanPremium() {
  setGoalEditing={setGoalEditing} setShowPrevMonth={setShowPrevMonth} setShowAddForm={setShowAddForm}
  setAiFollowups={setAiFollowups} setInboxSubTab={setInboxSubTab}
  saveGoal={saveGoal} triggerGlow={triggerGlow} switchTab={switchTab} pingWA={pingWA}
- handleThisWeekContacted={handleThisWeekContacted} fetchFollowupSuggestions={fetchFollowupSuggestions}
+ handleThisWeekContacted={handleThisWeekContacted}
  requestBrowserNotif={requestBrowserNotif} dismissNotifBanner={dismissNotifBanner}
  dismissTour={dismissTour} handleListingCopy={handleListingCopy}
  onVisitMinipage={openMyMinipage} starterHidden={starterHidden}
