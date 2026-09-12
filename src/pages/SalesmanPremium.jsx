@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { Helmet } from "react-helmet";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
@@ -79,6 +80,7 @@ import {
  Search,
  DollarSign,
  ShieldCheck,
+ Globe,
  ThumbsUp,
  ThumbsDown,
  Clock,
@@ -212,6 +214,12 @@ const SETTINGS_GROUPS = [
  { group: "Account", items: [
  { key: "verify", icon: ShieldCheck, label: "Verified Badge", desc: "ID & IC verification" },
  { key: "dealership", icon: Store, label: "Join a Dealership", desc: "Link up with a dealer" },
+ // Premium had no language control anywhere, so a seller who picked Malay in
+ // Lite found no way to change it back (or set it at all) on this panel.
+ // Labels in this list are still English like its siblings — the list is
+ // module scope, so translating it means making it a function of `t`
+ // (PREM-I18N-2).
+ { key: "language", icon: Globe, label: "Language", desc: "Panel display language" },
  { key: "help", icon: Sparkles, label: "Product Tour", desc: "Replay the walkthrough" },
  ]},
 ];
@@ -234,6 +242,12 @@ const TOUR_TABS = [
 
 export default function SalesmanPremium() {
  const navigate = useNavigate();
+ // Premium shipped with NO i18n wiring at all — no useTranslation, no language
+ // switcher, and no `salesmanPremium` namespace to translate into — while Lite
+ // was fully wired. So the toggle a seller set in Lite appeared to do nothing
+ // here. The nav and the switcher are translated; the rest of the file is still
+ // hardcoded English (PREM-I18N-2).
+ const { t, i18n } = useTranslation();
  const isMobile = useWindowSize() < 768;
 
  // First-frame cache seed. Everything below initialises from what this device
@@ -2488,30 +2502,30 @@ export default function SalesmanPremium() {
  const TABS_DESKTOP = [
  {
  tab: "dashboard",
- label: "Dashboard",
+ label: t("salesmanPremium.tabs.dashboard", { defaultValue: "Dashboard" }),
  icon: <LayoutGrid style={{ width: 14, height: 14 }} />,
  },
  {
  tab: "listings",
- label: "My Listings",
+ label: t("salesmanPremium.tabs.listings", { defaultValue: "My Listings" }),
  icon: <Car style={{ width: 14, height: 14 }} />,
  badge: myListings.length || null,
  },
  {
  tab: "chat",
- label: "Chat",
+ label: t("salesmanPremium.tabs.chat", { defaultValue: "Chat" }),
  icon: <MessageSquare style={{ width: 14, height: 14 }} />,
  badge: chatUnread || null,
  },
  {
  tab: "leads",
- label: "Leads",
+ label: t("salesmanPremium.tabs.leads", { defaultValue: "Leads" }),
  icon: <User style={{ width: 14, height: 14 }} />,
  badge: leadsNeedingFollowUp || null,
  },
  {
  tab: "enquiries",
- label: "Inbox",
+ label: t("salesmanPremium.tabs.inbox", { defaultValue: "Inbox" }),
  icon: <MessageSquare style={{ width: 14, height: 14 }} />,
  badge: inboxBadge || null,
  },
@@ -2519,28 +2533,28 @@ export default function SalesmanPremium() {
  // The end of the funnel: leads -> won -> paperwork + owner. Sold used to have
  // no nav slot at all, reachable only from two tiles on the Dashboard.
  tab: "sold",
- label: "Sold",
+ label: t("salesmanPremium.tabs.sold", { defaultValue: "Sold" }),
  icon: <ClipboardList style={{ width: 14, height: 14 }} />,
  badge: handover.activeCount || null,
  },
  {
  tab: "analytics",
- label: "Analytics",
+ label: t("salesmanPremium.tabs.analytics", { defaultValue: "Analytics" }),
  icon: <TrendingUp style={{ width: 14, height: 14 }} />,
  },
  {
  tab: "loans",
- label: "Loans",
+ label: t("salesmanPremium.tabs.loans", { defaultValue: "Loans" }),
  icon: <Banknote style={{ width: 14, height: 14 }} />,
  },
  ...(showOutreach ? [{
  tab: "outreach",
- label: "Outreach",
+ label: t("salesmanPremium.tabs.outreach", { defaultValue: "Outreach" }),
  icon: <Megaphone style={{ width: 14, height: 14 }} />,
  }] : []),
  {
  tab: "settings",
- label: "Settings",
+ label: t("salesmanPremium.tabs.settings", { defaultValue: "Settings" }),
  icon: <Settings style={{ width: 14, height: 14 }} />,
  },
  ];
@@ -5149,6 +5163,41 @@ export default function SalesmanPremium() {
  </div>
  {saveBtn}
  </>
+ )}
+ {nav === "language" && (
+ <div>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>
+ {t("salesmanPremium.settings.language", { defaultValue: "Language" })}
+ </p>
+ <p style={{ margin: "4px 0 12px", fontSize: 11, color: "#6b7280", lineHeight: 1.6 }}>
+ {t("salesmanPremium.settings.languageSubtext", { defaultValue: "Choose the language used across your panel." })}
+ </p>
+ {/* Same control and the same i18n instance as Lite's, so the choice
+     follows the seller between panels rather than being per-panel. */}
+ <div style={{ display: "flex", gap: 8 }}>
+ {[{ code: "en", label: "English" }, { code: "ms", label: "Malay" }].map(({ code, label }) => (
+ <button
+ key={code}
+ type="button"
+ onClick={() => i18n.changeLanguage(code)}
+ style={{
+ padding: "7px 18px",
+ borderRadius: 8,
+ fontSize: 13,
+ fontWeight: 600,
+ cursor: "pointer",
+ fontFamily: "inherit",
+ background: i18n.language === code ? C.accent : "rgba(255,255,255,0.04)",
+ border: `1px solid ${i18n.language === code ? C.accent : "rgba(255,255,255,0.1)"}`,
+ color: i18n.language === code ? "#fff" : "#9ca3af",
+ transition: "all 0.15s",
+ }}
+ >
+ {label}
+ </button>
+ ))}
+ </div>
+ </div>
  )}
  {nav === "verify" && (
  <>

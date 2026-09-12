@@ -965,6 +965,26 @@
       "cta": "Tambah kenderaan"
     }
   },
+  "salesmanPremium": {
+    "tabs": {
+      "dashboard": "Papan Pemuka",
+      "listings": "Listing Saya",
+      "chat": "Sembang",
+      "leads": "Lead",
+      "inbox": "Peti Masuk",
+      "sold": "Terjual",
+      "analytics": "Analitik",
+      "loans": "Pinjaman",
+      "outreach": "Jangkauan",
+      "settings": "Tetapan"
+    },
+    "settings": {
+      "navLanguage": "Bahasa",
+      "navLanguageDesc": "Bahasa paparan panel",
+      "language": "Bahasa",
+      "languageSubtext": "Pilih bahasa yang digunakan di seluruh panel anda."
+    }
+  },
   "availability": {
     "loading": "Memuatkan jadual anda…",
     "title": "Ketersediaan tontonan",

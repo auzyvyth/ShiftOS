@@ -975,6 +975,26 @@
       "cta": "Add a vehicle"
     }
   },
+  "salesmanPremium": {
+    "tabs": {
+      "dashboard": "Dashboard",
+      "listings": "My Listings",
+      "chat": "Chat",
+      "leads": "Leads",
+      "inbox": "Inbox",
+      "sold": "Sold",
+      "analytics": "Analytics",
+      "loans": "Loans",
+      "outreach": "Outreach",
+      "settings": "Settings"
+    },
+    "settings": {
+      "navLanguage": "Language",
+      "navLanguageDesc": "Panel display language",
+      "language": "Language",
+      "languageSubtext": "Choose the language used across your panel."
+    }
+  },
   "availability": {
     "loading": "Loading your schedule…",
     "title": "Viewing availability",

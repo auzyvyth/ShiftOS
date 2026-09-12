@@ -314,8 +314,51 @@ fixes. Nothing in this batch has been built.
 
 ### Large builds — real effort, not quick fixes
 
-- [ ] **PREM-I18N-1: SalesmanPremium.jsx has ZERO i18n wiring — the whole
-  file, not "some sections."** No `useTranslation`/`i18n` import anywhere in
+- [~] **PREM-I18N-1 PHASE 1 DONE 2026-09-12 — Premium now HAS a language
+  switcher and a translated nav. The body of the panel is still English
+  (PREM-I18N-2).** Deliberately staged: wrapping ~7,500 lines in one pass is
+  not reviewable and is exactly how a working file gets broken.
+  - Measured before and after, precisely (word-boundary `t("` count, not a
+    naive grep — `at(`, `split(`, `startsWith(` all false-positive):
+    **Lite 580 call sites against 581 keys — effectively fully translated.
+    Premium was 0. It is now 12, against 14 keys.** The three lazy sub-tab
+    files (`DashboardTab`, `AnalyticsTab`, `ListingsTab`) and `shared.jsx`
+    are still 0.
+  - **So the owner's "some sections are still English" is almost entirely
+    Premium, and it was not a gap in the translations — it was the absence
+    of any i18n at all.** There was no `useTranslation`, no switcher, and no
+    `salesmanPremium` namespace to translate INTO, so a seller who chose
+    Malay in Lite walked into Premium and saw English with no way to change
+    it.
+  - Shipped: `useTranslation` wired into `SalesmanPremium`, a
+    `salesmanPremium` namespace in BOTH `en.json` and `ms.json` (additive —
+    20 lines each, no reformat of the existing 960 keys), all 10 nav labels
+    translated, and a Language section in Settings (Account group) using the
+    same `i18n` instance as Lite, so the choice follows the seller between
+    panels instead of being per-panel.
+  - **A second false positive corrected: `ms.json` is NOT missing 10 keys.**
+    The audit flagged 10 `*_one` plural variants present in `en` and absent
+    in `ms`. Malay has a single plural category — verified,
+    `new Intl.PluralRules('ms').resolvedOptions().pluralCategories` is
+    `['other']` against `['one','other']` for English — so the `_one` forms
+    are correctly absent and every one of them has its `_other` counterpart
+    present. Adding them would create keys i18next can never select. **Do
+    not "fix" this.** Lite's translation coverage has no gap at all.
+  - Syntax-checked (esbuild) and both locale files re-parsed as valid JSON.
+    No build (`npm ci` blocked). NOT eyeballed in a browser.
+
+- [ ] **PREM-I18N-2: translate Premium's body copy — the actual bulk of the
+  job.** Phase 1 above gave Premium the wiring, the namespace and the
+  switcher; the panel's own strings are still hardcoded English at 12 of
+  roughly 600 call sites' worth of copy. Work it per tab so each pass is
+  reviewable, mirroring how `salesmanLite` is structured (581 keys across
+  33 sections): `SalesmanPremium.jsx` body copy first, then
+  `salesmanPremium/DashboardTab.jsx`, `AnalyticsTab.jsx`, `ListingsTab.jsx`
+  and `shared.jsx`, which are at ZERO. Two specifics carried over:
+  `SETTINGS_GROUPS` (`SalesmanPremium.jsx:200`) is module scope, so
+  translating its labels means making it a function of `t`; and every new
+  key needs its `ms` counterpart added in the same pass, or the switcher
+  silently falls back to English for it. No `useTranslation`/`i18n` import anywhere in
   the 7,457-line file (Lite has it fully wired,
   `SalesmanLite.jsx:6,477,542,629,679,764`, plus a language switcher at
   `:7030,7916`). `src/i18n/locales/en.json` has no `salesmanPremium`
