@@ -81,6 +81,14 @@ function kindLabel(a) {
 
 // Deleted rows also carry is_active=false, so 'deleted' must be checked first
 // or a soft-deleted account reads as merely suspended.
+//
+// A brand-new signup (or a rejected one) is ALSO is_active=false — approval
+// never flips it true until decide_user_approval runs — but neither was ever
+// suspended. Only set_account_suspended() stamps suspended_at, so that is the
+// one reliable "actually suspended" signal; approval_status carries the rest.
+// Without this split, every unreviewed seller showed up here as "Suspended"
+// with a "Reinstate" button that would have activated them while skipping the
+// real approval flow entirely (no approved_by/is_verified stamp, no KYC check).
 function statusOf(a) {
   if (a.account_status === "deleted") {
     const left = a.deleted_at
@@ -88,7 +96,9 @@ function statusOf(a) {
       : null;
     return { id: "deleted", text: left !== null ? `Deleted · purges in ${left}d` : "Deleted", color: "#9ca3af" };
   }
-  if (a.is_active === false) return { id: "suspended", text: "Suspended", color: "#f87171" };
+  if (a.is_active === false && a.suspended_at) return { id: "suspended", text: "Suspended", color: "#f87171" };
+  if (a.approval_status === "pending") return { id: "pending_review", text: "Pending review", color: "#facc15" };
+  if (a.approval_status === "rejected") return { id: "rejected", text: "Rejected", color: "#f87171" };
   if (a.subscription_status === "trial") {
     const left = daysUntil(a.trial_ends_at);
     return { id: "trial", text: left === null ? "Trial" : left < 0 ? "Trial ended" : `Trial · ${left}d left`, color: "#facc15" };
@@ -470,7 +480,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
                 <button disabled={busy === open.id} onClick={() => restore(open)} style={btn("good")}>Restore account</button>
               ) : (
                 <>
-                  {open.is_active === false ? (
+                  {open.is_active === false && open.suspended_at ? (
                     <button disabled={busy === open.id} onClick={() => setSuspended(open, false)} style={btn("good")}>Reinstate</button>
                   ) : (
                     <button disabled={busy === open.id} onClick={() => { setSuspendReason(""); setSuspendFor(open); }} style={btn("warn")}>Suspend…</button>
